@@ -1,0 +1,50 @@
+name: Auto Backport
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  backport:
+    name: Create backport PR to develop
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'hotfix/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create backport branch and PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HOTFIX_BRANCH="${{ github.event.pull_request.head.ref }}"
+          BACKPORT_BRANCH="backport/${HOTFIX_BRANCH#hotfix/}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BACKPORT_BRANCH" origin/master
+          git push origin "$BACKPORT_BRANCH"
+
+          gh pr create \
+            --base develop \
+            --head "$BACKPORT_BRANCH" \
+            --title "Backport: ${HOTFIX_BRANCH}" \
+            --body "$(cat <<EOF
+          ## Backport automatico
+
+          Sincroniza los cambios del hotfix mergeado en master hacia develop.
+
+          **Hotfix original:** #${{ github.event.pull_request.number }} (\`${HOTFIX_BRANCH}\`)
+
+          > Revisar que no haya conflictos antes de mergear.
+          EOF
+          )"

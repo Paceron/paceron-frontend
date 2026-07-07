@@ -1,0 +1,24 @@
+/* Orbitron 700 italic @font-face — same file as the normal variant so the
+   browser applies its own synthetic slant when fontStyle:'italic' is used. */
+@font-face {
+  font-family: 'Orbitron_700Bold';
+  font-style: italic;
+  font-weight: 700;
+  src: url('./assets/fonts/Orbitron_700Bold.ttf') format('truetype');
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f4f7fb;
+}
+
+.dark body {
+  background: #020617;
+}

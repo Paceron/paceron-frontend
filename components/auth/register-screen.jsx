@@ -1,0 +1,774 @@
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import { useThemeColors } from '../../theme/colors.js';
+import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
+import {
+  PASSWORD_REQUIREMENTS,
+  PASSWORD_MAX_LENGTH,
+  checkPasswordRequirements,
+  isPasswordValid,
+  getPasswordStrengthScore,
+  getPasswordStrengthMeta,
+} from '../../utils/password-validators.js';
+import { checkEmailExists } from '../../services/auth.js';
+import { useAuthStore } from '../../store/auth-store.js';
+import { PaceronBrand } from '../brand/paceron-brand.jsx';
+import { isWeb } from '../../utils/platform.js';
+import { COUNTRIES, PROVINCES, CITIES } from '../../data/locations.js';
+
+const INPUT_CLASS = 'flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none';
+const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200';
+const SELECT_CLASS = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
+
+function SelectField({ label, options, value, onChange, placeholder, disabled, error }) {
+  const colors = useThemeColors();
+
+  return (
+    <View className="mb-5">
+      <Text className={FIELD_LABEL}>{label}</Text>
+      <View className="flex-row items-center gap-2">
+        <View className="flex-1 relative">
+          <select
+            className={SELECT_CLASS}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+          >
+            <option value="">{placeholder}</option>
+            {options.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
+          {!disabled && value && (
+            <Pressable
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              onPress={() => onChange('')}
+              accessibilityLabel="Limpiar selección"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+    </View>
+  );
+}
+
+function DateField({ label, value, onChange, error, disabled }) {
+
+  return (
+    <View className="mb-5">
+      <Text className={FIELD_LABEL}>{label}</Text>
+      <View className="flex-row items-center gap-2">
+        <View className="flex-1 relative">
+          <input
+            type="date"
+            className={SELECT_CLASS}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+          />
+        </View>
+      </View>
+      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+    </View>
+  );
+}
+
+function StrengthBar({ password }) {
+  const score = getPasswordStrengthScore(password);
+  const total = PASSWORD_REQUIREMENTS.length;
+  const pct = Math.round((score / total) * 100);
+  const { label, color } = getPasswordStrengthMeta(score);
+
+  return (
+    <View className="mb-3 mt-2">
+      <View className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <View style={{ width: `${pct}%`, backgroundColor: color }} className="h-full rounded-full" />
+      </View>
+      {password.length > 0 && (
+        <Text style={{ color }} className="mt-1 text-xs font-semibold">
+          {label}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function RequirementRow({ met, label }) {
+  const colors = useThemeColors();
+  return (
+    <View className="mb-1 flex-row items-center gap-2">
+      <MaterialCommunityIcons
+        color={met ? '#8cc63e' : colors.onSurfaceVariant}
+        name={met ? 'check-circle' : 'circle-outline'}
+        size={14}
+      />
+      <Text className={`text-xs ${met ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure }) {
+  const colors = useThemeColors();
+
+  const borderColor = error
+    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
+    : touched && !error
+    ? 'border-primary bg-white dark:bg-slate-900'
+    : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
+
+  return (
+    <View className="mb-5">
+      <Text className={FIELD_LABEL}>{label}</Text>
+      <View className={`h-12 flex-row items-center rounded-xl border ${borderColor}`}>
+        <TextInput
+          autoCapitalize={autoCapitalize}
+          autoComplete={autoComplete}
+          className={INPUT_CLASS}
+          keyboardType={keyboardType}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          onSubmitEditing={onSubmitEditing}
+          placeholder={placeholder}
+          placeholderTextColor={colors.onSurfaceVariant}
+          returnKeyType={returnKeyType}
+          secureTextEntry={secureTextEntry}
+          textContentType={textContentType}
+          value={value}
+        />
+        {onToggleSecure && (
+          <Pressable className="px-3" onPress={onToggleSecure}>
+            <MaterialCommunityIcons
+              color={colors.onSurfaceVariant}
+              name={showSecure ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+            />
+          </Pressable>
+        )}
+      </View>
+      <View className="h-5">
+        {error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}
+      </View>
+    </View>
+  );
+}
+
+function PickerField({ label, options, value, onChange, placeholder, disabled, error }) {
+  const colors = useThemeColors();
+  const [visible, setVisible] = useState(false);
+
+  const items = options.map((opt) => {
+    if (typeof opt === 'string') return { id: opt, name: opt };
+    return opt;
+  });
+
+  const selected = items.find((item) => item.id === value);
+  const borderClass = error
+    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
+    : disabled
+    ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
+    : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
+
+  return (
+    <View className="mb-5">
+      <Text className={FIELD_LABEL}>{label}</Text>
+      <Pressable
+        className={`h-12 flex-row items-center rounded-xl border px-4 ${borderClass}`}
+        onPress={disabled ? undefined : () => setVisible(true)}
+      >
+        <Text className={`flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+          {selected ? selected.name : placeholder}
+        </Text>
+        {!disabled && value && (
+          <Pressable
+            onPress={() => { onChange(''); setVisible(false); }}
+            accessibilityLabel="Limpiar selección"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
+          </Pressable>
+        )}
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={20} />
+      </Pressable>
+      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setVisible(false)}
+        transparent
+        visible={visible}
+      >
+        <Pressable className="flex-1 justify-center bg-black/50 px-6" onPress={() => setVisible(false)}>
+          <Pressable
+            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-[#1d2125]"
+            onPress={() => {}}
+          >
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {items.length === 0 ? (
+                <View className="items-center py-8">
+                  <Text className="text-sm text-slate-400 dark:text-slate-500">Sin opciones disponibles</Text>
+                </View>
+              ) : (
+                items.map((item) => {
+                  const isSelected = item.id === value;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
+                        isSelected ? 'bg-primary/10' : ''
+                      }`}
+                      onPress={() => { onChange(item.id); setVisible(false); }}
+                    >
+                      <Text className={`flex-1 text-sm ${
+                        isSelected ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-200'
+                      }`}>
+                        {item.name}
+                      </Text>
+                      {isSelected && <MaterialCommunityIcons color="inherit" name="check" size={18} style={{ color: '#8cc63e' }} />}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+function validateDate(value) {
+  if (!value) return 'La fecha de nacimiento es requerida.';
+  const trimmed = value.trim();
+
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return 'Formato inválido. Usá DD/MM/AAAA.';
+
+  const [day, month, year] = trimmed.split('/').map(Number);
+
+  if (month < 1 || month > 12) return 'El mes no es válido.';
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (day < 1 || day > daysInMonth) return 'El día no es válido para ese mes.';
+
+  const date = new Date(year, month - 1, day);
+  const now = new Date();
+  if (date >= now) return 'La fecha debe ser en el pasado.';
+  if (year < 1900) return 'Revisá el año ingresado.';
+
+  return null;
+}
+
+function validateDNI(value) {
+  if (!value || !value.trim()) return 'El DNI es requerido.';
+  const clean = value.trim().replace(/[.-]/g, '');
+  if (!/^\d{6,10}$/.test(clean)) return 'El DNI debe tener entre 6 y 10 dígitos.';
+  return null;
+}
+
+function SectionCollapsible({ title, children, collapsed, onToggle }) {
+  const colors = useThemeColors();
+  const rotateAnim = useSharedValue(collapsed ? 1 : 0);
+
+  useEffect(() => {
+    rotateAnim.value = withTiming(collapsed ? 1 : 0, { duration: 200 });
+  }, [collapsed]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(rotateAnim.value, [0, 1], [0, -90])}deg` }],
+  }));
+
+  return (
+    <View className="mb-6">
+      <Pressable
+        className="flex-row items-center gap-2 border-b border-slate-100 pb-2 dark:border-slate-800"
+        onPress={onToggle}
+      >
+        <Animated.View style={chevronStyle}>
+          <MaterialCommunityIcons name="chevron-down" size={18} color={colors.onSurfaceVariant} />
+        </Animated.View>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">{title}</Text>
+      </Pressable>
+      {!collapsed && <View className="mt-6">{children}</View>}
+    </View>
+  );
+}
+
+export function RegisterScreen() {
+  const router = useRouter();
+  const colors = useThemeColors();
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dni, setDni] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [phoneContact, setPhoneContact] = useState('');
+
+  const [collapsedSections, setCollapsedSections] = useState({
+    personal: false,
+    address: false,
+    password: false,
+  });
+
+  const toggleSection = (id) => {
+    setCollapsedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const [country, setCountry] = useState('');
+  const [province, setProvince] = useState('');
+  const [city, setCity] = useState('');
+  const [street, setStreet] = useState('');
+  const [number, setNumber] = useState('');
+  const [provinceOptions, setProvinceOptions] = useState([]);
+  const [cityOptions, setCityOptions] = useState([]);
+
+  const handleCountryChange = (code) => {
+    setCountry(code);
+    setProvince('');
+    setCity('');
+    setProvinceOptions(code ? PROVINCES[code] || [] : []);
+    setCityOptions([]);
+  };
+
+  const handleProvinceChange = (id) => {
+    setProvince(id);
+    setCity('');
+    setCityOptions(id && country ? CITIES[`${country}-${id}`] || [] : []);
+  };
+
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [validatingEmail, setValidatingEmail] = useState(false);
+
+  const [touched, setTouched] = useState({});
+  const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
+
+  const emailError = touched.email && !email
+    ? 'El email es requerido.'
+    : touched.email && !validateEmailFormat(email)
+    ? 'El formato del email no es válido.'
+    : touched.email && isDisposableEmail(email)
+    ? 'No se permiten emails temporales o de un solo uso.'
+    : null;
+
+  const dniError = touched.dni && validateDNI(dni);
+  const dateError = touched.birthDate && validateDate(birthDate);
+
+  const passwordReqs = checkPasswordRequirements(password);
+  const passwordValid = isPasswordValid(password);
+  const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+
+  const handleSubmit = async () => {
+    if (loading) return;
+    touch('firstName');
+    touch('lastName');
+    touch('dni');
+    touch('birthDate');
+    touch('email');
+    touch('password');
+    touch('confirm');
+
+    const personalOk =
+      firstName.trim().length > 0 &&
+      lastName.trim().length > 0 &&
+      !validateDNI(dni) &&
+      !validateDate(birthDate) &&
+      validateEmailFormat(email) &&
+      !isDisposableEmail(email);
+
+    if (!personalOk || !passwordValid || !passwordsMatch) return;
+
+    setValidatingEmail(true);
+    try {
+      const exists = await checkEmailExists(email);
+      if (exists) {
+        Toast.show({ type: 'error', text1: 'Email registrado', text2: 'Este email ya está registrado. Usá otro o iniciá sesión.' });
+        setValidatingEmail(false);
+        return;
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Error al verificar el email. Intentá de nuevo.' });
+      setValidatingEmail(false);
+      return;
+    }
+    setValidatingEmail(false);
+    setLoading(true);
+    try {
+      const { register } = useAuthStore.getState();
+      const result = await register({
+        firstName,
+        lastName,
+        dni,
+        birthDate,
+        email,
+        phone,
+        phoneContact,
+        country,
+        province,
+        city,
+        street,
+        number,
+        password,
+      });
+      if (result.success) {
+        router.replace('/');
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Error al crear la cuenta.' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Error de conexión', text2: 'Intentá de nuevo más tarde.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(16);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
+    translateY.value = withTiming(0, { duration: 350, easing: Easing.out(Easing.cubic) });
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const handleBackNav = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-[#0d1013]" edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
+            <View className="mb-6 w-full max-w-4xl">
+              <Pressable
+                className="flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-[#111518]"
+                onPress={handleBackNav}
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
+                <Text className="text-sm text-slate-600 dark:text-slate-300">Volver</Text>
+              </Pressable>
+            </View>
+
+            <View className={`w-full ${isWeb ? 'max-w-5xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-[#111518]`}>
+              <View className="mb-8 items-center">
+                <Image
+                  resizeMode="contain"
+                  source={require('../../assets/paceron-symbol-transparent.png')}
+                  style={{ width: 48, height: 48 }}
+                />
+                <PaceronBrand size={16} style={{ marginTop: 8 }} />
+              </View>
+
+              <Text className="mb-1 text-center text-2xl font-bold text-slate-900 dark:text-white">Crear cuenta</Text>
+              <Text className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                Completá tus datos para registrarte en Paceron.
+              </Text>
+
+              <SectionCollapsible title="Datos personales" collapsed={collapsedSections.personal} onToggle={() => toggleSection('personal')}>
+                <View className={isWeb ? 'flex-row gap-6' : ''}>
+                  <View className={isWeb ? 'flex-1' : ''}>
+                    <InputField
+                      autoCapitalize="words"
+                      autoComplete="given-name"
+                      error={touched.firstName && !firstName.trim() ? 'El nombre es requerido.' : null}
+                      label="Nombre *"
+                      onBlur={() => touch('firstName')}
+                      onChange={setFirstName}
+                      placeholder="Tu nombre"
+                      returnKeyType="next"
+                      textContentType="givenName"
+                      touched={touched.firstName}
+                      value={firstName}
+                    />
+
+                    <InputField
+                      autoCapitalize="words"
+                      autoComplete="family-name"
+                      error={touched.lastName && !lastName.trim() ? 'Los apellidos son requeridos.' : null}
+                      label="Apellidos *"
+                      onBlur={() => touch('lastName')}
+                      onChange={setLastName}
+                      placeholder="Tus apellidos"
+                      returnKeyType="next"
+                      textContentType="familyName"
+                      touched={touched.lastName}
+                      value={lastName}
+                    />
+
+                    <InputField
+                      autoCapitalize="none"
+                      autoComplete="cc-id"
+                      error={typeof dniError === 'string' ? dniError : null}
+                      keyboardType="default"
+                      label="DNI *"
+                      onBlur={() => touch('dni')}
+                      onChange={setDni}
+                      placeholder="Número de documento"
+                      returnKeyType="next"
+                      touched={touched.dni}
+                      value={dni}
+                    />
+                  </View>
+
+                  <View className={isWeb ? 'flex-1' : ''}>
+                    {isWeb ? (
+                      <DateField
+                        error={typeof dateError === 'string' ? dateError : null}
+                        label="Fecha de nacimiento *"
+                        onChange={setBirthDate}
+                        value={birthDate}
+                      />
+                    ) : (
+                      <InputField
+                        autoCapitalize="none"
+                        autoComplete="bday"
+                        error={typeof dateError === 'string' ? dateError : null}
+                        keyboardType="default"
+                        label="Fecha de nacimiento *"
+                        onBlur={() => touch('birthDate')}
+                        onChange={setBirthDate}
+                        placeholder="DD/MM/AAAA"
+                        returnKeyType="next"
+                        touched={touched.birthDate}
+                        value={birthDate}
+                      />
+                    )}
+
+                    <InputField
+                      autoCapitalize="none"
+                      autoComplete="tel"
+                      keyboardType="phone-pad"
+                      label="Teléfono"
+                      onChange={setPhone}
+                      placeholder="+54 11 1234 5678"
+                      returnKeyType="next"
+                      textContentType="telephoneNumber"
+                      value={phone}
+                    />
+
+                    <InputField
+                      autoCapitalize="none"
+                      autoComplete="tel"
+                      keyboardType="phone-pad"
+                      label="Teléfono de contacto"
+                      onChange={setPhoneContact}
+                      placeholder="Otro número de contacto"
+                      returnKeyType="next"
+                      textContentType="telephoneNumber"
+                      value={phoneContact}
+                    />
+
+                    <InputField
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      error={emailError}
+                      keyboardType="email-address"
+                      label="Email *"
+                      onBlur={() => touch('email')}
+                      onChange={setEmail}
+                      placeholder="tu@email.com"
+                      returnKeyType="next"
+                      textContentType="emailAddress"
+                      touched={touched.email}
+                      value={email}
+                    />
+                  </View>
+                </View>
+              </SectionCollapsible>
+
+              <SectionCollapsible title="Dirección" collapsed={collapsedSections.address} onToggle={() => toggleSection('address')}>
+                <View className={isWeb ? 'flex-row gap-6' : ''}>
+                  <View className={isWeb ? 'flex-1' : ''}>
+                    {isWeb ? (
+                      <>
+                        <SelectField
+                          label="País"
+                          onChange={handleCountryChange}
+                          options={COUNTRIES}
+                          placeholder="Seleccioná un país"
+                          value={country}
+                        />
+                        <SelectField
+                          disabled={!country}
+                          label="Provincia"
+                          onChange={handleProvinceChange}
+                          options={provinceOptions}
+                          placeholder={country ? 'Seleccioná una provincia' : 'Primero elegí un país'}
+                          value={province}
+                        />
+                        <SelectField
+                          disabled={!province}
+                          label="Ciudad"
+                          onChange={setCity}
+                          options={cityOptions}
+                          placeholder={province ? 'Seleccioná una ciudad' : 'Primero elegí una provincia'}
+                          value={city}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <PickerField
+                          label="País"
+                          onChange={handleCountryChange}
+                          options={COUNTRIES}
+                          placeholder="Seleccioná un país"
+                          value={country}
+                        />
+                        <PickerField
+                          disabled={!country}
+                          label="Provincia"
+                          onChange={handleProvinceChange}
+                          options={provinceOptions}
+                          placeholder={country ? 'Seleccioná una provincia' : 'Primero elegí un país'}
+                          value={province}
+                        />
+                        <PickerField
+                          disabled={!province}
+                          label="Ciudad"
+                          onChange={setCity}
+                          options={cityOptions}
+                          placeholder={province ? 'Seleccioná una ciudad' : 'Primero elegí una provincia'}
+                          value={city}
+                        />
+                      </>
+                    )}
+                  </View>
+
+                  <View className={isWeb ? 'flex-1' : ''}>
+                    <InputField
+                      autoCapitalize="words"
+                      label="Calle"
+                      onChange={setStreet}
+                      placeholder="Nombre de la calle"
+                      returnKeyType="next"
+                      value={street}
+                    />
+                    <InputField
+                      autoCapitalize="none"
+                      keyboardType="default"
+                      label="Número / Altura"
+                      onChange={setNumber}
+                      placeholder="1234"
+                      returnKeyType="next"
+                      value={number}
+                    />
+                  </View>
+                </View>
+              </SectionCollapsible>
+
+              <SectionCollapsible title="Contraseña" collapsed={collapsedSections.password} onToggle={() => toggleSection('password')}>
+                <View className="flex-row gap-4">
+                  <View className="flex-1">
+                    <InputField
+                      autoComplete="new-password"
+                      label="Contraseña *"
+                      onBlur={() => touch('password')}
+                      onChange={(v) => { if (v.length <= PASSWORD_MAX_LENGTH) setPassword(v); }}
+                      onToggleSecure={() => setShowPassword((v) => !v)}
+                      placeholder="Tu contraseña"
+                      returnKeyType="next"
+                      secureTextEntry={!showPassword}
+                      showSecure={showPassword}
+                      textContentType="newPassword"
+                      value={password}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <InputField
+                      autoComplete="new-password"
+                      error={touched.confirm && !passwordsMatch && confirmPassword.length > 0 ? 'Las contraseñas no coinciden.' : null}
+                      label="Confirmar contraseña *"
+                      onBlur={() => touch('confirm')}
+                      onChange={setConfirmPassword}
+                      onToggleSecure={() => setShowConfirm((v) => !v)}
+                      placeholder="Repetí tu contraseña"
+                      returnKeyType="done"
+                      secureTextEntry={!showConfirm}
+                      showSecure={showConfirm}
+                      textContentType="newPassword"
+                      value={confirmPassword}
+                    />
+                  </View>
+                </View>
+
+                <View className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                  {PASSWORD_REQUIREMENTS.map((req) => (
+                    <RequirementRow key={req.id} label={req.label} met={passwordReqs[req.id]} />
+                  ))}
+                </View>
+
+                <StrengthBar password={password} />
+              </SectionCollapsible>
+
+              <Pressable
+                className={`mt-8 h-12 items-center justify-center rounded-full ${
+                  passwordValid && passwordsMatch ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+                } active:opacity-80`}
+                disabled={loading || validatingEmail}
+                onPress={handleSubmit}
+              >
+                {loading || validatingEmail ? (
+                  <ActivityIndicator color="#111518" size="small" />
+                ) : (
+                  <Text className={`text-sm font-semibold uppercase tracking-wide ${
+                    passwordValid && passwordsMatch ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
+                  }`}>
+                    Crear cuenta
+                  </Text>
+                )}
+              </Pressable>
+
+              <Pressable className="mt-6 items-center py-1" onPress={() => router.push('/login')}>
+                <Text className="text-sm text-slate-500 dark:text-slate-400">
+                  ¿Ya tenés cuenta?{' '}
+                  <Text className="font-semibold text-primary">Iniciá sesión</Text>
+                </Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
