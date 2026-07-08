@@ -39,7 +39,8 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Paceron to use your location for tracking runs."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ]
   }
 }
