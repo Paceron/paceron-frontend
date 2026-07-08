@@ -230,7 +230,7 @@ function PickerField({ label, options, value, onChange, placeholder, disabled, e
       >
         <Pressable className="flex-1 justify-center bg-black/50 px-6" onPress={() => setVisible(false)}>
           <Pressable
-            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-[#1d2125]"
+            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
             onPress={() => {}}
           >
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -371,6 +371,15 @@ export function RegisterScreen() {
   const passwordValid = isPasswordValid(password);
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
 
+  const personalOk =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    !validateDNI(dni) &&
+    !validateBirthDate(birthDate) &&
+    validateEmailFormat(email) &&
+    !isDisposableEmail(email);
+  const formValid = personalOk && passwordValid && passwordsMatch;
+
   const handleSubmit = async () => {
     if (loading) return;
     touch('firstName');
@@ -381,15 +390,7 @@ export function RegisterScreen() {
     touch('password');
     touch('confirm');
 
-    const personalOk =
-      firstName.trim().length > 0 &&
-      lastName.trim().length > 0 &&
-      !validateDNI(dni) &&
-      !validateBirthDate(birthDate) &&
-      validateEmailFormat(email) &&
-      !isDisposableEmail(email);
-
-    if (!personalOk || !passwordValid || !passwordsMatch) return;
+    if (!formValid) return;
 
     setLoading(true);
     try {
@@ -445,7 +446,7 @@ export function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-[#0d1013]" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-ink" edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -456,9 +457,9 @@ export function RegisterScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
-            <View className="mb-6 w-full max-w-4xl">
+            <View className="mb-6 w-full max-w-3xl">
               <Pressable
-                className="flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-[#111518]"
+                className="flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-surface"
                 onPress={handleBackNav}
               >
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
@@ -466,7 +467,7 @@ export function RegisterScreen() {
               </Pressable>
             </View>
 
-            <View className={`w-full ${isWeb ? 'max-w-5xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-[#111518]`}>
+            <View className={`w-full ${isWeb ? 'max-w-3xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface`}>
               <View className="mb-8 items-center">
                 <Image
                   resizeMode="contain"
@@ -476,7 +477,7 @@ export function RegisterScreen() {
                 <PaceronBrand size={16} style={{ marginTop: 8 }} />
               </View>
 
-              <Text className="mb-1 text-center text-2xl font-bold text-slate-900 dark:text-white">Crear cuenta</Text>
+              <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-1 text-center text-2xl text-slate-900 dark:text-white">Crear cuenta</Text>
               <Text className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400">
                 Completá tus datos para registrarte en Paceron.
               </Text>
@@ -555,6 +556,21 @@ export function RegisterScreen() {
 
                     <InputField
                       autoCapitalize="none"
+                      autoComplete="email"
+                      error={emailError}
+                      keyboardType="email-address"
+                      label="Email *"
+                      onBlur={() => touch('email')}
+                      onChange={setEmail}
+                      placeholder="tu@email.com"
+                      returnKeyType="next"
+                      textContentType="emailAddress"
+                      touched={touched.email}
+                      value={email}
+                    />
+
+                    <InputField
+                      autoCapitalize="none"
                       autoComplete="tel"
                       keyboardType="phone-pad"
                       label="Teléfono"
@@ -575,21 +591,6 @@ export function RegisterScreen() {
                       returnKeyType="next"
                       textContentType="telephoneNumber"
                       value={phoneContact}
-                    />
-
-                    <InputField
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      error={emailError}
-                      keyboardType="email-address"
-                      label="Email *"
-                      onBlur={() => touch('email')}
-                      onChange={setEmail}
-                      placeholder="tu@email.com"
-                      returnKeyType="next"
-                      textContentType="emailAddress"
-                      touched={touched.email}
-                      value={email}
                     />
                   </View>
                 </View>
@@ -721,7 +722,7 @@ export function RegisterScreen() {
 
               <Pressable
                 className={`mt-8 h-12 items-center justify-center rounded-full ${
-                  passwordValid && passwordsMatch ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+                  formValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
                 } active:opacity-80`}
                 disabled={loading}
                 onPress={handleSubmit}
@@ -730,7 +731,7 @@ export function RegisterScreen() {
                   <ActivityIndicator color="#111518" size="small" />
                 ) : (
                   <Text className={`text-sm font-semibold uppercase tracking-wide ${
-                    passwordValid && passwordsMatch ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
+                    formValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
                   }`}>
                     Crear cuenta
                   </Text>
