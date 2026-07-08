@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { login as loginService, register as registerService } from '../services/auth.js';
+import { login as loginService, register as registerService, getUser as getUserService } from '../services/auth.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 
@@ -63,6 +63,22 @@ export const useAuthStore = create((set, get) => ({
       return await get().login(payload.email, payload.password);
     } catch (error) {
       return { success: false, error: error.message };
+    }
+  },
+
+  // Refresca los datos del usuario desde el backend. Best-effort: si falla
+  // (ej. CORS en web, offline), conserva el user actual sin romper.
+  refreshUser: async () => {
+    const { user, token, refreshToken, expiresAt } = get();
+    if (!user?.userId) return;
+    try {
+      const fresh = toUserModel(await getUserService({ id: user.userId }));
+      if (fresh) {
+        set({ user: fresh });
+        await persist({ user: fresh, token, refreshToken, expiresAt });
+      }
+    } catch {
+      // best-effort — se mantiene el user actual
     }
   },
 

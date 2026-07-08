@@ -10,6 +10,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 
 function DropdownMenu({ onClose, toggleThemeMode, colorScheme, themeMode }) {
+  const router = useRouter();
   const colors = useThemeColors();
   const isDark = themeMode === 'dark';
   const themeIcon = isDark ? 'weather-night' : 'weather-sunny';
@@ -18,7 +19,7 @@ function DropdownMenu({ onClose, toggleThemeMode, colorScheme, themeMode }) {
     <View className="w-56 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1a1d21]">
       <Pressable
         className="flex-row items-center gap-3 rounded-t-xl px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
-        onPress={() => {}}
+        onPress={() => { router.push('/profile'); onClose(); }}
       >
         <MaterialCommunityIcons name="account-circle" size={18} color={colors.onSurfaceVariant} />
         <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white">Ver perfil</Text>

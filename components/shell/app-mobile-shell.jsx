@@ -94,7 +94,10 @@ function NavigationDrawer({ open, pathname, onClose }) {
         <View className="flex-1 border-r border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-[#111518]">
           <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
             {user ? (
-              <View className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-5 dark:border-slate-800">
+              <Pressable
+                className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-5 active:opacity-70 dark:border-slate-800"
+                onPress={() => goTo('/profile')}
+              >
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                   <MaterialCommunityIcons color={colors.primary} name="account-circle" size={26} />
                 </View>
@@ -102,7 +105,8 @@ function NavigationDrawer({ open, pathname, onClose }) {
                   <PaceronBrand size={18} />
                   <Text className="text-sm text-slate-600 dark:text-slate-300">{user.name}</Text>
                 </View>
-              </View>
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
+              </Pressable>
             ) : (
               <View className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-5 dark:border-slate-800">
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">

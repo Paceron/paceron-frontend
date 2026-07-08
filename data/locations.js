@@ -1,3 +1,16 @@
+// Resuelve el código ISO-3 de país a nombre legible (ej. 'ARG' → 'Argentina').
+export function getCountryName(code) {
+  const country = COUNTRIES.find((c) => c.code === code);
+  return country ? country.name : code || '';
+}
+
+// Resuelve el id de provincia (dentro de un país) a nombre (ej. 'ARG','BA' → 'Buenos Aires').
+export function getProvinceName(countryCode, provinceId) {
+  const list = PROVINCES[countryCode] || [];
+  const province = list.find((p) => p.id === provinceId);
+  return province ? province.name : provinceId || '';
+}
+
 export const COUNTRIES = [
   { code: 'ARG', name: 'Argentina' },
   { code: 'URY', name: 'Uruguay' },
