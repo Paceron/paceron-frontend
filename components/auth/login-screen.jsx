@@ -2,14 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -92,7 +90,7 @@ function LoginForm({ onForgotPassword }) {
 
   return (
     <>
-      <Text className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Iniciar sesión</Text>
+      <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-2 text-2xl text-slate-900 dark:text-white">Iniciar sesión</Text>
       <Text className="mb-8 text-sm text-slate-500 dark:text-slate-400">
         Ingresá tus credenciales para acceder a Paceron.
       </Text>
@@ -227,21 +225,19 @@ export function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-[#0d1013]" edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-ink" edges={['top', 'bottom']}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid
+        extraScrollHeight={24}
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
+        <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
             {/* Back button */}
             <View className="mb-8 w-full max-w-md">
               <Pressable
-                className="flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-[#111518]"
+                className="flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-surface"
                 onPress={handleBack}
               >
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
@@ -250,7 +246,7 @@ export function LoginScreen() {
             </View>
 
             {/* Card */}
-            <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-[#111518]">
+            <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface">
               {/* Logo */}
               <View className="mb-8 items-center">
                 <Image
@@ -267,9 +263,8 @@ export function LoginScreen() {
                 <ForgotPasswordForm onBack={() => setView('login')} />
               )}
             </View>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

@@ -6,6 +6,10 @@ module.exports = {
     extend: {
       colors: {
         primary: '#8cc63e',
+        ink: '#0d1013',
+        surface: '#111518',
+        'surface-2': '#1d2125',
+        'surface-3': '#282d31',
       },
       spacing: {
         'container-margin': '1rem',

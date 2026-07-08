@@ -7,6 +7,7 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { AppProviders } from '../providers/app-providers.jsx';
+import { toastConfig } from '../components/feedback/paceron-toast.jsx';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({ Orbitron_700Bold });
@@ -20,7 +21,7 @@ export default function RootLayout() {
           <Stack.Screen name="login" />
           <Stack.Screen name="register" />
         </Stack>
-        <Toast />
+        <Toast config={toastConfig} topOffset={56} />
       </AppProviders>
     </SafeAreaProvider>
   );

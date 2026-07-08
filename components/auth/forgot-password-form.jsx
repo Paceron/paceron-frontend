@@ -45,7 +45,7 @@ export function ForgotPasswordForm({ onBack }) {
 
   return (
     <>
-      <Text className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Recuperar contraseña</Text>
+      <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-2 text-2xl text-slate-900 dark:text-white">Recuperar contraseña</Text>
       <Text className="mb-8 text-sm leading-6 text-slate-500 dark:text-slate-400">
         Ingresá tu email y te enviaremos las instrucciones para restablecer tu contraseña.
       </Text>

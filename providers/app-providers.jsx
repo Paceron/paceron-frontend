@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ThemeProvider } from './theme-provider.jsx';
+import { useAuthStore } from '../store/auth-store.js';
 
 const createQueryClient = () =>
   new QueryClient({
@@ -14,6 +15,10 @@ const createQueryClient = () =>
 
 export function AppProviders({ children }) {
   const [queryClient] = useState(createQueryClient);
+  const hydrate = useAuthStore((state) => state.hydrate);
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   return (
     <QueryClientProvider client={queryClient}>
