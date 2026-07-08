@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -36,6 +35,16 @@ import { COUNTRIES, PROVINCES, CITIES } from '../../data/locations.js';
 const INPUT_CLASS = 'flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none';
 const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200';
 const SELECT_CLASS = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
+
+// Fila responsive: en web reparte los hijos en columnas; en mobile apila.
+function Row({ children }) {
+  return <View className={isWeb ? 'flex-row gap-4' : ''}>{children}</View>;
+}
+
+// Columna con peso de ancho (solo web); en mobile ocupa el ancho completo.
+function Col({ children, flex = 1 }) {
+  return <View style={isWeb ? { flex } : undefined}>{children}</View>;
+}
 
 function SelectField({ label, options, value, onChange, placeholder, disabled, error }) {
   const colors = useThemeColors();
@@ -139,10 +148,12 @@ function RequirementRow({ met, label }) {
   );
 }
 
-function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure }) {
+function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled }) {
   const colors = useThemeColors();
 
-  const borderColor = error
+  const borderColor = disabled
+    ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
+    : error
     ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
     : touched && !error
     ? 'border-primary bg-white dark:bg-slate-900'
@@ -156,6 +167,7 @@ function InputField({ label, value, onChange, onBlur, error, touched, placeholde
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
           className={INPUT_CLASS}
+          editable={!disabled}
           keyboardType={keyboardType}
           onBlur={onBlur}
           onChangeText={onChange}
@@ -332,10 +344,16 @@ export function RegisterScreen() {
   const [provinceOptions, setProvinceOptions] = useState([]);
   const [cityOptions, setCityOptions] = useState([]);
 
+  const clearAddressLines = () => {
+    setStreet('');
+    setNumber('');
+  };
+
   const handleCountryChange = (code) => {
     setCountry(code);
     setProvince('');
     setCity('');
+    clearAddressLines();
     setProvinceOptions(code ? PROVINCES[code] || [] : []);
     setCityOptions([]);
   };
@@ -343,7 +361,13 @@ export function RegisterScreen() {
   const handleProvinceChange = (id) => {
     setProvince(id);
     setCity('');
+    clearAddressLines();
     setCityOptions(id && country ? CITIES[`${country}-${id}`] || [] : []);
+  };
+
+  const handleCityChange = (val) => {
+    setCity(val);
+    if (!val) clearAddressLines();
   };
 
   const [password, setPassword] = useState('');
@@ -447,17 +471,15 @@ export function RegisterScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-ink" edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+      <KeyboardAwareScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid
+        extraScrollHeight={24}
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
-            <View className="mb-6 w-full max-w-3xl">
+        <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
+            <View className="mb-6 w-full max-w-4xl">
               <Pressable
                 className="flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-surface"
                 onPress={handleBackNav}
@@ -467,7 +489,7 @@ export function RegisterScreen() {
               </Pressable>
             </View>
 
-            <View className={`w-full ${isWeb ? 'max-w-3xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface`}>
+            <View className={`w-full ${isWeb ? 'max-w-4xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface`}>
               <View className="mb-8 items-center">
                 <Image
                   resizeMode="contain"
@@ -483,8 +505,8 @@ export function RegisterScreen() {
               </Text>
 
               <SectionCollapsible title="Datos personales" collapsed={collapsedSections.personal} onToggle={() => toggleSection('personal')}>
-                <View className={isWeb ? 'flex-row gap-6' : ''}>
-                  <View className={isWeb ? 'flex-1' : ''}>
+                <Row>
+                  <Col>
                     <InputField
                       autoCapitalize="words"
                       autoComplete="given-name"
@@ -498,7 +520,8 @@ export function RegisterScreen() {
                       touched={touched.firstName}
                       value={firstName}
                     />
-
+                  </Col>
+                  <Col>
                     <InputField
                       autoCapitalize="words"
                       autoComplete="family-name"
@@ -512,23 +535,26 @@ export function RegisterScreen() {
                       touched={touched.lastName}
                       value={lastName}
                     />
+                  </Col>
+                </Row>
 
-                    <InputField
-                      autoCapitalize="none"
-                      autoComplete="cc-id"
-                      error={typeof dniError === 'string' ? dniError : null}
-                      keyboardType="default"
-                      label="DNI *"
-                      onBlur={() => touch('dni')}
-                      onChange={setDni}
-                      placeholder="Número de documento"
-                      returnKeyType="next"
-                      touched={touched.dni}
-                      value={dni}
-                    />
-                  </View>
+                <InputField
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  error={emailError}
+                  keyboardType="email-address"
+                  label="Email *"
+                  onBlur={() => touch('email')}
+                  onChange={setEmail}
+                  placeholder="tu@email.com"
+                  returnKeyType="next"
+                  textContentType="emailAddress"
+                  touched={touched.email}
+                  value={email}
+                />
 
-                  <View className={isWeb ? 'flex-1' : ''}>
+                <Row>
+                  <Col flex={1.3}>
                     {isWeb ? (
                       <DateField
                         error={typeof dateError === 'string' ? dateError : null}
@@ -553,22 +579,26 @@ export function RegisterScreen() {
                         value={birthDate}
                       />
                     )}
-
+                  </Col>
+                  <Col>
                     <InputField
                       autoCapitalize="none"
-                      autoComplete="email"
-                      error={emailError}
-                      keyboardType="email-address"
-                      label="Email *"
-                      onBlur={() => touch('email')}
-                      onChange={setEmail}
-                      placeholder="tu@email.com"
+                      autoComplete="off"
+                      error={typeof dniError === 'string' ? dniError : null}
+                      keyboardType="number-pad"
+                      label="DNI *"
+                      onBlur={() => touch('dni')}
+                      onChange={(v) => setDni(v.replace(/\D/g, ''))}
+                      placeholder="Solo números"
                       returnKeyType="next"
-                      textContentType="emailAddress"
-                      touched={touched.email}
-                      value={email}
+                      touched={touched.dni}
+                      value={dni}
                     />
+                  </Col>
+                </Row>
 
+                <Row>
+                  <Col>
                     <InputField
                       autoCapitalize="none"
                       autoComplete="tel"
@@ -580,7 +610,8 @@ export function RegisterScreen() {
                       textContentType="telephoneNumber"
                       value={phone}
                     />
-
+                  </Col>
+                  <Col>
                     <InputField
                       autoCapitalize="none"
                       autoComplete="tel"
@@ -592,93 +623,105 @@ export function RegisterScreen() {
                       textContentType="telephoneNumber"
                       value={phoneContact}
                     />
-                  </View>
-                </View>
+                  </Col>
+                </Row>
               </SectionCollapsible>
 
               <SectionCollapsible title="Dirección" collapsed={collapsedSections.address} onToggle={() => toggleSection('address')}>
-                <View className={isWeb ? 'flex-row gap-6' : ''}>
-                  <View className={isWeb ? 'flex-1' : ''}>
+                <Row>
+                  <Col>
                     {isWeb ? (
-                      <>
-                        <SelectField
-                          label="País"
-                          onChange={handleCountryChange}
-                          options={COUNTRIES}
-                          placeholder="Seleccioná un país"
-                          value={country}
-                        />
-                        <SelectField
-                          disabled={!country}
-                          label="Provincia"
-                          onChange={handleProvinceChange}
-                          options={provinceOptions}
-                          placeholder={country ? 'Seleccioná una provincia' : 'Primero elegí un país'}
-                          value={province}
-                        />
-                        <SelectField
-                          disabled={!province}
-                          label="Ciudad"
-                          onChange={setCity}
-                          options={cityOptions}
-                          placeholder={province ? 'Seleccioná una ciudad' : 'Primero elegí una provincia'}
-                          value={city}
-                        />
-                      </>
+                      <SelectField
+                        label="País"
+                        onChange={handleCountryChange}
+                        options={COUNTRIES}
+                        placeholder="Seleccioná un país"
+                        value={country}
+                      />
                     ) : (
-                      <>
-                        <PickerField
-                          label="País"
-                          onChange={handleCountryChange}
-                          options={COUNTRIES}
-                          placeholder="Seleccioná un país"
-                          value={country}
-                        />
-                        <PickerField
-                          disabled={!country}
-                          label="Provincia"
-                          onChange={handleProvinceChange}
-                          options={provinceOptions}
-                          placeholder={country ? 'Seleccioná una provincia' : 'Primero elegí un país'}
-                          value={province}
-                        />
-                        <PickerField
-                          disabled={!province}
-                          label="Ciudad"
-                          onChange={setCity}
-                          options={cityOptions}
-                          placeholder={province ? 'Seleccioná una ciudad' : 'Primero elegí una provincia'}
-                          value={city}
-                        />
-                      </>
+                      <PickerField
+                        label="País"
+                        onChange={handleCountryChange}
+                        options={COUNTRIES}
+                        placeholder="Seleccioná un país"
+                        value={country}
+                      />
                     )}
-                  </View>
+                  </Col>
+                  <Col>
+                    {isWeb ? (
+                      <SelectField
+                        disabled={!country}
+                        label="Provincia"
+                        onChange={handleProvinceChange}
+                        options={provinceOptions}
+                        placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
+                        value={province}
+                      />
+                    ) : (
+                      <PickerField
+                        disabled={!country}
+                        label="Provincia"
+                        onChange={handleProvinceChange}
+                        options={provinceOptions}
+                        placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
+                        value={province}
+                      />
+                    )}
+                  </Col>
+                  <Col>
+                    {isWeb ? (
+                      <SelectField
+                        disabled={!province}
+                        label="Localidad"
+                        onChange={handleCityChange}
+                        options={cityOptions}
+                        placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
+                        value={city}
+                      />
+                    ) : (
+                      <PickerField
+                        disabled={!province}
+                        label="Localidad"
+                        onChange={handleCityChange}
+                        options={cityOptions}
+                        placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
+                        value={city}
+                      />
+                    )}
+                  </Col>
+                </Row>
 
-                  <View className={isWeb ? 'flex-1' : ''}>
+                <Row>
+                  <Col flex={3}>
                     <InputField
                       autoCapitalize="words"
+                      disabled={!city}
                       label="Calle"
                       onChange={setStreet}
-                      placeholder="Nombre de la calle"
+                      placeholder={city ? 'Nombre de la calle' : 'Elegí una localidad primero'}
                       returnKeyType="next"
                       value={street}
                     />
+                  </Col>
+                  <Col flex={1}>
                     <InputField
                       autoCapitalize="none"
-                      keyboardType="default"
-                      label="Número / Altura"
-                      onChange={setNumber}
-                      placeholder="1234"
+                      disabled={!city}
+                      keyboardType="number-pad"
+                      label="Altura"
+                      onChange={(v) => setNumber(v.replace(/\D/g, ''))}
+                      placeholder={city ? '1234' : '—'}
                       returnKeyType="next"
                       value={number}
                     />
-                  </View>
-                </View>
+                  </Col>
+                </Row>
               </SectionCollapsible>
 
               <SectionCollapsible title="Contraseña" collapsed={collapsedSections.password} onToggle={() => toggleSection('password')}>
-                <View className="flex-row gap-4">
-                  <View className="flex-1">
+                <Row>
+                  <Col>
                     <InputField
                       autoComplete="new-password"
                       label="Contraseña *"
@@ -692,8 +735,8 @@ export function RegisterScreen() {
                       textContentType="newPassword"
                       value={password}
                     />
-                  </View>
-                  <View className="flex-1">
+                  </Col>
+                  <Col>
                     <InputField
                       autoComplete="new-password"
                       error={touched.confirm && !passwordsMatch && confirmPassword.length > 0 ? 'Las contraseñas no coinciden.' : null}
@@ -708,8 +751,8 @@ export function RegisterScreen() {
                       textContentType="newPassword"
                       value={confirmPassword}
                     />
-                  </View>
-                </View>
+                  </Col>
+                </Row>
 
                 <View className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
                   {PASSWORD_REQUIREMENTS.map((req) => (
@@ -745,9 +788,8 @@ export function RegisterScreen() {
                 </Text>
               </Pressable>
             </View>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
