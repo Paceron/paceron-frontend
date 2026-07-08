@@ -32,6 +32,10 @@ import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { COUNTRIES, PROVINCES, CITIES } from '../../data/locations.js';
 
+// COUNTRIES usa `code` (ISO-3); los field components esperan `id`. Adaptamos y
+// mostramos "ISO · Nombre". El value seleccionado es el código ISO (clave de PROVINCES).
+const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({ id: c.code, name: `${c.code} · ${c.name}` }));
+
 const INPUT_CLASS = 'flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none';
 const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200';
 const SELECT_CLASS = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
@@ -49,6 +53,9 @@ function Col({ children, flex = 1 }) {
 function SelectField({ label, options, value, onChange, placeholder, disabled, error }) {
   const colors = useThemeColors();
 
+  // Normaliza opciones: acepta strings (ej. localidades) u objetos { id, name }.
+  const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
+
   return (
     <View className="mb-5">
       <Text className={FIELD_LABEL}>{label}</Text>
@@ -61,7 +68,7 @@ function SelectField({ label, options, value, onChange, placeholder, disabled, e
             disabled={disabled}
           >
             <option value="">{placeholder}</option>
-            {options.map((opt) => (
+            {items.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.name}
               </option>
@@ -634,7 +641,7 @@ export function RegisterScreen() {
                       <SelectField
                         label="País"
                         onChange={handleCountryChange}
-                        options={COUNTRIES}
+                        options={COUNTRY_OPTIONS}
                         placeholder="Seleccioná un país"
                         value={country}
                       />
@@ -642,7 +649,7 @@ export function RegisterScreen() {
                       <PickerField
                         label="País"
                         onChange={handleCountryChange}
-                        options={COUNTRIES}
+                        options={COUNTRY_OPTIONS}
                         placeholder="Seleccioná un país"
                         value={country}
                       />
