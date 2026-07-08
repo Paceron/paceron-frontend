@@ -74,7 +74,14 @@ function SelectField({ label, options, value, onChange, placeholder, disabled, e
   );
 }
 
-function DateField({ label, value, onChange, onBlur, error, disabled }) {
+const DATE_BASE = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
+
+function DateField({ label, value, onChange, onBlur, error, touched, disabled }) {
+  const borderClass = error
+    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
+    : touched
+    ? 'border-primary bg-white dark:bg-slate-900'
+    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
 
   return (
     <View className="mb-5">
@@ -83,7 +90,7 @@ function DateField({ label, value, onChange, onBlur, error, disabled }) {
         <View className="flex-1 relative">
           <input
             type="date"
-            className={SELECT_CLASS}
+            className={`${DATE_BASE} ${borderClass}`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
@@ -527,6 +534,7 @@ export function RegisterScreen() {
                         label="Fecha de nacimiento *"
                         onBlur={() => touch('birthDate')}
                         onChange={setBirthDate}
+                        touched={touched.birthDate}
                         value={birthDate}
                       />
                     ) : (
