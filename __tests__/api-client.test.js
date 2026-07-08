@@ -32,4 +32,17 @@ describe('api client error handling', () => {
       status: 500,
     });
   });
+
+  test('falls back to status message when body has no message field', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ code: 'BAD_REQUEST' }),
+    });
+
+    await expect(api.get('/auth/user')).rejects.toMatchObject({
+      message: 'Request failed with status 400',
+      status: 400,
+    });
+  });
 });

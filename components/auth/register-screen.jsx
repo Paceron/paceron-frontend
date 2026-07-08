@@ -26,6 +26,7 @@ import {
   getPasswordStrengthScore,
   getPasswordStrengthMeta,
 } from '../../utils/password-validators.js';
+import { validateBirthDate } from '../../utils/date-validators.js';
 import { toRegisterPayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
@@ -258,26 +259,6 @@ function PickerField({ label, options, value, onChange, placeholder, disabled, e
   );
 }
 
-function validateDate(value) {
-  if (!value) return 'La fecha de nacimiento es requerida.';
-  const trimmed = value.trim();
-
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return 'Formato inválido. Usá DD/MM/AAAA.';
-
-  const [day, month, year] = trimmed.split('/').map(Number);
-
-  if (month < 1 || month > 12) return 'El mes no es válido.';
-  const daysInMonth = new Date(year, month, 0).getDate();
-  if (day < 1 || day > daysInMonth) return 'El día no es válido para ese mes.';
-
-  const date = new Date(year, month - 1, day);
-  const now = new Date();
-  if (date >= now) return 'La fecha debe ser en el pasado.';
-  if (year < 1900) return 'Revisá el año ingresado.';
-
-  return null;
-}
-
 function validateDNI(value) {
   if (!value || !value.trim()) return 'El DNI es requerido.';
   const clean = value.trim().replace(/[.-]/g, '');
@@ -376,7 +357,7 @@ export function RegisterScreen() {
     : null;
 
   const dniError = touched.dni && validateDNI(dni);
-  const dateError = touched.birthDate && validateDate(birthDate);
+  const dateError = touched.birthDate && validateBirthDate(birthDate);
 
   const passwordReqs = checkPasswordRequirements(password);
   const passwordValid = isPasswordValid(password);
@@ -396,7 +377,7 @@ export function RegisterScreen() {
       firstName.trim().length > 0 &&
       lastName.trim().length > 0 &&
       !validateDNI(dni) &&
-      !validateDate(birthDate) &&
+      !validateBirthDate(birthDate) &&
       validateEmailFormat(email) &&
       !isDisposableEmail(email);
 
