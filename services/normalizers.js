@@ -52,3 +52,22 @@ export function toRegisterPayload(form) {
 
   return payload;
 }
+
+// camelCase form -> UserUpdateRequest (snake_case). Set completo editable
+// (sin password ni status, que no se actualizan por PUT).
+export function toUpdatePayload(form) {
+  return {
+    name: form.firstName,
+    surname: form.lastName,
+    email: form.email,
+    dni: form.dni,
+    birth_date: toBackendDate(form.birthDate),
+    city: form.city ?? '',
+    country: form.country ?? '',
+    number: form.number ?? '',
+    phone: form.phone ?? '',
+    phone_contact: form.phoneContact ?? '',
+    province: form.province ?? '',
+    street: form.street ?? '',
+  };
+}
