@@ -80,8 +80,12 @@ activación de entrenador (sin backend), recuperación real de contraseña
   **Eliminar** `checkEmailExists` y `requestPasswordReset`.
 - `services/normalizers.js`:
   - `toUserModel(dto)` — snake_case → camelCase (fuente única de shape).
-  - `toRegisterPayload(form)` — camelCase → snake_case + `birth_date` a ISO
-    `YYYY-MM-DD`.
+    **Tolera campos ausentes**: la respuesta es sparse (campos sin valor no se
+    devuelven, ej. dirección). Los ausentes quedan `undefined`/vacío sin romper.
+  - `toRegisterPayload(form)` — camelCase → snake_case + `birth_date` a
+    **`DD/MM/YYYY`** (formato real del backend, confirmado por respuesta live).
+    Normaliza ambos orígenes: web (`<input type="date">` da `YYYY-MM-DD`) y
+    mobile (texto `DD/MM/AAAA`) → `DD/MM/YYYY`.
 - Mock adapter `services/__mocks__/auth-mock.js`: cuando `USE_MOCKS`, los
   servicios devuelven user/token fake con **la misma shape normalizada**, así
   store y UI son idénticos en ambos modos.
@@ -120,8 +124,10 @@ Pantalla → acción del store → service → api → backend.
 
 ## Riesgos / notas
 
-- Formato de `birth_date`: el backend documenta `string`; asumimos ISO
-  `YYYY-MM-DD`. Verificar contra un registro real antes de cerrar la rama.
+- Formato de `birth_date`: confirmado `DD/MM/YYYY` vía respuesta live
+  (`GET /api/v1/auth/user?id=3` → `"birth_date":"01/01/1988"`).
+- Respuestas sparse: el backend omite campos sin valor (ej. usuario sin
+  dirección). Normalizers y UI de perfil no deben asumir presencia de campos.
 - `expo-secure-store` requiere que se instale y, en native, rebuild del dev
   client si aplica.
 - El campo `role`/entrenador no existe en el backend; cualquier UI de rol queda
