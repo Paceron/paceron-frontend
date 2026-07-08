@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { login as loginService, register as registerService, getUser as getUserService } from '../services/auth.js';
+import { updateUser as updateUserService } from '../services/user.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 
@@ -79,6 +80,21 @@ export const useAuthStore = create((set, get) => ({
       }
     } catch {
       // best-effort — se mantiene el user actual
+    }
+  },
+
+  // Actualiza datos del usuario (PUT). currentPassword solo si cambió el email.
+  updateUser: async (id, payload, currentPassword) => {
+    try {
+      const updated = toUserModel(await updateUserService(id, payload, currentPassword));
+      if (updated) {
+        const { token, refreshToken, expiresAt } = get();
+        set({ user: updated });
+        await persist({ user: updated, token, refreshToken, expiresAt });
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
   },
 

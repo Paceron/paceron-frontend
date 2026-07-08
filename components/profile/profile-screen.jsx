@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useThemeColors } from '../../theme/colors.js';
@@ -117,13 +116,7 @@ export function ProfileScreen() {
 
         <Pressable
           className="mt-1 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80"
-          onPress={() =>
-            Toast.show({
-              type: 'info',
-              text1: 'Edición de datos',
-              text2: 'Próximamente vas a poder editar tu perfil.',
-            })
-          }
+          onPress={() => router.push('/profile/edit')}
         >
           <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={18} />
           <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Editar datos</Text>

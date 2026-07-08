@@ -2,11 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Modal,
   Pressable,
-  ScrollView,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -26,98 +23,13 @@ import {
   getPasswordStrengthMeta,
 } from '../../utils/password-validators.js';
 import { validateBirthDate } from '../../utils/date-validators.js';
+import { validateDNI } from '../../utils/dni-validators.js';
 import { toRegisterPayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { isWeb } from '../../utils/platform.js';
-import { COUNTRIES, PROVINCES, CITIES } from '../../data/locations.js';
-
-// COUNTRIES usa `code` (ISO-3); los field components esperan `id`. Adaptamos y
-// mostramos "ISO · Nombre". El value seleccionado es el código ISO (clave de PROVINCES).
-const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({ id: c.code, name: `${c.code} · ${c.name}` }));
-
-const INPUT_CLASS = 'flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none';
-const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200';
-const SELECT_CLASS = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
-
-// Fila responsive: en web reparte los hijos en columnas; en mobile apila.
-function Row({ children }) {
-  return <View className={isWeb ? 'flex-row gap-4' : ''}>{children}</View>;
-}
-
-// Columna con peso de ancho (solo web); en mobile ocupa el ancho completo.
-function Col({ children, flex = 1 }) {
-  return <View style={isWeb ? { flex } : undefined}>{children}</View>;
-}
-
-function SelectField({ label, options, value, onChange, placeholder, disabled, error }) {
-  const colors = useThemeColors();
-
-  // Normaliza opciones: acepta strings (ej. localidades) u objetos { id, name }.
-  const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
-
-  return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
-      <View className="flex-row items-center gap-2">
-        <View className="flex-1 relative">
-          <select
-            className={SELECT_CLASS}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="">{placeholder}</option>
-            {items.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
-          {!disabled && value && (
-            <Pressable
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-              onPress={() => onChange('')}
-              accessibilityLabel="Limpiar selección"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
-    </View>
-  );
-}
-
-const DATE_BASE = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
-
-function DateField({ label, value, onChange, onBlur, error, touched, disabled }) {
-  const borderClass = error
-    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
-    : touched
-    ? 'border-primary bg-white dark:bg-slate-900'
-    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
-
-  return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
-      <View className="flex-row items-center gap-2">
-        <View className="flex-1 relative">
-          <input
-            type="date"
-            className={`${DATE_BASE} ${borderClass}`}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onBlur={onBlur}
-            disabled={disabled}
-          />
-        </View>
-      </View>
-      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
-    </View>
-  );
-}
+import { Row, Col, SelectField, DateField, InputField, PickerField } from '../forms/fields.jsx';
+import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 
 function StrengthBar({ password }) {
   const score = getPasswordStrengthScore(password);
@@ -153,144 +65,6 @@ function RequirementRow({ met, label }) {
       </Text>
     </View>
   );
-}
-
-function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled }) {
-  const colors = useThemeColors();
-
-  const borderColor = disabled
-    ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
-    : error
-    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
-    : touched && !error
-    ? 'border-primary bg-white dark:bg-slate-900'
-    : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
-
-  return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
-      <View className={`h-12 flex-row items-center rounded-xl border ${borderColor}`}>
-        <TextInput
-          autoCapitalize={autoCapitalize}
-          autoComplete={autoComplete}
-          className={INPUT_CLASS}
-          editable={!disabled}
-          keyboardType={keyboardType}
-          onBlur={onBlur}
-          onChangeText={onChange}
-          onSubmitEditing={onSubmitEditing}
-          placeholder={placeholder}
-          placeholderTextColor={colors.onSurfaceVariant}
-          returnKeyType={returnKeyType}
-          secureTextEntry={secureTextEntry}
-          textContentType={textContentType}
-          value={value}
-        />
-        {onToggleSecure && (
-          <Pressable className="px-3" onPress={onToggleSecure}>
-            <MaterialCommunityIcons
-              color={colors.onSurfaceVariant}
-              name={showSecure ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
-            />
-          </Pressable>
-        )}
-      </View>
-      <View className="h-5">
-        {error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}
-      </View>
-    </View>
-  );
-}
-
-function PickerField({ label, options, value, onChange, placeholder, disabled, error }) {
-  const colors = useThemeColors();
-  const [visible, setVisible] = useState(false);
-
-  const items = options.map((opt) => {
-    if (typeof opt === 'string') return { id: opt, name: opt };
-    return opt;
-  });
-
-  const selected = items.find((item) => item.id === value);
-  const borderClass = error
-    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
-    : disabled
-    ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
-    : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
-
-  return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
-      <Pressable
-        className={`h-12 flex-row items-center rounded-xl border px-4 ${borderClass}`}
-        onPress={disabled ? undefined : () => setVisible(true)}
-      >
-        <Text className={`flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
-          {selected ? selected.name : placeholder}
-        </Text>
-        {!disabled && value && (
-          <Pressable
-            onPress={() => { onChange(''); setVisible(false); }}
-            accessibilityLabel="Limpiar selección"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
-          </Pressable>
-        )}
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={20} />
-      </Pressable>
-      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
-
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setVisible(false)}
-        transparent
-        visible={visible}
-      >
-        <Pressable className="flex-1 justify-center bg-black/50 px-6" onPress={() => setVisible(false)}>
-          <Pressable
-            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
-            onPress={() => {}}
-          >
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {items.length === 0 ? (
-                <View className="items-center py-8">
-                  <Text className="text-sm text-slate-400 dark:text-slate-500">Sin opciones disponibles</Text>
-                </View>
-              ) : (
-                items.map((item) => {
-                  const isSelected = item.id === value;
-                  return (
-                    <Pressable
-                      key={item.id}
-                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                        isSelected ? 'bg-primary/10' : ''
-                      }`}
-                      onPress={() => { onChange(item.id); setVisible(false); }}
-                    >
-                      <Text className={`flex-1 text-sm ${
-                        isSelected ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-200'
-                      }`}>
-                        {item.name}
-                      </Text>
-                      {isSelected && <MaterialCommunityIcons color="inherit" name="check" size={18} style={{ color: '#8cc63e' }} />}
-                    </Pressable>
-                  );
-                })
-              )}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </View>
-  );
-}
-
-function validateDNI(value) {
-  if (!value || !value.trim()) return 'El DNI es requerido.';
-  const clean = value.trim().replace(/[.-]/g, '');
-  if (!/^\d{6,10}$/.test(clean)) return 'El DNI debe tener entre 6 y 10 dígitos.';
-  return null;
 }
 
 function SectionCollapsible({ title, children, collapsed, onToggle }) {
@@ -343,39 +117,21 @@ export function RegisterScreen() {
     setCollapsedSections((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const [country, setCountry] = useState('');
-  const [province, setProvince] = useState('');
-  const [city, setCity] = useState('');
-  const [street, setStreet] = useState('');
-  const [number, setNumber] = useState('');
-  const [provinceOptions, setProvinceOptions] = useState([]);
-  const [cityOptions, setCityOptions] = useState([]);
-
-  const clearAddressLines = () => {
-    setStreet('');
-    setNumber('');
-  };
-
-  const handleCountryChange = (code) => {
-    setCountry(code);
-    setProvince('');
-    setCity('');
-    clearAddressLines();
-    setProvinceOptions(code ? PROVINCES[code] || [] : []);
-    setCityOptions([]);
-  };
-
-  const handleProvinceChange = (id) => {
-    setProvince(id);
-    setCity('');
-    clearAddressLines();
-    setCityOptions(id && country ? CITIES[`${country}-${id}`] || [] : []);
-  };
-
-  const handleCityChange = (val) => {
-    setCity(val);
-    if (!val) clearAddressLines();
-  };
+  const {
+    country,
+    province,
+    city,
+    street,
+    number,
+    setStreet,
+    setNumber,
+    provinceOptions,
+    cityOptions,
+    countryOptions,
+    handleCountryChange,
+    handleProvinceChange,
+    handleCityChange,
+  } = useAddressCascade();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -641,7 +397,7 @@ export function RegisterScreen() {
                       <SelectField
                         label="País"
                         onChange={handleCountryChange}
-                        options={COUNTRY_OPTIONS}
+                        options={countryOptions}
                         placeholder="Seleccioná un país"
                         value={country}
                       />
@@ -649,7 +405,7 @@ export function RegisterScreen() {
                       <PickerField
                         label="País"
                         onChange={handleCountryChange}
-                        options={COUNTRY_OPTIONS}
+                        options={countryOptions}
                         placeholder="Seleccioná un país"
                         value={country}
                       />
