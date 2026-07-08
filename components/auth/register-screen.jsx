@@ -74,7 +74,7 @@ function SelectField({ label, options, value, onChange, placeholder, disabled, e
   );
 }
 
-function DateField({ label, value, onChange, error, disabled }) {
+function DateField({ label, value, onChange, onBlur, error, disabled }) {
 
   return (
     <View className="mb-5">
@@ -86,6 +86,7 @@ function DateField({ label, value, onChange, error, disabled }) {
             className={SELECT_CLASS}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
             disabled={disabled}
           />
         </View>
@@ -524,6 +525,7 @@ export function RegisterScreen() {
                       <DateField
                         error={typeof dateError === 'string' ? dateError : null}
                         label="Fecha de nacimiento *"
+                        onBlur={() => touch('birthDate')}
                         onChange={setBirthDate}
                         value={birthDate}
                       />
