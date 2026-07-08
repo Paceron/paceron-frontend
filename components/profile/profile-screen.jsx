@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useThemeColors } from '../../theme/colors.js';
@@ -22,11 +23,18 @@ const STATUS_META = {
   suspended: { label: 'Suspendido', badge: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
 };
 
+// En web reparte los campos en 2 columnas; en mobile, uno por fila.
+function FieldGrid({ children }) {
+  return <View className={isWeb ? 'flex-row flex-wrap' : ''}>{children}</View>;
+}
+
 function Field({ label, value }) {
   return (
-    <View className="mb-4">
-      <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</Text>
-      <Text className="text-sm text-slate-900 dark:text-white">{value}</Text>
+    <View className={isWeb ? 'w-1/2 pr-4' : 'w-full'}>
+      <View className="mb-4">
+        <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</Text>
+        <Text className="text-sm text-slate-900 dark:text-white">{value}</Text>
+      </View>
     </View>
   );
 }
@@ -39,7 +47,76 @@ function Card({ title, icon, children }) {
         <MaterialCommunityIcons color={colors.primary} name={icon} size={18} />
         <Text className="text-base font-bold text-slate-900 dark:text-white">{title}</Text>
       </View>
-      {children}
+      <FieldGrid>{children}</FieldGrid>
+    </View>
+  );
+}
+
+function EditButton({ onEdit, colors, full }) {
+  return (
+    <Pressable
+      className={`h-11 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 transition-opacity hover:opacity-90 active:opacity-80 ${full ? 'w-full' : ''}`}
+      onPress={onEdit}
+    >
+      <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={16} />
+      <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Editar datos</Text>
+    </Pressable>
+  );
+}
+
+function HeaderPanel({ user, status, fullName, onEdit, colors }) {
+  // Web: header horizontal (avatar + datos + botón a la derecha).
+  if (isWeb) {
+    return (
+      <View className="mb-5 flex-row items-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
+        <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+          <MaterialCommunityIcons color={colors.primary} name="account" size={36} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-lg font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
+          <Text className="text-sm text-slate-500 dark:text-slate-400">{display(user.email)}</Text>
+          <View className={`mt-1.5 self-start rounded-full px-3 py-1 ${status.badge}`}>
+            <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
+          </View>
+        </View>
+        <EditButton onEdit={onEdit} colors={colors} />
+      </View>
+    );
+  }
+
+  // Mobile: panel centrado con botón full-width.
+  return (
+    <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
+      <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary/15">
+        <MaterialCommunityIcons color={colors.primary} name="account" size={44} />
+      </View>
+      <Text className="text-center text-lg font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
+      <Text className="mb-2 text-center text-sm text-slate-500 dark:text-slate-400">{display(user.email)}</Text>
+      <View className={`mb-5 rounded-full px-3 py-1 ${status.badge}`}>
+        <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
+      </View>
+      <EditButton onEdit={onEdit} colors={colors} full />
+    </View>
+  );
+}
+
+function DangerZone({ onDelete }) {
+  return (
+    <View className="mt-2 rounded-2xl border border-red-300 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/20">
+      <View className="mb-2 flex-row items-center gap-2">
+        <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={18} />
+        <Text className="text-base font-bold text-red-700 dark:text-red-400">Zona de peligro</Text>
+      </View>
+      <Text className="mb-4 text-sm leading-5 text-red-700/80 dark:text-red-400/80">
+        Dar de baja tu cuenta desactiva tu acceso a Paceron. Podrás solicitar reactivación más adelante.
+      </Text>
+      <Pressable
+        className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-red-400 px-6 transition-opacity hover:opacity-80 active:opacity-80 dark:border-red-800"
+        onPress={onDelete}
+      >
+        <MaterialCommunityIcons color="#ef4444" name="account-off-outline" size={16} />
+        <Text className="text-sm font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">Borrar cuenta</Text>
+      </Pressable>
     </View>
   );
 }
@@ -51,13 +128,10 @@ export function ProfileScreen() {
   const hydrated = useAuthStore((s) => s.hydrated);
   const refreshUser = useAuthStore((s) => s.refreshUser);
 
-  // Guard: si ya hidrató y no hay sesión, mandar a login.
   useEffect(() => {
     if (hydrated && !user) router.replace('/login');
   }, [hydrated, user]);
 
-  // Refresh best-effort cuando el usuario está disponible (tras hydrate/login).
-  // Dep en userId (primitivo): refrescar mantiene el mismo id → no re-dispara loop.
   useEffect(() => {
     if (user?.userId) refreshUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,26 +146,25 @@ export function ProfileScreen() {
   };
   const fullName = `${user.name ?? ''} ${user.surname ?? ''}`.trim();
 
+  const handleEdit = () => router.push('/profile/edit');
+  const handleDelete = () =>
+    Toast.show({
+      type: 'info',
+      text1: 'Baja de cuenta',
+      text2: 'Próximamente vas a poder dar de baja tu cuenta.',
+    });
+
   return (
     <ScrollView className="flex-1 bg-slate-50 dark:bg-ink" contentContainerClassName="px-4 py-8">
-      <View className={`w-full self-center ${isWeb ? 'max-w-2xl' : ''}`}>
+      <View className={`w-full ${isWeb ? 'max-w-3xl mx-auto' : ''}`}>
         <Text
           style={{ fontFamily: 'Orbitron_700Bold' }}
-          className="mb-6 text-center text-2xl text-slate-900 dark:text-white"
+          className="mb-6 text-2xl text-slate-900 dark:text-white"
         >
           Mi perfil
         </Text>
 
-        <View className="mb-6 items-center">
-          <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary/15">
-            <MaterialCommunityIcons color={colors.primary} name="account" size={44} />
-          </View>
-          <Text className="text-xl font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
-          <Text className="text-sm text-slate-500 dark:text-slate-400">{display(user.email)}</Text>
-          <View className={`mt-2 rounded-full px-3 py-1 ${status.badge}`}>
-            <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
-          </View>
-        </View>
+        <HeaderPanel user={user} status={status} fullName={fullName} onEdit={handleEdit} colors={colors} />
 
         <Card title="Datos personales" icon="account-details">
           <Field label="Nombre" value={display(user.name)} />
@@ -114,13 +187,7 @@ export function ProfileScreen() {
           <Field label="Teléfono de contacto" value={display(user.phoneContact)} />
         </Card>
 
-        <Pressable
-          className="mt-1 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80"
-          onPress={() => router.push('/profile/edit')}
-        >
-          <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={18} />
-          <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Editar datos</Text>
-        </Pressable>
+        <DangerZone onDelete={handleDelete} />
       </View>
     </ScrollView>
   );
