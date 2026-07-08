@@ -26,7 +26,7 @@ import {
   getPasswordStrengthScore,
   getPasswordStrengthMeta,
 } from '../../utils/password-validators.js';
-import { checkEmailExists } from '../../services/auth.js';
+import { toRegisterPayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { isWeb } from '../../utils/platform.js';
@@ -363,7 +363,6 @@ export function RegisterScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [validatingEmail, setValidatingEmail] = useState(false);
 
   const [touched, setTouched] = useState({});
   const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
@@ -403,38 +402,26 @@ export function RegisterScreen() {
 
     if (!personalOk || !passwordValid || !passwordsMatch) return;
 
-    setValidatingEmail(true);
-    try {
-      const exists = await checkEmailExists(email);
-      if (exists) {
-        Toast.show({ type: 'error', text1: 'Email registrado', text2: 'Este email ya está registrado. Usá otro o iniciá sesión.' });
-        setValidatingEmail(false);
-        return;
-      }
-    } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Error al verificar el email. Intentá de nuevo.' });
-      setValidatingEmail(false);
-      return;
-    }
-    setValidatingEmail(false);
     setLoading(true);
     try {
       const { register } = useAuthStore.getState();
-      const result = await register({
-        firstName,
-        lastName,
-        dni,
-        birthDate,
-        email,
-        phone,
-        phoneContact,
-        country,
-        province,
-        city,
-        street,
-        number,
-        password,
-      });
+      const result = await register(
+        toRegisterPayload({
+          firstName,
+          lastName,
+          dni,
+          birthDate,
+          email,
+          phone,
+          phoneContact,
+          country,
+          province,
+          city,
+          street,
+          number,
+          password,
+        }),
+      );
       if (result.success) {
         router.replace('/');
       } else {
@@ -745,10 +732,10 @@ export function RegisterScreen() {
                 className={`mt-8 h-12 items-center justify-center rounded-full ${
                   passwordValid && passwordsMatch ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
                 } active:opacity-80`}
-                disabled={loading || validatingEmail}
+                disabled={loading}
                 onPress={handleSubmit}
               >
-                {loading || validatingEmail ? (
+                {loading ? (
                   <ActivityIndicator color="#111518" size="small" />
                 ) : (
                   <Text className={`text-sm font-semibold uppercase tracking-wide ${
