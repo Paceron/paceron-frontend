@@ -28,17 +28,16 @@ function SectionTitle({ children }) {
   );
 }
 
-// Guard: espera a que la sesión esté hidratada. El form vive en un componente
-// hijo que solo se monta con `user` presente, para que los useState pre-carguen
-// con los valores reales (no con '' si hydrate aún no terminó).
+// Guard: TabsLayout ya asegura que la sesión esté hidratada antes de montar
+// esta pantalla. El form vive en un componente hijo que solo se monta con
+// `user` presente, para que los useState pre-carguen con los valores reales.
 export function EditProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const hydrated = useAuthStore((s) => s.hydrated);
 
   useEffect(() => {
-    if (hydrated && !user) router.replace('/login');
-  }, [hydrated, user]);
+    if (!user) router.replace('/login');
+  }, [user]);
 
   if (!user) return null;
   return <EditProfileForm user={user} />;

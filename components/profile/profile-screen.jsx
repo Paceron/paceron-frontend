@@ -126,14 +126,13 @@ export function ProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
-  const hydrated = useAuthStore((s) => s.hydrated);
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (hydrated && !user) router.replace('/login');
-  }, [hydrated, user]);
+    if (!user) router.replace('/login');
+  }, [user]);
 
   useEffect(() => {
     if (user?.userId) refreshUser();
