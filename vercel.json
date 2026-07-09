@@ -6,4 +6,15 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/+not-found" }
   ]
+  "git": {
+    "deploymentEnabled": {
+      "feature/**": false,
+      "fix/**": false,
+      "release/**": false,
+      "hotfix/**": false,
+      "backport/**": false,
+      "master": true,
+      "develop": true
+    }
+  }
 }
