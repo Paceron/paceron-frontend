@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
+import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 
 const DASH = '—';
 
@@ -127,6 +128,8 @@ export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const hydrated = useAuthStore((s) => s.hydrated);
   const refreshUser = useAuthStore((s) => s.refreshUser);
+  const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (hydrated && !user) router.replace('/login');
@@ -147,12 +150,17 @@ export function ProfileScreen() {
   const fullName = `${user.name ?? ''} ${user.surname ?? ''}`.trim();
 
   const handleEdit = () => router.push('/profile/edit');
-  const handleDelete = () =>
-    Toast.show({
-      type: 'info',
-      text1: 'Baja de cuenta',
-      text2: 'Próximamente vas a poder dar de baja tu cuenta.',
-    });
+
+  const handleConfirmDeactivate = async () => {
+    const result = await deactivateAccount();
+    if (result.success) {
+      setConfirmOpen(false);
+      Toast.show({ type: 'success', text1: 'Cuenta dada de baja', text2: 'Tu cuenta fue desactivada correctamente.' });
+      router.replace('/');
+    } else {
+      Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudo dar de baja la cuenta.' });
+    }
+  };
 
   return (
     <ScrollView className="flex-1 bg-slate-50 dark:bg-ink" contentContainerClassName="px-4 py-8">
@@ -187,7 +195,14 @@ export function ProfileScreen() {
           <Field label="Teléfono de contacto" value={display(user.phoneContact)} />
         </Card>
 
-        <DangerZone onDelete={handleDelete} />
+        <DangerZone onDelete={() => setConfirmOpen(true)} />
+
+        <DeactivateAccountModal
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={handleConfirmDeactivate}
+          userEmail={user.email}
+          visible={confirmOpen}
+        />
       </View>
     </ScrollView>
   );

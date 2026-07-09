@@ -6,3 +6,14 @@ export async function mockUpdateUser(id, payload) {
     ...payload,
   };
 }
+
+// Mock del cambio de status: devuelve el usuario con el nuevo status (shape UserUpdateResponse).
+export async function mockChangeStatus(id, status) {
+  return {
+    user_id: id,
+    name: 'Demo',
+    surname: 'User',
+    email: 'demo@paceron.com',
+    status,
+  };
+}
