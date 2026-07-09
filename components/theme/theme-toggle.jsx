@@ -15,7 +15,9 @@ export function ThemeToggle() {
       <Pressable
         accessibilityLabel="Tema claro"
         accessibilityRole="button"
-        className={`h-7 w-7 items-center justify-center rounded-full ${!isDark ? 'bg-white shadow-sm' : ''}`}
+        accessibilityState={{ selected: !isDark }}
+        hitSlop={8}
+        className={`h-7 w-7 items-center justify-center rounded-full ${!isDark ? 'bg-white' : ''}`}
         onPress={() => setThemeMode('light')}
       >
         <MaterialCommunityIcons color={!isDark ? '#f59e0b' : colors.onSurfaceVariant} name="weather-sunny" size={15} />
@@ -23,7 +25,9 @@ export function ThemeToggle() {
       <Pressable
         accessibilityLabel="Tema oscuro"
         accessibilityRole="button"
-        className={`h-7 w-7 items-center justify-center rounded-full ${isDark ? 'bg-slate-950 shadow-sm' : ''}`}
+        accessibilityState={{ selected: isDark }}
+        hitSlop={8}
+        className={`h-7 w-7 items-center justify-center rounded-full ${isDark ? 'bg-slate-950' : ''}`}
         onPress={() => setThemeMode('dark')}
       >
         <MaterialCommunityIcons color={isDark ? '#8cc63e' : colors.onSurfaceVariant} name="weather-night" size={15} />
