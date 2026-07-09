@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRoutesByRole } from '../../routes/catalog.js';
-import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { ThemeToggle } from '../theme/theme-toggle.jsx';
 
-function DropdownMenu({ onClose, toggleThemeMode, colorScheme, themeMode }) {
+function DropdownMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const isDark = themeMode === 'dark';
-  const themeIcon = isDark ? 'weather-night' : 'weather-sunny';
 
   return (
     <View className="w-56 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1a1d21]">
@@ -27,20 +25,12 @@ function DropdownMenu({ onClose, toggleThemeMode, colorScheme, themeMode }) {
 
       <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
 
-      <View className="flex-row items-center justify-between px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150">
-        <Pressable
-          className="flex-row items-center gap-3 flex-1"
-          onPress={toggleThemeMode}
-        >
-          <MaterialCommunityIcons name={themeIcon} size={18} color={colors.onSurfaceVariant} />
+      <View className="flex-row items-center justify-between px-4 py-3.5">
+        <View className="flex-row items-center gap-3">
+          <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.onSurfaceVariant} />
           <Text className="text-sm font-medium text-slate-900 dark:text-white">Tema</Text>
-        </Pressable>
-        <Switch
-          value={isDark}
-          onValueChange={toggleThemeMode}
-          trackColor={{ false: '#cbd5e1', true: '#8cc63e' }}
-          thumbColor="white"
-        />
+        </View>
+        <ThemeToggle />
       </View>
 
       <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
@@ -127,14 +117,17 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
 
       <View className="flex-row items-center shrink-0">
         {isGuest ? (
-          <Pressable
-            className="rounded-full bg-primary px-5 py-2 active:opacity-80"
-            onPress={() => router.push('/login')}
-          >
-            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
-              Ingresar
-            </Text>
-          </Pressable>
+          <View className="flex-row items-center gap-3">
+            <ThemeToggle />
+            <Pressable
+              className="rounded-full bg-primary px-5 py-2 active:opacity-80"
+              onPress={() => router.push('/login')}
+            >
+              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
+                Ingresar
+              </Text>
+            </Pressable>
+          </View>
         ) : (
           <Pressable
             className="flex-row items-center gap-2 rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
@@ -167,7 +160,6 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
 export function AppWebShell({ children, pathname }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const { colorScheme, themeMode, toggleThemeMode } = useThemeMode();
   const user = useAuthStore((s) => s.user);
   const isGuest = !user;
   const userName = user?.name || null;
@@ -211,12 +203,7 @@ export function AppWebShell({ children, pathname }) {
           <View className="absolute inset-0 z-50">
             <Pressable className="absolute inset-0" onPress={handleCloseDropdown} />
             <View className="absolute right-4 top-[60px]">
-              <DropdownMenu
-                onClose={handleCloseDropdown}
-                toggleThemeMode={toggleThemeMode}
-                colorScheme={colorScheme}
-                themeMode={themeMode}
-              />
+              <DropdownMenu onClose={handleCloseDropdown} />
             </View>
           </View>
         )}
