@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Dimensions, Image, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Dimensions, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRoutesByRole } from '../../routes/catalog.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
-import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { ThemeToggle } from '../theme/theme-toggle.jsx';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -43,7 +43,6 @@ function TopAppBar({ onMenuPress }) {
 function NavigationDrawer({ open, pathname, onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const { colorScheme, themeMode, toggleThemeMode } = useThemeMode();
 
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -71,10 +70,6 @@ function NavigationDrawer({ open, pathname, onClose }) {
     router.push(href);
     onClose();
   };
-
-  const themeIcon = themeMode === 'dark' || (themeMode === 'system' && colorScheme === 'dark')
-    ? 'weather-night'
-    : 'weather-sunny';
 
   return (
     <>
@@ -125,21 +120,12 @@ function NavigationDrawer({ open, pathname, onClose }) {
               </View>
             )}
 
-            <View className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <Pressable
-                className="flex-row items-center justify-between rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800"
-                onPress={toggleThemeMode}
-              >
-                <Text className="text-xs text-slate-600 dark:text-slate-300">Tema</Text>
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-xs text-slate-500 dark:text-slate-400">{themeMode}</Text>
-                  <MaterialCommunityIcons
-                    color={colors.onSurfaceVariant}
-                    name={themeIcon}
-                    size={16}
-                  />
-                </View>
-              </Pressable>
+            <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <View className="flex-row items-center gap-3">
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="theme-light-dark" size={20} />
+                <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Tema</Text>
+              </View>
+              <ThemeToggle />
             </View>
 
             <ScrollView className="flex-1 px-2 py-4">

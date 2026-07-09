@@ -6,9 +6,11 @@ const ThemeContext = createContext(null);
 const STORAGE_KEY = 'paceron-theme-mode';
 const isWeb = Platform.OS === 'web';
 
+// Default oscuro. En web se respeta una elección explícita de 'light' guardada;
+// sin preferencia guardada (o en native) arranca en 'dark'.
 function readInitialThemeMode() {
-  if (!isWeb || typeof window === 'undefined') return 'light';
-  return window.localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+  if (!isWeb || typeof window === 'undefined') return 'dark';
+  return window.localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
 }
 
 export function ThemeProvider({ children }) {
