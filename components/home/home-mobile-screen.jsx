@@ -1,5 +1,4 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -160,13 +159,6 @@ export function HomeMobileScreen() {
             Gestioná equipos, planificá con IA, controlá asistencia y administrá suscripciones.
           </Text>
         </View>
-      </View>
-
-      <View className="mt-section-gap items-center border-t border-slate-200 bg-slate-50 py-8 dark:border-slate-800 dark:bg-[#1d2125]">
-        <PaceronBrand size={18} style={{ marginBottom: 16 }} />
-        <Text className="text-sm text-slate-600 dark:text-slate-300">
-          © 2026 Paceron Running
-        </Text>
       </View>
     </ScrollView>
   );

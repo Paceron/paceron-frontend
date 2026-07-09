@@ -8,7 +8,7 @@ export function PaceronBrand({ size = 18, style }) {
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', transform: [{ skewX: '-15deg' }] }, style]}>
       <Text style={[letter, { color: colors.onBackground }]}>p</Text>
-      <Text style={[letter, { color: '#8cc63e' }]}>a</Text>
+      <Text style={[letter, { color: colors.primary }]}>a</Text>
       <Text style={[letter, { color: colors.onBackground }]}>ceron</Text>
     </View>
   );

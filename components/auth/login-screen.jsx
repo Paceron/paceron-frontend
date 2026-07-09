@@ -234,19 +234,17 @@ export function LoginScreen() {
         extraScrollHeight={24}
       >
         <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
-            {/* Back button */}
-            <View className="mb-8 w-full max-w-md">
+            {/* Card */}
+            <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface">
+              {/* Back button */}
               <Pressable
-                className="flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-surface"
-                onPress={handleBack}
+                className="-ml-2 mb-4 flex-row items-center gap-1.5 self-start rounded-lg px-2 py-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                onPress={view === 'forgot' ? () => setView('login') : handleBack}
               >
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
                 <Text className="text-sm text-slate-600 dark:text-slate-300">Volver</Text>
               </Pressable>
-            </View>
 
-            {/* Card */}
-            <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface">
               {/* Logo */}
               <View className="mb-8 items-center">
                 <Image

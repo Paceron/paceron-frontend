@@ -19,7 +19,7 @@ function TopAppBar({ onMenuPress }) {
   const colors = useThemeColors();
 
   return (
-    <View className="h-[60px] w-full flex-row items-center justify-center border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-[#111518]">
+    <View className="h-[60px] w-full flex-row items-center justify-center border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-surface">
       <Pressable
         accessibilityLabel="Abrir menú"
         className="absolute left-4 rounded-full p-2 active:opacity-70"
@@ -86,7 +86,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
           drawerAnimatedStyle,
         ]}
       >
-        <View className="flex-1 border-r border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-[#111518]">
+        <View className="flex-1 border-r border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-surface">
           <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
             {user ? (
               <Pressable
@@ -180,7 +180,7 @@ export function AppMobileShell({ children, pathname }) {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-[#111518]"
+      className="flex-1 bg-white dark:bg-surface"
       edges={isWeb ? ['top', 'left', 'right'] : ['top', 'bottom']}
     >
       <TopAppBar onMenuPress={() => setDrawerOpen(true)} />
