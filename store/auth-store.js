@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { login as loginService, register as registerService, getUser as getUserService } from '../services/auth.js';
-import { updateUser as updateUserService } from '../services/user.js';
+import { updateUser as updateUserService, changeStatus as changeStatusService } from '../services/user.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 
@@ -92,6 +92,19 @@ export const useAuthStore = create((set, get) => ({
         set({ user: updated });
         await persist({ user: updated, token, refreshToken, expiresAt });
       }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Baja lógica: PATCH status a 'inactive' y cierra sesión.
+  deactivateAccount: async () => {
+    const { user } = get();
+    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
+    try {
+      await changeStatusService(user.userId, 'inactive');
+      await get().logout();
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
