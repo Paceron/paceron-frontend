@@ -13,6 +13,7 @@
       "release/**": false,
       "hotfix/**": false,
       "backport/**": false,
+      "chore/**": false,
       "master": true,
       "develop": true
     }

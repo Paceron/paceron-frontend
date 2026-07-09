@@ -6,6 +6,7 @@ on:
       - feature/**
       - fix/**
       - backport/**
+      - chore/**
 
 permissions:
   contents: read
@@ -39,6 +40,7 @@ jobs:
             feature)  LABEL="feature" ;;
             fix)      LABEL="fix" ;;
             backport) LABEL="backport" ;;
+            chore)    LABEL="chore" ;;
             *)        LABEL="other" ;;
           esac
 
