@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,12 +10,41 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 
+// Envuelve el dropdown para animar apertura/cierre (fade + slide sutil).
+// Se mantiene siempre montado (mismo patrón que el drawer mobile) para que
+// la animación de salida se vea; cuando está cerrado, pointerEvents 'none'
+// evita que intercepte clicks.
+function AnimatedDropdown({ open, onClose, children }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(-8);
+
+  useEffect(() => {
+    const config = { duration: open ? 160 : 120, easing: Easing.out(Easing.cubic) };
+    opacity.value = withTiming(open ? 1 : 0, config);
+    translateY.value = withTiming(open ? 0 : -8, config);
+  }, [open]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <View className="absolute inset-0 z-50" pointerEvents={open ? 'auto' : 'none'}>
+      <Pressable className="absolute inset-0" onPress={onClose} />
+      <Animated.View style={[{ position: 'absolute', right: 16, top: 60 }, animatedStyle]}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
 function DropdownMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
 
   return (
-    <View className="w-56 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1a1d21]">
+    <View className="w-56 rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
       <Pressable
         className="flex-row items-center gap-3 rounded-t-xl px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
         onPress={() => { router.push('/profile'); onClose(); }}
@@ -59,7 +89,7 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
   };
 
   return (
-    <View className="h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-[#111518] border-b border-slate-200 dark:border-slate-800">
+    <View className="h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-surface border-b border-slate-200 dark:border-slate-800">
       <Pressable
         className="flex-row items-center gap-2 shrink-0"
         onPress={() => router.replace('/')}
@@ -189,7 +219,7 @@ export function AppWebShell({ children, pathname }) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-[#0d1013]" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-ink" edges={['top', 'bottom']}>
       <View className="flex-1">
         <TopBar
           activeTab={activeTab}
@@ -199,13 +229,10 @@ export function AppWebShell({ children, pathname }) {
           routesTab={routesTab}
           userName={userName}
         />
-        {dropdownOpen && !isGuest && (
-          <View className="absolute inset-0 z-50">
-            <Pressable className="absolute inset-0" onPress={handleCloseDropdown} />
-            <View className="absolute right-4 top-[60px]">
-              <DropdownMenu onClose={handleCloseDropdown} />
-            </View>
-          </View>
+        {!isGuest && (
+          <AnimatedDropdown open={dropdownOpen} onClose={handleCloseDropdown}>
+            <DropdownMenu onClose={handleCloseDropdown} />
+          </AnimatedDropdown>
         )}
         <View className="flex-1">{children}</View>
       </View>

@@ -82,11 +82,6 @@ export function ForgotPasswordForm({ onBack }) {
           Enviar instrucciones
         </Text>
       </Pressable>
-
-      <Pressable className="flex-row items-center gap-2" onPress={onBack}>
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
-        <Text className="text-sm text-slate-500 dark:text-slate-400">Volver al inicio de sesión</Text>
-      </Pressable>
     </>
   );
 }
