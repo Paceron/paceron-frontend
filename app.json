@@ -32,7 +32,12 @@
       "typedRoutes": true
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "sitemap": false
+        }
+      ],
       [
         "expo-location",
         {
