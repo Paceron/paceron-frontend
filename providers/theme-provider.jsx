@@ -1,9 +1,15 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { colorScheme, useColorScheme } from 'nativewind';
+import * as SystemUI from 'expo-system-ui';
 
 const STORAGE_KEY = 'paceron-theme-mode';
 const isWeb = Platform.OS === 'web';
+
+// Mismos colores que app/_layout.jsx's Stack contentStyle — deben coincidir
+// para que no haya discontinuidad entre el root view y el contenido de cada
+// screen durante una transición.
+const BACKGROUND_BY_MODE = { dark: '#0d1013', light: '#f8fafc' };
 
 // Default oscuro. En web se respeta una elección explícita de 'light' guardada;
 // sin preferencia guardada (o en native) arranca en 'dark'.
@@ -21,6 +27,16 @@ function applyWebClass(mode) {
   }
 }
 
+// Pinta el "root view" nativo de Android (por debajo de React Navigation).
+// Sin esto, el fondo por defecto (blanco) se ve brevemente a través del
+// hueco que se abre durante una transición de Stack con slide horizontal —
+// el contentStyle del Stack por sí solo no lo cubre.
+function applyNativeRootBackground(mode) {
+  if (!isWeb) {
+    SystemUI.setBackgroundColorAsync(BACKGROUND_BY_MODE[mode]);
+  }
+}
+
 // Provider SIN suscripción al color scheme: solo fija el scheme inicial una vez
 // con la API imperativa `colorScheme.set()`. Al no llamar `useColorScheme()`,
 // el provider no re-renderiza en cada toggle, y por lo tanto no re-renderiza el
@@ -30,6 +46,7 @@ export function ThemeProvider({ children }) {
     const initial = readInitialThemeMode();
     colorScheme.set(initial);
     applyWebClass(initial);
+    applyNativeRootBackground(initial);
   }, []);
 
   return children;
@@ -42,6 +59,7 @@ export function useThemeMode() {
   const setThemeMode = (mode) => {
     colorScheme.set(mode);
     applyWebClass(mode);
+    applyNativeRootBackground(mode);
   };
 
   const toggleThemeMode = () => setThemeMode(themeMode === 'dark' ? 'light' : 'dark');
