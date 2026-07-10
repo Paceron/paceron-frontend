@@ -165,6 +165,71 @@ backport no es necesario.
 | Borrar rama remota | `git push origin --delete feature/<nombre>` |
 | PR de release a master | `gh pr create --base master --head release/<versión>` |
 
+## Despliegues
+
+### Web (Vercel)
+
+Cuenta `paceron` (Hobby/free), un solo proyecto (`paceron-frontend`), dos
+dominios `.vercel.app` gratuitos pinneados cada uno a una rama:
+
+| Rama | URL |
+| --- | --- |
+| `master` (producción) | https://paceron-frontend.vercel.app/ |
+| `develop` (preview) | https://paceron-frontend-git-develop-paceron.vercel.app/ |
+
+- Config en [`vercel.json`](../vercel.json): build command (`npx expo export -p
+  web`), `cleanUrls`, `rewrites` (404 branded), y `git.deploymentEnabled` que
+  **limita el deploy automático a `master` y `develop`** — cualquier otra rama
+  (`feature/**`, `fix/**`, etc.) no dispara build en Vercel.
+- Deploy es automático: cada push a `master`/`develop` (o sea, cada merge de
+  PR) buildea y publica solo. No hace falta correr nada a mano.
+- No hay dominio propio comprado (`paceron.com`) — se evaluará más adelante si
+  hace falta.
+
+### Mobile (EAS — Android only)
+
+Cuenta EAS **separada** de la personal: `paceronapp` / `paceron.app@gmail.com`
+(login con `npx eas-cli login`). Proyecto: `@paceronapp/paceron-frontend`.
+
+Dos variantes de la app, diferenciadas en [`app.config.js`](../app.config.js)
+(dinámico) vía la env var `APP_VARIANT` que setea cada profile de
+[`eas.json`](../eas.json):
+
+| Variante | Nombre | `android.package` | Ícono | Canal de Update |
+| --- | --- | --- | --- | --- |
+| `production` | Paceron | `com.paceron.app` | blanco | `production` |
+| `preview` (dev) | Paceron Dev | `com.paceron.app.dev` | ámbar + anillo | `develop` |
+
+Ambas quedan **fuera de Play Store**: `distribution: internal` genera un APK
+descargable por link/QR directo. Nunca se usa `eas submit`.
+
+**Build vs Update** (no confundir):
+- **Build** = binario nativo instalable. Solo hace falta rehacerlo cuando
+  cambia algo nativo (módulo nativo, ícono, permisos, upgrade de SDK).
+  `runtimeVersion` usa policy `fingerprint`: hashea automáticamente lo nativo
+  para detectar cuándo un build viejo ya no es compatible.
+- **Update** = publica JS/UI nuevo a un build ya instalado, sin reinstalar y
+  sin pasar por ninguna store. Es el 99% de los cambios de este proyecto.
+
+```bash
+# Build manual (poco frecuente — solo si cambió algo nativo)
+npm run eas:build:preview       # variante dev
+npm run eas:build:production    # variante prod
+
+# Publicar update (lo habitual, tras mergear a develop/master)
+npm run eas:deploy:develop      # corre .eas/workflows/deploy-develop.yml
+npm run eas:deploy:production   # corre .eas/workflows/deploy-production.yml
+```
+
+Los workflows (`.eas/workflows/deploy-*.yml`) ya tienen la lógica de
+`fingerprint → get-build → build (solo si hace falta) → update`, pero **no se
+disparan solos por push a propósito**: el free tier de EAS usa una cola
+compartida de baja prioridad que puede tardar minutos a más de una hora en
+horas pico (aplica incluso a jobs livianos como `fingerprint`, no solo al
+build pesado). Se corren a mano, cuando se decide publicar — así la espera de
+cola no bloquea el flujo de desarrollo. Si esto se vuelve un cuello de botella
+real, evaluar plan pago de EAS (cola de prioridad).
+
 ## Errores comunes
 
 - **Push a develop/master rechazado** (`Changes must be made through a pull
