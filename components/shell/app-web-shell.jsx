@@ -9,6 +9,8 @@ import { getRoutesByRole } from '../../routes/catalog.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
+import { RoleBadge } from './role-badge.jsx';
+import { RoleManagementSection } from './role-management-section.jsx';
 
 // Envuelve el dropdown para animar apertura/cierre (fade + slide sutil).
 // Se mantiene siempre montado (mismo patrón que el drawer mobile) para que
@@ -45,8 +47,12 @@ function DropdownMenu({ onClose }) {
 
   return (
     <View className="w-56 rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
+      <RoleManagementSection onClose={onClose} />
+
+      <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+
       <Pressable
-        className="flex-row items-center gap-3 rounded-t-xl px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+        className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
         onPress={() => { router.push('/profile'); onClose(); }}
       >
         <MaterialCommunityIcons name="account-circle" size={18} color={colors.onSurfaceVariant} />
@@ -55,11 +61,8 @@ function DropdownMenu({ onClose }) {
 
       <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
 
-      <View className="flex-row items-center justify-between px-4 py-3.5">
-        <View className="flex-row items-center gap-3">
-          <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.onSurfaceVariant} />
-          <Text className="text-sm font-medium text-slate-900 dark:text-white">Tema</Text>
-        </View>
+      <View className="items-center gap-2 px-4 py-3.5">
+        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Tema</Text>
         <ThemeToggle />
       </View>
 
@@ -76,7 +79,7 @@ function DropdownMenu({ onClose }) {
   );
 }
 
-function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPress }) {
+function TopBar({ isGuest, userName, activeRole, routesTab, activeTab, onTabPress, onUserPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -175,6 +178,7 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
                 {userName}
               </Text>
             )}
+            <RoleBadge role={activeRole} />
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
               name="chevron-down"
@@ -193,6 +197,7 @@ export function AppWebShell({ children, pathname }) {
   const user = useAuthStore((s) => s.user);
   const isGuest = !user;
   const userName = user?.name || null;
+  const activeRole = useAuthStore((s) => s.activeRole);
   const routesTab = getRoutesByRole(user?.role || null);
   const [activeTab, setActiveTab] = useState(pathname);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -222,6 +227,7 @@ export function AppWebShell({ children, pathname }) {
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-ink" edges={['top', 'bottom']}>
       <View className="flex-1">
         <TopBar
+          activeRole={activeRole}
           activeTab={activeTab}
           isGuest={isGuest}
           onTabPress={handleTabPress}
