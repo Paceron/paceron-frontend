@@ -5,10 +5,23 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 
-const TRACK_WIDTH = 56;
-const TRACK_HEIGHT = 28;
-const THUMB_SIZE = 24;
+const TRACK_WIDTH = 64;
+const TRACK_HEIGHT = 32;
+const THUMB_SIZE = 28;
 const THUMB_TRAVEL = TRACK_WIDTH - 4 - THUMB_SIZE;
+
+// Sombra del thumb con propiedades explícitas (no la clase `shadow` de
+// Tailwind/NativeWind): esa clase se traduce a box-shadow CSS en web pero
+// requiere shadowColor/shadowOffset/shadowOpacity/shadowRadius + elevation
+// por separado en nativo, y termina viéndose bien distinto entre
+// plataformas. Con estas propiedades el resultado es consistente en ambas.
+const THUMB_SHADOW = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.2,
+  shadowRadius: 2,
+  elevation: 3,
+};
 
 // Switch único (no dos botones): un solo Pressable cubre todo el track,
 // cada tap alterna el tema. El thumb anima su posición con Reanimated.
@@ -40,17 +53,17 @@ export function ThemeToggle() {
         className="absolute left-0 right-0 flex-row items-center justify-between px-1.5"
         style={{ height: TRACK_HEIGHT }}
       >
-        <MaterialCommunityIcons color={isDark ? colors.onSurfaceVariant : '#f59e0b'} name="weather-sunny" size={13} />
-        <MaterialCommunityIcons color={isDark ? '#8cc63e' : colors.onSurfaceVariant} name="weather-night" size={13} />
+        <MaterialCommunityIcons color={isDark ? colors.onSurfaceVariant : '#f59e0b'} name="weather-sunny" size={14} />
+        <MaterialCommunityIcons color={isDark ? '#8cc63e' : colors.onSurfaceVariant} name="weather-night" size={14} />
       </View>
       <Animated.View
-        className="items-center justify-center rounded-full bg-white shadow dark:bg-slate-950"
-        style={[{ width: THUMB_SIZE, height: THUMB_SIZE }, thumbStyle]}
+        className="items-center justify-center rounded-full bg-white dark:bg-slate-950"
+        style={[{ width: THUMB_SIZE, height: THUMB_SIZE }, THUMB_SHADOW, thumbStyle]}
       >
         <MaterialCommunityIcons
           color={isDark ? '#8cc63e' : '#f59e0b'}
           name={isDark ? 'weather-night' : 'weather-sunny'}
-          size={13}
+          size={14}
         />
       </Animated.View>
     </Pressable>

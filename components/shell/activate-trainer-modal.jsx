@@ -23,6 +23,7 @@ export function ActivateTrainerModal({ visible, onCancel, onConfirm }) {
   return (
     <Modal animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
       <View className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable className="absolute inset-0" disabled={loading} onPress={handleCancel} />
         <View className="w-full max-w-md rounded-2xl border border-amber-300 bg-white p-6 shadow-xl dark:border-amber-900/50 dark:bg-surface">
           <View className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#f59e0b" name="whistle" size={20} />

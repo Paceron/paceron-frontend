@@ -46,40 +46,48 @@ function DropdownMenu({ onClose }) {
   const colors = useThemeColors();
 
   return (
-    <View className="w-56 rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
-      <RoleManagementSection onClose={onClose} />
+    <View className="w-56">
+      {/* Nub que conecta visualmente el dropdown con el pill de usuario de arriba */}
+      <View className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" />
 
-      <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+      <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
+        <RoleManagementSection onClose={onClose} />
 
-      <Pressable
-        className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
-        onPress={() => { router.push('/profile'); onClose(); }}
-      >
-        <MaterialCommunityIcons name="account-circle" size={18} color={colors.onSurfaceVariant} />
-        <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white">Ver perfil</Text>
-      </Pressable>
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
 
-      <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+        <View className="flex-row items-center justify-between px-4 py-3.5">
+          <View className="flex-row items-center gap-3">
+            <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.onSurfaceVariant} />
+            <Text className="text-sm font-medium text-slate-900 dark:text-white">Tema</Text>
+          </View>
+          <ThemeToggle />
+        </View>
 
-      <View className="items-center gap-2 px-4 py-3.5">
-        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Tema</Text>
-        <ThemeToggle />
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+
+        <Pressable
+          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+          onPress={() => { router.push('/profile'); onClose(); }}
+        >
+          <MaterialCommunityIcons name="account-circle" size={18} color={colors.onSurfaceVariant} />
+          <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white">Ver perfil</Text>
+        </Pressable>
+
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+
+        <Pressable
+          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
+          onPress={() => { useAuthStore.getState().logout(); onClose(); }}
+        >
+          <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
+          <Text className="text-sm font-semibold text-red-600 dark:text-red-400">Cerrar sesión</Text>
+        </Pressable>
       </View>
-
-      <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
-
-      <Pressable
-        className="flex-row items-center gap-3 rounded-b-xl px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
-        onPress={() => { useAuthStore.getState().logout(); onClose(); }}
-      >
-        <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
-        <Text className="text-sm font-semibold text-red-600 dark:text-red-400">Cerrar sesión</Text>
-      </Pressable>
     </View>
   );
 }
 
-function TopBar({ isGuest, userName, activeRole, routesTab, activeTab, onTabPress, onUserPress }) {
+function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, activeTab, onTabPress, onUserPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -163,7 +171,9 @@ function TopBar({ isGuest, userName, activeRole, routesTab, activeTab, onTabPres
           </View>
         ) : (
           <Pressable
-            className="flex-row items-center gap-2 rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
+            className={`flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
+              dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
+            }`}
             onPress={handleUserPress}
           >
             <View className="h-8 w-8 items-center justify-center rounded-full bg-primary/10">
@@ -229,6 +239,7 @@ export function AppWebShell({ children, pathname }) {
         <TopBar
           activeRole={activeRole}
           activeTab={activeTab}
+          dropdownOpen={dropdownOpen}
           isGuest={isGuest}
           onTabPress={handleTabPress}
           onUserPress={handleUserPress}

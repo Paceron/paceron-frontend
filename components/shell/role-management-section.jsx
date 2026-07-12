@@ -62,10 +62,12 @@ export function RoleManagementSection({ onClose }) {
           Gestión de rol
         </Text>
       </View>
-      <Pressable className={`mx-2 mb-1 flex-row items-center rounded-lg px-2 py-2.5 ${colors.bg}`} onPress={handlePress}>
-        <Animated.View className="flex-1 flex-row items-center gap-3" style={animatedStyle}>
+      <Pressable className={`mx-2 mb-1 flex-row items-center justify-center rounded-lg px-2 py-2.5 ${colors.bg}`} onPress={handlePress}>
+        <Animated.View className="flex-row items-center gap-2" style={animatedStyle}>
           <MaterialCommunityIcons color={colors.icon} name={action.icon} size={18} />
-          <Text className={`text-sm font-semibold ${colors.text}`}>{action.label}</Text>
+          <Text className={`text-sm font-semibold ${colors.text}`} numberOfLines={1} adjustsFontSizeToFit>
+            {action.label}
+          </Text>
         </Animated.View>
       </Pressable>
 

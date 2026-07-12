@@ -128,8 +128,11 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
             {user && <RoleManagementSection onClose={onClose} />}
 
-            <View className="items-center gap-2 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Tema</Text>
+            <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <View className="flex-row items-center gap-3">
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="theme-light-dark" size={20} />
+                <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Tema</Text>
+              </View>
               <ThemeToggle />
             </View>
 
