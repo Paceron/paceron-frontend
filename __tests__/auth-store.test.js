@@ -129,4 +129,27 @@ describe('role management (local-only)', () => {
     expect(s.activeRole).toBe('runner');
     expect(s.trainerActivated).toBe(false);
   });
+
+  test('login does not clobber persisted role state after activation/switch', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok' });
+    await useAuthStore.getState().activateTrainerProfile();
+    await useAuthStore.getState().switchRole();
+    expect(useAuthStore.getState().activeRole).toBe('trainer');
+    expect(useAuthStore.getState().trainerActivated).toBe(true);
+
+    loginService.mockResolvedValue(LOGIN_OK);
+    await useAuthStore.getState().login('a@b.com', 'pw');
+
+    // In-memory state must keep the role fields.
+    const s = useAuthStore.getState();
+    expect(s.activeRole).toBe('trainer');
+    expect(s.trainerActivated).toBe(true);
+
+    // Persisted storage must also keep the role fields (this is what
+    // hydrate() reads back after a reload).
+    await useAuthStore.getState().hydrate();
+    const rehydrated = useAuthStore.getState();
+    expect(rehydrated.activeRole).toBe('trainer');
+    expect(rehydrated.trainerActivated).toBe(true);
+  });
 });

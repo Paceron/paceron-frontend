@@ -53,7 +53,8 @@ export const useAuthStore = create((set, get) => ({
         const expiresAt = auth.expires_in ? Date.now() + auth.expires_in * 1000 : null;
         const session = { user, token, refreshToken: auth.refresh_token ?? null, expiresAt };
         set(session);
-        await persist(session);
+        const { activeRole, trainerActivated } = get();
+        await persist({ ...session, activeRole, trainerActivated });
         return { success: true };
       }
       return { success: false, error: 'Credenciales incorrectas.' };
@@ -74,13 +75,13 @@ export const useAuthStore = create((set, get) => ({
   // Refresca los datos del usuario desde el backend. Best-effort: si falla
   // (ej. CORS en web, offline), conserva el user actual sin romper.
   refreshUser: async () => {
-    const { user, token, refreshToken, expiresAt } = get();
+    const { user, token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
     if (!user?.userId) return;
     try {
       const fresh = toUserModel(await getUserService({ id: user.userId }));
       if (fresh) {
         set({ user: fresh });
-        await persist({ user: fresh, token, refreshToken, expiresAt });
+        await persist({ user: fresh, token, refreshToken, expiresAt, activeRole, trainerActivated });
       }
     } catch {
       // best-effort — se mantiene el user actual
@@ -92,9 +93,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       const updated = toUserModel(await updateUserService(id, payload, currentPassword));
       if (updated) {
-        const { token, refreshToken, expiresAt } = get();
+        const { token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
         set({ user: updated });
-        await persist({ user: updated, token, refreshToken, expiresAt });
+        await persist({ user: updated, token, refreshToken, expiresAt, activeRole, trainerActivated });
       }
       return { success: true };
     } catch (error) {
