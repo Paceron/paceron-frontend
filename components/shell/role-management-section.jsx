@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -38,7 +38,16 @@ export function RoleManagementSection({ onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action.label]);
 
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  // flexDirection/alignItems/gap van en style, no en className: Animated.View
+  // no procesa className de NativeWind de forma confiable (mismo problema ya
+  // visto en el dropdown web) — con className caía al column por defecto de
+  // RN, apilando ícono y texto en vez de ponerlos en fila.
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  }));
 
   const handlePress = () => {
     if (!trainerActivated) {
@@ -57,13 +66,8 @@ export function RoleManagementSection({ onClose }) {
 
   return (
     <>
-      <View className="px-4 pt-3 pb-1">
-        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          Gestión de rol
-        </Text>
-      </View>
-      <Pressable className={`mx-2 mb-1 flex-row items-center justify-center rounded-lg px-2 py-2.5 ${colors.bg}`} onPress={handlePress}>
-        <Animated.View className="flex-row items-center gap-2" style={animatedStyle}>
+      <Pressable className={`m-2 items-center justify-center rounded-lg px-2 py-2.5 ${colors.bg}`} onPress={handlePress}>
+        <Animated.View style={animatedStyle}>
           <MaterialCommunityIcons color={colors.icon} name={action.icon} size={18} />
           <Text className={`text-sm font-semibold ${colors.text}`} numberOfLines={1} adjustsFontSizeToFit>
             {action.label}

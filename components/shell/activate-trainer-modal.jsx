@@ -1,12 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Confirmación simple (sin campo de texto) para activar el perfil de
 // entrenador. Acción reversible/no destructiva, a diferencia de la baja
 // de cuenta — no necesita el gate de tipear el email.
+//
+// animationType="none" en el Modal nativo: su fade no es configurable en
+// duración y se sentía lento. Se anima solo la entrada con Reanimated
+// (rápida, ~130ms); no tiene sentido animar la salida porque el Modal
+// desmonta su contenido apenas visible pasa a false, cortando cualquier
+// animación en curso de todas formas.
 export function ActivateTrainerModal({ visible, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      opacity.value = 0;
+      opacity.value = withTiming(1, { duration: 130, easing: Easing.out(Easing.cubic) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   const handleConfirm = async () => {
     if (loading) return;
@@ -21,8 +39,8 @@ export function ActivateTrainerModal({ visible, onCancel, onConfirm }) {
   };
 
   return (
-    <Modal animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View className="flex-1 items-center justify-center bg-black/50 px-4">
+    <Modal animationType="none" onRequestClose={handleCancel} transparent visible={visible}>
+      <Animated.View className="flex-1 items-center justify-center bg-black/50 px-4" style={animatedStyle}>
         <Pressable className="absolute inset-0" disabled={loading} onPress={handleCancel} />
         <View className="w-full max-w-md rounded-2xl border border-amber-300 bg-white p-6 shadow-xl dark:border-amber-900/50 dark:bg-surface">
           <View className="mb-3 flex-row items-center gap-2">
@@ -56,7 +74,7 @@ export function ActivateTrainerModal({ visible, onCancel, onConfirm }) {
             </Pressable>
           </View>
         </View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
