@@ -26,7 +26,7 @@ const LOGIN_OK = {
 beforeEach(() => {
   storage.__reset();
   jest.clearAllMocks();
-  useAuthStore.setState({ user: null, token: null, refreshToken: null, expiresAt: null, hydrated: false });
+  useAuthStore.setState({ user: null, token: null, refreshToken: null, expiresAt: null, hydrated: false, activeRole: 'runner', trainerActivated: false });
 });
 
 describe('auth store', () => {
@@ -91,5 +91,42 @@ describe('auth store', () => {
     expect(s.user).toBeNull();
     expect(s.token).toBeNull();
     expect(storage.removeItem).toHaveBeenCalledWith('paceron.auth');
+  });
+});
+
+describe('role management (local-only)', () => {
+  test('starts with default role state', () => {
+    const s = useAuthStore.getState();
+    expect(s.activeRole).toBe('runner');
+    expect(s.trainerActivated).toBe(false);
+  });
+
+  test('activateTrainerProfile sets trainerActivated, keeps role as runner', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok' });
+    await useAuthStore.getState().activateTrainerProfile();
+    const s = useAuthStore.getState();
+    expect(s.trainerActivated).toBe(true);
+    expect(s.activeRole).toBe('runner');
+    expect(storage.setItem).toHaveBeenCalled();
+  });
+
+  test('switchRole toggles activeRole only when trainerActivated', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', trainerActivated: false, activeRole: 'runner' });
+    await useAuthStore.getState().switchRole();
+    expect(useAuthStore.getState().activeRole).toBe('runner');
+
+    useAuthStore.setState({ trainerActivated: true });
+    await useAuthStore.getState().switchRole();
+    expect(useAuthStore.getState().activeRole).toBe('trainer');
+    await useAuthStore.getState().switchRole();
+    expect(useAuthStore.getState().activeRole).toBe('runner');
+  });
+
+  test('logout resets role state to defaults', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', trainerActivated: true });
+    await useAuthStore.getState().logout();
+    const s = useAuthStore.getState();
+    expect(s.activeRole).toBe('runner');
+    expect(s.trainerActivated).toBe(false);
   });
 });

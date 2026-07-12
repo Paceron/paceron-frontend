@@ -20,6 +20,8 @@ export const useAuthStore = create((set, get) => ({
   refreshToken: null,
   expiresAt: null,
   hydrated: false,
+  activeRole: 'runner',
+  trainerActivated: false,
 
   hydrate: async () => {
     try {
@@ -31,6 +33,8 @@ export const useAuthStore = create((set, get) => ({
           token: data.token ?? null,
           refreshToken: data.refreshToken ?? null,
           expiresAt: data.expiresAt ?? null,
+          activeRole: data.activeRole ?? 'runner',
+          trainerActivated: data.trainerActivated ?? false,
         });
       }
     } catch {
@@ -111,8 +115,25 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Local-only por ahora: el backend no tiene roles todavía. Estructurado
+  // para que reemplazar esto por datos reales del backend no cambie la
+  // interfaz que consumen los componentes.
+  activateTrainerProfile: async () => {
+    set({ trainerActivated: true });
+    const { user, token, refreshToken, expiresAt, activeRole } = get();
+    await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated: true });
+  },
+
+  switchRole: async () => {
+    const { trainerActivated, activeRole, user, token, refreshToken, expiresAt } = get();
+    if (!trainerActivated) return;
+    const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
+    set({ activeRole: nextRole });
+    await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, trainerActivated });
+  },
+
   logout: async () => {
-    set({ user: null, token: null, refreshToken: null, expiresAt: null });
+    set({ user: null, token: null, refreshToken: null, expiresAt: null, activeRole: 'runner', trainerActivated: false });
     await removeItem(STORAGE_KEY);
   },
 }));
