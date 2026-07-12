@@ -49,8 +49,12 @@ export function ThemeToggle() {
       style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT, padding: 2 }}
     >
       <Animated.View
-        className="items-center justify-center rounded-full bg-white dark:bg-slate-950"
-        style={[{ width: THUMB_SIZE, height: THUMB_SIZE }, THUMB_SHADOW, thumbStyle]}
+        className="rounded-full bg-white dark:bg-slate-950"
+        style={[
+          { width: THUMB_SIZE, height: THUMB_SIZE, alignItems: 'center', justifyContent: 'center' },
+          THUMB_SHADOW,
+          thumbStyle,
+        ]}
       >
         <MaterialCommunityIcons
           color={isDark ? '#8cc63e' : '#f59e0b'}

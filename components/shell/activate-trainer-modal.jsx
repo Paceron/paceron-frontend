@@ -24,7 +24,18 @@ export function ActivateTrainerModal({ visible, onCancel, onConfirm }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  // flex/alignItems/justifyContent/backgroundColor van en style, no en
+  // className: Animated.View no aplica className de NativeWind de forma
+  // confiable para layout (mismo problema visto antes en esta rama) — sin
+  // esto el backdrop no oscurecía, no centraba el card, y el Pressable de
+  // cierre no cubría la pantalla real (heredaba tamaño 0 del padre).
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  }));
 
   const handleConfirm = async () => {
     if (loading) return;
@@ -40,7 +51,7 @@ export function ActivateTrainerModal({ visible, onCancel, onConfirm }) {
 
   return (
     <Modal animationType="none" onRequestClose={handleCancel} transparent visible={visible}>
-      <Animated.View className="flex-1 items-center justify-center bg-black/50 px-4" style={animatedStyle}>
+      <Animated.View className="px-4" style={animatedStyle}>
         <Pressable className="absolute inset-0" disabled={loading} onPress={handleCancel} />
         <View className="w-full max-w-md rounded-2xl border border-amber-300 bg-white p-6 shadow-xl dark:border-amber-900/50 dark:bg-surface">
           <View className="mb-3 flex-row items-center gap-2">
