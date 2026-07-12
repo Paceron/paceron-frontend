@@ -9,6 +9,8 @@ import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
+import { RoleBadge } from './role-badge.jsx';
+import { RoleManagementSection } from './role-management-section.jsx';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -46,6 +48,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const activeRole = useAuthStore((s) => s.activeRole);
 
   const userRole = user?.role ?? null;
   const routes = getRoutesByRole(userRole);
@@ -88,27 +91,30 @@ function NavigationDrawer({ open, pathname, onClose }) {
       >
         <View className="flex-1 border-r border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-surface">
           <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
+            <View className="flex-row items-center border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <PaceronBrand size={18} />
+            </View>
+
             {user ? (
               <Pressable
-                className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-5 active:opacity-70 dark:border-slate-800"
+                className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 active:opacity-70 dark:border-slate-800"
                 onPress={() => goTo('/profile')}
               >
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                   <MaterialCommunityIcons color={colors.primary} name="account-circle" size={26} />
                 </View>
-                <View className="flex-1">
-                  <PaceronBrand size={18} />
-                  <Text className="text-sm text-slate-600 dark:text-slate-300">{user.name}</Text>
+                <View className="flex-1 flex-row items-center gap-2">
+                  <Text className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</Text>
+                  <RoleBadge role={activeRole} />
                 </View>
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
               </Pressable>
             ) : (
-              <View className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-5 dark:border-slate-800">
+              <View className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                   <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle" size={26} />
                 </View>
                 <View className="flex-1">
-                  <PaceronBrand size={18} />
                   <Text className="text-sm text-slate-600 dark:text-slate-300">Invitado</Text>
                 </View>
                 <Pressable
@@ -120,11 +126,10 @@ function NavigationDrawer({ open, pathname, onClose }) {
               </View>
             )}
 
-            <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-              <View className="flex-row items-center gap-3">
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="theme-light-dark" size={20} />
-                <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Tema</Text>
-              </View>
+            {user && <RoleManagementSection onClose={onClose} />}
+
+            <View className="items-center gap-2 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Tema</Text>
               <ThemeToggle />
             </View>
 
