@@ -29,7 +29,7 @@ export function RoleSwitchOverlay() {
     if (!animating) return;
 
     setContent(CONTENT_BY_ROLE[animating.role]);
-    router.replace('/');
+    if (animating.redirectHome !== false) router.replace('/');
 
     opacity.value = withTiming(1, { duration: FADE_MS, easing: Easing.out(Easing.cubic) });
 

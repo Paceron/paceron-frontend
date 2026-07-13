@@ -20,7 +20,7 @@ function getRoleAction(trainerActivated, activeRole) {
   return { label: 'Cambiar a Corredor', icon: 'run-fast', kind: 'runner' };
 }
 
-export function RoleManagementSection({ onClose }) {
+export function RoleManagementSection({ onClose, redirectOnSwitch = true }) {
   const trainerActivated = useAuthStore((s) => s.trainerActivated);
   const activeRole = useAuthStore((s) => s.activeRole);
   const activateTrainerProfile = useAuthStore((s) => s.activateTrainerProfile);
@@ -54,7 +54,7 @@ export function RoleManagementSection({ onClose }) {
       setModalVisible(true);
       return;
     }
-    switchRole();
+    switchRole({ redirectHome: redirectOnSwitch });
     onClose?.();
   };
 

@@ -22,9 +22,13 @@ export const useAuthStore = create((set, get) => ({
   hydrated: false,
   activeRole: 'runner',
   trainerActivated: false,
-  // Dato puro de UI (no persiste, no dispara nada por sí solo): { role }
-  // cuando switchRole() acaba de cambiar el rol activo, null en reposo. El
-  // componente que lo consume decide qué hacer (animar, navegar).
+  // Datos de entrenador, local-only (el backend todavía no los tiene).
+  trainerAlias: '',
+  trainerCbu: '',
+  // Dato puro de UI (no persiste, no dispara nada por sí solo): { role,
+  // redirectHome } cuando switchRole() acaba de cambiar el rol activo, null
+  // en reposo. El componente que lo consume decide qué hacer (animar,
+  // navegar solo si redirectHome !== false).
   roleSwitchAnimating: null,
 
   hydrate: async () => {
@@ -39,6 +43,8 @@ export const useAuthStore = create((set, get) => ({
           expiresAt: data.expiresAt ?? null,
           activeRole: data.activeRole ?? 'runner',
           trainerActivated: data.trainerActivated ?? false,
+          trainerAlias: data.trainerAlias ?? '',
+          trainerCbu: data.trainerCbu ?? '',
         });
       }
     } catch {
@@ -57,8 +63,8 @@ export const useAuthStore = create((set, get) => ({
         const expiresAt = auth.expires_in ? Date.now() + auth.expires_in * 1000 : null;
         const session = { user, token, refreshToken: auth.refresh_token ?? null, expiresAt };
         set(session);
-        const { activeRole, trainerActivated } = get();
-        await persist({ ...session, activeRole, trainerActivated });
+        const { activeRole, trainerActivated, trainerAlias, trainerCbu } = get();
+        await persist({ ...session, activeRole, trainerActivated, trainerAlias, trainerCbu });
         return { success: true };
       }
       return { success: false, error: 'Credenciales incorrectas.' };
@@ -79,13 +85,13 @@ export const useAuthStore = create((set, get) => ({
   // Refresca los datos del usuario desde el backend. Best-effort: si falla
   // (ej. CORS en web, offline), conserva el user actual sin romper.
   refreshUser: async () => {
-    const { user, token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
+    const { user, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias, trainerCbu } = get();
     if (!user?.userId) return;
     try {
       const fresh = toUserModel(await getUserService({ id: user.userId }));
       if (fresh) {
         set({ user: fresh });
-        await persist({ user: fresh, token, refreshToken, expiresAt, activeRole, trainerActivated });
+        await persist({ user: fresh, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias, trainerCbu });
       }
     } catch {
       // best-effort — se mantiene el user actual
@@ -97,9 +103,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       const updated = toUserModel(await updateUserService(id, payload, currentPassword));
       if (updated) {
-        const { token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
+        const { token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias, trainerCbu } = get();
         set({ user: updated });
-        await persist({ user: updated, token, refreshToken, expiresAt, activeRole, trainerActivated });
+        await persist({ user: updated, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias, trainerCbu });
       }
       return { success: true };
     } catch (error) {
@@ -125,22 +131,39 @@ export const useAuthStore = create((set, get) => ({
   // interfaz que consumen los componentes.
   activateTrainerProfile: async () => {
     set({ trainerActivated: true });
-    const { user, token, refreshToken, expiresAt, activeRole } = get();
-    await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated: true });
+    const { user, token, refreshToken, expiresAt, activeRole, trainerAlias, trainerCbu } = get();
+    await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated: true, trainerAlias, trainerCbu });
   },
 
-  switchRole: async () => {
-    const { trainerActivated, activeRole, user, token, refreshToken, expiresAt } = get();
+  switchRole: async ({ redirectHome = true } = {}) => {
+    const { trainerActivated, activeRole, user, token, refreshToken, expiresAt, trainerAlias, trainerCbu } = get();
     if (!trainerActivated) return;
     const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
-    set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole } });
-    await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, trainerActivated });
+    set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole, redirectHome } });
+    await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, trainerActivated, trainerAlias, trainerCbu });
   },
 
   clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
 
+  // Local-only, igual que activateTrainerProfile: el backend todavía no
+  // tiene estos campos, no se manda nada por red.
+  updateTrainerData: async ({ trainerAlias, trainerCbu }) => {
+    set({ trainerAlias, trainerCbu });
+    const { user, token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
+    await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias, trainerCbu });
+  },
+
   logout: async () => {
-    set({ user: null, token: null, refreshToken: null, expiresAt: null, activeRole: 'runner', trainerActivated: false });
+    set({
+      user: null,
+      token: null,
+      refreshToken: null,
+      expiresAt: null,
+      activeRole: 'runner',
+      trainerActivated: false,
+      trainerAlias: '',
+      trainerCbu: '',
+    });
     await removeItem(STORAGE_KEY);
   },
 }));
