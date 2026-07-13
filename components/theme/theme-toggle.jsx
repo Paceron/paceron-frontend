@@ -49,9 +49,9 @@ export function ThemeToggle() {
       style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT, padding: 2 }}
     >
       <Animated.View
-        className="rounded-full bg-white dark:bg-slate-950"
+        className="bg-white dark:bg-slate-950"
         style={[
-          { width: THUMB_SIZE, height: THUMB_SIZE, alignItems: 'center', justifyContent: 'center' },
+          { width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: THUMB_SIZE / 2, alignItems: 'center', justifyContent: 'center' },
           THUMB_SHADOW,
           thumbStyle,
         ]}
