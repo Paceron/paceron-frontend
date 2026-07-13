@@ -8,6 +8,8 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
+import { RoleBadge } from '../shell/role-badge.jsx';
+import { RoleManagementSection } from '../shell/role-management-section.jsx';
 
 const DASH = '—';
 
@@ -101,6 +103,35 @@ function HeaderPanel({ user, status, fullName, onEdit, colors }) {
   );
 }
 
+function RolesSection({ activeRole, trainerActivated }) {
+  return (
+    <Card title="Roles" icon="account-supervisor">
+      <View className="w-full flex-row items-center justify-between">
+        <View className="flex-row items-center gap-2">
+          <RoleBadge active={activeRole === 'runner'} role="runner" size="md" />
+          {trainerActivated && <RoleBadge active={activeRole === 'trainer'} role="trainer" size="md" />}
+        </View>
+        <RoleManagementSection redirectOnSwitch={false} />
+      </View>
+    </Card>
+  );
+}
+
+function TrainerDataSection({ trainerAlias, trainerCbu }) {
+  return (
+    <View className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-950/20">
+      <View className="mb-4 flex-row items-center gap-2">
+        <MaterialCommunityIcons color="#f59e0b" name="whistle" size={18} />
+        <Text className="text-base font-bold text-amber-700 dark:text-amber-400">Datos de entrenador</Text>
+      </View>
+      <FieldGrid>
+        <Field label="Alias de pagos" value={display(trainerAlias)} />
+        <Field label="CBU/CVU" value={display(trainerCbu)} />
+      </FieldGrid>
+    </View>
+  );
+}
+
 function DangerZone({ onDelete }) {
   return (
     <View className="mt-2 rounded-2xl border border-red-300 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/20">
@@ -128,6 +159,10 @@ export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
+  const activeRole = useAuthStore((s) => s.activeRole);
+  const trainerActivated = useAuthStore((s) => s.trainerActivated);
+  const trainerAlias = useAuthStore((s) => s.trainerAlias);
+  const trainerCbu = useAuthStore((s) => s.trainerCbu);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -172,6 +207,10 @@ export function ProfileScreen() {
         </Text>
 
         <HeaderPanel user={user} status={status} fullName={fullName} onEdit={handleEdit} colors={colors} />
+
+        <RolesSection activeRole={activeRole} trainerActivated={trainerActivated} />
+
+        {trainerActivated && <TrainerDataSection trainerAlias={trainerAlias} trainerCbu={trainerCbu} />}
 
         <Card title="Datos personales" icon="account-details">
           <Field label="Nombre" value={display(user.name)} />

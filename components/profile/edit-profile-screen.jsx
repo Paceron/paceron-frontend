@@ -46,6 +46,9 @@ export function EditProfileScreen() {
 function EditProfileForm({ user }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const trainerActivated = useAuthStore((s) => s.trainerActivated);
+  const storedTrainerAlias = useAuthStore((s) => s.trainerAlias);
+  const storedTrainerCbu = useAuthStore((s) => s.trainerCbu);
 
   const [firstName, setFirstName] = useState(user.name ?? '');
   const [lastName, setLastName] = useState(user.surname ?? '');
@@ -54,6 +57,8 @@ function EditProfileForm({ user }) {
   const [email, setEmail] = useState(user.email ?? '');
   const [phone, setPhone] = useState(user.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(user.phoneContact ?? '');
+  const [trainerAlias, setTrainerAlias] = useState(storedTrainerAlias ?? '');
+  const [trainerCbu, setTrainerCbu] = useState(storedTrainerCbu ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -125,6 +130,9 @@ function EditProfileForm({ user }) {
         payload,
         emailChanged ? currentPassword : undefined,
       );
+      if (trainerActivated) {
+        await useAuthStore.getState().updateTrainerData({ trainerAlias, trainerCbu });
+      }
       if (result.success) {
         Toast.show({ type: 'success', text1: 'Datos actualizados', text2: 'Tu perfil se guardó correctamente.' });
         router.replace('/profile');
@@ -331,6 +339,31 @@ function EditProfileForm({ user }) {
             />
           </Col>
         </Row>
+
+        {trainerActivated && (
+          <>
+            <SectionTitle>Datos de entrenador</SectionTitle>
+            <Row>
+              <Col>
+                <InputField
+                  label="Alias de pagos"
+                  onChange={setTrainerAlias}
+                  placeholder="Tu alias de pagos"
+                  value={trainerAlias}
+                />
+              </Col>
+              <Col>
+                <InputField
+                  autoCapitalize="none"
+                  label="CBU/CVU"
+                  onChange={setTrainerCbu}
+                  placeholder="Tu CBU o CVU"
+                  value={trainerCbu}
+                />
+              </Col>
+            </Row>
+          </>
+        )}
 
         <Pressable
           className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-full ${canSubmit ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
