@@ -14,7 +14,7 @@ import { RoleManagementSection } from './role-management-section.jsx';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 360);
+const DRAWER_WIDTH = SCREEN_WIDTH;
 const ANIMATION_CONFIG = { duration: 280, easing: Easing.out(Easing.cubic) };
 
 function TopAppBar({ onMenuPress }) {
@@ -54,19 +54,13 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const routes = getRoutesByRole(userRole);
 
   const translateX = useSharedValue(-DRAWER_WIDTH);
-  const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     translateX.value = withTiming(open ? 0 : -DRAWER_WIDTH, ANIMATION_CONFIG);
-    backdropOpacity.value = withTiming(open ? 1 : 0, ANIMATION_CONFIG);
   }, [open]);
 
   const drawerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
-  }));
-
-  const backdropAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
   }));
 
   const goTo = (href) => {
@@ -77,24 +71,13 @@ function NavigationDrawer({ open, pathname, onClose }) {
   return (
     <>
       <Animated.View
-        pointerEvents={open ? 'auto' : 'none'}
-        style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 55, backgroundColor: 'black' }, backdropAnimatedStyle]}
-      >
-        <Pressable className="flex-1" onPress={onClose} />
-      </Animated.View>
-
-      <Animated.View
         style={[
           { position: 'absolute', top: 0, bottom: 0, left: 0, width: DRAWER_WIDTH, zIndex: 60 },
           drawerAnimatedStyle,
         ]}
       >
-        <View className="flex-1 border-r border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-surface">
-          <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
-            <View className="flex-row items-center border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-              <PaceronBrand size={18} />
-            </View>
-
+        <View className="flex-1 bg-white dark:bg-surface">
+          <SafeAreaView className="flex-1 pt-[60px]" edges={['top', 'bottom']}>
             {user ? (
               <Pressable
                 className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 active:opacity-70 dark:border-slate-800"
