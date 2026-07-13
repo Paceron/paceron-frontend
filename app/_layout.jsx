@@ -9,6 +9,7 @@ import Toast from 'react-native-toast-message';
 import { AppProviders } from '../providers/app-providers.jsx';
 import { toastConfig } from '../components/feedback/paceron-toast.jsx';
 import { useThemeMode } from '../providers/theme-provider.jsx';
+import { RoleSwitchOverlay } from '../components/shell/role-switch-overlay.jsx';
 
 // Fondo del Stack navigator en sí (no del contenido de cada screen). Sin
 // esto, el navigator usa su fondo por defecto (claro) durante la animación
@@ -35,6 +36,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AppProviders>
         <StackNavigator />
+        <RoleSwitchOverlay />
         <Toast config={toastConfig} topOffset={56} />
       </AppProviders>
     </SafeAreaProvider>

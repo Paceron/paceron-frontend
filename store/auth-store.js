@@ -20,6 +20,12 @@ export const useAuthStore = create((set, get) => ({
   refreshToken: null,
   expiresAt: null,
   hydrated: false,
+  activeRole: 'runner',
+  trainerActivated: false,
+  // Dato puro de UI (no persiste, no dispara nada por sí solo): { role }
+  // cuando switchRole() acaba de cambiar el rol activo, null en reposo. El
+  // componente que lo consume decide qué hacer (animar, navegar).
+  roleSwitchAnimating: null,
 
   hydrate: async () => {
     try {
@@ -31,6 +37,8 @@ export const useAuthStore = create((set, get) => ({
           token: data.token ?? null,
           refreshToken: data.refreshToken ?? null,
           expiresAt: data.expiresAt ?? null,
+          activeRole: data.activeRole ?? 'runner',
+          trainerActivated: data.trainerActivated ?? false,
         });
       }
     } catch {
@@ -49,7 +57,8 @@ export const useAuthStore = create((set, get) => ({
         const expiresAt = auth.expires_in ? Date.now() + auth.expires_in * 1000 : null;
         const session = { user, token, refreshToken: auth.refresh_token ?? null, expiresAt };
         set(session);
-        await persist(session);
+        const { activeRole, trainerActivated } = get();
+        await persist({ ...session, activeRole, trainerActivated });
         return { success: true };
       }
       return { success: false, error: 'Credenciales incorrectas.' };
@@ -70,13 +79,13 @@ export const useAuthStore = create((set, get) => ({
   // Refresca los datos del usuario desde el backend. Best-effort: si falla
   // (ej. CORS en web, offline), conserva el user actual sin romper.
   refreshUser: async () => {
-    const { user, token, refreshToken, expiresAt } = get();
+    const { user, token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
     if (!user?.userId) return;
     try {
       const fresh = toUserModel(await getUserService({ id: user.userId }));
       if (fresh) {
         set({ user: fresh });
-        await persist({ user: fresh, token, refreshToken, expiresAt });
+        await persist({ user: fresh, token, refreshToken, expiresAt, activeRole, trainerActivated });
       }
     } catch {
       // best-effort — se mantiene el user actual
@@ -88,9 +97,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       const updated = toUserModel(await updateUserService(id, payload, currentPassword));
       if (updated) {
-        const { token, refreshToken, expiresAt } = get();
+        const { token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
         set({ user: updated });
-        await persist({ user: updated, token, refreshToken, expiresAt });
+        await persist({ user: updated, token, refreshToken, expiresAt, activeRole, trainerActivated });
       }
       return { success: true };
     } catch (error) {
@@ -111,8 +120,27 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Local-only por ahora: el backend no tiene roles todavía. Estructurado
+  // para que reemplazar esto por datos reales del backend no cambie la
+  // interfaz que consumen los componentes.
+  activateTrainerProfile: async () => {
+    set({ trainerActivated: true });
+    const { user, token, refreshToken, expiresAt, activeRole } = get();
+    await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated: true });
+  },
+
+  switchRole: async () => {
+    const { trainerActivated, activeRole, user, token, refreshToken, expiresAt } = get();
+    if (!trainerActivated) return;
+    const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
+    set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole } });
+    await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, trainerActivated });
+  },
+
+  clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
+
   logout: async () => {
-    set({ user: null, token: null, refreshToken: null, expiresAt: null });
+    set({ user: null, token: null, refreshToken: null, expiresAt: null, activeRole: 'runner', trainerActivated: false });
     await removeItem(STORAGE_KEY);
   },
 }));
