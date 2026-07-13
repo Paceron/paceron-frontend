@@ -48,10 +48,21 @@ export function ThemeToggle() {
       onPress={toggleThemeMode}
       style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT, padding: 2 }}
     >
+      {/* Todo en style, nada en className: confirmado con getComputedStyle
+          que este Animated.View no aplicaba NINGUNA clase de NativeWind
+          (ni layout ni backgroundColor) — el className generaba un valor
+          en el DOM pero sin ningún efecto visual real. No es selectivo
+          por tipo de propiedad, es el className entero el que no calza. */}
       <Animated.View
-        className="bg-white dark:bg-slate-950"
         style={[
-          { width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: THUMB_SIZE / 2, alignItems: 'center', justifyContent: 'center' },
+          {
+            width: THUMB_SIZE,
+            height: THUMB_SIZE,
+            borderRadius: THUMB_SIZE / 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: isDark ? '#020617' : '#ffffff',
+          },
           THUMB_SHADOW,
           thumbStyle,
         ]}
