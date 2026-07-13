@@ -22,6 +22,10 @@ export const useAuthStore = create((set, get) => ({
   hydrated: false,
   activeRole: 'runner',
   trainerActivated: false,
+  // Dato puro de UI (no persiste, no dispara nada por sí solo): { role }
+  // cuando switchRole() acaba de cambiar el rol activo, null en reposo. El
+  // componente que lo consume decide qué hacer (animar, navegar).
+  roleSwitchAnimating: null,
 
   hydrate: async () => {
     try {
@@ -129,9 +133,11 @@ export const useAuthStore = create((set, get) => ({
     const { trainerActivated, activeRole, user, token, refreshToken, expiresAt } = get();
     if (!trainerActivated) return;
     const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
-    set({ activeRole: nextRole });
+    set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole } });
     await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, trainerActivated });
   },
+
+  clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
 
   logout: async () => {
     set({ user: null, token: null, refreshToken: null, expiresAt: null, activeRole: 'runner', trainerActivated: false });
