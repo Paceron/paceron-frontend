@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
@@ -61,29 +63,111 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
   );
 }
 
+// DD/MM/YYYY (formato interno que ya consumen validators/normalizers) <-> Date.
+function parseDDMMYYYY(value) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value || '');
+  if (!m) return new Date();
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+}
+
+function formatDDMMYYYY(date) {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${date.getFullYear()}`;
+}
+
 export function DateField({ label, value, onChange, onBlur, error, touched, disabled }) {
+  const colors = useThemeColors();
+  const { themeMode } = useThemeMode();
+  const [pickerVisible, setPickerVisible] = useState(false);
+
   const borderClass = error
     ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
     : touched
     ? 'border-primary bg-white dark:bg-slate-900'
     : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
 
+  if (isWeb) {
+    return (
+      <View className="mb-5">
+        <Text className={FIELD_LABEL}>{label}</Text>
+        <View className="flex-row items-center gap-2">
+          <View className="flex-1 relative">
+            <input
+              type="date"
+              className={`${DATE_BASE} ${borderClass}`}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onBlur={onBlur}
+              disabled={disabled}
+            />
+          </View>
+        </View>
+        <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+      </View>
+    );
+  }
+
+  // Android: diálogo nativo del sistema, se abre/cierra de forma imperativa.
+  // iOS: calendario inline dentro de un modal propio, con botón "Listo".
+  const handleChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setPickerVisible(false);
+      onBlur?.();
+    }
+    if (selectedDate) onChange(formatDDMMYYYY(selectedDate));
+  };
+
+  const handleClose = () => {
+    setPickerVisible(false);
+    onBlur?.();
+  };
+
   return (
     <View className="mb-5">
       <Text className={FIELD_LABEL}>{label}</Text>
-      <View className="flex-row items-center gap-2">
-        <View className="flex-1 relative">
-          <input
-            type="date"
-            className={`${DATE_BASE} ${borderClass}`}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onBlur={onBlur}
-            disabled={disabled}
-          />
-        </View>
-      </View>
+      <Pressable
+        className={`h-12 flex-row items-center rounded-xl border px-4 ${borderClass}`}
+        disabled={disabled}
+        onPress={() => setPickerVisible(true)}
+      >
+        <Text className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+          {value || 'DD/MM/AAAA'}
+        </Text>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar" size={20} />
+      </Pressable>
       <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+
+      {pickerVisible && Platform.OS === 'android' && (
+        <DateTimePicker
+          accentColor="#8cc63e"
+          display="default"
+          maximumDate={new Date()}
+          mode="date"
+          onChange={handleChange}
+          value={parseDDMMYYYY(value)}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <Modal animationType="fade" onRequestClose={handleClose} transparent visible={pickerVisible}>
+          <Pressable className="flex-1 justify-end bg-black/50" onPress={handleClose}>
+            <Pressable className="rounded-t-2xl bg-white p-4 dark:bg-surface-2" onPress={() => {}}>
+              <DateTimePicker
+                display="inline"
+                maximumDate={new Date()}
+                mode="date"
+                onChange={handleChange}
+                themeVariant={themeMode}
+                value={parseDDMMYYYY(value)}
+              />
+              <Pressable className="mt-2 h-11 items-center justify-center rounded-full bg-primary active:opacity-80" onPress={handleClose}>
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Listo</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
     </View>
   );
 }

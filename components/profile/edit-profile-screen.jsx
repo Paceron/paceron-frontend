@@ -224,27 +224,14 @@ function EditProfileForm({ user }) {
 
         <Row>
           <Col flex={1.3}>
-            {isWeb ? (
-              <DateField
-                error={typeof dateError === 'string' ? dateError : null}
-                label="Fecha de nacimiento *"
-                onBlur={() => touch('birthDate')}
-                onChange={setBirthDate}
-                touched={touched.birthDate}
-                value={birthDate}
-              />
-            ) : (
-              <InputField
-                autoCapitalize="none"
-                error={typeof dateError === 'string' ? dateError : null}
-                label="Fecha de nacimiento *"
-                onBlur={() => touch('birthDate')}
-                onChange={setBirthDate}
-                placeholder="DD/MM/AAAA"
-                touched={touched.birthDate}
-                value={birthDate}
-              />
-            )}
+            <DateField
+              error={typeof dateError === 'string' ? dateError : null}
+              label="Fecha de nacimiento *"
+              onBlur={() => touch('birthDate')}
+              onChange={setBirthDate}
+              touched={touched.birthDate}
+              value={birthDate}
+            />
           </Col>
           <Col>
             <InputField

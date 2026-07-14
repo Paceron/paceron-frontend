@@ -48,6 +48,7 @@ module.exports = {
       ['expo-location', { locationAlwaysAndWhenInUsePermission: 'Allow Paceron to use your location for tracking runs.' }],
       'expo-font',
       'expo-secure-store',
+      '@react-native-community/datetimepicker',
     ],
     extra: {
       eas: {
