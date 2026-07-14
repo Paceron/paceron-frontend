@@ -149,20 +149,19 @@ function EditProfileForm({ user }) {
       extraScrollHeight={24}
     >
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
-        <Pressable
-          className="mb-6 flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-surface"
-          onPress={() => router.replace('/profile')}
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
-          <Text className="text-sm text-slate-600 dark:text-slate-300">Volver</Text>
-        </Pressable>
-
-        <Text
-          style={{ fontFamily: 'Orbitron_700Bold' }}
-          className="mb-8 text-2xl text-slate-900 dark:text-white"
-        >
-          Editar datos
-        </Text>
+        <View className="mb-8 flex-row items-center gap-2">
+          <Pressable
+            className="flex-row items-center gap-1.5 py-1 pr-1 active:opacity-70"
+            onPress={() => router.replace('/profile')}
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+            <Text className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
+          </Pressable>
+          <Text className="text-sm text-slate-400 dark:text-slate-600">/</Text>
+          <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
+            Editar datos
+          </Text>
+        </View>
 
         <SectionCard icon="account-details" title="Datos personales">
         <Row>

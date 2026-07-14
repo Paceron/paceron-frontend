@@ -80,14 +80,10 @@ export function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [phoneContact, setPhoneContact] = useState('');
 
-  const [collapsedSections, setCollapsedSections] = useState({
-    personal: false,
-    address: false,
-    password: false,
-  });
+  const [openSection, setOpenSection] = useState('personal');
 
   const toggleSection = (id) => {
-    setCollapsedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpenSection((prev) => (prev === id ? null : id));
   };
 
   const {
@@ -238,7 +234,7 @@ export function RegisterScreen() {
                 Completá tus datos para registrarte en Paceron.
               </Text>
 
-              <SectionCard collapsible collapsed={collapsedSections.personal} icon="account-details" onToggle={() => toggleSection('personal')} title="Datos personales">
+              <SectionCard collapsible collapsed={openSection !== 'personal'} icon="account-details" onToggle={() => toggleSection('personal')} title="Datos personales">
                 <Row>
                   <Col>
                     <InputField
@@ -361,7 +357,7 @@ export function RegisterScreen() {
                 </Row>
               </SectionCard>
 
-              <SectionCard collapsible collapsed={collapsedSections.address} icon="map-marker" onToggle={() => toggleSection('address')} title="Dirección">
+              <SectionCard collapsible collapsed={openSection !== 'address'} icon="map-marker" onToggle={() => toggleSection('address')} title="Dirección">
                 <Row>
                   <Col>
                     {isWeb ? (
@@ -453,7 +449,7 @@ export function RegisterScreen() {
                 </Row>
               </SectionCard>
 
-              <SectionCard collapsible collapsed={collapsedSections.password} icon="lock-outline" onToggle={() => toggleSection('password')} title="Contraseña">
+              <SectionCard collapsible collapsed={openSection !== 'password'} icon="lock-outline" onToggle={() => toggleSection('password')} title="Contraseña">
                 <Row>
                   <Col>
                     <InputField
