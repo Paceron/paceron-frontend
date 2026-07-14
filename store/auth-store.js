@@ -25,10 +25,10 @@ export const useAuthStore = create((set, get) => ({
   // Datos de entrenador, local-only (el backend todavía no los tiene).
   trainerAlias: '',
   trainerCbu: '',
-  // Dato puro de UI (no persiste, no dispara nada por sí solo): { role,
-  // redirectHome } cuando switchRole() acaba de cambiar el rol activo, null
-  // en reposo. El componente que lo consume decide qué hacer (animar,
-  // navegar solo si redirectHome !== false).
+  // Dato puro de UI (no persiste, no dispara nada por sí solo): { role }
+  // cuando switchRole() acaba de cambiar el rol activo, null en reposo. El
+  // componente que lo consume decide qué hacer (animar, navegar según la
+  // ruta actual).
   roleSwitchAnimating: null,
 
   hydrate: async () => {
@@ -135,11 +135,11 @@ export const useAuthStore = create((set, get) => ({
     await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated: true, trainerAlias, trainerCbu });
   },
 
-  switchRole: async ({ redirectHome = true } = {}) => {
+  switchRole: async () => {
     const { trainerActivated, activeRole, user, token, refreshToken, expiresAt, trainerAlias, trainerCbu } = get();
     if (!trainerActivated) return;
     const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
-    set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole, redirectHome } });
+    set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole } });
     await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, trainerActivated, trainerAlias, trainerCbu });
   },
 

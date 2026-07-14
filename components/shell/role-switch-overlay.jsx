@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 
@@ -19,6 +19,7 @@ const FADE_MS = 250;
 // sin importar dónde estaba el usuario al cambiar de rol.
 export function RoleSwitchOverlay() {
   const router = useRouter();
+  const pathname = usePathname();
   const animating = useAuthStore((s) => s.roleSwitchAnimating);
   const clearRoleSwitchAnimation = useAuthStore((s) => s.clearRoleSwitchAnimation);
   const [content, setContent] = useState(null);
@@ -29,7 +30,7 @@ export function RoleSwitchOverlay() {
     if (!animating) return;
 
     setContent(CONTENT_BY_ROLE[animating.role]);
-    if (animating.redirectHome !== false) router.replace('/');
+    if (pathname !== '/profile') router.replace('/');
 
     opacity.value = withTiming(1, { duration: FADE_MS, easing: Easing.out(Easing.cubic) });
 
