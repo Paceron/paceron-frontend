@@ -9,6 +9,7 @@ import { isWeb } from '../../utils/platform.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { validateBirthDate } from '../../utils/date-validators.js';
 import { validateDNI } from '../../utils/dni-validators.js';
+import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
@@ -41,7 +42,6 @@ function EditProfileForm({ user }) {
   const colors = useThemeColors();
   const trainerActivated = useAuthStore((s) => s.trainerActivated);
   const storedTrainerAlias = useAuthStore((s) => s.trainerAlias);
-  const storedTrainerCbu = useAuthStore((s) => s.trainerCbu);
 
   const [firstName, setFirstName] = useState(user.name ?? '');
   const [lastName, setLastName] = useState(user.surname ?? '');
@@ -51,7 +51,6 @@ function EditProfileForm({ user }) {
   const [phone, setPhone] = useState(user.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(user.phoneContact ?? '');
   const [trainerAlias, setTrainerAlias] = useState(storedTrainerAlias ?? '');
-  const [trainerCbu, setTrainerCbu] = useState(storedTrainerCbu ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -80,6 +79,7 @@ function EditProfileForm({ user }) {
   const currentPasswordError = emailChanged && touched.currentPassword && !currentPassword
     ? 'Ingresá tu contraseña actual para cambiar el email.'
     : null;
+  const trainerAliasError = touched.trainerAlias && validateTrainerAlias(trainerAlias);
 
   const personalOk =
     firstName.trim().length > 0 &&
@@ -88,7 +88,8 @@ function EditProfileForm({ user }) {
     !validateBirthDate(birthDate) &&
     validateEmailFormat(email) &&
     !isDisposableEmail(email);
-  const canSubmit = personalOk && (!emailChanged || currentPassword.length > 0);
+  const trainerOk = !trainerActivated || !validateTrainerAlias(trainerAlias);
+  const canSubmit = personalOk && trainerOk && (!emailChanged || currentPassword.length > 0);
 
   const handleSubmit = async () => {
     if (loading) return;
@@ -98,8 +99,10 @@ function EditProfileForm({ user }) {
     touch('birthDate');
     touch('email');
     if (emailChanged) touch('currentPassword');
+    if (trainerActivated) touch('trainerAlias');
 
     if (!personalOk) return;
+    if (!trainerOk) return;
     if (emailChanged && !currentPassword) return;
 
     setLoading(true);
@@ -124,7 +127,7 @@ function EditProfileForm({ user }) {
         emailChanged ? currentPassword : undefined,
       );
       if (trainerActivated) {
-        await useAuthStore.getState().updateTrainerData({ trainerAlias, trainerCbu });
+        await useAuthStore.getState().updateTrainerData({ trainerAlias });
       }
       if (result.success) {
         Toast.show({ type: 'success', text1: 'Datos actualizados', text2: 'Tu perfil se guardó correctamente.' });
@@ -323,25 +326,16 @@ function EditProfileForm({ user }) {
 
         {trainerActivated && (
           <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
-            <Row>
-              <Col>
-                <InputField
-                  label="Alias de pagos"
-                  onChange={setTrainerAlias}
-                  placeholder="Tu alias de pagos"
-                  value={trainerAlias}
-                />
-              </Col>
-              <Col>
-                <InputField
-                  autoCapitalize="none"
-                  label="CBU/CVU"
-                  onChange={setTrainerCbu}
-                  placeholder="Tu CBU o CVU"
-                  value={trainerCbu}
-                />
-              </Col>
-            </Row>
+            <InputField
+              autoCapitalize="none"
+              error={trainerAliasError}
+              label="Alias de pagos *"
+              onBlur={() => touch('trainerAlias')}
+              onChange={setTrainerAlias}
+              placeholder="Tu alias de pagos"
+              touched={touched.trainerAlias}
+              value={trainerAlias}
+            />
           </SectionCard>
         )}
 

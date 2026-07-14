@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Pressable, Text } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
-import { ActivateTrainerModal } from './activate-trainer-modal.jsx';
 
 const COLOR_BY_KIND = {
   trainer: { bg: 'bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', icon: '#f59e0b' },
@@ -21,11 +21,10 @@ function getRoleAction(trainerActivated, activeRole) {
 }
 
 export function RoleManagementSection({ onClose, allowActivate = true }) {
+  const router = useRouter();
   const trainerActivated = useAuthStore((s) => s.trainerActivated);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const activateTrainerProfile = useAuthStore((s) => s.activateTrainerProfile);
   const switchRole = useAuthStore((s) => s.switchRole);
-  const [modalVisible, setModalVisible] = useState(false);
 
   if (!allowActivate && !trainerActivated) return null;
 
@@ -53,31 +52,22 @@ export function RoleManagementSection({ onClose, allowActivate = true }) {
 
   const handlePress = () => {
     if (!trainerActivated) {
-      setModalVisible(true);
+      onClose?.();
+      router.push('/profile/activate-trainer');
       return;
     }
     switchRole();
     onClose?.();
   };
 
-  const handleConfirmActivate = async () => {
-    await activateTrainerProfile();
-    setModalVisible(false);
-    onClose?.();
-  };
-
   return (
-    <>
-      <Pressable className={`m-2 items-center justify-center rounded-lg px-2 py-2.5 ${colors.bg}`} onPress={handlePress}>
-        <Animated.View style={animatedStyle}>
-          <MaterialCommunityIcons color={colors.icon} name={action.icon} size={18} />
-          <Text className={`text-sm font-semibold ${colors.text}`} numberOfLines={1} adjustsFontSizeToFit>
-            {action.label}
-          </Text>
-        </Animated.View>
-      </Pressable>
-
-      <ActivateTrainerModal onCancel={() => setModalVisible(false)} onConfirm={handleConfirmActivate} visible={modalVisible} />
-    </>
+    <Pressable className={`m-2 items-center justify-center rounded-lg px-2 py-2.5 ${colors.bg}`} onPress={handlePress}>
+      <Animated.View style={animatedStyle}>
+        <MaterialCommunityIcons color={colors.icon} name={action.icon} size={18} />
+        <Text className={`text-sm font-semibold ${colors.text}`} numberOfLines={1} adjustsFontSizeToFit>
+          {action.label}
+        </Text>
+      </Animated.View>
+    </Pressable>
   );
 }
