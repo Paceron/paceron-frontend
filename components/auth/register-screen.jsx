@@ -211,7 +211,7 @@ export function RegisterScreen() {
         extraScrollHeight={24}
       >
         <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
-            <View className={`w-full ${isWeb ? 'max-w-4xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface`}>
+            <View className={`w-full ${isWeb ? 'max-w-4xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white py-8 px-6 shadow-lg dark:border-slate-800 dark:bg-surface`}>
               <Pressable
                 className="-ml-2 mb-4 flex-row items-center gap-1.5 self-start rounded-lg px-2 py-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
                 onPress={handleBackNav}
