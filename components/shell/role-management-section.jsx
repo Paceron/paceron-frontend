@@ -20,12 +20,14 @@ function getRoleAction(trainerActivated, activeRole) {
   return { label: 'Cambiar a Corredor', icon: 'run-fast', kind: 'runner' };
 }
 
-export function RoleManagementSection({ onClose, redirectOnSwitch = true }) {
+export function RoleManagementSection({ onClose, allowActivate = true }) {
   const trainerActivated = useAuthStore((s) => s.trainerActivated);
   const activeRole = useAuthStore((s) => s.activeRole);
   const activateTrainerProfile = useAuthStore((s) => s.activateTrainerProfile);
   const switchRole = useAuthStore((s) => s.switchRole);
   const [modalVisible, setModalVisible] = useState(false);
+
+  if (!allowActivate && !trainerActivated) return null;
 
   const action = getRoleAction(trainerActivated, activeRole);
   const colors = COLOR_BY_KIND[action.kind];
@@ -54,7 +56,7 @@ export function RoleManagementSection({ onClose, redirectOnSwitch = true }) {
       setModalVisible(true);
       return;
     }
-    switchRole({ redirectHome: redirectOnSwitch });
+    switchRole();
     onClose?.();
   };
 

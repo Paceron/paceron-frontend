@@ -111,7 +111,7 @@ function RolesSection({ activeRole, trainerActivated }) {
           <RoleBadge active={activeRole === 'runner'} role="runner" size="md" />
           {trainerActivated && <RoleBadge active={activeRole === 'trainer'} role="trainer" size="md" />}
         </View>
-        <RoleManagementSection redirectOnSwitch={false} />
+        <RoleManagementSection />
       </View>
     </Card>
   );
