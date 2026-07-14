@@ -93,7 +93,7 @@ Lo que sí conviene mantener: cuando un par claro/oscuro se repite en más de un
 ## Backend
 
 - Repo separado (Go/Gin), no vive en este working directory, lo mantiene otra persona del equipo.
-- URL configurable vía `EXPO_PUBLIC_API_URL` (ver `config/env.js`) — sin esa var, cae al backend remoto en Render (`https://paceron-backend.onrender.com/api/v1`) por default. Para apuntar a un backend local: crear `.env` en la raíz con `EXPO_PUBLIC_API_URL=http://localhost:<puerto>/api/v1` y **reiniciar** el dev server (Expo inyecta `EXPO_PUBLIC_*` al bundlear, no es hot-reloadable).
+- URL configurable vía `EXPO_PUBLIC_API_URL` (ver `config/env.js`) — sin esa var, cae al backend remoto en Render (`https://paceron-backend.onrender.com/api/v1`) por default. Para apuntar a un backend local: copiar `.env.example` a `.env`, ajustar `EXPO_PUBLIC_API_URL=http://localhost:<puerto>/api/v1`, y **reiniciar** el dev server (Expo inyecta `EXPO_PUBLIC_*` al bundlear, no es hot-reloadable).
 - Render (plan free) tiene cold-start de ~20-25s en la primera request tras inactividad — un "backend caído" suele ser esto, no un error real.
 - El sistema de roles (corredor/entrenador) **no está implementado en el backend todavía** — todo lo relacionado (activación, alias de pago, switch de rol) es 100% local (Zustand + storage), estructurado para poder reemplazarse por datos reales sin cambiar la interfaz que consumen los componentes. Ver `store/auth-store.js`.
 
