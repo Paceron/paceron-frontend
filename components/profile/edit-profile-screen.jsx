@@ -13,19 +13,12 @@ import { toUpdatePayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { Row, Col, InputField, DateField, SelectField, PickerField } from '../forms/fields.jsx';
+import { SectionCard } from '../forms/section-card.jsx';
 
 // DD/MM/YYYY -> YYYY-MM-DD para el <input type="date"> de web.
 function toDateInput(value) {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value || '');
   return m ? `${m[3]}-${m[2]}-${m[1]}` : value || '';
-}
-
-function SectionTitle({ children }) {
-  return (
-    <Text className="mb-4 mt-2 border-b border-slate-100 pb-2 text-lg font-bold text-slate-900 dark:border-slate-800 dark:text-white">
-      {children}
-    </Text>
-  );
 }
 
 // Guard: TabsLayout ya asegura que la sesión esté hidratada antes de montar
@@ -171,7 +164,7 @@ function EditProfileForm({ user }) {
           Editar datos
         </Text>
 
-        <SectionTitle>Datos personales</SectionTitle>
+        <SectionCard icon="account-details" title="Datos personales">
         <Row>
           <Col>
             <InputField
@@ -291,8 +284,9 @@ function EditProfileForm({ user }) {
             />
           </Col>
         </Row>
+        </SectionCard>
 
-        <SectionTitle>Dirección</SectionTitle>
+        <SectionCard icon="map-marker" title="Dirección">
         <Row>
           <Col>
             {isWeb ? (
@@ -339,10 +333,10 @@ function EditProfileForm({ user }) {
             />
           </Col>
         </Row>
+        </SectionCard>
 
         {trainerActivated && (
-          <>
-            <SectionTitle>Datos de entrenador</SectionTitle>
+          <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
             <Row>
               <Col>
                 <InputField
@@ -362,7 +356,7 @@ function EditProfileForm({ user }) {
                 />
               </Col>
             </Row>
-          </>
+          </SectionCard>
         )}
 
         <Pressable

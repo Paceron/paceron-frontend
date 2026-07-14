@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -29,6 +29,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { Row, Col, SelectField, DateField, InputField, PickerField } from '../forms/fields.jsx';
+import { SectionCard } from '../forms/section-card.jsx';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 
 function StrengthBar({ password }) {
@@ -63,34 +64,6 @@ function RequirementRow({ met, label }) {
       <Text className={`text-xs ${met ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>
         {label}
       </Text>
-    </View>
-  );
-}
-
-function SectionCollapsible({ title, children, collapsed, onToggle }) {
-  const colors = useThemeColors();
-  const rotateAnim = useSharedValue(collapsed ? 1 : 0);
-
-  useEffect(() => {
-    rotateAnim.value = withTiming(collapsed ? 1 : 0, { duration: 200 });
-  }, [collapsed]);
-
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${interpolate(rotateAnim.value, [0, 1], [0, -90])}deg` }],
-  }));
-
-  return (
-    <View className="mb-6">
-      <Pressable
-        className="flex-row items-center gap-2 border-b border-slate-100 pb-2 dark:border-slate-800"
-        onPress={onToggle}
-      >
-        <Animated.View style={chevronStyle}>
-          <MaterialCommunityIcons name="chevron-down" size={18} color={colors.onSurfaceVariant} />
-        </Animated.View>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">{title}</Text>
-      </Pressable>
-      {!collapsed && <View className="mt-6">{children}</View>}
     </View>
   );
 }
@@ -265,7 +238,7 @@ export function RegisterScreen() {
                 Completá tus datos para registrarte en Paceron.
               </Text>
 
-              <SectionCollapsible title="Datos personales" collapsed={collapsedSections.personal} onToggle={() => toggleSection('personal')}>
+              <SectionCard collapsible collapsed={collapsedSections.personal} icon="account-details" onToggle={() => toggleSection('personal')} title="Datos personales">
                 <Row>
                   <Col>
                     <InputField
@@ -386,9 +359,9 @@ export function RegisterScreen() {
                     />
                   </Col>
                 </Row>
-              </SectionCollapsible>
+              </SectionCard>
 
-              <SectionCollapsible title="Dirección" collapsed={collapsedSections.address} onToggle={() => toggleSection('address')}>
+              <SectionCard collapsible collapsed={collapsedSections.address} icon="map-marker" onToggle={() => toggleSection('address')} title="Dirección">
                 <Row>
                   <Col>
                     {isWeb ? (
@@ -478,9 +451,9 @@ export function RegisterScreen() {
                     />
                   </Col>
                 </Row>
-              </SectionCollapsible>
+              </SectionCard>
 
-              <SectionCollapsible title="Contraseña" collapsed={collapsedSections.password} onToggle={() => toggleSection('password')}>
+              <SectionCard collapsible collapsed={collapsedSections.password} icon="lock-outline" onToggle={() => toggleSection('password')} title="Contraseña">
                 <Row>
                   <Col>
                     <InputField
@@ -522,7 +495,7 @@ export function RegisterScreen() {
                 </View>
 
                 <StrengthBar password={password} />
-              </SectionCollapsible>
+              </SectionCard>
 
               <Pressable
                 className={`mt-8 h-12 items-center justify-center rounded-full ${
