@@ -113,18 +113,13 @@ function RolesSection({ activeRole, trainerActivated }) {
   );
 }
 
-function TrainerDataSection({ trainerAlias, trainerCbu }) {
+function TrainerDataSection({ trainerAlias }) {
   return (
-    <View className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-950/20">
-      <View className="mb-4 flex-row items-center gap-2">
-        <MaterialCommunityIcons color="#f59e0b" name="whistle" size={18} />
-        <Text className="text-base font-bold text-amber-700 dark:text-amber-400">Datos de entrenador</Text>
-      </View>
+    <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
       <FieldGrid>
         <Field label="Alias de pagos" value={display(trainerAlias)} />
-        <Field label="CBU/CVU" value={display(trainerCbu)} />
       </FieldGrid>
-    </View>
+    </SectionCard>
   );
 }
 
@@ -158,7 +153,6 @@ export function ProfileScreen() {
   const activeRole = useAuthStore((s) => s.activeRole);
   const trainerActivated = useAuthStore((s) => s.trainerActivated);
   const trainerAlias = useAuthStore((s) => s.trainerAlias);
-  const trainerCbu = useAuthStore((s) => s.trainerCbu);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -206,7 +200,7 @@ export function ProfileScreen() {
 
         <RolesSection activeRole={activeRole} trainerActivated={trainerActivated} />
 
-        {trainerActivated && <TrainerDataSection trainerAlias={trainerAlias} trainerCbu={trainerCbu} />}
+        {trainerActivated && <TrainerDataSection trainerAlias={trainerAlias} />}
 
         <Card title="Datos personales" icon="account-details">
           <Field label="Nombre" value={display(user.name)} />
