@@ -34,7 +34,7 @@ export function ActivateTrainerScreen() {
 
   return (
     <KeyboardAwareScrollView
-      className="flex-1 bg-slate-50 dark:bg-ink"
+      className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
