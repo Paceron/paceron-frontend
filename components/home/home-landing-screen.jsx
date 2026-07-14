@@ -8,7 +8,7 @@ import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './land
 function FeatureCard({ icon, title, description, colors }) {
   return (
     <View className="flex-1 min-w-[280px] rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-[#1d2125]">
-      <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
+      <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15">
         <MaterialCommunityIcons color={colors.primary} name={icon} size={24} />
       </View>
       <Text className="mb-2 text-lg font-bold text-slate-900 dark:text-white">{title}</Text>
@@ -22,10 +22,10 @@ export function HomeLandingScreen() {
   const colors = useThemeColors();
 
   return (
-    <ScrollView className="flex-1 bg-slate-50 dark:bg-[#0d1013]">
+    <ScrollView className="flex-1 bg-paper dark:bg-[#0d1013]">
       <View className="mx-auto w-full max-w-5xl px-8 py-20">
         <View className="mb-16 items-center">
-          <View className="mb-6 flex-row items-center gap-2 self-center rounded-full bg-primary/20 px-4 py-2">
+          <View className="mb-6 flex-row items-center gap-2 self-center rounded-full bg-primary-tint dark:bg-primary/20 px-4 py-2">
             <MaterialCommunityIcons color={colors.primary} name="brain" size={16} />
             <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
               {HERO_CONTENT.badge}
@@ -67,7 +67,7 @@ export function HomeLandingScreen() {
         <View className="mb-16 overflow-hidden rounded-2xl border border-primary/20 bg-white p-12 shadow-lg dark:bg-[#1d2125]">
           <View className="flex-row items-center justify-between">
             <View className="flex-1 pr-12">
-              <View className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary/20 px-4 py-2">
+              <View className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-4 py-2">
                 <MaterialCommunityIcons color={colors.primary} name="creation" size={16} />
                 <Text className="text-xs font-semibold uppercase tracking-wider text-primary">{AI_PANEL_CONTENT.badge}</Text>
               </View>
@@ -87,7 +87,7 @@ export function HomeLandingScreen() {
         <View className="mb-16 flex-row gap-6">
           {AUDIENCE_CARDS.map((card) => (
             <View key={card.icon} className="flex-1 rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-[#1d2125]">
-              <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
+              <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15">
                 <MaterialCommunityIcons color={colors.primary} name={card.icon} size={24} />
               </View>
               <Text className="mb-2 text-lg font-bold text-slate-900 dark:text-white">{card.title}</Text>
