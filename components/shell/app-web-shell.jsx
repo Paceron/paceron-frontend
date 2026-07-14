@@ -132,7 +132,7 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
                   key={route.name}
                   className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 ${
                     isActive
-                      ? 'bg-primary/10'
+                      ? 'bg-primary-tint-subtle dark:bg-primary/10'
                       : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
                   }`}
                   onPress={() => onTabPress?.(route.href)}
@@ -180,7 +180,7 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
             }`}
             onPress={handleUserPress}
           >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint-subtle dark:bg-primary/10">
               <MaterialCommunityIcons
                 color={colors.primary}
                 name="account-circle"
@@ -238,7 +238,7 @@ export function AppWebShell({ children, pathname }) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-ink" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']}>
       <View className="flex-1">
         <TopBar
           activeRole={activeRole}

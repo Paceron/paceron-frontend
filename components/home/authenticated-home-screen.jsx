@@ -12,8 +12,8 @@ export function AuthenticatedHomeScreen() {
   const firstName = user?.name || '';
 
   return (
-    <View className="flex-1 items-center justify-center bg-slate-50 px-6 dark:bg-ink">
-      <View className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+    <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink">
+      <View className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
         <MaterialCommunityIcons color={colors.primary} name="run-fast" size={32} />
       </View>
       <Text className="mb-2 text-center text-xl font-bold text-slate-900 dark:text-white">

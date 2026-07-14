@@ -10,10 +10,10 @@ export default function NotFoundScreen() {
   const colors = useThemeColors();
 
   return (
-    <SafeAreaView className="flex-1 items-center justify-center bg-slate-50 px-6 dark:bg-ink" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']}>
       <PaceronBrand size={16} style={{ marginBottom: 24 }} />
 
-      <View className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+      <View className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
         <MaterialCommunityIcons color={colors.primary} name="map-marker-question-outline" size={32} />
       </View>
 

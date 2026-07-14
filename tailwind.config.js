@@ -10,6 +10,10 @@ module.exports = {
         surface: '#111518',
         'surface-2': '#1d2125',
         'surface-3': '#282d31',
+        paper: '#f3efe4',
+        'primary-tint': '#dcec9e',
+        'primary-tint-subtle': '#eef3dc',
+        'on-primary-tint': '#3c6b12',
       },
       spacing: {
         'container-margin': '1rem',

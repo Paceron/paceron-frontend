@@ -20,7 +20,7 @@ function display(value) {
 }
 
 const STATUS_META = {
-  active: { label: 'Activo', badge: 'bg-primary/15', text: 'text-primary' },
+  active: { label: 'Activo', badge: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
   inactive: { label: 'Inactivo', badge: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-300' },
   pause: { label: 'En pausa', badge: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
   blocked: { label: 'Bloqueado', badge: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
@@ -68,7 +68,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors }) {
   if (isWeb) {
     return (
       <View className="mb-5 flex-row items-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+        <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
           <MaterialCommunityIcons color={colors.primary} name="account" size={36} />
         </View>
         <View className="flex-1">
@@ -86,7 +86,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors }) {
   // Mobile: panel centrado con botón full-width.
   return (
     <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
-      <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary/15">
+      <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
         <MaterialCommunityIcons color={colors.primary} name="account" size={44} />
       </View>
       <Text className="text-center text-lg font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
@@ -187,7 +187,7 @@ export function ProfileScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-slate-50 dark:bg-ink" contentContainerClassName="px-4 py-8">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8">
       <View className={`w-full ${isWeb ? 'max-w-3xl mx-auto' : ''}`}>
         <Text
           style={{ fontFamily: 'Orbitron_700Bold' }}

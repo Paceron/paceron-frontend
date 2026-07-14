@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 
 const STYLE_BY_ROLE = {
-  runner: { bg: 'bg-primary/15', text: 'text-primary', label: 'Corredor' },
+  runner: { bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary', label: 'Corredor' },
   trainer: { bg: 'bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', label: 'Entrenador' },
 };
 

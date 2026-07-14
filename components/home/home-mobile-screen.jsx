@@ -7,7 +7,7 @@ import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './land
 function FeatureItem({ icon, title, description, colors }) {
   return (
     <View className="flex-row gap-4 py-4">
-      <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+      <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15">
         <MaterialCommunityIcons color={colors.primary} name={icon} size={20} />
       </View>
       <View className="flex-1">
@@ -28,7 +28,7 @@ export function HomeMobileScreen() {
       contentContainerClassName="px-gutter pb-16"
     >
       <View className="items-center py-16">
-        <View className="mb-6 flex-row items-center gap-2 rounded-full bg-primary/20 px-3 py-1.5">
+        <View className="mb-6 flex-row items-center gap-2 rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5">
           <MaterialCommunityIcons
             color={colors.primary}
             name="brain"
@@ -86,7 +86,7 @@ export function HomeMobileScreen() {
 
       <View className="py-12">
         <View className="overflow-hidden rounded-2xl border border-primary/20 bg-slate-50 p-8 shadow-lg dark:bg-[#282d31]">
-          <View className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary/20 px-3 py-1.5">
+          <View className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5">
             <MaterialCommunityIcons
               color={colors.primary}
               name="creation"
