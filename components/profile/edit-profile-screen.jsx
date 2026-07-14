@@ -13,19 +13,12 @@ import { toUpdatePayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { Row, Col, InputField, DateField, SelectField, PickerField } from '../forms/fields.jsx';
+import { SectionCard } from '../forms/section-card.jsx';
 
 // DD/MM/YYYY -> YYYY-MM-DD para el <input type="date"> de web.
 function toDateInput(value) {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value || '');
   return m ? `${m[3]}-${m[2]}-${m[1]}` : value || '';
-}
-
-function SectionTitle({ children }) {
-  return (
-    <Text className="mb-4 mt-2 border-b border-slate-100 pb-2 text-lg font-bold text-slate-900 dark:border-slate-800 dark:text-white">
-      {children}
-    </Text>
-  );
 }
 
 // Guard: TabsLayout ya asegura que la sesión esté hidratada antes de montar
@@ -156,22 +149,21 @@ function EditProfileForm({ user }) {
       extraScrollHeight={24}
     >
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
-        <Pressable
-          className="mb-6 flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 active:opacity-70 dark:border-slate-700 dark:bg-surface"
-          onPress={() => router.replace('/profile')}
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
-          <Text className="text-sm text-slate-600 dark:text-slate-300">Volver</Text>
-        </Pressable>
+        <View className="mb-8 flex-row items-center gap-2">
+          <Pressable
+            className="flex-row items-center gap-1.5 py-1 pr-1 active:opacity-70"
+            onPress={() => router.replace('/profile')}
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+            <Text className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
+          </Pressable>
+          <Text className="text-sm text-slate-400 dark:text-slate-600">/</Text>
+          <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
+            Editar datos
+          </Text>
+        </View>
 
-        <Text
-          style={{ fontFamily: 'Orbitron_700Bold' }}
-          className="mb-8 text-2xl text-slate-900 dark:text-white"
-        >
-          Editar datos
-        </Text>
-
-        <SectionTitle>Datos personales</SectionTitle>
+        <SectionCard icon="account-details" title="Datos personales">
         <Row>
           <Col>
             <InputField
@@ -291,8 +283,9 @@ function EditProfileForm({ user }) {
             />
           </Col>
         </Row>
+        </SectionCard>
 
-        <SectionTitle>Dirección</SectionTitle>
+        <SectionCard icon="map-marker" title="Dirección">
         <Row>
           <Col>
             {isWeb ? (
@@ -339,10 +332,10 @@ function EditProfileForm({ user }) {
             />
           </Col>
         </Row>
+        </SectionCard>
 
         {trainerActivated && (
-          <>
-            <SectionTitle>Datos de entrenador</SectionTitle>
+          <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
             <Row>
               <Col>
                 <InputField
@@ -362,7 +355,7 @@ function EditProfileForm({ user }) {
                 />
               </Col>
             </Row>
-          </>
+          </SectionCard>
         )}
 
         <Pressable

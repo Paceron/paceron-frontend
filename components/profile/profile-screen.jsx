@@ -10,6 +10,7 @@ import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { RoleBadge } from '../shell/role-badge.jsx';
 import { RoleManagementSection } from '../shell/role-management-section.jsx';
+import { SectionCard } from '../forms/section-card.jsx';
 
 const DASH = '—';
 
@@ -43,15 +44,10 @@ function Field({ label, value }) {
 }
 
 function Card({ title, icon, children }) {
-  const colors = useThemeColors();
   return (
-    <View className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
-      <View className="mb-4 flex-row items-center gap-2">
-        <MaterialCommunityIcons color={colors.primary} name={icon} size={18} />
-        <Text className="text-base font-bold text-slate-900 dark:text-white">{title}</Text>
-      </View>
+    <SectionCard icon={icon} title={title}>
       <FieldGrid>{children}</FieldGrid>
-    </View>
+    </SectionCard>
   );
 }
 

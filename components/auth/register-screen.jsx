@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -29,6 +29,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { Row, Col, SelectField, DateField, InputField, PickerField } from '../forms/fields.jsx';
+import { SectionCard } from '../forms/section-card.jsx';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 
 function StrengthBar({ password }) {
@@ -67,34 +68,6 @@ function RequirementRow({ met, label }) {
   );
 }
 
-function SectionCollapsible({ title, children, collapsed, onToggle }) {
-  const colors = useThemeColors();
-  const rotateAnim = useSharedValue(collapsed ? 1 : 0);
-
-  useEffect(() => {
-    rotateAnim.value = withTiming(collapsed ? 1 : 0, { duration: 200 });
-  }, [collapsed]);
-
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${interpolate(rotateAnim.value, [0, 1], [0, -90])}deg` }],
-  }));
-
-  return (
-    <View className="mb-6">
-      <Pressable
-        className="flex-row items-center gap-2 border-b border-slate-100 pb-2 dark:border-slate-800"
-        onPress={onToggle}
-      >
-        <Animated.View style={chevronStyle}>
-          <MaterialCommunityIcons name="chevron-down" size={18} color={colors.onSurfaceVariant} />
-        </Animated.View>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">{title}</Text>
-      </Pressable>
-      {!collapsed && <View className="mt-6">{children}</View>}
-    </View>
-  );
-}
-
 export function RegisterScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -107,14 +80,10 @@ export function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [phoneContact, setPhoneContact] = useState('');
 
-  const [collapsedSections, setCollapsedSections] = useState({
-    personal: false,
-    address: false,
-    password: false,
-  });
+  const [openSection, setOpenSection] = useState('personal');
 
   const toggleSection = (id) => {
-    setCollapsedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpenSection((prev) => (prev === id ? null : id));
   };
 
   const {
@@ -242,7 +211,7 @@ export function RegisterScreen() {
         extraScrollHeight={24}
       >
         <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
-            <View className={`w-full ${isWeb ? 'max-w-4xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface`}>
+            <View className={`w-full ${isWeb ? 'max-w-4xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white py-8 px-6 shadow-lg dark:border-slate-800 dark:bg-surface`}>
               <Pressable
                 className="-ml-2 mb-4 flex-row items-center gap-1.5 self-start rounded-lg px-2 py-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
                 onPress={handleBackNav}
@@ -265,7 +234,7 @@ export function RegisterScreen() {
                 Completá tus datos para registrarte en Paceron.
               </Text>
 
-              <SectionCollapsible title="Datos personales" collapsed={collapsedSections.personal} onToggle={() => toggleSection('personal')}>
+              <SectionCard collapsible collapsed={openSection !== 'personal'} icon="account-details" onToggle={() => toggleSection('personal')} title="Datos personales">
                 <Row>
                   <Col>
                     <InputField
@@ -386,9 +355,9 @@ export function RegisterScreen() {
                     />
                   </Col>
                 </Row>
-              </SectionCollapsible>
+              </SectionCard>
 
-              <SectionCollapsible title="Dirección" collapsed={collapsedSections.address} onToggle={() => toggleSection('address')}>
+              <SectionCard collapsible collapsed={openSection !== 'address'} icon="map-marker" onToggle={() => toggleSection('address')} title="Dirección">
                 <Row>
                   <Col>
                     {isWeb ? (
@@ -478,9 +447,9 @@ export function RegisterScreen() {
                     />
                   </Col>
                 </Row>
-              </SectionCollapsible>
+              </SectionCard>
 
-              <SectionCollapsible title="Contraseña" collapsed={collapsedSections.password} onToggle={() => toggleSection('password')}>
+              <SectionCard collapsible collapsed={openSection !== 'password'} icon="lock-outline" onToggle={() => toggleSection('password')} title="Contraseña">
                 <Row>
                   <Col>
                     <InputField
@@ -522,7 +491,7 @@ export function RegisterScreen() {
                 </View>
 
                 <StrengthBar password={password} />
-              </SectionCollapsible>
+              </SectionCard>
 
               <Pressable
                 className={`mt-8 h-12 items-center justify-center rounded-full ${
