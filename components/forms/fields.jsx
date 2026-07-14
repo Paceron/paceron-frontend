@@ -281,12 +281,12 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
                     <Pressable
                       key={item.id}
                       className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                        isSelected ? 'bg-primary/10' : ''
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''
                       }`}
                       onPress={() => { onChange(item.id); setVisible(false); }}
                     >
                       <Text className={`flex-1 text-sm ${
-                        isSelected ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-200'
+                        isSelected ? 'font-semibold text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'
                       }`}>
                         {item.name}
                       </Text>

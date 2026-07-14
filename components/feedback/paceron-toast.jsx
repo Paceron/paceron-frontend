@@ -6,7 +6,7 @@ import Toast from 'react-native-toast-message';
 // rojo para error, celeste para info. Cada una usa el ícono en círculo tintado
 // (mismo patrón que los forms) + barra de acento a la izquierda.
 const VARIANTS = {
-  success: { icon: 'check-circle', accent: '#8cc63e', tint: 'bg-primary/15' },
+  success: { icon: 'check-circle', accent: '#8cc63e', tint: 'bg-primary-tint dark:bg-primary/15' },
   error: { icon: 'alert-circle', accent: '#ef4444', tint: 'bg-red-500/15' },
   info: { icon: 'information', accent: '#38bdf8', tint: 'bg-sky-500/15' },
 };

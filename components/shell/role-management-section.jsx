@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 
 const COLOR_BY_KIND = {
   trainer: { bg: 'bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', icon: '#f59e0b' },
-  runner: { bg: 'bg-primary/15', text: 'text-primary', icon: '#8cc63e' },
+  runner: { bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary', icon: '#8cc63e' },
 };
 
 function getRoleAction(trainerActivated, activeRole) {
