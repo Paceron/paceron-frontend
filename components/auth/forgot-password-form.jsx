@@ -25,7 +25,7 @@ export function ForgotPasswordForm({ onBack }) {
   if (sent) {
     return (
       <View className="items-center py-4">
-        <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+        <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-primary-tint-subtle dark:bg-primary/10">
           <MaterialCommunityIcons color={colors.primary} name="email-check-outline" size={40} />
         </View>
         <Text className="mb-3 text-xl font-bold text-slate-900 dark:text-white">¡Listo!</Text>
