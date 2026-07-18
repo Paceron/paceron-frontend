@@ -10,7 +10,8 @@ Expo (React Native + React Native Web), NativeWind (Tailwind para RN), Zustand (
 
 ## Workflow de branches y PRs
 
-- **Rama base:** `develop`. Producción es `master`, se llega ahí vía release (ver `docs/BRANCH_POLICIES.md` para el modelo completo — hoy en la práctica solo usamos `feature/<nombre>` → `develop`, todavía no se usó `release/`/`hotfix/`/`backport/`).
+- **Rama base:** `develop`. Producción es `master`, se llega ahí vía `release/<versión>` (ver `docs/BRANCH_POLICIES.md` para el modelo completo — en la práctica todavía no se usó `hotfix/`/`backport/`, pero `release/` sí, vía el workflow descripto abajo).
+- **Release a producción (1-2 veces por sprint):** `gh workflow run prepare-release.yml -f version=<x.y.z>` corta `release/<versión>` desde `develop`, bumpea `package.json`, y abre el PR a `master` — disparo manual siempre (nunca por push ni por schedule, un release a producción es una decisión humana). Revisión y merge siguen siendo manuales. Detalle completo en `docs/WORKFLOW.md` ("Ciclo de release").
 - **Nomenclatura de rama:** `feature/<kebab-case>`, ej. `feature/light-theme-contrast`, `feature/mobile-date-picker`. Siempre creada desde `develop` actualizado.
 - **Quién corre los comandos git:** a elección de cada dev. El agente de IA puede ejecutarlos directamente, o armar el bloque de comandos para que el desarrollador lo corra él mismo (útil para aprender el flujo o mantener control manual). Ninguna de las dos es "la forma correcta" — se acuerda con quien esté trabajando.
 - **Ciclo de PR:** al hacer push de una rama `feature/*`, un CI/CD crea automáticamente una PR en draft hacia `develop` con título/descripción placeholder. Se actualiza título y descripción (ver formato abajo), se marca como lista (`gh pr ready`), se espera CI verde, y se mergea. Después: `git checkout develop && git pull && git branch -d feature/<nombre> && git remote prune origin`.
