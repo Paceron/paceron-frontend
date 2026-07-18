@@ -1,0 +1,63 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version a releasear (ej. 0.2.0, sin prefijo v)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release:
+    name: Cut release branch and open PR to master
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release branch, bump version, and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          RELEASE_BRANCH="release/${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin develop
+          git checkout -b "$RELEASE_BRANCH" origin/develop
+
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          git add package.json package-lock.json
+          git commit -m "chore(release): bump version to ${VERSION}"
+
+          git push origin "$RELEASE_BRANCH"
+
+          COMMITS=$(git log origin/master..origin/develop --pretty=format:"- %s (%h)")
+
+          gh pr create \
+            --base master \
+            --head "$RELEASE_BRANCH" \
+            --title "release: ${VERSION}" \
+            --body "$(cat <<EOF
+          ## Release ${VERSION}
+
+          Rama cortada desde \`develop\`, versión de \`package.json\` actualizada a \`${VERSION}\`.
+
+          ## Cambios incluidos
+
+          ${COMMITS}
+
+          ---
+          PR creada por \`prepare-release.yml\` (disparo manual). Revisar, esperar CI verde, y mergear a mano.
+          EOF
+          )"

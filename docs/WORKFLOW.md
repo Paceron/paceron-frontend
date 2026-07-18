@@ -27,8 +27,9 @@ Nombres en **kebab-case** (ej. `feature/profile-edit`, no `feature/profileEdit`)
   UI de GitHub.
 - El workflow **`.github/workflows/auto-pr.yml`** crea un PR **draft**
   automáticamente en el primer push a una rama `feature/**`, `fix/**` o
-  `backport/**` (apuntando a develop). Para `release/**` NO hay auto-PR: el PR a
-  master se crea a mano.
+  `backport/**` (apuntando a develop). Para `release/**` no hay auto-PR por
+  push — se abre solo cuando alguien dispara `prepare-release.yml` a mano
+  (ver "Ciclo de release" más abajo), nunca por un push suelto.
 
 ## Ciclo de una feature (paso a paso)
 
@@ -111,26 +112,21 @@ comando avisa que no existe (sin problema).
 
 Cuando develop tiene un avance estable que se quiere llevar a producción:
 
-### 1. Cortar la rama de release desde develop
+### 1-3. Cortar release, bumpear versión y abrir PR a master (automatizado)
+
+El workflow `prepare-release.yml` hace esto por vos, disparado a mano
+(nunca automático — un release a producción sigue siendo una decisión
+humana, igual que `auto-pr.yml` nunca dispara sobre `release/**`):
 
 ```bash
-git checkout develop
-git fetch origin
-git merge --ff-only origin/develop
-git checkout -b release/0.1.0
+gh workflow run prepare-release.yml -f version=0.1.0
 ```
 
-### 2. (Opcional) Bump de versión / changelog
-
-Actualizar `version` en `package.json`, notas de cambios, etc. Commitear.
-
-### 3. Push y PR a master (manual, no hay auto-PR para release/)
-
-```bash
-git push -u origin release/0.1.0
-gh pr create --base master --head release/0.1.0 \
-  --title "release: 0.1.0" --body "Notas del release"
-```
+(o desde GitHub → Actions → "Prepare Release" → "Run workflow"). Corta
+`release/0.1.0` desde `develop`, bumpea `version` en `package.json`,
+commitea como `github-actions[bot]`, pushea, y abre el PR a `master` con
+la lista de commits desde el último release. La PR **no** es draft y
+**no** se automergea — sigue siendo revisión y merge manual.
 
 ### 4. CI verde → merge a master en GitHub
 
@@ -163,7 +159,7 @@ backport no es necesario.
 | Publicar y abrir PR | `git push -u origin feature/<nombre>` (el PR draft lo crea auto-pr) |
 | Borrar rama local | `git branch -d feature/<nombre>` |
 | Borrar rama remota | `git push origin --delete feature/<nombre>` |
-| PR de release a master | `gh pr create --base master --head release/<versión>` |
+| Cortar release + PR a master | `gh workflow run prepare-release.yml -f version=<versión>` |
 
 ## Despliegues
 
