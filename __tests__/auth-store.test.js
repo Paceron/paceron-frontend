@@ -5,6 +5,18 @@ jest.mock('../services/auth.js', () => ({
   register: jest.fn(),
 }));
 
+jest.mock('../services/roles.js', () => ({
+  assignRole: jest.fn(),
+  getPermissions: jest.fn(),
+  getRoles: jest.fn(),
+  getRoleIdByName: jest.fn(),
+}));
+
+jest.mock('../services/user.js', () => ({
+  updateUser: jest.fn(),
+  changeStatus: jest.fn(),
+}));
+
 jest.mock('../services/storage.js', () => {
   let store = {};
   return {
@@ -16,6 +28,8 @@ jest.mock('../services/storage.js', () => {
 });
 
 import { login as loginService, register as registerService } from '../services/auth.js';
+import { assignRole, getPermissions } from '../services/roles.js';
+import { updateUser as updateUserService } from '../services/user.js';
 import * as storage from '../services/storage.js';
 
 const LOGIN_OK = {
@@ -26,7 +40,9 @@ const LOGIN_OK = {
 beforeEach(() => {
   storage.__reset();
   jest.clearAllMocks();
-  useAuthStore.setState({ user: null, token: null, refreshToken: null, expiresAt: null, hydrated: false, activeRole: 'runner', trainerActivated: false });
+  getPermissions.mockResolvedValue({ user_id: 0, roles: [] });
+  assignRole.mockResolvedValue({});
+  useAuthStore.setState({ user: null, token: null, refreshToken: null, expiresAt: null, hydrated: false, activeRole: 'runner', roles: [], rolesLoaded: false });
 });
 
 describe('auth store', () => {
@@ -94,62 +110,78 @@ describe('auth store', () => {
   });
 });
 
-describe('role management (local-only)', () => {
-  test('starts with default role state', () => {
+describe('role management (backend-backed)', () => {
+  test('starts with no roles fetched', () => {
     const s = useAuthStore.getState();
-    expect(s.activeRole).toBe('runner');
-    expect(s.trainerActivated).toBe(false);
+    expect(s.roles).toEqual([]);
+    expect(s.rolesLoaded).toBe(false);
   });
 
-  test('activateTrainerProfile sets trainerActivated, keeps role as runner', async () => {
+  test('fetchPermissions populates roles from the service', async () => {
     useAuthStore.setState({ user: { userId: 1 }, token: 'tok' });
-    await useAuthStore.getState().activateTrainerProfile();
+    getPermissions.mockResolvedValue({
+      user_id: 1,
+      roles: [{ id: 1, name: 'corredor', tier: 'base', permissions: [] }],
+    });
+    await useAuthStore.getState().fetchPermissions();
     const s = useAuthStore.getState();
-    expect(s.trainerActivated).toBe(true);
-    expect(s.activeRole).toBe('runner');
-    expect(storage.setItem).toHaveBeenCalled();
+    expect(s.roles).toEqual([{ id: 1, name: 'corredor', tier: 'base', permissions: [] }]);
+    expect(s.rolesLoaded).toBe(true);
   });
 
-  test('switchRole toggles activeRole only when trainerActivated', async () => {
-    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', trainerActivated: false, activeRole: 'runner' });
+  test('activateTrainerRole assigns the role and updates the bank alias', async () => {
+    useAuthStore.setState({ user: { userId: 1, name: 'Demo', surname: 'User' }, token: 'tok', roles: [] });
+    assignRole.mockResolvedValue({});
+    updateUserService.mockResolvedValue({
+      user_id: 1, name: 'Demo', surname: 'User', bank_alias: 'mi.alias',
+    });
+    getPermissions.mockResolvedValue({
+      user_id: 1,
+      roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }],
+    });
+    const result = await useAuthStore.getState().activateTrainerRole('mi.alias');
+    expect(result.success).toBe(true);
+    expect(assignRole).toHaveBeenCalledWith(1, 'entrenador');
+    expect(updateUserService).toHaveBeenCalledWith(1, { bank_alias: 'mi.alias' }, undefined);
+    expect(useAuthStore.getState().roles.some((r) => r.name === 'entrenador')).toBe(true);
+  });
+
+  test('switchRole only allows switching to a role the user actually has', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', roles: [], activeRole: 'runner' });
     await useAuthStore.getState().switchRole();
     expect(useAuthStore.getState().activeRole).toBe('runner');
 
-    useAuthStore.setState({ trainerActivated: true });
+    useAuthStore.setState({ roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }] });
     await useAuthStore.getState().switchRole();
     expect(useAuthStore.getState().activeRole).toBe('trainer');
-    await useAuthStore.getState().switchRole();
-    expect(useAuthStore.getState().activeRole).toBe('runner');
   });
 
-  test('logout resets role state to defaults', async () => {
-    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', trainerActivated: true });
+  test('logout resets roles state', async () => {
+    useAuthStore.setState({
+      user: { userId: 1 },
+      token: 'tok',
+      roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }],
+      rolesLoaded: true,
+    });
     await useAuthStore.getState().logout();
     const s = useAuthStore.getState();
-    expect(s.activeRole).toBe('runner');
-    expect(s.trainerActivated).toBe(false);
+    expect(s.roles).toEqual([]);
+    expect(s.rolesLoaded).toBe(false);
   });
+});
 
-  test('login does not clobber persisted role state after activation/switch', async () => {
-    useAuthStore.setState({ user: { userId: 1 }, token: 'tok' });
-    await useAuthStore.getState().activateTrainerProfile();
-    await useAuthStore.getState().switchRole();
-    expect(useAuthStore.getState().activeRole).toBe('trainer');
-    expect(useAuthStore.getState().trainerActivated).toBe(true);
-
-    loginService.mockResolvedValue(LOGIN_OK);
-    await useAuthStore.getState().login('a@b.com', 'pw');
-
-    // In-memory state must keep the role fields.
-    const s = useAuthStore.getState();
-    expect(s.activeRole).toBe('trainer');
-    expect(s.trainerActivated).toBe(true);
-
-    // Persisted storage must also keep the role fields (this is what
-    // hydrate() reads back after a reload).
+describe('hydrate migration', () => {
+  test('old persisted session without a roles key normalizes to empty array', async () => {
+    await storage.setItem('paceron.auth', JSON.stringify({
+      user: { userId: 9, email: 'x@y.com' },
+      token: 'persisted',
+      activeRole: 'runner',
+      trainerActivated: true, // clave vieja — ya no existe en el store
+    }));
+    getPermissions.mockResolvedValue({ user_id: 9, roles: [] });
     await useAuthStore.getState().hydrate();
-    const rehydrated = useAuthStore.getState();
-    expect(rehydrated.activeRole).toBe('trainer');
-    expect(rehydrated.trainerActivated).toBe(true);
+    const s = useAuthStore.getState();
+    expect(s.roles).toEqual([]);
+    expect(s.hydrated).toBe(true);
   });
 });
