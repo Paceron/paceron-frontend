@@ -23,6 +23,7 @@ export function toUserModel(dto) {
     province: dto.province,
     street: dto.street,
     number: dto.number,
+    bankAlias: dto.bank_alias,
   };
 }
 
@@ -69,5 +70,6 @@ export function toUpdatePayload(form) {
     phone_contact: form.phoneContact ?? '',
     province: form.province ?? '',
     street: form.street ?? '',
+    bank_alias: form.bankAlias ?? '',
   };
 }
