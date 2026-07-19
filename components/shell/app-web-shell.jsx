@@ -44,7 +44,7 @@ function AnimatedDropdown({ open, onClose, children }) {
 function DropdownMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
 
   return (
     <View className="w-56">
@@ -52,7 +52,7 @@ function DropdownMenu({ onClose }) {
       <View className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" />
 
       <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
-        {trainerActivated && (
+        {hasTrainerRole && (
           <>
             <RoleManagementSection allowActivate={false} onClose={onClose} />
             <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />

@@ -10,8 +10,8 @@ const COLOR_BY_KIND = {
   runner: { bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary', icon: '#8cc63e' },
 };
 
-function getRoleAction(trainerActivated, activeRole) {
-  if (!trainerActivated) {
+function getRoleAction(hasTrainerRole, activeRole) {
+  if (!hasTrainerRole) {
     return { label: 'Activar perfil de entrenador', icon: 'whistle', kind: 'trainer' };
   }
   if (activeRole === 'runner') {
@@ -22,13 +22,13 @@ function getRoleAction(trainerActivated, activeRole) {
 
 export function RoleManagementSection({ onClose, allowActivate = true }) {
   const router = useRouter();
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   const activeRole = useAuthStore((s) => s.activeRole);
   const switchRole = useAuthStore((s) => s.switchRole);
 
-  if (!allowActivate && !trainerActivated) return null;
+  if (!allowActivate && !hasTrainerRole) return null;
 
-  const action = getRoleAction(trainerActivated, activeRole);
+  const action = getRoleAction(hasTrainerRole, activeRole);
   const colors = COLOR_BY_KIND[action.kind];
 
   const opacity = useSharedValue(1);
@@ -51,7 +51,7 @@ export function RoleManagementSection({ onClose, allowActivate = true }) {
   }));
 
   const handlePress = () => {
-    if (!trainerActivated) {
+    if (!hasTrainerRole) {
       onClose?.();
       router.push('/profile/activate-trainer');
       return;
