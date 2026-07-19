@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { login as loginService, register as registerService, getUser as getUserService } from '../services/auth.js';
 import { updateUser as updateUserService, changeStatus as changeStatusService } from '../services/user.js';
+import { assignRole as assignRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 
@@ -21,9 +22,11 @@ export const useAuthStore = create((set, get) => ({
   expiresAt: null,
   hydrated: false,
   activeRole: 'runner',
-  trainerActivated: false,
-  // Datos de entrenador, local-only (el backend todavía no los tiene).
-  trainerAlias: '',
+  // Roles reales del usuario, desde /auth/permissions. activeRole (cuál
+  // se muestra ahora) sigue local-only — el backend no tiene ese concepto,
+  // solo trackea qué roles tiene asignados (un conjunto, no una selección).
+  roles: [],
+  rolesLoaded: false,
   // Dato puro de UI (no persiste, no dispara nada por sí solo): { role }
   // cuando switchRole() acaba de cambiar el rol activo, null en reposo. El
   // componente que lo consume decide qué hacer (animar, navegar según la
@@ -41,14 +44,18 @@ export const useAuthStore = create((set, get) => ({
           refreshToken: data.refreshToken ?? null,
           expiresAt: data.expiresAt ?? null,
           activeRole: data.activeRole ?? 'runner',
-          trainerActivated: data.trainerActivated ?? false,
-          trainerAlias: data.trainerAlias ?? '',
+          // Sesiones viejas (pre-roles-de-backend) no tienen esta clave —
+          // se normaliza a [] en vez de romper. rolesLoaded queda false
+          // hasta que el fetchPermissions() de abajo resuelva.
+          roles: Array.isArray(data.roles) ? data.roles : [],
         });
       }
     } catch {
       // sesión corrupta — se ignora y se arranca sin sesión
     }
     set({ hydrated: true });
+    const { user, token } = get();
+    if (user?.userId && token) await get().fetchPermissions();
   },
 
   login: async (email, password) => {
@@ -61,8 +68,9 @@ export const useAuthStore = create((set, get) => ({
         const expiresAt = auth.expires_in ? Date.now() + auth.expires_in * 1000 : null;
         const session = { user, token, refreshToken: auth.refresh_token ?? null, expiresAt };
         set(session);
-        const { activeRole, trainerActivated, trainerAlias } = get();
-        await persist({ ...session, activeRole, trainerActivated, trainerAlias });
+        const { activeRole } = get();
+        await persist({ ...session, activeRole, roles: [] });
+        await get().fetchPermissions();
         return { success: true };
       }
       return { success: false, error: 'Credenciales incorrectas.' };
@@ -74,7 +82,17 @@ export const useAuthStore = create((set, get) => ({
   register: async (payload) => {
     try {
       await registerService(payload);
-      return await get().login(payload.email, payload.password);
+      const result = await get().login(payload.email, payload.password);
+      if (result.success) {
+        // Verificado 2026-07-19 contra el backend real: NO asigna
+        // "corredor" automáticamente al registrarse (permissions devolvía
+        // roles: [] para un usuario recién creado) — fallback best-effort,
+        // logueado si falla en vez de tragarse el error en silencio.
+        const { user } = get();
+        await assignRoleService(user.userId, 'corredor').catch((e) => console.warn('corredor auto-assign failed', e));
+        await get().fetchPermissions();
+      }
+      return result;
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -83,13 +101,13 @@ export const useAuthStore = create((set, get) => ({
   // Refresca los datos del usuario desde el backend. Best-effort: si falla
   // (ej. CORS en web, offline), conserva el user actual sin romper.
   refreshUser: async () => {
-    const { user, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias } = get();
+    const { user, token, refreshToken, expiresAt, activeRole, roles } = get();
     if (!user?.userId) return;
     try {
       const fresh = toUserModel(await getUserService({ id: user.userId }));
       if (fresh) {
         set({ user: fresh });
-        await persist({ user: fresh, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias });
+        await persist({ user: fresh, token, refreshToken, expiresAt, activeRole, roles });
       }
     } catch {
       // best-effort — se mantiene el user actual
@@ -101,9 +119,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       const updated = toUserModel(await updateUserService(id, payload, currentPassword));
       if (updated) {
-        const { token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias } = get();
+        const { token, refreshToken, expiresAt, activeRole, roles } = get();
         set({ user: updated });
-        await persist({ user: updated, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias });
+        await persist({ user: updated, token, refreshToken, expiresAt, activeRole, roles });
       }
       return { success: true };
     } catch (error) {
@@ -124,32 +142,50 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Local-only por ahora: el backend no tiene roles todavía. Estructurado
-  // para que reemplazar esto por datos reales del backend no cambie la
-  // interfaz que consumen los componentes.
-  activateTrainerProfile: async (trainerAlias) => {
-    set({ trainerActivated: true, trainerAlias });
-    const { user, token, refreshToken, expiresAt, activeRole } = get();
-    await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated: true, trainerAlias });
+  // Pide a /auth/permissions los roles reales del usuario. Se llama tras
+  // login/hydrate/activar rol — nunca se confía solo en la copia
+  // persistida (existe solo para evitar un parpadeo mientras esto corre).
+  fetchPermissions: async () => {
+    const { user } = get();
+    if (!user?.userId) return;
+    try {
+      const data = await getPermissionsService(user.userId);
+      const roles = data?.roles ?? [];
+      set({ roles, rolesLoaded: true });
+      const { token, refreshToken, expiresAt, activeRole } = get();
+      await persist({ user, token, refreshToken, expiresAt, activeRole, roles });
+    } catch {
+      // best-effort — se mantiene roles anterior si falla
+    }
+  },
+
+  // Asigna el rol entrenador (tier base) y guarda el alias. Verificado
+  // 2026-07-19 contra el backend real: PUT /users/{id} es parcial (un PUT
+  // con solo {bank_alias} no tocó el resto del perfil) — no hace falta
+  // reenviar el perfil completo.
+  activateTrainerRole: async (bankAlias) => {
+    const { user } = get();
+    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
+    try {
+      await assignRoleService(user.userId, 'entrenador');
+      const updateResult = await get().updateUser(user.userId, { bank_alias: bankAlias });
+      if (!updateResult.success) return updateResult;
+      await get().fetchPermissions();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   },
 
   switchRole: async () => {
-    const { trainerActivated, activeRole, user, token, refreshToken, expiresAt, trainerAlias } = get();
-    if (!trainerActivated) return;
+    const { activeRole, roles, user, token, refreshToken, expiresAt } = get();
+    if (!roles.some((r) => r.name === 'entrenador')) return;
     const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
     set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole } });
-    await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, trainerActivated, trainerAlias });
+    await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, roles });
   },
 
   clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
-
-  // Local-only, igual que activateTrainerProfile: el backend todavía no
-  // tiene estos campos, no se manda nada por red.
-  updateTrainerData: async ({ trainerAlias }) => {
-    set({ trainerAlias });
-    const { user, token, refreshToken, expiresAt, activeRole, trainerActivated } = get();
-    await persist({ user, token, refreshToken, expiresAt, activeRole, trainerActivated, trainerAlias });
-  },
 
   logout: async () => {
     set({
@@ -158,8 +194,8 @@ export const useAuthStore = create((set, get) => ({
       refreshToken: null,
       expiresAt: null,
       activeRole: 'runner',
-      trainerActivated: false,
-      trainerAlias: '',
+      roles: [],
+      rolesLoaded: false,
     });
     await removeItem(STORAGE_KEY);
   },
