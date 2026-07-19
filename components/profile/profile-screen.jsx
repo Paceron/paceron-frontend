@@ -99,13 +99,13 @@ function HeaderPanel({ user, status, fullName, onEdit, colors }) {
   );
 }
 
-function RolesSection({ activeRole, trainerActivated }) {
+function RolesSection({ activeRole, hasTrainerRole }) {
   return (
     <Card title="Roles" icon="account-supervisor">
       <View className="w-full flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <RoleBadge active={activeRole === 'runner'} role="runner" size="md" />
-          {trainerActivated && <RoleBadge active={activeRole === 'trainer'} role="trainer" size="md" />}
+          {hasTrainerRole && <RoleBadge active={activeRole === 'trainer'} role="trainer" size="md" />}
         </View>
         <RoleManagementSection />
       </View>
@@ -113,11 +113,11 @@ function RolesSection({ activeRole, trainerActivated }) {
   );
 }
 
-function TrainerDataSection({ trainerAlias }) {
+function TrainerDataSection({ bankAlias }) {
   return (
     <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
       <FieldGrid>
-        <Field label="Alias de pagos" value={display(trainerAlias)} />
+        <Field label="Alias de pagos" value={display(bankAlias)} />
       </FieldGrid>
     </SectionCard>
   );
@@ -151,8 +151,7 @@ export function ProfileScreen() {
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
-  const trainerAlias = useAuthStore((s) => s.trainerAlias);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -198,9 +197,9 @@ export function ProfileScreen() {
 
         <HeaderPanel user={user} status={status} fullName={fullName} onEdit={handleEdit} colors={colors} />
 
-        <RolesSection activeRole={activeRole} trainerActivated={trainerActivated} />
+        <RolesSection activeRole={activeRole} hasTrainerRole={hasTrainerRole} />
 
-        {trainerActivated && <TrainerDataSection trainerAlias={trainerAlias} />}
+        {hasTrainerRole && <TrainerDataSection bankAlias={user.bankAlias} />}
 
         <Card title="Datos personales" icon="account-details">
           <Field label="Nombre" value={display(user.name)} />
