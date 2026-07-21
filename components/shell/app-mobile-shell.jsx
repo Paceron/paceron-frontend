@@ -4,10 +4,12 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { getRoutesByRole } from '../../routes/catalog.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useTeamStore } from '../../store/team-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
@@ -57,6 +59,11 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const userRole = user?.role ?? null;
   const routes = getRoutesByRole(userRole);
 
+  const teams = useTeamStore((s) => s.teams);
+  const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
+  const selectTeam = useTeamStore((s) => s.selectTeam);
+  const [teamsExpanded, setTeamsExpanded] = useState(false);
+
   const translateX = useSharedValue(-DRAWER_WIDTH);
 
   useEffect(() => {
@@ -72,6 +79,10 @@ function NavigationDrawer({ open, pathname, onClose }) {
     return () => sub.remove();
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) setTeamsExpanded(false);
+  }, [open]);
+
   const drawerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
@@ -79,6 +90,19 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const goTo = (href) => {
     router.push(href);
     onClose();
+  };
+
+  // Sin backend de equipos todavía: elegir un equipo o crear uno nuevo solo
+  // guarda selección local y avisa por toast — no navega a una pantalla propia.
+  const handleSelectTeam = (team) => {
+    selectTeam(team.id);
+    onClose();
+    Toast.show({ type: 'info', text1: team.name, text2: 'La vista de equipo todavía está en construcción.' });
+  };
+
+  const handleCreateTeam = () => {
+    onClose();
+    Toast.show({ type: 'info', text1: 'Crear equipo', text2: 'Este flujo todavía no está disponible.' });
   };
 
   return (
@@ -139,6 +163,77 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
               <ScrollView className="flex-1 px-2 py-4">
                 {routes.map((route) => {
+                  if (route.name === 'equipos') {
+                    return (
+                      <View key={route.name}>
+                        <Pressable
+                          className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
+                            teamsExpanded ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''
+                          }`}
+                          onPress={() => setTeamsExpanded((v) => !v)}
+                        >
+                          <MaterialCommunityIcons
+                            color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
+                            name={route.icon ?? 'circle-small'}
+                            size={22}
+                          />
+                          <Text
+                            className={`flex-1 text-sm font-semibold ${
+                              teamsExpanded ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+                            }`}
+                          >
+                            {route.label}
+                          </Text>
+                          <MaterialCommunityIcons
+                            color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
+                            name={teamsExpanded ? 'chevron-up' : 'chevron-down'}
+                            size={18}
+                          />
+                        </Pressable>
+
+                        {teamsExpanded && (
+                          <View className="mb-1 ml-6 gap-0.5 border-l border-slate-200 pl-3 dark:border-slate-800">
+                            {teams.length === 0 && (
+                              <Text className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400">
+                                Todavía no tenés equipos.
+                              </Text>
+                            )}
+                            {teams.map((team) => {
+                              const isSelected = team.id === selectedTeamId;
+                              return (
+                                <Pressable
+                                  key={team.id}
+                                  className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
+                                  onPress={() => handleSelectTeam(team)}
+                                >
+                                  <MaterialCommunityIcons
+                                    color={isSelected ? colors.primary : colors.onSurfaceVariant}
+                                    name="account-group"
+                                    size={16}
+                                  />
+                                  <Text
+                                    className={`flex-1 text-sm ${
+                                      isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'
+                                    }`}
+                                  >
+                                    {team.name}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                            <Pressable
+                              className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
+                              onPress={handleCreateTeam}
+                            >
+                              <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
+                              <Text className="text-sm font-semibold text-primary">Crear equipo</Text>
+                            </Pressable>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  }
+
                   const isActive = pathname === route.href;
 
                   return (

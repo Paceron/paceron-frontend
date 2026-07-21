@@ -5,7 +5,16 @@ export const homeRoute = {
   icon: 'home',
 };
 
-export const navigationRoutes = [homeRoute];
+// href no se usa para navegar directo: al presionar este item se abre un
+// submenu (equipos + Crear equipo) en vez de ir a una pantalla propia.
+export const teamsRoute = {
+  name: 'equipos',
+  label: 'Equipos',
+  href: '/equipos',
+  icon: 'account-group',
+};
+
+export const navigationRoutes = [homeRoute, teamsRoute];
 
 export function getRoutesByRole(role) {
   // A medida que se agreguen modulos, filtrar por rol aca.
