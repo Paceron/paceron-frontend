@@ -181,7 +181,7 @@ export const useAuthStore = create((set, get) => ({
     const { activeRole, roles, user, token, refreshToken, expiresAt } = get();
     if (!roles.some((r) => r.name === 'entrenador')) return;
     const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
-    set({ activeRole: nextRole, roleSwitchAnimating: { role: nextRole } });
+    set({ activeRole: nextRole, roleSwitchAnimating: { from: activeRole, to: nextRole } });
     await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, roles });
   },
 

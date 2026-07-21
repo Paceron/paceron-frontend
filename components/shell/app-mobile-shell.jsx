@@ -10,7 +10,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
-import { RoleManagementSection } from './role-management-section.jsx';
+import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -123,7 +123,11 @@ function NavigationDrawer({ open, pathname, onClose }) {
                 </View>
               )}
 
-              {user && hasTrainerRole && <RoleManagementSection allowActivate={false} onClose={onClose} />}
+              {user && hasTrainerRole && (
+                <View className="items-center border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                  <RoleSwitchToggle onClose={onClose} showTierLink={false} wide />
+                </View>
+              )}
 
               <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                 <View className="flex-row items-center gap-3">
