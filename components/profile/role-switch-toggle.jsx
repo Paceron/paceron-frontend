@@ -62,7 +62,7 @@ function Segment({ wide, active, activeBg, activeIconColor, activeTextClass, ico
 // Dropdown/sidebar solo montan este componente cuando el entrenador YA
 // está activado (mismo gate que el pill viejo), para no reintroducir la
 // activación fuera de Profile.
-export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false }) {
+export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTierLink = wide }) {
   const router = useRouter();
   const activeRole = useAuthStore((s) => s.activeRole);
   const roles = useAuthStore((s) => s.roles);
@@ -79,7 +79,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false }) {
       <View className={`flex-row items-center ${wide ? 'w-full justify-between' : 'gap-3'}`}>
         <View className="items-start">
           <RoleBadge active role="runner" size="md" />
-          <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />
+          {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />}
         </View>
         <Pressable
           accessibilityLabel="Volverse Entrenador"
@@ -137,7 +137,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false }) {
           wide={wide}
         />
       </View>
-      {wide && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel={ROLE_LABEL[activeRole]} />}
+      {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel={ROLE_LABEL[activeRole]} />}
     </View>
   );
 }
