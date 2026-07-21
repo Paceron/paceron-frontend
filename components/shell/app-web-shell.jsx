@@ -47,14 +47,14 @@ function DropdownMenu({ onClose }) {
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
 
   return (
-    <View className="w-56">
+    <View className="w-64">
       {/* Nub que conecta visualmente el dropdown con el pill de usuario de arriba */}
       <View className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" />
 
       <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
         {hasTrainerRole && (
           <>
-            <View className="items-center px-4 py-3">
+            <View className="items-center px-3 py-3">
               <RoleSwitchToggle onClose={onClose} />
             </View>
             <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
