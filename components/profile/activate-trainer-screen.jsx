@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
@@ -27,9 +28,13 @@ export function ActivateTrainerScreen() {
     if (!canSubmit) return;
 
     setLoading(true);
-    await useAuthStore.getState().activateTrainerProfile(trainerAlias);
+    const result = await useAuthStore.getState().activateTrainerRole(trainerAlias);
     setLoading(false);
-    router.replace('/profile');
+    if (result.success) {
+      router.replace('/profile');
+    } else {
+      Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudo activar el perfil de entrenador.' });
+    }
   };
 
   return (

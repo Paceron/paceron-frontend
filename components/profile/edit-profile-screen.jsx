@@ -40,8 +40,7 @@ export function EditProfileScreen() {
 function EditProfileForm({ user }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
-  const storedTrainerAlias = useAuthStore((s) => s.trainerAlias);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
 
   const [firstName, setFirstName] = useState(user.name ?? '');
   const [lastName, setLastName] = useState(user.surname ?? '');
@@ -50,7 +49,7 @@ function EditProfileForm({ user }) {
   const [email, setEmail] = useState(user.email ?? '');
   const [phone, setPhone] = useState(user.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(user.phoneContact ?? '');
-  const [trainerAlias, setTrainerAlias] = useState(storedTrainerAlias ?? '');
+  const [trainerAlias, setTrainerAlias] = useState(user.bankAlias ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -88,7 +87,7 @@ function EditProfileForm({ user }) {
     !validateBirthDate(birthDate) &&
     validateEmailFormat(email) &&
     !isDisposableEmail(email);
-  const trainerOk = !trainerActivated || !validateTrainerAlias(trainerAlias);
+  const trainerOk = !hasTrainerRole || !validateTrainerAlias(trainerAlias);
   const canSubmit = personalOk && trainerOk && (!emailChanged || currentPassword.length > 0);
 
   const handleSubmit = async () => {
@@ -99,7 +98,7 @@ function EditProfileForm({ user }) {
     touch('birthDate');
     touch('email');
     if (emailChanged) touch('currentPassword');
-    if (trainerActivated) touch('trainerAlias');
+    if (hasTrainerRole) touch('trainerAlias');
 
     if (!personalOk) return;
     if (!trainerOk) return;
@@ -120,15 +119,13 @@ function EditProfileForm({ user }) {
         city: address.city,
         street: address.street,
         number: address.number,
+        bankAlias: hasTrainerRole ? trainerAlias : user.bankAlias,
       });
       const result = await useAuthStore.getState().updateUser(
         user.userId,
         payload,
         emailChanged ? currentPassword : undefined,
       );
-      if (trainerActivated) {
-        await useAuthStore.getState().updateTrainerData({ trainerAlias });
-      }
       if (result.success) {
         Toast.show({ type: 'success', text1: 'Datos actualizados', text2: 'Tu perfil se guardó correctamente.' });
         router.replace('/profile');
@@ -324,7 +321,7 @@ function EditProfileForm({ user }) {
         </Row>
         </SectionCard>
 
-        {trainerActivated && (
+        {hasTrainerRole && (
           <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
             <InputField
               autoCapitalize="none"

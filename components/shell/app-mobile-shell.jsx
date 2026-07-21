@@ -52,7 +52,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
 
   const userRole = user?.role ?? null;
   const routes = getRoutesByRole(userRole);
@@ -123,7 +123,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                 </View>
               )}
 
-              {user && trainerActivated && <RoleManagementSection allowActivate={false} onClose={onClose} />}
+              {user && hasTrainerRole && <RoleManagementSection allowActivate={false} onClose={onClose} />}
 
               <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                 <View className="flex-row items-center gap-3">

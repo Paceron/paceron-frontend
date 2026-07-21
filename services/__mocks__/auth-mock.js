@@ -9,6 +9,7 @@ export async function mockLogin(email, _password) {
       dni: '12345678',
       birth_date: '01/01/1990',
       status: 'active',
+      bank_alias: null,
     },
     authorization: {
       access_token: 'mock-access-token',
@@ -39,6 +40,7 @@ export async function mockGetUser({ id, email }) {
     dni: '12345678',
     birth_date: '01/01/1990',
     status: 'active',
+    bank_alias: null,
     country: 'ARG',
     province: 'BA',
     city: 'La Plata',
