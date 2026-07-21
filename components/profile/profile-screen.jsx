@@ -88,9 +88,9 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) 
           </View>
           <EditButton onEdit={onEdit} colors={colors} />
         </View>
-        <View className="mt-4 flex-row items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
-          <RoleSwitchToggle />
-          <TierUpgradeLink onUpgradeTier={onUpgradeTier} />
+        <View className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <RoleSwitchToggle wide />
+          <TierUpgradeLink onUpgradeTier={onUpgradeTier} className="mt-2 self-center" />
         </View>
       </View>
     );
@@ -109,7 +109,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) 
       </View>
       <EditButton onEdit={onEdit} colors={colors} full />
       <View className="mt-4 w-full items-center border-t border-slate-100 pt-4 dark:border-slate-800">
-        <RoleSwitchToggle />
+        <RoleSwitchToggle wide />
         <TierUpgradeLink onUpgradeTier={onUpgradeTier} className="mt-2" />
       </View>
     </View>
