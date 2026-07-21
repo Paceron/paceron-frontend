@@ -62,14 +62,6 @@ function EditButton({ onEdit, colors, full }) {
   );
 }
 
-function TierUpgradeLink({ onUpgradeTier, className }) {
-  return (
-    <Pressable className={`active:opacity-70 ${className ?? ''}`} onPress={onUpgradeTier}>
-      <Text className="text-[11px] font-semibold text-primary">Mejorar tier</Text>
-    </Pressable>
-  );
-}
-
 function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) {
   // Web: fila superior (avatar + datos + botón editar), fila de switch debajo.
   if (isWeb) {
@@ -89,8 +81,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) 
           <EditButton onEdit={onEdit} colors={colors} />
         </View>
         <View className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <RoleSwitchToggle wide />
-          <TierUpgradeLink onUpgradeTier={onUpgradeTier} className="mt-2 self-center" />
+          <RoleSwitchToggle onUpgradeTier={onUpgradeTier} wide />
         </View>
       </View>
     );
@@ -109,8 +100,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) 
       </View>
       <EditButton onEdit={onEdit} colors={colors} full />
       <View className="mt-4 w-full items-center border-t border-slate-100 pt-4 dark:border-slate-800">
-        <RoleSwitchToggle wide />
-        <TierUpgradeLink onUpgradeTier={onUpgradeTier} className="mt-2" />
+        <RoleSwitchToggle onUpgradeTier={onUpgradeTier} wide />
       </View>
     </View>
   );

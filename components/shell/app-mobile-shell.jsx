@@ -125,7 +125,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
               {user && hasTrainerRole && (
                 <View className="items-center border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-                  <RoleSwitchToggle onClose={onClose} />
+                  <RoleSwitchToggle onClose={onClose} onUpgradeTier={() => goTo('/profile/tier-upgrade')} wide />
                 </View>
               )}
 

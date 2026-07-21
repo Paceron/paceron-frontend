@@ -6,9 +6,20 @@ import { RoleBadge } from '../shell/role-badge.jsx';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
+const ROLE_LABEL = { runner: 'Corredor', trainer: 'Entrenador' };
 
 function tierLabel(tier) {
   return tier === 'premium' ? 'Premium' : 'Base';
+}
+
+// El texto indica de qué rol es el tier a mejorar (el que está activo, o
+// Corredor en el caso de rol único), para que quede claro a qué aplica.
+function TierUpgradeLink({ roleLabel, onPress, className }) {
+  return (
+    <Pressable accessibilityRole="button" className={`active:opacity-70 ${className ?? ''}`} onPress={onPress}>
+      <Text className="text-[11px] font-semibold text-primary">Mejorar tier de {roleLabel}</Text>
+    </Pressable>
+  );
 }
 
 // Un segmento del switch. En modo compacto (dropdown/sidebar) el tier va
@@ -51,7 +62,7 @@ function Segment({ wide, active, activeBg, activeIconColor, activeTextClass, ico
 // Dropdown/sidebar solo montan este componente cuando el entrenador YA
 // está activado (mismo gate que el pill viejo), para no reintroducir la
 // activación fuera de Profile.
-export function RoleSwitchToggle({ onClose, wide = false }) {
+export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false }) {
   const router = useRouter();
   const activeRole = useAuthStore((s) => s.activeRole);
   const roles = useAuthStore((s) => s.roles);
@@ -65,8 +76,11 @@ export function RoleSwitchToggle({ onClose, wide = false }) {
 
   if (!hasTrainerRole) {
     return (
-      <View className={`flex-row items-center gap-3 ${wide ? 'w-full justify-between' : ''}`}>
-        <RoleBadge active role="runner" size="md" />
+      <View className={`flex-row items-center ${wide ? 'w-full justify-between' : 'gap-3'}`}>
+        <View className="items-start">
+          <RoleBadge active role="runner" size="md" />
+          <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />
+        </View>
         <Pressable
           accessibilityLabel="Volverse Entrenador"
           accessibilityRole="button"
@@ -96,31 +110,34 @@ export function RoleSwitchToggle({ onClose, wide = false }) {
   };
 
   return (
-    <View className={`flex-row rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`}>
-      <Segment
-        accessibilityLabel="Corredor"
-        active={runnerActive}
-        activeBg="bg-primary-tint dark:bg-primary/15"
-        activeIconColor="#8cc63e"
-        activeTextClass="text-on-primary-tint dark:text-primary"
-        icon="run-fast"
-        label="Corredor"
-        onPress={handlePressRunner}
-        tier={tierLabel(runnerTier)}
-        wide={wide}
-      />
-      <Segment
-        accessibilityLabel="Entrenador"
-        active={trainerActive}
-        activeBg="bg-amber-500/15"
-        activeIconColor="#f59e0b"
-        activeTextClass="text-amber-600 dark:text-amber-400"
-        icon="whistle"
-        label="Entrenador"
-        onPress={handlePressTrainer}
-        tier={tierLabel(trainerTier)}
-        wide={wide}
-      />
+    <View className={wide ? 'w-full items-center' : ''}>
+      <View className={`flex-row rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`}>
+        <Segment
+          accessibilityLabel="Corredor"
+          active={runnerActive}
+          activeBg="bg-primary-tint dark:bg-primary/15"
+          activeIconColor="#8cc63e"
+          activeTextClass="text-on-primary-tint dark:text-primary"
+          icon="run-fast"
+          label="Corredor"
+          onPress={handlePressRunner}
+          tier={tierLabel(runnerTier)}
+          wide={wide}
+        />
+        <Segment
+          accessibilityLabel="Entrenador"
+          active={trainerActive}
+          activeBg="bg-amber-500/15"
+          activeIconColor="#f59e0b"
+          activeTextClass="text-amber-600 dark:text-amber-400"
+          icon="whistle"
+          label="Entrenador"
+          onPress={handlePressTrainer}
+          tier={tierLabel(trainerTier)}
+          wide={wide}
+        />
+      </View>
+      {wide && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel={ROLE_LABEL[activeRole]} />}
     </View>
   );
 }
