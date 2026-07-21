@@ -10,7 +10,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
-import { RoleManagementSection } from './role-management-section.jsx';
+import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 
 // Envuelve el dropdown para animar apertura/cierre (fade + slide sutil).
 // Se mantiene siempre montado (mismo patrón que el drawer mobile) para que
@@ -54,7 +54,9 @@ function DropdownMenu({ onClose }) {
       <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
         {hasTrainerRole && (
           <>
-            <RoleManagementSection allowActivate={false} onClose={onClose} />
+            <View className="items-center px-4 py-3">
+              <RoleSwitchToggle onClose={onClose} />
+            </View>
             <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
           </>
         )}

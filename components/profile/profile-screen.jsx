@@ -8,8 +8,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
-import { RoleBadge } from '../shell/role-badge.jsx';
-import { RoleManagementSection } from '../shell/role-management-section.jsx';
+import { RoleSwitchToggle } from './role-switch-toggle.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 
 const DASH = '—';
@@ -63,27 +62,41 @@ function EditButton({ onEdit, colors, full }) {
   );
 }
 
-function HeaderPanel({ user, status, fullName, onEdit, colors }) {
-  // Web: header horizontal (avatar + datos + botón a la derecha).
+function TierUpgradeLink({ onUpgradeTier, className }) {
+  return (
+    <Pressable className={`active:opacity-70 ${className ?? ''}`} onPress={onUpgradeTier}>
+      <Text className="text-[11px] font-semibold text-primary">Mejorar tier</Text>
+    </Pressable>
+  );
+}
+
+function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) {
+  // Web: fila superior (avatar + datos + botón editar), fila de switch debajo.
   if (isWeb) {
     return (
-      <View className="mb-5 flex-row items-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
-          <MaterialCommunityIcons color={colors.primary} name="account" size={36} />
-        </View>
-        <View className="flex-1">
-          <Text className="text-lg font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
-          <Text className="text-sm text-slate-500 dark:text-slate-400">{display(user.email)}</Text>
-          <View className={`mt-1.5 self-start rounded-full px-3 py-1 ${status.badge}`}>
-            <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
+      <View className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
+        <View className="flex-row items-center gap-4">
+          <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
+            <MaterialCommunityIcons color={colors.primary} name="account" size={36} />
           </View>
+          <View className="flex-1">
+            <Text className="text-lg font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
+            <Text className="text-sm text-slate-500 dark:text-slate-400">{display(user.email)}</Text>
+            <View className={`mt-1.5 self-start rounded-full px-3 py-1 ${status.badge}`}>
+              <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
+            </View>
+          </View>
+          <EditButton onEdit={onEdit} colors={colors} />
         </View>
-        <EditButton onEdit={onEdit} colors={colors} />
+        <View className="mt-4 flex-row items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
+          <RoleSwitchToggle />
+          <TierUpgradeLink onUpgradeTier={onUpgradeTier} />
+        </View>
       </View>
     );
   }
 
-  // Mobile: panel centrado con botón full-width.
+  // Mobile: panel centrado, botón editar full-width, switch en fila debajo.
   return (
     <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
       <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
@@ -95,21 +108,11 @@ function HeaderPanel({ user, status, fullName, onEdit, colors }) {
         <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
       </View>
       <EditButton onEdit={onEdit} colors={colors} full />
-    </View>
-  );
-}
-
-function RolesSection({ activeRole, hasTrainerRole }) {
-  return (
-    <Card title="Roles" icon="account-supervisor">
-      <View className="w-full flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          <RoleBadge active={activeRole === 'runner'} role="runner" size="md" />
-          {hasTrainerRole && <RoleBadge active={activeRole === 'trainer'} role="trainer" size="md" />}
-        </View>
-        <RoleManagementSection />
+      <View className="mt-4 w-full items-center border-t border-slate-100 pt-4 dark:border-slate-800">
+        <RoleSwitchToggle />
+        <TierUpgradeLink onUpgradeTier={onUpgradeTier} className="mt-2" />
       </View>
-    </Card>
+    </View>
   );
 }
 
@@ -150,8 +153,8 @@ export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
-  const activeRole = useAuthStore((s) => s.activeRole);
-  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  const roles = useAuthStore((s) => s.roles);
+  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -195,9 +198,14 @@ export function ProfileScreen() {
           Mi perfil
         </Text>
 
-        <HeaderPanel user={user} status={status} fullName={fullName} onEdit={handleEdit} colors={colors} />
-
-        <RolesSection activeRole={activeRole} hasTrainerRole={hasTrainerRole} />
+        <HeaderPanel
+          user={user}
+          status={status}
+          fullName={fullName}
+          onEdit={handleEdit}
+          colors={colors}
+          onUpgradeTier={() => router.push('/profile/tier-upgrade')}
+        />
 
         {hasTrainerRole && <TrainerDataSection bankAlias={user.bankAlias} />}
 
