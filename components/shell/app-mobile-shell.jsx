@@ -131,18 +131,12 @@ function NavigationDrawer({ open, pathname, onClose }) {
                   <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
                 </Pressable>
               ) : (
-                <View className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle" size={26} />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm text-slate-600 dark:text-slate-300">Invitado</Text>
-                  </View>
+                <View className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                   <Pressable
-                    className="rounded-full bg-primary px-4 py-1.5 active:opacity-80"
+                    className="h-11 items-center justify-center rounded-full bg-primary active:opacity-80"
                     onPress={() => { router.push('/login'); onClose(); }}
                   >
-                    <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]">Ingresar</Text>
+                    <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Ingresar</Text>
                   </Pressable>
                 </View>
               )}
@@ -161,105 +155,107 @@ function NavigationDrawer({ open, pathname, onClose }) {
                 <ThemeToggle />
               </View>
 
-              <ScrollView className="flex-1 px-2 py-4">
-                {routes.map((route) => {
-                  if (route.name === 'equipos') {
-                    return (
-                      <View key={route.name}>
-                        <Pressable
-                          className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
-                            teamsExpanded ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''
-                          }`}
-                          onPress={() => setTeamsExpanded((v) => !v)}
-                        >
-                          <MaterialCommunityIcons
-                            color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
-                            name={route.icon ?? 'circle-small'}
-                            size={22}
-                          />
-                          <Text
-                            className={`flex-1 text-sm font-semibold ${
-                              teamsExpanded ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+              {user && (
+                <ScrollView className="flex-1 px-2 py-4">
+                  {routes.map((route) => {
+                    if (route.name === 'equipos') {
+                      return (
+                        <View key={route.name}>
+                          <Pressable
+                            className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
+                              teamsExpanded ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''
                             }`}
+                            onPress={() => setTeamsExpanded((v) => !v)}
                           >
-                            {route.label}
-                          </Text>
-                          <MaterialCommunityIcons
-                            color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
-                            name={teamsExpanded ? 'chevron-up' : 'chevron-down'}
-                            size={18}
-                          />
-                        </Pressable>
-
-                        {teamsExpanded && (
-                          <View className="mb-1 ml-6 gap-0.5 border-l border-slate-200 pl-3 dark:border-slate-800">
-                            {teams.length === 0 && (
-                              <Text className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400">
-                                Todavía no tenés equipos.
-                              </Text>
-                            )}
-                            {teams.map((team) => {
-                              const isSelected = team.id === selectedTeamId;
-                              return (
-                                <Pressable
-                                  key={team.id}
-                                  className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
-                                  onPress={() => handleSelectTeam(team)}
-                                >
-                                  <MaterialCommunityIcons
-                                    color={isSelected ? colors.primary : colors.onSurfaceVariant}
-                                    name="account-group"
-                                    size={16}
-                                  />
-                                  <Text
-                                    className={`flex-1 text-sm ${
-                                      isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'
-                                    }`}
-                                  >
-                                    {team.name}
-                                  </Text>
-                                </Pressable>
-                              );
-                            })}
-                            <Pressable
-                              className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
-                              onPress={handleCreateTeam}
+                            <MaterialCommunityIcons
+                              color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
+                              name={route.icon ?? 'circle-small'}
+                              size={22}
+                            />
+                            <Text
+                              className={`flex-1 text-sm font-semibold ${
+                                teamsExpanded ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+                              }`}
                             >
-                              <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
-                              <Text className="text-sm font-semibold text-primary">Crear equipo</Text>
-                            </Pressable>
-                          </View>
-                        )}
-                      </View>
-                    );
-                  }
+                              {route.label}
+                            </Text>
+                            <MaterialCommunityIcons
+                              color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
+                              name={teamsExpanded ? 'chevron-up' : 'chevron-down'}
+                              size={18}
+                            />
+                          </Pressable>
 
-                  const isActive = pathname === route.href;
+                          {teamsExpanded && (
+                            <View className="mb-1 ml-6 gap-0.5 border-l border-slate-200 pl-3 dark:border-slate-800">
+                              {teams.length === 0 && (
+                                <Text className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400">
+                                  Todavía no tenés equipos.
+                                </Text>
+                              )}
+                              {teams.map((team) => {
+                                const isSelected = team.id === selectedTeamId;
+                                return (
+                                  <Pressable
+                                    key={team.id}
+                                    className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
+                                    onPress={() => handleSelectTeam(team)}
+                                  >
+                                    <MaterialCommunityIcons
+                                      color={isSelected ? colors.primary : colors.onSurfaceVariant}
+                                      name="account-group"
+                                      size={16}
+                                    />
+                                    <Text
+                                      className={`flex-1 text-sm ${
+                                        isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'
+                                      }`}
+                                    >
+                                      {team.name}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              })}
+                              <Pressable
+                                className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
+                                onPress={handleCreateTeam}
+                              >
+                                <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
+                                <Text className="text-sm font-semibold text-primary">Crear equipo</Text>
+                              </Pressable>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    }
 
-                  return (
-                    <Pressable
-                      key={route.name}
-                      className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
-                        isActive ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10' : ''
-                      }`}
-                      onPress={() => goTo(route.href)}
-                    >
-                      <MaterialCommunityIcons
-                        color={isActive ? colors.primary : colors.onSurfaceVariant}
-                        name={route.icon ?? 'circle-small'}
-                        size={22}
-                      />
-                      <Text
-                        className={`text-sm font-semibold ${
-                          isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+                    const isActive = pathname === route.href;
+
+                    return (
+                      <Pressable
+                        key={route.name}
+                        className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
+                          isActive ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10' : ''
                         }`}
+                        onPress={() => goTo(route.href)}
                       >
-                        {route.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+                        <MaterialCommunityIcons
+                          color={isActive ? colors.primary : colors.onSurfaceVariant}
+                          name={route.icon ?? 'circle-small'}
+                          size={22}
+                        />
+                        <Text
+                          className={`text-sm font-semibold ${
+                            isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {route.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
 
               {user && (
                 <View className="border-t border-slate-200 p-3 dark:border-slate-800">
