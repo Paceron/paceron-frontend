@@ -177,29 +177,21 @@ function TeamsTab({ route, isOpen, colors, onOpen }) {
   return (
     <Pressable
       ref={ref}
-      className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 ${
+      className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors duration-150 ${
         isOpen
-          ? 'bg-primary-tint-subtle dark:bg-primary/10'
+          ? 'bg-slate-100 dark:bg-slate-800'
           : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
       }`}
       onPress={handlePress}
     >
-      <MaterialCommunityIcons
-        name={route.icon}
-        size={16}
-        color={isOpen ? colors.primary : colors.onSurfaceVariant}
-      />
-      <Text
-        className={`text-sm whitespace-nowrap ${
-          isOpen ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'
-        }`}
-      >
+      <MaterialCommunityIcons name={route.icon} size={16} color={colors.onSurfaceVariant} />
+      <Text className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
         {route.label}
       </Text>
       <MaterialCommunityIcons
         name={isOpen ? 'chevron-up' : 'chevron-down'}
         size={14}
-        color={isOpen ? colors.primary : colors.onSurfaceVariant}
+        color={colors.onSurfaceVariant}
       />
     </Pressable>
   );
