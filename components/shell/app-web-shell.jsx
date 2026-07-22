@@ -232,12 +232,16 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
         <PaceronBrand size={16} />
       </Pressable>
 
+      {!isGuest && routesTab && (
+        <View className="mx-3 h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-800" />
+      )}
+
       {!isGuest && routesTab ? (
-        <View className="flex-1 items-center justify-center">
+        <View className="flex-1 flex-row items-center overflow-hidden">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 4 }}
+            contentContainerStyle={{ gap: 4 }}
           >
             {routesTab.map((route) => {
               if (route.name === 'equipos') {
