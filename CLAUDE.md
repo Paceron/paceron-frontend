@@ -21,6 +21,8 @@ Expo (React Native + React Native Web), NativeWind (Tailwind para RN), Zustand (
 
 Formato [Conventional Commits](https://www.conventionalcommits.org/): `tipo(alcance): resumen corto en imperativo`. Tipos usados: `feat`, `fix`, `docs`, `refactor`, `chore`.
 
+**Idioma:** subject del commit, título de PR y nombre de rama van en **inglés** (convención ya establecida en la práctica). El cuerpo del commit (cuando lo amerita) y la descripción de la PR van en **español**.
+
 Preferir simple: **el subject alcanza en la mayoría de los casos.** Agregar cuerpo (1-2 oraciones) solo cuando el "por qué" no sea obvio desde el diff — no narrar el "qué" (el diff ya lo muestra).
 
 ```
@@ -91,6 +93,14 @@ Specs viven en `docs/superpowers/specs/YYYY-MM-DD-<tema>-design.md`, planes en `
 Los estilos de tema se definen **inline por componente**, vía clases NativeWind con el modificador `dark:` (ej. `bg-white dark:bg-surface`) — es el patrón estándar/recomendado para NativeWind + React Native (no hay un sistema de custom properties CSS real cross-platform, RN no lo soporta nativamente). No se planea migrar a un sistema de tokens centralizado — no encaja con el modelo nativo y sería mucho esfuerzo por poco beneficio real.
 
 Lo que sí conviene mantener: cuando un par claro/oscuro se repite en más de un lugar (una card, un badge, un wrapper de página), extraerlo a un componente compartido en vez de duplicar el string de clases — ver `components/forms/section-card.jsx`, `components/shell/role-badge.jsx` como ejemplos ya hechos así. Los tokens de color (paleta base) viven en `tailwind.config.js` (`theme.extend.colors`) — antes de agregar un color nuevo, revisar si ya existe algo cercano ahí.
+
+## Identificadores de componentes (`nativeID` / `testID`)
+
+A partir de ahora (no retroactivo — ver abajo), los componentes visuales del front (`View`, `Text`, `Pressable`, etc.) deben llevar `nativeID` y `testID` con un valor identificable y único en su contexto. `nativeID` es el que importa hoy en la práctica: en web (`react-native-web`) se renderiza como el atributo `id` real del DOM, lo que permite apuntarle con selectores CSS estables en vez de tener que recorrer el árbol de `Pressable`s a mano — esto ya viene siendo un problema recurrente al verificar cambios con las herramientas de preview. `testID` no tiene efecto hoy (el proyecto no hace tests de render de componentes, ver sección Testing) pero se agrega igual para dejar el terreno preparado si eso cambia a futuro.
+
+Convención de nombres: kebab-case, con scope propio del componente/rol (ej. `profile-header-edit-button`, `role-switch-corredor-segment`) — evitar nombres genéricos como `button-1` que puedan colisionar entre pantallas.
+
+**Alcance:** aplica a componentes nuevos y a los que se toquen de ahora en más — no hace falta salir a agregarlo a todo el código existente que no se esté editando. Está planeado (a definir cuándo) hacer una rama dedicada para backfillear ids en todo el código ya existente — va a tocar prácticamente todos los archivos, así que amerita su propio esfuerzo aislado en vez de mezclarse con features.
 
 ## Backend
 
