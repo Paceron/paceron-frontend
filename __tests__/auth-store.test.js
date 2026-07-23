@@ -38,6 +38,7 @@ const LOGIN_OK = {
 };
 
 beforeEach(() => {
+  // eslint-disable-next-line import/namespace -- __reset solo existe en el mock de jest.mock(), no en el módulo real
   storage.__reset();
   jest.clearAllMocks();
   getPermissions.mockResolvedValue({ user_id: 0, roles: [] });

@@ -20,34 +20,38 @@ export function TierUpgradeScreen() {
 
   return (
     <ScrollView
+      nativeID="tier-upgrade-screen-scroll"
+      testID="tier-upgrade-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       showsVerticalScrollIndicator={false}
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
-        <View className="mb-8 flex-row items-center gap-2">
+      <View nativeID="tier-upgrade-screen-container" testID="tier-upgrade-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
+        <View nativeID="tier-upgrade-screen-header" testID="tier-upgrade-screen-header" className="mb-8 flex-row items-center gap-2">
           <Pressable
+            nativeID="tier-upgrade-screen-back-button"
+            testID="tier-upgrade-screen-back-button"
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             onPress={() => router.replace('/profile')}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
-            <Text className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
+            <Text nativeID="tier-upgrade-screen-back-label" testID="tier-upgrade-screen-back-label" className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
           </Pressable>
-          <Text className="text-sm text-slate-400 dark:text-slate-600">/</Text>
-          <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
+          <Text nativeID="tier-upgrade-screen-breadcrumb-separator" testID="tier-upgrade-screen-breadcrumb-separator" className="text-sm text-slate-400 dark:text-slate-600">/</Text>
+          <Text nativeID="tier-upgrade-screen-title" testID="tier-upgrade-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
             Mejorar tier
           </Text>
         </View>
 
         <SectionCard icon="star-four-points" title={`Tier de ${ROLE_LABEL[activeRole]}`}>
-          <Text className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300">
-            Estás en el tier <Text className="font-semibold">{tierLabel}</Text>. El tier Premium va a desbloquear
+          <Text nativeID="tier-upgrade-screen-description" testID="tier-upgrade-screen-description" className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300">
+            Estás en el tier <Text nativeID="tier-upgrade-screen-tier-label" testID="tier-upgrade-screen-tier-label" className="font-semibold">{tierLabel}</Text>. El tier Premium va a desbloquear
             más funcionalidades para tu perfil de {ROLE_LABEL[activeRole].toLowerCase()} — disponible próximamente.
           </Text>
 
-          <View className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800">
+          <View nativeID="tier-upgrade-screen-coming-soon" testID="tier-upgrade-screen-coming-soon" className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clock-outline" size={18} />
-            <Text className="text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <Text nativeID="tier-upgrade-screen-coming-soon-label" testID="tier-upgrade-screen-coming-soon-label" className="text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               Próximamente
             </Text>
           </View>

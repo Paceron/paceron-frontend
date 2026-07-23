@@ -16,8 +16,14 @@ function tierLabel(tier) {
 // Corredor en el caso de rol único), para que quede claro a qué aplica.
 function TierUpgradeLink({ roleLabel, onPress, className }) {
   return (
-    <Pressable accessibilityRole="button" className={`hover:opacity-70 active:opacity-70 ${className ?? ''}`} onPress={onPress}>
-      <Text className="text-[11px] font-semibold text-primary">Mejorar tier de {roleLabel}</Text>
+    <Pressable
+      accessibilityRole="button"
+      className={`hover:opacity-70 active:opacity-70 ${className ?? ''}`}
+      nativeID="role-switch-toggle-tier-upgrade-link"
+      onPress={onPress}
+      testID="role-switch-toggle-tier-upgrade-link"
+    >
+      <Text className="text-[11px] font-semibold text-primary" nativeID="role-switch-toggle-tier-upgrade-link-text" testID="role-switch-toggle-tier-upgrade-link-text">Mejorar tier de {roleLabel}</Text>
     </Pressable>
   );
 }
@@ -25,26 +31,28 @@ function TierUpgradeLink({ roleLabel, onPress, className }) {
 // Un segmento del switch. En modo compacto (dropdown/sidebar) el tier va
 // en una segunda línea debajo del ícono+label; en modo wide (Profile, con
 // todo el ancho disponible) va inline en la misma línea, separado por "·".
-function Segment({ wide, active, activeBg, activeIconColor, activeTextClass, icon, label, tier, onPress, accessibilityLabel }) {
+function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass, icon, label, tier, onPress, accessibilityLabel }) {
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={`items-center rounded-full px-3 py-1.5 ${wide ? 'flex-1' : ''} ${active ? activeBg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
+      nativeID={id}
       onPress={onPress}
+      testID={id}
     >
-      <View className="flex-row items-center gap-1.5">
+      <View className="flex-row items-center gap-1.5" nativeID={`${id}-content`} testID={`${id}-content`}>
         <MaterialCommunityIcons color={active ? activeIconColor : MUTED_ICON} name={icon} size={16} />
-        <Text className={`text-xs font-semibold ${active ? activeTextClass : MUTED_TEXT}`}>{label}</Text>
+        <Text className={`text-xs font-semibold ${active ? activeTextClass : MUTED_TEXT}`} nativeID={`${id}-label`} testID={`${id}-label`}>{label}</Text>
         {wide && tier != null && (
-          <Text className={`text-[10px] font-medium uppercase tracking-wide opacity-70 ${active ? activeTextClass : 'text-slate-400 dark:text-slate-500'}`}>
+          <Text className={`text-[10px] font-medium uppercase tracking-wide opacity-70 ${active ? activeTextClass : 'text-slate-400 dark:text-slate-500'}`} nativeID={`${id}-tier-inline`} testID={`${id}-tier-inline`}>
             · {tier}
           </Text>
         )}
       </View>
       {!wide && tier != null && (
-        <Text className={`text-[9px] font-medium uppercase tracking-wide ${active ? activeTextClass : 'text-slate-400 dark:text-slate-500'}`}>
+        <Text className={`text-[9px] font-medium uppercase tracking-wide ${active ? activeTextClass : 'text-slate-400 dark:text-slate-500'}`} nativeID={`${id}-tier-stacked`} testID={`${id}-tier-stacked`}>
           {tier}
         </Text>
       )}
@@ -76,8 +84,8 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   if (!hasTrainerRole) {
     return (
-      <View className={`flex-row items-center ${wide ? 'w-full justify-between' : 'gap-3'}`}>
-        <View className="items-start">
+      <View className={`flex-row items-center ${wide ? 'w-full justify-between' : 'gap-3'}`} nativeID="role-switch-toggle-runner-only" testID="role-switch-toggle-runner-only">
+        <View className="items-start" nativeID="role-switch-toggle-runner-badge" testID="role-switch-toggle-runner-badge">
           <RoleBadge active role="runner" size="md" />
           {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />}
         </View>
@@ -85,10 +93,12 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           accessibilityLabel="Volverse Entrenador"
           accessibilityRole="button"
           className="flex-row items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 hover:opacity-90 active:opacity-70"
+          nativeID="role-switch-toggle-activate-trainer-button"
           onPress={handleActivate}
+          testID="role-switch-toggle-activate-trainer-button"
         >
           <MaterialCommunityIcons color="#f59e0b" name="whistle" size={16} />
-          <Text className="text-xs font-semibold text-amber-600 dark:text-amber-400">Volverse Entrenador</Text>
+          <Text className="text-xs font-semibold text-amber-600 dark:text-amber-400" nativeID="role-switch-toggle-activate-trainer-button-text" testID="role-switch-toggle-activate-trainer-button-text">Volverse Entrenador</Text>
         </Pressable>
       </View>
     );
@@ -110,8 +120,8 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   };
 
   return (
-    <View className={wide ? 'w-full items-center' : ''}>
-      <View className={`flex-row rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`}>
+    <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
+      <View className={`flex-row rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
         <Segment
           accessibilityLabel="Corredor"
           active={runnerActive}
@@ -119,6 +129,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           activeIconColor="#8cc63e"
           activeTextClass="text-on-primary-tint dark:text-primary"
           icon="run-fast"
+          id="role-switch-toggle-runner-segment"
           label="Corredor"
           onPress={handlePressRunner}
           tier={tierLabel(runnerTier)}
@@ -131,6 +142,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           activeIconColor="#f59e0b"
           activeTextClass="text-amber-600 dark:text-amber-400"
           icon="whistle"
+          id="role-switch-toggle-trainer-segment"
           label="Entrenador"
           onPress={handlePressTrainer}
           tier={tierLabel(trainerTier)}

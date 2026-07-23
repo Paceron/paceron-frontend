@@ -39,12 +39,12 @@ function StrengthBar({ password }) {
   const { label, color } = getPasswordStrengthMeta(score);
 
   return (
-    <View className="mb-3 mt-2">
-      <View className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        <View style={{ width: `${pct}%`, backgroundColor: color }} className="h-full rounded-full" />
+    <View className="mb-3 mt-2" nativeID="register-screen-strength-bar" testID="register-screen-strength-bar">
+      <View className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" nativeID="register-screen-strength-bar-track" testID="register-screen-strength-bar-track">
+        <View style={{ width: `${pct}%`, backgroundColor: color }} className="h-full rounded-full" nativeID="register-screen-strength-bar-fill" testID="register-screen-strength-bar-fill" />
       </View>
       {password.length > 0 && (
-        <Text style={{ color }} className="mt-1 text-xs font-semibold">
+        <Text style={{ color }} className="mt-1 text-xs font-semibold" nativeID="register-screen-strength-bar-label" testID="register-screen-strength-bar-label">
           {label}
         </Text>
       )}
@@ -52,16 +52,16 @@ function StrengthBar({ password }) {
   );
 }
 
-function RequirementRow({ met, label }) {
+function RequirementRow({ id, met, label }) {
   const colors = useThemeColors();
   return (
-    <View className="mb-1 flex-row items-center gap-2">
+    <View className="mb-1 flex-row items-center gap-2" nativeID={`register-screen-requirement-${id}`} testID={`register-screen-requirement-${id}`}>
       <MaterialCommunityIcons
         color={met ? '#8cc63e' : colors.onSurfaceVariant}
         name={met ? 'check-circle' : 'circle-outline'}
         size={14}
       />
-      <Text className={`text-xs ${met ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>
+      <Text className={`text-xs ${met ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`register-screen-requirement-${id}-label`} testID={`register-screen-requirement-${id}-label`}>
         {label}
       </Text>
     </View>
@@ -202,7 +202,7 @@ export function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="register-screen-safe-area" testID="register-screen-safe-area">
       <KeyboardAwareScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
@@ -210,27 +210,31 @@ export function RegisterScreen() {
         enableOnAndroid
         extraScrollHeight={24}
       >
-        <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
-            <View className={`w-full ${isWeb ? 'max-w-4xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white py-8 px-6 shadow-lg dark:border-slate-800 dark:bg-surface`}>
+        <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]} nativeID="register-screen-animated-wrapper" testID="register-screen-animated-wrapper">
+            <View className={`w-full ${isWeb ? 'max-w-4xl' : 'max-w-md'} rounded-2xl border border-slate-200 bg-white py-8 px-6 shadow-lg dark:border-slate-800 dark:bg-surface`} nativeID="register-screen-card" testID="register-screen-card">
               <Pressable
                 className="-ml-2 mb-4 flex-row items-center gap-1.5 self-start rounded-lg px-2 py-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
                 onPress={handleBackNav}
+                nativeID="register-screen-back-button"
+                testID="register-screen-back-button"
               >
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
-                <Text className="text-sm text-slate-600 dark:text-slate-300">Volver</Text>
+                <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID="register-screen-back-button-label" testID="register-screen-back-button-label">Volver</Text>
               </Pressable>
 
-              <View className="mb-8 items-center">
+              <View className="mb-8 items-center" nativeID="register-screen-logo-wrapper" testID="register-screen-logo-wrapper">
                 <Image
                   resizeMode="contain"
                   source={require('../../assets/paceron-symbol-transparent.png')}
                   style={{ width: 48, height: 48 }}
+                  nativeID="register-screen-logo-image"
+                  testID="register-screen-logo-image"
                 />
                 <PaceronBrand size={16} style={{ marginTop: 8 }} />
               </View>
 
-              <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-1 text-center text-2xl text-slate-900 dark:text-white">Crear cuenta</Text>
-              <Text className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400">
+              <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-1 text-center text-2xl text-slate-900 dark:text-white" nativeID="register-screen-title" testID="register-screen-title">Crear cuenta</Text>
+              <Text className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="register-screen-subtitle" testID="register-screen-subtitle">
                 Completá tus datos para registrarte en Paceron.
               </Text>
 
@@ -468,9 +472,9 @@ export function RegisterScreen() {
                   </Col>
                 </Row>
 
-                <View className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900">
+                <View className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900" nativeID="register-screen-requirements-list" testID="register-screen-requirements-list">
                   {PASSWORD_REQUIREMENTS.map((req) => (
-                    <RequirementRow key={req.id} label={req.label} met={passwordReqs[req.id]} />
+                    <RequirementRow key={req.id} id={req.id} label={req.label} met={passwordReqs[req.id]} />
                   ))}
                 </View>
 
@@ -483,22 +487,24 @@ export function RegisterScreen() {
                 } active:opacity-80`}
                 disabled={loading}
                 onPress={handleSubmit}
+                nativeID="register-screen-submit-button"
+                testID="register-screen-submit-button"
               >
                 {loading ? (
                   <ActivityIndicator color="#111518" size="small" />
                 ) : (
                   <Text className={`text-sm font-semibold uppercase tracking-wide ${
                     formValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
-                  }`}>
+                  }`} nativeID="register-screen-submit-button-label" testID="register-screen-submit-button-label">
                     Crear cuenta
                   </Text>
                 )}
               </Pressable>
 
-              <Pressable className="mt-6 items-center py-1 hover:opacity-70" onPress={() => router.push('/login')}>
-                <Text className="text-sm text-slate-500 dark:text-slate-400">
+              <Pressable className="mt-6 items-center py-1 hover:opacity-70" onPress={() => router.push('/login')} nativeID="register-screen-login-link-button" testID="register-screen-login-link-button">
+                <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="register-screen-login-link-label" testID="register-screen-login-link-label">
                   ¿Ya tenés cuenta?{' '}
-                  <Text className="font-semibold text-primary">Iniciá sesión</Text>
+                  <Text className="font-semibold text-primary" nativeID="register-screen-login-link-emphasis" testID="register-screen-login-link-emphasis">Iniciá sesión</Text>
                 </Text>
               </Pressable>
             </View>

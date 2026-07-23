@@ -8,7 +8,7 @@ export function AppLoadingScreen() {
   const colors = useThemeColors();
 
   return (
-    <View className="flex-1 items-center justify-center bg-paper dark:bg-ink">
+    <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="app-loading-screen" testID="app-loading-screen">
       <ActivityIndicator color={colors.primary} size="small" />
     </View>
   );

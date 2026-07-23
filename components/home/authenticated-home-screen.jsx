@@ -12,14 +12,30 @@ export function AuthenticatedHomeScreen() {
   const firstName = user?.name || '';
 
   return (
-    <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink">
-      <View className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
+    <View
+      className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink"
+      nativeID="authenticated-home-screen-root"
+      testID="authenticated-home-screen-root"
+    >
+      <View
+        className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15"
+        nativeID="authenticated-home-screen-icon-badge"
+        testID="authenticated-home-screen-icon-badge"
+      >
         <MaterialCommunityIcons color={colors.primary} name="run-fast" size={32} />
       </View>
-      <Text className="mb-2 text-center text-xl font-bold text-slate-900 dark:text-white">
+      <Text
+        className="mb-2 text-center text-xl font-bold text-slate-900 dark:text-white"
+        nativeID="authenticated-home-screen-greeting"
+        testID="authenticated-home-screen-greeting"
+      >
         {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
       </Text>
-      <Text className="max-w-sm text-center text-sm leading-5 text-slate-500 dark:text-slate-400">
+      <Text
+        className="max-w-sm text-center text-sm leading-5 text-slate-500 dark:text-slate-400"
+        nativeID="authenticated-home-screen-subtitle"
+        testID="authenticated-home-screen-subtitle"
+      >
         Tu panel está en construcción. Pronto vas a encontrar acá tus accesos y estadísticas.
       </Text>
     </View>
