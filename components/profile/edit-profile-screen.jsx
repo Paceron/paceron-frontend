@@ -141,6 +141,8 @@ function EditProfileForm({ user }) {
 
   return (
     <KeyboardAwareScrollView
+      nativeID="edit-profile-screen-scroll"
+      testID="edit-profile-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       keyboardShouldPersistTaps="handled"
@@ -148,17 +150,19 @@ function EditProfileForm({ user }) {
       enableOnAndroid
       extraScrollHeight={24}
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
-        <View className="mb-8 flex-row items-center gap-2">
+      <View nativeID="edit-profile-screen-container" testID="edit-profile-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
+        <View nativeID="edit-profile-screen-header" testID="edit-profile-screen-header" className="mb-8 flex-row items-center gap-2">
           <Pressable
+            nativeID="edit-profile-screen-back-button"
+            testID="edit-profile-screen-back-button"
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             onPress={() => router.replace('/profile')}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
-            <Text className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
+            <Text nativeID="edit-profile-screen-back-label" testID="edit-profile-screen-back-label" className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
           </Pressable>
-          <Text className="text-sm text-slate-400 dark:text-slate-600">/</Text>
-          <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
+          <Text nativeID="edit-profile-screen-breadcrumb-separator" testID="edit-profile-screen-breadcrumb-separator" className="text-sm text-slate-400 dark:text-slate-600">/</Text>
+          <Text nativeID="edit-profile-screen-title" testID="edit-profile-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
             Editar datos
           </Text>
         </View>
@@ -337,6 +341,8 @@ function EditProfileForm({ user }) {
         )}
 
         <Pressable
+          nativeID="edit-profile-screen-submit-button"
+          testID="edit-profile-screen-submit-button"
           className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-full ${canSubmit ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
           disabled={loading}
           onPress={handleSubmit}
@@ -346,7 +352,7 @@ function EditProfileForm({ user }) {
           ) : (
             <>
               <MaterialCommunityIcons color={canSubmit ? colors.onPrimary : colors.onSurfaceVariant} name="content-save" size={18} />
-              <Text className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
+              <Text nativeID="edit-profile-screen-submit-label" testID="edit-profile-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
                 Guardar cambios
               </Text>
             </>
