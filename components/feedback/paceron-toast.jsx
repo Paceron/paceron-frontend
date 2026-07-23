@@ -15,22 +15,24 @@ function ToastCard({ type, text1, text2 }) {
   const variant = VARIANTS[type] ?? VARIANTS.info;
 
   return (
-    <View className="w-full items-center px-4">
+    <View className="w-full items-center px-4" nativeID="paceron-toast" testID="paceron-toast">
       <Pressable
         accessibilityRole="button"
         className="w-full max-w-md flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-surface"
+        nativeID="paceron-toast-card"
         onPress={() => Toast.hide()}
         style={{ borderLeftWidth: 4, borderLeftColor: variant.accent }}
+        testID="paceron-toast-card"
       >
-        <View className={`h-10 w-10 items-center justify-center rounded-xl ${variant.tint}`}>
+        <View className={`h-10 w-10 items-center justify-center rounded-xl ${variant.tint}`} nativeID="paceron-toast-icon-wrapper" testID="paceron-toast-icon-wrapper">
           <MaterialCommunityIcons color={variant.accent} name={variant.icon} size={22} />
         </View>
-        <View className="flex-1">
+        <View className="flex-1" nativeID="paceron-toast-text-wrapper" testID="paceron-toast-text-wrapper">
           {text1 ? (
-            <Text className="text-sm font-bold text-slate-900 dark:text-white">{text1}</Text>
+            <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="paceron-toast-title" testID="paceron-toast-title">{text1}</Text>
           ) : null}
           {text2 ? (
-            <Text className="mt-0.5 text-xs leading-4 text-slate-500 dark:text-slate-400">{text2}</Text>
+            <Text className="mt-0.5 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="paceron-toast-subtitle" testID="paceron-toast-subtitle">{text2}</Text>
           ) : null}
         </View>
       </Pressable>

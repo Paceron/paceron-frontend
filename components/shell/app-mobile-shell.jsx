@@ -67,7 +67,7 @@ function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTea
         <Text className="flex-1 text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="teams-accordion-label" testID="teams-accordion-label">
           {label}
         </Text>
-        <Animated.View style={chevronStyle}>
+        <Animated.View nativeID="teams-accordion-chevron" style={chevronStyle} testID="teams-accordion-chevron">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={18} />
         </Animated.View>
       </Pressable>
@@ -80,7 +80,7 @@ function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTea
           nativeID="teams-accordion-content"
           testID="teams-accordion-content"
         >
-          <View className="ml-6 gap-0.5 border-l border-slate-200 pl-3 dark:border-slate-800">
+          <View className="ml-6 gap-0.5 border-l border-slate-200 pl-3 dark:border-slate-800" nativeID="teams-accordion-list" testID="teams-accordion-list">
             {teams.length === 0 && (
               <Text
                 className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400"
@@ -105,7 +105,11 @@ function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTea
                     name="account-group"
                     size={16}
                   />
-                  <Text className={`flex-1 text-sm ${isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'}`}>
+                  <Text
+                    className={`flex-1 text-sm ${isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'}`}
+                    nativeID={`teams-accordion-team-label-${team.id}`}
+                    testID={`teams-accordion-team-label-${team.id}`}
+                  >
                     {team.name}
                   </Text>
                 </Pressable>
@@ -118,7 +122,7 @@ function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTea
               testID="teams-accordion-create"
             >
               <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
-              <Text className="text-sm font-semibold text-primary">Crear equipo</Text>
+              <Text className="text-sm font-semibold text-primary" nativeID="teams-accordion-create-label" testID="teams-accordion-create-label">Crear equipo</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -149,9 +153,11 @@ function TopAppBar({ onTogglePress, open }) {
       <View className="flex-row items-center gap-3" nativeID="mobile-topbar-brand" testID="mobile-topbar-brand">
         <Image
           accessibilityLabel="Paceron"
+          nativeID="mobile-topbar-brand-logo"
           resizeMode="contain"
           source={require('../../assets/paceron-symbol-transparent.png')}
           style={{ width: 36, height: 36 }}
+          testID="mobile-topbar-brand-logo"
         />
         <PaceronBrand size={18} />
       </View>
@@ -220,14 +226,16 @@ function NavigationDrawer({ open, pathname, onClose }) {
   return (
     <>
       <Animated.View
+        nativeID="mobile-drawer-panel"
         style={[
           { position: 'absolute', top: 0, bottom: 0, left: 0, width: DRAWER_WIDTH, zIndex: 60 },
           drawerAnimatedStyle,
         ]}
+        testID="mobile-drawer-panel"
       >
         <View className="flex-1 bg-white dark:bg-surface" nativeID="mobile-drawer" testID="mobile-drawer">
-          <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
-            <View className="flex-1" style={{ paddingTop: 60 }}>
+          <SafeAreaView className="flex-1" edges={['top', 'bottom']} nativeID="mobile-drawer-safe-area" testID="mobile-drawer-safe-area">
+            <View className="flex-1" nativeID="mobile-drawer-body" style={{ paddingTop: 60 }} testID="mobile-drawer-body">
               {user ? (
                 <Pressable
                   className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
@@ -235,10 +243,10 @@ function NavigationDrawer({ open, pathname, onClose }) {
                   onPress={() => goTo('/profile')}
                   testID="mobile-drawer-profile-row"
                 >
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" nativeID="mobile-drawer-profile-avatar" testID="mobile-drawer-profile-avatar">
                     <MaterialCommunityIcons color={colors.primary} name="account-circle" size={26} />
                   </View>
-                  <View className="flex-1 flex-row items-center gap-2">
+                  <View className="flex-1 flex-row items-center gap-2" nativeID="mobile-drawer-profile-info" testID="mobile-drawer-profile-info">
                     <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="mobile-drawer-user-name" testID="mobile-drawer-user-name">{user.name}</Text>
                     <RoleBadge role={activeRole} />
                   </View>
@@ -252,7 +260,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                     onPress={() => { router.push('/login'); onClose(); }}
                     testID="mobile-drawer-login-button"
                   >
-                    <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Ingresar</Text>
+                    <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="mobile-drawer-login-button-label" testID="mobile-drawer-login-button-label">Ingresar</Text>
                   </Pressable>
                 </View>
               )}
@@ -264,9 +272,9 @@ function NavigationDrawer({ open, pathname, onClose }) {
               )}
 
               <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-theme-row" testID="mobile-drawer-theme-row">
-                <View className="flex-row items-center gap-3">
+                <View className="flex-row items-center gap-3" nativeID="mobile-drawer-theme-label-group" testID="mobile-drawer-theme-label-group">
                   <MaterialCommunityIcons color={colors.onSurfaceVariant} name="theme-light-dark" size={20} />
-                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Tema</Text>
+                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-theme-label" testID="mobile-drawer-theme-label">Tema</Text>
                 </View>
                 <ThemeToggle />
               </View>
@@ -312,6 +320,8 @@ function NavigationDrawer({ open, pathname, onClose }) {
                           className={`text-sm font-semibold ${
                             isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
                           }`}
+                          nativeID={`mobile-drawer-route-label-${route.name}`}
+                          testID={`mobile-drawer-route-label-${route.name}`}
                         >
                           {route.label}
                         </Text>
@@ -330,7 +340,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                     testID="mobile-drawer-logout-button"
                   >
                     <MaterialCommunityIcons color={colors.error} name="logout" size={20} />
-                    <Text className="text-sm font-semibold text-red-600 dark:text-red-400">Cerrar sesión</Text>
+                    <Text className="text-sm font-semibold text-red-600 dark:text-red-400" nativeID="mobile-drawer-logout-label" testID="mobile-drawer-logout-label">Cerrar sesión</Text>
                   </Pressable>
                 </View>
               )}

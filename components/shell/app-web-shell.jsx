@@ -35,9 +35,9 @@ function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
   }));
 
   return (
-    <View className="absolute inset-0 z-50" pointerEvents={open ? 'auto' : 'none'}>
-      <Pressable className="absolute inset-0" onPress={onClose} />
-      <Animated.View style={[{ position: 'absolute' }, anchorStyle, animatedStyle]}>
+    <View className="absolute inset-0 z-50" nativeID="web-shell-animated-dropdown" pointerEvents={open ? 'auto' : 'none'} testID="web-shell-animated-dropdown">
+      <Pressable className="absolute inset-0" nativeID="web-shell-animated-dropdown-backdrop" onPress={onClose} testID="web-shell-animated-dropdown-backdrop" />
+      <Animated.View nativeID="web-shell-animated-dropdown-panel" style={[{ position: 'absolute' }, anchorStyle, animatedStyle]} testID="web-shell-animated-dropdown-panel">
         {children}
       </Animated.View>
     </View>
@@ -50,46 +50,50 @@ function DropdownMenu({ onClose }) {
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
 
   return (
-    <View className="w-64">
+    <View className="w-64" nativeID="web-shell-dropdown-menu" testID="web-shell-dropdown-menu">
       {/* Nub que conecta visualmente el dropdown con el pill de usuario de arriba */}
-      <View className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" />
+      <View className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-dropdown-menu-nub" testID="web-shell-dropdown-menu-nub" />
 
-      <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
+      <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-dropdown-menu-panel" testID="web-shell-dropdown-menu-panel">
         {hasTrainerRole && (
           <>
-            <View className="items-center px-3 py-3">
+            <View className="items-center px-3 py-3" nativeID="web-shell-dropdown-role-switch-row" testID="web-shell-dropdown-role-switch-row">
               <RoleSwitchToggle onClose={onClose} />
             </View>
-            <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+            <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-role" testID="web-shell-dropdown-divider-role" />
           </>
         )}
 
-        <View className="flex-row items-center justify-between px-4 py-3.5">
-          <View className="flex-row items-center gap-3">
+        <View className="flex-row items-center justify-between px-4 py-3.5" nativeID="web-shell-dropdown-theme-row" testID="web-shell-dropdown-theme-row">
+          <View className="flex-row items-center gap-3" nativeID="web-shell-dropdown-theme-label-group" testID="web-shell-dropdown-theme-label-group">
             <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.onSurfaceVariant} />
-            <Text className="text-sm font-medium text-slate-900 dark:text-white">Tema</Text>
+            <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-dropdown-theme-label" testID="web-shell-dropdown-theme-label">Tema</Text>
           </View>
           <ThemeToggle />
         </View>
 
-        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-theme" testID="web-shell-dropdown-divider-theme" />
 
         <Pressable
           className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+          nativeID="web-shell-dropdown-profile-link"
           onPress={() => { router.push('/profile'); onClose(); }}
+          testID="web-shell-dropdown-profile-link"
         >
           <MaterialCommunityIcons name="account-circle" size={18} color={colors.onSurfaceVariant} />
-          <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white">Ver perfil</Text>
+          <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-dropdown-profile-link-label" testID="web-shell-dropdown-profile-link-label">Ver perfil</Text>
         </Pressable>
 
-        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-profile" testID="web-shell-dropdown-divider-profile" />
 
         <Pressable
           className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
+          nativeID="web-shell-dropdown-logout"
           onPress={() => { useAuthStore.getState().logout(); onClose(); }}
+          testID="web-shell-dropdown-logout"
         >
           <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
-          <Text className="text-sm font-semibold text-red-600 dark:text-red-400">Cerrar sesión</Text>
+          <Text className="text-sm font-semibold text-red-600 dark:text-red-400" nativeID="web-shell-dropdown-logout-label" testID="web-shell-dropdown-logout-label">Cerrar sesión</Text>
         </Pressable>
       </View>
     </View>
@@ -116,12 +120,12 @@ function TeamsMenu({ onClose }) {
   };
 
   return (
-    <View className="w-64">
-      <View className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" />
+    <View className="w-64" nativeID="web-shell-teams-menu" testID="web-shell-teams-menu">
+      <View className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-nub" testID="web-shell-teams-menu-nub" />
 
-      <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
+      <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-panel" testID="web-shell-teams-menu-panel">
         {teams.length === 0 && (
-          <Text className="px-4 py-3.5 text-sm text-slate-500 dark:text-slate-400">Todavía no tenés equipos.</Text>
+          <Text className="px-4 py-3.5 text-sm text-slate-500 dark:text-slate-400" nativeID="web-shell-teams-menu-empty" testID="web-shell-teams-menu-empty">Todavía no tenés equipos.</Text>
         )}
 
         {teams.map((team) => {
@@ -130,7 +134,9 @@ function TeamsMenu({ onClose }) {
             <Pressable
               key={team.id}
               className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+              nativeID={`web-shell-teams-menu-team-${team.id}`}
               onPress={() => handleSelectTeam(team)}
+              testID={`web-shell-teams-menu-team-${team.id}`}
             >
               <MaterialCommunityIcons
                 name="account-group"
@@ -141,6 +147,8 @@ function TeamsMenu({ onClose }) {
                 className={`flex-1 text-sm ${
                   isSelected ? 'font-semibold text-primary' : 'font-medium text-slate-900 dark:text-white'
                 }`}
+                nativeID={`web-shell-teams-menu-team-label-${team.id}`}
+                testID={`web-shell-teams-menu-team-label-${team.id}`}
               >
                 {team.name}
               </Text>
@@ -149,14 +157,16 @@ function TeamsMenu({ onClose }) {
           );
         })}
 
-        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-teams-menu-divider" testID="web-shell-teams-menu-divider" />
 
         <Pressable
           className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+          nativeID="web-shell-teams-menu-create"
           onPress={handleCreateTeam}
+          testID="web-shell-teams-menu-create"
         >
           <MaterialCommunityIcons name="plus-circle" size={18} color={colors.primary} />
-          <Text className="text-sm font-semibold text-primary">Crear equipo</Text>
+          <Text className="text-sm font-semibold text-primary" nativeID="web-shell-teams-menu-create-label" testID="web-shell-teams-menu-create-label">Crear equipo</Text>
         </Pressable>
       </View>
     </View>
@@ -182,10 +192,16 @@ function TeamsTab({ route, isOpen, colors, onOpen }) {
           ? 'bg-slate-100 dark:bg-slate-800'
           : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
       }`}
+      nativeID={`web-shell-nav-tab-${route.name}`}
       onPress={handlePress}
+      testID={`web-shell-nav-tab-${route.name}`}
     >
       <MaterialCommunityIcons name={route.icon} size={16} color={colors.onSurfaceVariant} />
-      <Text className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+      <Text
+        className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap"
+        nativeID={`web-shell-nav-tab-label-${route.name}`}
+        testID={`web-shell-nav-tab-label-${route.name}`}
+      >
         {route.label}
       </Text>
       <MaterialCommunityIcons
@@ -210,30 +226,36 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
   };
 
   return (
-    <View className="h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-surface border-b border-slate-200 dark:border-slate-800">
+    <View className="h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-surface border-b border-slate-200 dark:border-slate-800" nativeID="web-shell-topbar" testID="web-shell-topbar">
       <Pressable
         className="flex-row items-center gap-2 shrink-0"
+        nativeID="web-shell-topbar-brand"
         onPress={() => router.replace('/')}
+        testID="web-shell-topbar-brand"
       >
         <Image
           accessibilityLabel="Paceron"
+          nativeID="web-shell-topbar-brand-logo"
           resizeMode="contain"
           source={require('../../assets/paceron-symbol-transparent.png')}
           style={{ width: 32, height: 32 }}
+          testID="web-shell-topbar-brand-logo"
         />
         <PaceronBrand size={16} />
       </Pressable>
 
       {!isGuest && routesTab && (
-        <View className="mx-3 h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-800" />
+        <View className="mx-3 h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-800" nativeID="web-shell-topbar-divider" testID="web-shell-topbar-divider" />
       )}
 
       {!isGuest && routesTab ? (
-        <View className="flex-1 flex-row items-center overflow-hidden">
+        <View className="flex-1 flex-row items-center overflow-hidden" nativeID="web-shell-nav-tabs" testID="web-shell-nav-tabs">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 4 }}
+            nativeID="web-shell-nav-tabs-scroll"
+            testID="web-shell-nav-tabs-scroll"
           >
             {routesTab.map((route) => {
               if (route.name === 'equipos') {
@@ -251,7 +273,9 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
                       ? 'bg-primary-tint-subtle dark:bg-primary/10'
                       : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
                   }`}
+                  nativeID={`web-shell-nav-tab-${route.name}`}
                   onPress={() => onTabPress?.(route.href)}
+                  testID={`web-shell-nav-tab-${route.name}`}
                 >
                   <MaterialCommunityIcons
                     name={route.icon}
@@ -264,6 +288,8 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
                         ? 'font-semibold text-primary'
                         : 'font-medium text-slate-700 dark:text-slate-200'
                     }`}
+                    nativeID={`web-shell-nav-tab-label-${route.name}`}
+                    testID={`web-shell-nav-tab-label-${route.name}`}
                   >
                     {route.label}
                   </Text>
@@ -273,18 +299,20 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
           </ScrollView>
         </View>
       ) : (
-        <View className="flex-1" />
+        <View className="flex-1" nativeID="web-shell-nav-tabs-spacer" testID="web-shell-nav-tabs-spacer" />
       )}
 
-      <View className="flex-row items-center shrink-0">
+      <View className="flex-row items-center shrink-0" nativeID="web-shell-topbar-actions" testID="web-shell-topbar-actions">
         {isGuest ? (
-          <View className="flex-row items-center gap-3">
+          <View className="flex-row items-center gap-3" nativeID="web-shell-topbar-guest-actions" testID="web-shell-topbar-guest-actions">
             <ThemeToggle />
             <Pressable
               className="rounded-full bg-primary px-5 py-2 active:opacity-80"
+              nativeID="web-shell-topbar-login-button"
               onPress={() => router.push('/login')}
+              testID="web-shell-topbar-login-button"
             >
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
+              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="web-shell-topbar-login-button-label" testID="web-shell-topbar-login-button-label">
                 Ingresar
               </Text>
             </Pressable>
@@ -294,9 +322,11 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
             className={`flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
               dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
             }`}
+            nativeID="web-shell-topbar-user-pill"
             onPress={handleUserPress}
+            testID="web-shell-topbar-user-pill"
           >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint-subtle dark:bg-primary/10">
+            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint-subtle dark:bg-primary/10" nativeID="web-shell-topbar-user-avatar" testID="web-shell-topbar-user-avatar">
               <MaterialCommunityIcons
                 color={colors.primary}
                 name="account-circle"
@@ -304,7 +334,7 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
               />
             </View>
             {userName && (
-              <Text className="text-sm font-medium text-slate-900 dark:text-white">
+              <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-topbar-user-name" testID="web-shell-topbar-user-name">
                 {userName}
               </Text>
             )}
@@ -366,8 +396,8 @@ export function AppWebShell({ children, pathname }) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']}>
-      <View className="flex-1">
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="web-shell-safe-area" testID="web-shell-safe-area">
+      <View className="flex-1" nativeID="web-shell-root" testID="web-shell-root">
         <TopBar
           activeRole={activeRole}
           activeTab={activeTab}
@@ -394,7 +424,7 @@ export function AppWebShell({ children, pathname }) {
             <TeamsMenu onClose={handleCloseTeamsMenu} />
           </AnimatedDropdown>
         )}
-        <View className="flex-1">{children}</View>
+        <View className="flex-1" nativeID="web-shell-content" testID="web-shell-content">{children}</View>
       </View>
     </SafeAreaView>
   );

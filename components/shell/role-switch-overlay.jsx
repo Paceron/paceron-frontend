@@ -59,16 +59,18 @@ export function RoleSwitchOverlay() {
 
   return (
     <Animated.View
+      nativeID="role-switch-overlay"
       pointerEvents={animating ? 'auto' : 'none'}
       style={[
         { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, alignItems: 'center', justifyContent: 'center' },
         containerStyle,
       ]}
+      testID="role-switch-overlay"
     >
-      <Animated.View style={[{ position: 'absolute' }, fromIconStyle]}>
+      <Animated.View nativeID="role-switch-overlay-from-icon" style={[{ position: 'absolute' }, fromIconStyle]} testID="role-switch-overlay-from-icon">
         <MaterialCommunityIcons color="#ffffff" name={ICON_BY_ROLE[content.from]} size={72} />
       </Animated.View>
-      <Animated.View style={toIconStyle}>
+      <Animated.View nativeID="role-switch-overlay-to-icon" style={toIconStyle} testID="role-switch-overlay-to-icon">
         <MaterialCommunityIcons color="#ffffff" name={ICON_BY_ROLE[content.to]} size={72} />
       </Animated.View>
     </Animated.View>
