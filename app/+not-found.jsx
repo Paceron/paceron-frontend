@@ -23,7 +23,7 @@ export default function NotFoundScreen() {
       </Text>
 
       <Pressable
-        className="h-11 flex-row items-center gap-2 rounded-full bg-primary px-6 active:opacity-80"
+        className="h-11 flex-row items-center gap-2 rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
         onPress={() => router.replace('/')}
       >
         <MaterialCommunityIcons color={colors.onPrimary} name="home-outline" size={16} />
