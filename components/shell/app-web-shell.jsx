@@ -27,6 +27,7 @@ function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
     const config = { duration: open ? 160 : 120, easing: Easing.out(Easing.cubic) };
     opacity.value = withTiming(open ? 1 : 0, config);
     translateY.value = withTiming(open ? 0 : -8, config);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -353,7 +354,6 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
 
 export function AppWebShell({ children, pathname }) {
   const router = useRouter();
-  const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const isGuest = !user;
   const userName = user?.name || null;

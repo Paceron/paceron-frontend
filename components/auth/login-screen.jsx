@@ -216,6 +216,7 @@ export function LoginScreen() {
   useEffect(() => {
     opacity.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
     translateY.value = withTiming(0, { duration: 350, easing: Easing.out(Easing.cubic) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({

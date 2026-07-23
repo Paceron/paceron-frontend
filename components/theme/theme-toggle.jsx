@@ -33,6 +33,7 @@ export function ThemeToggle() {
 
   useEffect(() => {
     translateX.value = withTiming(isDark ? THUMB_TRAVEL : 0, { duration: 200, easing: Easing.out(Easing.cubic) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDark]);
 
   const thumbStyle = useAnimatedStyle(() => ({
