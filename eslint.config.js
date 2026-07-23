@@ -1,6 +1,7 @@
 // https://docs.expo.dev/guides/using-eslint/
 const { defineConfig } = require('eslint/config');
 const expoConfig = require("eslint-config-expo/flat");
+const globals = require('globals');
 
 // Elementos visuales que deben llevar nativeID + testID (ver CLAUDE.md,
 // sección "Identificadores de componentes"). nativeID es el que aporta
@@ -82,6 +83,12 @@ module.exports = defineConfig([
     },
     rules: {
       'local/require-native-id': 'error',
+    },
+  },
+  {
+    files: ['__tests__/**/*.js', '**/__mocks__/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.jest, ...globals.node },
     },
   },
 ]);
