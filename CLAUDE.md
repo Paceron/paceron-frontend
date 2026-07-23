@@ -81,6 +81,8 @@ Specs viven en `docs/superpowers/specs/YYYY-MM-DD-<tema>-design.md`, planes en `
 
 `npm test` corre Jest sobre `__tests__/` — cubre store, servicios, validadores y normalizers (lógica pura). **No hay tests de render de componentes** — es convención del proyecto, no un hueco a llenar por default: los componentes visuales/presentacionales se verifican manualmente (preview web + en device). Antes de mergear, la suite completa debe estar en verde.
 
+`npm run lint` (ESLint, ver `eslint.config.js`) también debe estar en verde antes de mergear — incluye la regla custom `local/require-native-id` (ver sección "Identificadores de componentes").
+
 ## Verificación visual
 
 - Cambios chicos de un solo valor visual (tamaño, color puntual) → el desarrollador los confirma él mismo en el preview, no hace falta que el agente levante el server para eso.
@@ -96,11 +98,13 @@ Lo que sí conviene mantener: cuando un par claro/oscuro se repite en más de un
 
 ## Identificadores de componentes (`nativeID` / `testID`)
 
-A partir de ahora (no retroactivo — ver abajo), los componentes visuales del front (`View`, `Text`, `Pressable`, etc.) deben llevar `nativeID` y `testID` con un valor identificable y único en su contexto. `nativeID` es el que importa hoy en la práctica: en web (`react-native-web`) se renderiza como el atributo `id` real del DOM, lo que permite apuntarle con selectores CSS estables en vez de tener que recorrer el árbol de `Pressable`s a mano — esto ya viene siendo un problema recurrente al verificar cambios con las herramientas de preview. `testID` no tiene efecto hoy (el proyecto no hace tests de render de componentes, ver sección Testing) pero se agrega igual para dejar el terreno preparado si eso cambia a futuro.
+**Regla estricta y obligatoria:** todo componente visual del front (`View`, `Text`, `Pressable`, `TextInput`, `Image`, `ScrollView`, `Touchable*`, `FlatList`, `SectionList`, `Modal`, `SafeAreaView` — incluye sus variantes `Animated.*`) debe llevar `nativeID` y `testID` con un valor identificable y único en su contexto. Ya no es "a partir de ahora" — el backfill retroactivo sobre todo el código existente se hizo (branch `chore/eslint-native-id-rule` + las que le siguieron), así que hoy la regla aplica sin excepción a todo el árbol de `components/`/`app/`.
+
+`nativeID` es el que aporta valor hoy en la práctica: en web (`react-native-web`) se renderiza como el atributo `id` real del DOM, lo que permite apuntarle con selectores CSS estables en vez de tener que recorrer el árbol de `Pressable`s a mano — esto era un problema recurrente al verificar cambios con las herramientas de preview. `testID` no tiene efecto hoy (el proyecto no hace tests de render de componentes, ver sección Testing) pero se agrega igual para dejar el terreno preparado si eso cambia a futuro.
 
 Convención de nombres: kebab-case, con scope propio del componente/rol (ej. `profile-header-edit-button`, `role-switch-corredor-segment`) — evitar nombres genéricos como `button-1` que puedan colisionar entre pantallas.
 
-**Alcance:** aplica a componentes nuevos y a los que se toquen de ahora en más — no hace falta salir a agregarlo a todo el código existente que no se esté editando. Está planeado (a definir cuándo) hacer una rama dedicada para backfillear ids en todo el código ya existente — va a tocar prácticamente todos los archivos, así que amerita su propio esfuerzo aislado en vez de mezclarse con features.
+**Enforcement automático:** regla custom de ESLint (`local/require-native-id`, definida directamente en `eslint.config.js` — no es un paquete separado, solo un plugin inline) falla si falta cualquiera de los dos atributos en alguno de los tags de la lista de arriba. `npm run lint` debe estar en verde antes de mergear, igual que `npm test` — esto incluye código de otros devs (ej. si el compañero tiene una rama en paralelo que no cumple, se corrige al revisar/mergear esa PR). Excepción: un elemento con spread (`{...props}`) no se exige explícitamente, se asume que los ids pueden venir por ahí.
 
 ## Backend
 
