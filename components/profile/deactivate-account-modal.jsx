@@ -54,14 +54,14 @@ export function DeactivateAccountModal({ visible, userEmail, onCancel, onConfirm
 
           <View className="flex-row gap-3">
             <Pressable
-              className="h-11 flex-1 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
+              className="h-11 flex-1 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
               disabled={loading}
               onPress={handleCancel}
             >
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Cancelar</Text>
             </Pressable>
             <Pressable
-              className={`h-11 flex-1 items-center justify-center rounded-full ${matches ? 'bg-red-600' : 'bg-slate-200 dark:bg-slate-800'} active:opacity-80`}
+              className={`h-11 flex-1 items-center justify-center rounded-full ${matches ? 'bg-red-600 hover:opacity-90' : 'bg-slate-200 dark:bg-slate-800'} active:opacity-80`}
               disabled={!matches || loading}
               onPress={handleConfirm}
             >

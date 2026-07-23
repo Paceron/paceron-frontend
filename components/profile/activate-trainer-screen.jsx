@@ -49,7 +49,7 @@ export function ActivateTrainerScreen() {
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
         <View className="mb-8 flex-row items-center gap-2">
           <Pressable
-            className="flex-row items-center gap-1.5 py-1 pr-1 active:opacity-70"
+            className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             onPress={() => router.replace('/profile')}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
@@ -80,7 +80,7 @@ export function ActivateTrainerScreen() {
         </SectionCard>
 
         <Pressable
-          className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-full ${canSubmit ? 'bg-amber-500' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
+          className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-full ${canSubmit ? 'bg-amber-500 hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
           disabled={loading}
           onPress={handleSubmit}
         >

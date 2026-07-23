@@ -16,7 +16,7 @@ function tierLabel(tier) {
 // Corredor en el caso de rol único), para que quede claro a qué aplica.
 function TierUpgradeLink({ roleLabel, onPress, className }) {
   return (
-    <Pressable accessibilityRole="button" className={`active:opacity-70 ${className ?? ''}`} onPress={onPress}>
+    <Pressable accessibilityRole="button" className={`hover:opacity-70 active:opacity-70 ${className ?? ''}`} onPress={onPress}>
       <Text className="text-[11px] font-semibold text-primary">Mejorar tier de {roleLabel}</Text>
     </Pressable>
   );
@@ -31,7 +31,7 @@ function Segment({ wide, active, activeBg, activeIconColor, activeTextClass, ico
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`items-center rounded-full px-3 py-1.5 ${wide ? 'flex-1' : ''} ${active ? activeBg : ''}`}
+      className={`items-center rounded-full px-3 py-1.5 ${wide ? 'flex-1' : ''} ${active ? activeBg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
       onPress={onPress}
     >
       <View className="flex-row items-center gap-1.5">
@@ -84,7 +84,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
         <Pressable
           accessibilityLabel="Volverse Entrenador"
           accessibilityRole="button"
-          className="flex-row items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 active:opacity-70"
+          className="flex-row items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 hover:opacity-90 active:opacity-70"
           onPress={handleActivate}
         >
           <MaterialCommunityIcons color="#f59e0b" name="whistle" size={16} />

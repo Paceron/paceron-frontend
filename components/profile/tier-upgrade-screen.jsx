@@ -27,7 +27,7 @@ export function TierUpgradeScreen() {
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
         <View className="mb-8 flex-row items-center gap-2">
           <Pressable
-            className="flex-row items-center gap-1.5 py-1 pr-1 active:opacity-70"
+            className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             onPress={() => router.replace('/profile')}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
