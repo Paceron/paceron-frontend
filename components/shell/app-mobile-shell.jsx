@@ -29,7 +29,7 @@ function TopAppBar({ onTogglePress, open }) {
     >
       <Pressable
         accessibilityLabel={open ? 'Cerrar menú' : 'Abrir menú'}
-        className="absolute left-4 rounded-full p-2 active:opacity-70"
+        className="absolute left-4 rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
         onPress={onTogglePress}
       >
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'close' : 'menu'} size={24} />
@@ -118,7 +118,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
             <View className="flex-1" style={{ paddingTop: 60 }}>
               {user ? (
                 <Pressable
-                  className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 active:opacity-70 dark:border-slate-800"
+                  className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
                   onPress={() => goTo('/profile')}
                 >
                   <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
@@ -133,7 +133,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
               ) : (
                 <View className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                   <Pressable
-                    className="h-11 items-center justify-center rounded-full bg-primary active:opacity-80"
+                    className="h-11 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
                     onPress={() => { router.push('/login'); onClose(); }}
                   >
                     <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Ingresar</Text>
@@ -163,7 +163,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                         <View key={route.name}>
                           <Pressable
                             className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
-                              teamsExpanded ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''
+                              teamsExpanded ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                             }`}
                             onPress={() => setTeamsExpanded((v) => !v)}
                           >
@@ -198,7 +198,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                                 return (
                                   <Pressable
                                     key={team.id}
-                                    className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
+                                    className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
                                     onPress={() => handleSelectTeam(team)}
                                   >
                                     <MaterialCommunityIcons
@@ -217,7 +217,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                                 );
                               })}
                               <Pressable
-                                className="flex-row items-center gap-2 rounded-lg px-2 py-2 active:opacity-80"
+                                className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
                                 onPress={handleCreateTeam}
                               >
                                 <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
@@ -235,7 +235,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                       <Pressable
                         key={route.name}
                         className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
-                          isActive ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10' : ''
+                          isActive ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                         onPress={() => goTo(route.href)}
                       >
@@ -260,7 +260,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
               {user && (
                 <View className="border-t border-slate-200 p-3 dark:border-slate-800">
                   <Pressable
-                    className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-80"
+                    className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 active:opacity-80 dark:hover:bg-red-900/20"
                     onPress={() => { logout(); onClose(); }}
                   >
                     <MaterialCommunityIcons color={colors.error} name="logout" size={20} />
