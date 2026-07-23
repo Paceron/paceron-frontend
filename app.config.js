@@ -8,6 +8,10 @@ module.exports = {
   expo: {
     name: IS_DEV ? 'Paceron Dev' : 'Paceron',
     slug: 'paceron-frontend',
+    // Distinto de dev/prod, igual que android.package — evita que ambas
+    // variantes instaladas a la vez en un mismo device compitan por el
+    // mismo esquema de deep link.
+    scheme: IS_DEV ? 'paceron-dev' : 'paceron',
     version: '1.0.0',
     orientation: 'portrait',
     icon: IS_DEV ? './assets/icon-dev.png' : './assets/icon.png',
