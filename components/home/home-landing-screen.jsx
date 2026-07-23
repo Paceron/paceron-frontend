@@ -42,14 +42,14 @@ export function HomeLandingScreen() {
 
           <View className="flex-row gap-4">
             <Pressable
-              className="h-12 flex-row items-center gap-2 rounded-full bg-primary px-8 shadow-md active:opacity-80"
+              className="h-12 flex-row items-center gap-2 rounded-full bg-primary px-8 shadow-md hover:opacity-90 active:opacity-80"
               onPress={() => router.push('/register')}
             >
               <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">{HERO_CONTENT.primaryCta}</Text>
               <MaterialCommunityIcons color={colors.onPrimary} name="arrow-right" size={18} />
             </Pressable>
             <Pressable
-              className="h-12 flex-row items-center gap-2 rounded-full border border-slate-300 px-8 hover:bg-slate-100 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
+              className="h-12 flex-row items-center gap-2 rounded-full bg-slate-100 px-8 hover:bg-slate-200 active:opacity-80 dark:bg-slate-800 dark:hover:bg-slate-700"
               onPress={() => router.push('/login')}
             >
               <Text className="text-sm font-semibold uppercase tracking-wide text-slate-900 dark:text-white">{HERO_CONTENT.secondaryCta}</Text>

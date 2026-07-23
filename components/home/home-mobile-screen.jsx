@@ -55,7 +55,7 @@ export function HomeMobileScreen() {
 
         <View className="w-full gap-4">
           <Pressable
-            className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary shadow-md active:opacity-80"
+            className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary shadow-md hover:opacity-90 active:opacity-80"
             onPress={() => router.push('/register')}
           >
             <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
@@ -69,7 +69,7 @@ export function HomeMobileScreen() {
           </Pressable>
 
           <Pressable
-            className="h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 active:opacity-80 dark:border-slate-700"
+            className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-slate-100 hover:bg-slate-200 active:opacity-80 dark:bg-slate-800 dark:hover:bg-slate-700"
             onPress={() => router.push('/login')}
           >
             <Text className="text-sm font-semibold uppercase tracking-wide text-slate-950 dark:text-white">
