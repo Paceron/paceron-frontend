@@ -149,7 +149,7 @@ function LoginForm({ onForgotPassword }) {
             textContentType="password"
             value={password}
           />
-          <Pressable className="px-3" onPress={() => setShowPassword((v) => !v)}>
+          <Pressable className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800" onPress={() => setShowPassword((v) => !v)}>
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -162,7 +162,7 @@ function LoginForm({ onForgotPassword }) {
       {/* Submit button */}
       <Pressable
         className={`mb-4 h-12 items-center justify-center rounded-full ${
-          isFormValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+          isFormValid ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'
         } active:opacity-80`}
         disabled={loading}
         onPress={handleSubmit}
@@ -179,14 +179,14 @@ function LoginForm({ onForgotPassword }) {
       </Pressable>
 
       {/* Forgot password */}
-      <Pressable className="items-center py-1" onPress={onForgotPassword}>
+      <Pressable className="items-center py-1 hover:opacity-70" onPress={onForgotPassword}>
         <Text className="text-sm text-slate-500 dark:text-slate-400">
           ¿Olvidaste tu contraseña?
         </Text>
       </Pressable>
 
       {/* Register link */}
-      <Pressable className="items-center py-1" onPress={() => router.push('/register')}>
+      <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/register')}>
         <Text className="text-sm text-slate-500 dark:text-slate-400">
           ¿No tenés cuenta?{' '}
           <Text className="font-semibold text-primary">Registrate</Text>

@@ -35,7 +35,7 @@ export function ForgotPasswordForm({ onBack }) {
         <Text className="mb-8 text-center text-sm font-semibold text-slate-700 dark:text-slate-200">
           {email}
         </Text>
-        <Pressable className="flex-row items-center gap-2" onPress={onBack}>
+        <Pressable className="flex-row items-center gap-2 hover:opacity-70" onPress={onBack}>
           <MaterialCommunityIcons color={colors.primary} name="arrow-left" size={16} />
           <Text className="text-sm font-semibold text-primary">Volver al inicio de sesión</Text>
         </Pressable>
@@ -75,7 +75,7 @@ export function ForgotPasswordForm({ onBack }) {
       </View>
 
       <Pressable
-        className="mb-5 h-12 items-center justify-center rounded-full bg-primary active:opacity-80"
+        className="mb-5 h-12 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
         onPress={handleSend}
       >
         <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
