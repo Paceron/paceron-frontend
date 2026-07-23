@@ -13,27 +13,49 @@ export const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:tex
 export const SELECT_CLASS = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
 const DATE_BASE = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 
+// Slugifica un label para usarlo como parte de un id estable y legible.
+function slugify(label) {
+  return String(label ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 // Fila responsive: en web reparte los hijos en columnas; en mobile apila.
 export function Row({ children }) {
-  return <View className={isWeb ? 'flex-row gap-4' : ''}>{children}</View>;
+  return (
+    <View className={isWeb ? 'flex-row gap-4' : ''} nativeID="row-wrapper" testID="row-wrapper">
+      {children}
+    </View>
+  );
 }
 
 // Columna con peso de ancho (solo web); en mobile ocupa el ancho completo.
 export function Col({ children, flex = 1 }) {
-  return <View style={isWeb ? { flex } : undefined}>{children}</View>;
+  return (
+    <View nativeID="col-wrapper" style={isWeb ? { flex } : undefined} testID="col-wrapper">
+      {children}
+    </View>
+  );
 }
 
 export function SelectField({ label, options, value, onChange, placeholder, disabled, error }) {
   const colors = useThemeColors();
+  const slug = slugify(label);
 
   // Normaliza opciones: acepta strings (ej. localidades) u objetos { id, name }.
   const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
 
   return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
-      <View className="flex-row items-center gap-2">
-        <View className="flex-1 relative">
+    <View className="mb-5" nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>{label}</Text>
+      <View
+        className="flex-row items-center gap-2"
+        nativeID={`select-field-${slug}-row`}
+        testID={`select-field-${slug}-row`}
+      >
+        <View className="flex-1 relative" nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
             className={SELECT_CLASS}
             value={value}
@@ -52,13 +74,17 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full hover:opacity-70"
               onPress={() => onChange('')}
               accessibilityLabel="Limpiar selección"
+              nativeID={`select-field-${slug}-clear-button`}
+              testID={`select-field-${slug}-clear-button`}
             >
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
             </Pressable>
           )}
         </View>
       </View>
-      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+      <View className="h-5" nativeID={`select-field-${slug}-error-row`} testID={`select-field-${slug}-error-row`}>
+        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`select-field-${slug}-error`} testID={`select-field-${slug}-error`}>{error}</Text>}
+      </View>
     </View>
   );
 }
@@ -80,6 +106,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
+  const slug = slugify(label);
 
   const borderClass = error
     ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
@@ -89,10 +116,14 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
 
   if (isWeb) {
     return (
-      <View className="mb-5">
-        <Text className={FIELD_LABEL}>{label}</Text>
-        <View className="flex-row items-center gap-2">
-          <View className="flex-1 relative">
+      <View className="mb-5" nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
+        <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>
+        <View
+          className="flex-row items-center gap-2"
+          nativeID={`date-field-${slug}-row`}
+          testID={`date-field-${slug}-row`}
+        >
+          <View className="flex-1 relative" nativeID={`date-field-${slug}-input-wrapper`} testID={`date-field-${slug}-input-wrapper`}>
             <input
               type="date"
               className={`${DATE_BASE} ${borderClass}`}
@@ -103,7 +134,9 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
             />
           </View>
         </View>
-        <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+        <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
+        </View>
       </View>
     );
   }
@@ -124,19 +157,27 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   };
 
   return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
+    <View className="mb-5" nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
         disabled={disabled}
         onPress={() => setPickerVisible(true)}
+        nativeID={`date-field-${slug}-trigger`}
+        testID={`date-field-${slug}-trigger`}
       >
-        <Text className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+        <Text
+          className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          nativeID={`date-field-${slug}-value`}
+          testID={`date-field-${slug}-value`}
+        >
           {value || 'DD/MM/AAAA'}
         </Text>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar" size={20} />
       </Pressable>
-      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+      <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
+        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
+      </View>
 
       {pickerVisible && Platform.OS === 'android' && (
         <DateTimePicker
@@ -150,9 +191,26 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
       )}
 
       {Platform.OS === 'ios' && (
-        <Modal animationType="fade" onRequestClose={handleClose} transparent visible={pickerVisible}>
-          <Pressable className="flex-1 justify-end bg-black/50" onPress={handleClose}>
-            <Pressable className="rounded-t-2xl bg-white p-4 dark:bg-surface-2" onPress={() => {}}>
+        <Modal
+          animationType="fade"
+          onRequestClose={handleClose}
+          transparent
+          visible={pickerVisible}
+          nativeID={`date-field-${slug}-modal`}
+          testID={`date-field-${slug}-modal`}
+        >
+          <Pressable
+            className="flex-1 justify-end bg-black/50"
+            onPress={handleClose}
+            nativeID={`date-field-${slug}-modal-backdrop`}
+            testID={`date-field-${slug}-modal-backdrop`}
+          >
+            <Pressable
+              className="rounded-t-2xl bg-white p-4 dark:bg-surface-2"
+              onPress={() => {}}
+              nativeID={`date-field-${slug}-modal-content`}
+              testID={`date-field-${slug}-modal-content`}
+            >
               <DateTimePicker
                 display="inline"
                 maximumDate={new Date()}
@@ -161,8 +219,19 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
                 themeVariant={themeMode}
                 value={parseDDMMYYYY(value)}
               />
-              <Pressable className="mt-2 h-11 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80" onPress={handleClose}>
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Listo</Text>
+              <Pressable
+                className="mt-2 h-11 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
+                onPress={handleClose}
+                nativeID={`date-field-${slug}-modal-done-button`}
+                testID={`date-field-${slug}-modal-done-button`}
+              >
+                <Text
+                  className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
+                  nativeID={`date-field-${slug}-modal-done-label`}
+                  testID={`date-field-${slug}-modal-done-label`}
+                >
+                  Listo
+                </Text>
               </Pressable>
             </Pressable>
           </Pressable>
@@ -174,6 +243,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
 
 export function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled }) {
   const colors = useThemeColors();
+  const slug = slugify(label);
 
   const borderColor = disabled
     ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
@@ -184,9 +254,13 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
 
   return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
-      <View className={`h-12 flex-row items-center rounded-xl border ${borderColor}`}>
+    <View className="mb-5" nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
+      <View
+        className={`h-12 flex-row items-center rounded-xl border ${borderColor}`}
+        nativeID={`input-field-${slug}-row`}
+        testID={`input-field-${slug}-row`}
+      >
         <TextInput
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
@@ -202,9 +276,16 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
           secureTextEntry={secureTextEntry}
           textContentType={textContentType}
           value={value}
+          nativeID={`input-field-${slug}-input`}
+          testID={`input-field-${slug}-input`}
         />
         {onToggleSecure && (
-          <Pressable className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800" onPress={onToggleSecure}>
+          <Pressable
+            className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onPress={onToggleSecure}
+            nativeID={`input-field-${slug}-toggle-secure-button`}
+            testID={`input-field-${slug}-toggle-secure-button`}
+          >
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
               name={showSecure ? 'eye-off-outline' : 'eye-outline'}
@@ -213,8 +294,8 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
           </Pressable>
         )}
       </View>
-      <View className="h-5">
-        {error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}
+      <View className="h-5" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
+        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>}
       </View>
     </View>
   );
@@ -223,6 +304,7 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
 export function PickerField({ label, options, value, onChange, placeholder, disabled, error }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
+  const slug = slugify(label);
 
   const items = options.map((opt) => {
     if (typeof opt === 'string') return { id: opt, name: opt };
@@ -237,13 +319,19 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
 
   return (
-    <View className="mb-5">
-      <Text className={FIELD_LABEL}>{label}</Text>
+    <View className="mb-5" nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
         onPress={disabled ? undefined : () => setVisible(true)}
+        nativeID={`picker-field-${slug}-trigger`}
+        testID={`picker-field-${slug}-trigger`}
       >
-        <Text className={`flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+        <Text
+          className={`flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          nativeID={`picker-field-${slug}-value`}
+          testID={`picker-field-${slug}-value`}
+        >
           {selected ? selected.name : placeholder}
         </Text>
         {!disabled && value && (
@@ -251,33 +339,51 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
             className="rounded-full hover:opacity-70"
             onPress={() => { onChange(''); setVisible(false); }}
             accessibilityLabel="Limpiar selección"
+            nativeID={`picker-field-${slug}-clear-button`}
+            testID={`picker-field-${slug}-clear-button`}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
           </Pressable>
         )}
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={20} />
       </Pressable>
-      <View className="h-5">{error && <Text className="text-xs text-red-500 dark:text-red-400">{error}</Text>}</View>
+      <View className="h-5" nativeID={`picker-field-${slug}-error-row`} testID={`picker-field-${slug}-error-row`}>
+        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`picker-field-${slug}-error`} testID={`picker-field-${slug}-error`}>{error}</Text>}
+      </View>
 
       <Modal
         animationType="fade"
         onRequestClose={() => setVisible(false)}
         transparent
         visible={visible}
+        nativeID={`picker-field-${slug}-modal`}
+        testID={`picker-field-${slug}-modal`}
       >
-        <Pressable className="flex-1 justify-center bg-black/50 px-6" onPress={() => setVisible(false)}>
+        <Pressable
+          className="flex-1 justify-center bg-black/50 px-6"
+          onPress={() => setVisible(false)}
+          nativeID={`picker-field-${slug}-modal-backdrop`}
+          testID={`picker-field-${slug}-modal-backdrop`}
+        >
           <Pressable
             className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
             onPress={() => {}}
+            nativeID={`picker-field-${slug}-modal-content`}
+            testID={`picker-field-${slug}-modal-content`}
           >
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              nativeID={`picker-field-${slug}-modal-list`}
+              testID={`picker-field-${slug}-modal-list`}
+            >
               {items.length === 0 ? (
-                <View className="items-center py-8">
-                  <Text className="text-sm text-slate-400 dark:text-slate-500">Sin opciones disponibles</Text>
+                <View className="items-center py-8" nativeID={`picker-field-${slug}-modal-empty`} testID={`picker-field-${slug}-modal-empty`}>
+                  <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`picker-field-${slug}-modal-empty-label`} testID={`picker-field-${slug}-modal-empty-label`}>Sin opciones disponibles</Text>
                 </View>
               ) : (
                 items.map((item) => {
                   const isSelected = item.id === value;
+                  const itemSlug = slugify(item.id);
                   return (
                     <Pressable
                       key={item.id}
@@ -285,10 +391,16 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
                         isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                       onPress={() => { onChange(item.id); setVisible(false); }}
+                      nativeID={`picker-field-${slug}-modal-option-${itemSlug}`}
+                      testID={`picker-field-${slug}-modal-option-${itemSlug}`}
                     >
-                      <Text className={`flex-1 text-sm ${
-                        isSelected ? 'font-semibold text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'
-                      }`}>
+                      <Text
+                        className={`flex-1 text-sm ${
+                          isSelected ? 'font-semibold text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                        nativeID={`picker-field-${slug}-modal-option-${itemSlug}-label`}
+                        testID={`picker-field-${slug}-modal-option-${itemSlug}-label`}
+                      >
                         {item.name}
                       </Text>
                       {isSelected && <MaterialCommunityIcons color="inherit" name="check" size={18} style={{ color: '#8cc63e' }} />}
