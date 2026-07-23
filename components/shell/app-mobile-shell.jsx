@@ -186,6 +186,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
   useEffect(() => {
     translateX.value = withTiming(open ? 0 : -DRAWER_WIDTH, ANIMATION_CONFIG);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {

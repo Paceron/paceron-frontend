@@ -154,6 +154,7 @@ export function ProfileScreen() {
 
   useEffect(() => {
     if (!user) router.replace('/login');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
