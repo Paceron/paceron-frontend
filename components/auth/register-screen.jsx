@@ -479,7 +479,7 @@ export function RegisterScreen() {
 
               <Pressable
                 className={`mt-8 h-12 items-center justify-center rounded-full ${
-                  formValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+                  formValid ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'
                 } active:opacity-80`}
                 disabled={loading}
                 onPress={handleSubmit}
@@ -495,7 +495,7 @@ export function RegisterScreen() {
                 )}
               </Pressable>
 
-              <Pressable className="mt-6 items-center py-1" onPress={() => router.push('/login')}>
+              <Pressable className="mt-6 items-center py-1 hover:opacity-70" onPress={() => router.push('/login')}>
                 <Text className="text-sm text-slate-500 dark:text-slate-400">
                   ¿Ya tenés cuenta?{' '}
                   <Text className="font-semibold text-primary">Iniciá sesión</Text>

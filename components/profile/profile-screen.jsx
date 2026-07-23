@@ -127,7 +127,7 @@ function DangerZone({ onDelete }) {
         Dar de baja tu cuenta desactiva tu acceso a Paceron. Podrás solicitar reactivación más adelante.
       </Text>
       <Pressable
-        className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-red-400 px-6 transition-opacity hover:opacity-80 active:opacity-80 dark:border-red-800"
+        className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-red-400 px-6 transition-colors hover:bg-red-50 active:opacity-80 dark:border-red-800 dark:hover:bg-red-900/20"
         onPress={onDelete}
       >
         <MaterialCommunityIcons color="#ef4444" name="account-off-outline" size={16} />
