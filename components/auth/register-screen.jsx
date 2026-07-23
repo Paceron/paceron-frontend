@@ -169,6 +169,7 @@ export function RegisterScreen() {
         }),
       );
       if (result.success) {
+        Toast.show({ type: 'success', text1: '¡Cuenta creada!', text2: 'Bienvenido a Paceron.' });
         router.replace('/');
       } else {
         Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Error al crear la cuenta.' });

@@ -31,6 +31,7 @@ export function ActivateTrainerScreen() {
     const result = await useAuthStore.getState().activateTrainerRole(trainerAlias);
     setLoading(false);
     if (result.success) {
+      Toast.show({ type: 'success', text1: '¡Perfil de entrenador activado!', text2: 'Ya podés alternar entre corredor y entrenador.' });
       router.replace('/profile');
     } else {
       Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudo activar el perfil de entrenador.' });
