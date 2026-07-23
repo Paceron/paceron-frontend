@@ -6,7 +6,11 @@ import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './land
 
 function FeatureItem({ icon, title, description, colors }) {
   return (
-    <View className="flex-row gap-4 py-4">
+    <View
+      className="flex-row gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-[#1d2125]"
+      nativeID={`home-mobile-feature-card-${icon}`}
+      testID={`home-mobile-feature-card-${icon}`}
+    >
       <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15">
         <MaterialCommunityIcons color={colors.primary} name={icon} size={20} />
       </View>
@@ -80,7 +84,7 @@ export function HomeMobileScreen() {
         </View>
       </View>
 
-      <View className="py-4">
+      <View className="gap-4 py-4">
         {FEATURES.map((feature) => (
           <FeatureItem key={feature.icon} {...feature} colors={colors} />
         ))}
