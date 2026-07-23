@@ -49,7 +49,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
           </select>
           {!disabled && value && (
             <Pressable
-              className="absolute right-3 top-1/2 -translate-y-1/2"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full hover:opacity-70"
               onPress={() => onChange('')}
               accessibilityLabel="Limpiar selección"
             >
@@ -127,7 +127,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
     <View className="mb-5">
       <Text className={FIELD_LABEL}>{label}</Text>
       <Pressable
-        className={`h-12 flex-row items-center rounded-xl border px-4 ${borderClass}`}
+        className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
         disabled={disabled}
         onPress={() => setPickerVisible(true)}
       >
@@ -161,7 +161,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
                 themeVariant={themeMode}
                 value={parseDDMMYYYY(value)}
               />
-              <Pressable className="mt-2 h-11 items-center justify-center rounded-full bg-primary active:opacity-80" onPress={handleClose}>
+              <Pressable className="mt-2 h-11 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80" onPress={handleClose}>
                 <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Listo</Text>
               </Pressable>
             </Pressable>
@@ -204,7 +204,7 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
           value={value}
         />
         {onToggleSecure && (
-          <Pressable className="px-3" onPress={onToggleSecure}>
+          <Pressable className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800" onPress={onToggleSecure}>
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
               name={showSecure ? 'eye-off-outline' : 'eye-outline'}
@@ -240,7 +240,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     <View className="mb-5">
       <Text className={FIELD_LABEL}>{label}</Text>
       <Pressable
-        className={`h-12 flex-row items-center rounded-xl border px-4 ${borderClass}`}
+        className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
         onPress={disabled ? undefined : () => setVisible(true)}
       >
         <Text className={`flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
@@ -248,6 +248,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         </Text>
         {!disabled && value && (
           <Pressable
+            className="rounded-full hover:opacity-70"
             onPress={() => { onChange(''); setVisible(false); }}
             accessibilityLabel="Limpiar selección"
           >
@@ -281,7 +282,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
                     <Pressable
                       key={item.id}
                       className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                       onPress={() => { onChange(item.id); setVisible(false); }}
                     >
