@@ -41,18 +41,20 @@ export function SectionCard({ title, icon, children, collapsible = false, collap
   const Header = collapsible ? Pressable : View;
 
   return (
-    <View className={`mb-5 rounded-2xl border p-6 shadow-sm ${style.box}`}>
+    <View className={`mb-5 rounded-2xl border p-6 shadow-sm ${style.box}`} nativeID="section-card" testID="section-card">
       <Header
         className={`flex-row items-center gap-2 ${collapsible ? 'hover:opacity-70 active:opacity-70' : ''} ${!collapsed || !collapsible ? 'mb-4' : ''}`}
+        nativeID="section-card-header"
         onPress={collapsible ? onToggle : undefined}
+        testID="section-card-header"
       >
         {collapsible && (
-          <Animated.View style={chevronStyle}>
+          <Animated.View nativeID="section-card-chevron" style={chevronStyle} testID="section-card-chevron">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={18} />
           </Animated.View>
         )}
         <MaterialCommunityIcons color={style.icon ?? colors.primary} name={icon} size={18} />
-        <Text className={`text-base font-bold ${style.title}`}>{title}</Text>
+        <Text className={`text-base font-bold ${style.title}`} nativeID="section-card-title" testID="section-card-title">{title}</Text>
       </Header>
       {(!collapsible || !collapsed) && children}
     </View>
