@@ -11,12 +11,32 @@ function FeatureItem({ icon, title, description, colors }) {
       nativeID={`home-mobile-feature-card-${icon}`}
       testID={`home-mobile-feature-card-${icon}`}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15">
+      <View
+        className="h-10 w-10 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15"
+        nativeID={`home-mobile-feature-icon-${icon}`}
+        testID={`home-mobile-feature-icon-${icon}`}
+      >
         <MaterialCommunityIcons color={colors.primary} name={icon} size={20} />
       </View>
-      <View className="flex-1">
-        <Text className="mb-1 text-base font-bold text-slate-950 dark:text-white">{title}</Text>
-        <Text className="text-sm leading-5 text-slate-600 dark:text-slate-300">{description}</Text>
+      <View
+        className="flex-1"
+        nativeID={`home-mobile-feature-copy-${icon}`}
+        testID={`home-mobile-feature-copy-${icon}`}
+      >
+        <Text
+          className="mb-1 text-base font-bold text-slate-950 dark:text-white"
+          nativeID={`home-mobile-feature-title-${icon}`}
+          testID={`home-mobile-feature-title-${icon}`}
+        >
+          {title}
+        </Text>
+        <Text
+          className="text-sm leading-5 text-slate-600 dark:text-slate-300"
+          nativeID={`home-mobile-feature-description-${icon}`}
+          testID={`home-mobile-feature-description-${icon}`}
+        >
+          {description}
+        </Text>
       </View>
     </View>
   );
@@ -33,32 +53,62 @@ export function HomeMobileScreen() {
       nativeID="home-mobile-screen"
       testID="home-mobile-screen"
     >
-      <View className="items-center py-16">
-        <View className="mb-6 flex-row items-center gap-2 rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5">
+      <View
+        className="items-center py-16"
+        nativeID="home-mobile-hero"
+        testID="home-mobile-hero"
+      >
+        <View
+          className="mb-6 flex-row items-center gap-2 rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5"
+          nativeID="home-mobile-hero-badge"
+          testID="home-mobile-hero-badge"
+        >
           <MaterialCommunityIcons
             color={colors.primary}
             name="brain"
             size={16}
           />
-          <Text className="text-xs font-semibold uppercase tracking-wide text-primary">
+          <Text
+            className="text-xs font-semibold uppercase tracking-wide text-primary"
+            nativeID="home-mobile-hero-badge-label"
+            testID="home-mobile-hero-badge-label"
+          >
             {HERO_CONTENT.badge}
           </Text>
         </View>
 
-        <Text className="mb-6 text-center text-[26px] font-bold leading-8 text-slate-950 dark:text-white">
+        <Text
+          className="mb-6 text-center text-[26px] font-bold leading-8 text-slate-950 dark:text-white"
+          nativeID="home-mobile-hero-title"
+          testID="home-mobile-hero-title"
+        >
           {HERO_CONTENT.title}
         </Text>
 
-        <Text className="mb-10 text-center text-base leading-6 text-slate-600 dark:text-slate-300">
+        <Text
+          className="mb-10 text-center text-base leading-6 text-slate-600 dark:text-slate-300"
+          nativeID="home-mobile-hero-description"
+          testID="home-mobile-hero-description"
+        >
           {HERO_CONTENT.description}
         </Text>
 
-        <View className="w-full gap-4">
+        <View
+          className="w-full gap-4"
+          nativeID="home-mobile-hero-actions"
+          testID="home-mobile-hero-actions"
+        >
           <Pressable
             className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary shadow-md hover:opacity-90 active:opacity-80"
+            nativeID="home-mobile-hero-primary-cta"
+            testID="home-mobile-hero-primary-cta"
             onPress={() => router.push('/register')}
           >
-            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
+            <Text
+              className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
+              nativeID="home-mobile-hero-primary-cta-label"
+              testID="home-mobile-hero-primary-cta-label"
+            >
               {HERO_CONTENT.primaryCta}
             </Text>
             <MaterialCommunityIcons
@@ -70,9 +120,15 @@ export function HomeMobileScreen() {
 
           <Pressable
             className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-slate-100 hover:bg-slate-200 active:opacity-80 dark:bg-slate-800 dark:hover:bg-slate-700"
+            nativeID="home-mobile-hero-secondary-cta"
+            testID="home-mobile-hero-secondary-cta"
             onPress={() => router.push('/login')}
           >
-            <Text className="text-sm font-semibold uppercase tracking-wide text-slate-950 dark:text-white">
+            <Text
+              className="text-sm font-semibold uppercase tracking-wide text-slate-950 dark:text-white"
+              nativeID="home-mobile-hero-secondary-cta-label"
+              testID="home-mobile-hero-secondary-cta-label"
+            >
               {HERO_CONTENT.secondaryCta}
             </Text>
             <MaterialCommunityIcons
@@ -84,40 +140,68 @@ export function HomeMobileScreen() {
         </View>
       </View>
 
-      <View className="gap-4 py-4">
+      <View
+        className="gap-4 py-4"
+        nativeID="home-mobile-features"
+        testID="home-mobile-features"
+      >
         {FEATURES.map((feature) => (
           <FeatureItem key={feature.icon} {...feature} colors={colors} />
         ))}
       </View>
 
-      <View className="py-12">
+      <View
+        className="py-12"
+        nativeID="home-mobile-ai-panel"
+        testID="home-mobile-ai-panel"
+      >
         <View
           className="overflow-hidden rounded-2xl border border-primary/20 bg-white p-8 shadow-lg dark:bg-[#282d31]"
           nativeID="home-mobile-ai-panel-card"
           testID="home-mobile-ai-panel-card"
         >
-          <View className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5">
+          <View
+            className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5"
+            nativeID="home-mobile-ai-panel-badge"
+            testID="home-mobile-ai-panel-badge"
+          >
             <MaterialCommunityIcons
               color={colors.primary}
               name="creation"
               size={16}
             />
-            <Text className="text-xs font-semibold uppercase tracking-wide text-primary">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wide text-primary"
+              nativeID="home-mobile-ai-panel-badge-label"
+              testID="home-mobile-ai-panel-badge-label"
+            >
               {AI_PANEL_CONTENT.badge}
             </Text>
           </View>
 
-          <Text className="mb-4 text-[26px] font-bold leading-8 text-slate-950 dark:text-white">
+          <Text
+            className="mb-4 text-[26px] font-bold leading-8 text-slate-950 dark:text-white"
+            nativeID="home-mobile-ai-panel-title"
+            testID="home-mobile-ai-panel-title"
+          >
             {AI_PANEL_CONTENT.title}
           </Text>
 
-          <Text className="text-base leading-6 text-slate-600 dark:text-slate-300">
+          <Text
+            className="text-base leading-6 text-slate-600 dark:text-slate-300"
+            nativeID="home-mobile-ai-panel-description"
+            testID="home-mobile-ai-panel-description"
+          >
             {AI_PANEL_CONTENT.description}
           </Text>
         </View>
       </View>
 
-      <View className="mt-8 flex-row gap-4">
+      <View
+        className="mt-8 flex-row gap-4"
+        nativeID="home-mobile-audience-cards"
+        testID="home-mobile-audience-cards"
+      >
         {AUDIENCE_CARDS.map((card) => (
           <View
             key={card.icon}
@@ -126,8 +210,20 @@ export function HomeMobileScreen() {
             testID={`home-mobile-audience-card-${card.icon}`}
           >
             <MaterialCommunityIcons color={colors.primary} name={card.icon} size={24} style={{ marginBottom: 8 }} />
-            <Text className="mb-1 text-base font-bold text-slate-950 dark:text-white">{card.title}</Text>
-            <Text className="text-sm leading-5 text-slate-600 dark:text-slate-300">{card.description}</Text>
+            <Text
+              className="mb-1 text-base font-bold text-slate-950 dark:text-white"
+              nativeID={`home-mobile-audience-title-${card.icon}`}
+              testID={`home-mobile-audience-title-${card.icon}`}
+            >
+              {card.title}
+            </Text>
+            <Text
+              className="text-sm leading-5 text-slate-600 dark:text-slate-300"
+              nativeID={`home-mobile-audience-description-${card.icon}`}
+              testID={`home-mobile-audience-description-${card.icon}`}
+            >
+              {card.description}
+            </Text>
           </View>
         ))}
       </View>
