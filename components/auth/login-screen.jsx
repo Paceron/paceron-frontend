@@ -69,6 +69,7 @@ function LoginForm({ onForgotPassword }) {
     try {
       const result = await login(email, password);
       if (result.success) {
+        Toast.show({ type: 'success', text1: '¡Bienvenido de nuevo!', text2: 'Iniciaste sesión correctamente.' });
         router.replace('/');
       } else {
         Toast.show({

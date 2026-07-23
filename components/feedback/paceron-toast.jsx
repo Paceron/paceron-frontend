@@ -9,6 +9,7 @@ const VARIANTS = {
   success: { icon: 'check-circle', accent: '#8cc63e', tint: 'bg-primary-tint dark:bg-primary/15' },
   error: { icon: 'alert-circle', accent: '#ef4444', tint: 'bg-red-500/15' },
   info: { icon: 'information', accent: '#38bdf8', tint: 'bg-sky-500/15' },
+  warning: { icon: 'alert', accent: '#f59e0b', tint: 'bg-amber-500/15' },
 };
 
 function ToastCard({ type, text1, text2 }) {
@@ -46,4 +47,5 @@ export const toastConfig = {
   success: ({ text1, text2 }) => <ToastCard type="success" text1={text1} text2={text2} />,
   error: ({ text1, text2 }) => <ToastCard type="error" text1={text1} text2={text2} />,
   info: ({ text1, text2 }) => <ToastCard type="info" text1={text1} text2={text2} />,
+  warning: ({ text1, text2 }) => <ToastCard type="warning" text1={text1} text2={text2} />,
 };
