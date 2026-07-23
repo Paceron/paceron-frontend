@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BackHandler, Dimensions, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,6 +18,90 @@ const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH;
 const ANIMATION_CONFIG = { duration: 280, easing: Easing.out(Easing.cubic) };
+const ACCORDION_CONFIG = { duration: 220, easing: Easing.out(Easing.cubic) };
+
+// Ítem "Equipos" del drawer: acordeón que expande/contrae la lista de
+// equipos con animación de altura (mide el contenido una vez montado vía
+// onLayout, ya que RN no puede animar directamente a height: auto) y hace
+// rotar un único ícono de chevron en vez de intercambiar dos íconos.
+function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTeam, onCreateTeam, colors, icon, label }) {
+  const [contentHeight, setContentHeight] = useState(0);
+  const height = useSharedValue(0);
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    height.value = withTiming(expanded ? contentHeight : 0, ACCORDION_CONFIG);
+    rotation.value = withTiming(expanded ? 1 : 0, ACCORDION_CONFIG);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, contentHeight]);
+
+  const heightStyle = useAnimatedStyle(() => ({ height: height.value }));
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(rotation.value, [0, 1], [0, 180])}deg` }],
+  }));
+
+  return (
+    <View>
+      <Pressable
+        className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
+          expanded ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+        }`}
+        onPress={onToggle}
+      >
+        <MaterialCommunityIcons
+          color={expanded ? colors.primary : colors.onSurfaceVariant}
+          name={icon ?? 'circle-small'}
+          size={22}
+        />
+        <Text className={`flex-1 text-sm font-semibold ${expanded ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}`}>
+          {label}
+        </Text>
+        <Animated.View style={chevronStyle}>
+          <MaterialCommunityIcons color={expanded ? colors.primary : colors.onSurfaceVariant} name="chevron-down" size={18} />
+        </Animated.View>
+      </Pressable>
+
+      <Animated.View style={[{ overflow: 'hidden' }, heightStyle]}>
+        <View
+          className="ml-6 gap-0.5 border-l border-slate-200 pl-3 dark:border-slate-800"
+          onLayout={(e) => setContentHeight(e.nativeEvent.layout.height)}
+        >
+          {teams.length === 0 && (
+            <Text className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400">
+              Todavía no tenés equipos.
+            </Text>
+          )}
+          {teams.map((team) => {
+            const isSelected = team.id === selectedTeamId;
+            return (
+              <Pressable
+                key={team.id}
+                className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
+                onPress={() => onSelectTeam(team)}
+              >
+                <MaterialCommunityIcons
+                  color={isSelected ? colors.primary : colors.onSurfaceVariant}
+                  name="account-group"
+                  size={16}
+                />
+                <Text className={`flex-1 text-sm ${isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'}`}>
+                  {team.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
+            onPress={onCreateTeam}
+          >
+            <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
+            <Text className="text-sm font-semibold text-primary">Crear equipo</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
 
 function TopAppBar({ onTogglePress, open }) {
   const colors = useThemeColors();
@@ -160,72 +244,18 @@ function NavigationDrawer({ open, pathname, onClose }) {
                   {routes.map((route) => {
                     if (route.name === 'equipos') {
                       return (
-                        <View key={route.name}>
-                          <Pressable
-                            className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
-                              teamsExpanded ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-                            }`}
-                            onPress={() => setTeamsExpanded((v) => !v)}
-                          >
-                            <MaterialCommunityIcons
-                              color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
-                              name={route.icon ?? 'circle-small'}
-                              size={22}
-                            />
-                            <Text
-                              className={`flex-1 text-sm font-semibold ${
-                                teamsExpanded ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
-                              }`}
-                            >
-                              {route.label}
-                            </Text>
-                            <MaterialCommunityIcons
-                              color={teamsExpanded ? colors.primary : colors.onSurfaceVariant}
-                              name={teamsExpanded ? 'chevron-up' : 'chevron-down'}
-                              size={18}
-                            />
-                          </Pressable>
-
-                          {teamsExpanded && (
-                            <View className="mb-1 ml-6 gap-0.5 border-l border-slate-200 pl-3 dark:border-slate-800">
-                              {teams.length === 0 && (
-                                <Text className="px-2 py-2 text-xs text-slate-500 dark:text-slate-400">
-                                  Todavía no tenés equipos.
-                                </Text>
-                              )}
-                              {teams.map((team) => {
-                                const isSelected = team.id === selectedTeamId;
-                                return (
-                                  <Pressable
-                                    key={team.id}
-                                    className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
-                                    onPress={() => handleSelectTeam(team)}
-                                  >
-                                    <MaterialCommunityIcons
-                                      color={isSelected ? colors.primary : colors.onSurfaceVariant}
-                                      name="account-group"
-                                      size={16}
-                                    />
-                                    <Text
-                                      className={`flex-1 text-sm ${
-                                        isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'
-                                      }`}
-                                    >
-                                      {team.name}
-                                    </Text>
-                                  </Pressable>
-                                );
-                              })}
-                              <Pressable
-                                className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
-                                onPress={handleCreateTeam}
-                              >
-                                <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
-                                <Text className="text-sm font-semibold text-primary">Crear equipo</Text>
-                              </Pressable>
-                            </View>
-                          )}
-                        </View>
+                        <TeamsAccordion
+                          key={route.name}
+                          colors={colors}
+                          expanded={teamsExpanded}
+                          icon={route.icon}
+                          label={route.label}
+                          onCreateTeam={handleCreateTeam}
+                          onSelectTeam={handleSelectTeam}
+                          onToggle={() => setTeamsExpanded((v) => !v)}
+                          selectedTeamId={selectedTeamId}
+                          teams={teams}
+                        />
                       );
                     }
 
