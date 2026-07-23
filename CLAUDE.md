@@ -81,7 +81,7 @@ Specs viven en `docs/superpowers/specs/YYYY-MM-DD-<tema>-design.md`, planes en `
 
 `npm test` corre Jest sobre `__tests__/` — cubre store, servicios, validadores y normalizers (lógica pura). **No hay tests de render de componentes** — es convención del proyecto, no un hueco a llenar por default: los componentes visuales/presentacionales se verifican manualmente (preview web + en device). Antes de mergear, la suite completa debe estar en verde.
 
-`npm run lint` (ESLint, ver `eslint.config.js`) también debe estar en verde antes de mergear — incluye la regla custom `local/require-native-id` (ver sección "Identificadores de componentes").
+`npm run lint` (ESLint, ver `eslint.config.js`) también debe estar en verde antes de mergear — incluye la regla custom `local/require-native-id` (ver sección "Identificadores de componentes"). Se corre en CI (`.github/workflows/ci.yml`) junto a `npm test`, en el mismo job — el pipeline falla si hay **errores** de lint (warnings preexistentes como `react-hooks/exhaustive-deps` no bloquean todavía, es una decisión deliberada; encararlas es un posible próximo paso, no urgente).
 
 ## Verificación visual
 
