@@ -10,6 +10,8 @@ import { AppProviders } from '../providers/app-providers.jsx';
 import { toastConfig } from '../components/feedback/paceron-toast.jsx';
 import { useThemeMode } from '../providers/theme-provider.jsx';
 import { RoleSwitchOverlay } from '../components/shell/role-switch-overlay.jsx';
+import { MobileBrowserLandingScreen } from '../components/home/mobile-browser-landing-screen.jsx';
+import { isMobileBrowser } from '../utils/platform.js';
 
 // Fondo del Stack navigator en sí (no del contenido de cada screen). Sin
 // esto, el navigator usa su fondo por defecto (claro) durante la animación
@@ -31,6 +33,14 @@ function StackNavigator() {
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({ Orbitron_700Bold });
   if (!fontsLoaded) return null;
+
+  // La web todavía no es 100% responsive — mientras tanto, cortamos el
+  // acceso desde cualquier browser en OS mobile (Android/iOS), sin
+  // excepción de ruta, y mostramos esta landing en su lugar. Va antes
+  // del Stack a propósito: /login y /register son Stack.Screen hermanos
+  // de (tabs), no hijos — un gate solo en (tabs)/_layout.jsx no los
+  // cubriría.
+  if (isMobileBrowser()) return <MobileBrowserLandingScreen />;
 
   return (
     <SafeAreaProvider>
