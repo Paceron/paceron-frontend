@@ -96,6 +96,31 @@ Los estilos de tema se definen **inline por componente**, vía clases NativeWind
 
 Lo que sí conviene mantener: cuando un par claro/oscuro se repite en más de un lugar (una card, un badge, un wrapper de página), extraerlo a un componente compartido en vez de duplicar el string de clases — ver `components/forms/section-card.jsx`, `components/shell/role-badge.jsx` como ejemplos ya hechos así. Los tokens de color (paleta base) viven en `tailwind.config.js` (`theme.extend.colors`) — antes de agregar un color nuevo, revisar si ya existe algo cercano ahí.
 
+## Responsive web
+
+**Regla estricta y obligatoria:** toda pantalla o componente nuevo del
+front se construye pensando en que la web debe funcionar en cualquier
+ancho de viewport desde el día uno — no es un caso aparte a resolver
+después. Mismo nivel de obligatoriedad que la regla de `nativeID`/`testID`
+(ver sección "Identificadores de componentes").
+
+La web (`isWeb`) se adapta a cualquier ancho de viewport — no hay una
+versión "solo desktop". El breakpoint (`BREAKPOINTS.lg` en
+`theme/tokens.js`, hoy 1024px — único lugar donde se define el valor,
+`useIsNarrowWeb()` en `hooks/use-is-narrow-web.js` lo importa en vez de
+hardcodearlo) decide en JS (`useWindowDimensions()`, no clases
+`sm:`/`md:`/`lg:` de NativeWind — esas son CSS-only, no sirven para
+decidir qué estructura montar) entre el shell/landing anchos
+(`AppWebShell`, `HomeLandingScreen`) y sus variantes angostas
+(`AppWebShellNarrow`, `HomeWebNarrowScreen`). Ver
+`docs/superpowers/specs/2026-07-23-responsive-web-shell-design.md` para
+el detalle completo de la decisión.
+
+La app nativa compilada (`AppMobileShell`, `HomeMobileScreen`,
+`Platform.OS !== 'web'`) es independiente de todo esto — el diferencial
+entre nativo y web es funcional (GPS, cámara, sensores — ver
+`utils/platform.js`), no de interfaz.
+
 ## Identificadores de componentes (`nativeID` / `testID`)
 
 **Regla estricta y obligatoria:** todo componente visual del front (`View`, `Text`, `Pressable`, `TextInput`, `Image`, `ScrollView`, `Touchable*`, `FlatList`, `SectionList`, `Modal`, `SafeAreaView` — incluye sus variantes `Animated.*`) debe llevar `nativeID` y `testID` con un valor identificable y único en su contexto. Ya no es "a partir de ahora" — el backfill retroactivo sobre todo el código existente se hizo (branch `chore/eslint-native-id-rule` + las que le siguieron), así que hoy la regla aplica sin excepción a todo el árbol de `components/`/`app/`.
