@@ -98,11 +98,19 @@ Lo que sí conviene mantener: cuando un par claro/oscuro se repite en más de un
 
 ## Responsive web
 
+**Regla estricta y obligatoria:** toda pantalla o componente nuevo del
+front se construye pensando en que la web debe funcionar en cualquier
+ancho de viewport desde el día uno — no es un caso aparte a resolver
+después. Mismo nivel de obligatoriedad que la regla de `nativeID`/`testID`
+(ver sección "Identificadores de componentes").
+
 La web (`isWeb`) se adapta a cualquier ancho de viewport — no hay una
-versión "solo desktop". El breakpoint (1024px, `useIsNarrowWeb()` en
-`hooks/use-is-narrow-web.js`) decide en JS (`useWindowDimensions()`, no
-clases `sm:`/`md:`/`lg:` de NativeWind — esas son CSS-only, no sirven
-para decidir qué estructura montar) entre el shell/landing anchos
+versión "solo desktop". El breakpoint (`BREAKPOINTS.lg` en
+`theme/tokens.js`, hoy 1024px — único lugar donde se define el valor,
+`useIsNarrowWeb()` en `hooks/use-is-narrow-web.js` lo importa en vez de
+hardcodearlo) decide en JS (`useWindowDimensions()`, no clases
+`sm:`/`md:`/`lg:` de NativeWind — esas son CSS-only, no sirven para
+decidir qué estructura montar) entre el shell/landing anchos
 (`AppWebShell`, `HomeLandingScreen`) y sus variantes angostas
 (`AppWebShellNarrow`, `HomeWebNarrowScreen`). Ver
 `docs/superpowers/specs/2026-07-23-responsive-web-shell-design.md` para
@@ -112,10 +120,6 @@ La app nativa compilada (`AppMobileShell`, `HomeMobileScreen`,
 `Platform.OS !== 'web'`) es independiente de todo esto — el diferencial
 entre nativo y web es funcional (GPS, cámara, sensores — ver
 `utils/platform.js`), no de interfaz.
-
-**A partir de ahora:** toda pantalla o componente nuevo del front se
-construye pensando en que la web debe funcionar en cualquier ancho de
-viewport desde el día uno — no es un caso aparte a resolver después.
 
 ## Identificadores de componentes (`nativeID` / `testID`)
 
