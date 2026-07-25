@@ -9,9 +9,42 @@ const MOCK_TEAMS = [
   { id: 'team-3', name: 'Maraton Runners' },
 ];
 
+// Tope de integrantes por tier del entrenador. 'base' es el plan free.
+// 'pro'/'premium' hoy no los asigna ningun mock todavia (roles-mock.js
+// siempre devuelve 'base'), pero el tope ya queda resuelto para cuando el
+// sistema de tiers crezca mas alla de solo base/premium.
+export const TEAM_MEMBER_LIMITS = {
+  base: 10,
+  pro: 50,
+  premium: 300,
+};
+
+export function getTeamMemberLimit(tier) {
+  return TEAM_MEMBER_LIMITS[tier] ?? TEAM_MEMBER_LIMITS.base;
+}
+
 export const useTeamStore = create((set) => ({
   teams: MOCK_TEAMS,
   selectedTeamId: null,
 
   selectTeam: (teamId) => set({ selectedTeamId: teamId }),
+
+  // Sin backend de equipos: crea el equipo solo en memoria y lo selecciona.
+  // El envio de invitaciones por email es responsabilidad del backend
+  // (no hay ningun servicio de envio de mails en este repo) — por ahora
+  // solo se guardan los emails cargados junto con el resto de los datos.
+  createTeam: (payload) => {
+    const team = {
+      id: `team-${Date.now()}`,
+      name: payload.name,
+      maxMembers: payload.maxMembers,
+      description: payload.description,
+      requirements: payload.requirements,
+      photoUri: payload.photoUri ?? null,
+      level: payload.level,
+      invitedEmails: payload.invitedEmails ?? [],
+    };
+    set((state) => ({ teams: [...state.teams, team], selectedTeamId: team.id }));
+    return team;
+  },
 }));

@@ -101,9 +101,11 @@ function DropdownMenu({ onClose }) {
   );
 }
 
-// Sin backend de equipos todavía: elegir un equipo o crear uno nuevo solo
-// guarda selección local y avisa por toast — no navega a una pantalla propia.
+// Sin backend de equipos todavía: elegir un equipo solo guarda selección
+// local y avisa por toast — no hay pantalla de detalle todavía. Crear
+// equipo sí navega a una pantalla propia (/equipos/crear).
 function TeamsMenu({ onClose }) {
+  const router = useRouter();
   const colors = useThemeColors();
   const teams = useTeamStore((s) => s.teams);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
@@ -117,7 +119,7 @@ function TeamsMenu({ onClose }) {
 
   const handleCreateTeam = () => {
     onClose();
-    Toast.show({ type: 'info', text1: 'Crear equipo', text2: 'Este flujo todavía no está disponible.' });
+    router.push('/equipos/crear');
   };
 
   return (

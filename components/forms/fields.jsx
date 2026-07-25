@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
+import { validateEmailFormat } from '../../utils/email-validators.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
 
@@ -241,7 +242,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled }) {
+export function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -253,11 +254,13 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
     ? 'border-primary bg-white dark:bg-slate-900'
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
 
+  const rowSizeClass = multiline ? 'min-h-24 items-start py-3' : 'h-12 items-center';
+
   return (
     <View className="mb-5" nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
       <View
-        className={`h-12 flex-row items-center rounded-xl border ${borderColor}`}
+        className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
         nativeID={`input-field-${slug}-row`}
         testID={`input-field-${slug}-row`}
       >
@@ -267,6 +270,8 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
           className={INPUT_CLASS}
           editable={!disabled}
           keyboardType={keyboardType}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
           onBlur={onBlur}
           onChangeText={onChange}
           onSubmitEditing={onSubmitEditing}
@@ -274,6 +279,7 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
           placeholderTextColor={colors.onSurfaceVariant}
           returnKeyType={returnKeyType}
           secureTextEntry={secureTextEntry}
+          textAlignVertical={multiline ? 'top' : 'center'}
           textContentType={textContentType}
           value={value}
           nativeID={`input-field-${slug}-input`}
@@ -412,6 +418,114 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
           </Pressable>
         </Pressable>
       </Modal>
+    </View>
+  );
+}
+
+// Junta una lista de emails validos, uno por uno (ej. invitar gente a un
+// equipo antes de que exista). El envio real de las invitaciones es tarea
+// del backend (no hay servicio de envio de mails en este repo) — este
+// campo solo junta y valida el listado para mandarlo cuando exista ese
+// endpoint.
+export function EmailListField({ label, value = [], onChange, placeholder = 'nombre@email.com' }) {
+  const colors = useThemeColors();
+  const slug = slugify(label);
+  const [draft, setDraft] = useState('');
+  const [draftError, setDraftError] = useState(null);
+
+  const handleAdd = () => {
+    const email = draft.trim();
+    if (!email) return;
+    if (!validateEmailFormat(email)) {
+      setDraftError('Email inválido');
+      return;
+    }
+    if (value.some((e) => e.toLowerCase() === email.toLowerCase())) {
+      setDraftError('Ya agregaste ese email');
+      return;
+    }
+    onChange([...value, email]);
+    setDraft('');
+    setDraftError(null);
+  };
+
+  const handleRemove = (email) => {
+    onChange(value.filter((e) => e !== email));
+  };
+
+  return (
+    <View className="mb-5" nativeID={`email-list-field-${slug}`} testID={`email-list-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`email-list-field-${slug}-label`} testID={`email-list-field-${slug}-label`}>{label}</Text>
+
+      <View className="flex-row items-center gap-2" nativeID={`email-list-field-${slug}-row`} testID={`email-list-field-${slug}-row`}>
+        <View
+          className={`h-12 flex-1 flex-row items-center rounded-xl border ${
+            draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+          }`}
+          nativeID={`email-list-field-${slug}-input-wrapper`}
+          testID={`email-list-field-${slug}-input-wrapper`}
+        >
+          <TextInput
+            autoCapitalize="none"
+            className={INPUT_CLASS}
+            keyboardType="email-address"
+            onChangeText={(text) => { setDraft(text); if (draftError) setDraftError(null); }}
+            onSubmitEditing={handleAdd}
+            placeholder={placeholder}
+            placeholderTextColor={colors.onSurfaceVariant}
+            returnKeyType="done"
+            value={draft}
+            nativeID={`email-list-field-${slug}-input`}
+            testID={`email-list-field-${slug}-input`}
+          />
+        </View>
+        <Pressable
+          className="h-12 items-center justify-center rounded-xl bg-primary px-5 hover:opacity-90 active:opacity-80"
+          onPress={handleAdd}
+          nativeID={`email-list-field-${slug}-add-button`}
+          testID={`email-list-field-${slug}-add-button`}
+        >
+          <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`email-list-field-${slug}-add-button-label`} testID={`email-list-field-${slug}-add-button-label`}>
+            Agregar
+          </Text>
+        </Pressable>
+      </View>
+
+      <View className="h-5" nativeID={`email-list-field-${slug}-error-row`} testID={`email-list-field-${slug}-error-row`}>
+        {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`email-list-field-${slug}-error`} testID={`email-list-field-${slug}-error`}>{draftError}</Text>}
+      </View>
+
+      {value.length > 0 && (
+        <View className="flex-row flex-wrap gap-2" nativeID={`email-list-field-${slug}-chips`} testID={`email-list-field-${slug}-chips`}>
+          {value.map((email) => {
+            const chipSlug = slugify(email);
+            return (
+              <View
+                key={email}
+                className="flex-row items-center gap-1.5 rounded-full bg-primary-tint-subtle px-3 py-1.5 dark:bg-primary/10"
+                nativeID={`email-list-field-${slug}-chip-${chipSlug}`}
+                testID={`email-list-field-${slug}-chip-${chipSlug}`}
+              >
+                <Text
+                  className="text-xs font-medium text-on-primary-tint dark:text-primary"
+                  nativeID={`email-list-field-${slug}-chip-${chipSlug}-label`}
+                  testID={`email-list-field-${slug}-chip-${chipSlug}-label`}
+                >
+                  {email}
+                </Text>
+                <Pressable
+                  accessibilityLabel={`Quitar ${email}`}
+                  onPress={() => handleRemove(email)}
+                  nativeID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
+                  testID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
