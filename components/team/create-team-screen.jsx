@@ -9,7 +9,7 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField, FIELD_LABEL, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { EmailListField, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
 
 const LEVEL_OPTIONS = [
   { id: 'amateur', name: 'Amateur' },
@@ -121,7 +121,43 @@ export function CreateTeamScreen() {
         </View>
 
         <SectionCard icon="account-group" title="Datos del equipo">
-          <InputField label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
+          <View className="flex-row items-center gap-4" nativeID="create-team-identity-row" testID="create-team-identity-row">
+            <View className="relative" nativeID="create-team-photo-wrapper" testID="create-team-photo-wrapper">
+              <Pressable
+                accessibilityLabel={photoUri ? 'Cambiar foto del equipo' : 'Agregar foto del equipo'}
+                className="h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 hover:opacity-80 active:opacity-70 dark:bg-slate-800"
+                nativeID="create-team-photo-picker"
+                onPress={handlePickPhoto}
+                testID="create-team-photo-picker"
+              >
+                {photoUri ? (
+                  <Image
+                    accessibilityLabel="Foto de perfil del equipo"
+                    className="h-16 w-16 rounded-full"
+                    nativeID="create-team-photo-preview-image"
+                    source={{ uri: photoUri }}
+                    testID="create-team-photo-preview-image"
+                  />
+                ) : (
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-plus-outline" size={26} />
+                )}
+              </Pressable>
+              {photoUri && (
+                <View
+                  className="absolute -bottom-0.5 -right-0.5 h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-primary dark:border-surface"
+                  nativeID="create-team-photo-edit-badge"
+                  pointerEvents="none"
+                  testID="create-team-photo-edit-badge"
+                >
+                  <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={11} />
+                </View>
+              )}
+            </View>
+
+            <View className="flex-1" nativeID="create-team-name-wrapper" testID="create-team-name-wrapper">
+              <InputField label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
+            </View>
+          </View>
 
           <InputField
             label="Descripción del equipo"
@@ -133,7 +169,7 @@ export function CreateTeamScreen() {
           />
 
           <Row>
-            <Col flex={1.3}>
+            <Col>
               <PickerField
                 label="Nivel del equipo"
                 onChange={setLevel}
@@ -145,13 +181,22 @@ export function CreateTeamScreen() {
             </Col>
             <Col>
               <InputField
-                label={`Cantidad máxima de integrantes (hasta ${maxAllowed} en tu plan)`}
+                label="Máx. de integrantes"
                 keyboardType="number-pad"
                 onChange={setMaxMembers}
                 placeholder={String(maxAllowed)}
                 value={maxMembers}
                 error={errors.maxMembers}
               />
+              {!errors.maxMembers && (
+                <Text
+                  className="-mt-4 mb-5 text-xs text-slate-500 dark:text-slate-400"
+                  nativeID="create-team-max-members-hint"
+                  testID="create-team-max-members-hint"
+                >
+                  Tu plan permite hasta {maxAllowed}.
+                </Text>
+              )}
             </Col>
           </Row>
 
@@ -163,44 +208,6 @@ export function CreateTeamScreen() {
             placeholder="Ej. Ritmo promedio, disponibilidad horaria, experiencia previa."
             value={requirements}
           />
-
-          <View className="mb-5" nativeID="create-team-photo-field" testID="create-team-photo-field">
-            <Text className={FIELD_LABEL} nativeID="create-team-photo-label" testID="create-team-photo-label">Foto de perfil del equipo</Text>
-            <View className="flex-row items-center gap-4" nativeID="create-team-photo-row" testID="create-team-photo-row">
-              <View
-                className="h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
-                nativeID="create-team-photo-preview"
-                testID="create-team-photo-preview"
-              >
-                {photoUri ? (
-                  <Image
-                    accessibilityLabel="Foto de perfil del equipo"
-                    className="h-16 w-16 rounded-full"
-                    nativeID="create-team-photo-preview-image"
-                    source={{ uri: photoUri }}
-                    testID="create-team-photo-preview-image"
-                  />
-                ) : (
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-group" size={28} />
-                )}
-              </View>
-              <Pressable
-                className="h-11 flex-row items-center gap-2 rounded-full border border-slate-200 px-5 hover:bg-slate-100 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
-                nativeID="create-team-photo-pick-button"
-                onPress={handlePickPhoto}
-                testID="create-team-photo-pick-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-outline" size={18} />
-                <Text
-                  className="text-sm font-semibold text-slate-700 dark:text-slate-200"
-                  nativeID="create-team-photo-pick-button-label"
-                  testID="create-team-photo-pick-button-label"
-                >
-                  {photoUri ? 'Cambiar foto' : 'Elegir foto'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
 
           <EmailListField label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
 
