@@ -426,16 +426,26 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
   );
 }
 
+const NO_GROUP_ID = '';
+const NO_GROUP_LABEL = 'Sin grupo';
+
 // Junta una lista de emails validos, uno por uno (ej. invitar gente a un
-// equipo antes de que exista). El envio real de las invitaciones es tarea
-// del backend (no hay servicio de envio de mails en este repo) — este
-// campo solo junta y valida el listado para mandarlo cuando exista ese
-// endpoint.
-export function EmailListField({ label, value = [], onChange, placeholder = 'nombre@email.com' }) {
+// equipo antes de que exista), cada uno con el grupo al que se invita —
+// value es [{ email, groupId }]. Sin grupo elegido, groupId queda '' (el
+// grupo default "Sin grupo" se resuelve recien al crear el equipo, ver
+// store/team-store.js). El envio real de las invitaciones es tarea del
+// backend (no hay servicio de envio de mails en este repo) — este campo
+// solo junta y valida el listado para mandarlo cuando exista ese endpoint.
+export function EmailListField({ label, value = [], onChange, placeholder = 'nombre@email.com', groups = [] }) {
   const colors = useThemeColors();
   const slug = slugify(label);
   const [draft, setDraft] = useState('');
+  const [draftGroupId, setDraftGroupId] = useState(NO_GROUP_ID);
   const [draftError, setDraftError] = useState(null);
+  const [groupPickerVisible, setGroupPickerVisible] = useState(false);
+
+  const groupOptions = [{ id: NO_GROUP_ID, name: NO_GROUP_LABEL }, ...groups];
+  const draftGroupName = groupOptions.find((g) => g.id === draftGroupId)?.name ?? NO_GROUP_LABEL;
 
   const handleAdd = () => {
     const email = draft.trim();
@@ -444,17 +454,18 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
       setDraftError('Email inválido');
       return;
     }
-    if (value.some((e) => e.toLowerCase() === email.toLowerCase())) {
+    if (value.some((e) => e.email.toLowerCase() === email.toLowerCase())) {
       setDraftError('Ya agregaste ese email');
       return;
     }
-    onChange([...value, email]);
+    onChange([...value, { email, groupId: draftGroupId }]);
     setDraft('');
+    setDraftGroupId(NO_GROUP_ID);
     setDraftError(null);
   };
 
   const handleRemove = (email) => {
-    onChange(value.filter((e) => e !== email));
+    onChange(value.filter((e) => e.email !== email));
   };
 
   return (
@@ -483,15 +494,32 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
             testID={`email-list-field-${slug}-input`}
           />
         </View>
+
         <Pressable
-          className="h-12 items-center justify-center rounded-xl bg-primary px-5 hover:opacity-90 active:opacity-80"
-          onPress={handleAdd}
+          className="h-12 max-w-[112px] flex-row items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+          nativeID={`email-list-field-${slug}-group-trigger`}
+          onPress={() => setGroupPickerVisible(true)}
+          testID={`email-list-field-${slug}-group-trigger`}
+        >
+          <Text
+            className="flex-1 text-xs text-slate-700 dark:text-slate-200"
+            nativeID={`email-list-field-${slug}-group-trigger-label`}
+            numberOfLines={1}
+            testID={`email-list-field-${slug}-group-trigger-label`}
+          >
+            {draftGroupName}
+          </Text>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
+        </Pressable>
+
+        <Pressable
+          className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
+          accessibilityLabel="Agregar email"
           nativeID={`email-list-field-${slug}-add-button`}
+          onPress={handleAdd}
           testID={`email-list-field-${slug}-add-button`}
         >
-          <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`email-list-field-${slug}-add-button-label`} testID={`email-list-field-${slug}-add-button-label`}>
-            Agregar
-          </Text>
+          <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
         </Pressable>
       </View>
 
@@ -501,11 +529,12 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
 
       {value.length > 0 && (
         <View className="flex-row flex-wrap gap-2" nativeID={`email-list-field-${slug}-chips`} testID={`email-list-field-${slug}-chips`}>
-          {value.map((email) => {
-            const chipSlug = slugify(email);
+          {value.map((invite) => {
+            const chipSlug = slugify(invite.email);
+            const groupName = groupOptions.find((g) => g.id === invite.groupId)?.name ?? NO_GROUP_LABEL;
             return (
               <View
-                key={email}
+                key={invite.email}
                 className="flex-row items-center gap-1.5 rounded-full bg-primary-tint-subtle px-3 py-1.5 dark:bg-primary/10"
                 nativeID={`email-list-field-${slug}-chip-${chipSlug}`}
                 testID={`email-list-field-${slug}-chip-${chipSlug}`}
@@ -515,11 +544,11 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
                   nativeID={`email-list-field-${slug}-chip-${chipSlug}-label`}
                   testID={`email-list-field-${slug}-chip-${chipSlug}-label`}
                 >
-                  {email}
+                  {invite.email} · {groupName}
                 </Text>
                 <Pressable
-                  accessibilityLabel={`Quitar ${email}`}
-                  onPress={() => handleRemove(email)}
+                  accessibilityLabel={`Quitar ${invite.email}`}
+                  onPress={() => handleRemove(invite.email)}
                   nativeID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
                   testID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
                 >
@@ -530,6 +559,62 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
           })}
         </View>
       )}
+
+      <Modal
+        animationType="fade"
+        nativeID={`email-list-field-${slug}-group-modal`}
+        onRequestClose={() => setGroupPickerVisible(false)}
+        testID={`email-list-field-${slug}-group-modal`}
+        transparent
+        visible={groupPickerVisible}
+      >
+        <Pressable
+          className="flex-1 justify-center bg-black/50 px-6"
+          nativeID={`email-list-field-${slug}-group-modal-backdrop`}
+          onPress={() => setGroupPickerVisible(false)}
+          testID={`email-list-field-${slug}-group-modal-backdrop`}
+        >
+          <Pressable
+            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
+            nativeID={`email-list-field-${slug}-group-modal-content`}
+            onPress={() => {}}
+            testID={`email-list-field-${slug}-group-modal-content`}
+          >
+            <ScrollView
+              nativeID={`email-list-field-${slug}-group-modal-list`}
+              showsVerticalScrollIndicator={false}
+              testID={`email-list-field-${slug}-group-modal-list`}
+            >
+              {groupOptions.map((group) => {
+                const isSelected = group.id === draftGroupId;
+                const optionSlug = slugify(group.id || 'ninguno');
+                return (
+                  <Pressable
+                    key={group.id || 'none'}
+                    className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
+                      isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                    nativeID={`email-list-field-${slug}-group-modal-option-${optionSlug}`}
+                    onPress={() => { setDraftGroupId(group.id); setGroupPickerVisible(false); }}
+                    testID={`email-list-field-${slug}-group-modal-option-${optionSlug}`}
+                  >
+                    <Text
+                      className={`flex-1 text-sm ${
+                        isSelected ? 'font-semibold text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'
+                      }`}
+                      nativeID={`email-list-field-${slug}-group-modal-option-${optionSlug}-label`}
+                      testID={`email-list-field-${slug}-group-modal-option-${optionSlug}-label`}
+                    >
+                      {group.name}
+                    </Text>
+                    {isSelected && <MaterialCommunityIcons color={colors.primary} name="check" size={18} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

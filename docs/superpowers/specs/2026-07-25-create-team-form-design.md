@@ -13,13 +13,15 @@ que crea el equipo en el store local (sigue sin backend de equipos, ver
 
 ## Alcance de esta spec
 
-`store/team-store.js` (acción `createTeam` + tope de integrantes por tier),
-`components/forms/fields.jsx` (`InputField` con `multiline`, nuevo
-`EmailListField`), `components/team/create-team-screen.jsx` (nuevo),
-`app/(tabs)/equipos/crear.jsx` (nuevo), los tres shells (`app-web-shell.jsx`,
-`app-web-shell-narrow.jsx`, `app-mobile-shell.jsx` — cambia el
-`handleCreateTeam` de toast a navegación), `package.json`/`app.config.js`
-(nueva dependencia `expo-image-picker`).
+`store/team-store.js` (acción `createTeam` + tope de integrantes por tier
++ grupos + grupo default), `components/forms/fields.jsx` (`InputField`
+con `multiline`/`hint`/`dense`, `PickerField` con `dense`, nuevo
+`EmailListField` con selector de grupo por invitación),
+`components/team/create-team-screen.jsx` (nuevo, incluye la sección de
+grupos), `app/(tabs)/equipos/crear.jsx` (nuevo), los tres shells
+(`app-web-shell.jsx`, `app-web-shell-narrow.jsx`, `app-mobile-shell.jsx`
+— cambia el `handleCreateTeam` de toast a navegación),
+`package.json`/`app.config.js` (nueva dependencia `expo-image-picker`).
 
 ## Decisiones
 
@@ -54,19 +56,40 @@ plugin a `app.config.js` con el mensaje de permiso de fotos
 `allowsEditing` + `aspect: [1, 1]` nativo de la librería — no se construye
 un editor de imagen propio.
 
+### Grupos del equipo
+
+Un equipo puede tener varios grupos. Se arman en el mismo formulario:
+nombre + combobox de plan de entrenamiento (`TRAINING_PLAN_OPTIONS`, mock
+local — no existe todavía el dominio de planificación de entrenamientos,
+ver `FUNCTIONAL_PROPOSE.md`), botón "Agregar grupo", lista de chips
+removibles debajo. `store/team-store.js` no persiste nada de esto hasta
+el submit final (`createTeam` recibe el array de grupos armado).
+
+**Regla de negocio: no hay integrante sin grupo.** Todo equipo, al
+crearse, suma automáticamente un grupo adicional invisible para el
+usuario como tal — a nivel de datos es un grupo más (con `isDefault:
+true`), pero su nombre visible es literalmente **"Sin grupo"**
+(`DEFAULT_GROUP_NAME`). No se crea ni se edita desde este formulario, lo
+agrega `createTeam` siempre, al margen de los grupos que arme el
+entrenador. Si se borra un grupo recién creado en el formulario, las
+invitaciones que apuntaban a él vuelven a "Sin grupo" (no quedan
+huérfanas apuntando a un grupo que ya no existe).
+
 ### Invitar corredores por email
 
 `EmailListField`, primitivo nuevo en `components/forms/fields.jsx` (mismo
 archivo que el resto de los campos compartidos). Reutiliza
 `validateEmailFormat` de `utils/email-validators.js` — no se reimplementa
-la validación. Flujo: escribir un email, botón "Agregar" lo valida
-(formato + no duplicado) y lo suma como chip debajo del campo, con botón
-de quitar por chip. El envío real de las invitaciones es tarea del
-backend — no existe ningún servicio de envío de mails en este repo
-(se revisó `services/`, no hay nada parecido). Por ahora los emails
-cargados solo se guardan junto con el resto de los datos del equipo en
-`createTeam`; cuando exista el endpoint de equipos, ese payload ya está
-armado para mandarse tal cual.
+la validación. Cada invitación es `{ email, groupId }`: el campo tiene un
+selector de grupo entre el input de email y el botón "Agregar" (recibe
+`groups`, los grupos armados hasta ese momento en el mismo formulario) —
+si no se elige ninguno, `groupId` queda `''` y se resuelve al grupo
+default recién en `createTeam`, nunca antes. El envío real de las
+invitaciones es tarea del backend — no existe ningún servicio de envío
+de mails en este repo (se revisó `services/`, no hay nada parecido). Por
+ahora los emails cargados solo se guardan junto con el resto de los
+datos del equipo en `createTeam`; cuando exista el endpoint de equipos,
+ese payload ya está armado para mandarse tal cual.
 
 ### Pantalla vs modal
 
@@ -88,7 +111,11 @@ la cual navegar (esa es la que se está diseñando aparte con Stitch).
 Pantalla de detalle del equipo recién creado, combobox de requerimientos
 estandarizados, envío real de invitaciones (backend), recorte/editor de
 imagen propio, límites de equipos totales por entrenador (solo se valida
-integrantes por equipo, no cantidad de equipos).
+integrantes por equipo, no cantidad de equipos), dominio real de planes
+de entrenamiento (el combobox usa un catálogo mock), UI de gestión de
+grupos post-creación (renombrar/borrar grupos de un equipo ya creado,
+mover integrantes entre grupos desde una pantalla de equipo — el flag
+`isDefault` ya deja la puerta abierta para esa protección a futuro).
 
 ## Verificación
 
@@ -100,6 +127,9 @@ una cantidad de integrantes dentro del tope (10 por default, mock
 una cantidad de integrantes mayor al tope → error inline, no permite
 enviar. Agregar/quitar emails con el campo de invitación, incluyendo un
 email inválido y un duplicado, verificando los mensajes de error
-correspondientes.
+correspondientes. Crear uno o más grupos con y sin plan asignado,
+invitar un email a un grupo puntual y otro sin elegir grupo, borrar un
+grupo con una invitación asignada y confirmar que esa invitación vuelve
+a "Sin grupo".
 
-`npm test` → 37/37. `npm run lint` → limpio.
+`npm test` → 39/39. `npm run lint` → limpio.

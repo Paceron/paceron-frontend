@@ -9,12 +9,22 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { EmailListField, FIELD_LABEL, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
 
 const LEVEL_OPTIONS = [
   { id: 'amateur', name: 'Amateur' },
   { id: 'semi-profesional', name: 'Semi-profesional' },
   { id: 'profesional', name: 'Profesional' },
+];
+
+// Sin dominio de planes de entrenamiento todavia (ver FUNCTIONAL_PROPOSE.md,
+// "Planificacion de entrenamientos" sigue siendo un modulo reservado, no
+// implementado) — catalogo mock hasta que exista ese servicio real.
+const TRAINING_PLAN_OPTIONS = [
+  { id: 'plan-5k', name: 'Plan 5K' },
+  { id: 'plan-10k', name: 'Plan 10K' },
+  { id: 'plan-21k', name: 'Plan 21K (medio maratón)' },
+  { id: 'plan-42k', name: 'Plan 42K (maratón)' },
 ];
 
 export function CreateTeamScreen() {
@@ -34,8 +44,37 @@ export function CreateTeamScreen() {
   // requerimientos estandarizados (combobox) en vez de texto — ver spec.
   const [requirements, setRequirements] = useState('');
   const [photoUri, setPhotoUri] = useState(null);
+  const [groups, setGroups] = useState([]);
+  const [groupDraftName, setGroupDraftName] = useState('');
+  const [groupDraftPlan, setGroupDraftPlan] = useState('');
+  const [groupDraftError, setGroupDraftError] = useState(null);
   const [invitedEmails, setInvitedEmails] = useState([]);
   const [errors, setErrors] = useState({});
+
+  // Un equipo puede tener varios grupos, armados aca junto con el resto del
+  // equipo. El grupo default ("Sin grupo") no se crea ni se edita desde
+  // este formulario — lo agrega store/team-store.js al crear el equipo.
+  const handleAddGroup = () => {
+    const groupName = groupDraftName.trim();
+    if (!groupName) {
+      setGroupDraftError('Ingresá un nombre para el grupo.');
+      return;
+    }
+    if (groups.some((g) => g.name.toLowerCase() === groupName.toLowerCase())) {
+      setGroupDraftError('Ya creaste un grupo con ese nombre.');
+      return;
+    }
+    setGroups([...groups, { id: `group-draft-${Date.now()}`, name: groupName, trainingPlanId: groupDraftPlan || null }]);
+    setGroupDraftName('');
+    setGroupDraftPlan('');
+    setGroupDraftError(null);
+  };
+
+  const handleRemoveGroup = (groupId) => {
+    setGroups(groups.filter((g) => g.id !== groupId));
+    // Las invitaciones que apuntaban a este grupo vuelven a "Sin grupo".
+    setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: '' } : invite)));
+  };
 
   const handlePickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -78,6 +117,7 @@ export function CreateTeamScreen() {
       level,
       maxMembers: Number(maxMembers),
       photoUri,
+      groups,
       invitedEmails,
     });
 
@@ -205,7 +245,77 @@ export function CreateTeamScreen() {
             value={requirements}
           />
 
-          <EmailListField label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
+          <View className="mb-3" nativeID="create-team-groups-field" testID="create-team-groups-field">
+            <Text className={FIELD_LABEL} nativeID="create-team-groups-label" testID="create-team-groups-label">Grupos del equipo</Text>
+
+            <InputField
+              dense
+              label="Nombre del grupo"
+              onChange={(text) => { setGroupDraftName(text); if (groupDraftError) setGroupDraftError(null); }}
+              placeholder="Ej. Grupo avanzado"
+              value={groupDraftName}
+              error={groupDraftError}
+            />
+
+            <PickerField
+              dense
+              label="Plan de entrenamiento"
+              onChange={setGroupDraftPlan}
+              options={TRAINING_PLAN_OPTIONS}
+              placeholder="Sin plan asignado"
+              value={groupDraftPlan}
+            />
+
+            <Pressable
+              className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-slate-200 px-5 hover:bg-slate-100 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
+              nativeID="create-team-add-group-button"
+              onPress={handleAddGroup}
+              testID="create-team-add-group-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={16} />
+              <Text
+                className="text-sm font-semibold text-slate-700 dark:text-slate-200"
+                nativeID="create-team-add-group-button-label"
+                testID="create-team-add-group-button-label"
+              >
+                Agregar grupo
+              </Text>
+            </Pressable>
+
+            {groups.length > 0 && (
+              <View className="mt-3 flex-row flex-wrap gap-2" nativeID="create-team-groups-chips" testID="create-team-groups-chips">
+                {groups.map((group) => {
+                  const planName = TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name;
+                  return (
+                    <View
+                      key={group.id}
+                      className="flex-row items-center gap-1.5 rounded-full bg-primary-tint-subtle px-3 py-1.5 dark:bg-primary/10"
+                      nativeID={`create-team-group-chip-${group.id}`}
+                      testID={`create-team-group-chip-${group.id}`}
+                    >
+                      <Text
+                        className="text-xs font-medium text-on-primary-tint dark:text-primary"
+                        nativeID={`create-team-group-chip-${group.id}-label`}
+                        testID={`create-team-group-chip-${group.id}-label`}
+                      >
+                        {group.name} · {planName ?? 'Sin plan'}
+                      </Text>
+                      <Pressable
+                        accessibilityLabel={`Quitar grupo ${group.name}`}
+                        nativeID={`create-team-group-chip-${group.id}-remove-button`}
+                        onPress={() => handleRemoveGroup(group.id)}
+                        testID={`create-team-group-chip-${group.id}-remove-button`}
+                      >
+                        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
 
           <Pressable
             className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
