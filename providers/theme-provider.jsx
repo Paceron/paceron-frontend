@@ -1,48 +1,68 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { colorScheme, useColorScheme } from 'nativewind';
+import * as SystemUI from 'expo-system-ui';
 
-const ThemeContext = createContext(null);
 const STORAGE_KEY = 'paceron-theme-mode';
 const isWeb = Platform.OS === 'web';
 
+// Mismos colores que app/_layout.jsx's Stack contentStyle — deben coincidir
+// para que no haya discontinuidad entre el root view y el contenido de cada
+// screen durante una transición.
+const BACKGROUND_BY_MODE = { dark: '#0d1013', light: '#f8fafc' };
+
+// Default oscuro. En web se respeta una elección explícita de 'light' guardada;
+// sin preferencia guardada (o en native) arranca en 'dark'.
 function readInitialThemeMode() {
-  if (!isWeb || typeof window === 'undefined') return 'light';
-  return window.localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+  if (isWeb && typeof window !== 'undefined') {
+    return window.localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
+  }
+  return 'dark';
 }
 
+function applyWebClass(mode) {
+  if (isWeb && typeof window !== 'undefined') {
+    window.localStorage.setItem(STORAGE_KEY, mode);
+    document.documentElement.classList.toggle('dark', mode === 'dark');
+  }
+}
+
+// Pinta el "root view" nativo de Android (por debajo de React Navigation).
+// Sin esto, el fondo por defecto (blanco) se ve brevemente a través del
+// hueco que se abre durante una transición de Stack con slide horizontal —
+// el contentStyle del Stack por sí solo no lo cubre.
+function applyNativeRootBackground(mode) {
+  if (!isWeb) {
+    SystemUI.setBackgroundColorAsync(BACKGROUND_BY_MODE[mode]);
+  }
+}
+
+// Provider SIN suscripción al color scheme: solo fija el scheme inicial una vez
+// con la API imperativa `colorScheme.set()`. Al no llamar `useColorScheme()`,
+// el provider no re-renderiza en cada toggle, y por lo tanto no re-renderiza el
+// árbol de navegación (evita "Couldn't find a navigation context" en native).
 export function ThemeProvider({ children }) {
-  const [themeMode, setThemeMode] = useState(readInitialThemeMode);
-  const { setColorScheme } = useColorScheme();
-
   useEffect(() => {
-    setColorScheme(themeMode);
-    if (isWeb && typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, themeMode);
-      document.documentElement.classList.toggle('dark', themeMode === 'dark');
-    }
-  }, [themeMode, setColorScheme]);
+    const initial = readInitialThemeMode();
+    colorScheme.set(initial);
+    applyWebClass(initial);
+    applyNativeRootBackground(initial);
+  }, []);
 
-  const toggleThemeMode = () => {
-    setThemeMode((current) => (current === 'dark' ? 'light' : 'dark'));
-  };
-
-  return (
-    <ThemeContext.Provider
-      value={{
-        colorScheme: themeMode,
-        themeMode,
-        setThemeMode,
-        toggleThemeMode,
-      }}
-    >
-      {children}
-    </ThemeContext.Provider>
-  );
+  return children;
 }
 
 export function useThemeMode() {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error('useThemeMode must be used within ThemeProvider');
-  return context;
+  const { colorScheme: scheme } = useColorScheme();
+  const themeMode = scheme === 'light' ? 'light' : 'dark';
+
+  const setThemeMode = (mode) => {
+    colorScheme.set(mode);
+    applyWebClass(mode);
+    applyNativeRootBackground(mode);
+  };
+
+  const toggleThemeMode = () => setThemeMode(themeMode === 'dark' ? 'light' : 'dark');
+
+  return { colorScheme: themeMode, themeMode, setThemeMode, toggleThemeMode };
 }

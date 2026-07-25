@@ -64,10 +64,7 @@ export function getPasswordStrengthScore(password) {
 }
 
 export function getPasswordStrengthMeta(score) {
-  if (score <= 1) return { label: 'Muy débil', color: '#ef4444' };
-  if (score <= 2) return { label: 'Débil', color: '#f97316' };
-  if (score <= 3) return { label: 'Media', color: '#eab308' };
-  if (score <= 4) return { label: 'Aceptable', color: '#84cc16' };
-  if (score === 5) return { label: 'Fuerte', color: '#22c55e' };
+  if (score <= 4) return { label: 'Débil', color: '#ef4444' };
+  if (score === 5) return { label: 'Insuficiente', color: '#f97316' };
   return { label: 'Muy fuerte', color: '#16a34a' };
 }

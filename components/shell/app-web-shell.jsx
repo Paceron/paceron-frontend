@@ -1,61 +1,97 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRoutesByRole } from '../../routes/catalog.js';
-import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { ThemeToggle } from '../theme/theme-toggle.jsx';
+import { RoleBadge } from './role-badge.jsx';
+import { RoleManagementSection } from './role-management-section.jsx';
 
-function DropdownMenu({ onClose, toggleThemeMode, colorScheme, themeMode }) {
-  const colors = useThemeColors();
-  const isDark = themeMode === 'dark';
-  const themeIcon = isDark ? 'weather-night' : 'weather-sunny';
+// Envuelve el dropdown para animar apertura/cierre (fade + slide sutil).
+// Se mantiene siempre montado (mismo patrón que el drawer mobile) para que
+// la animación de salida se vea; cuando está cerrado, pointerEvents 'none'
+// evita que intercepte clicks.
+function AnimatedDropdown({ open, onClose, children }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(-8);
+
+  useEffect(() => {
+    const config = { duration: open ? 160 : 120, easing: Easing.out(Easing.cubic) };
+    opacity.value = withTiming(open ? 1 : 0, config);
+    translateY.value = withTiming(open ? 0 : -8, config);
+  }, [open]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
 
   return (
-    <View className="w-56 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1a1d21]">
-      <Pressable
-        className="flex-row items-center gap-3 rounded-t-xl px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
-        onPress={() => {}}
-      >
-        <MaterialCommunityIcons name="account-circle" size={18} color={colors.onSurfaceVariant} />
-        <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white">Ver perfil</Text>
-      </Pressable>
-
-      <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
-
-      <View className="flex-row items-center justify-between px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150">
-        <Pressable
-          className="flex-row items-center gap-3 flex-1"
-          onPress={toggleThemeMode}
-        >
-          <MaterialCommunityIcons name={themeIcon} size={18} color={colors.onSurfaceVariant} />
-          <Text className="text-sm font-medium text-slate-900 dark:text-white">Tema</Text>
-        </Pressable>
-        <Switch
-          value={isDark}
-          onValueChange={toggleThemeMode}
-          trackColor={{ false: '#cbd5e1', true: '#8cc63e' }}
-          thumbColor="white"
-        />
-      </View>
-
-      <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
-
-      <Pressable
-        className="flex-row items-center gap-3 rounded-b-xl px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
-        onPress={() => { useAuthStore.getState().logout(); onClose(); }}
-      >
-        <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
-        <Text className="text-sm font-semibold text-red-600 dark:text-red-400">Cerrar sesión</Text>
-      </Pressable>
+    <View className="absolute inset-0 z-50" pointerEvents={open ? 'auto' : 'none'}>
+      <Pressable className="absolute inset-0" onPress={onClose} />
+      <Animated.View style={[{ position: 'absolute', right: 16, top: 60 }, animatedStyle]}>
+        {children}
+      </Animated.View>
     </View>
   );
 }
 
-function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPress }) {
+function DropdownMenu({ onClose }) {
+  const router = useRouter();
+  const colors = useThemeColors();
+  const trainerActivated = useAuthStore((s) => s.trainerActivated);
+
+  return (
+    <View className="w-56">
+      {/* Nub que conecta visualmente el dropdown con el pill de usuario de arriba */}
+      <View className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" />
+
+      <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2">
+        {trainerActivated && (
+          <>
+            <RoleManagementSection allowActivate={false} onClose={onClose} />
+            <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+          </>
+        )}
+
+        <View className="flex-row items-center justify-between px-4 py-3.5">
+          <View className="flex-row items-center gap-3">
+            <MaterialCommunityIcons name="theme-light-dark" size={18} color={colors.onSurfaceVariant} />
+            <Text className="text-sm font-medium text-slate-900 dark:text-white">Tema</Text>
+          </View>
+          <ThemeToggle />
+        </View>
+
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+
+        <Pressable
+          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+          onPress={() => { router.push('/profile'); onClose(); }}
+        >
+          <MaterialCommunityIcons name="account-circle" size={18} color={colors.onSurfaceVariant} />
+          <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white">Ver perfil</Text>
+        </Pressable>
+
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" />
+
+        <Pressable
+          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
+          onPress={() => { useAuthStore.getState().logout(); onClose(); }}
+        >
+          <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
+          <Text className="text-sm font-semibold text-red-600 dark:text-red-400">Cerrar sesión</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, activeTab, onTabPress, onUserPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -68,7 +104,7 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
   };
 
   return (
-    <View className="h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-[#111518] border-b border-slate-200 dark:border-slate-800">
+    <View className="h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-surface border-b border-slate-200 dark:border-slate-800">
       <Pressable
         className="flex-row items-center gap-2 shrink-0"
         onPress={() => router.replace('/')}
@@ -96,7 +132,7 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
                   key={route.name}
                   className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 ${
                     isActive
-                      ? 'bg-primary/10'
+                      ? 'bg-primary-tint-subtle dark:bg-primary/10'
                       : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
                   }`}
                   onPress={() => onTabPress?.(route.href)}
@@ -126,20 +162,25 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
 
       <View className="flex-row items-center shrink-0">
         {isGuest ? (
-          <Pressable
-            className="rounded-full bg-primary px-5 py-2 active:opacity-80"
-            onPress={() => router.push('/login')}
-          >
-            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
-              Ingresar
-            </Text>
-          </Pressable>
+          <View className="flex-row items-center gap-3">
+            <ThemeToggle />
+            <Pressable
+              className="rounded-full bg-primary px-5 py-2 active:opacity-80"
+              onPress={() => router.push('/login')}
+            >
+              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
+                Ingresar
+              </Text>
+            </Pressable>
+          </View>
         ) : (
           <Pressable
-            className="flex-row items-center gap-2 rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
+            className={`flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
+              dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
+            }`}
             onPress={handleUserPress}
           >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint-subtle dark:bg-primary/10">
               <MaterialCommunityIcons
                 color={colors.primary}
                 name="account-circle"
@@ -151,6 +192,7 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
                 {userName}
               </Text>
             )}
+            <RoleBadge role={activeRole} />
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
               name="chevron-down"
@@ -166,10 +208,10 @@ function TopBar({ isGuest, userName, routesTab, activeTab, onTabPress, onUserPre
 export function AppWebShell({ children, pathname }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const { colorScheme, themeMode, toggleThemeMode } = useThemeMode();
   const user = useAuthStore((s) => s.user);
   const isGuest = !user;
   const userName = user?.name || null;
+  const activeRole = useAuthStore((s) => s.activeRole);
   const routesTab = getRoutesByRole(user?.role || null);
   const [activeTab, setActiveTab] = useState(pathname);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -196,28 +238,22 @@ export function AppWebShell({ children, pathname }) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-[#0d1013]" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']}>
       <View className="flex-1">
         <TopBar
+          activeRole={activeRole}
           activeTab={activeTab}
+          dropdownOpen={dropdownOpen}
           isGuest={isGuest}
           onTabPress={handleTabPress}
           onUserPress={handleUserPress}
           routesTab={routesTab}
           userName={userName}
         />
-        {dropdownOpen && !isGuest && (
-          <View className="absolute inset-0 z-50">
-            <Pressable className="absolute inset-0" onPress={handleCloseDropdown} />
-            <View className="absolute right-4 top-[60px]">
-              <DropdownMenu
-                onClose={handleCloseDropdown}
-                toggleThemeMode={toggleThemeMode}
-                colorScheme={colorScheme}
-                themeMode={themeMode}
-              />
-            </View>
-          </View>
+        {!isGuest && (
+          <AnimatedDropdown open={dropdownOpen} onClose={handleCloseDropdown}>
+            <DropdownMenu onClose={handleCloseDropdown} />
+          </AnimatedDropdown>
         )}
         <View className="flex-1">{children}</View>
       </View>

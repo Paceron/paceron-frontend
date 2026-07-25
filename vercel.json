@@ -1,0 +1,21 @@
+{
+  "buildCommand": "npx expo export -p web",
+  "outputDirectory": "dist",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/+not-found" }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "feature/**": false,
+      "fix/**": false,
+      "release/**": false,
+      "hotfix/**": false,
+      "backport/**": false,
+      "chore/**": false,
+      "master": true,
+      "develop": true
+    }
+  }
+}

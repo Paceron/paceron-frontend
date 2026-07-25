@@ -18,6 +18,7 @@ Esta sección define el modelo de ramificación y el flujo de trabajo para el co
 | fix/\<id\> | release/ o develop | release/ o develop | Corrección de errores específicos (ej. fix/12346 o fix/sdfsdf). |
 | hotfix/\<id\> | master | master | Corrección de errores en producción (ej. hotfix/12346 o hotfix/nullpointerfix). |
 | backport/\<versión\> | master | develop | Sincronización de cambios de producción hacia desarrollo (ej. backport/0.4.5). |
+| chore/\<nombre\> | develop | develop | Tareas de mantenimiento sin impacto funcional: config, tooling, CI/CD, docs (ej. chore/update-ci-config). |
 
 ## Flujo de Trabajo y Ciclo de Vida
 

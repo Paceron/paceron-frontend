@@ -25,7 +25,7 @@ export function ForgotPasswordForm({ onBack }) {
   if (sent) {
     return (
       <View className="items-center py-4">
-        <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+        <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-primary-tint-subtle dark:bg-primary/10">
           <MaterialCommunityIcons color={colors.primary} name="email-check-outline" size={40} />
         </View>
         <Text className="mb-3 text-xl font-bold text-slate-900 dark:text-white">¡Listo!</Text>
@@ -45,7 +45,7 @@ export function ForgotPasswordForm({ onBack }) {
 
   return (
     <>
-      <Text className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Recuperar contraseña</Text>
+      <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-2 text-2xl text-slate-900 dark:text-white">Recuperar contraseña</Text>
       <Text className="mb-8 text-sm leading-6 text-slate-500 dark:text-slate-400">
         Ingresá tu email y te enviaremos las instrucciones para restablecer tu contraseña.
       </Text>
@@ -81,11 +81,6 @@ export function ForgotPasswordForm({ onBack }) {
         <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">
           Enviar instrucciones
         </Text>
-      </Pressable>
-
-      <Pressable className="flex-row items-center gap-2" onPress={onBack}>
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
-        <Text className="text-sm text-slate-500 dark:text-slate-400">Volver al inicio de sesión</Text>
       </Pressable>
     </>
   );

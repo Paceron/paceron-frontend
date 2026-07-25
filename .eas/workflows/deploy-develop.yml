@@ -1,0 +1,52 @@
+name: Deploy update to develop (Android)
+
+# Sin trigger automático a propósito: EAS Build/Workflows en el free tier
+# comparte una cola de baja prioridad (puede tardar minutos a más de una
+# hora en horas pico), incluso para jobs livianos como fingerprint. Se
+# ejecuta manualmente cuando se decide publicar — ver docs/WORKFLOW.md.
+# Correr con: npm run eas:deploy:develop
+
+jobs:
+  fingerprint:
+    type: fingerprint
+
+  get_android_build:
+    name: Check for a compatible existing build
+    type: get-build
+    needs: [fingerprint]
+    params:
+      platform: android
+      profile: preview
+      channel: develop
+      distribution: internal
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+
+  build_android:
+    name: Build Android (only if no compatible build exists)
+    type: build
+    needs: [get_android_build]
+    if: ${{ !needs.get_android_build.outputs.build_id }}
+    params:
+      platform: android
+      profile: preview
+
+  # Rama "ya existe build compatible": publica directo.
+  publish_update_existing_build:
+    name: Publish update (existing build)
+    type: update
+    needs: [get_android_build]
+    if: ${{ needs.get_android_build.outputs.build_id }}
+    params:
+      channel: develop
+      platform: android
+
+  # Rama "hubo que buildear": publica después de que termine el build nuevo.
+  # Si build_android se saltea (porque ya había build compatible), este job
+  # se saltea en cascada — evita publicar dos veces.
+  publish_update_after_build:
+    name: Publish update (after new build)
+    type: update
+    needs: [build_android]
+    params:
+      channel: develop
+      platform: android

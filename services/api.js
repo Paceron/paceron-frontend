@@ -21,12 +21,21 @@ async function request(path, options = {}) {
   }
 
   const response = await fetch(buildUrl(path), {
-    headers,
     ...options,
+    headers,
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const body = await response.json();
+      if (body?.message) message = body.message;
+    } catch {
+      // sin cuerpo JSON — se usa el mensaje por defecto
+    }
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
   if (response.status === 204) {
     return null;
@@ -37,7 +46,7 @@ async function request(path, options = {}) {
 export default {
   get: async (path) => await request(path, { method: 'GET' }),
   post: async (path, body) => await request(path, { method: 'POST', body: JSON.stringify(body) }),
-  put: async (path, body) => await request(path, { method: 'PUT', body: JSON.stringify(body) }),
-  patch: async (path, body) => await request(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  put: async (path, body, headers) => await request(path, { method: 'PUT', body: JSON.stringify(body), headers }),
+  patch: async (path, body, headers) => await request(path, { method: 'PATCH', body: JSON.stringify(body), headers }),
   delete: async (path) => await request(path, { method: 'DELETE' }),
 };

@@ -1,6 +1,6 @@
 {
   "name": "paceron-frontend",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -9,11 +9,16 @@
     "web": "expo start --web",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "eas:build:preview": "npx eas-cli build --platform android --profile preview",
+    "eas:build:production": "npx eas-cli build --platform android --profile production",
+    "eas:deploy:develop": "npx eas-cli workflow:run .eas/workflows/deploy-develop.yml",
+    "eas:deploy:production": "npx eas-cli workflow:run .eas/workflows/deploy-production.yml"
   },
   "dependencies": {
     "@expo-google-fonts/orbitron": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
+    "@react-native-community/datetimepicker": "8.4.4",
     "@tanstack/react-query": "^5.100.10",
     "expo": "~54.0.35",
     "expo-constants": "~18.0.13",
@@ -21,12 +26,16 @@
     "expo-linking": "^8.0.12",
     "expo-location": "~19.0.8",
     "expo-router": "~6.0.24",
+    "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
+    "expo-system-ui": "~6.0.9",
+    "expo-updates": "~29.0.18",
     "nativewind": "^4.2.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
