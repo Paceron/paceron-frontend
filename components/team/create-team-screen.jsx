@@ -121,11 +121,11 @@ export function CreateTeamScreen() {
         </View>
 
         <SectionCard icon="account-group" title="Datos del equipo">
-          <View className="flex-row items-center gap-4" nativeID="create-team-identity-row" testID="create-team-identity-row">
-            <View className="relative" nativeID="create-team-photo-wrapper" testID="create-team-photo-wrapper">
+          <View className="flex-row items-start gap-4" nativeID="create-team-identity-row" testID="create-team-identity-row">
+            <View className="relative mt-[26px]" nativeID="create-team-photo-wrapper" testID="create-team-photo-wrapper">
               <Pressable
                 accessibilityLabel={photoUri ? 'Cambiar foto del equipo' : 'Agregar foto del equipo'}
-                className="h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 hover:opacity-80 active:opacity-70 dark:bg-slate-800"
+                className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-100 hover:opacity-80 active:opacity-70 dark:bg-slate-800"
                 nativeID="create-team-photo-picker"
                 onPress={handlePickPhoto}
                 testID="create-team-photo-picker"
@@ -133,13 +133,13 @@ export function CreateTeamScreen() {
                 {photoUri ? (
                   <Image
                     accessibilityLabel="Foto de perfil del equipo"
-                    className="h-16 w-16 rounded-full"
+                    className="h-12 w-12 rounded-full"
                     nativeID="create-team-photo-preview-image"
                     source={{ uri: photoUri }}
                     testID="create-team-photo-preview-image"
                   />
                 ) : (
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-plus-outline" size={26} />
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-plus-outline" size={20} />
                 )}
               </Pressable>
               {photoUri && (
@@ -155,11 +155,12 @@ export function CreateTeamScreen() {
             </View>
 
             <View className="flex-1" nativeID="create-team-name-wrapper" testID="create-team-name-wrapper">
-              <InputField label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
+              <InputField dense label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
             </View>
           </View>
 
           <InputField
+            dense
             label="Descripción del equipo"
             multiline
             numberOfLines={3}
@@ -171,6 +172,7 @@ export function CreateTeamScreen() {
           <Row>
             <Col>
               <PickerField
+                dense
                 label="Nivel del equipo"
                 onChange={setLevel}
                 options={LEVEL_OPTIONS}
@@ -181,26 +183,20 @@ export function CreateTeamScreen() {
             </Col>
             <Col>
               <InputField
+                dense
                 label="Máx. de integrantes"
+                hint={`Tu plan permite hasta ${maxAllowed}.`}
                 keyboardType="number-pad"
                 onChange={setMaxMembers}
                 placeholder={String(maxAllowed)}
                 value={maxMembers}
                 error={errors.maxMembers}
               />
-              {!errors.maxMembers && (
-                <Text
-                  className="-mt-4 mb-5 text-xs text-slate-500 dark:text-slate-400"
-                  nativeID="create-team-max-members-hint"
-                  testID="create-team-max-members-hint"
-                >
-                  Tu plan permite hasta {maxAllowed}.
-                </Text>
-              )}
             </Col>
           </Row>
 
           <InputField
+            dense
             label="Requerimientos de entrada al equipo"
             multiline
             numberOfLines={3}

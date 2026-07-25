@@ -242,7 +242,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines }) {
+export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -257,7 +257,7 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
   const rowSizeClass = multiline ? 'min-h-24 items-start py-3' : 'h-12 items-center';
 
   return (
-    <View className="mb-5" nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
+    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
       <View
         className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
@@ -301,13 +301,17 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
         )}
       </View>
       <View className="h-5" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
-        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>}
+        {error ? (
+          <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>
+        ) : hint ? (
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`input-field-${slug}-hint`} testID={`input-field-${slug}-hint`}>{hint}</Text>
+        ) : null}
       </View>
     </View>
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -325,7 +329,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
 
   return (
-    <View className="mb-5" nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
+    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
