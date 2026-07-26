@@ -28,6 +28,9 @@ const ACCORDION_CONFIG = { duration: 220, easing: Easing.out(Easing.cubic) };
 // activa) — si estuviera en la misma paleta que una ruta activa, con el
 // acordeón abierto en home parecería que hay dos accesos seleccionados a
 // la vez (mismo bug ya corregido en el header web ancho).
+//
+// onCreateTeam es opcional: sin ese callback (usuario sin rol entrenador)
+// la fila "Crear equipo" ni se muestra.
 export function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTeam, onCreateTeam, colors, icon, label }) {
   const rotation = useSharedValue(expanded ? 1 : 0);
 
@@ -105,15 +108,17 @@ export function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSe
                 </Pressable>
               );
             })}
-            <Pressable
-              className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
-              nativeID="teams-accordion-create"
-              onPress={onCreateTeam}
-              testID="teams-accordion-create"
-            >
-              <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
-              <Text className="text-sm font-semibold text-primary" nativeID="teams-accordion-create-label" testID="teams-accordion-create-label">Crear equipo</Text>
-            </Pressable>
+            {onCreateTeam && (
+              <Pressable
+                className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
+                nativeID="teams-accordion-create"
+                onPress={onCreateTeam}
+                testID="teams-accordion-create"
+              >
+                <MaterialCommunityIcons color={colors.primary} name="plus-circle" size={16} />
+                <Text className="text-sm font-semibold text-primary" nativeID="teams-accordion-create-label" testID="teams-accordion-create-label">Crear equipo</Text>
+              </Pressable>
+            )}
           </View>
         </Animated.View>
       )}

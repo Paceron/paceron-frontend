@@ -60,6 +60,10 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
   const logout = useAuthStore((s) => s.logout);
   const activeRole = useAuthStore((s) => s.activeRole);
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
+  // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
+  // un usuario puede tener ambos roles y estar activo como corredor.
+  const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
 
   const userRole = user?.role ?? null;
   const routes = getRoutesByRole(userRole);
@@ -169,7 +173,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                         expanded={teamsExpanded}
                         icon={route.icon}
                         label={route.label}
-                        onCreateTeam={handleCreateTeam}
+                        onCreateTeam={canCreateTeam ? handleCreateTeam : undefined}
                         onSelectTeam={handleSelectTeam}
                         onToggle={() => setTeamsExpanded((v) => !v)}
                         selectedTeamId={selectedTeamId}
