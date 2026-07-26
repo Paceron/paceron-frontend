@@ -284,7 +284,7 @@ export function CreateTeamScreen() {
 
         {step === 2 && (
           <SectionCard icon="account-multiple" title="Grupos del equipo">
-            <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400" nativeID="create-team-groups-hint" testID="create-team-groups-hint">
+            <Text className="mb-8 text-sm text-slate-500 dark:text-slate-400" nativeID="create-team-groups-hint" testID="create-team-groups-hint">
               Opcional — podés omitir este paso y crear grupos más adelante.
             </Text>
 
