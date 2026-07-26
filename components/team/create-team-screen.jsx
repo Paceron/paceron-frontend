@@ -9,7 +9,7 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField, FIELD_LABEL, INPUT_CLASS, InlinePicker, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { EmailListField, INPUT_CLASS, InlinePicker, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
 
 const LEVEL_OPTIONS = [
   { id: 'amateur', name: 'Amateur' },
@@ -27,6 +27,44 @@ const TRAINING_PLAN_OPTIONS = [
   { id: 'plan-42k', name: 'Plan 42K (maratón)' },
 ];
 
+const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };
+const TOTAL_STEPS = 3;
+
+// Botones de navegación entre pasos — Atrás (secundario) y la acción
+// principal del paso (Siguiente/Crear), compartidos por los 3 pasos.
+function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right' }) {
+  const colors = useThemeColors();
+
+  return (
+    <View className="mt-2 flex-row gap-3" nativeID="create-team-step-nav" testID="create-team-step-nav">
+      {onBack && (
+        <Pressable
+          className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
+          nativeID="create-team-step-back-button"
+          onPress={onBack}
+          testID="create-team-step-back-button"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+          <Text className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID="create-team-step-back-button-label" testID="create-team-step-back-button-label">
+            Atrás
+          </Text>
+        </Pressable>
+      )}
+      <Pressable
+        className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+        nativeID="create-team-step-next-button"
+        onPress={onNext}
+        testID="create-team-step-next-button"
+      >
+        <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="create-team-step-next-button-label" testID="create-team-step-next-button-label">
+          {nextLabel}
+        </Text>
+        <MaterialCommunityIcons color={colors.onPrimary} name={nextIcon} size={18} />
+      </Pressable>
+    </View>
+  );
+}
+
 export function CreateTeamScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -35,6 +73,8 @@ export function CreateTeamScreen() {
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
+
+  const [step, setStep] = useState(1);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -54,6 +94,8 @@ export function CreateTeamScreen() {
   // Un equipo puede tener varios grupos, armados aca junto con el resto del
   // equipo. El grupo default ("Sin grupo") no se crea ni se edita desde
   // este formulario — lo agrega store/team-store.js al crear el equipo.
+  // Este paso completo es opcional: se puede pasar al siguiente sin haber
+  // agregado ningun grupo.
   const handleAddGroup = () => {
     const groupName = groupDraftName.trim();
     if (!groupName) {
@@ -91,7 +133,7 @@ export function CreateTeamScreen() {
     if (!result.canceled) setPhotoUri(result.assets[0].uri);
   };
 
-  const validate = () => {
+  const validateStep1 = () => {
     const next = {};
     if (!name.trim()) next.name = 'Ingresá un nombre para el equipo.';
     if (!level) next.level = 'Elegí un nivel.';
@@ -107,9 +149,12 @@ export function CreateTeamScreen() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validate()) return;
+  const handleContinueStep1 = () => {
+    if (!validateStep1()) return;
+    setStep(2);
+  };
 
+  const handleSubmit = () => {
     createTeam({
       name: name.trim(),
       description: description.trim(),
@@ -150,103 +195,116 @@ export function CreateTeamScreen() {
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
-          <Text
-            nativeID="create-team-screen-title"
-            testID="create-team-screen-title"
-            style={{ fontFamily: 'Orbitron_700Bold' }}
-            className="text-xl text-slate-900 dark:text-white"
-          >
-            Crear equipo
-          </Text>
+          <View nativeID="create-team-screen-title-group" testID="create-team-screen-title-group">
+            <Text
+              nativeID="create-team-screen-title"
+              testID="create-team-screen-title"
+              style={{ fontFamily: 'Orbitron_700Bold' }}
+              className="text-xl text-slate-900 dark:text-white"
+            >
+              Crear equipo
+            </Text>
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="create-team-screen-step-indicator" testID="create-team-screen-step-indicator">
+              Paso {step} de {TOTAL_STEPS} · {STEP_TITLES[step]}
+            </Text>
+          </View>
         </View>
 
-        <SectionCard icon="account-group" title="Datos del equipo">
-          <View className="flex-row items-start gap-4" nativeID="create-team-identity-row" testID="create-team-identity-row">
-            <View className="relative mt-[26px]" nativeID="create-team-photo-wrapper" testID="create-team-photo-wrapper">
-              <Pressable
-                accessibilityLabel={photoUri ? 'Cambiar foto del equipo' : 'Agregar foto del equipo'}
-                className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-100 hover:opacity-80 active:opacity-70 dark:bg-slate-800"
-                nativeID="create-team-photo-picker"
-                onPress={handlePickPhoto}
-                testID="create-team-photo-picker"
-              >
-                {photoUri ? (
-                  <Image
-                    accessibilityLabel="Foto de perfil del equipo"
-                    className="h-12 w-12 rounded-full"
-                    nativeID="create-team-photo-preview-image"
-                    source={{ uri: photoUri }}
-                    testID="create-team-photo-preview-image"
-                  />
-                ) : (
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-plus-outline" size={20} />
-                )}
-              </Pressable>
-              {photoUri && (
-                <View
-                  className="absolute -bottom-0.5 -right-0.5 h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-primary dark:border-surface"
-                  nativeID="create-team-photo-edit-badge"
-                  pointerEvents="none"
-                  testID="create-team-photo-edit-badge"
+        {step === 1 && (
+          <SectionCard icon="account-group" title="Datos del equipo">
+            <View className="flex-row items-start gap-4" nativeID="create-team-identity-row" testID="create-team-identity-row">
+              <View className="relative mt-[26px]" nativeID="create-team-photo-wrapper" testID="create-team-photo-wrapper">
+                <Pressable
+                  accessibilityLabel={photoUri ? 'Cambiar foto del equipo' : 'Agregar foto del equipo'}
+                  className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-100 hover:opacity-80 active:opacity-70 dark:bg-slate-800"
+                  nativeID="create-team-photo-picker"
+                  onPress={handlePickPhoto}
+                  testID="create-team-photo-picker"
                 >
-                  <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={11} />
-                </View>
-              )}
+                  {photoUri ? (
+                    <Image
+                      accessibilityLabel="Foto de perfil del equipo"
+                      className="h-12 w-12 rounded-full"
+                      nativeID="create-team-photo-preview-image"
+                      source={{ uri: photoUri }}
+                      testID="create-team-photo-preview-image"
+                    />
+                  ) : (
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-plus-outline" size={20} />
+                  )}
+                </Pressable>
+                {photoUri && (
+                  <View
+                    className="absolute -bottom-0.5 -right-0.5 h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-primary dark:border-surface"
+                    nativeID="create-team-photo-edit-badge"
+                    pointerEvents="none"
+                    testID="create-team-photo-edit-badge"
+                  >
+                    <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={11} />
+                  </View>
+                )}
+              </View>
+
+              <View className="flex-1" nativeID="create-team-name-wrapper" testID="create-team-name-wrapper">
+                <InputField dense label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
+              </View>
             </View>
 
-            <View className="flex-1" nativeID="create-team-name-wrapper" testID="create-team-name-wrapper">
-              <InputField dense label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
-            </View>
-          </View>
+            <InputField
+              dense
+              label="Descripción del equipo"
+              multiline
+              numberOfLines={3}
+              onChange={setDescription}
+              placeholder="Contales a los corredores de qué se trata este equipo."
+              value={description}
+            />
 
-          <InputField
-            dense
-            label="Descripción del equipo"
-            multiline
-            numberOfLines={3}
-            onChange={setDescription}
-            placeholder="Contales a los corredores de qué se trata este equipo."
-            value={description}
-          />
+            <Row>
+              <Col>
+                <PickerField
+                  dense
+                  label="Nivel del equipo"
+                  onChange={setLevel}
+                  options={LEVEL_OPTIONS}
+                  placeholder="Elegir nivel"
+                  value={level}
+                  error={errors.level}
+                />
+              </Col>
+              <Col>
+                <InputField
+                  dense
+                  label="Máx. de integrantes"
+                  hint={`Tu plan permite hasta ${maxAllowed}.`}
+                  keyboardType="number-pad"
+                  onChange={setMaxMembers}
+                  placeholder={String(maxAllowed)}
+                  value={maxMembers}
+                  error={errors.maxMembers}
+                />
+              </Col>
+            </Row>
 
-          <Row>
-            <Col>
-              <PickerField
-                dense
-                label="Nivel del equipo"
-                onChange={setLevel}
-                options={LEVEL_OPTIONS}
-                placeholder="Elegir nivel"
-                value={level}
-                error={errors.level}
-              />
-            </Col>
-            <Col>
-              <InputField
-                dense
-                label="Máx. de integrantes"
-                hint={`Tu plan permite hasta ${maxAllowed}.`}
-                keyboardType="number-pad"
-                onChange={setMaxMembers}
-                placeholder={String(maxAllowed)}
-                value={maxMembers}
-                error={errors.maxMembers}
-              />
-            </Col>
-          </Row>
+            <InputField
+              dense
+              label="Requerimientos de entrada al equipo"
+              multiline
+              numberOfLines={3}
+              onChange={setRequirements}
+              placeholder="Ej. Ritmo promedio, disponibilidad horaria, experiencia previa."
+              value={requirements}
+            />
 
-          <InputField
-            dense
-            label="Requerimientos de entrada al equipo"
-            multiline
-            numberOfLines={3}
-            onChange={setRequirements}
-            placeholder="Ej. Ritmo promedio, disponibilidad horaria, experiencia previa."
-            value={requirements}
-          />
+            <StepNav nextLabel="Siguiente" onNext={handleContinueStep1} />
+          </SectionCard>
+        )}
 
-          <View className="mb-3" nativeID="create-team-groups-field" testID="create-team-groups-field">
-            <Text className={FIELD_LABEL} nativeID="create-team-groups-label" testID="create-team-groups-label">Grupos del equipo</Text>
+        {step === 2 && (
+          <SectionCard icon="account-multiple" title="Grupos del equipo">
+            <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400" nativeID="create-team-groups-hint" testID="create-team-groups-hint">
+              Opcional — podés omitir este paso y crear grupos más adelante.
+            </Text>
 
             <View className="flex-row items-center gap-2" nativeID="create-team-groups-row" testID="create-team-groups-row">
               <View
@@ -296,7 +354,7 @@ export function CreateTeamScreen() {
             </View>
 
             {groups.length > 0 && (
-              <View className="mt-3 flex-row flex-wrap gap-2" nativeID="create-team-groups-chips" testID="create-team-groups-chips">
+              <View className="mb-2 flex-row flex-wrap gap-2" nativeID="create-team-groups-chips" testID="create-team-groups-chips">
                 {groups.map((group) => {
                   const planName = TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name;
                   return (
@@ -326,26 +384,18 @@ export function CreateTeamScreen() {
                 })}
               </View>
             )}
-          </View>
 
-          <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
+            <StepNav nextLabel="Siguiente" onBack={() => setStep(1)} onNext={() => setStep(3)} />
+          </SectionCard>
+        )}
 
-          <Pressable
-            className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
-            nativeID="create-team-submit-button"
-            onPress={handleSubmit}
-            testID="create-team-submit-button"
-          >
-            <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
-            <Text
-              className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
-              nativeID="create-team-submit-button-label"
-              testID="create-team-submit-button-label"
-            >
-              Crear
-            </Text>
-          </Pressable>
-        </SectionCard>
+        {step === 3 && (
+          <SectionCard icon="email-outline" title="Invitar corredores">
+            <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
+
+            <StepNav nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
+          </SectionCard>
+        )}
       </View>
     </ScrollView>
   );

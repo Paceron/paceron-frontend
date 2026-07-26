@@ -589,14 +589,16 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
           />
         </View>
 
-        <InlinePicker
-          onChange={setDraftGroupId}
-          options={groupOptions}
-          placeholder={NO_GROUP_LABEL}
-          scope={`${slug}-invite-group`}
-          value={draftGroupId}
-          widthClass="max-w-[112px]"
-        />
+        {groups.length > 0 && (
+          <InlinePicker
+            onChange={setDraftGroupId}
+            options={groupOptions}
+            placeholder={NO_GROUP_LABEL}
+            scope={`${slug}-invite-group`}
+            value={draftGroupId}
+            widthClass="max-w-[112px]"
+          />
+        )}
 
         <Pressable
           className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
@@ -630,7 +632,7 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
                   nativeID={`email-list-field-${slug}-chip-${chipSlug}-label`}
                   testID={`email-list-field-${slug}-chip-${chipSlug}-label`}
                 >
-                  {invite.email} · {groupName}
+                  {groups.length > 0 ? `${invite.email} · ${groupName}` : invite.email}
                 </Text>
                 <Pressable
                   accessibilityLabel={`Quitar ${invite.email}`}

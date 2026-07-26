@@ -98,6 +98,31 @@ Pantalla completa con ruta propia (`/equipos/crear`), mismo patrón que
 ningún formulario grande en la app que use un modal, así que no se
 introduce ese patrón nuevo acá.
 
+### Wizard de 3 pasos, no 3 rutas
+
+El formulario se dividió en 3 pasos (1. Datos del equipo, 2. Grupos, 3.
+Invitar corredores) dentro de la misma ruta `/equipos/crear` — no son 3
+pantallas/rutas separadas. Se eligió así en vez de rutas independientes
+porque no hay precedente en el proyecto de un wizard multi-ruta (habría
+necesitado un estado de "borrador" compartido entre pantallas, nuevo y
+más complejo), mientras que un wizard de un solo componente con estado
+interno (`step`) es una extensión directa del patrón de secciones
+colapsables que ya usa `RegisterScreen`.
+
+- Paso 1 valida (nombre, nivel, cantidad de integrantes) antes de dejar
+  avanzar a "Siguiente".
+- Paso 2 (Grupos) es **completamente opcional** — "Siguiente" avanza
+  exista o no algún grupo cargado, sin validación bloqueante.
+- Paso 3 (Invitar) es el único con el botón final "Crear".
+- Volver con "Atrás" conserva todo lo cargado en los pasos anteriores
+  (el estado vive en `CreateTeamScreen`, no se pierde entre pasos).
+
+**Si no se creó ningún grupo, el paso de invitar no muestra el selector
+de grupo.** `EmailListField` ahora sólo renderiza el `InlinePicker` de
+grupo cuando `groups.length > 0` — con cero grupos no tiene sentido
+mostrar un combobox cuya única opción posible sería "Sin grupo". Mismo
+criterio en los chips: solo muestran el grupo si hay más de uno posible.
+
 ### Después de crear
 
 `createTeam` agrega el equipo al store y lo selecciona (`selectedTeamId`).
@@ -130,6 +155,8 @@ email inválido y un duplicado, verificando los mensajes de error
 correspondientes. Crear uno o más grupos con y sin plan asignado,
 invitar un email a un grupo puntual y otro sin elegir grupo, borrar un
 grupo con una invitación asignada y confirmar que esa invitación vuelve
-a "Sin grupo".
+a "Sin grupo". Confirmar que el paso 2 se puede pasar sin cargar ningún
+grupo, que "Atrás" conserva los datos ya cargados, y que sin grupos
+creados el paso 3 no muestra ningún selector de grupo junto al email.
 
 `npm test` → 39/39. `npm run lint` → limpio.
