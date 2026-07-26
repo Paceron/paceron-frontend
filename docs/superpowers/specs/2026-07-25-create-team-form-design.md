@@ -16,12 +16,14 @@ que crea el equipo en el store local (sigue sin backend de equipos, ver
 `store/team-store.js` (acción `createTeam` + tope de integrantes por tier
 + grupos + grupo default), `components/forms/fields.jsx` (`InputField`
 con `multiline`/`hint`/`dense`, `PickerField` con `dense`, nuevo
-`EmailListField` con selector de grupo por invitación),
-`components/team/create-team-screen.jsx` (nuevo, incluye la sección de
-grupos), `app/(tabs)/equipos/crear.jsx` (nuevo), los tres shells
-(`app-web-shell.jsx`, `app-web-shell-narrow.jsx`, `app-mobile-shell.jsx`
-— cambia el `handleCreateTeam` de toast a navegación),
-`package.json`/`app.config.js` (nueva dependencia `expo-image-picker`).
+`InlinePicker` reusable, nuevo `EmailListField` con selector de grupo por
+invitación), `components/team/group-list-editor.jsx` (nuevo, componente
+controlado reusable), `components/team/create-team-screen.jsx` (nuevo,
+wizard de 3 pasos), `app/(tabs)/equipos/crear.jsx` (nuevo), los tres
+shells (`app-web-shell.jsx`, `app-web-shell-narrow.jsx`,
+`app-mobile-shell.jsx` — cambia el `handleCreateTeam` de toast a
+navegación), `package.json`/`app.config.js` (nueva dependencia
+`expo-image-picker`).
 
 ## Decisiones
 
@@ -122,6 +124,23 @@ de grupo.** `EmailListField` ahora sólo renderiza el `InlinePicker` de
 grupo cuando `groups.length > 0` — con cero grupos no tiene sentido
 mostrar un combobox cuya única opción posible sería "Sin grupo". Mismo
 criterio en los chips: solo muestran el grupo si hay más de uno posible.
+
+### `GroupListEditor` extraído a componente propio
+
+El paso "Grupos" no queda como JSX+estado pegado a `CreateTeamScreen` —
+se extrajo a `components/team/group-list-editor.jsx` (`GroupListEditor`,
+componente controlado: recibe `groups`/`onChange`, `onRemove` opcional,
+`planOptions`). Motivo: el usuario planea reusar exactamente esta misma
+pieza para el botón "Crear grupo" que va a vivir en la pantalla de un
+equipo ya existente (la que se está diseñando aparte con Stitch) — ese
+caso opera sobre un equipo real persistido, no sobre datos en borrador,
+así que **no conviene que sea la misma ruta** (fuentes de datos
+distintas), pero sí conviene que sea el mismo componente. `onRemove` deja
+que quien lo use reaccione a que se sacó un grupo (acá, limpiar
+invitaciones que apuntaban a él) sin que `GroupListEditor` sepa nada de
+invitaciones — mismo criterio de independencia que ya tiene
+`EmailListField`, que tampoco sabe nada de "crear equipo" y por eso ya
+está lista para reusarse sin cambios en esa futura pantalla.
 
 ### Después de crear
 
