@@ -108,7 +108,12 @@ function TeamsMenu({ onClose }) {
   const teams = useTeamStore((s) => s.teams);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
+  // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
+  // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
+  // un usuario puede tener ambos roles y estar activo como corredor.
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  const activeRole = useAuthStore((s) => s.activeRole);
+  const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
 
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
@@ -159,7 +164,7 @@ function TeamsMenu({ onClose }) {
           );
         })}
 
-        {hasTrainerRole && (
+        {canCreateTeam && (
           <>
             <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-teams-menu-divider" testID="web-shell-teams-menu-divider" />
 
