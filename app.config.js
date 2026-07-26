@@ -50,6 +50,7 @@ module.exports = {
     plugins: [
       ['expo-router', { sitemap: false }],
       ['expo-location', { locationAlwaysAndWhenInUsePermission: 'Allow Paceron to use your location for tracking runs.' }],
+      ['expo-image-picker', { photosPermission: 'Allow Paceron to access your photos to set a team profile picture.' }],
       'expo-font',
       'expo-secure-store',
       '@react-native-community/datetimepicker',

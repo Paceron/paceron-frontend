@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
+import { validateEmailFormat } from '../../utils/email-validators.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
 
@@ -241,7 +242,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled }) {
+export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -253,11 +254,13 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
     ? 'border-primary bg-white dark:bg-slate-900'
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
 
+  const rowSizeClass = multiline ? 'min-h-24 items-start py-3' : 'h-12 items-center';
+
   return (
-    <View className="mb-5" nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
+    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
       <View
-        className={`h-12 flex-row items-center rounded-xl border ${borderColor}`}
+        className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
         nativeID={`input-field-${slug}-row`}
         testID={`input-field-${slug}-row`}
       >
@@ -267,6 +270,8 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
           className={INPUT_CLASS}
           editable={!disabled}
           keyboardType={keyboardType}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
           onBlur={onBlur}
           onChangeText={onChange}
           onSubmitEditing={onSubmitEditing}
@@ -274,6 +279,7 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
           placeholderTextColor={colors.onSurfaceVariant}
           returnKeyType={returnKeyType}
           secureTextEntry={secureTextEntry}
+          textAlignVertical={multiline ? 'top' : 'center'}
           textContentType={textContentType}
           value={value}
           nativeID={`input-field-${slug}-input`}
@@ -295,13 +301,17 @@ export function InputField({ label, value, onChange, onBlur, error, touched, pla
         )}
       </View>
       <View className="h-5" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
-        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>}
+        {error ? (
+          <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>
+        ) : hint ? (
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`input-field-${slug}-hint`} testID={`input-field-${slug}-hint`}>{hint}</Text>
+        ) : null}
       </View>
     </View>
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -319,7 +329,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
 
   return (
-    <View className="mb-5" nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
+    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
@@ -412,6 +422,231 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
           </Pressable>
         </Pressable>
       </Modal>
+    </View>
+  );
+}
+
+// Trigger + modal de selección compacto, sin label ni fila de error propios
+// — pensado para convivir con otros campos en una misma fila (ej. el grupo
+// de una invitación, o el plan de un grupo). scope identifica la instancia
+// para nativeID/testID (no se muestra), ya que a diferencia de PickerField
+// no hay un label del que derivarlo.
+export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]' }) {
+  const colors = useThemeColors();
+  const [visible, setVisible] = useState(false);
+
+  const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
+  const selected = items.find((item) => item.id === value);
+
+  return (
+    <>
+      <Pressable
+        className={`h-12 ${widthClass} flex-row items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800`}
+        nativeID={`inline-picker-${scope}-trigger`}
+        onPress={() => setVisible(true)}
+        testID={`inline-picker-${scope}-trigger`}
+      >
+        <Text
+          className={`flex-1 text-xs ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          nativeID={`inline-picker-${scope}-trigger-label`}
+          numberOfLines={1}
+          testID={`inline-picker-${scope}-trigger-label`}
+        >
+          {selected ? selected.name : placeholder}
+        </Text>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
+      </Pressable>
+
+      <Modal
+        animationType="fade"
+        nativeID={`inline-picker-${scope}-modal`}
+        onRequestClose={() => setVisible(false)}
+        testID={`inline-picker-${scope}-modal`}
+        transparent
+        visible={visible}
+      >
+        <Pressable
+          className="flex-1 justify-center bg-black/50 px-6"
+          nativeID={`inline-picker-${scope}-modal-backdrop`}
+          onPress={() => setVisible(false)}
+          testID={`inline-picker-${scope}-modal-backdrop`}
+        >
+          <Pressable
+            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
+            nativeID={`inline-picker-${scope}-modal-content`}
+            onPress={() => {}}
+            testID={`inline-picker-${scope}-modal-content`}
+          >
+            <ScrollView
+              nativeID={`inline-picker-${scope}-modal-list`}
+              showsVerticalScrollIndicator={false}
+              testID={`inline-picker-${scope}-modal-list`}
+            >
+              {items.length === 0 ? (
+                <View className="items-center py-8" nativeID={`inline-picker-${scope}-modal-empty`} testID={`inline-picker-${scope}-modal-empty`}>
+                  <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`inline-picker-${scope}-modal-empty-label`} testID={`inline-picker-${scope}-modal-empty-label`}>Sin opciones disponibles</Text>
+                </View>
+              ) : (
+                items.map((item) => {
+                  const isSelected = item.id === value;
+                  const itemSlug = slugify(item.id || 'ninguno');
+                  return (
+                    <Pressable
+                      key={item.id || 'none'}
+                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                      nativeID={`inline-picker-${scope}-modal-option-${itemSlug}`}
+                      onPress={() => { onChange(item.id); setVisible(false); }}
+                      testID={`inline-picker-${scope}-modal-option-${itemSlug}`}
+                    >
+                      <Text
+                        className={`flex-1 text-sm ${
+                          isSelected ? 'font-semibold text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                        nativeID={`inline-picker-${scope}-modal-option-${itemSlug}-label`}
+                        testID={`inline-picker-${scope}-modal-option-${itemSlug}-label`}
+                      >
+                        {item.name}
+                      </Text>
+                      {isSelected && <MaterialCommunityIcons color={colors.primary} name="check" size={18} />}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+const NO_GROUP_ID = '';
+const NO_GROUP_LABEL = 'Sin grupo';
+
+// Junta una lista de emails validos, uno por uno (ej. invitar gente a un
+// equipo antes de que exista), cada uno con el grupo al que se invita —
+// value es [{ email, groupId }]. Sin grupo elegido, groupId queda '' (el
+// grupo default "Sin grupo" se resuelve recien al crear el equipo, ver
+// store/team-store.js). El envio real de las invitaciones es tarea del
+// backend (no hay servicio de envio de mails en este repo) — este campo
+// solo junta y valida el listado para mandarlo cuando exista ese endpoint.
+export function EmailListField({ label, value = [], onChange, placeholder = 'nombre@email.com', groups = [] }) {
+  const colors = useThemeColors();
+  const slug = slugify(label);
+  const [draft, setDraft] = useState('');
+  const [draftGroupId, setDraftGroupId] = useState(NO_GROUP_ID);
+  const [draftError, setDraftError] = useState(null);
+
+  const groupOptions = [{ id: NO_GROUP_ID, name: NO_GROUP_LABEL }, ...groups];
+
+  const handleAdd = () => {
+    const email = draft.trim();
+    if (!email) return;
+    if (!validateEmailFormat(email)) {
+      setDraftError('Email inválido');
+      return;
+    }
+    if (value.some((e) => e.email.toLowerCase() === email.toLowerCase())) {
+      setDraftError('Ya agregaste ese email');
+      return;
+    }
+    onChange([...value, { email, groupId: draftGroupId }]);
+    setDraft('');
+    setDraftGroupId(NO_GROUP_ID);
+    setDraftError(null);
+  };
+
+  const handleRemove = (email) => {
+    onChange(value.filter((e) => e.email !== email));
+  };
+
+  return (
+    <View className="mb-5" nativeID={`email-list-field-${slug}`} testID={`email-list-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`email-list-field-${slug}-label`} testID={`email-list-field-${slug}-label`}>{label}</Text>
+
+      <View className="flex-row items-center gap-2" nativeID={`email-list-field-${slug}-row`} testID={`email-list-field-${slug}-row`}>
+        <View
+          className={`h-12 flex-1 flex-row items-center rounded-xl border ${
+            draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+          }`}
+          nativeID={`email-list-field-${slug}-input-wrapper`}
+          testID={`email-list-field-${slug}-input-wrapper`}
+        >
+          <TextInput
+            autoCapitalize="none"
+            className={INPUT_CLASS}
+            keyboardType="email-address"
+            onChangeText={(text) => { setDraft(text); if (draftError) setDraftError(null); }}
+            onSubmitEditing={handleAdd}
+            placeholder={placeholder}
+            placeholderTextColor={colors.onSurfaceVariant}
+            returnKeyType="done"
+            value={draft}
+            nativeID={`email-list-field-${slug}-input`}
+            testID={`email-list-field-${slug}-input`}
+          />
+        </View>
+
+        {groups.length > 0 && (
+          <InlinePicker
+            onChange={setDraftGroupId}
+            options={groupOptions}
+            placeholder={NO_GROUP_LABEL}
+            scope={`${slug}-invite-group`}
+            value={draftGroupId}
+            widthClass="max-w-[112px]"
+          />
+        )}
+
+        <Pressable
+          className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
+          accessibilityLabel="Agregar email"
+          nativeID={`email-list-field-${slug}-add-button`}
+          onPress={handleAdd}
+          testID={`email-list-field-${slug}-add-button`}
+        >
+          <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
+        </Pressable>
+      </View>
+
+      <View className="h-5" nativeID={`email-list-field-${slug}-error-row`} testID={`email-list-field-${slug}-error-row`}>
+        {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`email-list-field-${slug}-error`} testID={`email-list-field-${slug}-error`}>{draftError}</Text>}
+      </View>
+
+      {value.length > 0 && (
+        <View className="flex-row flex-wrap gap-2" nativeID={`email-list-field-${slug}-chips`} testID={`email-list-field-${slug}-chips`}>
+          {value.map((invite) => {
+            const chipSlug = slugify(invite.email);
+            const groupName = groupOptions.find((g) => g.id === invite.groupId)?.name ?? NO_GROUP_LABEL;
+            return (
+              <View
+                key={invite.email}
+                className="flex-row items-center gap-1.5 rounded-full bg-primary-tint-subtle px-3 py-1.5 dark:bg-primary/10"
+                nativeID={`email-list-field-${slug}-chip-${chipSlug}`}
+                testID={`email-list-field-${slug}-chip-${chipSlug}`}
+              >
+                <Text
+                  className="text-xs font-medium text-on-primary-tint dark:text-primary"
+                  nativeID={`email-list-field-${slug}-chip-${chipSlug}-label`}
+                  testID={`email-list-field-${slug}-chip-${chipSlug}-label`}
+                >
+                  {groups.length > 0 ? `${invite.email} · ${groupName}` : invite.email}
+                </Text>
+                <Pressable
+                  accessibilityLabel={`Quitar ${invite.email}`}
+                  onPress={() => handleRemove(invite.email)}
+                  nativeID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
+                  testID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }

@@ -100,8 +100,9 @@ function NavigationDrawer({ open, pathname, onClose }) {
     onClose();
   };
 
-  // Sin backend de equipos todavía: elegir un equipo o crear uno nuevo solo
-  // guarda selección local y avisa por toast — no navega a una pantalla propia.
+  // Sin backend de equipos todavía: elegir un equipo solo guarda selección
+  // local y avisa por toast — no hay pantalla de detalle todavía. Crear
+  // equipo sí navega a una pantalla propia (/equipos/crear).
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
     onClose();
@@ -110,7 +111,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
   const handleCreateTeam = () => {
     onClose();
-    Toast.show({ type: 'info', text1: 'Crear equipo', text2: 'Este flujo todavía no está disponible.' });
+    router.push('/equipos/crear');
   };
 
   return (
