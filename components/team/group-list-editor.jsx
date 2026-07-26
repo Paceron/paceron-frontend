@@ -69,7 +69,7 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
       />
 
       <Pressable
-        className="mb-4 h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
+        className="mb-6 h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
         nativeID="group-list-editor-add-button"
         onPress={handleAdd}
         testID="group-list-editor-add-button"
@@ -85,7 +85,7 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
       </Pressable>
 
       {groups.length > 0 && (
-        <View className="gap-2" nativeID="group-list-editor-list" testID="group-list-editor-list">
+        <View className="mb-6 gap-2" nativeID="group-list-editor-list" testID="group-list-editor-list">
           {groups.map((group) => {
             const planName = planOptions.find((p) => p.id === group.trainingPlanId)?.name;
             return (
