@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -9,7 +9,7 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField, FIELD_LABEL, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { EmailListField, FIELD_LABEL, INPUT_CLASS, InlinePicker, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
 
 const LEVEL_OPTIONS = [
   { id: 'amateur', name: 'Amateur' },
@@ -248,39 +248,52 @@ export function CreateTeamScreen() {
           <View className="mb-3" nativeID="create-team-groups-field" testID="create-team-groups-field">
             <Text className={FIELD_LABEL} nativeID="create-team-groups-label" testID="create-team-groups-label">Grupos del equipo</Text>
 
-            <InputField
-              dense
-              label="Nombre del grupo"
-              onChange={(text) => { setGroupDraftName(text); if (groupDraftError) setGroupDraftError(null); }}
-              placeholder="Ej. Grupo avanzado"
-              value={groupDraftName}
-              error={groupDraftError}
-            />
-
-            <PickerField
-              dense
-              label="Plan de entrenamiento"
-              onChange={setGroupDraftPlan}
-              options={TRAINING_PLAN_OPTIONS}
-              placeholder="Sin plan asignado"
-              value={groupDraftPlan}
-            />
-
-            <Pressable
-              className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-slate-200 px-5 hover:bg-slate-100 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
-              nativeID="create-team-add-group-button"
-              onPress={handleAddGroup}
-              testID="create-team-add-group-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={16} />
-              <Text
-                className="text-sm font-semibold text-slate-700 dark:text-slate-200"
-                nativeID="create-team-add-group-button-label"
-                testID="create-team-add-group-button-label"
+            <View className="flex-row items-center gap-2" nativeID="create-team-groups-row" testID="create-team-groups-row">
+              <View
+                className={`h-12 flex-1 flex-row items-center rounded-xl border ${
+                  groupDraftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+                }`}
+                nativeID="create-team-group-name-wrapper"
+                testID="create-team-group-name-wrapper"
               >
-                Agregar grupo
-              </Text>
-            </Pressable>
+                <TextInput
+                  className={INPUT_CLASS}
+                  nativeID="create-team-group-name-input"
+                  onChangeText={(text) => { setGroupDraftName(text); if (groupDraftError) setGroupDraftError(null); }}
+                  placeholder="Nombre del grupo"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  testID="create-team-group-name-input"
+                  value={groupDraftName}
+                />
+              </View>
+
+              <InlinePicker
+                onChange={setGroupDraftPlan}
+                options={TRAINING_PLAN_OPTIONS}
+                placeholder="Plan"
+                scope="create-team-group-plan"
+                value={groupDraftPlan}
+                widthClass="max-w-[132px]"
+              />
+
+              <Pressable
+                accessibilityLabel="Agregar grupo"
+                className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
+                nativeID="create-team-add-group-button"
+                onPress={handleAddGroup}
+                testID="create-team-add-group-button"
+              >
+                <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
+              </Pressable>
+            </View>
+
+            <View className="h-5" nativeID="create-team-group-error-row" testID="create-team-group-error-row">
+              {groupDraftError && (
+                <Text className="text-xs text-red-500 dark:text-red-400" nativeID="create-team-group-error" testID="create-team-group-error">
+                  {groupDraftError}
+                </Text>
+              )}
+            </View>
 
             {groups.length > 0 && (
               <View className="mt-3 flex-row flex-wrap gap-2" nativeID="create-team-groups-chips" testID="create-team-groups-chips">

@@ -426,6 +426,102 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
   );
 }
 
+// Trigger + modal de selección compacto, sin label ni fila de error propios
+// — pensado para convivir con otros campos en una misma fila (ej. el grupo
+// de una invitación, o el plan de un grupo). scope identifica la instancia
+// para nativeID/testID (no se muestra), ya que a diferencia de PickerField
+// no hay un label del que derivarlo.
+export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]' }) {
+  const colors = useThemeColors();
+  const [visible, setVisible] = useState(false);
+
+  const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
+  const selected = items.find((item) => item.id === value);
+
+  return (
+    <>
+      <Pressable
+        className={`h-12 ${widthClass} flex-row items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800`}
+        nativeID={`inline-picker-${scope}-trigger`}
+        onPress={() => setVisible(true)}
+        testID={`inline-picker-${scope}-trigger`}
+      >
+        <Text
+          className={`flex-1 text-xs ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          nativeID={`inline-picker-${scope}-trigger-label`}
+          numberOfLines={1}
+          testID={`inline-picker-${scope}-trigger-label`}
+        >
+          {selected ? selected.name : placeholder}
+        </Text>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
+      </Pressable>
+
+      <Modal
+        animationType="fade"
+        nativeID={`inline-picker-${scope}-modal`}
+        onRequestClose={() => setVisible(false)}
+        testID={`inline-picker-${scope}-modal`}
+        transparent
+        visible={visible}
+      >
+        <Pressable
+          className="flex-1 justify-center bg-black/50 px-6"
+          nativeID={`inline-picker-${scope}-modal-backdrop`}
+          onPress={() => setVisible(false)}
+          testID={`inline-picker-${scope}-modal-backdrop`}
+        >
+          <Pressable
+            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
+            nativeID={`inline-picker-${scope}-modal-content`}
+            onPress={() => {}}
+            testID={`inline-picker-${scope}-modal-content`}
+          >
+            <ScrollView
+              nativeID={`inline-picker-${scope}-modal-list`}
+              showsVerticalScrollIndicator={false}
+              testID={`inline-picker-${scope}-modal-list`}
+            >
+              {items.length === 0 ? (
+                <View className="items-center py-8" nativeID={`inline-picker-${scope}-modal-empty`} testID={`inline-picker-${scope}-modal-empty`}>
+                  <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`inline-picker-${scope}-modal-empty-label`} testID={`inline-picker-${scope}-modal-empty-label`}>Sin opciones disponibles</Text>
+                </View>
+              ) : (
+                items.map((item) => {
+                  const isSelected = item.id === value;
+                  const itemSlug = slugify(item.id || 'ninguno');
+                  return (
+                    <Pressable
+                      key={item.id || 'none'}
+                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                      nativeID={`inline-picker-${scope}-modal-option-${itemSlug}`}
+                      onPress={() => { onChange(item.id); setVisible(false); }}
+                      testID={`inline-picker-${scope}-modal-option-${itemSlug}`}
+                    >
+                      <Text
+                        className={`flex-1 text-sm ${
+                          isSelected ? 'font-semibold text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                        nativeID={`inline-picker-${scope}-modal-option-${itemSlug}-label`}
+                        testID={`inline-picker-${scope}-modal-option-${itemSlug}-label`}
+                      >
+                        {item.name}
+                      </Text>
+                      {isSelected && <MaterialCommunityIcons color={colors.primary} name="check" size={18} />}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 const NO_GROUP_ID = '';
 const NO_GROUP_LABEL = 'Sin grupo';
 
@@ -442,10 +538,8 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
   const [draft, setDraft] = useState('');
   const [draftGroupId, setDraftGroupId] = useState(NO_GROUP_ID);
   const [draftError, setDraftError] = useState(null);
-  const [groupPickerVisible, setGroupPickerVisible] = useState(false);
 
   const groupOptions = [{ id: NO_GROUP_ID, name: NO_GROUP_LABEL }, ...groups];
-  const draftGroupName = groupOptions.find((g) => g.id === draftGroupId)?.name ?? NO_GROUP_LABEL;
 
   const handleAdd = () => {
     const email = draft.trim();
@@ -495,22 +589,14 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
           />
         </View>
 
-        <Pressable
-          className="h-12 max-w-[112px] flex-row items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
-          nativeID={`email-list-field-${slug}-group-trigger`}
-          onPress={() => setGroupPickerVisible(true)}
-          testID={`email-list-field-${slug}-group-trigger`}
-        >
-          <Text
-            className="flex-1 text-xs text-slate-700 dark:text-slate-200"
-            nativeID={`email-list-field-${slug}-group-trigger-label`}
-            numberOfLines={1}
-            testID={`email-list-field-${slug}-group-trigger-label`}
-          >
-            {draftGroupName}
-          </Text>
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
-        </Pressable>
+        <InlinePicker
+          onChange={setDraftGroupId}
+          options={groupOptions}
+          placeholder={NO_GROUP_LABEL}
+          scope={`${slug}-invite-group`}
+          value={draftGroupId}
+          widthClass="max-w-[112px]"
+        />
 
         <Pressable
           className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
@@ -559,62 +645,6 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
           })}
         </View>
       )}
-
-      <Modal
-        animationType="fade"
-        nativeID={`email-list-field-${slug}-group-modal`}
-        onRequestClose={() => setGroupPickerVisible(false)}
-        testID={`email-list-field-${slug}-group-modal`}
-        transparent
-        visible={groupPickerVisible}
-      >
-        <Pressable
-          className="flex-1 justify-center bg-black/50 px-6"
-          nativeID={`email-list-field-${slug}-group-modal-backdrop`}
-          onPress={() => setGroupPickerVisible(false)}
-          testID={`email-list-field-${slug}-group-modal-backdrop`}
-        >
-          <Pressable
-            className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
-            nativeID={`email-list-field-${slug}-group-modal-content`}
-            onPress={() => {}}
-            testID={`email-list-field-${slug}-group-modal-content`}
-          >
-            <ScrollView
-              nativeID={`email-list-field-${slug}-group-modal-list`}
-              showsVerticalScrollIndicator={false}
-              testID={`email-list-field-${slug}-group-modal-list`}
-            >
-              {groupOptions.map((group) => {
-                const isSelected = group.id === draftGroupId;
-                const optionSlug = slugify(group.id || 'ninguno');
-                return (
-                  <Pressable
-                    key={group.id || 'none'}
-                    className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                      isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                    nativeID={`email-list-field-${slug}-group-modal-option-${optionSlug}`}
-                    onPress={() => { setDraftGroupId(group.id); setGroupPickerVisible(false); }}
-                    testID={`email-list-field-${slug}-group-modal-option-${optionSlug}`}
-                  >
-                    <Text
-                      className={`flex-1 text-sm ${
-                        isSelected ? 'font-semibold text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'
-                      }`}
-                      nativeID={`email-list-field-${slug}-group-modal-option-${optionSlug}-label`}
-                      testID={`email-list-field-${slug}-group-modal-option-${optionSlug}-label`}
-                    >
-                      {group.name}
-                    </Text>
-                    {isSelected && <MaterialCommunityIcons color={colors.primary} name="check" size={18} />}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
