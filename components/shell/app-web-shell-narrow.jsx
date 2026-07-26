@@ -168,7 +168,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                         expanded={teamsExpanded}
                         icon={route.icon}
                         label={route.label}
-                        onCreateTeam={handleCreateTeam}
+                        onCreateTeam={hasTrainerRole ? handleCreateTeam : undefined}
                         onSelectTeam={handleSelectTeam}
                         onToggle={() => setTeamsExpanded((v) => !v)}
                         selectedTeamId={selectedTeamId}

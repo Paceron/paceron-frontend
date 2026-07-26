@@ -108,6 +108,7 @@ function TeamsMenu({ onClose }) {
   const teams = useTeamStore((s) => s.teams);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
 
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
@@ -158,17 +159,21 @@ function TeamsMenu({ onClose }) {
           );
         })}
 
-        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-teams-menu-divider" testID="web-shell-teams-menu-divider" />
+        {hasTrainerRole && (
+          <>
+            <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-teams-menu-divider" testID="web-shell-teams-menu-divider" />
 
-        <Pressable
-          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
-          nativeID="web-shell-teams-menu-create"
-          onPress={handleCreateTeam}
-          testID="web-shell-teams-menu-create"
-        >
-          <MaterialCommunityIcons name="plus-circle" size={18} color={colors.primary} />
-          <Text className="text-sm font-semibold text-primary" nativeID="web-shell-teams-menu-create-label" testID="web-shell-teams-menu-create-label">Crear equipo</Text>
-        </Pressable>
+            <Pressable
+              className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+              nativeID="web-shell-teams-menu-create"
+              onPress={handleCreateTeam}
+              testID="web-shell-teams-menu-create"
+            >
+              <MaterialCommunityIcons name="plus-circle" size={18} color={colors.primary} />
+              <Text className="text-sm font-semibold text-primary" nativeID="web-shell-teams-menu-create-label" testID="web-shell-teams-menu-create-label">Crear equipo</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );
