@@ -142,6 +142,15 @@ invitaciones — mismo criterio de independencia que ya tiene
 `EmailListField`, que tampoco sabe nada de "crear equipo" y por eso ya
 está lista para reusarse sin cambios en esa futura pantalla.
 
+Layout de `GroupListEditor`: nombre y plan son campos completos
+(`InputField`/`PickerField dense`), uno debajo del otro — no una fila
+comprimida. Al vivir en su propio componente ya no hace falta pelear
+espacio horizontal como cuando esto vivía pegado al resto del
+formulario, y "nombre + plan" no entraba legible en una pill chica. La
+lista de grupos ya creados pasa de chips a **filas completas** (ícono +
+nombre + plan como texto secundario + botón de borrar), mismo criterio:
+un chip no tiene lugar para mostrar nombre y plan con claridad.
+
 ### Después de crear
 
 `createTeam` agrega el equipo al store y lo selecciona (`selectedTeamId`).

@@ -1,17 +1,21 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { INPUT_CLASS, InlinePicker } from '../forms/fields.jsx';
+import { InputField, PickerField } from '../forms/fields.jsx';
 
 // Editor controlado de grupos de un equipo: nombre + plan de entrenamiento
-// en una fila, botón "+" para agregar, chips removibles debajo. Componente
-// compartido a propósito — hoy es el paso "Grupos" del wizard de creación
-// de equipo (components/team/create-team-screen.jsx, sobre datos en
-// borrador); a futuro es el mismo componente el que va a usar el botón
-// "Crear grupo" de la pantalla de un equipo ya existente, apuntando a una
-// acción de store distinta (el equipo ya real, no un borrador). Por eso
-// no sabe nada de "crear equipo": solo recibe `groups` + `onChange`.
+// (campos completos, uno debajo del otro — con su propio componente no
+// hace falta pelear espacio horizontal como cuando esto vivía pegado al
+// resto del formulario), botón "Agregar grupo", y la lista de grupos ya
+// creados como filas completas (no chips — "nombre + plan" no entra
+// legible en una pill chica). Componente compartido a propósito — hoy es
+// el paso "Grupos" del wizard de creación de equipo
+// (components/team/create-team-screen.jsx, sobre datos en borrador); a
+// futuro es el mismo componente el que va a usar el botón "Crear grupo"
+// de la pantalla de un equipo ya existente, apuntando a una acción de
+// store distinta (el equipo ya real, no un borrador). Por eso no sabe
+// nada de "crear equipo": solo recibe `groups` + `onChange`.
 //
 // onRemove es opcional y se dispara además de onChange al sacar un grupo
 // — pensado para que quien lo use pueda reaccionar (ej. limpiar
@@ -46,78 +50,82 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
 
   return (
     <View nativeID="group-list-editor" testID="group-list-editor">
-      <View className="flex-row items-center gap-2" nativeID="group-list-editor-row" testID="group-list-editor-row">
-        <View
-          className={`h-12 flex-1 flex-row items-center rounded-xl border ${
-            draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
-          }`}
-          nativeID="group-list-editor-name-wrapper"
-          testID="group-list-editor-name-wrapper"
+      <InputField
+        dense
+        error={draftError}
+        label="Nombre del grupo"
+        onChange={(text) => { setDraftName(text); if (draftError) setDraftError(null); }}
+        placeholder="Ej. Grupo avanzado"
+        value={draftName}
+      />
+
+      <PickerField
+        dense
+        label="Plan de entrenamiento"
+        onChange={setDraftPlan}
+        options={planOptions}
+        placeholder="Sin plan asignado"
+        value={draftPlan}
+      />
+
+      <Pressable
+        className="mb-4 h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
+        nativeID="group-list-editor-add-button"
+        onPress={handleAdd}
+        testID="group-list-editor-add-button"
+      >
+        <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={18} />
+        <Text
+          className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
+          nativeID="group-list-editor-add-button-label"
+          testID="group-list-editor-add-button-label"
         >
-          <TextInput
-            className={INPUT_CLASS}
-            nativeID="group-list-editor-name-input"
-            onChangeText={(text) => { setDraftName(text); if (draftError) setDraftError(null); }}
-            placeholder="Nombre del grupo"
-            placeholderTextColor={colors.onSurfaceVariant}
-            testID="group-list-editor-name-input"
-            value={draftName}
-          />
-        </View>
-
-        <InlinePicker
-          onChange={setDraftPlan}
-          options={planOptions}
-          placeholder="Plan"
-          scope="group-list-editor-plan"
-          value={draftPlan}
-          widthClass="max-w-[132px]"
-        />
-
-        <Pressable
-          accessibilityLabel="Agregar grupo"
-          className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
-          nativeID="group-list-editor-add-button"
-          onPress={handleAdd}
-          testID="group-list-editor-add-button"
-        >
-          <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
-        </Pressable>
-      </View>
-
-      <View className="h-5" nativeID="group-list-editor-error-row" testID="group-list-editor-error-row">
-        {draftError && (
-          <Text className="text-xs text-red-500 dark:text-red-400" nativeID="group-list-editor-error" testID="group-list-editor-error">
-            {draftError}
-          </Text>
-        )}
-      </View>
+          Agregar grupo
+        </Text>
+      </Pressable>
 
       {groups.length > 0 && (
-        <View className="mb-2 flex-row flex-wrap gap-2" nativeID="group-list-editor-chips" testID="group-list-editor-chips">
+        <View className="gap-2" nativeID="group-list-editor-list" testID="group-list-editor-list">
           {groups.map((group) => {
             const planName = planOptions.find((p) => p.id === group.trainingPlanId)?.name;
             return (
               <View
                 key={group.id}
-                className="flex-row items-center gap-1.5 rounded-full bg-primary-tint-subtle px-3 py-1.5 dark:bg-primary/10"
-                nativeID={`group-list-editor-chip-${group.id}`}
-                testID={`group-list-editor-chip-${group.id}`}
+                className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+                nativeID={`group-list-editor-row-${group.id}`}
+                testID={`group-list-editor-row-${group.id}`}
               >
-                <Text
-                  className="text-xs font-medium text-on-primary-tint dark:text-primary"
-                  nativeID={`group-list-editor-chip-${group.id}-label`}
-                  testID={`group-list-editor-chip-${group.id}-label`}
+                <View
+                  className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15"
+                  nativeID={`group-list-editor-row-${group.id}-icon`}
+                  testID={`group-list-editor-row-${group.id}-icon`}
                 >
-                  {group.name} · {planName ?? 'Sin plan'}
-                </Text>
+                  <MaterialCommunityIcons color={colors.primary} name="account-multiple" size={18} />
+                </View>
+                <View className="flex-1" nativeID={`group-list-editor-row-${group.id}-info`} testID={`group-list-editor-row-${group.id}-info`}>
+                  <Text
+                    className="text-sm font-semibold text-slate-900 dark:text-white"
+                    nativeID={`group-list-editor-row-${group.id}-name`}
+                    testID={`group-list-editor-row-${group.id}-name`}
+                  >
+                    {group.name}
+                  </Text>
+                  <Text
+                    className="text-xs text-slate-500 dark:text-slate-400"
+                    nativeID={`group-list-editor-row-${group.id}-plan`}
+                    testID={`group-list-editor-row-${group.id}-plan`}
+                  >
+                    {planName ?? 'Sin plan asignado'}
+                  </Text>
+                </View>
                 <Pressable
                   accessibilityLabel={`Quitar grupo ${group.name}`}
-                  nativeID={`group-list-editor-chip-${group.id}-remove-button`}
+                  className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                  nativeID={`group-list-editor-row-${group.id}-remove-button`}
                   onPress={() => handleRemove(group.id)}
-                  testID={`group-list-editor-chip-${group.id}-remove-button`}
+                  testID={`group-list-editor-row-${group.id}-remove-button`}
                 >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
                 </Pressable>
               </View>
             );
