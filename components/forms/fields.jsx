@@ -300,7 +300,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           </Pressable>
         )}
       </View>
-      <View className="h-5" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
+      <View className="h-5 pt-1" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
         {error ? (
           <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>
         ) : hint ? (

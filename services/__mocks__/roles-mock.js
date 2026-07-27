@@ -21,6 +21,14 @@ export async function mockAssignRole(_userId, roleId) {
   return { id: roleId, assigned: true };
 }
 
+export async function mockRemoveRole(_userId, roleId) {
+  const role = ROLES_CATALOG.find((r) => r.id === roleId);
+  if (role) {
+    mockAssignedRoles = mockAssignedRoles.filter((name) => name !== role.name);
+  }
+  return { message: 'Rol removido correctamente.' };
+}
+
 export async function mockGetPermissions(userId) {
   return {
     user_id: userId,

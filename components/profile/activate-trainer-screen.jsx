@@ -14,10 +14,15 @@ import { SectionCard } from '../forms/section-card.jsx';
 export function ActivateTrainerScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const user = useAuthStore((s) => s.user);
 
-  const [trainerAlias, setTrainerAlias] = useState('');
+  // Si el usuario ya tuvo el perfil de entrenador activo antes (dado de
+  // baja, no borra el alias — ver auth-store.js), se pre-completa acá para
+  // no obligar a retipearlo si es el mismo.
+  const [trainerAlias, setTrainerAlias] = useState(user?.bankAlias ?? '');
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const hasPreviousAlias = Boolean(user?.bankAlias);
 
   const aliasError = touched ? validateTrainerAlias(trainerAlias) : null;
   const canSubmit = !validateTrainerAlias(trainerAlias);
@@ -75,6 +80,7 @@ export function ActivateTrainerScreen() {
           <InputField
             autoCapitalize="none"
             error={aliasError}
+            hint={hasPreviousAlias ? 'Detectamos un alias guardado de una activación anterior — podés cambiarlo si querés.' : undefined}
             label="Alias de pagos *"
             onBlur={() => setTouched(true)}
             onChange={setTrainerAlias}

@@ -1,3 +1,5 @@
+import { getMockBankAlias } from './user-mock.js';
+
 // Datos fake con la MISMA shape que el backend real, para desarrollar sin backend.
 export async function mockLogin(email, _password) {
   return {
@@ -40,7 +42,7 @@ export async function mockGetUser({ id, email }) {
     dni: '12345678',
     birth_date: '01/01/1990',
     status: 'active',
-    bank_alias: null,
+    bank_alias: getMockBankAlias(),
     country: 'ARG',
     province: 'BA',
     city: 'La Plata',

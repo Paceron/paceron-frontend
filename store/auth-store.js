@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { login as loginService, register as registerService, getUser as getUserService } from '../services/auth.js';
 import { updateUser as updateUserService, changeStatus as changeStatusService } from '../services/user.js';
-import { assignRole as assignRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
+import { assignRole as assignRoleService, removeRole as removeRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 
@@ -170,6 +170,26 @@ export const useAuthStore = create((set, get) => ({
       await assignRoleService(user.userId, 'entrenador');
       const updateResult = await get().updateUser(user.userId, { bank_alias: bankAlias });
       if (!updateResult.success) return updateResult;
+      await get().fetchPermissions();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Da de baja el rol entrenador. bank_alias NO se toca a propósito — se
+  // mantiene guardado por si el usuario reactiva el perfil más adelante
+  // (ver activate-trainer-screen.jsx, que lo pre-completa en ese caso).
+  deactivateTrainerRole: async () => {
+    const { user, activeRole } = get();
+    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
+    try {
+      await removeRoleService(user.userId, 'entrenador');
+      if (activeRole === 'trainer') {
+        const { token, refreshToken, expiresAt, roles } = get();
+        set({ activeRole: 'runner' });
+        await persist({ user, token, refreshToken, expiresAt, activeRole: 'runner', roles });
+      }
       await get().fetchPermissions();
       return { success: true };
     } catch (error) {

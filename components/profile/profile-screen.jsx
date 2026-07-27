@@ -8,6 +8,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
+import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
 import { RoleSwitchToggle } from './role-switch-toggle.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 
@@ -119,13 +120,31 @@ function TrainerDataSection({ bankAlias }) {
   );
 }
 
-function DangerZone({ onDelete }) {
+function DangerZone({ onDelete, hasTrainerRole, onDeactivateTrainer }) {
   return (
     <View className="mt-2 rounded-2xl border border-red-300 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/20" nativeID="profile-screen-danger-zone" testID="profile-screen-danger-zone">
       <View className="mb-2 flex-row items-center gap-2" nativeID="profile-screen-danger-zone-header" testID="profile-screen-danger-zone-header">
         <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={18} />
         <Text className="text-base font-bold text-red-700 dark:text-red-400" nativeID="profile-screen-danger-zone-title" testID="profile-screen-danger-zone-title">Zona de peligro</Text>
       </View>
+
+      {hasTrainerRole && (
+        <View className="mb-4 border-b border-red-200 pb-4 dark:border-red-900/50" nativeID="profile-screen-deactivate-trainer-block" testID="profile-screen-deactivate-trainer-block">
+          <Text className="mb-3 text-sm leading-5 text-red-700/80 dark:text-red-400/80" nativeID="profile-screen-deactivate-trainer-description" testID="profile-screen-deactivate-trainer-description">
+            Dar de baja tu perfil de entrenador te vuelve a dejar solo con el perfil de corredor. Podés reactivarlo cuando quieras.
+          </Text>
+          <Pressable
+            className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-red-400 px-6 transition-colors hover:bg-red-50 active:opacity-80 dark:border-red-800 dark:hover:bg-red-900/20"
+            nativeID="profile-screen-deactivate-trainer-button"
+            onPress={onDeactivateTrainer}
+            testID="profile-screen-deactivate-trainer-button"
+          >
+            <MaterialCommunityIcons color="#ef4444" name="whistle-outline" size={16} />
+            <Text className="text-sm font-semibold uppercase tracking-wide text-red-600 dark:text-red-400" nativeID="profile-screen-deactivate-trainer-button-text" testID="profile-screen-deactivate-trainer-button-text">Dar de baja perfil de entrenador</Text>
+          </Pressable>
+        </View>
+      )}
+
       <Text className="mb-4 text-sm leading-5 text-red-700/80 dark:text-red-400/80" nativeID="profile-screen-danger-zone-description" testID="profile-screen-danger-zone-description">
         Dar de baja tu cuenta desactiva tu acceso a Paceron. Podrás solicitar reactivación más adelante.
       </Text>
@@ -148,9 +167,11 @@ export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
+  const deactivateTrainerRole = useAuthStore((s) => s.deactivateTrainerRole);
   const roles = useAuthStore((s) => s.roles);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTrainerOpen, setConfirmTrainerOpen] = useState(false);
 
   useEffect(() => {
     if (!user) router.replace('/login');
@@ -181,6 +202,16 @@ export function ProfileScreen() {
       router.replace('/');
     } else {
       Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudo dar de baja la cuenta.' });
+    }
+  };
+
+  const handleConfirmDeactivateTrainer = async () => {
+    const result = await deactivateTrainerRole();
+    if (result.success) {
+      setConfirmTrainerOpen(false);
+      Toast.show({ type: 'success', text1: 'Perfil de entrenador dado de baja', text2: 'Podés reactivarlo cuando quieras.' });
+    } else {
+      Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudo dar de baja el perfil de entrenador.' });
     }
   };
 
@@ -228,13 +259,23 @@ export function ProfileScreen() {
           <Field label="Teléfono de contacto" value={display(user.phoneContact)} />
         </Card>
 
-        <DangerZone onDelete={() => setConfirmOpen(true)} />
+        <DangerZone
+          hasTrainerRole={hasTrainerRole}
+          onDeactivateTrainer={() => setConfirmTrainerOpen(true)}
+          onDelete={() => setConfirmOpen(true)}
+        />
 
         <DeactivateAccountModal
           onCancel={() => setConfirmOpen(false)}
           onConfirm={handleConfirmDeactivate}
           userEmail={user.email}
           visible={confirmOpen}
+        />
+
+        <DeactivateTrainerModal
+          onCancel={() => setConfirmTrainerOpen(false)}
+          onConfirm={handleConfirmDeactivateTrainer}
+          visible={confirmTrainerOpen}
         />
       </View>
     </ScrollView>
