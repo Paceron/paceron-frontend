@@ -1,22 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { PaceronBrand } from '../brand/paceron-brand.jsx';
+import { AuthCardShell } from './auth-card-shell.jsx';
 import { ForgotPasswordForm } from './forgot-password-form.jsx';
 
 // --- Login form ---
@@ -206,75 +196,15 @@ function LoginForm({ onForgotPassword }) {
 // --- Screen ---
 
 export function LoginScreen() {
-  const router = useRouter();
-  const colors = useThemeColors();
   const [view, setView] = useState('login'); // 'login' | 'forgot'
 
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(16);
-
-  useEffect(() => {
-    opacity.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
-    translateY.value = withTiming(0, { duration: 350, easing: Easing.out(Easing.cubic) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
-  };
-
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="login-screen-safe-area" testID="login-screen-safe-area">
-      <KeyboardAwareScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        enableOnAndroid
-        extraScrollHeight={24}
-      >
-        <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]} nativeID="login-screen-animated-wrapper" testID="login-screen-animated-wrapper">
-            {/* Card */}
-            <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface" nativeID="login-screen-card" testID="login-screen-card">
-              {/* Back button */}
-              <Pressable
-                className="-ml-2 mb-4 flex-row items-center gap-1.5 self-start rounded-lg px-2 py-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-                onPress={view === 'forgot' ? () => setView('login') : handleBack}
-                nativeID="login-screen-back-button"
-                testID="login-screen-back-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
-                <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID="login-screen-back-button-label" testID="login-screen-back-button-label">Volver</Text>
-              </Pressable>
-
-              {/* Logo */}
-              <View className="mb-8 items-center" nativeID="login-screen-logo-wrapper" testID="login-screen-logo-wrapper">
-                <Image
-                  resizeMode="contain"
-                  source={require('../../assets/paceron-symbol-transparent.png')}
-                  style={{ width: 48, height: 48 }}
-                  nativeID="login-screen-logo-image"
-                  testID="login-screen-logo-image"
-                />
-                <PaceronBrand size={16} style={{ marginTop: 8 }} />
-              </View>
-
-              {view === 'login' ? (
-                <LoginForm onForgotPassword={() => setView('forgot')} />
-              ) : (
-                <ForgotPasswordForm onBack={() => setView('login')} />
-              )}
-            </View>
-        </Animated.View>
-      </KeyboardAwareScrollView>
-    </SafeAreaView>
+    <AuthCardShell cardClassName="max-w-md p-8">
+      {view === 'login' ? (
+        <LoginForm onForgotPassword={() => setView('forgot')} />
+      ) : (
+        <ForgotPasswordForm onBack={() => setView('login')} />
+      )}
+    </AuthCardShell>
   );
 }
