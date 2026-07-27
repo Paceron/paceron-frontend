@@ -7,11 +7,10 @@ import { useThemeColors } from '../../theme/colors.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
-import { ForgotPasswordForm } from './forgot-password-form.jsx';
 
 // --- Login form ---
 
-function LoginForm({ onForgotPassword }) {
+function LoginForm() {
   const router = useRouter();
   const colors = useThemeColors();
   const { login } = useAuthStore();
@@ -176,7 +175,7 @@ function LoginForm({ onForgotPassword }) {
       </Pressable>
 
       {/* Forgot password */}
-      <Pressable className="items-center py-1 hover:opacity-70" onPress={onForgotPassword} nativeID="login-screen-forgot-password-button" testID="login-screen-forgot-password-button">
+      <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/forgot-password')} nativeID="login-screen-forgot-password-button" testID="login-screen-forgot-password-button">
         <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-forgot-password-label" testID="login-screen-forgot-password-label">
           ¿Olvidaste tu contraseña?
         </Text>
@@ -196,15 +195,9 @@ function LoginForm({ onForgotPassword }) {
 // --- Screen ---
 
 export function LoginScreen() {
-  const [view, setView] = useState('login'); // 'login' | 'forgot'
-
   return (
     <AuthCardShell cardClassName="max-w-md p-8">
-      {view === 'login' ? (
-        <LoginForm onForgotPassword={() => setView('forgot')} />
-      ) : (
-        <ForgotPasswordForm onBack={() => setView('login')} />
-      )}
+      <LoginForm />
     </AuthCardShell>
   );
 }
