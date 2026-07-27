@@ -1436,9 +1436,9 @@ Con este task el flujo queda de punta a punta funcional.
 - [ ] **Step 1: Crear `components/auth/reset-password-screen.jsx`**
 
 ```jsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { InputField } from '../forms/fields.jsx';
 import { AuthCardShell } from './auth-card-shell.jsx';
@@ -1462,12 +1462,12 @@ export function ResetPasswordScreen() {
 
   // Deep-link directo a /reset-password sin pasar por /forgot-password (sin
   // email en los params) — no hay contexto para mostrar nada, se redirige.
-  useEffect(() => {
-    if (!email) router.replace('/forgot-password');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email]);
-
-  if (!email) return null;
+  // <Redirect> (no router.replace() en un useEffect) porque esto puede
+  // ejecutarse en el primer render de una carga en frío, antes de que el
+  // root navigator termine de montar — Redirect maneja esa espera
+  // internamente, un router.replace() imperativo ahí tira "Attempted to
+  // navigate before mounting the Root Layout component".
+  if (!email) return <Redirect href="/forgot-password" />;
 
   const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
 
