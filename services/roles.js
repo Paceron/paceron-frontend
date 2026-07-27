@@ -1,6 +1,6 @@
 import api from './api.js';
 import { USE_MOCKS } from '../config/env.js';
-import { mockGetRoles, mockAssignRole, mockGetPermissions } from './__mocks__/roles-mock.js';
+import { mockGetRoles, mockAssignRole, mockRemoveRole, mockGetPermissions } from './__mocks__/roles-mock.js';
 
 // Catálogo estático del backend — se cachea en memoria de módulo (no en
 // el store de Zustand, que es para estado de sesión) y se pide una sola
@@ -35,6 +35,14 @@ export async function assignRole(userId, roleName) {
     if (error.status === 409) return { alreadyAssigned: true };
     throw error;
   }
+}
+
+// DELETE /api/v1/users/{id}/roles/{role_id} — no toca bank_alias, se
+// mantiene guardado a propósito para una reactivación futura.
+export async function removeRole(userId, roleName) {
+  const roleId = await getRoleIdByName(roleName);
+  if (USE_MOCKS) return await mockRemoveRole(userId, roleId);
+  return await api.delete(`/users/${userId}/roles/${roleId}`);
 }
 
 // GET /api/v1/auth/permissions?user_id= — única fuente de verdad de qué
