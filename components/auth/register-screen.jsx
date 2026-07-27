@@ -1,18 +1,9 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import { useThemeColors } from '../../theme/colors.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
-import {
-  PASSWORD_REQUIREMENTS,
-  PASSWORD_MAX_LENGTH,
-  checkPasswordRequirements,
-  isPasswordValid,
-  getPasswordStrengthScore,
-  getPasswordStrengthMeta,
-} from '../../utils/password-validators.js';
+import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
 import { validateBirthDate } from '../../utils/date-validators.js';
 import { validateDNI } from '../../utils/dni-validators.js';
 import { toRegisterPayload } from '../../services/normalizers.js';
@@ -22,42 +13,7 @@ import { Row, Col, SelectField, DateField, InputField, PickerField } from '../fo
 import { SectionCard } from '../forms/section-card.jsx';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
-
-function StrengthBar({ password }) {
-  const score = getPasswordStrengthScore(password);
-  const total = PASSWORD_REQUIREMENTS.length;
-  const pct = Math.round((score / total) * 100);
-  const { label, color } = getPasswordStrengthMeta(score);
-
-  return (
-    <View className="mb-3 mt-2" nativeID="register-screen-strength-bar" testID="register-screen-strength-bar">
-      <View className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" nativeID="register-screen-strength-bar-track" testID="register-screen-strength-bar-track">
-        <View style={{ width: `${pct}%`, backgroundColor: color }} className="h-full rounded-full" nativeID="register-screen-strength-bar-fill" testID="register-screen-strength-bar-fill" />
-      </View>
-      {password.length > 0 && (
-        <Text style={{ color }} className="mt-1 text-xs font-semibold" nativeID="register-screen-strength-bar-label" testID="register-screen-strength-bar-label">
-          {label}
-        </Text>
-      )}
-    </View>
-  );
-}
-
-function RequirementRow({ id, met, label }) {
-  const colors = useThemeColors();
-  return (
-    <View className="mb-1 flex-row items-center gap-2" nativeID={`register-screen-requirement-${id}`} testID={`register-screen-requirement-${id}`}>
-      <MaterialCommunityIcons
-        color={met ? '#8cc63e' : colors.onSurfaceVariant}
-        name={met ? 'check-circle' : 'circle-outline'}
-        size={14}
-      />
-      <Text className={`text-xs ${met ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`register-screen-requirement-${id}-label`} testID={`register-screen-requirement-${id}-label`}>
-        {label}
-      </Text>
-    </View>
-  );
-}
+import { StrengthBar, PasswordRequirementsList } from '../forms/password-strength.jsx';
 
 export function RegisterScreen() {
   const router = useRouter();
@@ -412,12 +368,7 @@ export function RegisterScreen() {
           </Col>
         </Row>
 
-        <View className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900" nativeID="register-screen-requirements-list" testID="register-screen-requirements-list">
-          {PASSWORD_REQUIREMENTS.map((req) => (
-            <RequirementRow key={req.id} id={req.id} label={req.label} met={passwordReqs[req.id]} />
-          ))}
-        </View>
-
+        <PasswordRequirementsList reqs={passwordReqs} />
         <StrengthBar password={password} />
       </SectionCard>
 
