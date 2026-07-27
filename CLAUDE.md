@@ -136,7 +136,8 @@ Convención de nombres: kebab-case, con scope propio del componente/rol (ej. `pr
 - Repo separado (Go/Gin), no vive en este working directory, lo mantiene otra persona del equipo.
 - URL configurable vía `EXPO_PUBLIC_API_URL` (ver `config/env.js`) — sin esa var, cae al backend remoto en Render (`https://paceron-backend.onrender.com/api/v1`) por default. Para apuntar a un backend local: copiar `.env.example` a `.env`, ajustar `EXPO_PUBLIC_API_URL=http://localhost:<puerto>/api/v1`, y **reiniciar** el dev server (Expo inyecta `EXPO_PUBLIC_*` al bundlear, no es hot-reloadable).
 - Render (plan free) tiene cold-start de ~20-25s en la primera request tras inactividad — un "backend caído" suele ser esto, no un error real.
-- El sistema de roles (corredor/entrenador) **no está implementado en el backend todavía** — todo lo relacionado (activación, alias de pago, switch de rol) es 100% local (Zustand + storage), estructurado para poder reemplazarse por datos reales sin cambiar la interfaz que consumen los componentes. Ver `store/auth-store.js`.
+- El sistema de roles (corredor/entrenador) **ya pega contra el backend real** — activación (`assignRole`), alias de pago (`updateUser`) y consulta de roles asignados (`getPermissions` vía `/auth/permissions`) son requests reales, verificados 2026-07-19. Lo único que sigue siendo local-only es `activeRole` (cuál de los roles asignados se muestra activo en la UI en un momento dado) — el backend no tiene ese concepto, solo trackea qué roles tiene asignados un usuario (un conjunto, no una selección). Ver `store/auth-store.js`.
+- Recuperación de contraseña (`forgot-password`/`reset-password`, código OTP de 6 dígitos, vence a los 10 minutos) también pega contra el backend real desde `feature/password-recovery` — ver `services/password.js`, pantallas en `components/auth/forgot-password-screen.jsx`/`reset-password-screen.jsx`.
 
 ## Documentación existente en `docs/`
 
