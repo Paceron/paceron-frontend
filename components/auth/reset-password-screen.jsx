@@ -88,10 +88,12 @@ export function ResetPasswordScreen() {
         nativeID="reset-password-screen-subtitle"
         testID="reset-password-screen-subtitle"
       >
-        Ingresá el código de 6 dígitos que te enviamos, junto con tu nueva contraseña. El código vence a los 10 minutos.
+        Ingresá el código de 6 dígitos que enviamos a{' '}
+        <Text className="font-semibold text-slate-700 dark:text-slate-200" nativeID="reset-password-screen-subtitle-email" testID="reset-password-screen-subtitle-email">
+          {email}
+        </Text>
+        {' '}junto con tu nueva contraseña. El código vence a los 10 minutos.
       </Text>
-
-      <InputField disabled label="Email" value={email} />
 
       <OtpInput error={codeError} label="Código" onChange={(v) => { setCode(v); touch('code'); }} value={code} />
 

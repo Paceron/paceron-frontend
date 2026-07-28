@@ -13,6 +13,9 @@ const CELL_COUNT = 6;
 // renderCell para dibujar cada casillero nosotros mismos, así el theming
 // (claro/oscuro) sale de las mismas clases NativeWind que el resto de los
 // campos del formulario, no de props de estilo de la librería.
+// Centrado dentro del ancho del form (no pegado al borde izquierdo como
+// un InputField común) — label, casilleros y error comparten la misma
+// columna angosta centrada.
 export function OtpInput({ value, onChange, error, label }) {
   const ref = useBlurOnFulfill({ value, cellCount: CELL_COUNT });
   const [fieldProps, getCellOnLayoutHandler] = useClearByFocusCell({
@@ -21,13 +24,13 @@ export function OtpInput({ value, onChange, error, label }) {
   });
 
   return (
-    <View className="mb-5" nativeID="otp-input" testID="otp-input">
-      {label && (
-        <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="otp-input-label" testID="otp-input-label">
-          {label}
-        </Text>
-      )}
-      <View className="max-w-[380px]" nativeID="otp-input-cells-wrapper" testID="otp-input-cells-wrapper">
+    <View className="mb-5 items-center" nativeID="otp-input" testID="otp-input">
+      <View className="w-full max-w-[380px]" nativeID="otp-input-inner" testID="otp-input-inner">
+        {label && (
+          <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="otp-input-label" testID="otp-input-label">
+            {label}
+          </Text>
+        )}
         <CodeField
           ref={ref}
           {...fieldProps}
@@ -60,7 +63,7 @@ export function OtpInput({ value, onChange, error, label }) {
           value={value}
         />
       </View>
-      <View className="h-5" nativeID="otp-input-error-row" testID="otp-input-error-row">
+      <View className="h-5 w-full max-w-[380px]" nativeID="otp-input-error-row" testID="otp-input-error-row">
         {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID="otp-input-error" testID="otp-input-error">{error}</Text>}
       </View>
     </View>
