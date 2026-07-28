@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { validateEmailFormat } from '../../utils/email-validators.js';
+import { BREAKPOINTS } from '../../theme/tokens.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
 
@@ -23,19 +24,28 @@ function slugify(label) {
     .replace(/(^-|-$)/g, '');
 }
 
-// Fila responsive: en web reparte los hijos en columnas; en mobile apila.
+// Fila responsive: con suficiente ancho reparte los hijos en columnas, si
+// no apila. Decide por ANCHO real (useWindowDimensions + BREAKPOINTS.lg,
+// mismo breakpoint que useIsNarrowWeb() en el shell responsive), no por
+// plataforma — así una ventana de escritorio angosta también apila, no
+// solo la app nativa.
 export function Row({ children }) {
+  const { width } = useWindowDimensions();
+  const wide = width >= BREAKPOINTS.lg;
   return (
-    <View className={isWeb ? 'flex-row gap-4' : ''} nativeID="row-wrapper" testID="row-wrapper">
+    <View className={wide ? 'flex-row gap-4' : ''} nativeID="row-wrapper" testID="row-wrapper">
       {children}
     </View>
   );
 }
 
-// Columna con peso de ancho (solo web); en mobile ocupa el ancho completo.
+// Columna con peso de ancho (solo si hay suficiente ancho); si no, ocupa
+// el ancho completo. Mismo criterio de ancho que Row.
 export function Col({ children, flex = 1 }) {
+  const { width } = useWindowDimensions();
+  const wide = width >= BREAKPOINTS.lg;
   return (
-    <View nativeID="col-wrapper" style={isWeb ? { flex } : undefined} testID="col-wrapper">
+    <View nativeID="col-wrapper" style={wide ? { flex } : undefined} testID="col-wrapper">
       {children}
     </View>
   );
