@@ -70,4 +70,12 @@ describe('team store', () => {
     expect(team.groups).toHaveLength(1);
     expect(team.groups[0].isDefault).toBe(true);
   });
+
+  test('createTeam stores the city, defaulting to null when not provided', () => {
+    const withCity = useTeamStore.getState().createTeam({ name: 'Con ciudad', maxMembers: 10, city: 'Mendoza' });
+    expect(withCity.city).toBe('Mendoza');
+
+    const withoutCity = useTeamStore.getState().createTeam({ name: 'Sin ciudad', maxMembers: 10 });
+    expect(withoutCity.city).toBeNull();
+  });
 });

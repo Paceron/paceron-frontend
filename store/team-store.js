@@ -4,9 +4,9 @@ import { create } from 'zustand';
 // en memoria, mismo criterio que roles/activeRole en auth-store hasta que
 // exista el endpoint real.
 const MOCK_TEAMS = [
-  { id: 'team-1', name: 'Corredores del Sur' },
-  { id: 'team-2', name: 'Running Cordoba Norte' },
-  { id: 'team-3', name: 'Maraton Runners' },
+  { id: 'team-1', name: 'Corredores del Sur', city: 'La Plata' },
+  { id: 'team-2', name: 'Running Cordoba Norte', city: 'Cordoba' },
+  { id: 'team-3', name: 'Maraton Runners', city: 'Rosario' },
 ];
 
 // Tope de integrantes por tier del entrenador. 'base' es el plan free.
@@ -56,6 +56,7 @@ export const useTeamStore = create((set) => ({
     const team = {
       id: `team-${Date.now()}`,
       name: payload.name,
+      city: payload.city || null,
       maxMembers: payload.maxMembers,
       description: payload.description,
       requirements: payload.requirements,

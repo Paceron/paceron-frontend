@@ -78,6 +78,11 @@ export function CreateTeamScreen() {
   const [step, setStep] = useState(1);
 
   const [name, setName] = useState('');
+  // Texto libre por ahora. Sienta la base para autocompletar con la
+  // ubicación real del dispositivo más adelante (el proyecto ya usa
+  // expo-location para GPS durante entrenamientos, ver app.config.js) —
+  // no se implementa la detección automática todavía, solo el campo.
+  const [city, setCity] = useState('');
   const [description, setDescription] = useState('');
   const [level, setLevel] = useState('');
   const [maxMembers, setMaxMembers] = useState('');
@@ -139,6 +144,7 @@ export function CreateTeamScreen() {
   const handleSubmit = () => {
     createTeam({
       name: name.trim(),
+      city: city.trim(),
       description: description.trim(),
       requirements: requirements.trim(),
       level,
@@ -231,6 +237,14 @@ export function CreateTeamScreen() {
                 <InputField dense label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
               </View>
             </View>
+
+            <InputField
+              dense
+              label="Ciudad/localidad"
+              onChange={setCity}
+              placeholder="Ej. La Plata"
+              value={city}
+            />
 
             <InputField
               dense
