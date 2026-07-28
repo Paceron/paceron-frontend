@@ -8,6 +8,8 @@ Esto incluye, sin limitarse a: incorporar una tecnología/librería nueva de pes
 
 Expo (React Native + React Native Web), NativeWind (Tailwind para RN), Zustand (store), react-native-reanimated, Expo Router (file-based). Backend separado (Go/Gin, otro repo), ver sección Backend.
 
+**Estado de aplicación vs. estado de servidor:** `@tanstack/react-query` está instalado y el `QueryClientProvider` ya está armado (`providers/app-providers.jsx`), pero a día de hoy (2026-07-28) nada lo usa todavía — todo el código existente (auth, roles) es Zustand + llamadas manuales a `services/*.js`, y así se queda por ahora (no se retrofitea sin necesidad concreta). **Convención de acá en más:** Zustand para estado de aplicación (sesión, UI, preferencias locales), TanStack Query para estado de servidor (cualquier dato que se pide/muta contra el backend). Arranca a aplicarse con el reemplazo del mock de equipos (`store/team-store.js`, hoy 100% local con `MOCK_TEAMS`) por la integración real contra la API — equipos/grupos/invitaciones son el primer caso real, CRUD sobre varios recursos relacionados mostrados en varias pantallas, donde el cacheo/invalidación de TanStack Query rinde más que reinventar refetching manual.
+
 ## Workflow de branches y PRs
 
 - **Rama base:** `develop`. Producción es `master`, se llega ahí vía `release/<versión>` (ver `docs/BRANCH_POLICIES.md` para el modelo completo — en la práctica todavía no se usó `hotfix/`/`backport/`, pero `release/` sí, vía el workflow descripto abajo).
