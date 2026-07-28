@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
-import { InputField } from '../forms/fields.jsx';
+import { InputField, Row, Col } from '../forms/fields.jsx';
+import { OtpInput } from '../forms/otp-input.jsx';
 import { AuthCardShell } from './auth-card-shell.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
 import { forgotPassword, resetPassword } from '../../services/password.js';
 import { validateOtpCode } from '../../utils/otp-validators.js';
+import { isWeb } from '../../utils/platform.js';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
 
 export function ResetPasswordScreen() {
@@ -72,7 +74,7 @@ export function ResetPasswordScreen() {
   };
 
   return (
-    <AuthCardShell cardClassName="max-w-md p-8">
+    <AuthCardShell cardClassName={isWeb ? 'max-w-4xl py-8 px-6' : 'max-w-md py-8 px-6'}>
       <Text
         style={{ fontFamily: 'Orbitron_700Bold' }}
         className="mb-1 text-center text-2xl text-slate-900 dark:text-white"
@@ -86,50 +88,46 @@ export function ResetPasswordScreen() {
         nativeID="reset-password-screen-subtitle"
         testID="reset-password-screen-subtitle"
       >
-        Te enviamos un código de 6 dígitos a {email}. Ingresalo junto con tu nueva contraseña. El código vence a los 10 minutos.
+        Ingresá el código de 6 dígitos que te enviamos, junto con tu nueva contraseña. El código vence a los 10 minutos.
       </Text>
 
-      <InputField
-        autoCapitalize="none"
-        error={codeError}
-        keyboardType="number-pad"
-        label="Código"
-        onBlur={() => touch('code')}
-        onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
-        placeholder="123456"
-        returnKeyType="next"
-        touched={touched.code}
-        value={code}
-      />
+      <InputField disabled label="Email" value={email} />
 
-      <InputField
-        autoComplete="new-password"
-        label="Nueva contraseña"
-        onBlur={() => touch('password')}
-        onChange={(v) => { if (v.length <= PASSWORD_MAX_LENGTH) setPassword(v); }}
-        onToggleSecure={() => setShowPassword((v) => !v)}
-        placeholder="Tu nueva contraseña"
-        returnKeyType="next"
-        secureTextEntry={!showPassword}
-        showSecure={showPassword}
-        textContentType="newPassword"
-        value={password}
-      />
+      <OtpInput error={codeError} label="Código" onChange={(v) => { setCode(v); touch('code'); }} value={code} />
 
-      <InputField
-        autoComplete="new-password"
-        error={touched.confirm && !passwordsMatch && confirmPassword.length > 0 ? 'Las contraseñas no coinciden.' : null}
-        label="Confirmar contraseña"
-        onBlur={() => touch('confirm')}
-        onChange={setConfirmPassword}
-        onToggleSecure={() => setShowConfirm((v) => !v)}
-        placeholder="Repetí tu nueva contraseña"
-        returnKeyType="done"
-        secureTextEntry={!showConfirm}
-        showSecure={showConfirm}
-        textContentType="newPassword"
-        value={confirmPassword}
-      />
+      <Row>
+        <Col>
+          <InputField
+            autoComplete="new-password"
+            label="Nueva contraseña"
+            onBlur={() => touch('password')}
+            onChange={(v) => { if (v.length <= PASSWORD_MAX_LENGTH) setPassword(v); }}
+            onToggleSecure={() => setShowPassword((v) => !v)}
+            placeholder="Tu nueva contraseña"
+            returnKeyType="next"
+            secureTextEntry={!showPassword}
+            showSecure={showPassword}
+            textContentType="newPassword"
+            value={password}
+          />
+        </Col>
+        <Col>
+          <InputField
+            autoComplete="new-password"
+            error={touched.confirm && !passwordsMatch && confirmPassword.length > 0 ? 'Las contraseñas no coinciden.' : null}
+            label="Confirmar contraseña"
+            onBlur={() => touch('confirm')}
+            onChange={setConfirmPassword}
+            onToggleSecure={() => setShowConfirm((v) => !v)}
+            placeholder="Repetí tu nueva contraseña"
+            returnKeyType="done"
+            secureTextEntry={!showConfirm}
+            showSecure={showConfirm}
+            textContentType="newPassword"
+            value={confirmPassword}
+          />
+        </Col>
+      </Row>
 
       <PasswordRequirementsList reqs={passwordReqs} />
       <StrengthBar password={password} />
