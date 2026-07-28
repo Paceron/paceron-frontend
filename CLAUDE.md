@@ -121,6 +121,18 @@ La app nativa compilada (`AppMobileShell`, `HomeMobileScreen`,
 entre nativo y web es funcional (GPS, cámara, sensores — ver
 `utils/platform.js`), no de interfaz.
 
+**Formularios — aprovechar el ancho en desktop, apilar en mobile:** todo
+formulario nuevo con 2+ campos relacionados (ej. contraseña +
+confirmar, nombre + apellido) se arma con `Row`/`Col` de
+`components/forms/fields.jsx`, no uno debajo del otro por default. `Row`
+pone los campos en fila **solo en web** (`isWeb ? 'flex-row gap-4' :
+''`); en mobile cada `Col` cae a ancho completo automáticamente (sin
+código adicional). Esto ya es el patrón de `register-screen.jsx` y
+`reset-password-screen.jsx` — la idea es que la web desktop aproveche el
+ancho disponible en vez de quedar con columnas angostas de mobile
+estiradas verticalmente, mientras mobile sigue apilado y usable sin
+ningún cambio de código entre plataformas.
+
 ## Identificadores de componentes (`nativeID` / `testID`)
 
 **Regla estricta y obligatoria:** todo componente visual del front (`View`, `Text`, `Pressable`, `TextInput`, `Image`, `ScrollView`, `Touchable*`, `FlatList`, `SectionList`, `Modal`, `SafeAreaView` — incluye sus variantes `Animated.*`) debe llevar `nativeID` y `testID` con un valor identificable y único en su contexto. Ya no es "a partir de ahora" — el backfill retroactivo sobre todo el código existente se hizo (branch `chore/eslint-native-id-rule` + las que le siguieron), así que hoy la regla aplica sin excepción a todo el árbol de `components/`/`app/`.
@@ -136,7 +148,8 @@ Convención de nombres: kebab-case, con scope propio del componente/rol (ej. `pr
 - Repo separado (Go/Gin), no vive en este working directory, lo mantiene otra persona del equipo.
 - URL configurable vía `EXPO_PUBLIC_API_URL` (ver `config/env.js`) — sin esa var, cae al backend remoto en Render (`https://paceron-backend.onrender.com/api/v1`) por default. Para apuntar a un backend local: copiar `.env.example` a `.env`, ajustar `EXPO_PUBLIC_API_URL=http://localhost:<puerto>/api/v1`, y **reiniciar** el dev server (Expo inyecta `EXPO_PUBLIC_*` al bundlear, no es hot-reloadable).
 - Render (plan free) tiene cold-start de ~20-25s en la primera request tras inactividad — un "backend caído" suele ser esto, no un error real.
-- El sistema de roles (corredor/entrenador) **no está implementado en el backend todavía** — todo lo relacionado (activación, alias de pago, switch de rol) es 100% local (Zustand + storage), estructurado para poder reemplazarse por datos reales sin cambiar la interfaz que consumen los componentes. Ver `store/auth-store.js`.
+- El sistema de roles (corredor/entrenador) **ya pega contra el backend real** — activación (`assignRole`), alias de pago (`updateUser`) y consulta de roles asignados (`getPermissions` vía `/auth/permissions`) son requests reales, verificados 2026-07-19. Lo único que sigue siendo local-only es `activeRole` (cuál de los roles asignados se muestra activo en la UI en un momento dado) — el backend no tiene ese concepto, solo trackea qué roles tiene asignados un usuario (un conjunto, no una selección). Ver `store/auth-store.js`.
+- Recuperación de contraseña (`forgot-password`/`reset-password`, código OTP de 6 dígitos, vence a los 10 minutos) también pega contra el backend real desde `feature/password-recovery` — ver `services/password.js`, pantallas en `components/auth/forgot-password-screen.jsx`/`reset-password-screen.jsx`.
 
 ## Documentación existente en `docs/`
 
