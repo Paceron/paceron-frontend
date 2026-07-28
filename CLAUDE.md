@@ -121,6 +121,18 @@ La app nativa compilada (`AppMobileShell`, `HomeMobileScreen`,
 entre nativo y web es funcional (GPS, cámara, sensores — ver
 `utils/platform.js`), no de interfaz.
 
+**Formularios — aprovechar el ancho en desktop, apilar en mobile:** todo
+formulario nuevo con 2+ campos relacionados (ej. contraseña +
+confirmar, nombre + apellido) se arma con `Row`/`Col` de
+`components/forms/fields.jsx`, no uno debajo del otro por default. `Row`
+pone los campos en fila **solo en web** (`isWeb ? 'flex-row gap-4' :
+''`); en mobile cada `Col` cae a ancho completo automáticamente (sin
+código adicional). Esto ya es el patrón de `register-screen.jsx` y
+`reset-password-screen.jsx` — la idea es que la web desktop aproveche el
+ancho disponible en vez de quedar con columnas angostas de mobile
+estiradas verticalmente, mientras mobile sigue apilado y usable sin
+ningún cambio de código entre plataformas.
+
 ## Identificadores de componentes (`nativeID` / `testID`)
 
 **Regla estricta y obligatoria:** todo componente visual del front (`View`, `Text`, `Pressable`, `TextInput`, `Image`, `ScrollView`, `Touchable*`, `FlatList`, `SectionList`, `Modal`, `SafeAreaView` — incluye sus variantes `Animated.*`) debe llevar `nativeID` y `testID` con un valor identificable y único en su contexto. Ya no es "a partir de ahora" — el backfill retroactivo sobre todo el código existente se hizo (branch `chore/eslint-native-id-rule` + las que le siguieron), así que hoy la regla aplica sin excepción a todo el árbol de `components/`/`app/`.
