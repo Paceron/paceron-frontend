@@ -84,7 +84,7 @@ export function ResetPasswordScreen() {
         Ingresá el código
       </Text>
       <Text
-        className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400"
+        className="mb-8 pt-1 text-center text-sm text-slate-500 dark:text-slate-400"
         nativeID="reset-password-screen-subtitle"
         testID="reset-password-screen-subtitle"
       >
