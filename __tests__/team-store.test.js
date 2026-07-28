@@ -84,4 +84,28 @@ describe('team store', () => {
     expect(withoutLocation.province).toBeNull();
     expect(withoutLocation.city).toBeNull();
   });
+
+  test('createTeam defaults to status activo and generates a mock roster referencing real groups', () => {
+    const team = useTeamStore.getState().createTeam({ name: 'Con roster', maxMembers: 10 });
+
+    expect(team.status).toBe('activo');
+    expect(team.members.length).toBeGreaterThan(0);
+    const groupIds = team.groups.map((g) => g.id);
+    team.members.forEach((member) => {
+      expect(groupIds).toContain(member.groupId);
+      expect(member.name).toEqual(expect.any(String));
+      expect(member.level).toEqual(expect.any(String));
+      expect(member.subscriptionStatus).toEqual(expect.any(String));
+    });
+  });
+
+  test('mock teams ship with a status, groups and a roster out of the box', () => {
+    initialTeams.forEach((team) => {
+      expect(team.status).toBe('activo');
+      expect(team.groups.length).toBeGreaterThan(0);
+      expect(team.members.length).toBeGreaterThan(0);
+      const groupIds = team.groups.map((g) => g.id);
+      team.members.forEach((member) => expect(groupIds).toContain(member.groupId));
+    });
+  });
 });
