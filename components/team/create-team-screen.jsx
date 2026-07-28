@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
+import { useTeamStore, getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { EmailListField, InputField, PickerField, Row, Col, SelectField } from '../forms/fields.jsx';
 import { GroupListEditor } from './group-list-editor.jsx';
@@ -17,16 +17,6 @@ const LEVEL_OPTIONS = [
   { id: 'amateur', name: 'Amateur' },
   { id: 'semi-profesional', name: 'Semi-profesional' },
   { id: 'profesional', name: 'Profesional' },
-];
-
-// Sin dominio de planes de entrenamiento todavia (ver FUNCTIONAL_PROPOSE.md,
-// "Planificacion de entrenamientos" sigue siendo un modulo reservado, no
-// implementado) — catalogo mock hasta que exista ese servicio real.
-const TRAINING_PLAN_OPTIONS = [
-  { id: 'plan-5k', name: 'Plan 5K' },
-  { id: 'plan-10k', name: 'Plan 10K' },
-  { id: 'plan-21k', name: 'Plan 21K (medio maratón)' },
-  { id: 'plan-42k', name: 'Plan 42K (maratón)' },
 ];
 
 const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };

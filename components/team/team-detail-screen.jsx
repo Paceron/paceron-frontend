@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
-import { useTeamStore } from '../../store/team-store.js';
+import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
@@ -39,6 +39,14 @@ const MOCK_METRICS_BY_PERIOD = {
   mes: { trainingsCompleted: 48, goalsCompleted: 21 },
   todo: { trainingsCompleted: 210, goalsCompleted: 96 },
 };
+
+// Pestañas — solo en web (isWeb más abajo). En mobile las 3 secciones van
+// apiladas en una sola pantalla, sin navegación por pestañas.
+const TABS = [
+  { id: 'general', label: 'Información general y estadísticas', icon: 'information-outline' },
+  { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
+  { id: 'grupos', label: 'Grupos', icon: 'account-group' },
+];
 
 const DASH = '—';
 function display(value) {
@@ -131,11 +139,68 @@ function RunnerRow({ member, groupName, colors }) {
   );
 }
 
+function GroupRow({ group, memberCount, planName, colors }) {
+  return (
+    <View
+      className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+      nativeID={`team-detail-group-${group.id}`}
+      testID={`team-detail-group-${group.id}`}
+    >
+      <View className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`team-detail-group-${group.id}-icon`} testID={`team-detail-group-${group.id}-icon`}>
+        <MaterialCommunityIcons color={colors.primary} name="account-multiple" size={18} />
+      </View>
+      <View className="flex-1" nativeID={`team-detail-group-${group.id}-info`} testID={`team-detail-group-${group.id}-info`}>
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`team-detail-group-${group.id}-name`} testID={`team-detail-group-${group.id}-name`}>
+          {group.name}
+        </Text>
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`team-detail-group-${group.id}-meta`} testID={`team-detail-group-${group.id}-meta`}>
+          {memberCount} {memberCount === 1 ? 'corredor' : 'corredores'} · {planName ?? 'Sin plan asignado'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// Solo se usa en web (ver TABS más arriba) — misma paleta que los tabs del
+// header web (bg-primary-tint-subtle + text-primary cuando está activo).
+function TabBar({ active, onChange }) {
+  const colors = useThemeColors();
+
+  return (
+    <View className="mb-5 flex-row gap-2" nativeID="team-detail-tab-bar" testID="team-detail-tab-bar">
+      {TABS.map((tab) => {
+        const isActive = tab.id === active;
+        return (
+          <Pressable
+            key={tab.id}
+            className={`flex-row items-center gap-1.5 rounded-lg px-3 py-2 ${
+              isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            nativeID={`team-detail-tab-${tab.id}`}
+            onPress={() => onChange(tab.id)}
+            testID={`team-detail-tab-${tab.id}`}
+          >
+            <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
+            <Text
+              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
+              nativeID={`team-detail-tab-${tab.id}-label`}
+              testID={`team-detail-tab-${tab.id}-label`}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function TeamDetailScreen({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
 
+  const [activeTab, setActiveTab] = useState('general');
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [period, setPeriod] = useState('todo');
@@ -184,6 +249,72 @@ export function TeamDetailScreen({ teamId }) {
     team.country ? getCountryName(team.country) : null,
   ].filter(Boolean).join(', ');
 
+  const generalContent = (
+    <>
+      <SectionCard icon="information-outline" title="Sobre el equipo">
+        <Field label="Descripción" value={display(team.description)} />
+        <Field label="Requisitos de pertenencia" value={display(team.requirements)} />
+      </SectionCard>
+
+      <SectionCard icon="chart-line" title="Estadísticas del equipo">
+        <View className="flex-row gap-3" nativeID="team-detail-stats-row" testID="team-detail-stats-row">
+          <StatTile colors={colors} icon="account-group" label="Corredores" value={filteredMembers.length} />
+          <StatTile colors={colors} icon="run" label="Entrenamientos realizados" value={metrics.trainingsCompleted} />
+          <StatTile colors={colors} icon="flag-checkered" label="Objetivos cumplidos" value={metrics.goalsCompleted} />
+        </View>
+      </SectionCard>
+    </>
+  );
+
+  const corredoresContent = (
+    <SectionCard icon="account-multiple" title="Corredores">
+      <Row>
+        <Col>
+          <InputField dense label="Buscar corredor" onChange={setSearch} placeholder="Nombre del corredor" value={search} />
+        </Col>
+        <Col>
+          <PickerField dense label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
+        </Col>
+        <Col>
+          <PickerField dense label="Período" onChange={setPeriod} options={PERIOD_OPTIONS} placeholder="Todo" value={period} />
+        </Col>
+      </Row>
+
+      {filteredMembers.length === 0 ? (
+        <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
+          No hay corredores que coincidan con los filtros.
+        </Text>
+      ) : (
+        <View className="gap-2" nativeID="team-detail-runners-list" testID="team-detail-runners-list">
+          {filteredMembers.map((member) => (
+            <RunnerRow
+              colors={colors}
+              groupName={team.groups.find((g) => g.id === member.groupId)?.name ?? '—'}
+              key={member.id}
+              member={member}
+            />
+          ))}
+        </View>
+      )}
+    </SectionCard>
+  );
+
+  const gruposContent = (
+    <SectionCard icon="account-group" title="Grupos">
+      <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
+        {team.groups.map((group) => (
+          <GroupRow
+            colors={colors}
+            group={group}
+            key={group.id}
+            memberCount={team.members.filter((m) => m.groupId === group.id).length}
+            planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
+          />
+        ))}
+      </View>
+    </SectionCard>
+  );
+
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
@@ -231,51 +362,20 @@ export function TeamDetailScreen({ teamId }) {
           </View>
         </View>
 
-        <SectionCard icon="information-outline" title="Sobre el equipo">
-          <Field label="Descripción" value={display(team.description)} />
-          <Field label="Requisitos de pertenencia" value={display(team.requirements)} />
-        </SectionCard>
-
-        <SectionCard icon="filter-variant" title="Filtros">
-          <Row>
-            <Col>
-              <InputField dense label="Buscar corredor" onChange={setSearch} placeholder="Nombre del corredor" value={search} />
-            </Col>
-            <Col>
-              <PickerField dense label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
-            </Col>
-            <Col>
-              <PickerField dense label="Período" onChange={setPeriod} options={PERIOD_OPTIONS} placeholder="Todo" value={period} />
-            </Col>
-          </Row>
-        </SectionCard>
-
-        <SectionCard icon="chart-line" title="Estadísticas del equipo">
-          <View className="flex-row gap-3" nativeID="team-detail-stats-row" testID="team-detail-stats-row">
-            <StatTile colors={colors} icon="account-group" label="Corredores" value={filteredMembers.length} />
-            <StatTile colors={colors} icon="run" label="Entrenamientos realizados" value={metrics.trainingsCompleted} />
-            <StatTile colors={colors} icon="flag-checkered" label="Objetivos cumplidos" value={metrics.goalsCompleted} />
-          </View>
-        </SectionCard>
-
-        <SectionCard icon="account-multiple" title="Corredores">
-          {filteredMembers.length === 0 ? (
-            <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
-              No hay corredores que coincidan con los filtros.
-            </Text>
-          ) : (
-            <View className="gap-2" nativeID="team-detail-runners-list" testID="team-detail-runners-list">
-              {filteredMembers.map((member) => (
-                <RunnerRow
-                  colors={colors}
-                  groupName={team.groups.find((g) => g.id === member.groupId)?.name ?? '—'}
-                  key={member.id}
-                  member={member}
-                />
-              ))}
-            </View>
-          )}
-        </SectionCard>
+        {isWeb ? (
+          <>
+            <TabBar active={activeTab} onChange={setActiveTab} />
+            {activeTab === 'general' && generalContent}
+            {activeTab === 'corredores' && corredoresContent}
+            {activeTab === 'grupos' && gruposContent}
+          </>
+        ) : (
+          <>
+            {generalContent}
+            {corredoresContent}
+            {gruposContent}
+          </>
+        )}
       </View>
     </ScrollView>
   );

@@ -31,6 +31,17 @@ export const RUNNER_LEVELS = ['amateur', 'semi-profesional', 'profesional'];
 // mismos tres estados que ya prevé esa seccion funcional.
 export const SUBSCRIPTION_STATUSES = ['activo', 'vencido', 'en_prueba'];
 
+// Sin dominio de planes de entrenamiento todavia (ver FUNCTIONAL_PROPOSE.md,
+// "Planificacion de entrenamientos" sigue siendo un modulo reservado, no
+// implementado) — catalogo mock compartido por el wizard de creacion y la
+// pantalla de detalle (pestaña Grupos), hasta que exista ese servicio real.
+export const TRAINING_PLAN_OPTIONS = [
+  { id: 'plan-5k', name: 'Plan 5K' },
+  { id: 'plan-10k', name: 'Plan 10K' },
+  { id: 'plan-21k', name: 'Plan 21K (medio maratón)' },
+  { id: 'plan-42k', name: 'Plan 42K (maratón)' },
+];
+
 const RUNNER_FIRST_NAMES = ['Lucía', 'Martín', 'Sofía', 'Nicolás', 'Valentina', 'Tomás', 'Camila', 'Agustín', 'Julieta', 'Franco'];
 const RUNNER_LAST_NAMES = ['Fernández', 'Gómez', 'Rodríguez', 'López', 'Díaz', 'Martínez', 'Pérez', 'Sánchez', 'Romero', 'Torres'];
 const MOCK_ROSTER_SIZE = 6;
@@ -58,7 +69,7 @@ function buildDefaultGroup(teamId) {
 // sin pasar primero por el wizard de creacion.
 function buildMockTeam({ id, name, country, province, city, level, description, requirements }) {
   const defaultGroup = buildDefaultGroup(id);
-  const advancedGroup = { id: `${id}-group-avanzado`, name: 'Avanzado', trainingPlanId: null, isDefault: false };
+  const advancedGroup = { id: `${id}-group-avanzado`, name: 'Avanzado', trainingPlanId: 'plan-21k', isDefault: false };
   const groups = [advancedGroup, defaultGroup];
 
   return {

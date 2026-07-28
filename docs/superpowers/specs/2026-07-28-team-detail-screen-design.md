@@ -14,8 +14,11 @@ pantalla real de detalle, `/equipos/[teamId]`.
 `app/(tabs)/equipos/[teamId].jsx` (nuevo, ruta dinámica),
 `components/team/team-detail-screen.jsx` (nuevo), `store/team-store.js`
 (agrega `status` a los equipos, roster mock de corredores, grupos reales
-en los equipos mock), los tres shells (`handleSelectTeam` navega en vez
-de mostrar toast), `__tests__/team-store.test.js`.
+en los equipos mock, exporta `TRAINING_PLAN_OPTIONS`),
+`components/team/create-team-screen.jsx` (importa `TRAINING_PLAN_OPTIONS`
+del store en vez de definirlo localmente), los tres shells
+(`handleSelectTeam` navega en vez de mostrar toast),
+`__tests__/team-store.test.js`.
 
 ## Decisiones
 
@@ -52,18 +55,47 @@ helpers que `profile-screen.jsx`) para mostrar la ubicación cargada en el
 wizard (ver PR #57, cascada país/provincia/localidad) como una sola línea
 legible ("La Plata, Buenos Aires, Argentina"), no los códigos crudos.
 
-### Filtros: corredor y grupo filtran la lista real; período solo las métricas
+### Estructura: 3 pestañas en web, todo apilado en mobile
+
+La pantalla se organiza en 3 secciones — **Información general y
+estadísticas**, **Corredores**, **Grupos** — y en web (`isWeb`) se
+navegan como pestañas (mismo tratamiento visual que los tabs del header
+web: `bg-primary-tint-subtle` + texto `primary` cuando está activa). En
+mobile no hay pestañas — las 3 secciones van apiladas en la misma
+pantalla, en el mismo orden, sin navegación extra (una pantalla larga se
+scrollea bien en mobile; en web separarlas evita un scroll gigante).
+Header (foto, nombre, estado, ubicación) queda siempre visible arriba de
+las pestañas/secciones, no es parte de ninguna.
+
+### Filtros viven en la sección/pestaña "Corredores", no aparte
+
+Los 3 filtros (buscar corredor, grupo, período) se movieron adentro de la
+card "Corredores" — no tienen su propia sección — porque conceptualmente
+existen para acotar lo que se ve ahí. Efecto real de cada uno:
 
 - **Corredor** (buscador por nombre) y **grupo** (combobox) filtran de
   verdad la lista de corredores mostrada y el conteo de "Corredores" en
   las estadísticas — filtrado client-side sobre el roster mock.
 - **Período** (semana/mes/todo) solo afecta "Entrenamientos realizados" y
-  "Objetivos cumplidos" — no hay un modelo de actividades con fecha real
+  "Objetivos cumplidos", que viven en la pestaña "Información general y
+  estadísticas" — no hay un modelo de actividades con fecha real
   (`FUNCTIONAL_PROPOSE.md`: "Registro y seguimiento de actividades"
   reservado todavía), así que esas dos métricas son una tabla mock fija
-  por período (`MOCK_METRICS_BY_PERIOD`), no un cálculo real. No tiene
-  sentido que el período filtre el roster (la membresía no es algo que
-  "pasó en una fecha").
+  por período (`MOCK_METRICS_BY_PERIOD`), no un cálculo real. Queda en el
+  filtro de Corredores en vez de en Información general porque así lo
+  pidió el usuario — el estado del filtro persiste al cambiar de pestaña
+  (vive en `TeamDetailScreen`, no en cada pestaña), así que cambiarlo y
+  volver a "Información general" sí se ve reflejado ahí.
+
+### Pestaña "Grupos"
+
+Lista cada grupo del equipo (incluido "Sin grupo") con cantidad de
+corredores asignados (calculada del roster mock) y el plan de
+entrenamiento asignado, si tiene. `TRAINING_PLAN_OPTIONS` se movió de
+`create-team-screen.jsx` a `store/team-store.js` (exportado) para que
+esta pestaña pueda resolver el nombre del plan sin duplicar el catálogo
+mock en dos archivos — `create-team-screen.jsx` ahora lo importa desde
+ahí en vez de tener su propia copia.
 
 ### Tags por corredor: nivel, grupo y estado de suscripción
 
@@ -80,17 +112,20 @@ Edición del equipo desde esta pantalla, botones "Ver plan"/"Ver
 estadísticas" por grupo y "mover de grupo" por corredor (eso viene del
 diseño hecho con Stitch, todavía no implementado), backend real de
 equipos/suscripciones/entrenamientos, alta real de miembros (aceptar una
-invitación y pasar a formar parte del roster).
+invitación y pasar a formar parte del roster), crear/editar grupos desde
+la pestaña Grupos (por ahora es de solo lectura).
 
 ## Verificación
 
 `EXPO_PUBLIC_USE_MOCKS=true`, loguearse, abrir "Equipos" y elegir
 cualquiera de los 3 equipos mock (o uno creado con el wizard) → navega a
-`/equipos/[teamId]` con header (foto, nombre, estado, ubicación),
-sección "Sobre el equipo" (descripción, requisitos), filtros, 3 stat
-tiles y la lista de corredores con sus 3 tags. Buscar por nombre y
-filtrar por grupo actualiza la lista y el conteo de corredores; cambiar
-el período solo cambia las otras dos métricas. Un `teamId` inexistente
-muestra el estado "No encontramos este equipo" con botón de volver.
+`/equipos/[teamId]` con header (foto, nombre, estado, ubicación) fijo
+arriba de 3 pestañas en web (apiladas en mobile): Información general y
+estadísticas, Corredores, Grupos. En "Corredores": buscar por nombre y
+filtrar por grupo actualiza la lista y el conteo de "Corredores" en la
+otra pestaña; cambiar el período solo cambia las otras dos métricas ahí.
+"Grupos" muestra cada grupo con su cantidad de corredores y plan
+asignado (o "Sin plan asignado"). Un `teamId` inexistente muestra el
+estado "No encontramos este equipo" con botón de volver.
 
 `npm test` → 47/47. `npm run lint` → limpio.
