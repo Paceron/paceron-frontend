@@ -49,3 +49,12 @@ Doc de seguimiento interno — un gap por sección, se actualiza a medida que el
 - **A qué bloquea:** Etapa 3 completa — es la pieza central de "sumarse por invitación".
 - **Workaround actual:** ninguno todavía (Etapa 3 no arrancó). Es el gap más grande de los 6, probablemente amerita una spec de diseño conjunta con backend antes de implementarse.
 - **Estado:** abierto — el más prioritario junto con el gap 1 y 5.
+
+## 7. `DELETE /teams/{id}` rechaza al dueño real del equipo
+
+- **Qué pasa:** probado en preview contra el backend real (2026-07-29): un entrenador dueño de un equipo (`team.owner_id === user_id`, confirmado antes de mostrar el botón de eliminar en el frontend) recibe `"el usuario no pertenece a este equipo"` al intentar `DELETE /teams/{id}?user_id={su propio id}`.
+- **Hipótesis:** el endpoint parece validar pertenencia contra la tabla de membresía (`team_users`) en vez de (o además de) comparar contra `team.owner_id`. Nada en `POST /teams` da de alta al dueño como `team_user` — si el DELETE espera esa fila, un equipo recién creado nunca la tiene.
+- **Por qué hace falta:** el frontend ya tiene el botón de eliminar equipo wireado (`store/team-store.js#deleteTeam`, `components/team/team-detail-screen.jsx`) — sin este fix, cualquier intento de eliminar un equipo falla para todos los usuarios, incluido el dueño.
+- **A qué bloquea:** la feature de "eliminar equipo" completa, ya lista del lado del frontend.
+- **Workaround actual:** ninguno posible del lado del cliente — no hay forma de saber qué fila espera el backend sin más contexto de su implementación.
+- **Estado:** abierto — a confirmar con el equipo de backend si el chequeo de autorización debería ser por `owner_id` o si falta dar de alta al dueño como `team_user` al crear el equipo.
