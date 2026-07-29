@@ -1,4 +1,12 @@
 import { create } from 'zustand';
+import {
+  createTeam as createTeamService,
+  getTeam as getTeamService,
+  listTeams as listTeamsService,
+  updateTeam as updateTeamService,
+  updateTeamAddress as updateTeamAddressService,
+} from '../services/teams.js';
+import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload } from '../services/normalizers.js';
 
 // Tope de integrantes por tier del entrenador. 'base' es el plan free.
 // 'pro'/'premium' hoy no los asigna ningun mock todavia (roles-mock.js
@@ -56,13 +64,15 @@ function slugifyForEmail(value) {
     .replace(/[^a-z]+/g, '');
 }
 
-// Sin backend de equipos ni de miembros todavia — genera un roster de
-// ejemplo determinista (mismo teamId + grupos siempre dan el mismo
-// resultado) repartido entre los grupos existentes, para que la pantalla
-// de detalle de equipo tenga datos con los que probarse de entrada.
-// joinedAt se escalona por integrante (30 dias de diferencia entre uno y
-// el siguiente) para que la antiguedad ("hace X meses en el equipo") no
-// sea igual para todos.
+// Sin backend de miembros de equipo conectado todavia (existe
+// services/teams.js#getTeamUsers, pero nada lo llama — ver
+// docs/BACKEND_API_GAPS.md) — genera un roster de ejemplo determinista
+// (mismo teamId + grupos siempre dan el mismo resultado) repartido entre
+// los grupos existentes, para que la pantalla de detalle de equipo tenga
+// datos con los que probarse de entrada, incluso contra un equipo real del
+// backend. joinedAt se escalona por integrante (30 dias de diferencia
+// entre uno y el siguiente) para que la antiguedad ("hace X meses en el
+// equipo") no sea igual para todos.
 function generateMockMembers(teamId, groups) {
   return Array.from({ length: MOCK_ROSTER_SIZE }, (_, i) => {
     const firstName = RUNNER_FIRST_NAMES[i % RUNNER_FIRST_NAMES.length];
@@ -83,10 +93,10 @@ function buildDefaultGroup(teamId) {
 }
 
 // Sin un directorio real de usuarios registrados todavia (no hay backend de
-// equipos ni de invitaciones) — mock determinista derivado del email mismo
-// (mismo email siempre resuelve igual) para poder mostrar "usuario
-// registrado" vs. "sin registrar" en la pantalla de invitaciones sin
-// inventar una lista global de usuarios aparte.
+// invitaciones, ver docs/BACKEND_API_GAPS.md) — mock determinista derivado
+// del email mismo (mismo email siempre resuelve igual) para poder mostrar
+// "usuario registrado" vs. "sin registrar" en la pantalla de invitaciones
+// sin inventar una lista global de usuarios aparte.
 function isRegisteredMockEmail(email) {
   let sum = 0;
   for (let i = 0; i < email.length; i += 1) sum += email.charCodeAt(i);
@@ -106,150 +116,174 @@ function buildInvitedEmail(invite, defaultGroupId) {
   };
 }
 
-// Equipos mock con datos completos (grupos, roster, ubicacion real de
-// data/locations.js) para poder probar la pantalla de detalle de equipo
-// sin pasar primero por el wizard de creacion. pendingInvites (opcional)
-// siembra invitaciones pendientes con antiguedad variada (daysAgo) para
-// poder probar la pantalla de invitaciones sin tener que cargarlas a mano.
-function buildMockTeam({ id, name, country, province, city, level, description, requirements, pendingInvites = [], showGroupsToRunners = false }) {
-  const defaultGroup = buildDefaultGroup(id);
-  const advancedGroup = {
-    id: `${id}-group-avanzado`,
-    name: 'Avanzado',
-    description: 'Corredores con mayor volumen y ritmo, orientado a carreras de calle de 10K y 21K.',
-    trainingPlanId: 'plan-21k',
-    isDefault: false,
-  };
-  const groups = [advancedGroup, defaultGroup];
-
-  const invitedEmails = pendingInvites.map(({ email, group, daysAgo, registered }) => ({
-    email,
-    groupId: group === 'avanzado' ? advancedGroup.id : defaultGroup.id,
-    invitedAt: new Date(Date.now() - daysAgo * DAY_MS).toISOString(),
-    registered,
-  }));
+// Completa un equipo real (ya normalizado por toTeamModel — camelCase, id
+// como string) con los datos que el backend todavia no soporta: grupos,
+// roster e invitaciones, mas showGroupsToRunners/foto (ver
+// docs/BACKEND_API_GAPS.md). `extra.groups`/`extra.invitedEmails` solo
+// existen recien creado el equipo (vienen del wizard) — un equipo traido
+// por fetchTeams/fetchTeam no tiene ese contexto, asi que arranca solo con
+// el grupo default.
+function decorateTeam(team, extra = {}) {
+  const defaultGroup = buildDefaultGroup(team.id);
+  const groups = [...(extra.groups ?? []), defaultGroup];
+  const invitedEmails = (extra.invitedEmails ?? []).map((invite) => buildInvitedEmail(invite, defaultGroup.id));
 
   return {
-    id,
-    name,
-    country,
-    province,
-    city,
-    status: 'activo',
-    description,
-    requirements,
-    level,
-    maxMembers: 20,
-    photoUri: null,
-    // Por default un corredor común no ve a qué grupo pertenece cada
-    // compañero — el entrenador lo habilita explícitamente desde "Editar
-    // equipo" (ver store.updateTeam). Controla solo el tag de grupo por
-    // corredor; la pestaña Grupos entera sigue oculta para corredores
-    // pase lo que pase (ver team-detail-screen.jsx).
-    showGroupsToRunners,
+    ...team,
+    status: team.status ?? 'activo',
+    photoUri: extra.photoUri ?? null,
+    showGroupsToRunners: false,
     groups,
-    members: generateMockMembers(id, groups),
+    members: generateMockMembers(team.id, groups),
     invitedEmails,
   };
 }
 
-const MOCK_TEAMS = [
-  buildMockTeam({
-    id: 'team-1',
-    name: 'Corredores del Sur',
-    country: 'ARG',
-    province: 'BA',
-    city: 'La Plata',
-    level: 'amateur',
-    description: 'Equipo de running enfocado en fondo y medio fondo, entrenamos 3 veces por semana.',
-    requirements: 'Compromiso de asistencia y ritmo base de 6 min/km.',
-    pendingInvites: [
-      { email: 'nueva.socia@example.com', group: 'avanzado', daysAgo: 3, registered: false },
-      { email: 'martina.reyes@mail.com', group: 'default', daysAgo: 20, registered: true },
-    ],
-    showGroupsToRunners: true,
-  }),
-  buildMockTeam({
-    id: 'team-2',
-    name: 'Running Cordoba Norte',
-    country: 'ARG',
-    province: 'CD',
-    city: 'Córdoba Capital',
-    level: 'semi-profesional',
-    description: 'Grupo competitivo orientado a carreras de calle de 10K y 21K.',
-    requirements: 'Experiencia previa en carreras de calle.',
-  }),
-  buildMockTeam({
-    id: 'team-3',
-    name: 'Maraton Runners',
-    country: 'ARG',
-    province: 'SF',
-    city: 'Rosario',
-    level: 'profesional',
-    description: 'Preparación específica para maratón y ultramaratón.',
-    requirements: 'Base aeróbica mínima de 60km semanales.',
-  }),
-];
+// Equipos que el usuario administra (owner_id === userId) — el backend no
+// tiene todavia un endpoint "mis equipos" (docs/BACKEND_API_GAPS.md), asi
+// que se resuelve del lado del cliente filtrando GET /teams completo. No
+// incluye equipos donde el usuario participa como corredor (ese caso no se
+// puede resolver de ningun modo hoy, ver el mismo gap).
+export function selectAdministeredTeams(teams, userId) {
+  if (!userId) return [];
+  return teams.filter((team) => team.ownerId === userId);
+}
 
-export const useTeamStore = create((set) => ({
-  teams: MOCK_TEAMS,
+export const useTeamStore = create((set, get) => ({
+  teams: [],
   selectedTeamId: null,
 
   selectTeam: (teamId) => set({ selectedTeamId: teamId }),
 
-  // Sin backend de equipos: crea el equipo solo en memoria y lo selecciona.
-  // Todo equipo nuevo suma su grupo default ("Sin grupo") ademas de los
-  // grupos armados en el formulario — las invitaciones sin grupo elegido
-  // (groupId '') se resuelven al id de ese grupo default aca, no antes.
-  // El envio de invitaciones por email es responsabilidad del backend
-  // (no hay ningun servicio de envio de mails en este repo) — por ahora
-  // solo se guardan junto con el resto de los datos del equipo. El roster
-  // de corredores es mock (generateMockMembers) hasta que exista un flujo
-  // real de alta de miembros — hoy nadie se suma solo por ser invitado.
-  createTeam: (payload) => {
-    const id = `team-${Date.now()}`;
-    const defaultGroup = buildDefaultGroup(id);
-    const groups = [...(payload.groups ?? []), defaultGroup];
-
-    const invitedEmails = (payload.invitedEmails ?? []).map((invite) => buildInvitedEmail(invite, defaultGroup.id));
-
-    const team = {
-      id,
-      name: payload.name,
-      country: payload.country || null,
-      province: payload.province || null,
-      city: payload.city || null,
-      status: 'activo',
-      maxMembers: payload.maxMembers,
-      description: payload.description,
-      requirements: payload.requirements,
-      photoUri: payload.photoUri ?? null,
-      level: payload.level,
-      // No expuesto en el wizard de creación (se pidió específicamente en
-      // "Editar equipo", ver EditTeamScreen) — arranca apagado, como el
-      // resto de los equipos mock salvo team-1.
-      showGroupsToRunners: false,
-      groups,
-      members: generateMockMembers(id, groups),
-      invitedEmails,
-    };
-    set((state) => ({ teams: [...state.teams, team], selectedTeamId: team.id }));
-    return team;
+  // Trae todos los equipos del sistema (GET /teams, sin filtro — el filtro
+  // de "mis equipos" vive en selectAdministeredTeams). Un equipo ya
+  // presente en el store (ej. recien creado en esta sesion) conserva sus
+  // campos local-only (grupos, roster, invitaciones, showGroupsToRunners,
+  // foto) en vez de perderlos — solo un equipo nuevo para el store arranca
+  // decorado desde cero.
+  fetchTeams: async () => {
+    try {
+      const dtos = await listTeamsService();
+      set((state) => ({
+        teams: dtos.map((dto) => {
+          const model = toTeamModel(dto);
+          const existing = state.teams.find((t) => t.id === model.id);
+          return existing ? { ...existing, ...model } : decorateTeam(model);
+        }),
+      }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   },
 
-  // Edita solo los "datos generales" de un equipo ya existente (nombre,
-  // ubicación, descripción, nivel, cupo, foto, requisitos) — grupos,
-  // miembros, invitaciones y status no se tocan desde acá, tienen sus
-  // propios flujos (ver updateGroup y la pestaña Grupos).
-  updateTeam: (teamId, updates) => {
-    set((state) => ({
-      teams: state.teams.map((team) => (team.id === teamId ? { ...team, ...updates } : team)),
-    }));
+  // Trae un equipo puntual (GET /teams/{id}) — para cuando se entra por
+  // deep-link a un equipo que todavia no esta en `teams` (ej. recargar la
+  // pagina de detalle/edicion directo por URL).
+  fetchTeam: async (teamId) => {
+    try {
+      const dto = await getTeamService(teamId);
+      const model = toTeamModel(dto);
+      set((state) => {
+        const existing = state.teams.find((t) => t.id === teamId);
+        const team = existing ? { ...existing, ...model } : decorateTeam(model);
+        const alreadyListed = state.teams.some((t) => t.id === teamId);
+        return {
+          teams: alreadyListed ? state.teams.map((t) => (t.id === teamId ? team : t)) : [...state.teams, team],
+        };
+      });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   },
 
-  // Edita nombre/plan de un grupo puntual dentro de un equipo. No toca
-  // membresía (mover corredores de grupo es otro flujo, todavía no
-  // implementado — ver spec de la pantalla de detalle de equipo).
+  // Crea el equipo contra el backend real (POST /teams) y lo selecciona.
+  // Si el payload trae algun campo de ubicacion, encadena inmediatamente
+  // PUT /teams/{id}/address — si esa segunda llamada falla, el resultado
+  // sigue siendo exito (el equipo ya existe) con `addressWarning: true`
+  // para que la pantalla muestre un aviso secundario en vez de un error
+  // duro. Grupos/invitaciones armados en el wizard (payload.groups/
+  // invitedEmails) y la foto (payload.photoUri) no tienen campo en el
+  // backend todavia (ver docs/BACKEND_API_GAPS.md) — se guardan solo del
+  // lado del cliente via decorateTeam, se pierden al recargar.
+  createTeam: async (payload) => {
+    try {
+      const created = await createTeamService(toCreateTeamPayload(payload));
+      let team = decorateTeam(toTeamModel(created), {
+        groups: payload.groups,
+        invitedEmails: payload.invitedEmails,
+        photoUri: payload.photoUri,
+      });
+      set((state) => ({ teams: [...state.teams, team], selectedTeamId: team.id }));
+
+      const hasAddress = Boolean(payload.country || payload.province || payload.city);
+      if (!hasAddress) return { success: true, team };
+
+      try {
+        await updateTeamAddressService(team.id, toAddressPayload(payload));
+        team = { ...team, country: payload.country || null, province: payload.province || null, city: payload.city || null };
+        set((state) => ({ teams: state.teams.map((t) => (t.id === team.id ? team : t)) }));
+        return { success: true, team };
+      } catch {
+        return { success: true, team, addressWarning: true };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Edita los "datos generales" de un equipo ya existente (PUT
+  // /teams/{id}, parcial) — grupos, miembros, invitaciones y status no se
+  // tocan desde acá. `updates` puede traer country/province/city
+  // (secuenciados aparte, ver abajo) y showGroupsToRunners/photoUri
+  // (interactivos del lado del cliente, sin campo en el backend — ver
+  // docs/BACKEND_API_GAPS.md): se conservan en el equipo resultante vía
+  // `clientOnlyAndGeneralUpdates`, pero toUpdateTeamPayload los descarta
+  // antes de mandarlos al PUT general. country/province/city se excluyen
+  // de ese merge inicial a propósito — si el PUT de dirección de abajo
+  // falla, no queremos mostrar como "guardado" un valor que en realidad no
+  // se persistió.
+  updateTeam: async (teamId, updates) => {
+    const team = get().teams.find((t) => t.id === teamId);
+    if (!team) return { success: false, error: 'Equipo no encontrado.' };
+
+    const { country: _country, province: _province, city: _city, ...clientOnlyAndGeneralUpdates } = updates;
+
+    try {
+      const updated = await updateTeamService(teamId, toUpdateTeamPayload(updates));
+      const generalModel = toTeamModel(updated);
+      let merged = {
+        ...team,
+        ...clientOnlyAndGeneralUpdates,
+        name: generalModel.name,
+        description: generalModel.description,
+        level: generalModel.level,
+        maxMembers: generalModel.maxMembers,
+        requirements: generalModel.requirements,
+        status: generalModel.status,
+        updatedAt: generalModel.updatedAt,
+      };
+      set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? merged : t)) }));
+
+      const hasAddress = Boolean(updates.country || updates.province || updates.city);
+      if (!hasAddress) return { success: true, team: merged };
+
+      try {
+        await updateTeamAddressService(teamId, toAddressPayload(updates));
+        merged = { ...merged, country: updates.country || null, province: updates.province || null, city: updates.city || null };
+        set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? merged : t)) }));
+        return { success: true, team: merged };
+      } catch {
+        return { success: true, team: merged, addressWarning: true };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Edita nombre/plan de un grupo puntual dentro de un equipo. Local-only
+  // (Etapa 2/3, ver docs/BACKEND_API_GAPS.md) — no toca membresía.
   updateGroup: (teamId, groupId, updates) => {
     set((state) => ({
       teams: state.teams.map((team) => {
@@ -259,11 +293,9 @@ export const useTeamStore = create((set) => ({
     }));
   },
 
-  // Suma invitaciones nuevas a un equipo ya existente (pantalla "Invitar
-  // corredores" dentro de la gestión de equipo, no el wizard de creación).
-  // Solo agrega — no reemplaza ni permite cancelar invitaciones ya
-  // mandadas (eso no se pidió todavía). Ignora emails que ya estaban
-  // invitados, sin distinguir mayúsculas/minúsculas.
+  // Suma invitaciones nuevas a un equipo ya existente. Local-only (Etapa 3,
+  // ver docs/BACKEND_API_GAPS.md) — ignora emails ya invitados, sin
+  // distinguir mayúsculas/minúsculas.
   addInvitedEmails: (teamId, invites) => {
     set((state) => ({
       teams: state.teams.map((team) => {
