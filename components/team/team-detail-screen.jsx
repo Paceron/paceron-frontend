@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -11,7 +11,14 @@ import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
+
+// Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
+// alinear el borde derecho del panel con el del botón de 3 puntitos que lo
+// abrió, sin depender de measureInWindow del panel mismo (todavía no está
+// montado en el momento de calcular la posición).
+const RUNNER_MENU_WIDTH = 208;
 
 // Mismos 3 estados que ya prevé "Sistema de suscripciones y cobros" en
 // FUNCTIONAL_PROPOSE.md — dominio todavía no implementado, colores igual
@@ -114,53 +121,65 @@ function SeniorityLine({ member, colors, idPrefix }) {
 // suscripción de otros corredores. Al ser tan poco contenido no hace falta
 // la card expandible de mobile — un layout único alcanza en las dos
 // plataformas.
-// Acciones de gestión sobre un corredor puntual — hoy deshabilitadas: el
-// roster (team.members) sigue siendo sintético (generateMockMembers, ver
-// store/team-store.js), sus ids no corresponden a usuarios reales del
-// backend, así que "sacar del equipo" (services/teams.js#removeTeamUser ya
-// existe) no tiene todavía a quién apuntar. Se deja la UI armada — el día
-// que el roster venga de getTeamUsers real, solo hace falta habilitar
-// estas dos filas. Solo se muestra a quien gestiona el equipo (ver
-// RunnerRow, nunca se renderiza en la rama `restricted`).
-function RunnerMenu({ member, colors }) {
-  const [open, setOpen] = useState(false);
+// Botón de 3 puntitos de un corredor puntual — solo mide su posición y
+// avisa a TeamDetailScreen, que muestra un único panel compartido (ver
+// RunnerActionsMenu más abajo, montado una sola vez fuera del ScrollView)
+// vía el mismo AnimatedDropdown que ya usan el dropdown de usuario y el
+// menú de equipos (components/shared/animated-dropdown.jsx) — necesario
+// porque un panel local por fila (como estaba antes) queda atrapado en el
+// stacking context de su propia card: las cards siguientes lo tapan visualmente
+// y no había backdrop para cerrarlo con un click afuera.
+function RunnerMenu({ member, colors, onOpenMenu }) {
+  const ref = useRef(null);
+
+  const handlePress = () => {
+    ref.current?.measureInWindow((x, y, width, height) => {
+      onOpenMenu({ x, y, width, height });
+    });
+  };
 
   return (
-    <View className="relative" nativeID={`team-detail-runner-${member.id}-menu`} testID={`team-detail-runner-${member.id}-menu`}>
-      <Pressable
-        accessibilityLabel="Más opciones"
-        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-        nativeID={`team-detail-runner-${member.id}-menu-toggle`}
-        onPress={() => setOpen((v) => !v)}
-        testID={`team-detail-runner-${member.id}-menu-toggle`}
-      >
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
-      </Pressable>
-      {open && (
-        <View
-          className="absolute right-0 top-8 z-10 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-surface-2"
-          nativeID={`team-detail-runner-${member.id}-menu-panel`}
-          testID={`team-detail-runner-${member.id}-menu-panel`}
-        >
-          <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID={`team-detail-runner-${member.id}-menu-remove`} testID={`team-detail-runner-${member.id}-menu-remove`}>
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-remove-outline" size={16} />
-            <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`team-detail-runner-${member.id}-menu-remove-label`} testID={`team-detail-runner-${member.id}-menu-remove-label`}>
-              Sacar del equipo (próximamente)
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID={`team-detail-runner-${member.id}-menu-move`} testID={`team-detail-runner-${member.id}-menu-move`}>
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-switch-outline" size={16} />
-            <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`team-detail-runner-${member.id}-menu-move-label`} testID={`team-detail-runner-${member.id}-menu-move-label`}>
-              Mover de grupo (próximamente)
-            </Text>
-          </View>
-        </View>
-      )}
+    <Pressable
+      ref={ref}
+      accessibilityLabel="Más opciones"
+      className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+      nativeID={`team-detail-runner-${member.id}-menu-toggle`}
+      onPress={handlePress}
+      testID={`team-detail-runner-${member.id}-menu-toggle`}
+    >
+      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+    </Pressable>
+  );
+}
+
+// Contenido del panel compartido — hoy con ambas acciones deshabilitadas:
+// el roster (team.members) sigue siendo sintético (generateMockMembers,
+// ver store/team-store.js), sus ids no corresponden a usuarios reales del
+// backend, así que "sacar del equipo" (services/teams.js#removeTeamUser ya
+// existe) no tiene todavía a quién apuntar. El día que el roster venga de
+// getTeamUsers real, solo hace falta habilitar estas dos filas.
+function RunnerActionsMenu() {
+  const colors = useThemeColors();
+
+  return (
+    <View className="w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID="team-detail-runner-menu-panel" testID="team-detail-runner-menu-panel">
+      <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID="team-detail-runner-menu-remove" testID="team-detail-runner-menu-remove">
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-remove-outline" size={16} />
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runner-menu-remove-label" testID="team-detail-runner-menu-remove-label">
+          Sacar del equipo (próximamente)
+        </Text>
+      </View>
+      <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID="team-detail-runner-menu-move" testID="team-detail-runner-menu-move">
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-switch-outline" size={16} />
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runner-menu-move-label" testID="team-detail-runner-menu-move-label">
+          Mover de grupo (próximamente)
+        </Text>
+      </View>
     </View>
   );
 }
 
-function RunnerRow({ member, groupName, colors, restricted, showGroupTag }) {
+function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu }) {
   const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
   const [expanded, setExpanded] = useState(false);
 
@@ -257,7 +276,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag }) {
           {groupTag}
           {subscriptionTag}
         </View>
-        <RunnerMenu colors={colors} member={member} />
+        <RunnerMenu colors={colors} member={member} onOpenMenu={onOpenMenu} />
       </View>
     );
   }
@@ -281,7 +300,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag }) {
           {subscriptionTag}
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
         </Pressable>
-        <RunnerMenu colors={colors} member={member} />
+        <RunnerMenu colors={colors} member={member} onOpenMenu={onOpenMenu} />
       </View>
       {expanded && (
         <View
@@ -503,6 +522,22 @@ export function TeamDetailScreen({ teamId }) {
   const [groupFilter, setGroupFilter] = useState('');
   const [loadingTeam, setLoadingTeam] = useState(!team);
 
+  // Panel único del menú de un corredor (ver RunnerMenu/RunnerActionsMenu
+  // más arriba) — se cierra solo si se cambia de pestaña, para no dejarlo
+  // flotando sobre una sección distinta a la de Corredores.
+  const [runnerMenuOpen, setRunnerMenuOpen] = useState(false);
+  const [runnerMenuAnchor, setRunnerMenuAnchor] = useState({ x: 0, y: 0, width: 0, height: 0 });
+
+  useEffect(() => {
+    setRunnerMenuOpen(false);
+  }, [activeTab]);
+
+  const handleOpenRunnerMenu = (anchor) => {
+    setRunnerMenuAnchor(anchor);
+    setRunnerMenuOpen(true);
+  };
+  const handleCloseRunnerMenu = () => setRunnerMenuOpen(false);
+
   // Entrar por deep-link (ej. recargar /teams/{id} directo) puede caer acá
   // antes de que el equipo esté en el store — fetchTeam lo trae puntual.
   useEffect(() => {
@@ -624,6 +659,7 @@ export function TeamDetailScreen({ teamId }) {
               groupName={team.groups.find((g) => g.id === member.groupId)?.name ?? '—'}
               key={member.id}
               member={member}
+              onOpenMenu={handleOpenRunnerMenu}
               restricted={!isTrainerView}
               showGroupTag={canSeeGroups}
             />
@@ -657,6 +693,7 @@ export function TeamDetailScreen({ teamId }) {
   const visibleTabs = isTrainerView ? TABS : TABS.filter((tab) => tab.id !== 'grupos');
 
   return (
+    <>
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
@@ -750,5 +787,16 @@ export function TeamDetailScreen({ teamId }) {
         />
       )}
     </ScrollView>
+    <AnimatedDropdown
+      anchorStyle={{
+        left: Math.max(8, runnerMenuAnchor.x + runnerMenuAnchor.width - RUNNER_MENU_WIDTH),
+        top: runnerMenuAnchor.y + runnerMenuAnchor.height + 4,
+      }}
+      onClose={handleCloseRunnerMenu}
+      open={runnerMenuOpen}
+    >
+      <RunnerActionsMenu />
+    </AnimatedDropdown>
+    </>
   );
 }
