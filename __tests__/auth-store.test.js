@@ -157,6 +157,24 @@ describe('role management (backend-backed)', () => {
     expect(useAuthStore.getState().activeRole).toBe('trainer');
   });
 
+  test('fetchPermissions demotes a stale trainer activeRole back to runner when the real roles no longer include entrenador', async () => {
+    // Reproduce el bug: activeRole quedó en 'trainer' persistido de una
+    // sesión vieja, pero los roles reales (backend/mock) ya no incluyen
+    // entrenador — sin la corrección, RoleBadge seguía mostrando el tag
+    // "Entrenador" mientras profile-screen mostraba "Activar entrenador".
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', roles: [] });
+    getPermissions.mockResolvedValue({ user_id: 1, roles: [] });
+    await useAuthStore.getState().fetchPermissions();
+    expect(useAuthStore.getState().activeRole).toBe('runner');
+  });
+
+  test('fetchPermissions keeps activeRole trainer when the real roles still include entrenador', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', roles: [] });
+    getPermissions.mockResolvedValue({ user_id: 1, roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }] });
+    await useAuthStore.getState().fetchPermissions();
+    expect(useAuthStore.getState().activeRole).toBe('trainer');
+  });
+
   test('logout resets roles state', async () => {
     useAuthStore.setState({
       user: { userId: 1 },
