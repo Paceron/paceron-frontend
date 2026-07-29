@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -409,6 +409,7 @@ export function TeamDetailScreen({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
+  const fetchTeam = useTeamStore((s) => s.fetchTeam);
   const activeRole = useAuthStore((s) => s.activeRole);
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   // Mismo criterio que "Crear equipo" en los shells: sin modelo de dueño de
@@ -429,6 +430,21 @@ export function TeamDetailScreen({ teamId }) {
   const [activeTab, setActiveTab] = useState('general');
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
+  const [loadingTeam, setLoadingTeam] = useState(!team);
+
+  // Entrar por deep-link (ej. recargar /teams/{id} directo) puede caer acá
+  // antes de que el equipo esté en el store — fetchTeam lo trae puntual.
+  useEffect(() => {
+    if (team) {
+      setLoadingTeam(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadingTeam(true);
+    fetchTeam(teamId).finally(() => { if (!cancelled) setLoadingTeam(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
 
   const groupOptions = useMemo(
     () => (team ? [{ id: '', name: 'Todos los grupos' }, ...team.groups.map((g) => ({ id: g.id, name: g.name }))] : []),
@@ -444,6 +460,14 @@ export function TeamDetailScreen({ teamId }) {
       return matchesSearch && matchesGroup;
     });
   }, [team, search, groupFilter, isTrainerView]);
+
+  if (loadingTeam) {
+    return (
+      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="team-detail-loading" testID="team-detail-loading">
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!team) {
     return (
