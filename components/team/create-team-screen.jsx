@@ -9,8 +9,9 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField, InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { EmailListField, InputField, PickerField, Row, Col, SelectField } from '../forms/fields.jsx';
 import { GroupListEditor } from './group-list-editor.jsx';
+import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 
 const LEVEL_OPTIONS = [
   { id: 'amateur', name: 'Amateur' },
@@ -69,6 +70,7 @@ function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right' }) {
 export function CreateTeamScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
   const createTeam = useTeamStore((s) => s.createTeam);
 
@@ -78,6 +80,24 @@ export function CreateTeamScreen() {
   const [step, setStep] = useState(1);
 
   const [name, setName] = useState('');
+  // Mismo componente y misma cascada país→provincia→localidad que
+  // register/editar perfil (hooks/use-address-cascade.js, data/locations.js)
+  // — no un campo de texto libre aparte. Precargada con la ubicación del
+  // entrenador si ya la cargó al registrarse, asumiendo que el equipo suele
+  // estar donde está él. Sienta la base para autocompletar con la ubicación
+  // real del dispositivo más adelante (el proyecto ya usa expo-location
+  // para GPS durante entrenamientos) — no se implementa eso todavía.
+  const {
+    country,
+    province,
+    city,
+    provinceOptions,
+    cityOptions,
+    countryOptions,
+    handleCountryChange,
+    handleProvinceChange,
+    handleCityChange,
+  } = useAddressCascade({ country: user?.country, province: user?.province, city: user?.city });
   const [description, setDescription] = useState('');
   const [level, setLevel] = useState('');
   const [maxMembers, setMaxMembers] = useState('');
@@ -139,6 +159,9 @@ export function CreateTeamScreen() {
   const handleSubmit = () => {
     createTeam({
       name: name.trim(),
+      country,
+      province,
+      city,
       description: description.trim(),
       requirements: requirements.trim(),
       level,
@@ -231,6 +254,76 @@ export function CreateTeamScreen() {
                 <InputField dense label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
               </View>
             </View>
+
+            <Row>
+              <Col>
+                {isWeb ? (
+                  <SelectField
+                    dense
+                    label="País"
+                    onChange={handleCountryChange}
+                    options={countryOptions}
+                    placeholder="Seleccioná un país"
+                    value={country}
+                  />
+                ) : (
+                  <PickerField
+                    dense
+                    label="País"
+                    onChange={handleCountryChange}
+                    options={countryOptions}
+                    placeholder="Seleccioná un país"
+                    value={country}
+                  />
+                )}
+              </Col>
+              <Col>
+                {isWeb ? (
+                  <SelectField
+                    dense
+                    disabled={!country}
+                    label="Provincia"
+                    onChange={handleProvinceChange}
+                    options={provinceOptions}
+                    placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
+                    value={province}
+                  />
+                ) : (
+                  <PickerField
+                    dense
+                    disabled={!country}
+                    label="Provincia"
+                    onChange={handleProvinceChange}
+                    options={provinceOptions}
+                    placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
+                    value={province}
+                  />
+                )}
+              </Col>
+              <Col>
+                {isWeb ? (
+                  <SelectField
+                    dense
+                    disabled={!province}
+                    label="Localidad"
+                    onChange={handleCityChange}
+                    options={cityOptions}
+                    placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
+                    value={city}
+                  />
+                ) : (
+                  <PickerField
+                    dense
+                    disabled={!province}
+                    label="Localidad"
+                    onChange={handleCityChange}
+                    options={cityOptions}
+                    placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
+                    value={city}
+                  />
+                )}
+              </Col>
+            </Row>
 
             <InputField
               dense

@@ -51,7 +51,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -59,7 +59,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
   const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
 
   return (
-    <View className="mb-5" nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
+    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>{label}</Text>
       <View
         className="flex-row items-center gap-2"

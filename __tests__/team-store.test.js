@@ -70,4 +70,18 @@ describe('team store', () => {
     expect(team.groups).toHaveLength(1);
     expect(team.groups[0].isDefault).toBe(true);
   });
+
+  test('createTeam stores country/province/city, defaulting to null when not provided', () => {
+    const withLocation = useTeamStore.getState().createTeam({
+      name: 'Con ubicación', maxMembers: 10, country: 'ARG', province: 'MZ', city: 'Mendoza Capital',
+    });
+    expect(withLocation.country).toBe('ARG');
+    expect(withLocation.province).toBe('MZ');
+    expect(withLocation.city).toBe('Mendoza Capital');
+
+    const withoutLocation = useTeamStore.getState().createTeam({ name: 'Sin ubicación', maxMembers: 10 });
+    expect(withoutLocation.country).toBeNull();
+    expect(withoutLocation.province).toBeNull();
+    expect(withoutLocation.city).toBeNull();
+  });
 });
