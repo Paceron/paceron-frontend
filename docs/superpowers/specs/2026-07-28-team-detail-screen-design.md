@@ -69,23 +69,20 @@ las pestañas/secciones, no es parte de ninguna.
 
 ### Filtros viven en la sección/pestaña "Corredores", no aparte
 
-Los 3 filtros (buscar corredor, grupo, período) se movieron adentro de la
-card "Corredores" — no tienen su propia sección — porque conceptualmente
-existen para acotar lo que se ve ahí. Efecto real de cada uno:
+Los filtros (buscar corredor, grupo) se movieron adentro de la card
+"Corredores" — no tienen su propia sección — porque conceptualmente
+existen para acotar lo que se ve ahí. **Corredor** (buscador por nombre)
+y **grupo** (combobox) filtran de verdad la lista de corredores mostrada
+y el conteo de "Corredores" en las estadísticas — filtrado client-side
+sobre el roster mock.
 
-- **Corredor** (buscador por nombre) y **grupo** (combobox) filtran de
-  verdad la lista de corredores mostrada y el conteo de "Corredores" en
-  las estadísticas — filtrado client-side sobre el roster mock.
-- **Período** (semana/mes/todo) solo afecta "Entrenamientos realizados" y
-  "Objetivos cumplidos", que viven en la pestaña "Información general y
-  estadísticas" — no hay un modelo de actividades con fecha real
-  (`FUNCTIONAL_PROPOSE.md`: "Registro y seguimiento de actividades"
-  reservado todavía), así que esas dos métricas son una tabla mock fija
-  por período (`MOCK_METRICS_BY_PERIOD`), no un cálculo real. Queda en el
-  filtro de Corredores en vez de en Información general porque así lo
-  pidió el usuario — el estado del filtro persiste al cambiar de pestaña
-  (vive en `TeamDetailScreen`, no en cada pestaña), así que cambiarlo y
-  volver a "Información general" sí se ve reflejado ahí.
+El filtro de **período** que existió en una primera versión se sacó por
+completo — no había un modelo de actividades con fecha real detrás
+(`FUNCTIONAL_PROPOSE.md`: "Registro y seguimiento de actividades" sigue
+reservado), así que era un selector sin efecto real más allá de swapear
+una tabla mock fija. "Entrenamientos realizados" y "Objetivos cumplidos"
+(pestaña "Información general y estadísticas") quedan como valores mock
+fijos (`MOCK_TEAM_METRICS`) hasta que exista ese dominio.
 
 ### Pestaña "Grupos"
 
@@ -97,14 +94,42 @@ esta pestaña pueda resolver el nombre del plan sin duplicar el catálogo
 mock en dos archivos — `create-team-screen.jsx` ahora lo importa desde
 ahí en vez de tener su propia copia.
 
-### Tags por corredor: nivel, grupo y estado de suscripción
+### Tags por corredor: grupo y estado de suscripción (no nivel)
 
-Cada fila de corredor muestra 3 tags: nivel (mismo catálogo que el nivel
-del equipo), grupo asignado, y estado de suscripción. Nivel y grupo usan
-un tratamiento neutro (gris) — son etiquetas categóricas, no buenas ni
-malas. Solo el estado de suscripción usa semáforo de color (verde/rojo/
-ámbar), porque es el único de los tres con urgencia real (un corredor
+Cada fila de corredor muestra 2 tags: grupo asignado y estado de
+suscripción. El nivel (amateur/semi-profesional/profesional) es un
+atributo del **equipo**, no de cada corredor individualmente — una
+primera versión lo mostraba también por corredor (mock round-robin
+sobre `RUNNER_LEVELS`), pero no tenía sentido de dominio, así que se
+sacó por completo: `RUNNER_LEVELS` se borró de `store/team-store.js` y
+`generateMockMembers` ya no genera ese campo en los miembros mock. Grupo
+usa un tratamiento neutro (gris) — es una etiqueta categórica, ni buena
+ni mala. Solo el estado de suscripción usa semáforo de color
+(verde/rojo/ámbar), porque es el único con urgencia real (un corredor
 vencido es un problema a resolver).
+
+### Fila de corredor en mobile: card expandible
+
+En web los tags (grupo, suscripción) entran cómodos al lado del nombre.
+En mobile, con menos ancho disponible, llegaban a tapar el nombre del
+corredor en algunas filas. `RunnerRow` pasa a tener dos variantes
+(`isWeb`): en web se mantiene igual (fila fija, todo
+visible); en mobile es una card colapsada por default que solo muestra
+nombre + tag de suscripción (el único con urgencia real) + chevron —
+tocarla expande una fila con el grupo debajo. El estado de expandido es
+local a cada fila (no vive en `TeamDetailScreen`), así que expandir un
+corredor no afecta a los demás.
+
+### Email del corredor: debajo del nombre, y también se busca por él
+
+`generateMockMembers` (`store/team-store.js`) suma `email` a cada
+corredor mock (`nombre.apellido@mail.com`, sin tildes —
+`slugifyForEmail` hace el reemplazo a mano en vez de depender de
+`String.prototype.normalize`, para no asumir soporte Unicode completo
+en todos los motores JS de las plataformas del proyecto). `RunnerRow`
+muestra el email en una segunda línea chica debajo del nombre, en las
+dos variantes (web y mobile). El filtro "Buscar corredor" en la pestaña
+Corredores ahora matchea contra nombre **o** email (antes solo nombre).
 
 ## Fuera de alcance
 
@@ -123,9 +148,10 @@ cualquiera de los 3 equipos mock (o uno creado con el wizard) → navega a
 arriba de 3 pestañas en web (apiladas en mobile): Información general y
 estadísticas, Corredores, Grupos. En "Corredores": buscar por nombre y
 filtrar por grupo actualiza la lista y el conteo de "Corredores" en la
-otra pestaña; cambiar el período solo cambia las otras dos métricas ahí.
-"Grupos" muestra cada grupo con su cantidad de corredores y plan
-asignado (o "Sin plan asignado"). Un `teamId` inexistente muestra el
-estado "No encontramos este equipo" con botón de volver.
+otra pestaña. "Grupos" muestra cada grupo con su cantidad de corredores
+y plan asignado (o "Sin plan asignado"). Un `teamId` inexistente muestra
+el estado "No encontramos este equipo" con botón de volver. En mobile,
+cada fila de corredor arranca colapsada (nombre + suscripción) y se
+expande al tocarla mostrando el grupo.
 
-`npm test` → 47/47. `npm run lint` → limpio.
+`npm test` → 49/49. `npm run lint` → limpio.
