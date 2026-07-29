@@ -151,8 +151,20 @@ export const useAuthStore = create((set, get) => ({
     try {
       const data = await getPermissionsService(user.userId);
       const roles = data?.roles ?? [];
-      set({ roles, rolesLoaded: true });
-      const { token, refreshToken, expiresAt, activeRole } = get();
+      // activeRole es local-only y puede quedar desincronizado de los roles
+      // reales — ej. una sesión vieja persistida (localStorage/secure-store)
+      // con activeRole:'trainer' de cuando el usuario sí tenía el rol, y
+      // después se lo sacaron desde otra sesión o se reseteó el mock. Sin
+      // este chequeo, la UI podía mostrar el tag "Entrenador"
+      // (RoleBadge usa activeRole tal cual) mientras el resto de la app
+      // (gates por roles.some(...)) correctamente lo trataba como corredor
+      // — el síntoma exacto: tag de entrenador visible pero el botón
+      // "Activar perfil de entrenador" también, porque roles no lo tenía.
+      const { activeRole: currentActiveRole } = get();
+      const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
+      const activeRole = currentActiveRole === 'trainer' && !hasTrainerRole ? 'runner' : currentActiveRole;
+      set({ roles, rolesLoaded: true, activeRole });
+      const { token, refreshToken, expiresAt } = get();
       await persist({ user, token, refreshToken, expiresAt, activeRole, roles });
     } catch {
       // best-effort — se mantiene roles anterior si falla

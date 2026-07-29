@@ -4,7 +4,6 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
 import { getRoutesByRole } from '../../routes/catalog.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useThemeColors } from '../../theme/colors.js';
@@ -93,13 +92,13 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
     onClose();
   };
 
-  // Sin backend de equipos todavía: elegir un equipo solo guarda selección
-  // local y avisa por toast — no hay pantalla de detalle todavía. Crear
-  // equipo sí navega a una pantalla propia (/equipos/crear).
+  // Sin backend de equipos todavía: elegir un equipo guarda la selección
+  // local y navega a su detalle (/equipos/[teamId]); crear equipo navega a
+  // su propia pantalla (/equipos/crear).
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
     onClose();
-    Toast.show({ type: 'info', text1: team.name, text2: 'La vista de equipo todavía está en construcción.' });
+    router.push(`/equipos/${team.id}`);
   };
 
   const handleCreateTeam = () => {

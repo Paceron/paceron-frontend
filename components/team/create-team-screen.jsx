@@ -1,33 +1,17 @@
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
+import { useTeamStore, getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField, InputField, PickerField, Row, Col, SelectField } from '../forms/fields.jsx';
+import { EmailListField } from '../forms/fields.jsx';
 import { GroupListEditor } from './group-list-editor.jsx';
-import { useAddressCascade } from '../../hooks/use-address-cascade.js';
-
-const LEVEL_OPTIONS = [
-  { id: 'amateur', name: 'Amateur' },
-  { id: 'semi-profesional', name: 'Semi-profesional' },
-  { id: 'profesional', name: 'Profesional' },
-];
-
-// Sin dominio de planes de entrenamiento todavia (ver FUNCTIONAL_PROPOSE.md,
-// "Planificacion de entrenamientos" sigue siendo un modulo reservado, no
-// implementado) — catalogo mock hasta que exista ese servicio real.
-const TRAINING_PLAN_OPTIONS = [
-  { id: 'plan-5k', name: 'Plan 5K' },
-  { id: 'plan-10k', name: 'Plan 10K' },
-  { id: 'plan-21k', name: 'Plan 21K (medio maratón)' },
-  { id: 'plan-42k', name: 'Plan 42K (maratón)' },
-];
+import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
+import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 
 const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };
 const TOTAL_STEPS = 3;
@@ -79,39 +63,22 @@ export function CreateTeamScreen() {
 
   const [step, setStep] = useState(1);
 
-  const [name, setName] = useState('');
   // Mismo componente y misma cascada país→provincia→localidad que
-  // register/editar perfil (hooks/use-address-cascade.js, data/locations.js)
-  // — no un campo de texto libre aparte. Precargada con la ubicación del
+  // register/editar perfil, vía el hook compartido con EditTeamScreen
+  // (hooks/use-team-general-info-form.js). Precargada con la ubicación del
   // entrenador si ya la cargó al registrarse, asumiendo que el equipo suele
-  // estar donde está él. Sienta la base para autocompletar con la ubicación
-  // real del dispositivo más adelante (el proyecto ya usa expo-location
-  // para GPS durante entrenamientos) — no se implementa eso todavía.
-  const {
-    country,
-    province,
-    city,
-    provinceOptions,
-    cityOptions,
-    countryOptions,
-    handleCountryChange,
-    handleProvinceChange,
-    handleCityChange,
-  } = useAddressCascade({ country: user?.country, province: user?.province, city: user?.city });
-  const [description, setDescription] = useState('');
-  const [level, setLevel] = useState('');
-  const [maxMembers, setMaxMembers] = useState('');
-  // Por ahora es texto libre. A futuro pasa a ser una seleccion de
-  // requerimientos estandarizados (combobox) en vez de texto — ver spec.
-  const [requirements, setRequirements] = useState('');
-  const [photoUri, setPhotoUri] = useState(null);
+  // estar donde está él.
+  const generalForm = useTeamGeneralInfoForm({
+    initial: { country: user?.country, province: user?.province, city: user?.city },
+    maxAllowed,
+  });
+
   // Un equipo puede tener varios grupos (GroupListEditor). El grupo default
   // ("Sin grupo") no se crea ni se edita desde este formulario — lo agrega
   // store/team-store.js al crear el equipo. Este paso completo es
   // opcional: se puede pasar al siguiente sin haber agregado ningun grupo.
   const [groups, setGroups] = useState([]);
   const [invitedEmails, setInvitedEmails] = useState([]);
-  const [errors, setErrors] = useState({});
 
   // Si se saca un grupo que ya tenia invitaciones asignadas, esas
   // invitaciones vuelven a "Sin grupo" en vez de quedar apuntando a un
@@ -120,53 +87,14 @@ export function CreateTeamScreen() {
     setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: '' } : invite)));
   };
 
-  const handlePickPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Toast.show({ type: 'error', text1: 'Permiso necesario', text2: 'Habilitá el acceso a tus fotos para elegir una imagen.' });
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled) setPhotoUri(result.assets[0].uri);
-  };
-
-  const validateStep1 = () => {
-    const next = {};
-    if (!name.trim()) next.name = 'Ingresá un nombre para el equipo.';
-    if (!level) next.level = 'Elegí un nivel.';
-
-    const parsedMax = Number(maxMembers);
-    if (!maxMembers.trim() || !Number.isInteger(parsedMax) || parsedMax < 1) {
-      next.maxMembers = 'Ingresá una cantidad válida.';
-    } else if (parsedMax > maxAllowed) {
-      next.maxMembers = `Tu plan permite hasta ${maxAllowed} integrantes.`;
-    }
-
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  };
-
   const handleContinueStep1 = () => {
-    if (!validateStep1()) return;
+    if (!generalForm.validate()) return;
     setStep(2);
   };
 
   const handleSubmit = () => {
     createTeam({
-      name: name.trim(),
-      country,
-      province,
-      city,
-      description: description.trim(),
-      requirements: requirements.trim(),
-      level,
-      maxMembers: Number(maxMembers),
-      photoUri,
+      ...generalForm.getValues(),
       groups,
       invitedEmails,
     });
@@ -217,159 +145,7 @@ export function CreateTeamScreen() {
 
         {step === 1 && (
           <SectionCard icon="account-group" title="Datos del equipo">
-            <View className="flex-row items-start gap-4" nativeID="create-team-identity-row" testID="create-team-identity-row">
-              <View className="relative mt-[26px]" nativeID="create-team-photo-wrapper" testID="create-team-photo-wrapper">
-                <Pressable
-                  accessibilityLabel={photoUri ? 'Cambiar foto del equipo' : 'Agregar foto del equipo'}
-                  className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-100 hover:opacity-80 active:opacity-70 dark:bg-slate-800"
-                  nativeID="create-team-photo-picker"
-                  onPress={handlePickPhoto}
-                  testID="create-team-photo-picker"
-                >
-                  {photoUri ? (
-                    <Image
-                      accessibilityLabel="Foto de perfil del equipo"
-                      className="h-12 w-12 rounded-full"
-                      nativeID="create-team-photo-preview-image"
-                      source={{ uri: photoUri }}
-                      testID="create-team-photo-preview-image"
-                    />
-                  ) : (
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-plus-outline" size={20} />
-                  )}
-                </Pressable>
-                {photoUri && (
-                  <View
-                    className="absolute -bottom-0.5 -right-0.5 h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-primary dark:border-surface"
-                    nativeID="create-team-photo-edit-badge"
-                    pointerEvents="none"
-                    testID="create-team-photo-edit-badge"
-                  >
-                    <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={11} />
-                  </View>
-                )}
-              </View>
-
-              <View className="flex-1" nativeID="create-team-name-wrapper" testID="create-team-name-wrapper">
-                <InputField dense label="Nombre del equipo" onChange={setName} value={name} error={errors.name} placeholder="Ej. Corredores del Sur" />
-              </View>
-            </View>
-
-            <Row>
-              <Col>
-                {isWeb ? (
-                  <SelectField
-                    dense
-                    label="País"
-                    onChange={handleCountryChange}
-                    options={countryOptions}
-                    placeholder="Seleccioná un país"
-                    value={country}
-                  />
-                ) : (
-                  <PickerField
-                    dense
-                    label="País"
-                    onChange={handleCountryChange}
-                    options={countryOptions}
-                    placeholder="Seleccioná un país"
-                    value={country}
-                  />
-                )}
-              </Col>
-              <Col>
-                {isWeb ? (
-                  <SelectField
-                    dense
-                    disabled={!country}
-                    label="Provincia"
-                    onChange={handleProvinceChange}
-                    options={provinceOptions}
-                    placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
-                    value={province}
-                  />
-                ) : (
-                  <PickerField
-                    dense
-                    disabled={!country}
-                    label="Provincia"
-                    onChange={handleProvinceChange}
-                    options={provinceOptions}
-                    placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
-                    value={province}
-                  />
-                )}
-              </Col>
-              <Col>
-                {isWeb ? (
-                  <SelectField
-                    dense
-                    disabled={!province}
-                    label="Localidad"
-                    onChange={handleCityChange}
-                    options={cityOptions}
-                    placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
-                    value={city}
-                  />
-                ) : (
-                  <PickerField
-                    dense
-                    disabled={!province}
-                    label="Localidad"
-                    onChange={handleCityChange}
-                    options={cityOptions}
-                    placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
-                    value={city}
-                  />
-                )}
-              </Col>
-            </Row>
-
-            <InputField
-              dense
-              label="Descripción del equipo"
-              multiline
-              numberOfLines={3}
-              onChange={setDescription}
-              placeholder="Contales a los corredores de qué se trata este equipo."
-              value={description}
-            />
-
-            <Row>
-              <Col>
-                <PickerField
-                  dense
-                  label="Nivel del equipo"
-                  onChange={setLevel}
-                  options={LEVEL_OPTIONS}
-                  placeholder="Elegir nivel"
-                  value={level}
-                  error={errors.level}
-                />
-              </Col>
-              <Col>
-                <InputField
-                  dense
-                  label="Máx. de integrantes"
-                  hint={`Tu plan permite hasta ${maxAllowed}.`}
-                  keyboardType="number-pad"
-                  onChange={setMaxMembers}
-                  placeholder={String(maxAllowed)}
-                  value={maxMembers}
-                  error={errors.maxMembers}
-                />
-              </Col>
-            </Row>
-
-            <InputField
-              dense
-              label="Requerimientos de entrada al equipo"
-              multiline
-              numberOfLines={3}
-              onChange={setRequirements}
-              placeholder="Ej. Ritmo promedio, disponibilidad horaria, experiencia previa."
-              value={requirements}
-            />
+            <TeamGeneralInfoFields form={generalForm} idPrefix="create-team" maxAllowed={maxAllowed} />
 
             <StepNav nextLabel="Siguiente" onNext={handleContinueStep1} />
           </SectionCard>

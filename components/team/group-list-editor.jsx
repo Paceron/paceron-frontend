@@ -4,8 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { InputField, PickerField } from '../forms/fields.jsx';
 
-// Editor controlado de grupos de un equipo: nombre + plan de entrenamiento
-// (campos completos, uno debajo del otro — con su propio componente no
+// Editor controlado de grupos de un equipo: nombre + descripción + plan de
+// entrenamiento (campos completos, uno debajo del otro — con su propio componente no
 // hace falta pelear espacio horizontal como cuando esto vivía pegado al
 // resto del formulario), botón "Agregar grupo", y la lista de grupos ya
 // creados como filas completas (no chips — "nombre + plan" no entra
@@ -24,6 +24,7 @@ import { InputField, PickerField } from '../forms/fields.jsx';
 export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
   const colors = useThemeColors();
   const [draftName, setDraftName] = useState('');
+  const [draftDescription, setDraftDescription] = useState('');
   const [draftPlan, setDraftPlan] = useState('');
   const [draftError, setDraftError] = useState(null);
 
@@ -37,8 +38,9 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
       setDraftError('Ya creaste un grupo con ese nombre.');
       return;
     }
-    onChange([...groups, { id: `group-draft-${Date.now()}`, name, trainingPlanId: draftPlan || null }]);
+    onChange([...groups, { id: `group-draft-${Date.now()}`, name, description: draftDescription.trim() || null, trainingPlanId: draftPlan || null }]);
     setDraftName('');
+    setDraftDescription('');
     setDraftPlan('');
     setDraftError(null);
   };
@@ -57,6 +59,16 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
         onChange={(text) => { setDraftName(text); if (draftError) setDraftError(null); }}
         placeholder="Ej. Grupo avanzado"
         value={draftName}
+      />
+
+      <InputField
+        dense
+        label="Descripción del grupo"
+        multiline
+        numberOfLines={2}
+        onChange={setDraftDescription}
+        placeholder="Ej. Corredores con mayor volumen y ritmo."
+        value={draftDescription}
       />
 
       <PickerField
