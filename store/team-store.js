@@ -5,6 +5,7 @@ import {
   listTeams as listTeamsService,
   updateTeam as updateTeamService,
   updateTeamAddress as updateTeamAddressService,
+  deleteTeam as deleteTeamService,
 } from '../services/teams.js';
 import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload } from '../services/normalizers.js';
 
@@ -277,6 +278,23 @@ export const useTeamStore = create((set, get) => ({
       } catch {
         return { success: true, team: merged, addressWarning: true };
       }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Elimina el equipo (DELETE /teams/{id}?user_id=) y lo saca del store.
+  // userId es quien pide el borrado — el backend valida que sea el dueño,
+  // acá no se duplica ese chequeo (la pantalla ya solo muestra el botón a
+  // quien administra el equipo).
+  deleteTeam: async (teamId, userId) => {
+    try {
+      await deleteTeamService(teamId, userId);
+      set((state) => ({
+        teams: state.teams.filter((t) => t.id !== teamId),
+        selectedTeamId: state.selectedTeamId === teamId ? null : state.selectedTeamId,
+      }));
+      return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }

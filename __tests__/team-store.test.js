@@ -6,6 +6,7 @@ jest.mock('../services/teams.js', () => ({
   listTeams: jest.fn(),
   updateTeam: jest.fn(),
   updateTeamAddress: jest.fn(),
+  deleteTeam: jest.fn(),
 }));
 
 import {
@@ -14,6 +15,7 @@ import {
   listTeams as listTeamsService,
   updateTeam as updateTeamService,
   updateTeamAddress as updateTeamAddressService,
+  deleteTeam as deleteTeamService,
 } from '../services/teams.js';
 
 const TEAM_DTO = {
@@ -288,6 +290,40 @@ describe('team store', () => {
     const updated = useTeamStore.getState().teams.find((t) => t.id === created.team.id);
     expect(updated.invitedEmails).toHaveLength(2);
     expect(updated.invitedEmails.some((inv) => inv.email === 'corredora.nueva@example.com')).toBe(true);
+  });
+
+  test('deleteTeam calls the service and removes the team from the store', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    const created = await useTeamStore.getState().createTeam({ name: 'A borrar', maxMembers: 10, ownerId: 7 });
+    deleteTeamService.mockResolvedValue(null);
+
+    const result = await useTeamStore.getState().deleteTeam(created.team.id, 7);
+
+    expect(deleteTeamService).toHaveBeenCalledWith(created.team.id, 7);
+    expect(result).toEqual({ success: true });
+    expect(useTeamStore.getState().teams.find((t) => t.id === created.team.id)).toBeUndefined();
+  });
+
+  test('deleteTeam clears selectedTeamId when the deleted team was selected', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    const created = await useTeamStore.getState().createTeam({ name: 'A borrar', maxMembers: 10, ownerId: 7 });
+    expect(useTeamStore.getState().selectedTeamId).toBe(created.team.id);
+    deleteTeamService.mockResolvedValue(null);
+
+    await useTeamStore.getState().deleteTeam(created.team.id, 7);
+
+    expect(useTeamStore.getState().selectedTeamId).toBeNull();
+  });
+
+  test('deleteTeam returns a failure result when the service call rejects, without removing the team', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    const created = await useTeamStore.getState().createTeam({ name: 'No se borra', maxMembers: 10, ownerId: 7 });
+    deleteTeamService.mockRejectedValue(new Error('No autorizado.'));
+
+    const result = await useTeamStore.getState().deleteTeam(created.team.id, 7);
+
+    expect(result).toEqual({ success: false, error: 'No autorizado.' });
+    expect(useTeamStore.getState().teams.find((t) => t.id === created.team.id)).toBeDefined();
   });
 });
 

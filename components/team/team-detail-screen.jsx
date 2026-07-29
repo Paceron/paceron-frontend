@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
@@ -10,6 +11,7 @@ import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { DeleteTeamModal } from './delete-team-modal.jsx';
 
 // Mismos 3 estados que ya prevé "Sistema de suscripciones y cobros" en
 // FUNCTIONAL_PROPOSE.md — dominio todavía no implementado, colores igual
@@ -112,6 +114,52 @@ function SeniorityLine({ member, colors, idPrefix }) {
 // suscripción de otros corredores. Al ser tan poco contenido no hace falta
 // la card expandible de mobile — un layout único alcanza en las dos
 // plataformas.
+// Acciones de gestión sobre un corredor puntual — hoy deshabilitadas: el
+// roster (team.members) sigue siendo sintético (generateMockMembers, ver
+// store/team-store.js), sus ids no corresponden a usuarios reales del
+// backend, así que "sacar del equipo" (services/teams.js#removeTeamUser ya
+// existe) no tiene todavía a quién apuntar. Se deja la UI armada — el día
+// que el roster venga de getTeamUsers real, solo hace falta habilitar
+// estas dos filas. Solo se muestra a quien gestiona el equipo (ver
+// RunnerRow, nunca se renderiza en la rama `restricted`).
+function RunnerMenu({ member, colors }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View className="relative" nativeID={`team-detail-runner-${member.id}-menu`} testID={`team-detail-runner-${member.id}-menu`}>
+      <Pressable
+        accessibilityLabel="Más opciones"
+        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+        nativeID={`team-detail-runner-${member.id}-menu-toggle`}
+        onPress={() => setOpen((v) => !v)}
+        testID={`team-detail-runner-${member.id}-menu-toggle`}
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+      </Pressable>
+      {open && (
+        <View
+          className="absolute right-0 top-8 z-10 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-surface-2"
+          nativeID={`team-detail-runner-${member.id}-menu-panel`}
+          testID={`team-detail-runner-${member.id}-menu-panel`}
+        >
+          <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID={`team-detail-runner-${member.id}-menu-remove`} testID={`team-detail-runner-${member.id}-menu-remove`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-remove-outline" size={16} />
+            <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`team-detail-runner-${member.id}-menu-remove-label`} testID={`team-detail-runner-${member.id}-menu-remove-label`}>
+              Sacar del equipo (próximamente)
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID={`team-detail-runner-${member.id}-menu-move`} testID={`team-detail-runner-${member.id}-menu-move`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-switch-outline" size={16} />
+            <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`team-detail-runner-${member.id}-menu-move-label`} testID={`team-detail-runner-${member.id}-menu-move-label`}>
+              Mover de grupo (próximamente)
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function RunnerRow({ member, groupName, colors, restricted, showGroupTag }) {
   const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
   const [expanded, setExpanded] = useState(false);
@@ -209,6 +257,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag }) {
           {groupTag}
           {subscriptionTag}
         </View>
+        <RunnerMenu colors={colors} member={member} />
       </View>
     );
   }
@@ -219,18 +268,21 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag }) {
       nativeID={`team-detail-runner-${member.id}`}
       testID={`team-detail-runner-${member.id}`}
     >
-      <Pressable
-        accessibilityLabel={expanded ? 'Ocultar detalle del corredor' : 'Ver detalle del corredor'}
-        className="flex-row items-center gap-3 px-4 py-3 active:opacity-80"
-        nativeID={`team-detail-runner-${member.id}-toggle`}
-        onPress={() => setExpanded((v) => !v)}
-        testID={`team-detail-runner-${member.id}-toggle`}
-      >
-        {avatar}
-        {identity}
-        {subscriptionTag}
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
-      </Pressable>
+      <View className="flex-row items-center pr-2" nativeID={`team-detail-runner-${member.id}-header`} testID={`team-detail-runner-${member.id}-header`}>
+        <Pressable
+          accessibilityLabel={expanded ? 'Ocultar detalle del corredor' : 'Ver detalle del corredor'}
+          className="flex-1 flex-row items-center gap-3 px-4 py-3 active:opacity-80"
+          nativeID={`team-detail-runner-${member.id}-toggle`}
+          onPress={() => setExpanded((v) => !v)}
+          testID={`team-detail-runner-${member.id}-toggle`}
+        >
+          {avatar}
+          {identity}
+          {subscriptionTag}
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
+        </Pressable>
+        <RunnerMenu colors={colors} member={member} />
+      </View>
       {expanded && (
         <View
           className="flex-row flex-wrap items-center gap-1.5 border-t border-slate-200 px-4 py-2.5 dark:border-slate-700"
@@ -410,12 +462,31 @@ export function TeamDetailScreen({ teamId }) {
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
   const fetchTeam = useTeamStore((s) => s.fetchTeam);
+  const deleteTeam = useTeamStore((s) => s.deleteTeam);
+  const user = useAuthStore((s) => s.user);
   const activeRole = useAuthStore((s) => s.activeRole);
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   // Mismo criterio que "Crear equipo" en los shells: sin modelo de dueño de
   // equipo todavía, cualquier usuario viendo la app como entrenador activo
   // puede editar equipo/grupos.
   const canManageTeam = hasTrainerRole && activeRole === 'trainer';
+  // Eliminar sí es más estricto que editar: el backend ya valida ownerId
+  // (DELETE /teams/{id}?user_id=), así que el botón solo se muestra a quien
+  // realmente es dueño — mostrarlo a cualquier entrenador solo generaría un
+  // error del backend para el resto.
+  const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    const result = await deleteTeam(team.id, user.userId);
+    setDeleteModalVisible(false);
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos eliminar el equipo', text2: result.error });
+      return;
+    }
+    Toast.show({ type: 'success', text1: 'Equipo eliminado' });
+    router.replace('/teams');
+  };
   // Un corredor común (no viendo la app como entrenador activo, tenga o no
   // ese rol) ve una versión reducida: sin la pestaña Grupos, y en
   // Corredores solo nombre + antigüedad de cada compañero — el resto
@@ -641,6 +712,17 @@ export function TeamDetailScreen({ teamId }) {
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={20} />
             </Pressable>
           )}
+          {canDeleteTeam && (
+            <Pressable
+              accessibilityLabel="Eliminar equipo"
+              className="rounded-full p-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
+              nativeID="team-detail-delete-button"
+              onPress={() => setDeleteModalVisible(true)}
+              testID="team-detail-delete-button"
+            >
+              <MaterialCommunityIcons color={colors.error} name="trash-can-outline" size={20} />
+            </Pressable>
+          )}
         </View>
 
         {isWeb ? (
@@ -658,6 +740,15 @@ export function TeamDetailScreen({ teamId }) {
           </>
         )}
       </View>
+
+      {canDeleteTeam && (
+        <DeleteTeamModal
+          onCancel={() => setDeleteModalVisible(false)}
+          onConfirm={handleConfirmDelete}
+          teamName={team.name}
+          visible={deleteModalVisible}
+        />
+      )}
     </ScrollView>
   );
 }
