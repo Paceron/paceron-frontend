@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRoutesByRole } from '../../routes/catalog.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore } from '../../store/team-store.js';
+import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
@@ -106,9 +106,17 @@ function DropdownMenu({ onClose }) {
 function TeamsMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const user = useAuthStore((s) => s.user);
   const teams = useTeamStore((s) => s.teams);
+  const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
+
+  useEffect(() => {
+    fetchTeams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
   // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
   // un usuario puede tener ambos roles y estar activo como corredor.
@@ -132,11 +140,11 @@ function TeamsMenu({ onClose }) {
       <View className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-nub" testID="web-shell-teams-menu-nub" />
 
       <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-panel" testID="web-shell-teams-menu-panel">
-        {teams.length === 0 && (
+        {administeredTeams.length === 0 && (
           <Text className="px-4 py-3.5 text-sm text-slate-500 dark:text-slate-400" nativeID="web-shell-teams-menu-empty" testID="web-shell-teams-menu-empty">Todavía no tenés equipos.</Text>
         )}
 
-        {teams.map((team) => {
+        {administeredTeams.map((team) => {
           const isSelected = team.id === selectedTeamId;
           return (
             <Pressable
