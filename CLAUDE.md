@@ -152,6 +152,7 @@ Convención de nombres: kebab-case, con scope propio del componente/rol (ej. `pr
 - Render (plan free) tiene cold-start de ~20-25s en la primera request tras inactividad — un "backend caído" suele ser esto, no un error real.
 - El sistema de roles (corredor/entrenador) **ya pega contra el backend real** — activación (`assignRole`), alias de pago (`updateUser`) y consulta de roles asignados (`getPermissions` vía `/auth/permissions`) son requests reales, verificados 2026-07-19. Lo único que sigue siendo local-only es `activeRole` (cuál de los roles asignados se muestra activo en la UI en un momento dado) — el backend no tiene ese concepto, solo trackea qué roles tiene asignados un usuario (un conjunto, no una selección). Ver `store/auth-store.js`.
 - Recuperación de contraseña (`forgot-password`/`reset-password`, código OTP de 6 dígitos, vence a los 10 minutos) también pega contra el backend real desde `feature/password-recovery` — ver `services/password.js`, pantallas en `components/auth/forgot-password-screen.jsx`/`reset-password-screen.jsx`.
+- Equipos (`services/teams.js`) pega contra el backend real desde `feature/teams-backend-integration` (Etapa 1 de 3 — ver `docs/superpowers/specs/2026-07-28-teams-backend-integration-design.md`). Grupos e invitaciones siguen local-only (Etapa 2/3). Huecos de funcionalidad detectados integrando el frontend contra el backend real (endpoints/campos que la interfaz ya necesita y el backend todavía no tiene) están documentados y trackeados en `docs/BACKEND_API_GAPS.md`.
 
 ## Documentación existente en `docs/`
 
