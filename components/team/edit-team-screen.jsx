@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,18 +15,40 @@ import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 // del wizard de creación, vía el hook y los campos compartidos). Grupos se
 // editan aparte (pestaña Grupos → editar-group-screen.jsx); invitaciones no
 // se re-editan post-creación, todavía no hay un flujo para eso.
+//
+// Separado en dos componentes: este (EditTeamScreen) resuelve
+// loading/not-found — el equipo puede no estar todavía en el store si se
+// entra por deep-link (fetchTeam es async) — y EditTeamForm, que recién se
+// monta con un `team` ya garantizado. Si useTeamGeneralInfoForm se llamara
+// acá arriba con un `team` inicialmente undefined, el formulario quedaría
+// vacío para siempre una vez que el fetch resuelve (useState solo toma el
+// valor inicial una vez).
 export function EditTeamScreen({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const roles = useAuthStore((s) => s.roles);
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
-  const updateTeam = useTeamStore((s) => s.updateTeam);
+  const fetchTeam = useTeamStore((s) => s.fetchTeam);
+  const [loading, setLoading] = useState(!team);
 
-  const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
-  const maxAllowed = getTeamMemberLimit(trainerTier);
+  useEffect(() => {
+    if (team) {
+      setLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetchTeam(teamId).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
 
-  const generalForm = useTeamGeneralInfoForm({ initial: team, maxAllowed });
-  const [showGroupsToRunners, setShowGroupsToRunners] = useState(team?.showGroupsToRunners ?? false);
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-team-loading" testID="edit-team-loading">
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!team) {
     return (
@@ -48,10 +70,39 @@ export function EditTeamScreen({ teamId }) {
     );
   }
 
-  const handleSubmit = () => {
+  return <EditTeamForm team={team} teamId={teamId} />;
+}
+
+function EditTeamForm({ team, teamId }) {
+  const router = useRouter();
+  const colors = useThemeColors();
+  const roles = useAuthStore((s) => s.roles);
+  const updateTeam = useTeamStore((s) => s.updateTeam);
+
+  const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
+  const maxAllowed = getTeamMemberLimit(trainerTier);
+
+  const generalForm = useTeamGeneralInfoForm({ initial: team, maxAllowed });
+  const [showGroupsToRunners, setShowGroupsToRunners] = useState(team.showGroupsToRunners ?? false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (submitting) return;
     if (!generalForm.validate()) return;
-    updateTeam(teamId, { ...generalForm.getValues(), showGroupsToRunners });
-    Toast.show({ type: 'success', text1: 'Equipo actualizado' });
+    setSubmitting(true);
+    const result = await updateTeam(teamId, { ...generalForm.getValues(), showGroupsToRunners });
+    setSubmitting(false);
+
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos guardar los cambios', text2: result.error });
+      return;
+    }
+
+    Toast.show({
+      type: 'success',
+      text1: 'Equipo actualizado',
+      text2: result.addressWarning ? 'La dirección no se pudo guardar — probá de nuevo más tarde.' : undefined,
+    });
     router.back();
   };
 
@@ -111,16 +162,27 @@ export function EditTeamScreen({ teamId }) {
             </View>
           </Pressable>
 
+          <Text className="mt-2 text-xs text-slate-400 dark:text-slate-500" nativeID="edit-team-show-groups-persistence-hint" testID="edit-team-show-groups-persistence-hint">
+            Por ahora esta preferencia no se guarda entre sesiones — el backend todavía no tiene este campo.
+          </Text>
+
           <Pressable
-            className="mt-5 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+            className={`mt-5 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
+            disabled={submitting}
             nativeID="edit-team-save-button"
             onPress={handleSubmit}
             testID="edit-team-save-button"
           >
-            <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
-            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-team-save-button-label" testID="edit-team-save-button-label">
-              Guardar cambios
-            </Text>
+            {submitting ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <>
+                <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-team-save-button-label" testID="edit-team-save-button-label">
+                  Guardar cambios
+                </Text>
+              </>
+            )}
           </Pressable>
         </SectionCard>
       </View>
