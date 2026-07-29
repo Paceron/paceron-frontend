@@ -104,17 +104,17 @@ function NavigationDrawer({ open, pathname, onClose }) {
   };
 
   // Sin backend de equipos todavía: elegir un equipo guarda la selección
-  // local y navega a su detalle (/equipos/[teamId]); crear equipo navega a
-  // su propia pantalla (/equipos/crear).
+  // local y navega a su detalle (/teams/[teamId]); crear equipo navega a
+  // su propia pantalla (/teams/create).
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
     onClose();
-    router.push(`/equipos/${team.id}`);
+    router.push(`/teams/${team.id}`);
   };
 
   const handleCreateTeam = () => {
     onClose();
-    router.push('/equipos/crear');
+    router.push('/teams/create');
   };
 
   return (
@@ -176,7 +176,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
               {user && (
                 <ScrollView className="flex-1 px-2 py-4" nativeID="mobile-drawer-routes" testID="mobile-drawer-routes">
                   {routes.map((route) => {
-                    if (route.name === 'equipos') {
+                    if (route.name === 'teams') {
                       return (
                         <TeamsAccordion
                           key={route.name}

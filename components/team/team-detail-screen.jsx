@@ -495,7 +495,7 @@ export function TeamDetailScreen({ teamId }) {
         <Pressable
           className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
           nativeID="team-detail-invite-button"
-          onPress={() => router.push(`/equipos/${team.id}/invitar`)}
+          onPress={() => router.push(`/teams/${team.id}/invite`)}
           testID="team-detail-invite-button"
         >
           <Text className="text-sm font-semibold text-primary" nativeID="team-detail-invite-button-label" testID="team-detail-invite-button-label">
@@ -551,7 +551,7 @@ export function TeamDetailScreen({ teamId }) {
             group={group}
             key={group.id}
             members={team.members.filter((m) => m.groupId === group.id)}
-            onEdit={() => router.push(`/equipos/${team.id}/grupos/${group.id}/editar`)}
+            onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
             planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
           />
         ))}
@@ -611,7 +611,7 @@ export function TeamDetailScreen({ teamId }) {
               accessibilityLabel="Editar equipo"
               className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
               nativeID="team-detail-edit-button"
-              onPress={() => router.push(`/equipos/${team.id}/editar`)}
+              onPress={() => router.push(`/teams/${team.id}/edit`)}
               testID="team-detail-edit-button"
             >
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={20} />

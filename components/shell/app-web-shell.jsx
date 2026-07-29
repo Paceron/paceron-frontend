@@ -101,8 +101,8 @@ function DropdownMenu({ onClose }) {
 }
 
 // Sin backend de equipos todavía: elegir un equipo guarda la selección
-// local y navega a su detalle (/equipos/[teamId]); crear equipo navega a
-// su propia pantalla (/equipos/crear).
+// local y navega a su detalle (/teams/[teamId]); crear equipo navega a
+// su propia pantalla (/teams/create).
 function TeamsMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
@@ -119,12 +119,12 @@ function TeamsMenu({ onClose }) {
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
     onClose();
-    router.push(`/equipos/${team.id}`);
+    router.push(`/teams/${team.id}`);
   };
 
   const handleCreateTeam = () => {
     onClose();
-    router.push('/equipos/crear');
+    router.push('/teams/create');
   };
 
   return (
@@ -270,7 +270,7 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
             testID="web-shell-nav-tabs-scroll"
           >
             {routesTab.map((route) => {
-              if (route.name === 'equipos') {
+              if (route.name === 'teams') {
                 return (
                   <TeamsTab key={route.name} colors={colors} isOpen={teamsMenuOpen} onOpen={onTeamsPress} route={route} />
                 );

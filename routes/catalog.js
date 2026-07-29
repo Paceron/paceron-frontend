@@ -8,9 +8,9 @@ export const homeRoute = {
 // href no se usa para navegar directo: al presionar este item se abre un
 // submenu (equipos + Crear equipo) en vez de ir a una pantalla propia.
 export const teamsRoute = {
-  name: 'equipos',
+  name: 'teams',
   label: 'Equipos',
-  href: '/equipos',
+  href: '/teams',
   icon: 'account-group',
 };
 
