@@ -229,6 +229,28 @@ describe('team store', () => {
     expect(result.team.country).toBeNull();
   });
 
+  test('updateTeam does not overwrite an already-saved address when a later address update fails', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    const created = await useTeamStore.getState().createTeam({ name: 'Original', maxMembers: 10, ownerId: 7 });
+
+    updateTeamService.mockResolvedValue(TEAM_DTO);
+    updateTeamAddressService.mockResolvedValue({});
+    const firstUpdate = await useTeamStore.getState().updateTeam(created.team.id, {
+      name: 'Original', country: 'ARG', province: 'MZ', city: 'Mendoza Capital',
+    });
+    expect(firstUpdate.team.country).toBe('ARG');
+
+    updateTeamAddressService.mockRejectedValue(new Error('falló'));
+    const secondUpdate = await useTeamStore.getState().updateTeam(created.team.id, {
+      name: 'Original', country: 'ARG', province: 'CD', city: 'Córdoba Capital',
+    });
+    expect(secondUpdate.success).toBe(true);
+    expect(secondUpdate.addressWarning).toBe(true);
+    expect(secondUpdate.team.country).toBe('ARG');
+    expect(secondUpdate.team.province).toBe('MZ');
+    expect(secondUpdate.team.city).toBe('Mendoza Capital');
+  });
+
   test('updateTeam returns a failure result for an unknown team', async () => {
     const result = await useTeamStore.getState().updateTeam('does-not-exist', { name: 'X' });
     expect(result).toEqual({ success: false, error: 'Equipo no encontrado.' });
