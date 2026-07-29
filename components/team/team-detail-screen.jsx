@@ -129,13 +129,24 @@ function SeniorityLine({ member, colors, idPrefix }) {
 // porque un panel local por fila (como estaba antes) queda atrapado en el
 // stacking context de su propia card: las cards siguientes lo tapan visualmente
 // y no había backdrop para cerrarlo con un click afuera.
-function RunnerMenu({ member, colors, onOpenMenu }) {
+//
+// Usa measureLayout contra `containerRef` (el View raíz de la pantalla,
+// ver TeamDetailScreen) en vez de measureInWindow: React Native Web pone
+// `position: relative` por default en TODOS los Views, así que el panel
+// absoluto (hijo directo de ese mismo View raíz) termina posicionándose
+// relativo a él, no a la ventana. Usar coordenadas de measureInWindow
+// (relativas a la ventana) ahí desalinea el panel hacia abajo — el offset
+// exacto es la distancia entre el View raíz y el borde de la ventana (acá,
+// la altura del header del shell). measureLayout mide directo contra ese
+// mismo View raíz, evitando tener que calcular ese offset a mano.
+function RunnerMenu({ member, colors, onOpenMenu, containerRef }) {
   const ref = useRef(null);
 
   const handlePress = () => {
-    ref.current?.measureInWindow((x, y, width, height) => {
+    if (!containerRef.current) return;
+    ref.current?.measureLayout(containerRef.current, (x, y, width, height) => {
       onOpenMenu({ x, y, width, height });
-    });
+    }, () => {});
   };
 
   return (
@@ -179,7 +190,7 @@ function RunnerActionsMenu() {
   );
 }
 
-function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu }) {
+function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu, containerRef }) {
   const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
   const [expanded, setExpanded] = useState(false);
 
@@ -276,7 +287,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
           {groupTag}
           {subscriptionTag}
         </View>
-        <RunnerMenu colors={colors} member={member} onOpenMenu={onOpenMenu} />
+        <RunnerMenu colors={colors} containerRef={containerRef} member={member} onOpenMenu={onOpenMenu} />
       </View>
     );
   }
@@ -300,7 +311,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
           {subscriptionTag}
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
         </Pressable>
-        <RunnerMenu colors={colors} member={member} onOpenMenu={onOpenMenu} />
+        <RunnerMenu colors={colors} containerRef={containerRef} member={member} onOpenMenu={onOpenMenu} />
       </View>
       {expanded && (
         <View
@@ -527,6 +538,7 @@ export function TeamDetailScreen({ teamId }) {
   // flotando sobre una sección distinta a la de Corredores.
   const [runnerMenuOpen, setRunnerMenuOpen] = useState(false);
   const [runnerMenuAnchor, setRunnerMenuAnchor] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const runnerMenuContainerRef = useRef(null);
 
   useEffect(() => {
     setRunnerMenuOpen(false);
@@ -656,6 +668,7 @@ export function TeamDetailScreen({ teamId }) {
           {filteredMembers.map((member) => (
             <RunnerRow
               colors={colors}
+              containerRef={runnerMenuContainerRef}
               groupName={team.groups.find((g) => g.id === member.groupId)?.name ?? '—'}
               key={member.id}
               member={member}
@@ -693,7 +706,7 @@ export function TeamDetailScreen({ teamId }) {
   const visibleTabs = isTrainerView ? TABS : TABS.filter((tab) => tab.id !== 'grupos');
 
   return (
-    <>
+    <View className="relative flex-1" nativeID="team-detail-screen-root" ref={runnerMenuContainerRef} testID="team-detail-screen-root">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
@@ -797,6 +810,6 @@ export function TeamDetailScreen({ teamId }) {
     >
       <RunnerActionsMenu />
     </AnimatedDropdown>
-    </>
+    </View>
   );
 }
