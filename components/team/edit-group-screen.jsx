@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -22,12 +22,38 @@ export function EditGroupScreen({ teamId, groupId }) {
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
   const updateGroup = useTeamStore((s) => s.updateGroup);
+  const fetchTeam = useTeamStore((s) => s.fetchTeam);
   const group = team?.groups.find((g) => g.id === groupId);
 
   const [name, setName] = useState(group?.name ?? '');
   const [description, setDescription] = useState(group?.description ?? '');
   const [trainingPlanId, setTrainingPlanId] = useState(group?.trainingPlanId ?? '');
   const [error, setError] = useState(null);
+  const [loadingTeam, setLoadingTeam] = useState(!team);
+
+  // Entrar por deep-link (ej. recargar /teams/{id}/groups/{groupId}/edit
+  // directo) puede caer acá antes de que el equipo esté en el store —
+  // fetchTeam lo trae puntual. El grupo es un sub-objeto sintético del
+  // equipo en este store, no un recurso fetcheable aparte.
+  useEffect(() => {
+    if (team) {
+      setLoadingTeam(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadingTeam(true);
+    fetchTeam(teamId).finally(() => { if (!cancelled) setLoadingTeam(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
+
+  if (loadingTeam) {
+    return (
+      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-group-loading" testID="edit-group-loading">
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!team || !group) {
     return (

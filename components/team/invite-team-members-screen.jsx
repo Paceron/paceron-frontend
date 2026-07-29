@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -52,8 +52,33 @@ export function InviteTeamMembersScreen({ teamId }) {
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
   const addInvitedEmails = useTeamStore((s) => s.addInvitedEmails);
+  const fetchTeam = useTeamStore((s) => s.fetchTeam);
 
   const [draftInvites, setDraftInvites] = useState([]);
+  const [loadingTeam, setLoadingTeam] = useState(!team);
+
+  // Entrar por deep-link (ej. recargar /teams/{id}/invite directo) puede
+  // caer acá antes de que el equipo esté en el store — fetchTeam lo trae
+  // puntual.
+  useEffect(() => {
+    if (team) {
+      setLoadingTeam(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadingTeam(true);
+    fetchTeam(teamId).finally(() => { if (!cancelled) setLoadingTeam(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
+
+  if (loadingTeam) {
+    return (
+      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!team) {
     return (
