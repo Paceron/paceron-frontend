@@ -130,7 +130,7 @@ export function CreateTeamScreen() {
           : 'Ya lo vas a encontrar en el menú de Equipos.',
     });
 
-    router.back();
+    router.replace(`/teams/${result.team.id}`);
   };
 
   return (
