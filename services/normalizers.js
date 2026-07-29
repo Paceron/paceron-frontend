@@ -73,3 +73,76 @@ export function toUpdatePayload(form) {
     bank_alias: form.bankAlias ?? '',
   };
 }
+
+export function toTeamModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    description: dto.description,
+    level: dto.level,
+    maxMembers: dto.max_members,
+    ownerId: dto.owner_id,
+    requirements: dto.requirements,
+    status: dto.status,
+    country: dto.country,
+    province: dto.province,
+    city: dto.city,
+    street: dto.street,
+    number: dto.number,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateTeamPayload(form) {
+  const payload = {
+    name: form.name,
+    max_members: form.maxMembers,
+    owner_id: form.ownerId,
+  };
+
+  const optional = {
+    description: form.description,
+    level: form.level,
+    requirements: form.requirements,
+  };
+
+  for (const [key, value] of Object.entries(optional)) {
+    if (value && String(value).trim()) payload[key] = value;
+  }
+
+  return payload;
+}
+
+// UpdateTeamRequest del backend no tiene campos de dirección (ver
+// toAddressPayload, es un endpoint aparte) ni show_groups_to_runners/foto
+// (sin campo en el backend todavía, ver docs/BACKEND_API_GAPS.md) — el
+// whitelist de `optional` los descarta automáticamente si vienen en `form`.
+export function toUpdateTeamPayload(form) {
+  const payload = {};
+  const optional = {
+    name: form.name,
+    description: form.description,
+    level: form.level,
+    max_members: form.maxMembers,
+    requirements: form.requirements,
+  };
+
+  for (const [key, value] of Object.entries(optional)) {
+    if (value !== undefined && value !== null && String(value).trim()) payload[key] = value;
+  }
+
+  return payload;
+}
+
+export function toAddressPayload(form) {
+  const payload = {};
+  const optional = { country: form.country, province: form.province, city: form.city };
+
+  for (const [key, value] of Object.entries(optional)) {
+    if (value && String(value).trim()) payload[key] = value;
+  }
+
+  return payload;
+}

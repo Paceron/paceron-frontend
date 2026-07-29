@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,7 +18,9 @@ const TOTAL_STEPS = 3;
 
 // Botones de navegación entre pasos — Atrás (secundario) y la acción
 // principal del paso (Siguiente/Crear), compartidos por los 3 pasos.
-function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right' }) {
+// `loading`/`disabled` solo tienen efecto real en el paso 3 (Crear, que
+// pega contra el backend) — los pasos 1/2 son navegación sync.
+function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right', loading = false, disabled = false }) {
   const colors = useThemeColors();
 
   return (
@@ -26,6 +28,7 @@ function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right' }) {
       {onBack && (
         <Pressable
           className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
+          disabled={loading}
           nativeID="create-team-step-back-button"
           onPress={onBack}
           testID="create-team-step-back-button"
@@ -37,15 +40,22 @@ function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right' }) {
         </Pressable>
       )}
       <Pressable
-        className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+        className={`h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${disabled || loading ? 'opacity-60' : ''}`}
+        disabled={disabled || loading}
         nativeID="create-team-step-next-button"
         onPress={onNext}
         testID="create-team-step-next-button"
       >
-        <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="create-team-step-next-button-label" testID="create-team-step-next-button-label">
-          {nextLabel}
-        </Text>
-        <MaterialCommunityIcons color={colors.onPrimary} name={nextIcon} size={18} />
+        {loading ? (
+          <ActivityIndicator color={colors.onPrimary} />
+        ) : (
+          <>
+            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="create-team-step-next-button-label" testID="create-team-step-next-button-label">
+              {nextLabel}
+            </Text>
+            <MaterialCommunityIcons color={colors.onPrimary} name={nextIcon} size={18} />
+          </>
+        )}
       </Pressable>
     </View>
   );
@@ -92,22 +102,35 @@ export function CreateTeamScreen() {
     setStep(2);
   };
 
-  const handleSubmit = () => {
-    createTeam({
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const result = await createTeam({
       ...generalForm.getValues(),
+      ownerId: user.userId,
       groups,
       invitedEmails,
     });
+    setSubmitting(false);
+
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos crear el equipo', text2: result.error });
+      return;
+    }
 
     Toast.show({
       type: 'success',
       text1: 'Equipo creado',
-      text2: invitedEmails.length > 0
-        ? 'Las invitaciones se van a enviar cuando el backend de equipos esté disponible.'
-        : 'Ya lo vas a encontrar en el menú de Equipos.',
+      text2: result.addressWarning
+        ? 'La dirección no se pudo guardar — podés agregarla después desde Editar equipo.'
+        : invitedEmails.length > 0
+          ? 'Las invitaciones se van a enviar cuando el backend de equipos esté disponible.'
+          : 'Ya lo vas a encontrar en el menú de Equipos.',
     });
 
-    router.back();
+    router.replace(`/teams/${result.team.id}`);
   };
 
   return (
@@ -167,7 +190,7 @@ export function CreateTeamScreen() {
           <SectionCard icon="email-outline" title="Invitar corredores">
             <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
 
-            <StepNav nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
+            <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
           </SectionCard>
         )}
       </View>

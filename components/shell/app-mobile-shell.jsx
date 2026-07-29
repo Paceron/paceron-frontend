@@ -8,7 +8,7 @@ import { getRoutesByRole } from '../../routes/catalog.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore } from '../../store/team-store.js';
+import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
@@ -70,9 +70,16 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const routes = getRoutesByRole(userRole);
 
   const teams = useTeamStore((s) => s.teams);
+  const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
   const [teamsExpanded, setTeamsExpanded] = useState(false);
+
+  useEffect(() => {
+    fetchTeams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const translateX = useSharedValue(-DRAWER_WIDTH);
 
@@ -104,17 +111,17 @@ function NavigationDrawer({ open, pathname, onClose }) {
   };
 
   // Sin backend de equipos todavía: elegir un equipo guarda la selección
-  // local y navega a su detalle (/equipos/[teamId]); crear equipo navega a
-  // su propia pantalla (/equipos/crear).
+  // local y navega a su detalle (/teams/[teamId]); crear equipo navega a
+  // su propia pantalla (/teams/create).
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
     onClose();
-    router.push(`/equipos/${team.id}`);
+    router.push(`/teams/${team.id}`);
   };
 
   const handleCreateTeam = () => {
     onClose();
-    router.push('/equipos/crear');
+    router.push('/teams/create');
   };
 
   return (
@@ -176,7 +183,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
               {user && (
                 <ScrollView className="flex-1 px-2 py-4" nativeID="mobile-drawer-routes" testID="mobile-drawer-routes">
                   {routes.map((route) => {
-                    if (route.name === 'equipos') {
+                    if (route.name === 'teams') {
                       return (
                         <TeamsAccordion
                           key={route.name}
@@ -188,7 +195,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                           onSelectTeam={handleSelectTeam}
                           onToggle={() => setTeamsExpanded((v) => !v)}
                           selectedTeamId={selectedTeamId}
-                          teams={teams}
+                          teams={administeredTeams}
                         />
                       );
                     }

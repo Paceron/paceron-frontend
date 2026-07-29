@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, PickerField } from '../forms/fields.jsx';
+import { InputField, PickerField, SelectField } from '../forms/fields.jsx';
 
 // Formulario chico: nombre + descripción + plan de entrenamiento — mismos
 // campos que ya usa GroupListEditor para agregar un grupo nuevo (la
@@ -22,12 +22,38 @@ export function EditGroupScreen({ teamId, groupId }) {
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
   const updateGroup = useTeamStore((s) => s.updateGroup);
+  const fetchTeam = useTeamStore((s) => s.fetchTeam);
   const group = team?.groups.find((g) => g.id === groupId);
 
   const [name, setName] = useState(group?.name ?? '');
   const [description, setDescription] = useState(group?.description ?? '');
   const [trainingPlanId, setTrainingPlanId] = useState(group?.trainingPlanId ?? '');
   const [error, setError] = useState(null);
+  const [loadingTeam, setLoadingTeam] = useState(!team);
+
+  // Entrar por deep-link (ej. recargar /teams/{id}/groups/{groupId}/edit
+  // directo) puede caer acá antes de que el equipo esté en el store —
+  // fetchTeam lo trae puntual. El grupo es un sub-objeto sintético del
+  // equipo en este store, no un recurso fetcheable aparte.
+  useEffect(() => {
+    if (team) {
+      setLoadingTeam(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadingTeam(true);
+    fetchTeam(teamId).finally(() => { if (!cancelled) setLoadingTeam(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
+
+  if (loadingTeam) {
+    return (
+      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-group-loading" testID="edit-group-loading">
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!team || !group) {
     return (
@@ -91,7 +117,11 @@ export function EditGroupScreen({ teamId, groupId }) {
         <SectionCard icon="account-multiple" title={`Datos de "${group.name}"`}>
           <InputField dense error={error} label="Nombre del grupo" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Grupo avanzado" value={name} />
           <InputField dense label="Descripción del grupo" multiline numberOfLines={2} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
-          <PickerField dense label="Plan de entrenamiento" onChange={setTrainingPlanId} options={TRAINING_PLAN_OPTIONS} placeholder="Sin plan asignado" value={trainingPlanId} />
+          {isWeb ? (
+            <SelectField dense label="Plan de entrenamiento" onChange={setTrainingPlanId} options={TRAINING_PLAN_OPTIONS} placeholder="Sin plan asignado" value={trainingPlanId} />
+          ) : (
+            <PickerField dense label="Plan de entrenamiento" onChange={setTrainingPlanId} options={TRAINING_PLAN_OPTIONS} placeholder="Sin plan asignado" value={trainingPlanId} />
+          )}
 
           <Pressable
             className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"

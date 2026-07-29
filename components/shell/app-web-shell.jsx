@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,41 +7,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRoutesByRole } from '../../routes/catalog.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore } from '../../store/team-store.js';
+import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
-
-// Envuelve el dropdown para animar apertura/cierre (fade + slide sutil).
-// Se mantiene siempre montado (mismo patrón que el drawer mobile) para que
-// la animación de salida se vea; cuando está cerrado, pointerEvents 'none'
-// evita que intercepte clicks. anchorStyle posiciona el panel (cada
-// dropdown cuelga de un disparador distinto en el TopBar).
-function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(-8);
-
-  useEffect(() => {
-    const config = { duration: open ? 160 : 120, easing: Easing.out(Easing.cubic) };
-    opacity.value = withTiming(open ? 1 : 0, config);
-    translateY.value = withTiming(open ? 0 : -8, config);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  return (
-    <View className="absolute inset-0 z-50" nativeID="web-shell-animated-dropdown" pointerEvents={open ? 'auto' : 'none'} testID="web-shell-animated-dropdown">
-      <Pressable className="absolute inset-0" nativeID="web-shell-animated-dropdown-backdrop" onPress={onClose} testID="web-shell-animated-dropdown-backdrop" />
-      <Animated.View nativeID="web-shell-animated-dropdown-panel" style={[{ position: 'absolute' }, anchorStyle, animatedStyle]} testID="web-shell-animated-dropdown-panel">
-        {children}
-      </Animated.View>
-    </View>
-  );
-}
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 
 function DropdownMenu({ onClose }) {
   const router = useRouter();
@@ -101,14 +70,22 @@ function DropdownMenu({ onClose }) {
 }
 
 // Sin backend de equipos todavía: elegir un equipo guarda la selección
-// local y navega a su detalle (/equipos/[teamId]); crear equipo navega a
-// su propia pantalla (/equipos/crear).
+// local y navega a su detalle (/teams/[teamId]); crear equipo navega a
+// su propia pantalla (/teams/create).
 function TeamsMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const user = useAuthStore((s) => s.user);
   const teams = useTeamStore((s) => s.teams);
+  const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
+
+  useEffect(() => {
+    fetchTeams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
   // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
   // un usuario puede tener ambos roles y estar activo como corredor.
@@ -119,12 +96,12 @@ function TeamsMenu({ onClose }) {
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
     onClose();
-    router.push(`/equipos/${team.id}`);
+    router.push(`/teams/${team.id}`);
   };
 
   const handleCreateTeam = () => {
     onClose();
-    router.push('/equipos/crear');
+    router.push('/teams/create');
   };
 
   return (
@@ -132,11 +109,11 @@ function TeamsMenu({ onClose }) {
       <View className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-nub" testID="web-shell-teams-menu-nub" />
 
       <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-panel" testID="web-shell-teams-menu-panel">
-        {teams.length === 0 && (
+        {administeredTeams.length === 0 && (
           <Text className="px-4 py-3.5 text-sm text-slate-500 dark:text-slate-400" nativeID="web-shell-teams-menu-empty" testID="web-shell-teams-menu-empty">Todavía no tenés equipos.</Text>
         )}
 
-        {teams.map((team) => {
+        {administeredTeams.map((team) => {
           const isSelected = team.id === selectedTeamId;
           return (
             <Pressable
@@ -270,7 +247,7 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
             testID="web-shell-nav-tabs-scroll"
           >
             {routesTab.map((route) => {
-              if (route.name === 'equipos') {
+              if (route.name === 'teams') {
                 return (
                   <TeamsTab key={route.name} colors={colors} isOpen={teamsMenuOpen} onOpen={onTeamsPress} route={route} />
                 );
