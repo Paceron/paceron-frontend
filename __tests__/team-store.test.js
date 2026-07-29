@@ -36,7 +36,12 @@ describe('team store', () => {
     expect(s.teams.length).toBe(initialTeams.length + 1);
     expect(s.selectedTeamId).toBe(team.id);
     expect(team.name).toBe('Fondistas del Oeste');
-    expect(team.invitedEmails).toEqual([{ email: 'a@b.com', groupId: 'group-draft-1' }]);
+    expect(team.invitedEmails).toEqual([{
+      email: 'a@b.com',
+      groupId: 'group-draft-1',
+      invitedAt: expect.any(String),
+      registered: expect.any(Boolean),
+    }]);
   });
 
   test('createTeam always adds a default "Sin grupo" group besides the drafted ones', () => {
@@ -60,7 +65,12 @@ describe('team store', () => {
     });
 
     const defaultGroup = team.groups.find((g) => g.isDefault);
-    expect(team.invitedEmails).toEqual([{ email: 'sin-grupo@b.com', groupId: defaultGroup.id }]);
+    expect(team.invitedEmails).toEqual([{
+      email: 'sin-grupo@b.com',
+      groupId: defaultGroup.id,
+      invitedAt: expect.any(String),
+      registered: expect.any(Boolean),
+    }]);
   });
 
   test('createTeam defaults photoUri to null and invitedEmails to an empty array', () => {
@@ -69,6 +79,11 @@ describe('team store', () => {
     expect(team.invitedEmails).toEqual([]);
     expect(team.groups).toHaveLength(1);
     expect(team.groups[0].isDefault).toBe(true);
+  });
+
+  test('createTeam defaults showGroupsToRunners to false — not exposed in the creation wizard', () => {
+    const team = useTeamStore.getState().createTeam({ name: 'Sin config de privacidad', maxMembers: 10 });
+    expect(team.showGroupsToRunners).toBe(false);
   });
 
   test('createTeam stores country/province/city, defaulting to null when not provided', () => {
@@ -94,8 +109,10 @@ describe('team store', () => {
     team.members.forEach((member) => {
       expect(groupIds).toContain(member.groupId);
       expect(member.name).toEqual(expect.any(String));
-      expect(member.level).toEqual(expect.any(String));
+      expect(member.email).toMatch(/^[a-z]+\.[a-z]+@mail\.com$/);
       expect(member.subscriptionStatus).toEqual(expect.any(String));
+      expect(new Date(member.joinedAt).toString()).not.toBe('Invalid Date');
+      expect(new Date(member.joinedAt).getTime()).toBeLessThan(Date.now());
     });
   });
 
@@ -107,5 +124,63 @@ describe('team store', () => {
       const groupIds = team.groups.map((g) => g.id);
       team.members.forEach((member) => expect(groupIds).toContain(member.groupId));
     });
+  });
+
+  test('mock team-1 ships with seeded pending invitations referencing real groups', () => {
+    const team1 = initialTeams.find((t) => t.id === 'team-1');
+    expect(team1.invitedEmails.length).toBeGreaterThan(0);
+    const groupIds = team1.groups.map((g) => g.id);
+    team1.invitedEmails.forEach((invite) => {
+      expect(groupIds).toContain(invite.groupId);
+      expect(typeof invite.registered).toBe('boolean');
+      expect(new Date(invite.invitedAt).toString()).not.toBe('Invalid Date');
+    });
+  });
+
+  test('updateTeam merges only the given fields into the matching team', () => {
+    const target = initialTeams[0];
+    useTeamStore.getState().updateTeam(target.id, { name: 'Nuevo nombre', description: 'Nueva descripción' });
+
+    const updated = useTeamStore.getState().teams.find((t) => t.id === target.id);
+    expect(updated.name).toBe('Nuevo nombre');
+    expect(updated.description).toBe('Nueva descripción');
+    expect(updated.groups).toEqual(target.groups);
+    expect(updated.members).toEqual(target.members);
+
+    const others = useTeamStore.getState().teams.filter((t) => t.id !== target.id);
+    expect(others).toEqual(initialTeams.filter((t) => t.id !== target.id));
+  });
+
+  test('updateGroup merges only the given fields into the matching group of the matching team', () => {
+    const target = initialTeams[0];
+    const targetGroup = target.groups[0];
+    useTeamStore.getState().updateGroup(target.id, targetGroup.id, { name: 'Grupo renombrado', trainingPlanId: 'plan-5k' });
+
+    const updatedTeam = useTeamStore.getState().teams.find((t) => t.id === target.id);
+    const updatedGroup = updatedTeam.groups.find((g) => g.id === targetGroup.id);
+    expect(updatedGroup.name).toBe('Grupo renombrado');
+    expect(updatedGroup.trainingPlanId).toBe('plan-5k');
+
+    const otherGroups = updatedTeam.groups.filter((g) => g.id !== targetGroup.id);
+    expect(otherGroups).toEqual(target.groups.filter((g) => g.id !== targetGroup.id));
+  });
+
+  test('addInvitedEmails appends new invites and ignores emails already invited', () => {
+    const target = initialTeams.find((t) => t.id === 'team-1');
+    const before = target.invitedEmails.length;
+    const alreadyInvitedEmail = target.invitedEmails[0].email.toUpperCase();
+
+    useTeamStore.getState().addInvitedEmails(target.id, [
+      { email: 'corredora.nueva@example.com', groupId: '' },
+      { email: alreadyInvitedEmail, groupId: '' },
+    ]);
+
+    const updated = useTeamStore.getState().teams.find((t) => t.id === target.id);
+    expect(updated.invitedEmails).toHaveLength(before + 1);
+    const added = updated.invitedEmails.find((inv) => inv.email === 'corredora.nueva@example.com');
+    const defaultGroup = updated.groups.find((g) => g.isDefault);
+    expect(added.groupId).toBe(defaultGroup.id);
+    expect(typeof added.registered).toBe('boolean');
+    expect(new Date(added.invitedAt).toString()).not.toBe('Invalid Date');
   });
 });
