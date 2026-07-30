@@ -304,25 +304,6 @@ describe('team store', () => {
     expect(updateTeamService).not.toHaveBeenCalled();
   });
 
-  test('updateGroup merges only the given fields into the matching group of the matching team', async () => {
-    createTeamService.mockResolvedValue(TEAM_DTO);
-    const AVANZADOS_DTO = { id: 101, team_id: 1, name: 'Avanzados', description: null, is_main: false, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' };
-    createGroupService.mockResolvedValue(AVANZADOS_DTO);
-    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO, AVANZADOS_DTO]);
-    const created = await useTeamStore.getState().createTeam({
-      name: 'Con grupo', maxMembers: 10, ownerId: 7,
-      groups: [{ id: 'group-draft-1', name: 'Avanzados', trainingPlanId: null }],
-    });
-    const targetGroup = created.team.groups.find((g) => g.name === 'Avanzados');
-
-    useTeamStore.getState().updateGroup(created.team.id, targetGroup.id, { name: 'Grupo renombrado', trainingPlanId: 'plan-5k' });
-
-    const updatedTeam = useTeamStore.getState().teams.find((t) => t.id === created.team.id);
-    const updatedGroup = updatedTeam.groups.find((g) => g.id === targetGroup.id);
-    expect(updatedGroup.name).toBe('Grupo renombrado');
-    expect(updatedGroup.trainingPlanId).toBe('plan-5k');
-  });
-
   test('addInvitedEmails appends new invites and ignores emails already invited', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
     const created = await useTeamStore.getState().createTeam({

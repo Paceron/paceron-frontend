@@ -416,17 +416,6 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Edita nombre/plan de un grupo puntual dentro de un equipo. Local-only
-  // (Etapa 2/3, ver docs/BACKEND_API_GAPS.md) — no toca membresía.
-  updateGroup: (teamId, groupId, updates) => {
-    set((state) => ({
-      teams: state.teams.map((team) => {
-        if (team.id !== teamId) return team;
-        return { ...team, groups: team.groups.map((group) => (group.id === groupId ? { ...group, ...updates } : group)) };
-      }),
-    }));
-  },
-
   // Suma invitaciones nuevas a un equipo ya existente. Local-only (Etapa 3,
   // ver docs/BACKEND_API_GAPS.md) — ignora emails ya invitados, sin
   // distinguir mayúsculas/minúsculas.
