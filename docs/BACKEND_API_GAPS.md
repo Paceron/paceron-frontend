@@ -2,7 +2,7 @@
 
 Doc de seguimiento interno — un gap por sección, se actualiza a medida que el backend los va cerrando. Versión más narrativa (pensada para pasarle al equipo de backend como insumo de sus propias specs) compartida por fuera del repo el 2026-07-28.
 
-**Actualización 2026-07-30:** re-inspeccionado el swagger real (`/swagger/doc.json`) contra el backend en Render. Gaps 1, 2, 5 y 6 ya tienen endpoint/campo — ver detalle en cada sección. Gaps 3 y 4 siguen abiertos. Gap 7 tiene una hipótesis de fix (a confirmar en preview contra el backend real). Además, el swagger sumó `/groups` (CRUD completo de grupos) y `PATCH /users/{id}/password` (cambio de contraseña autenticado) — ninguno de los dos tenía gap previo asociado: el primero habilita directamente la Etapa 2 de este roadmap, el segundo es una feature nueva sin pantalla todavía en el frontend.
+**Actualización 2026-07-30:** re-inspeccionado el swagger real (`/swagger/doc.json`) contra el backend en Render. Gaps 1, 2, 5, 6 y 7 resueltos — ver detalle en cada sección. Gaps 3 y 4 siguen abiertos (4 además queda de baja prioridad: el equipo prioriza el módulo de cobros/suscripciones antes que planes de entrenamiento). Además, el swagger sumó `/groups` (CRUD completo de grupos) y `PATCH /users/{id}/password` (cambio de contraseña autenticado) — ninguno de los dos tenía gap previo asociado: el primero habilita directamente la Etapa 2 de este roadmap, el segundo es una feature nueva sin pantalla todavía en el frontend.
 
 ## 1. Sin endpoint "mis equipos" (administrados o donde participo) — RESUELTO EN BACKEND
 
@@ -29,7 +29,7 @@ Doc de seguimiento interno — un gap por sección, se actualiza a medida que el
 
 - **Qué hace falta:** campo `training_plan_id` (o similar) en `group.CreateGroupRequest`/`UpdateGroupRequest`/`GroupResponse`.
 - **Por qué:** cada grupo puede tener un plan de entrenamiento asociado (hoy un catálogo fijo hardcodeado de 4 planes en el frontend, sin respaldo real).
-- **A qué bloquea:** parte de la Etapa 2 (Grupos) de este roadmap — el resto de la Etapa 2 (CRUD de grupos en sí) ya no está bloqueado, ver nota de 2026-07-30 al pie del documento.
+- **A qué bloquea:** nada por ahora — el resto de la Etapa 2 (CRUD de grupos en sí) ya no está bloqueado. Planes de entrenamiento queda deliberadamente para después: el equipo prioriza primero el módulo de cobros/suscripciones (en desarrollo en paralelo por otro miembro del equipo). La Etapa 2 de este roadmap se implementa sin tocar `trainingPlanId` — el catálogo mock queda como está, sin wiring nuevo.
 - **Workaround actual:** `TRAINING_PLAN_OPTIONS` en `store/team-store.js`, catálogo fijo sin persistencia real.
 - **Estado:** abierto. Sin cambios al 2026-07-30 — `group.CreateGroupRequest`/`GroupResponse` solo tienen `name`/`description`/`is_main`/`team_id`.
 
@@ -47,10 +47,9 @@ Doc de seguimiento interno — un gap por sección, se actualiza a medida que el
 - **A qué desbloquea:** la Etapa 3 (Invitaciones) completa, antes bloqueada por este gap — ya no hay motivo backend para no arrancarla.
 - **Estado:** resuelto en backend, sin consumir todavía del lado del frontend (Etapa 3 no arrancó).
 
-## 7. `DELETE /teams/{id}` rechaza al dueño real del equipo
+## 7. `DELETE /teams/{id}` rechaza al dueño real del equipo — RESUELTO
 
-- **Qué pasa:** probado en preview contra el backend real (2026-07-29): un entrenador dueño de un equipo (`team.owner_id === user_id`, confirmado antes de mostrar el botón de eliminar en el frontend) recibe `"el usuario no pertenece a este equipo"` al intentar `DELETE /teams/{id}?user_id={su propio id}`.
-- **Hipótesis original:** el endpoint parecía validar pertenencia contra la tabla de membresía (`team_users`) en vez de (o además de) comparar contra `team.owner_id`. Nada en `POST /teams` da de alta al dueño como `team_user` — si el DELETE espera esa fila, un equipo recién creado nunca la tiene.
-- **Qué cambió (2026-07-30):** la descripción del endpoint en swagger ahora dice "Solo el entrenador puede hacerlo y no debe tener miembros" — lenguaje distinto al de la hipótesis original (ya no habla de pertenencia al equipo, sino del rol del usuario), lo que sugiere que se corrigió el chequeo. También aparece una regla de negocio nueva/explícita: **el equipo no debe tener miembros** para poder borrarse — no es un bug, pero el frontend hoy no distingue ese error de otros al mostrar el toast de fallo.
-- **A qué bloquea:** la feature de "eliminar equipo", ya lista del lado del frontend — falta re-confirmar en preview contra el backend real que el dueño ya puede borrar su equipo.
-- **Estado:** posible fix en backend, sin confirmar en vivo. Pendiente: reprobar el flujo de borrado con un usuario dueño real; si sigue fallando, reabrir con el mensaje de error exacto.
+- **Qué pasaba:** un entrenador dueño de un equipo recibía `"el usuario no pertenece a este equipo"` al intentar `DELETE /teams/{id}?user_id={su propio id}`.
+- **Qué cambió:** confirmado en vivo por el usuario (2026-07-30) — crear y eliminar equipo desde el front ya funciona contra el backend real.
+- **Regla de negocio a tener en cuenta:** el equipo no debe tener miembros para poder borrarse (según descripción del endpoint) — el frontend hoy no distingue ese error de otros al mostrar el toast de fallo. No bloqueante, anotado para si aparece como bug reportado.
+- **Estado:** resuelto.
