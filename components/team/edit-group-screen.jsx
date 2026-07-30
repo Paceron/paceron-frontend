@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, SelectField } from '../forms/fields.jsx';
@@ -20,16 +21,20 @@ import { InputField, PickerField, SelectField } from '../forms/fields.jsx';
 export function EditGroupScreen({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const user = useAuthStore((s) => s.user);
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
-  const updateGroup = useTeamStore((s) => s.updateGroup);
+  const updateGroupReal = useTeamStore((s) => s.updateGroupReal);
   const fetchTeam = useTeamStore((s) => s.fetchTeam);
+  const fetchGroups = useTeamStore((s) => s.fetchGroups);
   const group = team?.groups.find((g) => g.id === groupId);
 
   const [name, setName] = useState(group?.name ?? '');
   const [description, setDescription] = useState(group?.description ?? '');
   const [trainingPlanId, setTrainingPlanId] = useState(group?.trainingPlanId ?? '');
   const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [loadingTeam, setLoadingTeam] = useState(!team);
+  const [loadingGroups, setLoadingGroups] = useState(true);
 
   // Entrar por deep-link (ej. recargar /teams/{id}/groups/{groupId}/edit
   // directo) puede caer acá antes de que el equipo esté en el store —
@@ -47,7 +52,27 @@ export function EditGroupScreen({ teamId, groupId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
-  if (loadingTeam) {
+  // Los grupos ya no vienen decorados sincrónicamente con el equipo (ver
+  // store/team-store.js#fetchGroups) — este efecto corre siempre, aunque
+  // el equipo ya esté en el store, porque team.groups puede seguir vacío.
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    let cancelled = false;
+    setLoadingGroups(true);
+    fetchGroups(teamId, user.userId).finally(() => { if (!cancelled) setLoadingGroups(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, user?.userId]);
+
+  useEffect(() => {
+    if (group) {
+      setName(group.name);
+      setDescription(group.description ?? '');
+      setTrainingPlanId(group.trainingPlanId ?? '');
+    }
+  }, [group]);
+
+  if (loadingTeam || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-group-loading" testID="edit-group-loading">
         <ActivityIndicator color={colors.primary} />
@@ -75,7 +100,7 @@ export function EditGroupScreen({ teamId, groupId }) {
     );
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
       setError('Ingresá un nombre para el grupo.');
@@ -86,7 +111,14 @@ export function EditGroupScreen({ teamId, groupId }) {
       setError('Ya existe un grupo con ese nombre.');
       return;
     }
-    updateGroup(teamId, groupId, { name: trimmed, description: description.trim() || null, trainingPlanId: trainingPlanId || null });
+    if (submitting) return;
+    setSubmitting(true);
+    const result = await updateGroupReal(teamId, groupId, { name: trimmed, description: description.trim() || null });
+    setSubmitting(false);
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos actualizar el grupo', text2: result.error });
+      return;
+    }
     Toast.show({ type: 'success', text1: 'Grupo actualizado' });
     router.back();
   };
@@ -124,15 +156,22 @@ export function EditGroupScreen({ teamId, groupId }) {
           )}
 
           <Pressable
-            className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+            className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
+            disabled={submitting}
             nativeID="edit-group-save-button"
             onPress={handleSubmit}
             testID="edit-group-save-button"
           >
-            <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
-            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-group-save-button-label" testID="edit-group-save-button-label">
-              Guardar cambios
-            </Text>
+            {submitting ? (
+              <ActivityIndicator color={colors.onPrimary} size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-group-save-button-label" testID="edit-group-save-button-label">
+                  Guardar cambios
+                </Text>
+              </>
+            )}
           </Pressable>
         </SectionCard>
       </View>
