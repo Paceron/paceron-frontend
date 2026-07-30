@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore } from '../../store/team-store.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -50,12 +51,15 @@ function PendingInviteRow({ invite, groupName }) {
 export function InviteTeamMembersScreen({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const user = useAuthStore((s) => s.user);
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
   const addInvitedEmails = useTeamStore((s) => s.addInvitedEmails);
   const fetchTeam = useTeamStore((s) => s.fetchTeam);
+  const fetchGroups = useTeamStore((s) => s.fetchGroups);
 
   const [draftInvites, setDraftInvites] = useState([]);
   const [loadingTeam, setLoadingTeam] = useState(!team);
+  const [loadingGroups, setLoadingGroups] = useState(true);
 
   // Entrar por deep-link (ej. recargar /teams/{id}/invite directo) puede
   // caer acá antes de que el equipo esté en el store — fetchTeam lo trae
@@ -72,7 +76,19 @@ export function InviteTeamMembersScreen({ teamId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
-  if (loadingTeam) {
+  // Los grupos ya no vienen decorados sincrónicamente con el equipo (ver
+  // store/team-store.js#fetchGroups) — este efecto corre siempre, aunque
+  // el equipo ya esté en el store, porque team.groups puede seguir vacío.
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    let cancelled = false;
+    setLoadingGroups(true);
+    fetchGroups(teamId, user.userId).finally(() => { if (!cancelled) setLoadingGroups(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, user?.userId]);
+
+  if (loadingTeam || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
         <ActivityIndicator color={colors.primary} />
