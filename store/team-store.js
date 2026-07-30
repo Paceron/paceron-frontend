@@ -7,7 +7,8 @@ import {
   updateTeamAddress as updateTeamAddressService,
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
-import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload } from '../services/normalizers.js';
+import { listGroups as listGroupsService } from '../services/groups.js';
+import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel } from '../services/normalizers.js';
 
 // Tope de integrantes por tier del entrenador. 'base' es el plan free.
 // 'pro'/'premium' hoy no los asigna ningun mock todavia (roles-mock.js
@@ -22,14 +23,6 @@ export const TEAM_MEMBER_LIMITS = {
 export function getTeamMemberLimit(tier) {
   return TEAM_MEMBER_LIMITS[tier] ?? TEAM_MEMBER_LIMITS.base;
 }
-
-// Nombre visible del grupo default de cada equipo. No hay integrante sin
-// grupo: todo el que se suma sin elegir uno cae aca. A nivel de datos es
-// un grupo mas (con isDefault: true para poder distinguirlo si hiciera
-// falta proteger/ocultarlo en una UI de gestion de grupos a futuro), pero
-// nunca se le muestra al usuario como "default" — su nombre visible ya es
-// literalmente "Sin grupo".
-export const DEFAULT_GROUP_NAME = 'Sin grupo';
 
 // Sin dominio de suscripciones/cobros todavia (ver FUNCTIONAL_PROPOSE.md,
 // "Sistema de suscripciones y cobros" sigue siendo un modulo reservado) —
@@ -75,6 +68,7 @@ function slugifyForEmail(value) {
 // entre uno y el siguiente) para que la antiguedad ("hace X meses en el
 // equipo") no sea igual para todos.
 function generateMockMembers(teamId, groups) {
+  if (groups.length === 0) return [];
   return Array.from({ length: MOCK_ROSTER_SIZE }, (_, i) => {
     const firstName = RUNNER_FIRST_NAMES[i % RUNNER_FIRST_NAMES.length];
     const lastName = RUNNER_LAST_NAMES[(i * 3) % RUNNER_LAST_NAMES.length];
@@ -87,10 +81,6 @@ function generateMockMembers(teamId, groups) {
       joinedAt: new Date(Date.now() - (i + 1) * 30 * DAY_MS).toISOString(),
     };
   });
-}
-
-function buildDefaultGroup(teamId) {
-  return { id: `${teamId}-group-default`, name: DEFAULT_GROUP_NAME, description: null, trainingPlanId: null, isDefault: true };
 }
 
 // Sin un directorio real de usuarios registrados todavia (no hay backend de
@@ -118,28 +108,26 @@ function buildInvitedEmail(invite, defaultGroupId) {
 }
 
 // Completa un equipo real (ya normalizado por toTeamModel — camelCase, id
-// como string) con los datos que el backend todavia no soporta: grupos,
-// roster e invitaciones, mas la foto (ver docs/BACKEND_API_GAPS.md).
+// como string) con los datos que el backend todavia no soporta directo en
+// GET/POST /teams: invitaciones y foto (ver docs/BACKEND_API_GAPS.md).
 // showGroupsToRunners ya viene resuelto en `team` por toTeamModel — el
 // backend lo soporta desde 2026-07-29, solo queda el fallback a false para
 // equipos recien creados que todavia no pasaron por un GET/PUT con ese
-// campo en la respuesta. `extra.groups`/`extra.invitedEmails` solo existen
+// campo en la respuesta. Grupos y miembros arrancan vacios — ya no se
+// arma un grupo default sintetico aca: los grupos reales llegan por un
+// fetch aparte (fetchGroups) o, para un equipo recien creado, por el flujo
+// de creacion (Task 4). `extra.groups`/`extra.invitedEmails` solo existen
 // recien creado el equipo (vienen del wizard) — un equipo traido por
-// fetchTeams/fetchTeam no tiene ese contexto, asi que arranca solo con el
-// grupo default.
+// fetchTeams/fetchTeam no tiene ese contexto, asi que arranca sin grupos.
 function decorateTeam(team, extra = {}) {
-  const defaultGroup = buildDefaultGroup(team.id);
-  const groups = [...(extra.groups ?? []), defaultGroup];
-  const invitedEmails = (extra.invitedEmails ?? []).map((invite) => buildInvitedEmail(invite, defaultGroup.id));
-
   return {
     ...team,
     status: team.status ?? 'activo',
     photoUri: extra.photoUri ?? null,
     showGroupsToRunners: team.showGroupsToRunners ?? false,
-    groups,
-    members: generateMockMembers(team.id, groups),
-    invitedEmails,
+    groups: extra.groups ?? [],
+    members: extra.members ?? [],
+    invitedEmails: (extra.invitedEmails ?? []).map((invite) => buildInvitedEmail(invite, extra.defaultGroupId ?? '')),
   };
 }
 
@@ -196,6 +184,32 @@ export const useTeamStore = create((set, get) => ({
           teams: alreadyListed ? state.teams.map((t) => (t.id === teamId ? team : t)) : [...state.teams, team],
         };
       });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Trae los grupos reales de un equipo (GET /groups) y regenera el
+  // roster mock a partir de ellos — separado de fetchTeam/fetchTeams
+  // porque un equipo puede estar en `teams` sin sus grupos todavia
+  // cargados (ya no vienen sincrónicos, ver decorateTeam). Preserva
+  // trainingPlanId elegido localmente para un grupo que ya estaba en
+  // memoria (catálogo mock, sin campo en el backend — ver
+  // docs/BACKEND_API_GAPS.md gap 4).
+  fetchGroups: async (teamId, userId) => {
+    try {
+      const dtos = await listGroupsService(teamId, userId);
+      const existingTeam = get().teams.find((t) => t.id === teamId);
+      const groups = dtos.map((dto) => {
+        const model = toGroupModel(dto);
+        const existingGroup = existingTeam?.groups.find((g) => g.id === model.id);
+        return existingGroup ? { ...model, trainingPlanId: existingGroup.trainingPlanId } : model;
+      });
+      const members = generateMockMembers(teamId, groups);
+      set((state) => ({
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups, members } : t)),
+      }));
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

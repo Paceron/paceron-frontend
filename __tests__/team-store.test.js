@@ -18,6 +18,12 @@ import {
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
 
+jest.mock('../services/groups.js', () => ({
+  listGroups: jest.fn(),
+}));
+
+import { listGroups as listGroupsService } from '../services/groups.js';
+
 const TEAM_DTO = {
   id: 1, name: 'Fondistas del Oeste', description: 'Grupo de entrenamiento', level: 'amateur',
   max_members: 10, owner_id: 7, requirements: 'Nivel intermedio', status: 'activo',
@@ -343,5 +349,43 @@ describe('selectAdministeredTeams', () => {
     const teams = [{ id: '1', ownerId: 7 }, { id: '2', ownerId: 9 }];
     expect(selectAdministeredTeams(teams, 7)).toEqual([{ id: '1', ownerId: 7 }]);
     expect(selectAdministeredTeams(teams, null)).toEqual([]);
+  });
+});
+
+describe('fetchGroups', () => {
+  const GROUP_DTO = { id: 1, team_id: 1, name: 'General', description: null, is_main: true, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' };
+
+  test('fetches groups for a team, decorates the team with them, and regenerates the roster', async () => {
+    useTeamStore.setState({ teams: [{ id: '1', name: 'X', groups: [], members: [] }] });
+    listGroupsService.mockResolvedValue([GROUP_DTO]);
+    const result = await useTeamStore.getState().fetchGroups('1', 7);
+    expect(result).toEqual({ success: true });
+    const team = useTeamStore.getState().teams.find((t) => t.id === '1');
+    expect(team.groups).toEqual([{ id: '1', teamId: '1', name: 'General', description: null, isDefault: true, trainingPlanId: null, createdAt: GROUP_DTO.created_at, updatedAt: GROUP_DTO.updated_at }]);
+    expect(team.members.length).toBeGreaterThan(0);
+    expect(team.members.every((m) => m.groupId === '1')).toBe(true);
+  });
+
+  test('preserves a locally chosen trainingPlanId for a group already known in this session', async () => {
+    useTeamStore.setState({ teams: [{ id: '1', name: 'X', groups: [{ id: '1', teamId: '1', name: 'General', isDefault: true, trainingPlanId: 'plan-5k' }], members: [] }] });
+    listGroupsService.mockResolvedValue([GROUP_DTO]);
+    await useTeamStore.getState().fetchGroups('1', 7);
+    const team = useTeamStore.getState().teams.find((t) => t.id === '1');
+    expect(team.groups[0].trainingPlanId).toBe('plan-5k');
+  });
+
+  test('returns an empty roster when the team has no groups yet', async () => {
+    useTeamStore.setState({ teams: [{ id: '1', name: 'X', groups: [], members: [] }] });
+    listGroupsService.mockResolvedValue([]);
+    await useTeamStore.getState().fetchGroups('1', 7);
+    const team = useTeamStore.getState().teams.find((t) => t.id === '1');
+    expect(team.groups).toEqual([]);
+    expect(team.members).toEqual([]);
+  });
+
+  test('returns a failure result when the service call rejects', async () => {
+    listGroupsService.mockRejectedValue(new Error('Sin conexión.'));
+    const result = await useTeamStore.getState().fetchGroups('1', 7);
+    expect(result).toEqual({ success: false, error: 'Sin conexión.' });
   });
 });
