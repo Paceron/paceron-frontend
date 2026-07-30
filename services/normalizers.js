@@ -101,6 +101,7 @@ export function toCreateTeamPayload(form) {
     name: form.name,
     max_members: form.maxMembers,
     owner_id: form.ownerId,
+    create_default_group: true,
   };
 
   const optional = {
@@ -150,5 +151,32 @@ export function toAddressPayload(form) {
     if (value && String(value).trim()) payload[key] = value;
   }
 
+  return payload;
+}
+
+export function toGroupModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    teamId: String(dto.team_id),
+    name: dto.name,
+    description: dto.description,
+    isDefault: dto.is_main ?? false,
+    trainingPlanId: null,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateGroupPayload(teamId, form) {
+  const payload = { team_id: Number(teamId), name: form.name };
+  if (form.description && String(form.description).trim()) payload.description = form.description.trim();
+  return payload;
+}
+
+export function toUpdateGroupPayload(form) {
+  const payload = {};
+  if (form.name && String(form.name).trim()) payload.name = form.name.trim();
+  if (form.description !== undefined) payload.description = form.description ? String(form.description).trim() : null;
   return payload;
 }

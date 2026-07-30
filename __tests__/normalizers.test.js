@@ -1,4 +1,7 @@
-import { toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload } from '../services/normalizers.js';
+import {
+  toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
+  toGroupModel, toCreateGroupPayload, toUpdateGroupPayload,
+} from '../services/normalizers.js';
 
 describe('toUserModel', () => {
   test('maps snake_case fields to camelCase', () => {
@@ -91,7 +94,7 @@ describe('toTeamModel', () => {
 describe('toCreateTeamPayload', () => {
   test('maps required fields to snake_case', () => {
     const out = toCreateTeamPayload({ name: 'Corredores del Sur', maxMembers: 20, ownerId: 7 });
-    expect(out).toEqual({ name: 'Corredores del Sur', max_members: 20, owner_id: 7 });
+    expect(out).toEqual({ name: 'Corredores del Sur', max_members: 20, owner_id: 7, create_default_group: true });
   });
 
   test('includes only non-empty optional fields', () => {
@@ -136,5 +139,56 @@ describe('toAddressPayload', () => {
   test('omits empty fields', () => {
     const out = toAddressPayload({ country: 'ARG', province: '', city: '  ' });
     expect(out).toEqual({ country: 'ARG' });
+  });
+});
+
+describe('toGroupModel', () => {
+  test('maps snake_case fields to camelCase, coerces ids to string, is_main to isDefault', () => {
+    const dto = {
+      id: 5, team_id: 1, name: 'General', description: null, is_main: true,
+      created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
+    };
+    expect(toGroupModel(dto)).toEqual({
+      id: '5', teamId: '1', name: 'General', description: null, isDefault: true, trainingPlanId: null,
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+  });
+
+  test('defaults isDefault to false when is_main is omitted', () => {
+    const dto = { id: 6, team_id: 1, name: 'Avanzados' };
+    expect(toGroupModel(dto).isDefault).toBe(false);
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toGroupModel(null)).toBeNull();
+    expect(toGroupModel(undefined)).toBeNull();
+  });
+});
+
+describe('toCreateGroupPayload', () => {
+  test('maps team_id and name, includes description only if present', () => {
+    expect(toCreateGroupPayload('3', { name: 'Avanzados' })).toEqual({ team_id: 3, name: 'Avanzados' });
+    expect(toCreateGroupPayload('3', { name: 'Avanzados', description: 'Ritmo alto' }))
+      .toEqual({ team_id: 3, name: 'Avanzados', description: 'Ritmo alto' });
+  });
+
+  test('omits description when blank', () => {
+    expect(toCreateGroupPayload('3', { name: 'Avanzados', description: '  ' })).toEqual({ team_id: 3, name: 'Avanzados' });
+  });
+});
+
+describe('toUpdateGroupPayload', () => {
+  test('includes only provided fields', () => {
+    expect(toUpdateGroupPayload({ name: 'Nuevo nombre' })).toEqual({ name: 'Nuevo nombre' });
+    expect(toUpdateGroupPayload({ name: 'Nuevo nombre', description: 'Nueva desc' }))
+      .toEqual({ name: 'Nuevo nombre', description: 'Nueva desc' });
+  });
+
+  test('allows clearing description to null', () => {
+    expect(toUpdateGroupPayload({ name: 'X', description: null })).toEqual({ name: 'X', description: null });
+  });
+
+  test('omits name when blank', () => {
+    expect(toUpdateGroupPayload({ name: '  ', description: 'Y' })).toEqual({ description: 'Y' });
   });
 });
