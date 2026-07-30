@@ -162,10 +162,6 @@ function EditTeamForm({ team, teamId }) {
             </View>
           </Pressable>
 
-          <Text className="mt-2 text-xs text-slate-400 dark:text-slate-500" nativeID="edit-team-show-groups-persistence-hint" testID="edit-team-show-groups-persistence-hint">
-            Por ahora esta preferencia no se guarda entre sesiones — el backend todavía no tiene este campo.
-          </Text>
-
           <Pressable
             className={`mt-5 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
             disabled={submitting}

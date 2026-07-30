@@ -22,6 +22,7 @@ const TEAM_DTO = {
   id: 1, name: 'Fondistas del Oeste', description: 'Grupo de entrenamiento', level: 'amateur',
   max_members: 10, owner_id: 7, requirements: 'Nivel intermedio', status: 'activo',
   country: null, province: null, city: null, street: null, number: null,
+  show_groups_to_runners: false,
   created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
 };
 
@@ -204,17 +205,27 @@ describe('team store', () => {
   test('updateTeam merges the updated fields, calls the service and keeps local-only fields', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
     const created = await useTeamStore.getState().createTeam({ name: 'Original', maxMembers: 10, ownerId: 7 });
-    updateTeamService.mockResolvedValue({ ...TEAM_DTO, name: 'Nuevo nombre', description: 'Nueva descripción' });
+    updateTeamService.mockResolvedValue({ ...TEAM_DTO, name: 'Nuevo nombre', description: 'Nueva descripción', show_groups_to_runners: true });
 
     const result = await useTeamStore.getState().updateTeam(created.team.id, {
       name: 'Nuevo nombre', description: 'Nueva descripción', showGroupsToRunners: true,
     });
 
-    expect(updateTeamService).toHaveBeenCalledWith(created.team.id, expect.objectContaining({ name: 'Nuevo nombre', description: 'Nueva descripción' }));
+    expect(updateTeamService).toHaveBeenCalledWith(created.team.id, expect.objectContaining({ name: 'Nuevo nombre', description: 'Nueva descripción', show_groups_to_runners: true }));
     expect(result.success).toBe(true);
     expect(result.team.name).toBe('Nuevo nombre');
     expect(result.team.showGroupsToRunners).toBe(true);
     expect(result.team.groups).toEqual(created.team.groups);
+  });
+
+  test('updateTeam reads showGroupsToRunners from the backend response, not from the local echo', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    const created = await useTeamStore.getState().createTeam({ name: 'Original', maxMembers: 10, ownerId: 7 });
+    updateTeamService.mockResolvedValue({ ...TEAM_DTO, show_groups_to_runners: false });
+
+    const result = await useTeamStore.getState().updateTeam(created.team.id, { showGroupsToRunners: true });
+
+    expect(result.team.showGroupsToRunners).toBe(false);
   });
 
   test('updateTeam chains updateTeamAddress and does not persist address fields locally when it fails', async () => {

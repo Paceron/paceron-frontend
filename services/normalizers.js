@@ -90,6 +90,7 @@ export function toTeamModel(dto) {
     city: dto.city,
     street: dto.street,
     number: dto.number,
+    showGroupsToRunners: dto.show_groups_to_runners ?? false,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };
@@ -115,10 +116,13 @@ export function toCreateTeamPayload(form) {
   return payload;
 }
 
-// UpdateTeamRequest del backend no tiene campos de dirección (ver
-// toAddressPayload, es un endpoint aparte) ni show_groups_to_runners/foto
-// (sin campo en el backend todavía, ver docs/BACKEND_API_GAPS.md) — el
-// whitelist de `optional` los descarta automáticamente si vienen en `form`.
+// UpdateTeamRequest del backend no tiene campo de foto (sin campo en el
+// backend todavía, ver docs/BACKEND_API_GAPS.md) — el whitelist de
+// `optional` la descarta automáticamente si viene en `form`. Dirección va
+// aparte (ver toAddressPayload, es un endpoint distinto). show_groups_to_runners
+// se maneja fuera del whitelist genérico porque es boolean — el chequeo
+// `String(value).trim()` de abajo está pensado para strings/números, no
+// para distinguir `false` de "sin valor".
 export function toUpdateTeamPayload(form) {
   const payload = {};
   const optional = {
@@ -132,6 +136,8 @@ export function toUpdateTeamPayload(form) {
   for (const [key, value] of Object.entries(optional)) {
     if (value !== undefined && value !== null && String(value).trim()) payload[key] = value;
   }
+
+  if (form.showGroupsToRunners !== undefined) payload.show_groups_to_runners = form.showGroupsToRunners;
 
   return payload;
 }
