@@ -119,11 +119,14 @@ function buildInvitedEmail(invite, defaultGroupId) {
 
 // Completa un equipo real (ya normalizado por toTeamModel — camelCase, id
 // como string) con los datos que el backend todavia no soporta: grupos,
-// roster e invitaciones, mas showGroupsToRunners/foto (ver
-// docs/BACKEND_API_GAPS.md). `extra.groups`/`extra.invitedEmails` solo
-// existen recien creado el equipo (vienen del wizard) — un equipo traido
-// por fetchTeams/fetchTeam no tiene ese contexto, asi que arranca solo con
-// el grupo default.
+// roster e invitaciones, mas la foto (ver docs/BACKEND_API_GAPS.md).
+// showGroupsToRunners ya viene resuelto en `team` por toTeamModel — el
+// backend lo soporta desde 2026-07-29, solo queda el fallback a false para
+// equipos recien creados que todavia no pasaron por un GET/PUT con ese
+// campo en la respuesta. `extra.groups`/`extra.invitedEmails` solo existen
+// recien creado el equipo (vienen del wizard) — un equipo traido por
+// fetchTeams/fetchTeam no tiene ese contexto, asi que arranca solo con el
+// grupo default.
 function decorateTeam(team, extra = {}) {
   const defaultGroup = buildDefaultGroup(team.id);
   const groups = [...(extra.groups ?? []), defaultGroup];
@@ -133,7 +136,7 @@ function decorateTeam(team, extra = {}) {
     ...team,
     status: team.status ?? 'activo',
     photoUri: extra.photoUri ?? null,
-    showGroupsToRunners: false,
+    showGroupsToRunners: team.showGroupsToRunners ?? false,
     groups,
     members: generateMockMembers(team.id, groups),
     invitedEmails,
@@ -237,14 +240,16 @@ export const useTeamStore = create((set, get) => ({
   // Edita los "datos generales" de un equipo ya existente (PUT
   // /teams/{id}, parcial) — grupos, miembros, invitaciones y status no se
   // tocan desde acá. `updates` puede traer country/province/city
-  // (secuenciados aparte, ver abajo) y showGroupsToRunners/photoUri
-  // (interactivos del lado del cliente, sin campo en el backend — ver
-  // docs/BACKEND_API_GAPS.md): se conservan en el equipo resultante vía
-  // `clientOnlyAndGeneralUpdates`, pero toUpdateTeamPayload los descarta
-  // antes de mandarlos al PUT general. country/province/city se excluyen
-  // de ese merge inicial a propósito — si el PUT de dirección de abajo
-  // falla, no queremos mostrar como "guardado" un valor que en realidad no
-  // se persistió.
+  // (secuenciados aparte, ver abajo) y photoUri (interactivo del lado del
+  // cliente, sin campo en el backend — ver docs/BACKEND_API_GAPS.md): se
+  // conserva en el equipo resultante vía `clientOnlyAndGeneralUpdates`,
+  // pero toUpdateTeamPayload lo descarta antes de mandarlo al PUT general.
+  // showGroupsToRunners SÍ tiene campo real en el backend desde
+  // 2026-07-29 — se manda en el payload y el valor final sale de la
+  // respuesta (generalModel), no del echo local. country/province/city se
+  // excluyen del merge inicial a propósito — si el PUT de dirección de
+  // abajo falla, no queremos mostrar como "guardado" un valor que en
+  // realidad no se persistió.
   updateTeam: async (teamId, updates) => {
     const team = get().teams.find((t) => t.id === teamId);
     if (!team) return { success: false, error: 'Equipo no encontrado.' };
@@ -262,6 +267,7 @@ export const useTeamStore = create((set, get) => ({
         level: generalModel.level,
         maxMembers: generalModel.maxMembers,
         requirements: generalModel.requirements,
+        showGroupsToRunners: generalModel.showGroupsToRunners,
         status: generalModel.status,
         updatedAt: generalModel.updatedAt,
       };

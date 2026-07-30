@@ -65,14 +65,21 @@ describe('toTeamModel', () => {
       id: 1, name: 'Corredores del Sur', description: 'desc', level: 'amateur',
       max_members: 20, owner_id: 7, requirements: 'req', status: 'activo',
       country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
+      show_groups_to_runners: true,
       created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-02T00:00:00.000Z',
     };
     expect(toTeamModel(dto)).toEqual({
       id: '1', name: 'Corredores del Sur', description: 'desc', level: 'amateur',
       maxMembers: 20, ownerId: 7, requirements: 'req', status: 'activo',
       country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
+      showGroupsToRunners: true,
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z',
     });
+  });
+
+  test('defaults showGroupsToRunners to false when the backend omits it', () => {
+    const dto = { id: 1, name: 'X', max_members: 10, owner_id: 7 };
+    expect(toTeamModel(dto).showGroupsToRunners).toBe(false);
   });
 
   test('returns null for falsy dto', () => {
@@ -104,9 +111,19 @@ describe('toUpdateTeamPayload', () => {
     expect(out).toEqual({ name: 'Nuevo nombre', description: 'Nueva descripción', max_members: 15 });
   });
 
-  test('drops fields the backend does not support (showGroupsToRunners, photoUri)', () => {
+  test('includes showGroupsToRunners as show_groups_to_runners and drops fields the backend does not support (photoUri)', () => {
     const out = toUpdateTeamPayload({ name: 'X', showGroupsToRunners: true, photoUri: 'file://foo.jpg' });
-    expect(out).toEqual({ name: 'X' });
+    expect(out).toEqual({ name: 'X', show_groups_to_runners: true });
+  });
+
+  test('includes showGroupsToRunners even when explicitly false', () => {
+    const out = toUpdateTeamPayload({ name: 'X', showGroupsToRunners: false });
+    expect(out).toEqual({ name: 'X', show_groups_to_runners: false });
+  });
+
+  test('omits show_groups_to_runners when showGroupsToRunners is not provided', () => {
+    const out = toUpdateTeamPayload({ name: 'X' });
+    expect(out).not.toHaveProperty('show_groups_to_runners');
   });
 });
 
