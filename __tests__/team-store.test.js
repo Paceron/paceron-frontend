@@ -1,4 +1,4 @@
-import { useTeamStore, getTeamMemberLimit, TEAM_MEMBER_LIMITS, DEFAULT_GROUP_NAME, selectAdministeredTeams } from '../store/team-store.js';
+import { useTeamStore, getTeamMemberLimit, TEAM_MEMBER_LIMITS, selectAdministeredTeams } from '../store/team-store.js';
 
 jest.mock('../services/teams.js', () => ({
   createTeam: jest.fn(),
@@ -20,9 +20,10 @@ import {
 
 jest.mock('../services/groups.js', () => ({
   listGroups: jest.fn(),
+  createGroup: jest.fn(),
 }));
 
-import { listGroups as listGroupsService } from '../services/groups.js';
+import { listGroups as listGroupsService, createGroup as createGroupService } from '../services/groups.js';
 
 const TEAM_DTO = {
   id: 1, name: 'Fondistas del Oeste', description: 'Grupo de entrenamiento', level: 'amateur',
@@ -32,9 +33,16 @@ const TEAM_DTO = {
   created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
 };
 
+const DEFAULT_GROUP_DTO = { id: 100, team_id: 1, name: 'General', description: null, is_main: true, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' };
+
 beforeEach(() => {
   jest.clearAllMocks();
   useTeamStore.setState({ teams: [], selectedTeamId: null });
+  // Default para tests que llaman createTeam solo como setup (updateGroup,
+  // addInvitedEmails, deleteTeam, etc.) y no les importa el detalle del
+  // GET /groups final — los tests que sí lo verifican explícitamente
+  // sobreescriben este mock con su propio escenario.
+  listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
 });
 
 describe('getTeamMemberLimit', () => {
@@ -53,6 +61,9 @@ describe('getTeamMemberLimit', () => {
 describe('team store', () => {
   test('createTeam calls the service, decorates the response, appends and selects it', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
+    const AVANZADOS_DTO = { id: 101, team_id: 1, name: 'Avanzados', description: null, is_main: false, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' };
+    createGroupService.mockResolvedValue(AVANZADOS_DTO);
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO, AVANZADOS_DTO]);
     const result = await useTeamStore.getState().createTeam({
       name: 'Fondistas del Oeste', maxMembers: 10, description: 'Grupo de entrenamiento',
       requirements: 'Nivel intermedio', level: 'amateur', ownerId: 7,
@@ -66,48 +77,27 @@ describe('team store', () => {
     const s = useTeamStore.getState();
     expect(s.teams).toContainEqual(result.team);
     expect(s.selectedTeamId).toBe('1');
+    const avanzados = result.team.groups.find((g) => g.name === 'Avanzados');
     expect(result.team.invitedEmails).toEqual([{
-      email: 'a@b.com', groupId: 'group-draft-1', invitedAt: expect.any(String), registered: expect.any(Boolean),
+      email: 'a@b.com', groupId: avanzados.id, invitedAt: expect.any(String), registered: expect.any(Boolean),
     }]);
   });
 
-  test('createTeam always adds a default "Sin grupo" group besides the drafted ones', async () => {
+  test('createTeam defaults showGroupsToRunners to false — not exposed in the creation wizard', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
-    const result = await useTeamStore.getState().createTeam({
-      name: 'Con grupos', maxMembers: 10, ownerId: 7,
-      groups: [{ id: 'group-draft-1', name: 'Avanzados', trainingPlanId: null }],
-    });
-    const defaultGroup = result.team.groups.find((g) => g.isDefault);
-    expect(result.team.groups).toHaveLength(2);
-    expect(defaultGroup.name).toBe(DEFAULT_GROUP_NAME);
-    expect(result.team.groups.some((g) => g.name === 'Avanzados')).toBe(true);
-  });
-
-  test('createTeam resolves invites without a chosen group to the default group', async () => {
-    createTeamService.mockResolvedValue(TEAM_DTO);
-    const result = await useTeamStore.getState().createTeam({
-      name: 'Sin grupos propios', maxMembers: 10, ownerId: 7,
-      invitedEmails: [{ email: 'sin-grupo@b.com', groupId: '' }],
-    });
-    const defaultGroup = result.team.groups.find((g) => g.isDefault);
-    expect(result.team.invitedEmails).toEqual([{
-      email: 'sin-grupo@b.com', groupId: defaultGroup.id, invitedAt: expect.any(String), registered: expect.any(Boolean),
-    }]);
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
+    const result = await useTeamStore.getState().createTeam({ name: 'Sin config de privacidad', maxMembers: 10, ownerId: 7 });
+    expect(result.team.showGroupsToRunners).toBe(false);
   });
 
   test('createTeam defaults photoUri to null and invitedEmails to an empty array', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
     const result = await useTeamStore.getState().createTeam({ name: 'Sin datos opcionales', maxMembers: 10, ownerId: 7 });
     expect(result.team.photoUri).toBeNull();
     expect(result.team.invitedEmails).toEqual([]);
     expect(result.team.groups).toHaveLength(1);
     expect(result.team.groups[0].isDefault).toBe(true);
-  });
-
-  test('createTeam defaults showGroupsToRunners to false — not exposed in the creation wizard', async () => {
-    createTeamService.mockResolvedValue(TEAM_DTO);
-    const result = await useTeamStore.getState().createTeam({ name: 'Sin config de privacidad', maxMembers: 10, ownerId: 7 });
-    expect(result.team.showGroupsToRunners).toBe(false);
   });
 
   test('createTeam chains updateTeamAddress when the payload has location fields, and merges the address into the team', async () => {
@@ -151,6 +141,7 @@ describe('team store', () => {
 
   test('createTeam defaults to status activo and generates a mock roster referencing real groups', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
     const result = await useTeamStore.getState().createTeam({ name: 'Con roster', maxMembers: 10, ownerId: 7 });
     expect(result.team.status).toBe('activo');
     expect(result.team.members.length).toBeGreaterThan(0);
@@ -165,26 +156,58 @@ describe('team store', () => {
     });
   });
 
+  test('createTeam creates the extra draft groups against the backend and remaps invitedEmails by name', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    const AVANZADOS_DTO = { id: 101, team_id: 1, name: 'Avanzados', description: null, is_main: false, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' };
+    createGroupService.mockResolvedValue(AVANZADOS_DTO);
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO, AVANZADOS_DTO]);
+
+    const result = await useTeamStore.getState().createTeam({
+      name: 'Con grupo extra', maxMembers: 10, ownerId: 7,
+      groups: [{ id: 'group-draft-1', name: 'Avanzados', description: null, trainingPlanId: 'plan-10k' }],
+      invitedEmails: [{ email: 'a@b.com', groupId: 'group-draft-1' }],
+    });
+
+    expect(createGroupService).toHaveBeenCalledWith({ team_id: 1, name: 'Avanzados' });
+    expect(result.team.groups).toHaveLength(2);
+    const avanzados = result.team.groups.find((g) => g.name === 'Avanzados');
+    expect(avanzados.trainingPlanId).toBe('plan-10k');
+    expect(result.team.invitedEmails[0].groupId).toBe(avanzados.id);
+  });
+
+  test('createTeam falls back invites without a chosen group to the real default group', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
+    const result = await useTeamStore.getState().createTeam({
+      name: 'Sin grupo elegido', maxMembers: 10, ownerId: 7,
+      invitedEmails: [{ email: 'sin-grupo@b.com', groupId: '' }],
+    });
+    const defaultGroup = result.team.groups.find((g) => g.isDefault);
+    expect(result.team.invitedEmails).toEqual([{
+      email: 'sin-grupo@b.com', groupId: defaultGroup.id, invitedAt: expect.any(String), registered: expect.any(Boolean),
+    }]);
+  });
+
+  test('createTeam succeeds with groupsWarning when an extra group fails to create', async () => {
+    createTeamService.mockResolvedValue(TEAM_DTO);
+    createGroupService.mockRejectedValue(new Error('falló'));
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
+    const result = await useTeamStore.getState().createTeam({
+      name: 'Con grupo que falla', maxMembers: 10, ownerId: 7,
+      groups: [{ id: 'group-draft-1', name: 'Avanzados', description: null, trainingPlanId: null }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.groupsWarning).toBe(true);
+  });
+
   test('fetchTeams lists teams from the service and decorates each one', async () => {
     listTeamsService.mockResolvedValue([TEAM_DTO, { ...TEAM_DTO, id: 2, name: 'Otro equipo', owner_id: 9 }]);
     const result = await useTeamStore.getState().fetchTeams();
     expect(result).toEqual({ success: true });
     const s = useTeamStore.getState();
     expect(s.teams).toHaveLength(2);
-    expect(s.teams[0].groups.some((g) => g.isDefault)).toBe(true);
-    expect(s.teams[0].members.length).toBeGreaterThan(0);
-  });
-
-  test('fetchTeams preserves local-only fields (groups) for a team already known in this session', async () => {
-    createTeamService.mockResolvedValue(TEAM_DTO);
-    const created = await useTeamStore.getState().createTeam({
-      name: 'Con grupo propio', maxMembers: 10, ownerId: 7,
-      groups: [{ id: 'group-draft-1', name: 'Avanzados', trainingPlanId: null }],
-    });
-    listTeamsService.mockResolvedValue([TEAM_DTO]);
-    await useTeamStore.getState().fetchTeams();
-    const refetched = useTeamStore.getState().teams.find((t) => t.id === created.team.id);
-    expect(refetched.groups.some((g) => g.name === 'Avanzados')).toBe(true);
+    expect(s.teams[0].groups).toEqual([]);
+    expect(s.teams[0].members).toEqual([]);
   });
 
   test('fetchTeams returns a failure result when the service call rejects', async () => {
@@ -198,8 +221,8 @@ describe('team store', () => {
     const result = await useTeamStore.getState().fetchTeam('1');
     expect(result).toEqual({ success: true });
     const team = useTeamStore.getState().teams.find((t) => t.id === '1');
-    expect(team.groups.some((g) => g.isDefault)).toBe(true);
-    expect(team.members.length).toBeGreaterThan(0);
+    expect(team.groups).toEqual([]);
+    expect(team.members).toEqual([]);
   });
 
   test('fetchTeam returns a failure result when the service call rejects', async () => {
@@ -278,11 +301,14 @@ describe('team store', () => {
 
   test('updateGroup merges only the given fields into the matching group of the matching team', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
+    const AVANZADOS_DTO = { id: 101, team_id: 1, name: 'Avanzados', description: null, is_main: false, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' };
+    createGroupService.mockResolvedValue(AVANZADOS_DTO);
+    listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO, AVANZADOS_DTO]);
     const created = await useTeamStore.getState().createTeam({
       name: 'Con grupo', maxMembers: 10, ownerId: 7,
       groups: [{ id: 'group-draft-1', name: 'Avanzados', trainingPlanId: null }],
     });
-    const targetGroup = created.team.groups.find((g) => g.id === 'group-draft-1');
+    const targetGroup = created.team.groups.find((g) => g.name === 'Avanzados');
 
     useTeamStore.getState().updateGroup(created.team.id, targetGroup.id, { name: 'Grupo renombrado', trainingPlanId: 'plan-5k' });
 
