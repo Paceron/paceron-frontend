@@ -7,8 +7,8 @@ import {
   updateTeamAddress as updateTeamAddressService,
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
-import { listGroups as listGroupsService, createGroup as createGroupService } from '../services/groups.js';
-import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload } from '../services/normalizers.js';
+import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService } from '../services/groups.js';
+import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload } from '../services/normalizers.js';
 
 // Tope de integrantes por tier del entrenador. 'base' es el plan free.
 // 'pro'/'premium' hoy no los asigna ningun mock todavia (roles-mock.js
@@ -354,6 +354,61 @@ export const useTeamStore = create((set, get) => ({
       set((state) => ({
         teams: state.teams.filter((t) => t.id !== teamId),
         selectedTeamId: state.selectedTeamId === teamId ? null : state.selectedTeamId,
+      }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Crea un grupo nuevo en un equipo ya existente (POST /groups) — a
+  // diferencia de los grupos armados en el wizard de creación, este no
+  // pasa por un estado "draft", pega directo al backend.
+  createGroupInTeam: async (teamId, form) => {
+    try {
+      const created = await createGroupService(toCreateGroupPayload(teamId, form));
+      const group = toGroupModel(created);
+      set((state) => ({
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups: [...t.groups, group] } : t)),
+      }));
+      return { success: true, group };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Edita nombre/descripción de un grupo real (PUT /groups/{id}).
+  // trainingPlanId sigue siendo local-only (sin campo en el backend, ver
+  // docs/BACKEND_API_GAPS.md gap 4) — se conserva del grupo ya en memoria,
+  // no lo toca esta acción.
+  updateGroupReal: async (teamId, groupId, form) => {
+    try {
+      const updated = await updateGroupService(groupId, toUpdateGroupPayload(form));
+      const model = toGroupModel(updated);
+      set((state) => ({
+        teams: state.teams.map((t) => {
+          if (t.id !== teamId) return t;
+          return {
+            ...t,
+            groups: t.groups.map((g) => (g.id === groupId ? { ...model, trainingPlanId: g.trainingPlanId } : g)),
+          };
+        }),
+      }));
+      const team = get().teams.find((t) => t.id === teamId);
+      return { success: true, group: team.groups.find((g) => g.id === groupId) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Borra un grupo real (DELETE /groups/{id}) — la UI no ofrece esta
+  // acción para el grupo principal (isDefault), no hace falta chequearlo
+  // acá de nuevo.
+  deleteGroupReal: async (teamId, groupId) => {
+    try {
+      await deleteGroupService(groupId);
+      set((state) => ({
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups: t.groups.filter((g) => g.id !== groupId) } : t)),
       }));
       return { success: true };
     } catch (error) {

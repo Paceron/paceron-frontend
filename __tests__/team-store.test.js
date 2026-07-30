@@ -21,9 +21,14 @@ import {
 jest.mock('../services/groups.js', () => ({
   listGroups: jest.fn(),
   createGroup: jest.fn(),
+  updateGroup: jest.fn(),
+  deleteGroup: jest.fn(),
 }));
 
-import { listGroups as listGroupsService, createGroup as createGroupService } from '../services/groups.js';
+import {
+  listGroups as listGroupsService, createGroup as createGroupService,
+  updateGroup as updateGroupService, deleteGroup as deleteGroupService,
+} from '../services/groups.js';
 
 const TEAM_DTO = {
   id: 1, name: 'Fondistas del Oeste', description: 'Grupo de entrenamiento', level: 'amateur',
@@ -413,5 +418,59 @@ describe('fetchGroups', () => {
     listGroupsService.mockRejectedValue(new Error('Sin conexión.'));
     const result = await useTeamStore.getState().fetchGroups('1', 7);
     expect(result).toEqual({ success: false, error: 'Sin conexión.' });
+  });
+});
+
+describe('createGroupInTeam / updateGroupReal / deleteGroupReal', () => {
+  beforeEach(() => {
+    useTeamStore.setState({
+      teams: [{ id: '1', name: 'X', groups: [{ id: '1', teamId: '1', name: 'General', isDefault: true, trainingPlanId: null }], members: [] }],
+    });
+  });
+
+  test('createGroupInTeam posts the group and appends it to team.groups', async () => {
+    createGroupService.mockResolvedValue({ id: 2, team_id: 1, name: 'Avanzados', description: null, is_main: false, created_at: 'x', updated_at: 'x' });
+    const result = await useTeamStore.getState().createGroupInTeam('1', { name: 'Avanzados' });
+    expect(createGroupService).toHaveBeenCalledWith({ team_id: 1, name: 'Avanzados' });
+    expect(result.success).toBe(true);
+    expect(result.group.name).toBe('Avanzados');
+    const team = useTeamStore.getState().teams.find((t) => t.id === '1');
+    expect(team.groups).toHaveLength(2);
+  });
+
+  test('createGroupInTeam returns a failure result when the service call rejects', async () => {
+    createGroupService.mockRejectedValue(new Error('falló'));
+    const result = await useTeamStore.getState().createGroupInTeam('1', { name: 'Avanzados' });
+    expect(result).toEqual({ success: false, error: 'falló' });
+  });
+
+  test('updateGroupReal updates the group in place, keeps trainingPlanId untouched', async () => {
+    updateGroupService.mockResolvedValue({ id: 1, team_id: 1, name: 'Nuevo nombre', description: null, is_main: true, created_at: 'x', updated_at: 'y' });
+    const result = await useTeamStore.getState().updateGroupReal('1', '1', { name: 'Nuevo nombre' });
+    expect(result.success).toBe(true);
+    expect(result.group.name).toBe('Nuevo nombre');
+    const team = useTeamStore.getState().teams.find((t) => t.id === '1');
+    expect(team.groups[0].name).toBe('Nuevo nombre');
+    expect(team.groups[0].trainingPlanId).toBeNull();
+  });
+
+  test('deleteGroupReal removes the group from team.groups', async () => {
+    useTeamStore.setState({
+      teams: [{ id: '1', name: 'X', groups: [
+        { id: '1', teamId: '1', name: 'General', isDefault: true },
+        { id: '2', teamId: '1', name: 'Avanzados', isDefault: false },
+      ], members: [] }],
+    });
+    deleteGroupService.mockResolvedValue(null);
+    const result = await useTeamStore.getState().deleteGroupReal('1', '2');
+    expect(result).toEqual({ success: true });
+    const team = useTeamStore.getState().teams.find((t) => t.id === '1');
+    expect(team.groups.map((g) => g.id)).toEqual(['1']);
+  });
+
+  test('deleteGroupReal returns a failure result when the service call rejects', async () => {
+    deleteGroupService.mockRejectedValue(new Error('El grupo tiene corredores asignados.'));
+    const result = await useTeamStore.getState().deleteGroupReal('1', '2');
+    expect(result).toEqual({ success: false, error: 'El grupo tiene corredores asignados.' });
   });
 });
