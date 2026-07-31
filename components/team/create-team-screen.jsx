@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { RequireAuth } from '../guards/require-auth.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { EmailListField } from '../forms/fields.jsx';
 import { GroupListEditor } from './group-list-editor.jsx';
@@ -61,12 +62,13 @@ function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right', loading 
   );
 }
 
-export function CreateTeamScreen() {
+function CreateTeamScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
   const createTeam = useTeamStore((s) => s.createTeam);
+  const sendInvite = useTeamStore((s) => s.sendInvite);
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
@@ -90,13 +92,6 @@ export function CreateTeamScreen() {
   const [groups, setGroups] = useState([]);
   const [invitedEmails, setInvitedEmails] = useState([]);
 
-  // Si se saca un grupo que ya tenia invitaciones asignadas, esas
-  // invitaciones vuelven a "Sin grupo" en vez de quedar apuntando a un
-  // grupo que ya no existe.
-  const handleRemoveGroup = (groupId) => {
-    setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: '' } : invite)));
-  };
-
   const handleContinueStep1 = () => {
     if (!generalForm.validate()) return;
     setStep(2);
@@ -111,23 +106,29 @@ export function CreateTeamScreen() {
       ...generalForm.getValues(),
       ownerId: user.userId,
       groups,
-      invitedEmails,
     });
-    setSubmitting(false);
 
     if (!result.success) {
+      setSubmitting(false);
       Toast.show({ type: 'error', text1: 'No pudimos crear el equipo', text2: result.error });
       return;
     }
+
+    let inviteFailures = 0;
+    for (const invite of invitedEmails) {
+      const inviteResult = await sendInvite(result.team.id, invite.email);
+      if (!inviteResult.success) inviteFailures += 1;
+    }
+    setSubmitting(false);
 
     Toast.show({
       type: 'success',
       text1: 'Equipo creado',
       text2: result.addressWarning
         ? 'La dirección no se pudo guardar — podés agregarla después desde Editar equipo.'
-        : invitedEmails.length > 0
-          ? 'Las invitaciones se van a enviar cuando el backend de equipos esté disponible.'
-          : 'Ya lo vas a encontrar en el menú de Equipos.',
+        : inviteFailures > 0
+          ? `${inviteFailures} de ${invitedEmails.length} invitaciones no se pudieron enviar — podés reintentar desde la pantalla de invitar.`
+          : undefined,
     });
 
     router.replace(`/teams/${result.team.id}`);
@@ -180,7 +181,7 @@ export function CreateTeamScreen() {
               Opcional — podés omitir este paso y crear grupos más adelante.
             </Text>
 
-            <GroupListEditor groups={groups} onChange={setGroups} onRemove={handleRemoveGroup} planOptions={TRAINING_PLAN_OPTIONS} />
+            <GroupListEditor groups={groups} onChange={setGroups} planOptions={TRAINING_PLAN_OPTIONS} />
 
             <StepNav nextLabel="Siguiente" onBack={() => setStep(1)} onNext={() => setStep(3)} />
           </SectionCard>
@@ -188,12 +189,20 @@ export function CreateTeamScreen() {
 
         {step === 3 && (
           <SectionCard icon="email-outline" title="Invitar corredores">
-            <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
+            <EmailListField label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
 
             <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
           </SectionCard>
         )}
       </View>
     </ScrollView>
+  );
+}
+
+export function CreateTeamScreen() {
+  return (
+    <RequireAuth>
+      <CreateTeamScreenContent />
+    </RequireAuth>
   );
 }
