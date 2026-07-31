@@ -162,43 +162,57 @@ function TeamsMenu({ onClose }) {
   );
 }
 
-// Tab con submenu propio (a diferencia de los demás, no navega directo al
-// presionar). Mide su propia posición en pantalla para anclar el dropdown.
+// Tab con dos acciones distintas: el label navega a /teams (listado
+// completo), la flechita abre/cierra el submenu rápido (comportamiento que
+// ya tenía todo el tab antes de este cambio). measureInWindow sigue
+// midiendo el contenedor entero para que el submenu quede anclado debajo
+// de todo el tab, no solo de la flechita.
 function TeamsTab({ route, isOpen, colors, onOpen }) {
+  const router = useRouter();
   const ref = useRef(null);
 
-  const handlePress = () => {
+  const handleChevronPress = () => {
     ref.current?.measureInWindow((x, y, width, height) => {
       onOpen({ x, y, width, height });
     });
   };
 
   return (
-    <Pressable
-      ref={ref}
-      className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors duration-150 ${
-        isOpen
-          ? 'bg-slate-100 dark:bg-slate-800'
-          : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
-      }`}
+    <View
+      className={`flex-row items-center rounded-lg transition-colors duration-150 ${isOpen ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
       nativeID={`web-shell-nav-tab-${route.name}`}
-      onPress={handlePress}
+      ref={ref}
       testID={`web-shell-nav-tab-${route.name}`}
     >
-      <MaterialCommunityIcons name={route.icon} size={16} color={colors.onSurfaceVariant} />
-      <Text
-        className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap"
-        nativeID={`web-shell-nav-tab-label-${route.name}`}
-        testID={`web-shell-nav-tab-label-${route.name}`}
+      <Pressable
+        className="flex-row items-center gap-1.5 rounded-lg py-1.5 pl-3 pr-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
+        nativeID={`web-shell-nav-tab-${route.name}-link`}
+        onPress={() => router.push('/teams')}
+        testID={`web-shell-nav-tab-${route.name}-link`}
       >
-        {route.label}
-      </Text>
-      <MaterialCommunityIcons
-        name={isOpen ? 'chevron-up' : 'chevron-down'}
-        size={14}
-        color={colors.onSurfaceVariant}
-      />
-    </Pressable>
+        <MaterialCommunityIcons name={route.icon} size={16} color={colors.onSurfaceVariant} />
+        <Text
+          className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap"
+          nativeID={`web-shell-nav-tab-label-${route.name}`}
+          testID={`web-shell-nav-tab-label-${route.name}`}
+        >
+          {route.label}
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityLabel="Ver mis equipos"
+        className="rounded-lg py-1.5 pl-1 pr-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
+        nativeID={`web-shell-nav-tab-${route.name}-chevron`}
+        onPress={handleChevronPress}
+        testID={`web-shell-nav-tab-${route.name}-chevron`}
+      >
+        <MaterialCommunityIcons
+          name={isOpen ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color={colors.onSurfaceVariant}
+        />
+      </Pressable>
+    </View>
   );
 }
 

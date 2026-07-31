@@ -113,6 +113,11 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
     router.push('/teams/create');
   };
 
+  const handleViewAllTeams = () => {
+    onClose();
+    router.push('/teams');
+  };
+
   return (
     <Animated.View
       nativeID="web-narrow-drawer-panel"
@@ -182,6 +187,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                         onCreateTeam={canCreateTeam ? handleCreateTeam : undefined}
                         onSelectTeam={handleSelectTeam}
                         onToggle={() => setTeamsExpanded((v) => !v)}
+                        onViewAll={handleViewAllTeams}
                         selectedTeamId={selectedTeamId}
                         teams={administeredTeams}
                       />
