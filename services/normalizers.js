@@ -180,3 +180,17 @@ export function toUpdateGroupPayload(form) {
   if (form.description !== undefined) payload.description = form.description ? String(form.description).trim() : null;
   return payload;
 }
+
+export function toInvitationModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    teamId: String(dto.team_id),
+    email: dto.invitee_email,
+    inviteeId: dto.invitee_id,
+    inviteeName: dto.invitee_name,
+    status: dto.status,
+    expiresAt: dto.expires_at,
+    createdAt: dto.created_at,
+  };
+}

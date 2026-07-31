@@ -1,6 +1,6 @@
 import {
   toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
-  toGroupModel, toCreateGroupPayload, toUpdateGroupPayload,
+  toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -190,5 +190,23 @@ describe('toUpdateGroupPayload', () => {
 
   test('omits name when blank', () => {
     expect(toUpdateGroupPayload({ name: '  ', description: 'Y' })).toEqual({ description: 'Y' });
+  });
+});
+
+describe('toInvitationModel', () => {
+  test('maps snake_case fields to camelCase and coerces ids to string', () => {
+    const dto = {
+      id: 10, team_id: 1, invitee_email: 'a@b.com', invitee_id: 5, invitee_name: 'Pepe Lota',
+      status: 'pending', expires_at: '2026-08-01T00:00:00.000Z', created_at: '2026-07-31T00:00:00.000Z',
+    };
+    expect(toInvitationModel(dto)).toEqual({
+      id: '10', teamId: '1', email: 'a@b.com', inviteeId: 5, inviteeName: 'Pepe Lota',
+      status: 'pending', expiresAt: '2026-08-01T00:00:00.000Z', createdAt: '2026-07-31T00:00:00.000Z',
+    });
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toInvitationModel(null)).toBeNull();
+    expect(toInvitationModel(undefined)).toBeNull();
   });
 });
