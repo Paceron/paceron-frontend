@@ -358,7 +358,7 @@ function GroupMemberRow({ member, colors }) {
 // la lista de miembros va siempre visible. En mobile es una card
 // expandible, mismo patrón que RunnerRow — colapsada por default, tocarla
 // muestra los corredores del grupo.
-function GroupRow({ group, members, planName, colors, onEdit, canEdit }) {
+function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete, deleting }) {
   const [expanded, setExpanded] = useState(false);
   const memberCount = members.length;
 
@@ -389,15 +389,27 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit }) {
   );
 
   const editButton = canEdit && (
-    <Pressable
-      accessibilityLabel={`Editar grupo ${group.name}`}
-      className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-      nativeID={`team-detail-group-${group.id}-edit-button`}
-      onPress={onEdit}
-      testID={`team-detail-group-${group.id}-edit-button`}
-    >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
-    </Pressable>
+    <View className="flex-row items-center gap-1" nativeID={`team-detail-group-${group.id}-actions`} testID={`team-detail-group-${group.id}-actions`}>
+      <Pressable
+        accessibilityLabel={`Editar grupo ${group.name}`}
+        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+        nativeID={`team-detail-group-${group.id}-edit-button`}
+        onPress={onEdit}
+        testID={`team-detail-group-${group.id}-edit-button`}
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+      </Pressable>
+      <Pressable
+        accessibilityLabel={`Eliminar grupo ${group.name}`}
+        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+        disabled={deleting}
+        nativeID={`team-detail-group-${group.id}-delete-button`}
+        onPress={onDelete}
+        testID={`team-detail-group-${group.id}-delete-button`}
+      >
+        {deleting ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />}
+      </Pressable>
+    </View>
   );
 
   const memberList = memberCount > 0 && (
@@ -493,6 +505,10 @@ export function TeamDetailScreen({ teamId }) {
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
   const fetchTeam = useTeamStore((s) => s.fetchTeam);
   const deleteTeam = useTeamStore((s) => s.deleteTeam);
+  const fetchGroups = useTeamStore((s) => s.fetchGroups);
+  const createGroupInTeam = useTeamStore((s) => s.createGroupInTeam);
+  const deleteGroupReal = useTeamStore((s) => s.deleteGroupReal);
+  const [loadingGroups, setLoadingGroups] = useState(true);
   const user = useAuthStore((s) => s.user);
   const activeRole = useAuthStore((s) => s.activeRole);
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
@@ -506,6 +522,12 @@ export function TeamDetailScreen({ teamId }) {
   // error del backend para el resto.
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [addGroupVisible, setAddGroupVisible] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [newGroupError, setNewGroupError] = useState(null);
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [deletingGroupId, setDeletingGroupId] = useState(null);
 
   const handleConfirmDelete = async () => {
     const result = await deleteTeam(team.id, user.userId);
@@ -516,6 +538,41 @@ export function TeamDetailScreen({ teamId }) {
     }
     Toast.show({ type: 'success', text1: 'Equipo eliminado' });
     router.replace('/teams');
+  };
+
+  const handleAddGroup = async () => {
+    const trimmed = newGroupName.trim();
+    if (!trimmed) {
+      setNewGroupError('Ingresá un nombre para el grupo.');
+      return;
+    }
+    if (team.groups.some((g) => g.name.toLowerCase() === trimmed.toLowerCase())) {
+      setNewGroupError('Ya existe un grupo con ese nombre.');
+      return;
+    }
+    setAddingGroup(true);
+    const result = await createGroupInTeam(team.id, { name: trimmed, description: newGroupDescription.trim() || null });
+    setAddingGroup(false);
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos crear el grupo', text2: result.error });
+      return;
+    }
+    setNewGroupName('');
+    setNewGroupDescription('');
+    setNewGroupError(null);
+    setAddGroupVisible(false);
+    Toast.show({ type: 'success', text1: 'Grupo creado' });
+  };
+
+  const handleDeleteGroup = async (group) => {
+    setDeletingGroupId(group.id);
+    const result = await deleteGroupReal(team.id, group.id);
+    setDeletingGroupId(null);
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos eliminar el grupo', text2: result.error });
+      return;
+    }
+    Toast.show({ type: 'success', text1: 'Grupo eliminado' });
   };
   // Un corredor común (no viendo la app como entrenador activo, tenga o no
   // ese rol) ve una versión reducida: sin la pestaña Grupos, y en
@@ -564,6 +621,15 @@ export function TeamDetailScreen({ teamId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    let cancelled = false;
+    setLoadingGroups(true);
+    fetchGroups(teamId, user.userId).finally(() => { if (!cancelled) setLoadingGroups(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, user?.userId]);
+
   const groupOptions = useMemo(
     () => (team ? [{ id: '', name: 'Todos los grupos' }, ...team.groups.map((g) => ({ id: g.id, name: g.name }))] : []),
     [team],
@@ -579,7 +645,7 @@ export function TeamDetailScreen({ teamId }) {
     });
   }, [team, search, groupFilter, isTrainerView]);
 
-  if (loadingTeam) {
+  if (loadingTeam || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="team-detail-loading" testID="team-detail-loading">
         <ActivityIndicator color={colors.primary} />
@@ -686,15 +752,57 @@ export function TeamDetailScreen({ teamId }) {
   // — no solo el tag de grupo por corredor (eso lo maneja el toggle
   // showGroupsToRunners), acá no hay excepción posible.
   const gruposContent = isTrainerView && (
-    <SectionCard icon="account-group" title="Grupos">
+    <SectionCard
+      headerRight={canManageTeam && (
+        <Pressable
+          accessibilityLabel="Agregar grupo"
+          className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+          nativeID="team-detail-add-group-button"
+          onPress={() => setAddGroupVisible((v) => !v)}
+          testID="team-detail-add-group-button"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+        </Pressable>
+      )}
+      icon="account-group"
+      title="Grupos"
+    >
+      {addGroupVisible && (
+        <View className="mb-4 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-add-group-form" testID="team-detail-add-group-form">
+          <InputField
+            dense
+            error={newGroupError}
+            label="Nombre del grupo"
+            onChange={(text) => { setNewGroupName(text); if (newGroupError) setNewGroupError(null); }}
+            placeholder="Ej. Grupo avanzado"
+            value={newGroupName}
+          />
+          <InputField dense label="Descripción del grupo" multiline numberOfLines={2} onChange={setNewGroupDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={newGroupDescription} />
+          <Pressable
+            className="h-10 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-5 hover:opacity-90 active:opacity-80 disabled:opacity-60"
+            disabled={addingGroup}
+            nativeID="team-detail-add-group-submit"
+            onPress={handleAddGroup}
+            testID="team-detail-add-group-submit"
+          >
+            {addingGroup ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
+              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="team-detail-add-group-submit-label" testID="team-detail-add-group-submit-label">
+                Crear grupo
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      )}
       <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
         {team.groups.map((group) => (
           <GroupRow
             canEdit={canManageTeam && !group.isDefault}
             colors={colors}
+            deleting={deletingGroupId === group.id}
             group={group}
             key={group.id}
             members={team.members.filter((m) => m.groupId === group.id)}
+            onDelete={() => handleDeleteGroup(group)}
             onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
             planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
           />

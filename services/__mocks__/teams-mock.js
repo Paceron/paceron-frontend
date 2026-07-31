@@ -1,3 +1,5 @@
+import { __seedDefaultGroup, __resetMockGroups } from './groups-mock.js';
+
 // Estado in-memory con la MISMA shape snake_case que el backend real (para
 // que toTeamModel() funcione igual en ambas ramas) — mismo patrón stateful
 // que roles-mock.js, necesario para probar crear→listar→editar de punta a
@@ -7,7 +9,7 @@
 // tenga algo que mostrar contra el usuario demo.
 function buildSeedTeams() {
   const now = new Date().toISOString();
-  return [
+  const teams = [
     {
       id: 1, name: 'Corredores del Sur', description: 'Equipo de running enfocado en fondo y medio fondo, entrenamos 3 veces por semana.',
       level: 'amateur', max_members: 20, owner_id: 1, requirements: 'Compromiso de asistencia y ritmo base de 6 min/km.',
@@ -27,6 +29,8 @@ function buildSeedTeams() {
       created_at: now, updated_at: now,
     },
   ];
+  teams.forEach((t) => __seedDefaultGroup(t.id));
+  return teams;
 }
 
 let mockTeams = buildSeedTeams();
@@ -63,6 +67,7 @@ export async function mockCreateTeam(payload) {
     updated_at: now,
   };
   mockTeams.push(team);
+  if (payload.create_default_group) __seedDefaultGroup(team.id);
   return team;
 }
 
@@ -114,6 +119,7 @@ export async function mockRemoveTeamUser(teamId, userId) {
 }
 
 export function __resetMockTeams() {
+  __resetMockGroups();
   mockTeams = buildSeedTeams();
   mockTeamUsers = {};
   nextId = 4;

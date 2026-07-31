@@ -7,7 +7,8 @@ import {
   updateTeamAddress as updateTeamAddressService,
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
-import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload } from '../services/normalizers.js';
+import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService } from '../services/groups.js';
+import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload } from '../services/normalizers.js';
 
 // Tope de integrantes por tier del entrenador. 'base' es el plan free.
 // 'pro'/'premium' hoy no los asigna ningun mock todavia (roles-mock.js
@@ -22,14 +23,6 @@ export const TEAM_MEMBER_LIMITS = {
 export function getTeamMemberLimit(tier) {
   return TEAM_MEMBER_LIMITS[tier] ?? TEAM_MEMBER_LIMITS.base;
 }
-
-// Nombre visible del grupo default de cada equipo. No hay integrante sin
-// grupo: todo el que se suma sin elegir uno cae aca. A nivel de datos es
-// un grupo mas (con isDefault: true para poder distinguirlo si hiciera
-// falta proteger/ocultarlo en una UI de gestion de grupos a futuro), pero
-// nunca se le muestra al usuario como "default" — su nombre visible ya es
-// literalmente "Sin grupo".
-export const DEFAULT_GROUP_NAME = 'Sin grupo';
 
 // Sin dominio de suscripciones/cobros todavia (ver FUNCTIONAL_PROPOSE.md,
 // "Sistema de suscripciones y cobros" sigue siendo un modulo reservado) —
@@ -75,6 +68,7 @@ function slugifyForEmail(value) {
 // entre uno y el siguiente) para que la antiguedad ("hace X meses en el
 // equipo") no sea igual para todos.
 function generateMockMembers(teamId, groups) {
+  if (groups.length === 0) return [];
   return Array.from({ length: MOCK_ROSTER_SIZE }, (_, i) => {
     const firstName = RUNNER_FIRST_NAMES[i % RUNNER_FIRST_NAMES.length];
     const lastName = RUNNER_LAST_NAMES[(i * 3) % RUNNER_LAST_NAMES.length];
@@ -87,10 +81,6 @@ function generateMockMembers(teamId, groups) {
       joinedAt: new Date(Date.now() - (i + 1) * 30 * DAY_MS).toISOString(),
     };
   });
-}
-
-function buildDefaultGroup(teamId) {
-  return { id: `${teamId}-group-default`, name: DEFAULT_GROUP_NAME, description: null, trainingPlanId: null, isDefault: true };
 }
 
 // Sin un directorio real de usuarios registrados todavia (no hay backend de
@@ -118,28 +108,26 @@ function buildInvitedEmail(invite, defaultGroupId) {
 }
 
 // Completa un equipo real (ya normalizado por toTeamModel — camelCase, id
-// como string) con los datos que el backend todavia no soporta: grupos,
-// roster e invitaciones, mas la foto (ver docs/BACKEND_API_GAPS.md).
+// como string) con los datos que el backend todavia no soporta directo en
+// GET/POST /teams: invitaciones y foto (ver docs/BACKEND_API_GAPS.md).
 // showGroupsToRunners ya viene resuelto en `team` por toTeamModel — el
 // backend lo soporta desde 2026-07-29, solo queda el fallback a false para
 // equipos recien creados que todavia no pasaron por un GET/PUT con ese
-// campo en la respuesta. `extra.groups`/`extra.invitedEmails` solo existen
+// campo en la respuesta. Grupos y miembros arrancan vacios — ya no se
+// arma un grupo default sintetico aca: los grupos reales llegan por un
+// fetch aparte (fetchGroups) o, para un equipo recien creado, por el flujo
+// de creacion (Task 4). `extra.groups`/`extra.invitedEmails` solo existen
 // recien creado el equipo (vienen del wizard) — un equipo traido por
-// fetchTeams/fetchTeam no tiene ese contexto, asi que arranca solo con el
-// grupo default.
+// fetchTeams/fetchTeam no tiene ese contexto, asi que arranca sin grupos.
 function decorateTeam(team, extra = {}) {
-  const defaultGroup = buildDefaultGroup(team.id);
-  const groups = [...(extra.groups ?? []), defaultGroup];
-  const invitedEmails = (extra.invitedEmails ?? []).map((invite) => buildInvitedEmail(invite, defaultGroup.id));
-
   return {
     ...team,
     status: team.status ?? 'activo',
     photoUri: extra.photoUri ?? null,
     showGroupsToRunners: team.showGroupsToRunners ?? false,
-    groups,
-    members: generateMockMembers(team.id, groups),
-    invitedEmails,
+    groups: extra.groups ?? [],
+    members: extra.members ?? [],
+    invitedEmails: (extra.invitedEmails ?? []).map((invite) => buildInvitedEmail(invite, extra.defaultGroupId ?? '')),
   };
 }
 
@@ -202,36 +190,103 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Crea el equipo contra el backend real (POST /teams) y lo selecciona.
-  // Si el payload trae algun campo de ubicacion, encadena inmediatamente
-  // PUT /teams/{id}/address — si esa segunda llamada falla, el resultado
-  // sigue siendo exito (el equipo ya existe) con `addressWarning: true`
-  // para que la pantalla muestre un aviso secundario en vez de un error
-  // duro. Grupos/invitaciones armados en el wizard (payload.groups/
-  // invitedEmails) y la foto (payload.photoUri) no tienen campo en el
-  // backend todavia (ver docs/BACKEND_API_GAPS.md) — se guardan solo del
-  // lado del cliente via decorateTeam, se pierden al recargar.
+  // Trae los grupos reales de un equipo (GET /groups) y regenera el
+  // roster mock a partir de ellos — separado de fetchTeam/fetchTeams
+  // porque un equipo puede estar en `teams` sin sus grupos todavia
+  // cargados (ya no vienen sincrónicos, ver decorateTeam). Preserva
+  // trainingPlanId elegido localmente para un grupo que ya estaba en
+  // memoria (catálogo mock, sin campo en el backend — ver
+  // docs/BACKEND_API_GAPS.md gap 4).
+  fetchGroups: async (teamId, userId) => {
+    try {
+      const dtos = await listGroupsService(teamId, userId);
+      const existingTeam = get().teams.find((t) => t.id === teamId);
+      const groups = dtos.map((dto) => {
+        const model = toGroupModel(dto);
+        const existingGroup = existingTeam?.groups.find((g) => g.id === model.id);
+        return existingGroup ? { ...model, trainingPlanId: existingGroup.trainingPlanId } : model;
+      });
+      const members = generateMockMembers(teamId, groups);
+      set((state) => ({
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups, members } : t)),
+      }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Crea el equipo contra el backend real (POST /teams, con
+  // create_default_group: true — el backend arma su grupo principal como
+  // side-effect) y lo selecciona. Si el payload trae algun campo de
+  // ubicacion, encadena inmediatamente PUT /teams/{id}/address — si esa
+  // segunda llamada falla, el resultado sigue siendo exito (el equipo ya
+  // existe) con `addressWarning: true`. Despues crea contra el backend
+  // cada grupo extra armado en el wizard (payload.groups, ademas del
+  // default que ya vino con el equipo) — una falla individual no revierte
+  // la creacion del equipo, solo deja `groupsWarning: true`. Termina
+  // pidiendo el listado real de grupos (GET /groups, que ya incluye el
+  // default mas los extra que hayan tenido exito) y remapea
+  // payload.invitedEmails desde los ids temporales del wizard (draft) a
+  // los ids reales, matcheando por nombre — los grupos de draft y reales
+  // comparten el mismo nombre. Invitaciones sin grupo elegido, o cuyo
+  // grupo draft no llego a crearse, caen al grupo default real. La foto
+  // (payload.photoUri) sigue sin campo en el backend (ver
+  // docs/BACKEND_API_GAPS.md) — se guarda solo del lado del cliente.
   createTeam: async (payload) => {
     try {
       const created = await createTeamService(toCreateTeamPayload(payload));
-      let team = decorateTeam(toTeamModel(created), {
-        groups: payload.groups,
-        invitedEmails: payload.invitedEmails,
-        photoUri: payload.photoUri,
-      });
+      const teamId = String(created.id);
+      let team = decorateTeam(toTeamModel(created), { photoUri: payload.photoUri });
       set((state) => ({ teams: [...state.teams, team], selectedTeamId: team.id }));
 
       const hasAddress = Boolean(payload.country || payload.province || payload.city);
-      if (!hasAddress) return { success: true, team };
-
-      try {
-        await updateTeamAddressService(team.id, toAddressPayload(payload));
-        team = { ...team, country: payload.country || null, province: payload.province || null, city: payload.city || null };
-        set((state) => ({ teams: state.teams.map((t) => (t.id === team.id ? team : t)) }));
-        return { success: true, team };
-      } catch {
-        return { success: true, team, addressWarning: true };
+      let addressWarning;
+      if (hasAddress) {
+        try {
+          await updateTeamAddressService(teamId, toAddressPayload(payload));
+          team = { ...team, country: payload.country || null, province: payload.province || null, city: payload.city || null };
+          set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? team : t)) }));
+        } catch {
+          addressWarning = true;
+        }
       }
+
+      const draftGroups = payload.groups ?? [];
+      let groupsWarning;
+      for (const draft of draftGroups) {
+        try {
+          await createGroupService(toCreateGroupPayload(teamId, draft));
+        } catch {
+          groupsWarning = true;
+        }
+      }
+
+      const groupDtos = await listGroupsService(teamId, get().teams.find((t) => t.id === teamId)?.ownerId ?? payload.ownerId);
+      const groups = groupDtos.map((dto) => {
+        const model = toGroupModel(dto);
+        const draft = draftGroups.find((d) => d.name === model.name);
+        return draft ? { ...model, trainingPlanId: draft.trainingPlanId ?? null } : model;
+      });
+      const defaultGroup = groups.find((g) => g.isDefault);
+
+      const nameByDraftId = new Map(draftGroups.map((d) => [d.id, d.name]));
+      const invitedEmails = (payload.invitedEmails ?? []).map((invite) => {
+        const draftName = nameByDraftId.get(invite.groupId);
+        const resolvedGroup = draftName ? groups.find((g) => g.name === draftName) : null;
+        return { ...invite, groupId: resolvedGroup?.id ?? defaultGroup?.id ?? '' };
+      });
+
+      const members = generateMockMembers(teamId, groups);
+      team = {
+        ...team,
+        groups,
+        members,
+        invitedEmails: invitedEmails.map((invite) => buildInvitedEmail(invite, defaultGroup?.id ?? '')),
+      };
+      set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? team : t)) }));
+
+      return { success: true, team, ...(addressWarning ? { addressWarning } : {}), ...(groupsWarning ? { groupsWarning } : {}) };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -306,15 +361,59 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Edita nombre/plan de un grupo puntual dentro de un equipo. Local-only
-  // (Etapa 2/3, ver docs/BACKEND_API_GAPS.md) — no toca membresía.
-  updateGroup: (teamId, groupId, updates) => {
-    set((state) => ({
-      teams: state.teams.map((team) => {
-        if (team.id !== teamId) return team;
-        return { ...team, groups: team.groups.map((group) => (group.id === groupId ? { ...group, ...updates } : group)) };
-      }),
-    }));
+  // Crea un grupo nuevo en un equipo ya existente (POST /groups) — a
+  // diferencia de los grupos armados en el wizard de creación, este no
+  // pasa por un estado "draft", pega directo al backend.
+  createGroupInTeam: async (teamId, form) => {
+    try {
+      const created = await createGroupService(toCreateGroupPayload(teamId, form));
+      const group = toGroupModel(created);
+      set((state) => ({
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups: [...t.groups, group] } : t)),
+      }));
+      return { success: true, group };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Edita nombre/descripción de un grupo real (PUT /groups/{id}).
+  // trainingPlanId sigue siendo local-only (sin campo en el backend, ver
+  // docs/BACKEND_API_GAPS.md gap 4) — se conserva del grupo ya en memoria,
+  // no lo toca esta acción.
+  updateGroupReal: async (teamId, groupId, form) => {
+    try {
+      const updated = await updateGroupService(groupId, toUpdateGroupPayload(form));
+      const model = toGroupModel(updated);
+      set((state) => ({
+        teams: state.teams.map((t) => {
+          if (t.id !== teamId) return t;
+          return {
+            ...t,
+            groups: t.groups.map((g) => (g.id === groupId ? { ...model, trainingPlanId: g.trainingPlanId } : g)),
+          };
+        }),
+      }));
+      const team = get().teams.find((t) => t.id === teamId);
+      return { success: true, group: team.groups.find((g) => g.id === groupId) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Borra un grupo real (DELETE /groups/{id}) — la UI no ofrece esta
+  // acción para el grupo principal (isDefault), no hace falta chequearlo
+  // acá de nuevo.
+  deleteGroupReal: async (teamId, groupId) => {
+    try {
+      await deleteGroupService(groupId);
+      set((state) => ({
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups: t.groups.filter((g) => g.id !== groupId) } : t)),
+      }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   },
 
   // Suma invitaciones nuevas a un equipo ya existente. Local-only (Etapa 3,
