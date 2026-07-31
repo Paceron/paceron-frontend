@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -72,20 +72,14 @@ function DropdownMenu({ onClose }) {
 // Sin backend de equipos todavía: elegir un equipo guarda la selección
 // local y navega a su detalle (/teams/[teamId]); crear equipo navega a
 // su propia pantalla (/teams/create).
-function TeamsMenu({ onClose }) {
+function TeamsMenu({ onClose, loading }) {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const teams = useTeamStore((s) => s.teams);
-  const fetchTeams = useTeamStore((s) => s.fetchTeams);
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
-
-  useEffect(() => {
-    fetchTeams();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
   // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
   // un usuario puede tener ambos roles y estar activo como corredor.
@@ -109,7 +103,11 @@ function TeamsMenu({ onClose }) {
       <View className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-nub" testID="web-shell-teams-menu-nub" />
 
       <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-panel" testID="web-shell-teams-menu-panel">
-        {administeredTeams.length === 0 && (
+        {loading ? (
+          <View className="items-center px-4 py-5" nativeID="web-shell-teams-menu-loading" testID="web-shell-teams-menu-loading">
+            <ActivityIndicator color={colors.primary} size="small" />
+          </View>
+        ) : administeredTeams.length === 0 && (
           <Text className="px-4 py-3.5 text-sm text-slate-500 dark:text-slate-400" nativeID="web-shell-teams-menu-empty" testID="web-shell-teams-menu-empty">Todavía no tenés equipos.</Text>
         )}
 
@@ -365,6 +363,19 @@ export function AppWebShell({ children, pathname }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [teamsMenuOpen, setTeamsMenuOpen] = useState(false);
   const [teamsAnchor, setTeamsAnchor] = useState({ x: 0, y: 60, width: 0, height: 0 });
+  const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const [teamsLoading, setTeamsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setTeamsLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchTeams().finally(() => { if (!cancelled) setTeamsLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId]);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -423,7 +434,7 @@ export function AppWebShell({ children, pathname }) {
             open={teamsMenuOpen}
             onClose={handleCloseTeamsMenu}
           >
-            <TeamsMenu onClose={handleCloseTeamsMenu} />
+            <TeamsMenu loading={teamsLoading} onClose={handleCloseTeamsMenu} />
           </AnimatedDropdown>
         )}
         <View className="flex-1" nativeID="web-shell-content" testID="web-shell-content">{children}</View>
