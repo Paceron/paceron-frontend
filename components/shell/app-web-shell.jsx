@@ -58,7 +58,7 @@ function DropdownMenu({ onClose }) {
         <Pressable
           className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
           nativeID="web-shell-dropdown-logout"
-          onPress={() => { useAuthStore.getState().logout(); onClose(); }}
+          onPress={() => { useAuthStore.getState().logout(); onClose(); router.replace('/'); }}
           testID="web-shell-dropdown-logout"
         >
           <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
