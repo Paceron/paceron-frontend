@@ -10,6 +10,7 @@ import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
+import { RequireAuth } from '../guards/require-auth.jsx';
 
 // Edita solo los datos generales del equipo (mismos campos que el paso 1
 // del wizard de creación, vía el hook y los campos compartidos). Grupos se
@@ -23,7 +24,7 @@ import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 // acá arriba con un `team` inicialmente undefined, el formulario quedaría
 // vacío para siempre una vez que el fetch resuelve (useState solo toma el
 // valor inicial una vez).
-export function EditTeamScreen({ teamId }) {
+function EditTeamScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
@@ -183,5 +184,13 @@ function EditTeamForm({ team, teamId }) {
         </SectionCard>
       </View>
     </ScrollView>
+  );
+}
+
+export function EditTeamScreen({ teamId }) {
+  return (
+    <RequireAuth>
+      <EditTeamScreenContent teamId={teamId} />
+    </RequireAuth>
   );
 }

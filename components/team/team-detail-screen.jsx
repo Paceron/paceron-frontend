@@ -13,6 +13,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
+import { RequireAuth } from '../guards/require-auth.jsx';
 
 // Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
 // alinear el borde derecho del panel con el del botón de 3 puntitos que lo
@@ -499,7 +500,7 @@ function TabBar({ active, onChange, tabs }) {
   );
 }
 
-export function TeamDetailScreen({ teamId }) {
+function TeamDetailScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
@@ -919,5 +920,13 @@ export function TeamDetailScreen({ teamId }) {
       <RunnerActionsMenu />
     </AnimatedDropdown>
     </View>
+  );
+}
+
+export function TeamDetailScreen({ teamId }) {
+  return (
+    <RequireAuth>
+      <TeamDetailScreenContent teamId={teamId} />
+    </RequireAuth>
   );
 }

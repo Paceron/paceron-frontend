@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, SelectField } from '../forms/fields.jsx';
+import { RequireAuth } from '../guards/require-auth.jsx';
 
 // Formulario chico: nombre + descripción + plan de entrenamiento — mismos
 // campos que ya usa GroupListEditor para agregar un grupo nuevo (la
@@ -18,7 +19,7 @@ import { InputField, PickerField, SelectField } from '../forms/fields.jsx';
 // renombrar el bucket al que cae todo corredor sin grupo elegido) — la
 // pantalla de detalle no ofrece el lápiz de edición para ese grupo en
 // particular.
-export function EditGroupScreen({ teamId, groupId }) {
+function EditGroupScreenContent({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
@@ -176,5 +177,13 @@ export function EditGroupScreen({ teamId, groupId }) {
         </SectionCard>
       </View>
     </ScrollView>
+  );
+}
+
+export function EditGroupScreen({ teamId, groupId }) {
+  return (
+    <RequireAuth>
+      <EditGroupScreenContent teamId={teamId} groupId={groupId} />
+    </RequireAuth>
   );
 }
