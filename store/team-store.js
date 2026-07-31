@@ -8,7 +8,8 @@ import {
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
 import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService } from '../services/groups.js';
-import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload } from '../services/normalizers.js';
+import { inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService } from '../services/invitations.js';
+import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel } from '../services/normalizers.js';
 
 // Tope de integrantes por tier del entrenador. 'base' es el plan free.
 // 'pro'/'premium' hoy no los asigna ningun mock todavia (roles-mock.js
@@ -83,41 +84,18 @@ function generateMockMembers(teamId, groups) {
   });
 }
 
-// Sin un directorio real de usuarios registrados todavia (no hay backend de
-// invitaciones, ver docs/BACKEND_API_GAPS.md) — mock determinista derivado
-// del email mismo (mismo email siempre resuelve igual) para poder mostrar
-// "usuario registrado" vs. "sin registrar" en la pantalla de invitaciones
-// sin inventar una lista global de usuarios aparte.
-function isRegisteredMockEmail(email) {
-  let sum = 0;
-  for (let i = 0; i < email.length; i += 1) sum += email.charCodeAt(i);
-  return sum % 2 === 0;
-}
-
-// Arma una invitacion completa a partir de { email, groupId } (lo que sale
-// de EmailListField): resuelve el grupo default si no se eligio ninguno, y
-// completa invitedAt/registered — el momento real en que se armo la
-// invitacion, no un mock, mas el estado de registrado (mock, ver arriba).
-function buildInvitedEmail(invite, defaultGroupId) {
-  return {
-    email: invite.email,
-    groupId: invite.groupId || defaultGroupId,
-    invitedAt: new Date().toISOString(),
-    registered: isRegisteredMockEmail(invite.email),
-  };
-}
-
 // Completa un equipo real (ya normalizado por toTeamModel — camelCase, id
 // como string) con los datos que el backend todavia no soporta directo en
-// GET/POST /teams: invitaciones y foto (ver docs/BACKEND_API_GAPS.md).
-// showGroupsToRunners ya viene resuelto en `team` por toTeamModel — el
-// backend lo soporta desde 2026-07-29, solo queda el fallback a false para
-// equipos recien creados que todavia no pasaron por un GET/PUT con ese
-// campo en la respuesta. Grupos y miembros arrancan vacios — ya no se
-// arma un grupo default sintetico aca: los grupos reales llegan por un
-// fetch aparte (fetchGroups) o, para un equipo recien creado, por el flujo
-// de creacion (Task 4). `extra.groups`/`extra.invitedEmails` solo existen
-// recien creado el equipo (vienen del wizard) — un equipo traido por
+// GET/POST /teams: foto (ver docs/BACKEND_API_GAPS.md). showGroupsToRunners
+// ya viene resuelto en `team` por toTeamModel — el backend lo soporta desde
+// 2026-07-29, solo queda el fallback a false para equipos recien creados
+// que todavia no pasaron por un GET/PUT con ese campo en la respuesta.
+// Grupos, miembros e invitaciones arrancan vacios — ya no se arma un grupo
+// default sintetico aca: los grupos reales llegan por un fetch aparte
+// (fetchGroups) o, para un equipo recien creado, por el flujo de creacion
+// (Task 4); las invitaciones llegan por fetchInvitations, ya como accion
+// separada de la creacion del equipo (Etapa 3). `extra.groups` solo existe
+// recien creado el equipo (viene del wizard) — un equipo traido por
 // fetchTeams/fetchTeam no tiene ese contexto, asi que arranca sin grupos.
 function decorateTeam(team, extra = {}) {
   return {
@@ -127,7 +105,7 @@ function decorateTeam(team, extra = {}) {
     showGroupsToRunners: team.showGroupsToRunners ?? false,
     groups: extra.groups ?? [],
     members: extra.members ?? [],
-    invitedEmails: (extra.invitedEmails ?? []).map((invite) => buildInvitedEmail(invite, extra.defaultGroupId ?? '')),
+    invitations: extra.invitations ?? [],
   };
 }
 
@@ -226,12 +204,10 @@ export const useTeamStore = create((set, get) => ({
   // default que ya vino con el equipo) — una falla individual no revierte
   // la creacion del equipo, solo deja `groupsWarning: true`. Termina
   // pidiendo el listado real de grupos (GET /groups, que ya incluye el
-  // default mas los extra que hayan tenido exito) y remapea
-  // payload.invitedEmails desde los ids temporales del wizard (draft) a
-  // los ids reales, matcheando por nombre — los grupos de draft y reales
-  // comparten el mismo nombre. Invitaciones sin grupo elegido, o cuyo
-  // grupo draft no llego a crearse, caen al grupo default real. La foto
-  // (payload.photoUri) sigue sin campo en el backend (ver
+  // default mas los extra que hayan tenido exito). Las invitaciones ya no
+  // se orquestan aca — se mandan aparte con sendInvite despues de crear el
+  // equipo (Etapa 3), asi que no hace falta remapear ids de grupo draft a
+  // reales. La foto (payload.photoUri) sigue sin campo en el backend (ver
   // docs/BACKEND_API_GAPS.md) — se guarda solo del lado del cliente.
   createTeam: async (payload) => {
     try {
@@ -268,22 +244,9 @@ export const useTeamStore = create((set, get) => ({
         const draft = draftGroups.find((d) => d.name === model.name);
         return draft ? { ...model, trainingPlanId: draft.trainingPlanId ?? null } : model;
       });
-      const defaultGroup = groups.find((g) => g.isDefault);
-
-      const nameByDraftId = new Map(draftGroups.map((d) => [d.id, d.name]));
-      const invitedEmails = (payload.invitedEmails ?? []).map((invite) => {
-        const draftName = nameByDraftId.get(invite.groupId);
-        const resolvedGroup = draftName ? groups.find((g) => g.name === draftName) : null;
-        return { ...invite, groupId: resolvedGroup?.id ?? defaultGroup?.id ?? '' };
-      });
 
       const members = generateMockMembers(teamId, groups);
-      team = {
-        ...team,
-        groups,
-        members,
-        invitedEmails: invitedEmails.map((invite) => buildInvitedEmail(invite, defaultGroup?.id ?? '')),
-      };
+      team = { ...team, groups, members };
       set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? team : t)) }));
 
       return { success: true, team, ...(addressWarning ? { addressWarning } : {}), ...(groupsWarning ? { groupsWarning } : {}) };
@@ -416,20 +379,32 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Suma invitaciones nuevas a un equipo ya existente. Local-only (Etapa 3,
-  // ver docs/BACKEND_API_GAPS.md) — ignora emails ya invitados, sin
-  // distinguir mayúsculas/minúsculas.
-  addInvitedEmails: (teamId, invites) => {
-    set((state) => ({
-      teams: state.teams.map((team) => {
-        if (team.id !== teamId) return team;
-        const defaultGroup = team.groups.find((g) => g.isDefault);
-        const existingEmails = new Set(team.invitedEmails.map((inv) => inv.email.toLowerCase()));
-        const newOnes = invites
-          .filter((invite) => !existingEmails.has(invite.email.toLowerCase()))
-          .map((invite) => buildInvitedEmail(invite, defaultGroup?.id ?? ''));
-        return { ...team, invitedEmails: [...team.invitedEmails, ...newOnes] };
-      }),
-    }));
+  // Trae las invitaciones pendientes reales de un equipo (GET
+  // /teams/{id}/invitations) — mismo patrón que fetchGroups.
+  fetchInvitations: async (teamId) => {
+    try {
+      const dtos = await listTeamInvitationsService(teamId);
+      const invitations = dtos.map((dto) => toInvitationModel(dto));
+      set((state) => ({
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, invitations } : t)),
+      }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Manda una invitación real (POST /teams/{id}/invite, solo email — ver
+  // docs/BACKEND_API_GAPS.md gap 9) y re-trae el listado para reflejarla.
+  // La respuesta del POST no trae el id de la invitación creada, no hay
+  // nada que insertar localmente sin el refetch.
+  sendInvite: async (teamId, email) => {
+    try {
+      await inviteToTeamService(teamId, email);
+      await get().fetchInvitations(teamId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   },
 }));
