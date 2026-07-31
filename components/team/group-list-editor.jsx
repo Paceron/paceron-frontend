@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
-import { InputField, PickerField, SelectField } from '../forms/fields.jsx';
+import { InputField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 
 // Editor controlado de grupos de un equipo: nombre + descripción + plan de
 // entrenamiento (campos completos, uno debajo del otro — con su propio componente no
@@ -72,25 +72,14 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
         value={draftDescription}
       />
 
-      {isWeb ? (
-        <SelectField
-          dense
-          label="Plan de entrenamiento"
-          onChange={setDraftPlan}
-          options={planOptions}
-          placeholder="Sin plan asignado"
-          value={draftPlan}
-        />
-      ) : (
-        <PickerField
-          dense
-          label="Plan de entrenamiento"
-          onChange={setDraftPlan}
-          options={planOptions}
-          placeholder="Sin plan asignado"
-          value={draftPlan}
-        />
-      )}
+      <ResponsiveSelectField
+        dense
+        label="Plan de entrenamiento"
+        onChange={setDraftPlan}
+        options={planOptions}
+        placeholder="Sin plan asignado"
+        value={draftPlan}
+      />
 
       <Pressable
         className="mb-6 h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
