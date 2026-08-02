@@ -9,7 +9,7 @@ import { useTeamStore } from '../../store/team-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField } from '../forms/fields.jsx';
+import { EmailInviteForm, InvitedEmailsList } from '../forms/fields.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 function PendingInviteRow({ groupName, invite }) {
@@ -168,7 +168,11 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </SectionCard>
 
         <SectionCard icon="account-plus-outline" title="Invitar más corredores">
-          <EmailListField groups={team.groups} label="Email del corredor" onChange={setDraftInvites} value={draftInvites} />
+          <EmailInviteForm groups={team.groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
+        </SectionCard>
+
+        <SectionCard icon="account-multiple-check" title="Corredores a invitar">
+          <InvitedEmailsList groups={team.groups} onChange={setDraftInvites} value={draftInvites} />
 
           <Pressable
             className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
