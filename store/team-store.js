@@ -30,16 +30,14 @@ export function getTeamMemberLimit(tier) {
 // mismos tres estados que ya prevé esa seccion funcional.
 export const SUBSCRIPTION_STATUSES = ['activo', 'vencido', 'en_prueba'];
 
-// Sin dominio de planes de entrenamiento todavia (ver FUNCTIONAL_PROPOSE.md,
-// "Planificacion de entrenamientos" sigue siendo un modulo reservado, no
-// implementado) — catalogo mock compartido por el wizard de creacion y la
-// pantalla de detalle (pestaña Grupos), hasta que exista ese servicio real.
-export const TRAINING_PLAN_OPTIONS = [
-  { id: 'plan-5k', name: 'Plan 5K' },
-  { id: 'plan-10k', name: 'Plan 10K' },
-  { id: 'plan-21k', name: 'Plan 21K (medio maratón)' },
-  { id: 'plan-42k', name: 'Plan 42K (maratón)' },
-];
+// Sin dominio de planes de entrenamiento todavia — antes había un catálogo
+// mock fijo acá (4 planes inventados), se sacó por decisión explícita del
+// usuario (2026-08-02): el selector de plan sigue en la UI (no se elimina
+// el campo) pero sin opciones fantasma hasta que exista un backend real de
+// planes (bloqueado además por el módulo de cobros/suscripciones, en
+// desarrollo en paralelo por otro miembro del equipo — ver
+// docs/BACKEND_API_GAPS.md gap 4).
+export const TRAINING_PLAN_OPTIONS = [];
 
 const RUNNER_FIRST_NAMES = ['Lucía', 'Martín', 'Sofía', 'Nicolás', 'Valentina', 'Tomás', 'Camila', 'Agustín', 'Julieta', 'Franco'];
 const RUNNER_LAST_NAMES = ['Fernández', 'Gómez', 'Rodríguez', 'López', 'Díaz', 'Martínez', 'Pérez', 'Sánchez', 'Romero', 'Torres'];

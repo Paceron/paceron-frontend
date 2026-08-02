@@ -32,7 +32,7 @@ Doc de seguimiento interno — un gap por sección, se actualiza a medida que el
 - **Qué hace falta:** campo `training_plan_id` (o similar) en `group.CreateGroupRequest`/`UpdateGroupRequest`/`GroupResponse`.
 - **Por qué:** cada grupo puede tener un plan de entrenamiento asociado (hoy un catálogo fijo hardcodeado de 4 planes en el frontend, sin respaldo real).
 - **A qué bloquea:** nada por ahora — el resto de la Etapa 2 (CRUD de grupos en sí) ya no está bloqueado. Planes de entrenamiento queda deliberadamente para después: el equipo prioriza primero el módulo de cobros/suscripciones (en desarrollo en paralelo por otro miembro del equipo). La Etapa 2 de este roadmap se implementa sin tocar `trainingPlanId` — el catálogo mock queda como está, sin wiring nuevo.
-- **Workaround actual:** `TRAINING_PLAN_OPTIONS` en `store/team-store.js`, catálogo fijo sin persistencia real.
+- **Workaround actual (actualizado 2026-08-02):** el selector de plan sigue en la UI (grupo, tanto en el wizard de creación como al editar un grupo existente), pero `TRAINING_PLAN_OPTIONS` en `store/team-store.js` pasó de un catálogo mock de 4 planes a un array vacío — decisión explícita del usuario de no mostrar opciones fantasma. El selector queda sin opciones hasta que exista un backend real de planes.
 - **Estado:** abierto. Sin cambios al 2026-07-30 — `group.CreateGroupRequest`/`GroupResponse` solo tienen `name`/`description`/`is_main`/`team_id`.
 
 ## 5. Sin endpoint para listar invitaciones pendientes de un equipo — RESUELTO
@@ -70,3 +70,11 @@ Doc de seguimiento interno — un gap por sección, se actualiza a medida que el
 - **A qué desbloqueó:** se reintrodujo la selección de grupo al invitar (wizard de creación e `invite-team-members-screen.jsx`), que se había sacado por completo mientras este gap estaba abierto.
 - **Limitación que persiste:** la pantalla de invitaciones recibidas (lado invitado) no muestra a qué grupo corresponde cada invitación — `InvitationResponse` da `group_id` pero no un nombre, y el invitado no puede resolverlo contra `GET /groups` (esa ruta valida membresía, que todavía no tiene). Se muestra solo equipo + fecha. Se puede sumar si el backend agrega `group_name` a `InvitationResponse` en el futuro.
 - **Estado:** resuelto.
+
+## 10. Sin búsqueda de usuarios por nombre/email parcial
+
+- **Qué hace falta:** un endpoint de búsqueda (ej. `GET /users/search?q=`) que devuelva coincidencias parciales por nombre o email.
+- **Por qué:** al invitar corredores, sería útil sugerir usuarios ya registrados a medida que se tipea el email (autocompletar). Hoy solo existe `GET /auth/user?id=`/`?email=` — lookup exacto, sin buscar por texto parcial.
+- **A qué bloquea:** cualquier UI de autocompletar/sugerir usuarios al invitar — no se puede construir sin este endpoint.
+- **Workaround actual:** ninguno — el campo de invitar sigue siendo un input de email libre, sin sugerencias.
+- **Estado:** abierto.
