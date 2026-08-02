@@ -20,6 +20,7 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
+import { LeaveGroupModal } from './leave-group-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 // Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
@@ -627,6 +628,7 @@ function TeamDetailScreenContent({ teamId }) {
   const runnerMenuContainerRef = useRef(null);
   const [expelModalVisible, setExpelModalVisible] = useState(false);
   const [moveModalVisible, setMoveModalVisible] = useState(false);
+  const [leaveGroupModalVisible, setLeaveGroupModalVisible] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -678,6 +680,27 @@ function TeamDetailScreenContent({ teamId }) {
     }
     setMoveModalVisible(false);
     setRunnerMenuMember(null);
+  };
+
+  // Self-service del corredor: salir de su grupo actual (no del equipo) y
+  // caer al grupo principal — mismo fallback que el borrado de grupo (Step
+  // 6). Solo tiene sentido si ya está en un grupo no-principal; si está en
+  // el principal o el roster todavía no cargó, no hay a dónde "salir".
+  const myMembership = members.find((m) => m.userId === user?.userId);
+  const myGroup = team?.groups.find((g) => g.id === myMembership?.groupId);
+  const defaultGroup = team?.groups.find((g) => g.isDefault);
+  const canLeaveGroup = Boolean(myMembership && myGroup && !myGroup.isDefault && defaultGroup);
+
+  const handleConfirmLeaveGroup = async () => {
+    try {
+      await removeGroupUser(myMembership.groupId, myMembership.userId);
+      await addGroupUser(team.id, defaultGroup.id, myMembership.userId);
+      invalidateRoster();
+      Toast.show({ type: 'success', text1: 'Saliste del grupo' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'No pudimos sacarte del grupo', text2: error.message });
+    }
+    setLeaveGroupModalVisible(false);
   };
 
   // Entrar por deep-link (ej. recargar /teams/{id} directo) puede caer acá
@@ -985,6 +1008,17 @@ function TeamDetailScreenContent({ teamId }) {
               <MaterialCommunityIcons color={colors.error} name="trash-can-outline" size={20} />
             </Pressable>
           )}
+          {!isTrainerView && canLeaveGroup && (
+            <Pressable
+              accessibilityLabel="Salir del grupo"
+              className="rounded-full p-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
+              nativeID="team-detail-leave-group-button"
+              onPress={() => setLeaveGroupModalVisible(true)}
+              testID="team-detail-leave-group-button"
+            >
+              <MaterialCommunityIcons color={colors.error} name="exit-run" size={20} />
+            </Pressable>
+          )}
         </View>
 
         {isWeb ? (
@@ -1029,6 +1063,15 @@ function TeamDetailScreenContent({ teamId }) {
             visible={moveModalVisible}
           />
         </>
+      )}
+
+      {canLeaveGroup && (
+        <LeaveGroupModal
+          groupName={myGroup.name}
+          onCancel={() => setLeaveGroupModalVisible(false)}
+          onConfirm={handleConfirmLeaveGroup}
+          visible={leaveGroupModalVisible}
+        />
       )}
     </ScrollView>
     <AnimatedDropdown
