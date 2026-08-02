@@ -10,7 +10,8 @@ import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { InputField, Row, Col } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -715,16 +716,18 @@ function TeamDetailScreenContent({ teamId }) {
       icon="account-multiple"
       title="Corredores"
     >
-      <Row>
-        <Col>
-          <InputField dense label="Buscar corredor" onChange={setSearch} placeholder={isTrainerView ? 'Nombre o email del corredor' : 'Nombre del corredor'} value={search} />
-        </Col>
-        {canSeeGroups && (
+      <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
+        <Row>
           <Col>
-            <PickerField dense label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
+            <InputField dense label="Buscar corredor" onChange={setSearch} placeholder={isTrainerView ? 'Nombre o email del corredor' : 'Nombre del corredor'} value={search} />
           </Col>
-        )}
-      </Row>
+          {canSeeGroups && (
+            <Col>
+              <ResponsiveSelectField dense label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
+            </Col>
+          )}
+        </Row>
+      </View>
 
       {filteredMembers.length === 0 ? (
         <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
