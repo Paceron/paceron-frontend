@@ -168,7 +168,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </SectionCard>
 
         <SectionCard icon="account-plus-outline" title="Invitar más corredores">
-          <EmailInviteForm groups={team.groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
+          <EmailInviteForm existingEmails={draftInvites.map((invite) => invite.email)} groups={team.groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
         </SectionCard>
 
         <SectionCard icon="account-multiple-check" title="Corredores a invitar">

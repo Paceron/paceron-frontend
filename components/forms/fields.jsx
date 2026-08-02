@@ -559,7 +559,7 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
 // 2026-07-31). Las opciones del picker son directamente `groups` (ya
 // incluye el grupo principal real) — no hay un "Sin grupo" inventado
 // aparte.
-export function EmailInviteForm({ onAdd, groups = [], placeholder = 'nombre@email.com' }) {
+export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com' }) {
   const colors = useThemeColors();
   const slug = 'email-invite-form';
   const [draft, setDraft] = useState('');
@@ -571,6 +571,10 @@ export function EmailInviteForm({ onAdd, groups = [], placeholder = 'nombre@emai
     if (!email) return;
     if (!validateEmailFormat(email)) {
       setDraftError('Email inválido');
+      return;
+    }
+    if (existingEmails.includes(email)) {
+      setDraftError('Ya agregaste ese email');
       return;
     }
     onAdd({ email, groupId: draftGroupId });

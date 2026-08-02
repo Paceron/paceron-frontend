@@ -200,7 +200,7 @@ function CreateTeamScreenContent() {
         {step === 3 && (
           <>
             <SectionCard icon="email-outline" title="Invitar corredores">
-              <EmailInviteForm groups={groups} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
+              <EmailInviteForm existingEmails={invitedEmails.map((invite) => invite.email)} groups={groups} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
             </SectionCard>
 
             <SectionCard icon="account-multiple-check" title="Corredores a invitar">
