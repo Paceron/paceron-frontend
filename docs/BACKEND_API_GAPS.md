@@ -4,7 +4,7 @@ Doc de seguimiento interno — un gap por sección, se actualiza a medida que el
 
 **Actualización 2026-07-30:** re-inspeccionado el swagger real (`/swagger/doc.json`) contra el backend en Render. Gaps 1, 2, 5, 6 y 7 resueltos — ver detalle en cada sección. Gaps 3 y 4 siguen abiertos (4 además queda de baja prioridad: el equipo prioriza el módulo de cobros/suscripciones antes que planes de entrenamiento). Además, el swagger sumó `/groups` (CRUD completo de grupos) y `PATCH /users/{id}/password` (cambio de contraseña autenticado) — ninguno de los dos tenía gap previo asociado: el primero habilita directamente la Etapa 2 de este roadmap, el segundo es una feature nueva sin pantalla todavía en el frontend.
 
-**Actualización 2026-07-31:** arrancando Etapa 3 (Invitaciones), diseñando la integración real contra `GET /teams/{id}/invitations` y `POST /invitations/{id}/accept`/`reject`, aparecieron 2 gaps nuevos (8 y 9) — ninguno bloquea el lado dueño-de-equipo de la etapa, pero sí acotan su alcance (ver gap 9 para la decisión de sacar la selección de grupo del flujo de invitar).
+**Actualización 2026-07-31:** arrancando Etapa 3 (Invitaciones), aparecieron 2 gaps nuevos (8 y 9) — el lado dueño-de-equipo se implementó igual, sacando de la UI lo que dependía de ellos. Mismo día, el usuario los resolvió del lado del backend — re-confirmado en swagger, ambos ahora **RESUELTO**. Se reintrodujo la selección de grupo al invitar y se sumó la pantalla de invitaciones recibidas (`/invitations`), cerrando la Etapa 3 completa.
 
 ## 1. Sin endpoint "mis equipos" (administrados o donde participo) — RESUELTO EN BACKEND
 
@@ -56,19 +56,17 @@ Doc de seguimiento interno — un gap por sección, se actualiza a medida que el
 - **Regla de negocio a tener en cuenta:** el equipo no debe tener miembros para poder borrarse (según descripción del endpoint) — el frontend hoy no distingue ese error de otros al mostrar el toast de fallo. No bloqueante, anotado para si aparece como bug reportado.
 - **Estado:** resuelto.
 
-## 8. Sin endpoint para que el invitado consulte sus propias invitaciones
+## 8. Sin endpoint para que el invitado consulte sus propias invitaciones — RESUELTO
 
-- **Qué hace falta:** `GET /invitations?user_id=` (o similar) para listar las invitaciones pendientes de un usuario, y/o `GET /invitations/{id}` para consultar una puntual.
-- **Por qué:** hoy solo existe `GET /teams/{id}/invitations` (lado dueño de equipo) — el invitado no tiene forma de ver qué invitaciones tiene pendientes en ningún lado de la app, ni la app tiene cómo mostrarle detalle de una invitación puntual antes de aceptar/rechazar.
-- **A qué bloquea:** la pantalla de "invitaciones recibidas" (Etapa 3) — diferida hasta que exista este endpoint.
-- **Workaround actual:** ninguno posible del lado del cliente.
-- **Estado:** abierto.
+- **Qué hacía falta:** `GET /invitations?user_id=` para listar las invitaciones pendientes de un usuario, y `GET /invitations/{id}` para consultar una puntual.
+- **Qué cambió (2026-07-31):** ambos existen — `GET /invitations?user_id=` (lista, usado por el frontend) y `GET /invitations/{id}?user_id=` (detalle, agregado a `services/invitations.js#getInvitation` como espejo del contrato, sin consumidor en la UI todavía — el listado ya trae el detalle completo por item).
+- **A qué desbloqueó:** la pantalla de "invitaciones recibidas" (`components/invitations/received-invitations-screen.jsx`, `/invitations`), ya implementada.
+- **Estado:** resuelto.
 
-## 9. `POST /teams/{id}/invite` no acepta grupo
+## 9. `POST /teams/{id}/invite` no acepta grupo — RESUELTO
 
-- **Qué hace falta:** campo `group_id` (opcional) en `invitation.InviteRunnerRequest` (hoy solo `email`).
-- **Por qué:** el entrenador debería poder elegir a qué grupo va un corredor invitado al mandarle la invitación — hoy no hay forma de comunicarle esa elección al backend, y `InvitationResponse` tampoco devuelve `group_id`, así que ni siquiera se puede mostrar a qué grupo iba dirigida una invitación ya enviada.
-- **Comportamiento esperado una vez resuelto (confirmado con el usuario 2026-07-31):** sin `group_id`, el corredor que acepta cae en el grupo principal/default del equipo (comportamiento actual). Con `group_id` provisto, al aceptar debería ir directo a ese grupo en lugar del default.
-- **A qué bloquea:** por este gap, la Etapa 3 (Invitaciones) del frontend saca por completo la selección de grupo del flujo de invitar (wizard y pantalla dedicada) — mantenerla sin efecto real sería UI engañosa. Se puede reintroducir en cuanto este campo exista.
-- **Workaround actual:** ninguno — toda invitación cae en el grupo default hasta que este campo exista.
-- **Estado:** abierto — el usuario planea trabajar esto del lado del backend él mismo más adelante.
+- **Qué hacía falta:** campo `group_id` (opcional) en `invitation.InviteRunnerRequest` (antes solo `email`).
+- **Qué cambió (2026-07-31):** el campo existe, y `InvitationResponse` ahora también devuelve `group_id` (más `team_name`, útil para la pantalla de invitaciones recibidas). Sin `group_id`, el corredor que acepta cae en el grupo principal/default del equipo; con `group_id` provisto, va directo a ese grupo.
+- **A qué desbloqueó:** se reintrodujo la selección de grupo al invitar (wizard de creación e `invite-team-members-screen.jsx`), que se había sacado por completo mientras este gap estaba abierto.
+- **Limitación que persiste:** la pantalla de invitaciones recibidas (lado invitado) no muestra a qué grupo corresponde cada invitación — `InvitationResponse` da `group_id` pero no un nombre, y el invitado no puede resolverlo contra `GET /groups` (esa ruta valida membresía, que todavía no tiene). Se muestra solo equipo + fecha. Se puede sumar si el backend agrega `group_name` a `InvitationResponse` en el futuro.
+- **Estado:** resuelto.
