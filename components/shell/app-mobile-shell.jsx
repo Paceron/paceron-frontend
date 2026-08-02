@@ -75,11 +75,20 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
   const [teamsExpanded, setTeamsExpanded] = useState(false);
+  const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
+  const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
 
   useEffect(() => {
     fetchTeams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    fetchMyInvitations(user.userId, user.email);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId, user?.email]);
 
   const translateX = useSharedValue(-DRAWER_WIDTH);
 
@@ -218,11 +227,16 @@ function NavigationDrawer({ open, pathname, onClose }) {
                         onPress={() => goTo(route.href)}
                         testID={`mobile-drawer-route-${route.name}`}
                       >
-                        <MaterialCommunityIcons
-                          color={isActive ? colors.primary : colors.onSurfaceVariant}
-                          name={route.icon ?? 'circle-small'}
-                          size={22}
-                        />
+                        <View className="relative" nativeID={`mobile-drawer-route-${route.name}-icon-wrapper`} testID={`mobile-drawer-route-${route.name}-icon-wrapper`}>
+                          <MaterialCommunityIcons
+                            color={isActive ? colors.primary : colors.onSurfaceVariant}
+                            name={route.icon ?? 'circle-small'}
+                            size={22}
+                          />
+                          {route.name === 'invitations' && myInvitationsCount > 0 && (
+                            <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="mobile-drawer-route-invitations-badge" testID="mobile-drawer-route-invitations-badge" />
+                          )}
+                        </View>
                         <Text
                           className={`text-sm font-semibold ${
                             isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'

@@ -214,7 +214,7 @@ function TeamsTab({ route, isOpen, colors, onOpen }) {
   );
 }
 
-function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, onTabPress, onUserPress, onTeamsPress }) {
+function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, myInvitationsCount, onTabPress, onUserPress, onTeamsPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -278,11 +278,16 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
                   onPress={() => onTabPress?.(route.href)}
                   testID={`web-shell-nav-tab-${route.name}`}
                 >
-                  <MaterialCommunityIcons
-                    name={route.icon}
-                    size={16}
-                    color={isActive ? colors.primary : colors.onSurfaceVariant}
-                  />
+                  <View className="relative" nativeID={`web-shell-nav-tab-${route.name}-icon-wrapper`} testID={`web-shell-nav-tab-${route.name}-icon-wrapper`}>
+                    <MaterialCommunityIcons
+                      name={route.icon}
+                      size={16}
+                      color={isActive ? colors.primary : colors.onSurfaceVariant}
+                    />
+                    {route.name === 'invitations' && myInvitationsCount > 0 && (
+                      <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-nav-tab-invitations-badge" testID="web-shell-nav-tab-invitations-badge" />
+                    )}
+                  </View>
                   <Text
                     className={`text-sm whitespace-nowrap ${
                       isActive
@@ -365,6 +370,8 @@ export function AppWebShell({ children, pathname }) {
   const [teamsAnchor, setTeamsAnchor] = useState({ x: 0, y: 60, width: 0, height: 0 });
   const fetchTeams = useTeamStore((s) => s.fetchTeams);
   const [teamsLoading, setTeamsLoading] = useState(true);
+  const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
+  const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
 
   useEffect(() => {
     if (!user) {
@@ -376,6 +383,14 @@ export function AppWebShell({ children, pathname }) {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId]);
+
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    let cancelled = false;
+    fetchMyInvitations(user.userId, user.email);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId, user?.email]);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -416,6 +431,7 @@ export function AppWebShell({ children, pathname }) {
           activeTab={activeTab}
           dropdownOpen={dropdownOpen}
           isGuest={isGuest}
+          myInvitationsCount={myInvitationsCount}
           onTabPress={handleTabPress}
           onTeamsPress={handleTeamsPress}
           onUserPress={handleUserPress}
