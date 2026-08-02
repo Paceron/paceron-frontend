@@ -189,8 +189,16 @@ export function toInvitationModel(dto) {
     email: dto.invitee_email,
     inviteeId: dto.invitee_id,
     inviteeName: dto.invitee_name,
+    groupId: dto.group_id != null ? String(dto.group_id) : null,
+    teamName: dto.team_name ?? null,
     status: dto.status,
     expiresAt: dto.expires_at,
     createdAt: dto.created_at,
   };
+}
+
+export function toInvitePayload(email, groupId) {
+  const payload = { email };
+  if (groupId) payload.group_id = Number(groupId);
+  return payload;
 }
