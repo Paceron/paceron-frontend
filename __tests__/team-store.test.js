@@ -150,21 +150,12 @@ describe('team store', () => {
     expect(useTeamStore.getState().teams).toEqual([]);
   });
 
-  test('createTeam defaults to status activo and generates a mock roster referencing real groups', async () => {
+  test('createTeam defaults to status activo and leaves members empty (roster comes from useTeamRoster, not the store)', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
     listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
     const result = await useTeamStore.getState().createTeam({ name: 'Con roster', maxMembers: 10, ownerId: 7 });
     expect(result.team.status).toBe('activo');
-    expect(result.team.members.length).toBeGreaterThan(0);
-    const groupIds = result.team.groups.map((g) => g.id);
-    result.team.members.forEach((member) => {
-      expect(groupIds).toContain(member.groupId);
-      expect(member.name).toEqual(expect.any(String));
-      expect(member.email).toMatch(/^[a-z]+\.[a-z]+@mail\.com$/);
-      expect(member.subscriptionStatus).toEqual(expect.any(String));
-      expect(new Date(member.joinedAt).toString()).not.toBe('Invalid Date');
-      expect(new Date(member.joinedAt).getTime()).toBeLessThan(Date.now());
-    });
+    expect(result.team.members).toEqual([]);
   });
 
   test('createTeam creates the extra draft groups against the backend', async () => {
@@ -341,15 +332,13 @@ describe('selectAdministeredTeams', () => {
 describe('fetchGroups', () => {
   const GROUP_DTO = { id: 1, team_id: 1, name: 'General', description: null, is_main: true, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' };
 
-  test('fetches groups for a team, decorates the team with them, and regenerates the roster', async () => {
+  test('fetches groups for a team and decorates the team with them', async () => {
     useTeamStore.setState({ teams: [{ id: '1', name: 'X', groups: [], members: [] }] });
     listGroupsService.mockResolvedValue([GROUP_DTO]);
     const result = await useTeamStore.getState().fetchGroups('1', 7);
     expect(result).toEqual({ success: true });
     const team = useTeamStore.getState().teams.find((t) => t.id === '1');
     expect(team.groups).toEqual([{ id: '1', teamId: '1', name: 'General', description: null, isDefault: true, trainingPlanId: null, createdAt: GROUP_DTO.created_at, updatedAt: GROUP_DTO.updated_at }]);
-    expect(team.members.length).toBeGreaterThan(0);
-    expect(team.members.every((m) => m.groupId === '1')).toBe(true);
   });
 
   test('preserves a locally chosen trainingPlanId for a group already known in this session', async () => {
@@ -360,13 +349,12 @@ describe('fetchGroups', () => {
     expect(team.groups[0].trainingPlanId).toBe('plan-5k');
   });
 
-  test('returns an empty roster when the team has no groups yet', async () => {
+  test('leaves groups empty when the team has none yet', async () => {
     useTeamStore.setState({ teams: [{ id: '1', name: 'X', groups: [], members: [] }] });
     listGroupsService.mockResolvedValue([]);
     await useTeamStore.getState().fetchGroups('1', 7);
     const team = useTeamStore.getState().teams.find((t) => t.id === '1');
     expect(team.groups).toEqual([]);
-    expect(team.members).toEqual([]);
   });
 
   test('returns a failure result when the service call rejects', async () => {

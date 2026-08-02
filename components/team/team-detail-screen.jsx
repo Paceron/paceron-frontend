@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -165,12 +166,10 @@ function RunnerMenu({ member, colors, onOpenMenu, containerRef }) {
   );
 }
 
-// Contenido del panel compartido — hoy con ambas acciones deshabilitadas:
-// el roster (team.members) sigue siendo sintético (generateMockMembers,
-// ver store/team-store.js), sus ids no corresponden a usuarios reales del
-// backend, así que "sacar del equipo" (services/teams.js#removeTeamUser ya
-// existe) no tiene todavía a quién apuntar. El día que el roster venga de
-// getTeamUsers real, solo hace falta habilitar estas dos filas.
+// Contenido del panel compartido — cableado en el siguiente paso a
+// removeTeamUser (expulsar) y removeGroupUser+addGroupUser (mover de
+// grupo), ver hooks/use-team-roster.js para el roster real que ya trae
+// user_id reales.
 function RunnerActionsMenu() {
   const colors = useThemeColors();
 
@@ -532,6 +531,7 @@ function TeamDetailScreenContent({ teamId }) {
   // realmente es dueño — mostrarlo a cualquier entrenador solo generaría un
   // error del backend para el resto.
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
+  const { members, loading: loadingRoster } = useTeamRoster(team?.id, team?.groups.map((g) => g.id) ?? []);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [addGroupVisible, setAddGroupVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -651,12 +651,12 @@ function TeamDetailScreenContent({ teamId }) {
   const filteredMembers = useMemo(() => {
     if (!team) return [];
     const query = search.trim().toLowerCase();
-    return team.members.filter((member) => {
+    return members.filter((member) => {
       const matchesSearch = !query || member.name.toLowerCase().includes(query) || (isTrainerView && member.email.toLowerCase().includes(query));
       const matchesGroup = !groupFilter || member.groupId === groupFilter;
       return matchesSearch && matchesGroup;
     });
-  }, [team, search, groupFilter, isTrainerView]);
+  }, [team, members, search, groupFilter, isTrainerView]);
 
   if (loadingTeam || loadingGroups) {
     return (
@@ -740,7 +740,11 @@ function TeamDetailScreenContent({ teamId }) {
         </Row>
       </View>
 
-      {filteredMembers.length === 0 ? (
+      {loadingRoster ? (
+        <View className="items-center py-4" nativeID="team-detail-runners-loading" testID="team-detail-runners-loading">
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : filteredMembers.length === 0 ? (
         <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
           No hay corredores que coincidan con los filtros.
         </Text>
@@ -841,7 +845,7 @@ function TeamDetailScreenContent({ teamId }) {
             deleting={deletingGroupId === group.id}
             group={group}
             key={group.id}
-            members={team.members.filter((m) => m.groupId === group.id)}
+            members={members.filter((m) => m.groupId === group.id)}
             onDelete={() => handleDeleteGroup(group)}
             onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
             planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
