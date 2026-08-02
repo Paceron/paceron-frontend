@@ -600,6 +600,7 @@ function TeamDetailScreenContent({ teamId }) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el grupo', text2: result.error });
       return;
     }
+    invalidateRoster();
     Toast.show({ type: 'success', text1: 'Grupo eliminado' });
   };
   // Un corredor común (no viendo la app como entrenador activo, tenga o no

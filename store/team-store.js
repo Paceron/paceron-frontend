@@ -7,7 +7,7 @@ import {
   updateTeamAddress as updateTeamAddressService,
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
-import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService } from '../services/groups.js';
+import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService, getGroupUsers as getGroupUsersService, addGroupUser as addGroupUserService, removeGroupUser as removeGroupUserService } from '../services/groups.js';
 import { inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService, listMyInvitations as listMyInvitationsService, acceptInvitation as acceptInvitationService, rejectInvitation as rejectInvitationService } from '../services/invitations.js';
 import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload } from '../services/normalizers.js';
 
@@ -320,9 +320,26 @@ export const useTeamStore = create((set, get) => ({
 
   // Borra un grupo real (DELETE /groups/{id}) — la UI no ofrece esta
   // acción para el grupo principal (isDefault), no hace falta chequearlo
-  // acá de nuevo.
+  // acá de nuevo. Antes de borrar, reasigna a sus miembros (si tiene) al
+  // grupo principal del equipo — decisión del usuario (2026-08-02): nadie
+  // queda "sin grupo" solo porque su grupo se borró. Best-effort por
+  // miembro: si uno falla, sigue con el resto y borra el grupo igual (no
+  // tiene sentido dejar el grupo huérfano colgando por una falla puntual).
   deleteGroupReal: async (teamId, groupId) => {
     try {
+      const team = get().teams.find((t) => t.id === teamId);
+      const defaultGroup = team?.groups.find((g) => g.isDefault);
+      if (defaultGroup && defaultGroup.id !== groupId) {
+        const groupUserDtos = await getGroupUsersService(groupId);
+        for (const dto of groupUserDtos) {
+          try {
+            await removeGroupUserService(groupId, dto.user_id);
+            await addGroupUserService(teamId, defaultGroup.id, dto.user_id);
+          } catch {
+            // best-effort — ver comentario de arriba
+          }
+        }
+      }
       await deleteGroupService(groupId);
       set((state) => ({
         teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups: t.groups.filter((g) => g.id !== groupId) } : t)),

@@ -23,11 +23,16 @@ jest.mock('../services/groups.js', () => ({
   createGroup: jest.fn(),
   updateGroup: jest.fn(),
   deleteGroup: jest.fn(),
+  getGroupUsers: jest.fn(),
+  addGroupUser: jest.fn(),
+  removeGroupUser: jest.fn(),
 }));
 
 import {
   listGroups as listGroupsService, createGroup as createGroupService,
   updateGroup as updateGroupService, deleteGroup as deleteGroupService,
+  getGroupUsers as getGroupUsersService, addGroupUser as addGroupUserService,
+  removeGroupUser as removeGroupUserService,
 } from '../services/groups.js';
 
 jest.mock('../services/invitations.js', () => ({
@@ -369,6 +374,9 @@ describe('createGroupInTeam / updateGroupReal / deleteGroupReal', () => {
     useTeamStore.setState({
       teams: [{ id: '1', name: 'X', groups: [{ id: '1', teamId: '1', name: 'General', isDefault: true, trainingPlanId: null }], members: [] }],
     });
+    getGroupUsersService.mockResolvedValue([]);
+    addGroupUserService.mockResolvedValue({});
+    removeGroupUserService.mockResolvedValue({});
   });
 
   test('createGroupInTeam posts the group and appends it to team.groups', async () => {
@@ -415,6 +423,30 @@ describe('createGroupInTeam / updateGroupReal / deleteGroupReal', () => {
     deleteGroupService.mockRejectedValue(new Error('El grupo tiene corredores asignados.'));
     const result = await useTeamStore.getState().deleteGroupReal('1', '2');
     expect(result).toEqual({ success: false, error: 'El grupo tiene corredores asignados.' });
+  });
+
+  test('deleteGroupReal reassigns the deleted group\'s members to the default group first', async () => {
+    useTeamStore.setState({
+      teams: [{ id: '1', name: 'X', groups: [
+        { id: '1', teamId: '1', name: 'General', isDefault: true },
+        { id: '2', teamId: '1', name: 'Avanzados', isDefault: false },
+      ], members: [] }],
+    });
+    getGroupUsersService.mockResolvedValue([{ user_id: 42 }, { user_id: 43 }]);
+    deleteGroupService.mockResolvedValue(null);
+    const result = await useTeamStore.getState().deleteGroupReal('1', '2');
+    expect(result).toEqual({ success: true });
+    expect(getGroupUsersService).toHaveBeenCalledWith('2');
+    expect(removeGroupUserService).toHaveBeenCalledWith('2', 42);
+    expect(addGroupUserService).toHaveBeenCalledWith('1', '1', 42);
+    expect(removeGroupUserService).toHaveBeenCalledWith('2', 43);
+    expect(addGroupUserService).toHaveBeenCalledWith('1', '1', 43);
+  });
+
+  test('deleteGroupReal skips reassignment when deleting the default group itself', async () => {
+    deleteGroupService.mockResolvedValue(null);
+    await useTeamStore.getState().deleteGroupReal('1', '1');
+    expect(getGroupUsersService).not.toHaveBeenCalled();
   });
 });
 
