@@ -771,6 +771,21 @@ function TeamDetailScreenContent({ teamId }) {
       icon="account-group"
       title="Grupos"
     >
+      <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
+        {[...team.groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
+          <GroupRow
+            canEdit={canManageTeam && !group.isDefault}
+            colors={colors}
+            deleting={deletingGroupId === group.id}
+            group={group}
+            key={group.id}
+            members={team.members.filter((m) => m.groupId === group.id)}
+            onDelete={() => handleDeleteGroup(group)}
+            onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
+            planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
+          />
+        ))}
+      </View>
       {addGroupVisible && (
         <View className="mb-4 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-add-group-form" testID="team-detail-add-group-form">
           <InputField
@@ -797,21 +812,6 @@ function TeamDetailScreenContent({ teamId }) {
           </Pressable>
         </View>
       )}
-      <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
-        {team.groups.map((group) => (
-          <GroupRow
-            canEdit={canManageTeam && !group.isDefault}
-            colors={colors}
-            deleting={deletingGroupId === group.id}
-            group={group}
-            key={group.id}
-            members={team.members.filter((m) => m.groupId === group.id)}
-            onDelete={() => handleDeleteGroup(group)}
-            onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
-            planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
-          />
-        ))}
-      </View>
     </SectionCard>
   );
 
