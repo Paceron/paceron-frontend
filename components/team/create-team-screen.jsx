@@ -9,7 +9,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField } from '../forms/fields.jsx';
+import { EmailInviteForm, InvitedEmailsList } from '../forms/fields.jsx';
 import { GroupListEditor } from './group-list-editor.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
@@ -198,11 +198,17 @@ function CreateTeamScreenContent() {
         )}
 
         {step === 3 && (
-          <SectionCard icon="email-outline" title="Invitar corredores">
-            <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
+          <>
+            <SectionCard icon="email-outline" title="Invitar corredores">
+              <EmailInviteForm groups={groups} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
+            </SectionCard>
 
-            <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
-          </SectionCard>
+            <SectionCard icon="account-multiple-check" title="Corredores a invitar">
+              <InvitedEmailsList groups={groups} onChange={setInvitedEmails} value={invitedEmails} />
+
+              <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
+            </SectionCard>
+          </>
         )}
       </View>
     </ScrollView>
