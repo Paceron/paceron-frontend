@@ -437,6 +437,7 @@ describe('fetchInvitations / sendInvite', () => {
     const team = useTeamStore.getState().teams.find((t) => t.id === '1');
     expect(team.invitations).toEqual([{
       id: '1', teamId: '1', email: 'a@b.com', inviteeId: null, inviteeName: null,
+      groupId: null, teamName: null,
       status: 'pending', expiresAt: '2026-08-07T00:00:00.000Z', createdAt: '2026-07-31T00:00:00.000Z',
     }]);
   });
