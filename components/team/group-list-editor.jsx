@@ -7,14 +7,15 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 
 // Editor controlado de grupos de un equipo, usado en el paso "Grupos" del
 // wizard de creación (components/team/create-team-screen.jsx, sobre datos
-// en borrador — el equipo todavía no existe). Muestra primero una fila
-// informativa fija del grupo principal (el backend lo crea automáticamente
-// vía create_default_group al crear el equipo — acá es solo un preview,
-// no editable ni eliminable, no tiene id real todavía) y después el
+// en borrador — el equipo todavía no existe). Muestra primero el
 // formulario para agregar grupos extra, en 2 columnas: nombre+plan a la
-// izquierda, descripción a la derecha ocupando el mismo alto. Los grupos
-// ya agregados se listan debajo con botón de eliminar (el preview del
-// principal nunca lo tiene).
+// izquierda, descripción a la derecha ocupando el mismo alto. Debajo, al
+// final (justo antes de los botones de navegación del wizard), la lista
+// combinada de grupos del equipo: el grupo principal primero (fila fija,
+// sin botón eliminar — el backend lo crea automáticamente vía
+// create_default_group al crear el equipo, acá es solo un preview, no
+// tiene id real todavía) y después cada grupo extra ya agregado, con
+// botón de eliminar.
 export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
   const colors = useThemeColors();
   const [draftName, setDraftName] = useState('');
@@ -46,25 +47,7 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
 
   return (
     <View nativeID="group-list-editor" testID="group-list-editor">
-      <View
-        className="mb-4 flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
-        nativeID="group-list-editor-default-preview"
-        testID="group-list-editor-default-preview"
-      >
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID="group-list-editor-default-preview-icon" testID="group-list-editor-default-preview-icon">
-          <MaterialCommunityIcons color={colors.primary} name="account-multiple" size={18} />
-        </View>
-        <View className="flex-1" nativeID="group-list-editor-default-preview-info" testID="group-list-editor-default-preview-info">
-          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="group-list-editor-default-preview-name" testID="group-list-editor-default-preview-name">
-            Grupo principal
-          </Text>
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="group-list-editor-default-preview-hint" testID="group-list-editor-default-preview-hint">
-            Se crea automáticamente con el equipo — todo corredor sin grupo elegido cae acá.
-          </Text>
-        </View>
-      </View>
-
-      <View className="mb-4 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="group-list-editor-form" testID="group-list-editor-form">
+      <View className="mb-6 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="group-list-editor-form" testID="group-list-editor-form">
         <Row>
           <Col>
             <InputField
@@ -116,9 +99,33 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
         </Pressable>
       </View>
 
-      {groups.length > 0 && (
-        <View className="mb-6 gap-2" nativeID="group-list-editor-list" testID="group-list-editor-list">
-          {groups.map((group) => {
+      <View className="gap-2" nativeID="group-list-editor-list" testID="group-list-editor-list">
+        <View
+          className="flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary-tint-subtle px-4 py-3 dark:border-primary/20 dark:bg-primary/10"
+          nativeID="group-list-editor-default-row"
+          testID="group-list-editor-default-row"
+        >
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID="group-list-editor-default-row-icon" testID="group-list-editor-default-row-icon">
+            <MaterialCommunityIcons color={colors.primary} name="account-multiple" size={18} />
+          </View>
+          <View className="flex-1" nativeID="group-list-editor-default-row-info" testID="group-list-editor-default-row-info">
+            <View className="flex-row items-center gap-2" nativeID="group-list-editor-default-row-name-wrapper" testID="group-list-editor-default-row-name-wrapper">
+              <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="group-list-editor-default-row-name" testID="group-list-editor-default-row-name">
+                Grupo principal
+              </Text>
+              <View className="rounded-full bg-primary/15 px-2 py-0.5 dark:bg-primary/25" nativeID="group-list-editor-default-row-badge" testID="group-list-editor-default-row-badge">
+                <Text className="text-[10px] font-semibold uppercase tracking-wide text-primary" nativeID="group-list-editor-default-row-badge-label" testID="group-list-editor-default-row-badge-label">
+                  Fijo
+                </Text>
+              </View>
+            </View>
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="group-list-editor-default-row-hint" testID="group-list-editor-default-row-hint">
+              Se crea automáticamente con el equipo — todo corredor sin grupo elegido cae acá.
+            </Text>
+          </View>
+        </View>
+
+        {groups.map((group) => {
             const planName = planOptions.find((p) => p.id === group.trainingPlanId)?.name;
             return (
               <View
@@ -162,8 +169,7 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
               </View>
             );
           })}
-        </View>
-      )}
+      </View>
     </View>
   );
 }

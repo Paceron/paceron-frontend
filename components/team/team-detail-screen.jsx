@@ -433,11 +433,20 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
         nativeID={`team-detail-group-${group.id}`}
         testID={`team-detail-group-${group.id}`}
       >
-        <View className="flex-row items-center gap-3 px-4 py-3" nativeID={`team-detail-group-${group.id}-header`} testID={`team-detail-group-${group.id}-header`}>
-          {header}
+        <View className="flex-row items-center gap-2 pr-2" nativeID={`team-detail-group-${group.id}-header`} testID={`team-detail-group-${group.id}-header`}>
+          <Pressable
+            accessibilityLabel={expanded ? 'Ocultar corredores del grupo' : 'Ver corredores del grupo'}
+            className="flex-1 flex-row items-center gap-3 px-4 py-3 hover:opacity-80"
+            nativeID={`team-detail-group-${group.id}-toggle`}
+            onPress={() => setExpanded((v) => !v)}
+            testID={`team-detail-group-${group.id}-toggle`}
+          >
+            {header}
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
+          </Pressable>
           {editButton}
         </View>
-        {memberList}
+        {expanded && memberList}
       </View>
     );
   }
@@ -527,6 +536,7 @@ function TeamDetailScreenContent({ teamId }) {
   const [addGroupVisible, setAddGroupVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [newGroupPlan, setNewGroupPlan] = useState('');
   const [newGroupError, setNewGroupError] = useState(null);
   const [addingGroup, setAddingGroup] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState(null);
@@ -553,7 +563,7 @@ function TeamDetailScreenContent({ teamId }) {
       return;
     }
     setAddingGroup(true);
-    const result = await createGroupInTeam(team.id, { name: trimmed, description: newGroupDescription.trim() || null });
+    const result = await createGroupInTeam(team.id, { name: trimmed, description: newGroupDescription.trim() || null, trainingPlanId: newGroupPlan || null });
     setAddingGroup(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos crear el grupo', text2: result.error });
@@ -561,6 +571,7 @@ function TeamDetailScreenContent({ teamId }) {
     }
     setNewGroupName('');
     setNewGroupDescription('');
+    setNewGroupPlan('');
     setNewGroupError(null);
     setAddGroupVisible(false);
     Toast.show({ type: 'success', text1: 'Grupo creado' });
@@ -771,32 +782,41 @@ function TeamDetailScreenContent({ teamId }) {
       icon="account-group"
       title="Grupos"
     >
-      <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
-        {[...team.groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
-          <GroupRow
-            canEdit={canManageTeam && !group.isDefault}
-            colors={colors}
-            deleting={deletingGroupId === group.id}
-            group={group}
-            key={group.id}
-            members={team.members.filter((m) => m.groupId === group.id)}
-            onDelete={() => handleDeleteGroup(group)}
-            onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
-            planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
-          />
-        ))}
-      </View>
       {addGroupVisible && (
-        <View className="mb-4 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-add-group-form" testID="team-detail-add-group-form">
-          <InputField
-            dense
-            error={newGroupError}
-            label="Nombre del grupo"
-            onChange={(text) => { setNewGroupName(text); if (newGroupError) setNewGroupError(null); }}
-            placeholder="Ej. Grupo avanzado"
-            value={newGroupName}
-          />
-          <InputField dense label="Descripción del grupo" multiline numberOfLines={2} onChange={setNewGroupDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={newGroupDescription} />
+        <View className="mb-6 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="team-detail-add-group-form" testID="team-detail-add-group-form">
+          <Row>
+            <Col>
+              <InputField
+                dense
+                error={newGroupError}
+                label="Nombre del grupo"
+                onChange={(text) => { setNewGroupName(text); if (newGroupError) setNewGroupError(null); }}
+                placeholder="Ej. Grupo avanzado"
+                value={newGroupName}
+              />
+              <ResponsiveSelectField
+                dense
+                label="Plan de entrenamiento"
+                onChange={setNewGroupPlan}
+                options={TRAINING_PLAN_OPTIONS}
+                placeholder={TRAINING_PLAN_OPTIONS.length === 0 ? 'Sin planes disponibles todavía' : 'Sin plan asignado'}
+                value={newGroupPlan}
+              />
+            </Col>
+            <Col>
+              <View className="flex-1" nativeID="team-detail-add-group-description-wrapper" testID="team-detail-add-group-description-wrapper">
+                <InputField
+                  dense
+                  label="Descripción del grupo"
+                  multiline
+                  numberOfLines={5}
+                  onChange={setNewGroupDescription}
+                  placeholder="Ej. Corredores con mayor volumen y ritmo."
+                  value={newGroupDescription}
+                />
+              </View>
+            </Col>
+          </Row>
           <Pressable
             className="h-10 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-5 hover:opacity-90 active:opacity-80 disabled:opacity-60"
             disabled={addingGroup}
@@ -812,6 +832,22 @@ function TeamDetailScreenContent({ teamId }) {
           </Pressable>
         </View>
       )}
+
+      <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
+        {[...team.groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
+          <GroupRow
+            canEdit={canManageTeam && !group.isDefault}
+            colors={colors}
+            deleting={deletingGroupId === group.id}
+            group={group}
+            key={group.id}
+            members={team.members.filter((m) => m.groupId === group.id)}
+            onDelete={() => handleDeleteGroup(group)}
+            onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
+            planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
+          />
+        ))}
+      </View>
     </SectionCard>
   );
 
