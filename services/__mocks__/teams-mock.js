@@ -124,3 +124,7 @@ export function __resetMockTeams() {
   mockTeamUsers = {};
   nextId = 4;
 }
+
+export function __getMockTeamName(teamId) {
+  return mockTeams.find((t) => String(t.id) === String(teamId))?.name ?? null;
+}
