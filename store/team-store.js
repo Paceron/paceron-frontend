@@ -8,8 +8,8 @@ import {
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
 import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService } from '../services/groups.js';
-import { inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService } from '../services/invitations.js';
-import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel } from '../services/normalizers.js';
+import { inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService, listMyInvitations as listMyInvitationsService, acceptInvitation as acceptInvitationService, rejectInvitation as rejectInvitationService } from '../services/invitations.js';
+import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload } from '../services/normalizers.js';
 
 // Tope de integrantes por tier del entrenador. 'base' es el plan free.
 // 'pro'/'premium' hoy no los asigna ningun mock todavia (roles-mock.js
@@ -122,6 +122,7 @@ export function selectAdministeredTeams(teams, userId) {
 export const useTeamStore = create((set, get) => ({
   teams: [],
   selectedTeamId: null,
+  myInvitations: [],
 
   selectTeam: (teamId) => set({ selectedTeamId: teamId }),
 
@@ -394,14 +395,53 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Manda una invitación real (POST /teams/{id}/invite, solo email — ver
-  // docs/BACKEND_API_GAPS.md gap 9) y re-trae el listado para reflejarla.
-  // La respuesta del POST no trae el id de la invitación creada, no hay
-  // nada que insertar localmente sin el refetch.
-  sendInvite: async (teamId, email) => {
+  // Manda una invitación real (POST /teams/{id}/invite, con group_id
+  // opcional — ver docs/BACKEND_API_GAPS.md gap 9, resuelto 2026-07-31) y
+  // re-trae el listado para reflejarla. La respuesta del POST no trae el
+  // id de la invitación creada, no hay nada que insertar localmente sin
+  // el refetch.
+  sendInvite: async (teamId, email, groupId) => {
     try {
-      await inviteToTeamService(teamId, email);
+      await inviteToTeamService(teamId, toInvitePayload(email, groupId));
       await get().fetchInvitations(teamId);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Trae las invitaciones pendientes del usuario actual (GET
+  // /invitations?user_id=, gap 8 resuelto 2026-07-31). `email` solo lo usa
+  // el mock (ver services/invitations.js) — el backend real ignora ese
+  // parámetro, solo filtra por user_id.
+  fetchMyInvitations: async (userId, email) => {
+    try {
+      const dtos = await listMyInvitationsService(userId, email);
+      set({ myInvitations: dtos.map((dto) => toInvitationModel(dto)) });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Acepta una invitación recibida (POST /invitations/{id}/accept) y la
+  // saca de myInvitations en éxito.
+  acceptMyInvitation: async (invitationId, userId) => {
+    try {
+      await acceptInvitationService(invitationId, userId);
+      set((state) => ({ myInvitations: state.myInvitations.filter((i) => i.id !== invitationId) }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Rechaza una invitación recibida (POST /invitations/{id}/reject) y la
+  // saca de myInvitations en éxito.
+  rejectMyInvitation: async (invitationId, userId) => {
+    try {
+      await rejectInvitationService(invitationId, userId);
+      set((state) => ({ myInvitations: state.myInvitations.filter((i) => i.id !== invitationId) }));
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

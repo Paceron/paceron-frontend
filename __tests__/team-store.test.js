@@ -33,9 +33,16 @@ import {
 jest.mock('../services/invitations.js', () => ({
   inviteToTeam: jest.fn(),
   listTeamInvitations: jest.fn(),
+  listMyInvitations: jest.fn(),
+  acceptInvitation: jest.fn(),
+  rejectInvitation: jest.fn(),
 }));
 
-import { inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService } from '../services/invitations.js';
+import {
+  inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService,
+  listMyInvitations as listMyInvitationsService, acceptInvitation as acceptInvitationService,
+  rejectInvitation as rejectInvitationService,
+} from '../services/invitations.js';
 
 const TEAM_DTO = {
   id: 1, name: 'Fondistas del Oeste', description: 'Grupo de entrenamiento', level: 'amateur',
@@ -448,19 +455,82 @@ describe('fetchInvitations / sendInvite', () => {
     expect(result).toEqual({ success: false, error: 'Sin conexión.' });
   });
 
-  test('sendInvite invites and refetches the pending list', async () => {
+  test('sendInvite invites with the group payload and refetches the pending list', async () => {
     inviteToTeamService.mockResolvedValue({ message: 'Invitación enviada.' });
     listTeamInvitationsService.mockResolvedValue([INVITATION_DTO]);
-    const result = await useTeamStore.getState().sendInvite('1', 'a@b.com');
-    expect(inviteToTeamService).toHaveBeenCalledWith('1', 'a@b.com');
+    const result = await useTeamStore.getState().sendInvite('1', 'a@b.com', '3');
+    expect(inviteToTeamService).toHaveBeenCalledWith('1', { email: 'a@b.com', group_id: 3 });
     expect(result).toEqual({ success: true });
     const team = useTeamStore.getState().teams.find((t) => t.id === '1');
     expect(team.invitations).toHaveLength(1);
   });
 
+  test('sendInvite omits group_id when no group is chosen', async () => {
+    inviteToTeamService.mockResolvedValue({ message: 'Invitación enviada.' });
+    listTeamInvitationsService.mockResolvedValue([]);
+    await useTeamStore.getState().sendInvite('1', 'a@b.com', '');
+    expect(inviteToTeamService).toHaveBeenCalledWith('1', { email: 'a@b.com' });
+  });
+
   test('sendInvite returns a failure result when the service call rejects', async () => {
     inviteToTeamService.mockRejectedValue(new Error('Email inválido.'));
-    const result = await useTeamStore.getState().sendInvite('1', 'no-es-un-email');
+    const result = await useTeamStore.getState().sendInvite('1', 'no-es-un-email', '');
     expect(result).toEqual({ success: false, error: 'Email inválido.' });
+  });
+});
+
+describe('fetchMyInvitations / acceptMyInvitation / rejectMyInvitation', () => {
+  const MY_INVITATION_DTO = {
+    id: 5, team_id: 1, invitee_email: 'demo@paceron.com', invitee_id: null, invitee_name: null,
+    group_id: null, team_name: 'Corredores del Sur', status: 'pending',
+    expires_at: '2026-08-07T00:00:00.000Z', created_at: '2026-07-31T00:00:00.000Z',
+  };
+
+  beforeEach(() => {
+    useTeamStore.setState({ myInvitations: [] });
+  });
+
+  test('fetchMyInvitations lists and normalizes the current user\'s pending invitations', async () => {
+    listMyInvitationsService.mockResolvedValue([MY_INVITATION_DTO]);
+    const result = await useTeamStore.getState().fetchMyInvitations(1, 'demo@paceron.com');
+    expect(listMyInvitationsService).toHaveBeenCalledWith(1, 'demo@paceron.com');
+    expect(result).toEqual({ success: true });
+    expect(useTeamStore.getState().myInvitations).toEqual([{
+      id: '5', teamId: '1', email: 'demo@paceron.com', inviteeId: null, inviteeName: null,
+      groupId: null, teamName: 'Corredores del Sur', status: 'pending',
+      expiresAt: '2026-08-07T00:00:00.000Z', createdAt: '2026-07-31T00:00:00.000Z',
+    }]);
+  });
+
+  test('fetchMyInvitations returns a failure result when the service call rejects', async () => {
+    listMyInvitationsService.mockRejectedValue(new Error('Sin conexión.'));
+    const result = await useTeamStore.getState().fetchMyInvitations(1, 'demo@paceron.com');
+    expect(result).toEqual({ success: false, error: 'Sin conexión.' });
+  });
+
+  test('acceptMyInvitation removes the invitation from myInvitations on success', async () => {
+    useTeamStore.setState({ myInvitations: [{ id: '5', teamId: '1' }] });
+    acceptInvitationService.mockResolvedValue({ message: 'Invitación aceptada.' });
+    const result = await useTeamStore.getState().acceptMyInvitation('5', 1);
+    expect(acceptInvitationService).toHaveBeenCalledWith('5', 1);
+    expect(result).toEqual({ success: true });
+    expect(useTeamStore.getState().myInvitations).toEqual([]);
+  });
+
+  test('acceptMyInvitation returns a failure result and keeps the invitation when the service call rejects', async () => {
+    useTeamStore.setState({ myInvitations: [{ id: '5', teamId: '1' }] });
+    acceptInvitationService.mockRejectedValue(new Error('Invitación vencida.'));
+    const result = await useTeamStore.getState().acceptMyInvitation('5', 1);
+    expect(result).toEqual({ success: false, error: 'Invitación vencida.' });
+    expect(useTeamStore.getState().myInvitations).toHaveLength(1);
+  });
+
+  test('rejectMyInvitation removes the invitation from myInvitations on success', async () => {
+    useTeamStore.setState({ myInvitations: [{ id: '5', teamId: '1' }] });
+    rejectInvitationService.mockResolvedValue({ message: 'Invitación rechazada.' });
+    const result = await useTeamStore.getState().rejectMyInvitation('5', 1);
+    expect(rejectInvitationService).toHaveBeenCalledWith('5', 1);
+    expect(result).toEqual({ success: true });
+    expect(useTeamStore.getState().myInvitations).toEqual([]);
   });
 });
