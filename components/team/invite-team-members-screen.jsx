@@ -6,12 +6,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useTeamStore } from '../../store/team-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { EmailListField } from '../forms/fields.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
-function PendingInviteRow({ invite }) {
+function PendingInviteRow({ groupName, invite }) {
   const slug = invite.email.replace(/[^a-z0-9]+/gi, '-');
 
   return (
@@ -24,7 +25,7 @@ function PendingInviteRow({ invite }) {
         {invite.email}
       </Text>
       <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`invite-pending-${slug}-meta`} testID={`invite-pending-${slug}-meta`}>
-        Invitado {formatRelativeTime(invite.createdAt).toLowerCase()}
+        {groupName ? `${groupName} · ` : ''}Invitado {formatRelativeTime(invite.createdAt).toLowerCase()}
       </Text>
     </View>
   );
@@ -34,8 +35,8 @@ function PendingInviteRow({ invite }) {
 // confundir con el paso 3 del wizard de creación, que es un formulario más
 // básico). Junta el listado real de invitaciones pendientes
 // (GET /teams/{id}/invitations) y el formulario para invitar gente nueva
-// (POST /teams/{id}/invite, solo email — el backend no acepta asignar
-// grupo al invitar, ver docs/BACKEND_API_GAPS.md gap 9).
+// (POST /teams/{id}/invite, con grupo opcional — ver docs/BACKEND_API_GAPS.md
+// gap 9).
 function InviteTeamMembersScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
@@ -43,11 +44,14 @@ function InviteTeamMembersScreenContent({ teamId }) {
   const fetchTeam = useTeamStore((s) => s.fetchTeam);
   const fetchInvitations = useTeamStore((s) => s.fetchInvitations);
   const sendInvite = useTeamStore((s) => s.sendInvite);
+  const user = useAuthStore((s) => s.user);
+  const fetchGroups = useTeamStore((s) => s.fetchGroups);
 
   const [draftInvites, setDraftInvites] = useState([]);
   const [sending, setSending] = useState(false);
   const [loadingTeam, setLoadingTeam] = useState(!team);
   const [loadingInvitations, setLoadingInvitations] = useState(true);
+  const [loadingGroups, setLoadingGroups] = useState(true);
 
   // Entrar por deep-link (ej. recargar /teams/{id}/invite directo) puede
   // caer acá antes de que el equipo esté en el store — fetchTeam lo trae
@@ -72,7 +76,16 @@ function InviteTeamMembersScreenContent({ teamId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
-  if (loadingTeam || loadingInvitations) {
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    let cancelled = false;
+    setLoadingGroups(true);
+    fetchGroups(teamId, user.userId).finally(() => { if (!cancelled) setLoadingGroups(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, user?.userId]);
+
+  if (loadingTeam || loadingInvitations || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
         <ActivityIndicator color={colors.primary} />
@@ -105,7 +118,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
     setSending(true);
     let failed = 0;
     for (const invite of draftInvites) {
-      const result = await sendInvite(teamId, invite.email);
+      const result = await sendInvite(teamId, invite.email, invite.groupId);
       if (!result.success) failed += 1;
     }
     setSending(false);
@@ -148,14 +161,14 @@ function InviteTeamMembersScreenContent({ teamId }) {
           ) : (
             <View className="gap-2" nativeID="invite-pending-list" testID="invite-pending-list">
               {team.invitations.map((invite) => (
-                <PendingInviteRow invite={invite} key={invite.id} />
+                <PendingInviteRow groupName={team.groups.find((g) => g.id === invite.groupId)?.name} invite={invite} key={invite.id} />
               ))}
             </View>
           )}
         </SectionCard>
 
         <SectionCard icon="account-plus-outline" title="Invitar más corredores">
-          <EmailListField label="Email del corredor" onChange={setDraftInvites} value={draftInvites} />
+          <EmailListField groups={team.groups} label="Email del corredor" onChange={setDraftInvites} value={draftInvites} />
 
           <Pressable
             className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
