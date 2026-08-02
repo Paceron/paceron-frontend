@@ -448,6 +448,21 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
   const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
   const selected = items.find((item) => item.id === value);
 
+  if (isWeb) {
+    return (
+      <select
+        className={`h-12 ${widthClass} rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white`}
+        onChange={(e) => onChange(e.target.value)}
+        value={value}
+      >
+        <option value="">{placeholder}</option>
+        {items.map((item) => (
+          <option key={item.id} value={item.id}>{item.name}</option>
+        ))}
+      </select>
+    );
+  }
+
   return (
     <>
       <Pressable
