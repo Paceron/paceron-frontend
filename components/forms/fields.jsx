@@ -547,17 +547,25 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
   );
 }
 
+const NO_GROUP_ID = '';
+const NO_GROUP_LABEL = 'Sin grupo';
+
 // Junta una lista de emails validos, uno por uno (ej. invitar gente a un
 // equipo antes de que exista, o desde la pantalla de invitar de un equipo
-// ya existente) — value es [{ email }]. El envio real de las invitaciones
-// es tarea de quien use este campo (services/invitations.js) — este campo
-// solo junta y valida el listado. Sin selector de grupo: el backend no
-// acepta asignar grupo al invitar (ver docs/BACKEND_API_GAPS.md gap 9).
-export function EmailListField({ label, value = [], onChange, placeholder = 'nombre@email.com' }) {
+// ya existente), cada uno con el grupo al que se invita — value es
+// [{ email, groupId }]. Sin grupo elegido, groupId queda '' — el backend
+// asigna el grupo principal del equipo por default (ver
+// docs/BACKEND_API_GAPS.md gap 9, resuelto 2026-07-31). `groups` es
+// opcional: sin ese prop (o vacío) no se muestra el picker de grupo, para
+// los casos donde no aplica.
+export function EmailListField({ label, value = [], onChange, placeholder = 'nombre@email.com', groups = [] }) {
   const colors = useThemeColors();
   const slug = slugify(label);
   const [draft, setDraft] = useState('');
+  const [draftGroupId, setDraftGroupId] = useState(NO_GROUP_ID);
   const [draftError, setDraftError] = useState(null);
+
+  const groupOptions = [{ id: NO_GROUP_ID, name: NO_GROUP_LABEL }, ...groups];
 
   const handleAdd = () => {
     const email = draft.trim();
@@ -570,8 +578,9 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
       setDraftError('Ya agregaste ese email');
       return;
     }
-    onChange([...value, { email }]);
+    onChange([...value, { email, groupId: draftGroupId }]);
     setDraft('');
+    setDraftGroupId(NO_GROUP_ID);
     setDraftError(null);
   };
 
@@ -606,6 +615,17 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
           />
         </View>
 
+        {groups.length > 0 && (
+          <InlinePicker
+            onChange={setDraftGroupId}
+            options={groupOptions}
+            placeholder={NO_GROUP_LABEL}
+            scope={`${slug}-invite-group`}
+            value={draftGroupId}
+            widthClass="max-w-[112px]"
+          />
+        )}
+
         <Pressable
           className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
           accessibilityLabel="Agregar email"
@@ -625,6 +645,7 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
         <View className="flex-row flex-wrap gap-2" nativeID={`email-list-field-${slug}-chips`} testID={`email-list-field-${slug}-chips`}>
           {value.map((invite) => {
             const chipSlug = slugify(invite.email);
+            const groupName = groupOptions.find((g) => g.id === invite.groupId)?.name ?? NO_GROUP_LABEL;
             return (
               <View
                 key={invite.email}
@@ -637,7 +658,7 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
                   nativeID={`email-list-field-${slug}-chip-${chipSlug}-label`}
                   testID={`email-list-field-${slug}-chip-${chipSlug}-label`}
                 >
-                  {invite.email}
+                  {groups.length > 0 ? `${invite.email} · ${groupName}` : invite.email}
                 </Text>
                 <Pressable
                   accessibilityLabel={`Quitar ${invite.email}`}
