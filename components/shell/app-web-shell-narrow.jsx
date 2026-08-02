@@ -73,11 +73,20 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
   const [teamsExpanded, setTeamsExpanded] = useState(false);
+  const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
+  const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
 
   useEffect(() => {
     fetchTeams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    fetchMyInvitations(user.userId, user.email);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId, user?.email]);
 
   const translateX = useSharedValue(-width);
 
@@ -111,6 +120,11 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
   const handleCreateTeam = () => {
     onClose();
     router.push('/teams/create');
+  };
+
+  const handleViewAllTeams = () => {
+    onClose();
+    router.push('/teams');
   };
 
   return (
@@ -182,6 +196,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                         onCreateTeam={canCreateTeam ? handleCreateTeam : undefined}
                         onSelectTeam={handleSelectTeam}
                         onToggle={() => setTeamsExpanded((v) => !v)}
+                        onViewAll={handleViewAllTeams}
                         selectedTeamId={selectedTeamId}
                         teams={administeredTeams}
                       />
@@ -200,11 +215,16 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                       onPress={() => goTo(route.href)}
                       testID={`web-narrow-drawer-route-${route.name}`}
                     >
-                      <MaterialCommunityIcons
-                        color={isActive ? colors.primary : colors.onSurfaceVariant}
-                        name={route.icon ?? 'circle-small'}
-                        size={22}
-                      />
+                      <View className="relative" nativeID={`web-narrow-drawer-route-${route.name}-icon-wrapper`} testID={`web-narrow-drawer-route-${route.name}-icon-wrapper`}>
+                        <MaterialCommunityIcons
+                          color={isActive ? colors.primary : colors.onSurfaceVariant}
+                          name={route.icon ?? 'circle-small'}
+                          size={22}
+                        />
+                        {route.name === 'invitations' && myInvitationsCount > 0 && (
+                          <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-narrow-drawer-route-invitations-badge" testID="web-narrow-drawer-route-invitations-badge" />
+                        )}
+                      </View>
                       <Text
                         className={`text-sm font-semibold ${
                           isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
@@ -225,7 +245,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                 <Pressable
                   className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 active:opacity-80 dark:hover:bg-red-900/20"
                   nativeID="web-narrow-drawer-logout-button"
-                  onPress={() => { logout(); onClose(); }}
+                  onPress={() => { logout(); onClose(); router.replace('/'); }}
                   testID="web-narrow-drawer-logout-button"
                 >
                   <MaterialCommunityIcons color={colors.error} name="logout" size={20} />

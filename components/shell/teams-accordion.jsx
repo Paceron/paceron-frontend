@@ -31,7 +31,7 @@ const ACCORDION_CONFIG = { duration: 220, easing: Easing.out(Easing.cubic) };
 //
 // onCreateTeam es opcional: sin ese callback (usuario sin rol entrenador)
 // la fila "Crear equipo" ni se muestra.
-export function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTeam, onCreateTeam, colors, icon, label }) {
+export function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSelectTeam, onCreateTeam, onViewAll, colors, icon, label }) {
   const rotation = useSharedValue(expanded ? 1 : 0);
 
   useEffect(() => {
@@ -108,6 +108,18 @@ export function TeamsAccordion({ expanded, onToggle, teams, selectedTeamId, onSe
                 </Pressable>
               );
             })}
+            <Pressable
+              className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"
+              nativeID="teams-accordion-view-all"
+              onPress={onViewAll}
+              testID="teams-accordion-view-all"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-right" size={16} />
+              <Text className="text-sm font-medium text-slate-600 dark:text-slate-300" nativeID="teams-accordion-view-all-label" testID="teams-accordion-view-all-label">
+                Ver todos los equipos
+              </Text>
+            </Pressable>
+
             {onCreateTeam && (
               <Pressable
                 className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-80 dark:hover:bg-slate-800"

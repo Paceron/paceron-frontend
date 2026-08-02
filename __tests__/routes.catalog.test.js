@@ -1,4 +1,4 @@
-import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute } from '../routes/catalog.js';
+import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, invitationsRoute } from '../routes/catalog.js';
 
 describe('routes catalog', () => {
   test('exposes the home route as the first navigation route', () => {
@@ -23,5 +23,12 @@ describe('teamsRoute', () => {
   test('uses the English route key and href', () => {
     expect(teamsRoute.name).toBe('teams');
     expect(teamsRoute.href).toBe('/teams');
+  });
+});
+
+describe('invitationsRoute', () => {
+  test('uses the English route key and href', () => {
+    expect(invitationsRoute.name).toBe('invitations');
+    expect(invitationsRoute.href).toBe('/invitations');
   });
 });

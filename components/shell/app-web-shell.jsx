@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -58,7 +58,7 @@ function DropdownMenu({ onClose }) {
         <Pressable
           className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
           nativeID="web-shell-dropdown-logout"
-          onPress={() => { useAuthStore.getState().logout(); onClose(); }}
+          onPress={() => { useAuthStore.getState().logout(); onClose(); router.replace('/'); }}
           testID="web-shell-dropdown-logout"
         >
           <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
@@ -72,20 +72,14 @@ function DropdownMenu({ onClose }) {
 // Sin backend de equipos todavía: elegir un equipo guarda la selección
 // local y navega a su detalle (/teams/[teamId]); crear equipo navega a
 // su propia pantalla (/teams/create).
-function TeamsMenu({ onClose }) {
+function TeamsMenu({ onClose, loading }) {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const teams = useTeamStore((s) => s.teams);
-  const fetchTeams = useTeamStore((s) => s.fetchTeams);
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
-
-  useEffect(() => {
-    fetchTeams();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
   // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
   // un usuario puede tener ambos roles y estar activo como corredor.
@@ -109,7 +103,11 @@ function TeamsMenu({ onClose }) {
       <View className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 border-l border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-nub" testID="web-shell-teams-menu-nub" />
 
       <View className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-surface-2" nativeID="web-shell-teams-menu-panel" testID="web-shell-teams-menu-panel">
-        {administeredTeams.length === 0 && (
+        {loading ? (
+          <View className="items-center px-4 py-5" nativeID="web-shell-teams-menu-loading" testID="web-shell-teams-menu-loading">
+            <ActivityIndicator color={colors.primary} size="small" />
+          </View>
+        ) : administeredTeams.length === 0 && (
           <Text className="px-4 py-3.5 text-sm text-slate-500 dark:text-slate-400" nativeID="web-shell-teams-menu-empty" testID="web-shell-teams-menu-empty">Todavía no tenés equipos.</Text>
         )}
 
@@ -162,47 +160,61 @@ function TeamsMenu({ onClose }) {
   );
 }
 
-// Tab con submenu propio (a diferencia de los demás, no navega directo al
-// presionar). Mide su propia posición en pantalla para anclar el dropdown.
+// Tab con dos acciones distintas: el label navega a /teams (listado
+// completo), la flechita abre/cierra el submenu rápido (comportamiento que
+// ya tenía todo el tab antes de este cambio). measureInWindow sigue
+// midiendo el contenedor entero para que el submenu quede anclado debajo
+// de todo el tab, no solo de la flechita.
 function TeamsTab({ route, isOpen, colors, onOpen }) {
+  const router = useRouter();
   const ref = useRef(null);
 
-  const handlePress = () => {
+  const handleChevronPress = () => {
     ref.current?.measureInWindow((x, y, width, height) => {
       onOpen({ x, y, width, height });
     });
   };
 
   return (
-    <Pressable
-      ref={ref}
-      className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors duration-150 ${
-        isOpen
-          ? 'bg-slate-100 dark:bg-slate-800'
-          : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
-      }`}
+    <View
+      className={`flex-row items-center rounded-lg transition-colors duration-150 ${isOpen ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
       nativeID={`web-shell-nav-tab-${route.name}`}
-      onPress={handlePress}
+      ref={ref}
       testID={`web-shell-nav-tab-${route.name}`}
     >
-      <MaterialCommunityIcons name={route.icon} size={16} color={colors.onSurfaceVariant} />
-      <Text
-        className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap"
-        nativeID={`web-shell-nav-tab-label-${route.name}`}
-        testID={`web-shell-nav-tab-label-${route.name}`}
+      <Pressable
+        className="flex-row items-center gap-1.5 rounded-lg py-1.5 pl-3 pr-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
+        nativeID={`web-shell-nav-tab-${route.name}-link`}
+        onPress={() => router.push('/teams')}
+        testID={`web-shell-nav-tab-${route.name}-link`}
       >
-        {route.label}
-      </Text>
-      <MaterialCommunityIcons
-        name={isOpen ? 'chevron-up' : 'chevron-down'}
-        size={14}
-        color={colors.onSurfaceVariant}
-      />
-    </Pressable>
+        <MaterialCommunityIcons name={route.icon} size={16} color={colors.onSurfaceVariant} />
+        <Text
+          className="text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap"
+          nativeID={`web-shell-nav-tab-label-${route.name}`}
+          testID={`web-shell-nav-tab-label-${route.name}`}
+        >
+          {route.label}
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityLabel="Ver mis equipos"
+        className="rounded-lg py-1.5 pl-1 pr-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800"
+        nativeID={`web-shell-nav-tab-${route.name}-chevron`}
+        onPress={handleChevronPress}
+        testID={`web-shell-nav-tab-${route.name}-chevron`}
+      >
+        <MaterialCommunityIcons
+          name={isOpen ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color={colors.onSurfaceVariant}
+        />
+      </Pressable>
+    </View>
   );
 }
 
-function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, onTabPress, onUserPress, onTeamsPress }) {
+function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, myInvitationsCount, onTabPress, onUserPress, onTeamsPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -266,11 +278,16 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
                   onPress={() => onTabPress?.(route.href)}
                   testID={`web-shell-nav-tab-${route.name}`}
                 >
-                  <MaterialCommunityIcons
-                    name={route.icon}
-                    size={16}
-                    color={isActive ? colors.primary : colors.onSurfaceVariant}
-                  />
+                  <View className="relative" nativeID={`web-shell-nav-tab-${route.name}-icon-wrapper`} testID={`web-shell-nav-tab-${route.name}-icon-wrapper`}>
+                    <MaterialCommunityIcons
+                      name={route.icon}
+                      size={16}
+                      color={isActive ? colors.primary : colors.onSurfaceVariant}
+                    />
+                    {route.name === 'invitations' && myInvitationsCount > 0 && (
+                      <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-nav-tab-invitations-badge" testID="web-shell-nav-tab-invitations-badge" />
+                    )}
+                  </View>
                   <Text
                     className={`text-sm whitespace-nowrap ${
                       isActive
@@ -351,6 +368,29 @@ export function AppWebShell({ children, pathname }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [teamsMenuOpen, setTeamsMenuOpen] = useState(false);
   const [teamsAnchor, setTeamsAnchor] = useState({ x: 0, y: 60, width: 0, height: 0 });
+  const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const [teamsLoading, setTeamsLoading] = useState(true);
+  const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
+  const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
+
+  useEffect(() => {
+    if (!user) {
+      setTeamsLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchTeams().finally(() => { if (!cancelled) setTeamsLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId]);
+
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    let cancelled = false;
+    fetchMyInvitations(user.userId, user.email);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId, user?.email]);
 
   useEffect(() => {
     setActiveTab(pathname);
@@ -391,6 +431,7 @@ export function AppWebShell({ children, pathname }) {
           activeTab={activeTab}
           dropdownOpen={dropdownOpen}
           isGuest={isGuest}
+          myInvitationsCount={myInvitationsCount}
           onTabPress={handleTabPress}
           onTeamsPress={handleTeamsPress}
           onUserPress={handleUserPress}
@@ -409,7 +450,7 @@ export function AppWebShell({ children, pathname }) {
             open={teamsMenuOpen}
             onClose={handleCloseTeamsMenu}
           >
-            <TeamsMenu onClose={handleCloseTeamsMenu} />
+            <TeamsMenu loading={teamsLoading} onClose={handleCloseTeamsMenu} />
           </AnimatedDropdown>
         )}
         <View className="flex-1" nativeID="web-shell-content" testID="web-shell-content">{children}</View>

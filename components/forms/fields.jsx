@@ -448,6 +448,21 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
   const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
   const selected = items.find((item) => item.id === value);
 
+  if (isWeb) {
+    return (
+      <select
+        className={`h-12 ${widthClass} rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white`}
+        onChange={(e) => onChange(e.target.value)}
+        value={value}
+      >
+        <option value="">{placeholder}</option>
+        {items.map((item) => (
+          <option key={item.id} value={item.id}>{item.name}</option>
+        ))}
+      </select>
+    );
+  }
+
   return (
     <>
       <Pressable
@@ -532,24 +547,24 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
   );
 }
 
-const NO_GROUP_ID = '';
-const NO_GROUP_LABEL = 'Sin grupo';
-
-// Junta una lista de emails validos, uno por uno (ej. invitar gente a un
-// equipo antes de que exista), cada uno con el grupo al que se invita —
-// value es [{ email, groupId }]. Sin grupo elegido, groupId queda '' (el
-// grupo default "Sin grupo" se resuelve recien al crear el equipo, ver
-// store/team-store.js). El envio real de las invitaciones es tarea del
-// backend (no hay servicio de envio de mails en este repo) — este campo
-// solo junta y valida el listado para mandarlo cuando exista ese endpoint.
-export function EmailListField({ label, value = [], onChange, placeholder = 'nombre@email.com', groups = [] }) {
+// Formulario para agregar un email a la vez a una lista de invitados (ej.
+// invitar gente a un equipo antes de que exista, o desde la pantalla de
+// invitar de un equipo ya existente), con grupo opcional por invitación.
+// Solo agrega — no muestra la lista de ya agregados, eso es
+// InvitedEmailsList (abajo), pensado para vivir en su propia sección
+// visual separada ("Invitar" vs. "Invitados"). `groups` es opcional: sin
+// ese prop (o vacío) no se muestra el picker de grupo. Sin grupo elegido,
+// `onAdd` manda `groupId: ''` — el backend asigna el grupo principal del
+// equipo por default (ver docs/BACKEND_API_GAPS.md gap 9, resuelto
+// 2026-07-31). Las opciones del picker son directamente `groups` (ya
+// incluye el grupo principal real) — no hay un "Sin grupo" inventado
+// aparte.
+export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com' }) {
   const colors = useThemeColors();
-  const slug = slugify(label);
+  const slug = 'email-invite-form';
   const [draft, setDraft] = useState('');
-  const [draftGroupId, setDraftGroupId] = useState(NO_GROUP_ID);
+  const [draftGroupId, setDraftGroupId] = useState('');
   const [draftError, setDraftError] = useState(null);
-
-  const groupOptions = [{ id: NO_GROUP_ID, name: NO_GROUP_LABEL }, ...groups];
 
   const handleAdd = () => {
     const email = draft.trim();
@@ -558,31 +573,25 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
       setDraftError('Email inválido');
       return;
     }
-    if (value.some((e) => e.email.toLowerCase() === email.toLowerCase())) {
+    if (existingEmails.includes(email)) {
       setDraftError('Ya agregaste ese email');
       return;
     }
-    onChange([...value, { email, groupId: draftGroupId }]);
+    onAdd({ email, groupId: draftGroupId });
     setDraft('');
-    setDraftGroupId(NO_GROUP_ID);
+    setDraftGroupId('');
     setDraftError(null);
   };
 
-  const handleRemove = (email) => {
-    onChange(value.filter((e) => e.email !== email));
-  };
-
   return (
-    <View className="mb-5" nativeID={`email-list-field-${slug}`} testID={`email-list-field-${slug}`}>
-      <Text className={FIELD_LABEL} nativeID={`email-list-field-${slug}-label`} testID={`email-list-field-${slug}-label`}>{label}</Text>
-
-      <View className="flex-row items-center gap-2" nativeID={`email-list-field-${slug}-row`} testID={`email-list-field-${slug}-row`}>
+    <View nativeID={slug} testID={slug}>
+      <View className="flex-row items-center gap-2" nativeID={`${slug}-row`} testID={`${slug}-row`}>
         <View
           className={`h-12 flex-1 flex-row items-center rounded-xl border ${
             draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
           }`}
-          nativeID={`email-list-field-${slug}-input-wrapper`}
-          testID={`email-list-field-${slug}-input-wrapper`}
+          nativeID={`${slug}-input-wrapper`}
+          testID={`${slug}-input-wrapper`}
         >
           <TextInput
             autoCapitalize="none"
@@ -594,17 +603,17 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
             placeholderTextColor={colors.onSurfaceVariant}
             returnKeyType="done"
             value={draft}
-            nativeID={`email-list-field-${slug}-input`}
-            testID={`email-list-field-${slug}-input`}
+            nativeID={`${slug}-input`}
+            testID={`${slug}-input`}
           />
         </View>
 
         {groups.length > 0 && (
           <InlinePicker
             onChange={setDraftGroupId}
-            options={groupOptions}
-            placeholder={NO_GROUP_LABEL}
-            scope={`${slug}-invite-group`}
+            options={groups}
+            placeholder="Grupo"
+            scope={`${slug}-group`}
             value={draftGroupId}
             widthClass="max-w-[112px]"
           />
@@ -613,50 +622,69 @@ export function EmailListField({ label, value = [], onChange, placeholder = 'nom
         <Pressable
           className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
           accessibilityLabel="Agregar email"
-          nativeID={`email-list-field-${slug}-add-button`}
+          nativeID={`${slug}-add-button`}
           onPress={handleAdd}
-          testID={`email-list-field-${slug}-add-button`}
+          testID={`${slug}-add-button`}
         >
           <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
         </Pressable>
       </View>
 
-      <View className="h-5" nativeID={`email-list-field-${slug}-error-row`} testID={`email-list-field-${slug}-error-row`}>
-        {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`email-list-field-${slug}-error`} testID={`email-list-field-${slug}-error`}>{draftError}</Text>}
+      <View className="h-5" nativeID={`${slug}-error-row`} testID={`${slug}-error-row`}>
+        {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`${slug}-error`} testID={`${slug}-error`}>{draftError}</Text>}
       </View>
+    </View>
+  );
+}
 
-      {value.length > 0 && (
-        <View className="flex-row flex-wrap gap-2" nativeID={`email-list-field-${slug}-chips`} testID={`email-list-field-${slug}-chips`}>
-          {value.map((invite) => {
-            const chipSlug = slugify(invite.email);
-            const groupName = groupOptions.find((g) => g.id === invite.groupId)?.name ?? NO_GROUP_LABEL;
-            return (
-              <View
-                key={invite.email}
-                className="flex-row items-center gap-1.5 rounded-full bg-primary-tint-subtle px-3 py-1.5 dark:bg-primary/10"
-                nativeID={`email-list-field-${slug}-chip-${chipSlug}`}
-                testID={`email-list-field-${slug}-chip-${chipSlug}`}
-              >
-                <Text
-                  className="text-xs font-medium text-on-primary-tint dark:text-primary"
-                  nativeID={`email-list-field-${slug}-chip-${chipSlug}-label`}
-                  testID={`email-list-field-${slug}-chip-${chipSlug}-label`}
-                >
-                  {groups.length > 0 ? `${invite.email} · ${groupName}` : invite.email}
-                </Text>
-                <Pressable
-                  accessibilityLabel={`Quitar ${invite.email}`}
-                  onPress={() => handleRemove(invite.email)}
-                  nativeID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
-                  testID={`email-list-field-${slug}-chip-${chipSlug}-remove-button`}
-                >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
-                </Pressable>
-              </View>
-            );
-          })}
-        </View>
-      )}
+// Lista de invitados ya agregados (borrador, todavía sin mandar) — chips
+// con nombre de grupo (si `groups` viene con datos) y botón de quitar.
+// Vive en su propia sección visual, separada de EmailInviteForm.
+export function InvitedEmailsList({ value = [], onChange, groups = [] }) {
+  const colors = useThemeColors();
+
+  const handleRemove = (email) => {
+    onChange(value.filter((e) => e.email !== email));
+  };
+
+  if (value.length === 0) {
+    return (
+      <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="invited-emails-list-empty" testID="invited-emails-list-empty">
+        Todavía no agregaste a nadie.
+      </Text>
+    );
+  }
+
+  return (
+    <View className="flex-row flex-wrap gap-2" nativeID="invited-emails-list-chips" testID="invited-emails-list-chips">
+      {value.map((invite) => {
+        const chipSlug = slugify(invite.email);
+        const groupName = groups.find((g) => g.id === invite.groupId)?.name ?? 'Grupo principal';
+        return (
+          <View
+            key={invite.email}
+            className="flex-row items-center gap-1.5 rounded-full bg-primary-tint-subtle px-3 py-1.5 dark:bg-primary/10"
+            nativeID={`invited-emails-list-chip-${chipSlug}`}
+            testID={`invited-emails-list-chip-${chipSlug}`}
+          >
+            <Text
+              className="text-xs font-medium text-on-primary-tint dark:text-primary"
+              nativeID={`invited-emails-list-chip-${chipSlug}-label`}
+              testID={`invited-emails-list-chip-${chipSlug}-label`}
+            >
+              {groups.length > 0 ? `${invite.email} · ${groupName}` : invite.email}
+            </Text>
+            <Pressable
+              accessibilityLabel={`Quitar ${invite.email}`}
+              onPress={() => handleRemove(invite.email)}
+              nativeID={`invited-emails-list-chip-${chipSlug}-remove-button`}
+              testID={`invited-emails-list-chip-${chipSlug}-remove-button`}
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
+            </Pressable>
+          </View>
+        );
+      })}
     </View>
   );
 }

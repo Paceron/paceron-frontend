@@ -1,6 +1,6 @@
 import {
   toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
-  toGroupModel, toCreateGroupPayload, toUpdateGroupPayload,
+  toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -190,5 +190,44 @@ describe('toUpdateGroupPayload', () => {
 
   test('omits name when blank', () => {
     expect(toUpdateGroupPayload({ name: '  ', description: 'Y' })).toEqual({ description: 'Y' });
+  });
+});
+
+describe('toInvitationModel', () => {
+  test('maps snake_case fields to camelCase and coerces ids to string', () => {
+    const dto = {
+      id: 10, team_id: 1, invitee_email: 'a@b.com', invitee_id: 5, invitee_name: 'Pepe Lota',
+      group_id: 3, team_name: 'Corredores del Sur',
+      status: 'pending', expires_at: '2026-08-01T00:00:00.000Z', created_at: '2026-07-31T00:00:00.000Z',
+    };
+    expect(toInvitationModel(dto)).toEqual({
+      id: '10', teamId: '1', email: 'a@b.com', inviteeId: 5, inviteeName: 'Pepe Lota',
+      groupId: '3', teamName: 'Corredores del Sur',
+      status: 'pending', expiresAt: '2026-08-01T00:00:00.000Z', createdAt: '2026-07-31T00:00:00.000Z',
+    });
+  });
+
+  test('defaults groupId/teamName to null when the backend omits them', () => {
+    const dto = { id: 10, team_id: 1, invitee_email: 'a@b.com', status: 'pending' };
+    const model = toInvitationModel(dto);
+    expect(model.groupId).toBeNull();
+    expect(model.teamName).toBeNull();
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toInvitationModel(null)).toBeNull();
+    expect(toInvitationModel(undefined)).toBeNull();
+  });
+});
+
+describe('toInvitePayload', () => {
+  test('includes group_id when groupId is provided', () => {
+    expect(toInvitePayload('a@b.com', '3')).toEqual({ email: 'a@b.com', group_id: 3 });
+  });
+
+  test('omits group_id when groupId is falsy', () => {
+    expect(toInvitePayload('a@b.com', '')).toEqual({ email: 'a@b.com' });
+    expect(toInvitePayload('a@b.com', null)).toEqual({ email: 'a@b.com' });
+    expect(toInvitePayload('a@b.com', undefined)).toEqual({ email: 'a@b.com' });
   });
 });

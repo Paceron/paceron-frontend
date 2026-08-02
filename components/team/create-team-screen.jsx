@@ -7,8 +7,9 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { RequireAuth } from '../guards/require-auth.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField } from '../forms/fields.jsx';
+import { EmailInviteForm, InvitedEmailsList } from '../forms/fields.jsx';
 import { GroupListEditor } from './group-list-editor.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
@@ -61,12 +62,13 @@ function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right', loading 
   );
 }
 
-export function CreateTeamScreen() {
+function CreateTeamScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
   const createTeam = useTeamStore((s) => s.createTeam);
+  const sendInvite = useTeamStore((s) => s.sendInvite);
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
@@ -111,23 +113,32 @@ export function CreateTeamScreen() {
       ...generalForm.getValues(),
       ownerId: user.userId,
       groups,
-      invitedEmails,
     });
-    setSubmitting(false);
 
     if (!result.success) {
+      setSubmitting(false);
       Toast.show({ type: 'error', text1: 'No pudimos crear el equipo', text2: result.error });
       return;
     }
+
+    const draftGroupNameById = new Map(groups.map((g) => [g.id, g.name]));
+    let inviteFailures = 0;
+    for (const invite of invitedEmails) {
+      const draftName = draftGroupNameById.get(invite.groupId);
+      const realGroup = draftName ? result.team.groups.find((g) => g.name === draftName) : null;
+      const inviteResult = await sendInvite(result.team.id, invite.email, realGroup?.id);
+      if (!inviteResult.success) inviteFailures += 1;
+    }
+    setSubmitting(false);
 
     Toast.show({
       type: 'success',
       text1: 'Equipo creado',
       text2: result.addressWarning
         ? 'La dirección no se pudo guardar — podés agregarla después desde Editar equipo.'
-        : invitedEmails.length > 0
-          ? 'Las invitaciones se van a enviar cuando el backend de equipos esté disponible.'
-          : 'Ya lo vas a encontrar en el menú de Equipos.',
+        : inviteFailures > 0
+          ? `${inviteFailures} de ${invitedEmails.length} invitaciones no se pudieron enviar — podés reintentar desde la pantalla de invitar.`
+          : undefined,
     });
 
     router.replace(`/teams/${result.team.id}`);
@@ -187,13 +198,27 @@ export function CreateTeamScreen() {
         )}
 
         {step === 3 && (
-          <SectionCard icon="email-outline" title="Invitar corredores">
-            <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
+          <>
+            <SectionCard icon="email-outline" title="Invitar corredores">
+              <EmailInviteForm existingEmails={invitedEmails.map((invite) => invite.email)} groups={groups} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
+            </SectionCard>
 
-            <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
-          </SectionCard>
+            <SectionCard icon="account-multiple-check" title="Corredores a invitar">
+              <InvitedEmailsList groups={groups} onChange={setInvitedEmails} value={invitedEmails} />
+
+              <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
+            </SectionCard>
+          </>
         )}
       </View>
     </ScrollView>
+  );
+}
+
+export function CreateTeamScreen() {
+  return (
+    <RequireAuth>
+      <CreateTeamScreenContent />
+    </RequireAuth>
   );
 }

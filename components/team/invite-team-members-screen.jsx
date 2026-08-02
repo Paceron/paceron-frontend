@@ -5,19 +5,14 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
-import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore } from '../../store/team-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailListField } from '../forms/fields.jsx';
+import { EmailInviteForm, InvitedEmailsList } from '../forms/fields.jsx';
+import { RequireAuth } from '../guards/require-auth.jsx';
 
-const REGISTERED_META = {
-  registered: { label: 'Usuario registrado', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  unregistered: { label: 'Sin registrar', bg: 'bg-slate-200 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-200' },
-};
-
-function PendingInviteRow({ invite, groupName }) {
-  const meta = invite.registered ? REGISTERED_META.registered : REGISTERED_META.unregistered;
+function PendingInviteRow({ groupName, invite }) {
   const slug = invite.email.replace(/[^a-z0-9]+/gi, '-');
 
   return (
@@ -26,39 +21,36 @@ function PendingInviteRow({ invite, groupName }) {
       nativeID={`invite-pending-${slug}`}
       testID={`invite-pending-${slug}`}
     >
-      <View className="mb-1.5 flex-row items-start justify-between gap-2" nativeID={`invite-pending-${slug}-header`} testID={`invite-pending-${slug}-header`}>
-        <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`invite-pending-${slug}-email`} numberOfLines={1} testID={`invite-pending-${slug}-email`}>
-          {invite.email}
-        </Text>
-        <View className={`rounded-full px-2.5 py-1 ${meta.bg}`} nativeID={`invite-pending-${slug}-registered-tag`} testID={`invite-pending-${slug}-registered-tag`}>
-          <Text className={`text-xs font-semibold ${meta.text}`} nativeID={`invite-pending-${slug}-registered-tag-label`} testID={`invite-pending-${slug}-registered-tag-label`}>{meta.label}</Text>
-        </View>
-      </View>
+      <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`invite-pending-${slug}-email`} numberOfLines={1} testID={`invite-pending-${slug}-email`}>
+        {invite.email}
+      </Text>
       <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`invite-pending-${slug}-meta`} testID={`invite-pending-${slug}-meta`}>
-        {groupName} · Invitado {formatRelativeTime(invite.invitedAt).toLowerCase()}
+        {groupName ? `${groupName} · ` : ''}Invitado {formatRelativeTime(invite.createdAt).toLowerCase()}
       </Text>
     </View>
   );
 }
 
 // Pantalla de gestión de invitaciones de un equipo ya existente (no
-// confundir con el paso 3 del wizard de creación, que sigue siendo un
-// formulario básico). Junta dos cosas en un solo lugar: el listado de
-// invitaciones pendientes ya mandadas (más presentable que los chips
-// simples del wizard — muestra grupo, hace cuánto se invitó, y si el
-// email corresponde a un usuario ya registrado en la app o no) y el
-// formulario para invitar gente nueva, reusando EmailListField.
-export function InviteTeamMembersScreen({ teamId }) {
+// confundir con el paso 3 del wizard de creación, que es un formulario más
+// básico). Junta el listado real de invitaciones pendientes
+// (GET /teams/{id}/invitations) y el formulario para invitar gente nueva
+// (POST /teams/{id}/invite, con grupo opcional — ver docs/BACKEND_API_GAPS.md
+// gap 9).
+function InviteTeamMembersScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
   const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
-  const addInvitedEmails = useTeamStore((s) => s.addInvitedEmails);
   const fetchTeam = useTeamStore((s) => s.fetchTeam);
+  const fetchInvitations = useTeamStore((s) => s.fetchInvitations);
+  const sendInvite = useTeamStore((s) => s.sendInvite);
+  const user = useAuthStore((s) => s.user);
   const fetchGroups = useTeamStore((s) => s.fetchGroups);
 
   const [draftInvites, setDraftInvites] = useState([]);
+  const [sending, setSending] = useState(false);
   const [loadingTeam, setLoadingTeam] = useState(!team);
+  const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(true);
 
   // Entrar por deep-link (ej. recargar /teams/{id}/invite directo) puede
@@ -76,9 +68,14 @@ export function InviteTeamMembersScreen({ teamId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
-  // Los grupos ya no vienen decorados sincrónicamente con el equipo (ver
-  // store/team-store.js#fetchGroups) — este efecto corre siempre, aunque
-  // el equipo ya esté en el store, porque team.groups puede seguir vacío.
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInvitations(true);
+    fetchInvitations(teamId).finally(() => { if (!cancelled) setLoadingInvitations(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId]);
+
   useEffect(() => {
     if (!user?.userId) return undefined;
     let cancelled = false;
@@ -88,7 +85,7 @@ export function InviteTeamMembersScreen({ teamId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, user?.userId]);
 
-  if (loadingTeam || loadingGroups) {
+  if (loadingTeam || loadingInvitations || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
         <ActivityIndicator color={colors.primary} />
@@ -116,11 +113,21 @@ export function InviteTeamMembersScreen({ teamId }) {
     );
   }
 
-  const handleSendInvites = () => {
-    if (draftInvites.length === 0) return;
-    addInvitedEmails(teamId, draftInvites);
+  const handleSendInvites = async () => {
+    if (draftInvites.length === 0 || sending) return;
+    setSending(true);
+    let failed = 0;
+    for (const invite of draftInvites) {
+      const result = await sendInvite(teamId, invite.email, invite.groupId);
+      if (!result.success) failed += 1;
+    }
+    setSending(false);
     setDraftInvites([]);
-    Toast.show({ type: 'success', text1: 'Invitaciones enviadas', text2: 'Se van a mandar cuando el backend de equipos esté disponible.' });
+    if (failed > 0) {
+      Toast.show({ type: 'error', text1: 'Algunas invitaciones no se pudieron enviar', text2: `${failed} de ${draftInvites.length} fallaron.` });
+      return;
+    }
+    Toast.show({ type: 'success', text1: 'Invitaciones enviadas' });
   };
 
   return (
@@ -147,35 +154,54 @@ export function InviteTeamMembersScreen({ teamId }) {
         </View>
 
         <SectionCard icon="email-check-outline" title="Solicitudes pendientes">
-          {team.invitedEmails.length === 0 ? (
+          {team.invitations.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="invite-pending-empty" testID="invite-pending-empty">
               Todavía no invitaste a nadie a este equipo.
             </Text>
           ) : (
             <View className="gap-2" nativeID="invite-pending-list" testID="invite-pending-list">
-              {team.invitedEmails.map((invite) => (
-                <PendingInviteRow groupName={team.groups.find((g) => g.id === invite.groupId)?.name ?? '—'} invite={invite} key={invite.email} />
+              {team.invitations.map((invite) => (
+                <PendingInviteRow groupName={team.groups.find((g) => g.id === invite.groupId)?.name} invite={invite} key={invite.id} />
               ))}
             </View>
           )}
         </SectionCard>
 
         <SectionCard icon="account-plus-outline" title="Invitar más corredores">
-          <EmailListField groups={team.groups} label="Email del corredor" onChange={setDraftInvites} value={draftInvites} />
+          <EmailInviteForm existingEmails={draftInvites.map((invite) => invite.email)} groups={team.groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
+        </SectionCard>
+
+        <SectionCard icon="account-multiple-check" title="Corredores a invitar">
+          <InvitedEmailsList groups={team.groups} onChange={setDraftInvites} value={draftInvites} />
 
           <Pressable
-            className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+            className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
+            disabled={sending}
             nativeID="invite-team-send-button"
             onPress={handleSendInvites}
             testID="invite-team-send-button"
           >
-            <MaterialCommunityIcons color={colors.onPrimary} name="send-outline" size={18} />
-            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="invite-team-send-button-label" testID="invite-team-send-button-label">
-              Enviar invitaciones
-            </Text>
+            {sending ? (
+              <ActivityIndicator color={colors.onPrimary} size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons color={colors.onPrimary} name="send-outline" size={18} />
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="invite-team-send-button-label" testID="invite-team-send-button-label">
+                  Enviar invitaciones
+                </Text>
+              </>
+            )}
           </Pressable>
         </SectionCard>
       </View>
     </ScrollView>
+  );
+}
+
+export function InviteTeamMembersScreen({ teamId }) {
+  return (
+    <RequireAuth>
+      <InviteTeamMembersScreenContent teamId={teamId} />
+    </RequireAuth>
   );
 }

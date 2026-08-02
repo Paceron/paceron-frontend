@@ -14,7 +14,14 @@ export const teamsRoute = {
   icon: 'account-group',
 };
 
-export const navigationRoutes = [homeRoute, teamsRoute];
+export const invitationsRoute = {
+  name: 'invitations',
+  label: 'Invitaciones',
+  href: '/invitations',
+  icon: 'email-outline',
+};
+
+export const navigationRoutes = [homeRoute, teamsRoute, invitationsRoute];
 
 export function getRoutesByRole(role) {
   // A medida que se agreguen modulos, filtrar por rol aca.
