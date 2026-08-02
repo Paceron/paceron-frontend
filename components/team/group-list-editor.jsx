@@ -126,49 +126,49 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
         </View>
 
         {groups.map((group) => {
-            const planName = planOptions.find((p) => p.id === group.trainingPlanId)?.name;
-            return (
+          const planName = planOptions.find((p) => p.id === group.trainingPlanId)?.name;
+          return (
+            <View
+              key={group.id}
+              className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+              nativeID={`group-list-editor-row-${group.id}`}
+              testID={`group-list-editor-row-${group.id}`}
+            >
               <View
-                key={group.id}
-                className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
-                nativeID={`group-list-editor-row-${group.id}`}
-                testID={`group-list-editor-row-${group.id}`}
+                className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15"
+                nativeID={`group-list-editor-row-${group.id}-icon`}
+                testID={`group-list-editor-row-${group.id}-icon`}
               >
-                <View
-                  className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15"
-                  nativeID={`group-list-editor-row-${group.id}-icon`}
-                  testID={`group-list-editor-row-${group.id}-icon`}
-                >
-                  <MaterialCommunityIcons color={colors.primary} name="account-multiple" size={18} />
-                </View>
-                <View className="flex-1" nativeID={`group-list-editor-row-${group.id}-info`} testID={`group-list-editor-row-${group.id}-info`}>
-                  <Text
-                    className="text-sm font-semibold text-slate-900 dark:text-white"
-                    nativeID={`group-list-editor-row-${group.id}-name`}
-                    testID={`group-list-editor-row-${group.id}-name`}
-                  >
-                    {group.name}
-                  </Text>
-                  <Text
-                    className="text-xs text-slate-500 dark:text-slate-400"
-                    nativeID={`group-list-editor-row-${group.id}-plan`}
-                    testID={`group-list-editor-row-${group.id}-plan`}
-                  >
-                    {planName ?? 'Sin plan asignado'}
-                  </Text>
-                </View>
-                <Pressable
-                  accessibilityLabel={`Quitar grupo ${group.name}`}
-                  className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-                  nativeID={`group-list-editor-row-${group.id}-remove-button`}
-                  onPress={() => handleRemove(group.id)}
-                  testID={`group-list-editor-row-${group.id}-remove-button`}
-                >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
-                </Pressable>
+                <MaterialCommunityIcons color={colors.primary} name="account-multiple" size={18} />
               </View>
-            );
-          })}
+              <View className="flex-1" nativeID={`group-list-editor-row-${group.id}-info`} testID={`group-list-editor-row-${group.id}-info`}>
+                <Text
+                  className="text-sm font-semibold text-slate-900 dark:text-white"
+                  nativeID={`group-list-editor-row-${group.id}-name`}
+                  testID={`group-list-editor-row-${group.id}-name`}
+                >
+                  {group.name}
+                </Text>
+                <Text
+                  className="text-xs text-slate-500 dark:text-slate-400"
+                  nativeID={`group-list-editor-row-${group.id}-plan`}
+                  testID={`group-list-editor-row-${group.id}-plan`}
+                >
+                  {planName ?? 'Sin plan asignado'}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel={`Quitar grupo ${group.name}`}
+                className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                nativeID={`group-list-editor-row-${group.id}-remove-button`}
+                onPress={() => handleRemove(group.id)}
+                testID={`group-list-editor-row-${group.id}-remove-button`}
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
+              </Pressable>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
