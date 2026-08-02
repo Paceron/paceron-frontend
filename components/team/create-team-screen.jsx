@@ -92,6 +92,13 @@ function CreateTeamScreenContent() {
   const [groups, setGroups] = useState([]);
   const [invitedEmails, setInvitedEmails] = useState([]);
 
+  // Si se saca un grupo que ya tenia invitaciones asignadas, esas
+  // invitaciones vuelven a "Sin grupo" en vez de quedar apuntando a un
+  // grupo que ya no existe.
+  const handleRemoveGroup = (groupId) => {
+    setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: '' } : invite)));
+  };
+
   const handleContinueStep1 = () => {
     if (!generalForm.validate()) return;
     setStep(2);
@@ -114,9 +121,12 @@ function CreateTeamScreenContent() {
       return;
     }
 
+    const draftGroupNameById = new Map(groups.map((g) => [g.id, g.name]));
     let inviteFailures = 0;
     for (const invite of invitedEmails) {
-      const inviteResult = await sendInvite(result.team.id, invite.email);
+      const draftName = draftGroupNameById.get(invite.groupId);
+      const realGroup = draftName ? result.team.groups.find((g) => g.name === draftName) : null;
+      const inviteResult = await sendInvite(result.team.id, invite.email, realGroup?.id);
       if (!inviteResult.success) inviteFailures += 1;
     }
     setSubmitting(false);
@@ -181,7 +191,7 @@ function CreateTeamScreenContent() {
               Opcional — podés omitir este paso y crear grupos más adelante.
             </Text>
 
-            <GroupListEditor groups={groups} onChange={setGroups} planOptions={TRAINING_PLAN_OPTIONS} />
+            <GroupListEditor groups={groups} onChange={setGroups} onRemove={handleRemoveGroup} planOptions={TRAINING_PLAN_OPTIONS} />
 
             <StepNav nextLabel="Siguiente" onBack={() => setStep(1)} onNext={() => setStep(3)} />
           </SectionCard>
@@ -189,7 +199,7 @@ function CreateTeamScreenContent() {
 
         {step === 3 && (
           <SectionCard icon="email-outline" title="Invitar corredores">
-            <EmailListField label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
+            <EmailListField groups={groups} label="Invitar corredores por email" onChange={setInvitedEmails} value={invitedEmails} />
 
             <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
           </SectionCard>
