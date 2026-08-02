@@ -2,26 +2,19 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { InputField } from '../forms/fields.jsx';
+import { InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 
-// Editor controlado de grupos de un equipo: nombre + descripción + plan de
-// entrenamiento (campos completos, uno debajo del otro — con su propio componente no
-// hace falta pelear espacio horizontal como cuando esto vivía pegado al
-// resto del formulario), botón "Agregar grupo", y la lista de grupos ya
-// creados como filas completas (no chips — "nombre + plan" no entra
-// legible en una pill chica). Componente compartido a propósito — hoy es
-// el paso "Grupos" del wizard de creación de equipo
-// (components/team/create-team-screen.jsx, sobre datos en borrador); a
-// futuro es el mismo componente el que va a usar el botón "Crear grupo"
-// de la pantalla de un equipo ya existente, apuntando a una acción de
-// store distinta (el equipo ya real, no un borrador). Por eso no sabe
-// nada de "crear equipo": solo recibe `groups` + `onChange`.
-//
-// onRemove es opcional y se dispara además de onChange al sacar un grupo
-// — pensado para que quien lo use pueda reaccionar (ej. limpiar
-// invitaciones que apuntaban a ese grupo), sin que este componente sepa
-// nada de invitaciones.
+// Editor controlado de grupos de un equipo, usado en el paso "Grupos" del
+// wizard de creación (components/team/create-team-screen.jsx, sobre datos
+// en borrador — el equipo todavía no existe). Muestra primero una fila
+// informativa fija del grupo principal (el backend lo crea automáticamente
+// vía create_default_group al crear el equipo — acá es solo un preview,
+// no editable ni eliminable, no tiene id real todavía) y después el
+// formulario para agregar grupos extra, en 2 columnas: nombre+plan a la
+// izquierda, descripción a la derecha ocupando el mismo alto. Los grupos
+// ya agregados se listan debajo con botón de eliminar (el preview del
+// principal nunca lo tiene).
 export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
   const colors = useThemeColors();
   const [draftName, setDraftName] = useState('');
@@ -53,49 +46,75 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
 
   return (
     <View nativeID="group-list-editor" testID="group-list-editor">
-      <InputField
-        dense
-        error={draftError}
-        label="Nombre del grupo"
-        onChange={(text) => { setDraftName(text); if (draftError) setDraftError(null); }}
-        placeholder="Ej. Grupo avanzado"
-        value={draftName}
-      />
-
-      <InputField
-        dense
-        label="Descripción del grupo"
-        multiline
-        numberOfLines={2}
-        onChange={setDraftDescription}
-        placeholder="Ej. Corredores con mayor volumen y ritmo."
-        value={draftDescription}
-      />
-
-      <ResponsiveSelectField
-        dense
-        label="Plan de entrenamiento"
-        onChange={setDraftPlan}
-        options={planOptions}
-        placeholder="Sin plan asignado"
-        value={draftPlan}
-      />
-
-      <Pressable
-        className="mb-6 h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
-        nativeID="group-list-editor-add-button"
-        onPress={handleAdd}
-        testID="group-list-editor-add-button"
+      <View
+        className="mb-4 flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+        nativeID="group-list-editor-default-preview"
+        testID="group-list-editor-default-preview"
       >
-        <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={18} />
-        <Text
-          className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
-          nativeID="group-list-editor-add-button-label"
-          testID="group-list-editor-add-button-label"
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID="group-list-editor-default-preview-icon" testID="group-list-editor-default-preview-icon">
+          <MaterialCommunityIcons color={colors.primary} name="account-multiple" size={18} />
+        </View>
+        <View className="flex-1" nativeID="group-list-editor-default-preview-info" testID="group-list-editor-default-preview-info">
+          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="group-list-editor-default-preview-name" testID="group-list-editor-default-preview-name">
+            Grupo principal
+          </Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="group-list-editor-default-preview-hint" testID="group-list-editor-default-preview-hint">
+            Se crea automáticamente con el equipo — todo corredor sin grupo elegido cae acá.
+          </Text>
+        </View>
+      </View>
+
+      <View className="mb-4 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="group-list-editor-form" testID="group-list-editor-form">
+        <Row>
+          <Col>
+            <InputField
+              dense
+              error={draftError}
+              label="Nombre del grupo"
+              onChange={(text) => { setDraftName(text); if (draftError) setDraftError(null); }}
+              placeholder="Ej. Grupo avanzado"
+              value={draftName}
+            />
+            <ResponsiveSelectField
+              dense
+              label="Plan de entrenamiento"
+              onChange={setDraftPlan}
+              options={planOptions}
+              placeholder={planOptions.length === 0 ? 'Sin planes disponibles todavía' : 'Sin plan asignado'}
+              value={draftPlan}
+            />
+          </Col>
+          <Col>
+            <View className="flex-1" nativeID="group-list-editor-description-wrapper" testID="group-list-editor-description-wrapper">
+              <InputField
+                dense
+                label="Descripción del grupo"
+                multiline
+                numberOfLines={5}
+                onChange={setDraftDescription}
+                placeholder="Ej. Corredores con mayor volumen y ritmo."
+                value={draftDescription}
+              />
+            </View>
+          </Col>
+        </Row>
+
+        <Pressable
+          className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
+          nativeID="group-list-editor-add-button"
+          onPress={handleAdd}
+          testID="group-list-editor-add-button"
         >
-          Agregar grupo
-        </Text>
-      </Pressable>
+          <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={18} />
+          <Text
+            className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
+            nativeID="group-list-editor-add-button-label"
+            testID="group-list-editor-add-button-label"
+          >
+            Agregar grupo
+          </Text>
+        </Pressable>
+      </View>
 
       {groups.length > 0 && (
         <View className="mb-6 gap-2" nativeID="group-list-editor-list" testID="group-list-editor-list">
