@@ -7,6 +7,8 @@ import {
   mockUpdateGroup,
   mockDeleteGroup,
   mockGetGroupUsers,
+  mockAddGroupUser,
+  mockRemoveGroupUser,
 } from './__mocks__/groups-mock.js';
 
 // GET /api/v1/groups?team_id=&user_id= — requiere user_id para validar membresía.
@@ -39,10 +41,20 @@ export async function deleteGroup(groupId) {
   return await api.delete(`/groups/${groupId}`);
 }
 
-// GET /api/v1/groups/{id}/users. Sin consumidor en la UI de esta etapa (el
-// roster sigue siendo sintético, ver store/team-store.js) — se agrega igual
-// como espejo 1:1 barato del contrato ya documentado.
+// GET /api/v1/groups/{id}/users.
 export async function getGroupUsers(groupId) {
   if (USE_MOCKS) return await mockGetGroupUsers(groupId);
   return await api.get(`/groups/${groupId}/users`);
+}
+
+// POST /api/v1/teams/{id}/groups/{group_id}/users — groupuser.AddGroupUserRequest.
+export async function addGroupUser(teamId, groupId, userId) {
+  if (USE_MOCKS) return await mockAddGroupUser(teamId, groupId, userId);
+  return await api.post(`/teams/${teamId}/groups/${groupId}/users`, { user_id: userId });
+}
+
+// DELETE /api/v1/groups/{id}/users/{user_id}.
+export async function removeGroupUser(groupId, userId) {
+  if (USE_MOCKS) return await mockRemoveGroupUser(groupId, userId);
+  return await api.delete(`/groups/${groupId}/users/${userId}`);
 }

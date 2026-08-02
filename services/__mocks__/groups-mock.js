@@ -5,6 +5,7 @@
 // backend crea el grupo principal como side-effect de crear el equipo,
 // este mock hace lo mismo).
 let mockGroups = [];
+let mockGroupUsers = {};
 let nextGroupId = 1;
 
 function findGroupOrThrow(groupId) {
@@ -56,11 +57,23 @@ export async function mockDeleteGroup(groupId) {
   return null;
 }
 
-export async function mockGetGroupUsers(_groupId) {
-  return [];
+export async function mockGetGroupUsers(groupId) {
+  return mockGroupUsers[groupId] ?? [];
+}
+
+export async function mockAddGroupUser(teamId, groupId, userId) {
+  const entry = { id: Date.now(), group_id: Number(groupId), user_id: userId, date_start: new Date().toISOString(), date_end: null };
+  mockGroupUsers[groupId] = [...(mockGroupUsers[groupId] ?? []), entry];
+  return entry;
+}
+
+export async function mockRemoveGroupUser(groupId, userId) {
+  mockGroupUsers[groupId] = (mockGroupUsers[groupId] ?? []).filter((u) => u.user_id !== userId);
+  return { message: 'Usuario quitado del grupo.' };
 }
 
 export function __resetMockGroups() {
   mockGroups = [];
+  mockGroupUsers = {};
   nextGroupId = 1;
 }
