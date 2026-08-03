@@ -687,13 +687,29 @@ function TeamDetailScreenContent({ teamId }) {
   };
 
   const handleConfirmMove = async (targetGroupId) => {
+    // 2 llamadas seguidas, sin transacción del lado del backend — si la
+    // primera (sacar del grupo viejo) sale bien pero la segunda (sumar al
+    // nuevo) falla, el corredor queda sin grupo. Se distingue en qué paso
+    // falló para no mostrar el mismo mensaje genérico en los dos casos.
     try {
       if (runnerMenuMember.groupId) await removeGroupUser(runnerMenuMember.groupId, runnerMenuMember.userId);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'No pudimos moverlo de grupo', text2: error.message });
+      setMoveModalVisible(false);
+      setRunnerMenuMember(null);
+      return;
+    }
+    try {
       await addGroupUser(team.id, targetGroupId, runnerMenuMember.userId);
       invalidateRoster();
       Toast.show({ type: 'success', text1: 'Corredor movido de grupo' });
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'No pudimos moverlo de grupo', text2: error.message });
+    } catch {
+      invalidateRoster();
+      Toast.show({
+        type: 'error',
+        text1: 'Se sacó del grupo anterior pero no pudimos asignarlo al nuevo',
+        text2: 'Volvé a intentar el movimiento desde el menú del corredor.',
+      });
     }
     setMoveModalVisible(false);
     setRunnerMenuMember(null);
@@ -703,7 +719,7 @@ function TeamDetailScreenContent({ teamId }) {
   // caer al grupo principal — mismo fallback que el borrado de grupo (Step
   // 6). Solo tiene sentido si ya está en un grupo no-principal; si está en
   // el principal o el roster todavía no cargó, no hay a dónde "salir".
-  const myMembership = members.find((m) => m.userId === user?.userId);
+  const myMembership = members.find((m) => m.userId === String(user?.userId));
   const myGroup = team?.groups.find((g) => g.id === myMembership?.groupId);
   const defaultGroup = team?.groups.find((g) => g.isDefault);
   const canLeaveGroup = Boolean(myMembership && myGroup && !myGroup.isDefault && defaultGroup);
