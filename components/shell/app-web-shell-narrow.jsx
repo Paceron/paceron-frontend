@@ -69,7 +69,12 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
 
   const teams = useTeamStore((s) => s.teams);
   const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const myMemberTeams = useTeamStore((s) => s.myMemberTeams);
+  const fetchMyMemberTeams = useTeamStore((s) => s.fetchMyMemberTeams);
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
+  // Entrenador ve lo que administra, corredor lo que integra — ver
+  // store/team-store.js#fetchMyMemberTeams.
+  const myTeams = activeRole === 'trainer' ? administeredTeams : myMemberTeams;
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
   const [teamsExpanded, setTeamsExpanded] = useState(false);
@@ -80,6 +85,12 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
     fetchTeams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (activeRole === 'trainer' || !user?.userId) return;
+    fetchMyMemberTeams(user.userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRole, user?.userId]);
 
   useEffect(() => {
     if (!user?.userId) return undefined;
@@ -198,7 +209,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                         onToggle={() => setTeamsExpanded((v) => !v)}
                         onViewAll={handleViewAllTeams}
                         selectedTeamId={selectedTeamId}
-                        teams={administeredTeams}
+                        teams={myTeams}
                       />
                     );
                   }

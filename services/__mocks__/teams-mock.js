@@ -75,8 +75,11 @@ export async function mockGetTeam(teamId) {
   return findTeamOrThrow(teamId);
 }
 
-export async function mockListTeams() {
-  return [...mockTeams];
+export async function mockListTeams({ ownerId, memberId } = {}) {
+  let result = mockTeams;
+  if (ownerId != null) result = result.filter((t) => t.owner_id === ownerId);
+  if (memberId != null) result = result.filter((t) => (mockTeamUsers[t.id] ?? []).some((u) => u.user_id === memberId));
+  return [...result];
 }
 
 export async function mockUpdateTeam(teamId, updates) {

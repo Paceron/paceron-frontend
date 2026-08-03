@@ -103,6 +103,27 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
+  // Equipos donde el usuario es corredor (member_id, resuelto en backend
+  // — ver docs/BACKEND_API_GAPS.md historial). A diferencia de
+  // selectAdministeredTeams (filtro client-side sobre `teams`, que sí
+  // trae ownerId ya normalizado), acá no hay forma de filtrar
+  // client-side sin roster por equipo, así que es un fetch propio con el
+  // query param real. Lista aparte (`myMemberTeams`), no mezclada con
+  // `teams` — evita que un cambio de rol activo pise el resultado de
+  // "todos los equipos" que otras pantallas (team-detail, editar equipo)
+  // necesitan sin filtrar.
+  myMemberTeams: [],
+  fetchMyMemberTeams: async (userId) => {
+    if (!userId) return { success: true };
+    try {
+      const dtos = await listTeamsService({ memberId: userId });
+      set({ myMemberTeams: dtos.map((dto) => toTeamModel(dto)) });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   // Trae un equipo puntual (GET /teams/{id}) — para cuando se entra por
   // deep-link a un equipo que todavia no esta en `teams` (ej. recargar la
   // pagina de detalle/edicion directo por URL).

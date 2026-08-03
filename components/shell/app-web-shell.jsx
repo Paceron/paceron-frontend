@@ -77,6 +77,8 @@ function TeamsMenu({ onClose, loading }) {
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const teams = useTeamStore((s) => s.teams);
+  const myMemberTeams = useTeamStore((s) => s.myMemberTeams);
+  const fetchMyMemberTeams = useTeamStore((s) => s.fetchMyMemberTeams);
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
   const selectTeam = useTeamStore((s) => s.selectTeam);
@@ -86,6 +88,15 @@ function TeamsMenu({ onClose, loading }) {
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   const activeRole = useAuthStore((s) => s.activeRole);
   const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
+  // Entrenador ve lo que administra, corredor lo que integra — ver
+  // store/team-store.js#fetchMyMemberTeams.
+  const myTeams = activeRole === 'trainer' ? administeredTeams : myMemberTeams;
+
+  useEffect(() => {
+    if (activeRole === 'trainer' || !user?.userId) return;
+    fetchMyMemberTeams(user.userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRole, user?.userId]);
 
   const handleSelectTeam = (team) => {
     selectTeam(team.id);
@@ -107,11 +118,11 @@ function TeamsMenu({ onClose, loading }) {
           <View className="items-center px-4 py-5" nativeID="web-shell-teams-menu-loading" testID="web-shell-teams-menu-loading">
             <ActivityIndicator color={colors.primary} size="small" />
           </View>
-        ) : administeredTeams.length === 0 && (
+        ) : myTeams.length === 0 && (
           <Text className="px-4 py-3.5 text-sm text-slate-500 dark:text-slate-400" nativeID="web-shell-teams-menu-empty" testID="web-shell-teams-menu-empty">Todavía no tenés equipos.</Text>
         )}
 
-        {administeredTeams.map((team) => {
+        {myTeams.map((team) => {
           const isSelected = team.id === selectedTeamId;
           return (
             <Pressable
