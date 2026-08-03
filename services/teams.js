@@ -24,12 +24,22 @@ export async function getTeam(teamId) {
   return await api.get(`/teams/${teamId}`);
 }
 
-// GET /api/v1/teams — devuelve TODO el sistema, sin filtro por usuario (ver
-// docs/BACKEND_API_GAPS.md gap 1). El filtro "mis equipos" vive en
-// store/team-store.js#selectAdministeredTeams, no acá.
-export async function listTeams() {
-  if (USE_MOCKS) return await mockListTeams();
-  return await api.get('/teams');
+// GET /api/v1/teams?owner_id=&member_id= — ambos filtros opcionales,
+// resueltos en backend. Sin params, devuelve TODO el sistema — el store
+// global (`fetchTeams`) lo sigue usando sin filtrar, porque necesita
+// poder encontrar cualquier equipo por id sin importar el rol activo. El
+// filtro "mis equipos como entrenador" vive client-side en
+// store/team-store.js#selectAdministeredTeams sobre esa lista global; el
+// de "mis equipos como corredor" sí necesita el query param real — no hay
+// forma de resolverlo client-side sin roster por equipo (ver
+// store/team-store.js#fetchMyMemberTeams).
+export async function listTeams({ ownerId, memberId } = {}) {
+  if (USE_MOCKS) return await mockListTeams({ ownerId, memberId });
+  const params = new URLSearchParams();
+  if (ownerId != null) params.set('owner_id', ownerId);
+  if (memberId != null) params.set('member_id', memberId);
+  const query = params.toString();
+  return await api.get(query ? `/teams?${query}` : '/teams');
 }
 
 // PUT /api/v1/teams/{id} — team.UpdateTeamRequest (parcial).

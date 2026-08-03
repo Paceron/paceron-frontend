@@ -3,10 +3,16 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'rea
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { removeTeamUser } from '../../services/teams.js';
+import { removeGroupUser, addGroupUser } from '../../services/groups.js';
+import { getUser } from '../../services/auth.js';
+import { toUserModel } from '../../services/normalizers.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -14,6 +20,9 @@ import { InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
+import { ExpelRunnerModal } from './expel-runner-modal.jsx';
+import { MoveRunnerModal } from './move-runner-modal.jsx';
+import { LeaveGroupModal } from './leave-group-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 // Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
@@ -147,7 +156,7 @@ function RunnerMenu({ member, colors, onOpenMenu, containerRef }) {
   const handlePress = () => {
     if (!containerRef.current) return;
     ref.current?.measureLayout(containerRef.current, (x, y, width, height) => {
-      onOpenMenu({ x, y, width, height });
+      onOpenMenu({ x, y, width, height }, member);
     }, () => {});
   };
 
@@ -165,29 +174,36 @@ function RunnerMenu({ member, colors, onOpenMenu, containerRef }) {
   );
 }
 
-// Contenido del panel compartido — hoy con ambas acciones deshabilitadas:
-// el roster (team.members) sigue siendo sintético (generateMockMembers,
-// ver store/team-store.js), sus ids no corresponden a usuarios reales del
-// backend, así que "sacar del equipo" (services/teams.js#removeTeamUser ya
-// existe) no tiene todavía a quién apuntar. El día que el roster venga de
-// getTeamUsers real, solo hace falta habilitar estas dos filas.
-function RunnerActionsMenu() {
+// Contenido del panel compartido — member/onExpel/onMove vienen del padre
+// (TeamDetailScreenContent), que trackea qué corredor abrió el menú (ver
+// RunnerMenu#handlePress, que ahora pasa `member` a onOpenMenu).
+function RunnerActionsMenu({ member, onExpel, onMove }) {
   const colors = useThemeColors();
 
   return (
     <View className="w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID="team-detail-runner-menu-panel" testID="team-detail-runner-menu-panel">
-      <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID="team-detail-runner-menu-remove" testID="team-detail-runner-menu-remove">
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-remove-outline" size={16} />
-        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runner-menu-remove-label" testID="team-detail-runner-menu-remove-label">
-          Sacar del equipo (próximamente)
-        </Text>
-      </View>
-      <View className="flex-row items-center gap-2 px-3 py-2 opacity-50" nativeID="team-detail-runner-menu-move" testID="team-detail-runner-menu-move">
+      <Pressable
+        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        nativeID="team-detail-runner-menu-move"
+        onPress={() => onMove(member)}
+        testID="team-detail-runner-menu-move"
+      >
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-switch-outline" size={16} />
-        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runner-menu-move-label" testID="team-detail-runner-menu-move-label">
-          Mover de grupo (próximamente)
+        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="team-detail-runner-menu-move-label" testID="team-detail-runner-menu-move-label">
+          Mover de grupo
         </Text>
-      </View>
+      </Pressable>
+      <Pressable
+        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        nativeID="team-detail-runner-menu-remove"
+        onPress={() => onExpel(member)}
+        testID="team-detail-runner-menu-remove"
+      >
+        <MaterialCommunityIcons color="#ef4444" name="account-remove-outline" size={16} />
+        <Text className="text-sm text-red-600 dark:text-red-400" nativeID="team-detail-runner-menu-remove-label" testID="team-detail-runner-menu-remove-label">
+          Sacar del equipo
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -532,6 +548,21 @@ function TeamDetailScreenContent({ teamId }) {
   // realmente es dueño — mostrarlo a cualquier entrenador solo generaría un
   // error del backend para el resto.
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
+  const { members: allMembers, loading: loadingRoster } = useTeamRoster(team?.id, team?.groups.map((g) => g.id) ?? []);
+  // El dueño del equipo aparece en team_users junto con los corredores
+  // reales — se filtra acá (no en el hook, que es agnóstico de "quién es
+  // dueño") para que no se cuente ni se liste como corredor.
+  const members = useMemo(
+    () => allMembers.filter((m) => m.userId !== String(team?.ownerId)),
+    [allMembers, team?.ownerId],
+  );
+  const ownerQuery = useQuery({
+    queryKey: ['user', team?.ownerId],
+    queryFn: () => getUser({ id: team.ownerId }),
+    enabled: Boolean(team?.ownerId),
+  });
+  const ownerUser = ownerQuery.data ? toUserModel(ownerQuery.data) : null;
+  const ownerName = ownerUser ? `${ownerUser.name ?? ''} ${ownerUser.surname ?? ''}`.trim() || ownerUser.email : null;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [addGroupVisible, setAddGroupVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -585,6 +616,7 @@ function TeamDetailScreenContent({ teamId }) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el grupo', text2: result.error });
       return;
     }
+    invalidateRoster();
     Toast.show({ type: 'success', text1: 'Grupo eliminado' });
   };
   // Un corredor común (no viendo la app como entrenador activo, tenga o no
@@ -605,20 +637,104 @@ function TeamDetailScreenContent({ teamId }) {
 
   // Panel único del menú de un corredor (ver RunnerMenu/RunnerActionsMenu
   // más arriba) — se cierra solo si se cambia de pestaña, para no dejarlo
-  // flotando sobre una sección distinta a la de Corredores.
+  // flotando sobre una sección distinta a la de Corredores. `runnerMenuMember`
+  // es a quién le abrieron el menú — lo pasa RunnerMenu#handlePress.
   const [runnerMenuOpen, setRunnerMenuOpen] = useState(false);
   const [runnerMenuAnchor, setRunnerMenuAnchor] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [runnerMenuMember, setRunnerMenuMember] = useState(null);
   const runnerMenuContainerRef = useRef(null);
+  const [expelModalVisible, setExpelModalVisible] = useState(false);
+  const [moveModalVisible, setMoveModalVisible] = useState(false);
+  const [leaveGroupModalVisible, setLeaveGroupModalVisible] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setRunnerMenuOpen(false);
   }, [activeTab]);
 
-  const handleOpenRunnerMenu = (anchor) => {
+  const handleOpenRunnerMenu = (anchor, member) => {
     setRunnerMenuAnchor(anchor);
+    setRunnerMenuMember(member);
     setRunnerMenuOpen(true);
   };
   const handleCloseRunnerMenu = () => setRunnerMenuOpen(false);
+
+  const invalidateRoster = () => {
+    queryClient.invalidateQueries({ queryKey: ['team-users', team.id] });
+    team.groups.forEach((g) => queryClient.invalidateQueries({ queryKey: ['group-users', g.id] }));
+  };
+
+  const handleRequestExpel = () => {
+    setRunnerMenuOpen(false);
+    setExpelModalVisible(true);
+  };
+
+  const handleConfirmExpel = async () => {
+    try {
+      await removeTeamUser(team.id, runnerMenuMember.userId);
+      invalidateRoster();
+      Toast.show({ type: 'success', text1: 'Corredor sacado del equipo' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'No pudimos sacarlo del equipo', text2: error.message });
+    }
+    setExpelModalVisible(false);
+    setRunnerMenuMember(null);
+  };
+
+  const handleRequestMove = () => {
+    setRunnerMenuOpen(false);
+    setMoveModalVisible(true);
+  };
+
+  const handleConfirmMove = async (targetGroupId) => {
+    // 2 llamadas seguidas, sin transacción del lado del backend — si la
+    // primera (sacar del grupo viejo) sale bien pero la segunda (sumar al
+    // nuevo) falla, el corredor queda sin grupo. Se distingue en qué paso
+    // falló para no mostrar el mismo mensaje genérico en los dos casos.
+    try {
+      if (runnerMenuMember.groupId) await removeGroupUser(runnerMenuMember.groupId, runnerMenuMember.userId);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'No pudimos moverlo de grupo', text2: error.message });
+      setMoveModalVisible(false);
+      setRunnerMenuMember(null);
+      return;
+    }
+    try {
+      await addGroupUser(team.id, targetGroupId, runnerMenuMember.userId);
+      invalidateRoster();
+      Toast.show({ type: 'success', text1: 'Corredor movido de grupo' });
+    } catch {
+      invalidateRoster();
+      Toast.show({
+        type: 'error',
+        text1: 'Se sacó del grupo anterior pero no pudimos asignarlo al nuevo',
+        text2: 'Volvé a intentar el movimiento desde el menú del corredor.',
+      });
+    }
+    setMoveModalVisible(false);
+    setRunnerMenuMember(null);
+  };
+
+  // Self-service del corredor: salir de su grupo actual (no del equipo) y
+  // caer al grupo principal — mismo fallback que el borrado de grupo (Step
+  // 6). Solo tiene sentido si ya está en un grupo no-principal; si está en
+  // el principal o el roster todavía no cargó, no hay a dónde "salir".
+  const myMembership = members.find((m) => m.userId === String(user?.userId));
+  const myGroup = team?.groups.find((g) => g.id === myMembership?.groupId);
+  const defaultGroup = team?.groups.find((g) => g.isDefault);
+  const canLeaveGroup = Boolean(myMembership && myGroup && !myGroup.isDefault && defaultGroup);
+
+  const handleConfirmLeaveGroup = async () => {
+    try {
+      await removeGroupUser(myMembership.groupId, myMembership.userId);
+      await addGroupUser(team.id, defaultGroup.id, myMembership.userId);
+      invalidateRoster();
+      Toast.show({ type: 'success', text1: 'Saliste del grupo' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'No pudimos sacarte del grupo', text2: error.message });
+    }
+    setLeaveGroupModalVisible(false);
+  };
 
   // Entrar por deep-link (ej. recargar /teams/{id} directo) puede caer acá
   // antes de que el equipo esté en el store — fetchTeam lo trae puntual.
@@ -651,12 +767,12 @@ function TeamDetailScreenContent({ teamId }) {
   const filteredMembers = useMemo(() => {
     if (!team) return [];
     const query = search.trim().toLowerCase();
-    return team.members.filter((member) => {
+    return members.filter((member) => {
       const matchesSearch = !query || member.name.toLowerCase().includes(query) || (isTrainerView && member.email.toLowerCase().includes(query));
       const matchesGroup = !groupFilter || member.groupId === groupFilter;
       return matchesSearch && matchesGroup;
     });
-  }, [team, search, groupFilter, isTrainerView]);
+  }, [team, members, search, groupFilter, isTrainerView]);
 
   if (loadingTeam || loadingGroups) {
     return (
@@ -696,6 +812,7 @@ function TeamDetailScreenContent({ teamId }) {
   const generalContent = (
     <>
       <SectionCard icon="information-outline" title="Sobre el equipo">
+        <Field label="Entrenador a cargo" value={display(ownerName)} />
         <Field label="Descripción" value={display(team.description)} />
         <Field label="Requisitos de pertenencia" value={display(team.requirements)} />
       </SectionCard>
@@ -740,7 +857,11 @@ function TeamDetailScreenContent({ teamId }) {
         </Row>
       </View>
 
-      {filteredMembers.length === 0 ? (
+      {loadingRoster ? (
+        <View className="items-center py-4" nativeID="team-detail-runners-loading" testID="team-detail-runners-loading">
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : filteredMembers.length === 0 ? (
         <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
           No hay corredores que coincidan con los filtros.
         </Text>
@@ -841,7 +962,7 @@ function TeamDetailScreenContent({ teamId }) {
             deleting={deletingGroupId === group.id}
             group={group}
             key={group.id}
-            members={team.members.filter((m) => m.groupId === group.id)}
+            members={members.filter((m) => m.groupId === group.id)}
             onDelete={() => handleDeleteGroup(group)}
             onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
             planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
@@ -921,6 +1042,17 @@ function TeamDetailScreenContent({ teamId }) {
               <MaterialCommunityIcons color={colors.error} name="trash-can-outline" size={20} />
             </Pressable>
           )}
+          {!isTrainerView && canLeaveGroup && (
+            <Pressable
+              accessibilityLabel="Salir del grupo"
+              className="rounded-full p-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
+              nativeID="team-detail-leave-group-button"
+              onPress={() => setLeaveGroupModalVisible(true)}
+              testID="team-detail-leave-group-button"
+            >
+              <MaterialCommunityIcons color={colors.error} name="exit-run" size={20} />
+            </Pressable>
+          )}
         </View>
 
         {isWeb ? (
@@ -947,6 +1079,34 @@ function TeamDetailScreenContent({ teamId }) {
           visible={deleteModalVisible}
         />
       )}
+
+      {runnerMenuMember && (
+        <>
+          <ExpelRunnerModal
+            onCancel={() => setExpelModalVisible(false)}
+            onConfirm={handleConfirmExpel}
+            runnerName={runnerMenuMember.name}
+            visible={expelModalVisible}
+          />
+          <MoveRunnerModal
+            currentGroupId={runnerMenuMember.groupId}
+            groups={team.groups}
+            onCancel={() => setMoveModalVisible(false)}
+            onConfirm={handleConfirmMove}
+            runnerName={runnerMenuMember.name}
+            visible={moveModalVisible}
+          />
+        </>
+      )}
+
+      {canLeaveGroup && (
+        <LeaveGroupModal
+          groupName={myGroup.name}
+          onCancel={() => setLeaveGroupModalVisible(false)}
+          onConfirm={handleConfirmLeaveGroup}
+          visible={leaveGroupModalVisible}
+        />
+      )}
     </ScrollView>
     <AnimatedDropdown
       anchorStyle={{
@@ -956,7 +1116,7 @@ function TeamDetailScreenContent({ teamId }) {
       onClose={handleCloseRunnerMenu}
       open={runnerMenuOpen}
     >
-      <RunnerActionsMenu />
+      <RunnerActionsMenu member={runnerMenuMember} onExpel={handleRequestExpel} onMove={handleRequestMove} />
     </AnimatedDropdown>
     </View>
   );

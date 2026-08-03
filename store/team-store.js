@@ -7,7 +7,7 @@ import {
   updateTeamAddress as updateTeamAddressService,
   deleteTeam as deleteTeamService,
 } from '../services/teams.js';
-import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService } from '../services/groups.js';
+import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService, getGroupUsers as getGroupUsersService, addGroupUser as addGroupUserService, removeGroupUser as removeGroupUserService } from '../services/groups.js';
 import { inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService, listMyInvitations as listMyInvitationsService, acceptInvitation as acceptInvitationService, rejectInvitation as rejectInvitationService } from '../services/invitations.js';
 import { toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload, toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload } from '../services/normalizers.js';
 
@@ -38,49 +38,6 @@ export const SUBSCRIPTION_STATUSES = ['activo', 'vencido', 'en_prueba'];
 // desarrollo en paralelo por otro miembro del equipo — ver
 // docs/BACKEND_API_GAPS.md gap 4).
 export const TRAINING_PLAN_OPTIONS = [];
-
-const RUNNER_FIRST_NAMES = ['Lucía', 'Martín', 'Sofía', 'Nicolás', 'Valentina', 'Tomás', 'Camila', 'Agustín', 'Julieta', 'Franco'];
-const RUNNER_LAST_NAMES = ['Fernández', 'Gómez', 'Rodríguez', 'López', 'Díaz', 'Martínez', 'Pérez', 'Sánchez', 'Romero', 'Torres'];
-const MOCK_ROSTER_SIZE = 6;
-const ACCENTS = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' };
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// Reemplazo manual de tildes (en vez de String.prototype.normalize) para no
-// depender de soporte Unicode completo del motor JS en todas las
-// plataformas — la lista de nombres/apellidos de arriba es fija y chica.
-function slugifyForEmail(value) {
-  return value
-    .toLowerCase()
-    .split('')
-    .map((ch) => ACCENTS[ch] ?? ch)
-    .join('')
-    .replace(/[^a-z]+/g, '');
-}
-
-// Sin backend de miembros de equipo conectado todavia (existe
-// services/teams.js#getTeamUsers, pero nada lo llama — ver
-// docs/BACKEND_API_GAPS.md) — genera un roster de ejemplo determinista
-// (mismo teamId + grupos siempre dan el mismo resultado) repartido entre
-// los grupos existentes, para que la pantalla de detalle de equipo tenga
-// datos con los que probarse de entrada, incluso contra un equipo real del
-// backend. joinedAt se escalona por integrante (30 dias de diferencia
-// entre uno y el siguiente) para que la antiguedad ("hace X meses en el
-// equipo") no sea igual para todos.
-function generateMockMembers(teamId, groups) {
-  if (groups.length === 0) return [];
-  return Array.from({ length: MOCK_ROSTER_SIZE }, (_, i) => {
-    const firstName = RUNNER_FIRST_NAMES[i % RUNNER_FIRST_NAMES.length];
-    const lastName = RUNNER_LAST_NAMES[(i * 3) % RUNNER_LAST_NAMES.length];
-    return {
-      id: `${teamId}-runner-${i}`,
-      name: `${firstName} ${lastName}`,
-      email: `${slugifyForEmail(firstName)}.${slugifyForEmail(lastName)}@mail.com`,
-      subscriptionStatus: SUBSCRIPTION_STATUSES[i % SUBSCRIPTION_STATUSES.length],
-      groupId: groups[i % groups.length].id,
-      joinedAt: new Date(Date.now() - (i + 1) * 30 * DAY_MS).toISOString(),
-    };
-  });
-}
 
 // Completa un equipo real (ya normalizado por toTeamModel — camelCase, id
 // como string) con los datos que el backend todavia no soporta directo en
@@ -146,6 +103,27 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
+  // Equipos donde el usuario es corredor (member_id, resuelto en backend
+  // — ver docs/BACKEND_API_GAPS.md historial). A diferencia de
+  // selectAdministeredTeams (filtro client-side sobre `teams`, que sí
+  // trae ownerId ya normalizado), acá no hay forma de filtrar
+  // client-side sin roster por equipo, así que es un fetch propio con el
+  // query param real. Lista aparte (`myMemberTeams`), no mezclada con
+  // `teams` — evita que un cambio de rol activo pise el resultado de
+  // "todos los equipos" que otras pantallas (team-detail, editar equipo)
+  // necesitan sin filtrar.
+  myMemberTeams: [],
+  fetchMyMemberTeams: async (userId) => {
+    if (!userId) return { success: true };
+    try {
+      const dtos = await listTeamsService({ memberId: userId });
+      set({ myMemberTeams: dtos.map((dto) => toTeamModel(dto)) });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   // Trae un equipo puntual (GET /teams/{id}) — para cuando se entra por
   // deep-link a un equipo que todavia no esta en `teams` (ej. recargar la
   // pagina de detalle/edicion directo por URL).
@@ -167,13 +145,13 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Trae los grupos reales de un equipo (GET /groups) y regenera el
-  // roster mock a partir de ellos — separado de fetchTeam/fetchTeams
-  // porque un equipo puede estar en `teams` sin sus grupos todavia
-  // cargados (ya no vienen sincrónicos, ver decorateTeam). Preserva
-  // trainingPlanId elegido localmente para un grupo que ya estaba en
-  // memoria (catálogo mock, sin campo en el backend — ver
-  // docs/BACKEND_API_GAPS.md gap 4).
+  // Trae los grupos reales de un equipo (GET /groups) — separado de
+  // fetchTeam/fetchTeams porque un equipo puede estar en `teams` sin sus
+  // grupos todavia cargados (ya no vienen sincrónicos, ver decorateTeam).
+  // Preserva trainingPlanId elegido localmente para un grupo que ya estaba
+  // en memoria (catálogo mock, sin campo en el backend — ver
+  // docs/BACKEND_API_GAPS.md gap 4). El roster real de miembros no vive acá
+  // — lo trae hooks/use-team-roster.js (TanStack Query), no Zustand.
   fetchGroups: async (teamId, userId) => {
     try {
       const dtos = await listGroupsService(teamId, userId);
@@ -183,9 +161,8 @@ export const useTeamStore = create((set, get) => ({
         const existingGroup = existingTeam?.groups.find((g) => g.id === model.id);
         return existingGroup ? { ...model, trainingPlanId: existingGroup.trainingPlanId } : model;
       });
-      const members = generateMockMembers(teamId, groups);
       set((state) => ({
-        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups, members } : t)),
+        teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups } : t)),
       }));
       return { success: true };
     } catch (error) {
@@ -244,8 +221,7 @@ export const useTeamStore = create((set, get) => ({
         return draft ? { ...model, trainingPlanId: draft.trainingPlanId ?? null } : model;
       });
 
-      const members = generateMockMembers(teamId, groups);
-      team = { ...team, groups, members };
+      team = { ...team, groups };
       set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? team : t)) }));
 
       return { success: true, team, ...(addressWarning ? { addressWarning } : {}), ...(groupsWarning ? { groupsWarning } : {}) };
@@ -365,9 +341,26 @@ export const useTeamStore = create((set, get) => ({
 
   // Borra un grupo real (DELETE /groups/{id}) — la UI no ofrece esta
   // acción para el grupo principal (isDefault), no hace falta chequearlo
-  // acá de nuevo.
+  // acá de nuevo. Antes de borrar, reasigna a sus miembros (si tiene) al
+  // grupo principal del equipo — decisión del usuario (2026-08-02): nadie
+  // queda "sin grupo" solo porque su grupo se borró. Best-effort por
+  // miembro: si uno falla, sigue con el resto y borra el grupo igual (no
+  // tiene sentido dejar el grupo huérfano colgando por una falla puntual).
   deleteGroupReal: async (teamId, groupId) => {
     try {
+      const team = get().teams.find((t) => t.id === teamId);
+      const defaultGroup = team?.groups.find((g) => g.isDefault);
+      if (defaultGroup && defaultGroup.id !== groupId) {
+        const groupUserDtos = await getGroupUsersService(groupId);
+        for (const dto of groupUserDtos) {
+          try {
+            await removeGroupUserService(groupId, dto.user_id);
+            await addGroupUserService(teamId, defaultGroup.id, dto.user_id);
+          } catch {
+            // best-effort — ver comentario de arriba
+          }
+        }
+      }
       await deleteGroupService(groupId);
       set((state) => ({
         teams: state.teams.map((t) => (t.id === teamId ? { ...t, groups: t.groups.filter((g) => g.id !== groupId) } : t)),

@@ -38,7 +38,12 @@ function TeamsListScreenContent() {
   const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
   const teams = useTeamStore((s) => s.teams);
   const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const myMemberTeams = useTeamStore((s) => s.myMemberTeams);
+  const fetchMyMemberTeams = useTeamStore((s) => s.fetchMyMemberTeams);
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
+  // Como entrenador ve los equipos que administra; como corredor, los que
+  // integra — dos fuentes distintas (ver store/team-store.js#fetchMyMemberTeams).
+  const myTeams = activeRole === 'trainer' ? administeredTeams : myMemberTeams;
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,6 +53,15 @@ function TeamsListScreenContent() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (activeRole === 'trainer' || !user?.userId) return undefined;
+    let cancelled = false;
+    setLoading(true);
+    fetchMyMemberTeams(user.userId).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRole, user?.userId]);
 
   return (
     <ScrollView
@@ -72,18 +86,18 @@ function TeamsListScreenContent() {
           </Text>
         </View>
 
-        <SectionCard icon="account-group" title="Equipos que administrás">
+        <SectionCard icon="account-group" title={activeRole === 'trainer' ? 'Equipos que administrás' : 'Equipos en los que participás'}>
           {loading ? (
             <View className="items-center py-6" nativeID="teams-list-loading" testID="teams-list-loading">
               <ActivityIndicator color={colors.primary} />
             </View>
-          ) : administeredTeams.length === 0 ? (
+          ) : myTeams.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="teams-list-empty" testID="teams-list-empty">
-              Todavía no administrás ningún equipo.
+              {activeRole === 'trainer' ? 'Todavía no administrás ningún equipo.' : 'Todavía no participás de ningún equipo.'}
             </Text>
           ) : (
             <View className="gap-2" nativeID="teams-list-list" testID="teams-list-list">
-              {administeredTeams.map((team) => (
+              {myTeams.map((team) => (
                 <TeamRow key={team.id} onPress={() => router.push(`/teams/${team.id}`)} team={team} />
               ))}
             </View>
