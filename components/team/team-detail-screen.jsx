@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'rea
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -11,6 +11,8 @@ import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { removeTeamUser } from '../../services/teams.js';
 import { removeGroupUser, addGroupUser } from '../../services/groups.js';
+import { getUser } from '../../services/auth.js';
+import { toUserModel } from '../../services/normalizers.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -546,7 +548,21 @@ function TeamDetailScreenContent({ teamId }) {
   // realmente es dueño — mostrarlo a cualquier entrenador solo generaría un
   // error del backend para el resto.
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
-  const { members, loading: loadingRoster } = useTeamRoster(team?.id, team?.groups.map((g) => g.id) ?? []);
+  const { members: allMembers, loading: loadingRoster } = useTeamRoster(team?.id, team?.groups.map((g) => g.id) ?? []);
+  // El dueño del equipo aparece en team_users junto con los corredores
+  // reales — se filtra acá (no en el hook, que es agnóstico de "quién es
+  // dueño") para que no se cuente ni se liste como corredor.
+  const members = useMemo(
+    () => allMembers.filter((m) => m.userId !== String(team?.ownerId)),
+    [allMembers, team?.ownerId],
+  );
+  const ownerQuery = useQuery({
+    queryKey: ['user', team?.ownerId],
+    queryFn: () => getUser({ id: team.ownerId }),
+    enabled: Boolean(team?.ownerId),
+  });
+  const ownerUser = ownerQuery.data ? toUserModel(ownerQuery.data) : null;
+  const ownerName = ownerUser ? `${ownerUser.name ?? ''} ${ownerUser.surname ?? ''}`.trim() || ownerUser.email : null;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [addGroupVisible, setAddGroupVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -780,6 +796,7 @@ function TeamDetailScreenContent({ teamId }) {
   const generalContent = (
     <>
       <SectionCard icon="information-outline" title="Sobre el equipo">
+        <Field label="Entrenador a cargo" value={display(ownerName)} />
         <Field label="Descripción" value={display(team.description)} />
         <Field label="Requisitos de pertenencia" value={display(team.requirements)} />
       </SectionCard>
