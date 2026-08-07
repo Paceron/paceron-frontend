@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { login as loginService, register as registerService, getUser as getUserService, logout as logoutService } from '../services/auth.js';
+import { login as loginService, register as registerService, getUser as getUserService, logout as logoutService, refresh as refreshService } from '../services/auth.js';
 import { updateUser as updateUserService, changeStatus as changeStatusService } from '../services/user.js';
 import { assignRole as assignRoleService, removeRole as removeRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
@@ -236,5 +236,18 @@ export const useAuthStore = create((set, get) => ({
       rolesLoaded: false,
     });
     await removeItem(STORAGE_KEY);
+  },
+
+  // Rota el refresh token (POST /auth/refresh) y persiste el par nuevo.
+  // Usado por services/api.js cuando una request pega 401 — ver ahí el
+  // interceptor que llama a esto antes de reintentar.
+  refreshSession: async () => {
+    const { refreshToken, user, activeRole, roles } = get();
+    if (!refreshToken) throw new Error('No hay refresh token disponible.');
+    const result = await refreshService(refreshToken);
+    const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
+    set({ token: result.access_token, refreshToken: result.refresh_token, expiresAt });
+    await persist({ user, token: result.access_token, refreshToken: result.refresh_token, expiresAt, activeRole, roles });
+    return result.access_token;
   },
 }));

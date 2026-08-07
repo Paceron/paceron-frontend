@@ -9,11 +9,16 @@ function buildUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
-async function request(path, options = {}) {
+// Refresh en curso compartido entre requests concurrentes — si varias
+// pegan 401 al mismo tiempo, todas esperan este mismo refresh en vez de
+// disparar uno cada una.
+let refreshPromise = null;
+
+async function request(path, { _isRetry, ...fetchOptions } = {}) {
   const { token } = useAuthStore.getState();
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {}),
+    ...(fetchOptions.headers || {}),
   };
 
   if (token) {
@@ -21,9 +26,25 @@ async function request(path, options = {}) {
   }
 
   const response = await fetch(buildUrl(path), {
-    ...options,
+    ...fetchOptions,
     headers,
   });
+
+  if (response.status === 401 && !_isRetry && useAuthStore.getState().refreshToken) {
+    try {
+      if (!refreshPromise) {
+        refreshPromise = useAuthStore.getState().refreshSession().finally(() => {
+          refreshPromise = null;
+        });
+      }
+      await refreshPromise;
+      return await request(path, { ...fetchOptions, _isRetry: true });
+    } catch {
+      await useAuthStore.getState().logout();
+      // sigue abajo y deja que la response 401 original se maneje como
+      // cualquier otro error — el caller original ve el fallo, no queda colgado
+    }
+  }
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;

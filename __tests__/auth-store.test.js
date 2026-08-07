@@ -132,6 +132,24 @@ describe('auth store', () => {
     await useAuthStore.getState().logout();
     expect(logoutService).not.toHaveBeenCalled();
   });
+
+  test('refreshSession rotates the token pair and persists the new session', async () => {
+    useAuthStore.setState({
+      user: { userId: 1 }, token: 'old-token', refreshToken: 'old-refresh', activeRole: 'runner', roles: [],
+    });
+    refreshService.mockResolvedValue({ access_token: 'new-token', refresh_token: 'new-refresh', expires_in: 3600 });
+    const newToken = await useAuthStore.getState().refreshSession();
+    expect(newToken).toBe('new-token');
+    const s = useAuthStore.getState();
+    expect(s.token).toBe('new-token');
+    expect(s.refreshToken).toBe('new-refresh');
+    expect(storage.setItem).toHaveBeenCalled();
+  });
+
+  test('refreshSession throws when there is no refresh token to use', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'old-token', refreshToken: null });
+    await expect(useAuthStore.getState().refreshSession()).rejects.toThrow();
+  });
 });
 
 describe('role management (backend-backed)', () => {
