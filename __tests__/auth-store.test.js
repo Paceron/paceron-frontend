@@ -3,6 +3,9 @@ import { useAuthStore } from '../store/auth-store.js';
 jest.mock('../services/auth.js', () => ({
   login: jest.fn(),
   register: jest.fn(),
+  getUser: jest.fn(),
+  refresh: jest.fn(),
+  logout: jest.fn(),
 }));
 
 jest.mock('../services/roles.js', () => ({
@@ -27,7 +30,7 @@ jest.mock('../services/storage.js', () => {
   };
 });
 
-import { login as loginService, register as registerService } from '../services/auth.js';
+import { login as loginService, register as registerService, getUser as getUserService, refresh as refreshService, logout as logoutService } from '../services/auth.js';
 import { assignRole, getPermissions } from '../services/roles.js';
 import { updateUser as updateUserService } from '../services/user.js';
 import * as storage from '../services/storage.js';
@@ -43,6 +46,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   getPermissions.mockResolvedValue({ user_id: 0, roles: [] });
   assignRole.mockResolvedValue({});
+  logoutService.mockResolvedValue({ message: 'ok' });
   useAuthStore.setState({ user: null, token: null, refreshToken: null, expiresAt: null, hydrated: false, activeRole: 'runner', roles: [], rolesLoaded: false });
 });
 
@@ -101,13 +105,32 @@ describe('auth store', () => {
   });
 
   test('logout clears state and storage', async () => {
-    useAuthStore.setState({ user: { userId: 1 }, token: 'abc' });
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: 'rt' });
     await storage.setItem('paceron.auth', 'x');
     await useAuthStore.getState().logout();
     const s = useAuthStore.getState();
     expect(s.user).toBeNull();
     expect(s.token).toBeNull();
     expect(storage.removeItem).toHaveBeenCalledWith('paceron.auth');
+  });
+
+  test('logout calls the revoke endpoint with the current refresh token', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: 'rt-123' });
+    await useAuthStore.getState().logout();
+    expect(logoutService).toHaveBeenCalledWith('rt-123');
+  });
+
+  test('logout clears local state even if the revoke call fails', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: 'rt-123' });
+    logoutService.mockRejectedValueOnce(new Error('network down'));
+    await useAuthStore.getState().logout();
+    expect(useAuthStore.getState().user).toBeNull();
+  });
+
+  test('logout does not call the revoke endpoint when there is no refresh token', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: null });
+    await useAuthStore.getState().logout();
+    expect(logoutService).not.toHaveBeenCalled();
   });
 });
 

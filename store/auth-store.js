@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { login as loginService, register as registerService, getUser as getUserService } from '../services/auth.js';
+import { login as loginService, register as registerService, getUser as getUserService, logout as logoutService } from '../services/auth.js';
 import { updateUser as updateUserService, changeStatus as changeStatusService } from '../services/user.js';
 import { assignRole as assignRoleService, removeRole as removeRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
@@ -219,6 +219,13 @@ export const useAuthStore = create((set, get) => ({
   clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
 
   logout: async () => {
+    const { refreshToken } = get();
+    try {
+      if (refreshToken) await logoutService(refreshToken);
+    } catch {
+      // best-effort — igual que persist(), el logout local sigue aunque
+      // esto falle (sin red, refresh token ya vencido, etc.)
+    }
     set({
       user: null,
       token: null,
