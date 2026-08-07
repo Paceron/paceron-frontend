@@ -13,6 +13,8 @@ jest.mock('../services/roles.js', () => ({
   getPermissions: jest.fn(),
   getRoles: jest.fn(),
   getRoleIdByName: jest.fn(),
+  activateTrainerRole: jest.fn(),
+  deactivateTrainerRole: jest.fn(),
 }));
 
 jest.mock('../services/user.js', () => ({
@@ -31,7 +33,7 @@ jest.mock('../services/storage.js', () => {
 });
 
 import { login as loginService, register as registerService, getUser as getUserService, refresh as refreshService, logout as logoutService } from '../services/auth.js';
-import { assignRole, getPermissions } from '../services/roles.js';
+import { assignRole, getPermissions, activateTrainerRole as activateTrainerRoleService, deactivateTrainerRole as deactivateTrainerRoleService } from '../services/roles.js';
 import { updateUser as updateUserService } from '../services/user.js';
 import * as storage from '../services/storage.js';
 
@@ -171,21 +173,43 @@ describe('role management (backend-backed)', () => {
     expect(s.rolesLoaded).toBe(true);
   });
 
-  test('activateTrainerRole assigns the role and updates the bank alias', async () => {
+  test('activateTrainerRole calls the dedicated endpoint and refreshes the user + roles', async () => {
     useAuthStore.setState({ user: { userId: 1, name: 'Demo', surname: 'User' }, token: 'tok', roles: [] });
-    assignRole.mockResolvedValue({});
-    updateUserService.mockResolvedValue({
-      user_id: 1, name: 'Demo', surname: 'User', bank_alias: 'mi.alias',
-    });
+    activateTrainerRoleService.mockResolvedValue({ id: 1, user_id: 1, role_id: 2, status: 'active' });
+    getUserService.mockResolvedValue({ user_id: 1, name: 'Demo', surname: 'User', bank_alias: 'mi.alias' });
     getPermissions.mockResolvedValue({
       user_id: 1,
       roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }],
     });
-    const result = await useAuthStore.getState().activateTrainerRole('mi.alias');
+    const result = await useAuthStore.getState().activateTrainerRole('mi.alias', 'mi-password');
     expect(result.success).toBe(true);
-    expect(assignRole).toHaveBeenCalledWith(1, 'entrenador');
-    expect(updateUserService).toHaveBeenCalledWith(1, { bank_alias: 'mi.alias' }, undefined);
+    expect(activateTrainerRoleService).toHaveBeenCalledWith(1, { password: 'mi-password', bankAlias: 'mi.alias' });
+    expect(useAuthStore.getState().user.bankAlias).toBe('mi.alias');
     expect(useAuthStore.getState().roles.some((r) => r.name === 'entrenador')).toBe(true);
+  });
+
+  test('activateTrainerRole returns the backend error on failure (e.g. wrong password)', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', roles: [] });
+    activateTrainerRoleService.mockRejectedValue(Object.assign(new Error('Contraseña incorrecta.'), { status: 401 }));
+    const result = await useAuthStore.getState().activateTrainerRole('mi.alias', 'wrong-password');
+    expect(result).toEqual({ success: false, error: 'Contraseña incorrecta.' });
+  });
+
+  test('deactivateTrainerRole calls the dedicated endpoint', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }] });
+    deactivateTrainerRoleService.mockResolvedValue({ message: 'ok' });
+    getPermissions.mockResolvedValue({ user_id: 1, roles: [] });
+    const result = await useAuthStore.getState().deactivateTrainerRole();
+    expect(result.success).toBe(true);
+    expect(deactivateTrainerRoleService).toHaveBeenCalledWith(1);
+    expect(useAuthStore.getState().activeRole).toBe('runner');
+  });
+
+  test('deactivateTrainerRole surfaces the backend 409 message when the user leads active teams', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', roles: [] });
+    deactivateTrainerRoleService.mockRejectedValue(Object.assign(new Error('No podés desactivar el rol mientras lideres equipos activos.'), { status: 409 }));
+    const result = await useAuthStore.getState().deactivateTrainerRole();
+    expect(result).toEqual({ success: false, error: 'No podés desactivar el rol mientras lideres equipos activos.' });
   });
 
   test('switchRole only allows switching to a role the user actually has', async () => {
