@@ -33,8 +33,8 @@ import { updateUser as updateUserService } from '../services/user.js';
 import * as storage from '../services/storage.js';
 
 const LOGIN_OK = {
+  access_token: 'tok', refresh_token: 'ref', expires_in: 3600,
   user: { user_id: 3, name: 'pepe', surname: 'lota', email: 'a@b.com', status: 'active' },
-  authorization: { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 },
 };
 
 beforeEach(() => {

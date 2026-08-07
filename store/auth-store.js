@@ -61,12 +61,11 @@ export const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     try {
       const result = await loginService(email, password);
-      const token = result?.authorization?.access_token;
+      const token = result?.access_token;
       const user = toUserModel(result?.user);
       if (token && user) {
-        const auth = result.authorization;
-        const expiresAt = auth.expires_in ? Date.now() + auth.expires_in * 1000 : null;
-        const session = { user, token, refreshToken: auth.refresh_token ?? null, expiresAt };
+        const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
+        const session = { user, token, refreshToken: result.refresh_token ?? null, expiresAt };
         set(session);
         const { activeRole } = get();
         await persist({ ...session, activeRole, roles: [] });

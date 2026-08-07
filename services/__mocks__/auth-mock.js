@@ -3,6 +3,9 @@ import { getMockBankAlias } from './user-mock.js';
 // Datos fake con la MISMA shape que el backend real, para desarrollar sin backend.
 export async function mockLogin(email, _password) {
   return {
+    access_token: 'mock-access-token',
+    refresh_token: 'mock-refresh-token',
+    expires_in: 3600,
     user: {
       user_id: 1,
       name: 'Demo',
@@ -12,11 +15,6 @@ export async function mockLogin(email, _password) {
       birth_date: '01/01/1990',
       status: 'active',
       bank_alias: null,
-    },
-    authorization: {
-      access_token: 'mock-access-token',
-      refresh_token: 'mock-refresh-token',
-      expires_in: 3600,
     },
   };
 }
