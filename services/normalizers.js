@@ -191,6 +191,7 @@ export function toInvitationModel(dto) {
     inviteeName: dto.invitee_name,
     groupId: dto.group_id != null ? String(dto.group_id) : null,
     teamName: dto.team_name ?? null,
+    inviterName: dto.inviter_name ?? null,
     status: dto.status,
     expiresAt: dto.expires_at,
     createdAt: dto.created_at,

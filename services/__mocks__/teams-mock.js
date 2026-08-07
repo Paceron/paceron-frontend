@@ -131,3 +131,7 @@ export function __resetMockTeams() {
 export function __getMockTeamName(teamId) {
   return mockTeams.find((t) => String(t.id) === String(teamId))?.name ?? null;
 }
+
+export function __getMockTeamOwnerId(teamId) {
+  return mockTeams.find((t) => String(t.id) === String(teamId))?.owner_id ?? null;
+}

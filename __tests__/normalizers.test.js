@@ -197,12 +197,12 @@ describe('toInvitationModel', () => {
   test('maps snake_case fields to camelCase and coerces ids to string', () => {
     const dto = {
       id: 10, team_id: 1, invitee_email: 'a@b.com', invitee_id: 5, invitee_name: 'Pepe Lota',
-      group_id: 3, team_name: 'Corredores del Sur',
+      group_id: 3, team_name: 'Corredores del Sur', inviter_id: 7, inviter_name: 'Ana Trainer',
       status: 'pending', expires_at: '2026-08-01T00:00:00.000Z', created_at: '2026-07-31T00:00:00.000Z',
     };
     expect(toInvitationModel(dto)).toEqual({
       id: '10', teamId: '1', email: 'a@b.com', inviteeId: 5, inviteeName: 'Pepe Lota',
-      groupId: '3', teamName: 'Corredores del Sur',
+      groupId: '3', teamName: 'Corredores del Sur', inviterName: 'Ana Trainer',
       status: 'pending', expiresAt: '2026-08-01T00:00:00.000Z', createdAt: '2026-07-31T00:00:00.000Z',
     });
   });
@@ -212,6 +212,7 @@ describe('toInvitationModel', () => {
     const model = toInvitationModel(dto);
     expect(model.groupId).toBeNull();
     expect(model.teamName).toBeNull();
+    expect(model.inviterName).toBeNull();
   });
 
   test('returns null for falsy dto', () => {
