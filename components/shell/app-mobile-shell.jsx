@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BackHandler, Dimensions, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Dimensions, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -59,6 +59,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const [loggingOut, setLoggingOut] = useState(false);
   const activeRole = useAuthStore((s) => s.activeRole);
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
@@ -147,6 +148,19 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const handleViewAllTeams = () => {
     onClose();
     router.push('/teams');
+  };
+
+  // logout() ahora pega al backend (revoca el refresh token) antes de
+  // limpiar el estado local — sin esperar esa promesa, el replace a '/'
+  // corría con el usuario todavía autenticado en el store y la ruta raíz
+  // mostraba Home un instante antes de reaccionar al logout real.
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await logout();
+    setLoggingOut(false);
+    onClose();
+    router.replace('/');
   };
 
   return (
@@ -266,13 +280,20 @@ function NavigationDrawer({ open, pathname, onClose }) {
               {user && (
                 <View className="border-t border-slate-200 p-3 dark:border-slate-800" nativeID="mobile-drawer-logout-row" testID="mobile-drawer-logout-row">
                   <Pressable
-                    className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 active:opacity-80 dark:hover:bg-red-900/20"
+                    className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 active:opacity-80 dark:hover:bg-red-900/20 disabled:opacity-60"
+                    disabled={loggingOut}
                     nativeID="mobile-drawer-logout-button"
-                    onPress={() => { logout(); onClose(); router.replace('/'); }}
+                    onPress={handleLogout}
                     testID="mobile-drawer-logout-button"
                   >
-                    <MaterialCommunityIcons color={colors.error} name="logout" size={20} />
-                    <Text className="text-sm font-semibold text-red-600 dark:text-red-400" nativeID="mobile-drawer-logout-label" testID="mobile-drawer-logout-label">Cerrar sesión</Text>
+                    {loggingOut ? (
+                      <ActivityIndicator color={colors.error} size="small" />
+                    ) : (
+                      <MaterialCommunityIcons color={colors.error} name="logout" size={20} />
+                    )}
+                    <Text className="text-sm font-semibold text-red-600 dark:text-red-400" nativeID="mobile-drawer-logout-label" testID="mobile-drawer-logout-label">
+                      {loggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+                    </Text>
                   </Pressable>
                 </View>
               )}
