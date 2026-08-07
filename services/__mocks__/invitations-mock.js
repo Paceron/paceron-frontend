@@ -9,7 +9,7 @@
 // al momento de invitar (a diferencia del backend real) — el caller (ver
 // store/team-store.js#fetchMyInvitations) le pasa el email del usuario
 // actual, que el backend real ignora (solo usa user_id como query param).
-import { __getMockTeamName } from './teams-mock.js';
+import { __getMockTeamName, __getMockTeamOwnerId } from './teams-mock.js';
 
 let mockInvitations = [];
 let nextInvitationId = 1;
@@ -30,6 +30,7 @@ export async function mockInviteToTeam(teamId, payload) {
   const invitation = {
     id: nextInvitationId++, team_id: Number(teamId), invitee_email: payload.email, invitee_id: null,
     invitee_name: null, group_id: payload.group_id ?? null, team_name: __getMockTeamName(teamId),
+    inviter_id: __getMockTeamOwnerId(teamId), inviter_name: 'Demo User',
     status: 'pending', expires_at: expires, created_at: now,
   };
   mockInvitations.push(invitation);

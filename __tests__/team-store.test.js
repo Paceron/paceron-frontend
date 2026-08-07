@@ -464,7 +464,7 @@ describe('fetchInvitations / sendInvite', () => {
     const team = useTeamStore.getState().teams.find((t) => t.id === '1');
     expect(team.invitations).toEqual([{
       id: '1', teamId: '1', email: 'a@b.com', inviteeId: null, inviteeName: null,
-      groupId: null, teamName: null,
+      groupId: null, teamName: null, inviterName: null,
       status: 'pending', expiresAt: '2026-08-07T00:00:00.000Z', createdAt: '2026-07-31T00:00:00.000Z',
     }]);
   });
@@ -517,7 +517,7 @@ describe('fetchMyInvitations / acceptMyInvitation / rejectMyInvitation', () => {
     expect(result).toEqual({ success: true });
     expect(useTeamStore.getState().myInvitations).toEqual([{
       id: '5', teamId: '1', email: 'demo@paceron.com', inviteeId: null, inviteeName: null,
-      groupId: null, teamName: 'Corredores del Sur', status: 'pending',
+      groupId: null, teamName: 'Corredores del Sur', inviterName: null, status: 'pending',
       expiresAt: '2026-08-07T00:00:00.000Z', createdAt: '2026-07-31T00:00:00.000Z',
     }]);
   });
