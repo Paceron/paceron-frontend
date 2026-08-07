@@ -208,6 +208,27 @@ describe('team store', () => {
     expect(result).toEqual({ success: false, error: 'Sin conexión.' });
   });
 
+  test('fetchMyMemberTeams excludes teams the user owns even if the backend includes them for ?member_id=', async () => {
+    // El backend agrega al dueño como team_user de su propio equipo, así
+    // que ?member_id=<ownerId> también devuelve los equipos que administra
+    // — no deberían aparecer en la lista de "equipos donde soy corredor".
+    listTeamsService.mockResolvedValue([
+      TEAM_DTO, // owner_id: 7 — el propio usuario
+      { ...TEAM_DTO, id: 2, name: 'Equipo donde soy corredor', owner_id: 9 },
+    ]);
+    const result = await useTeamStore.getState().fetchMyMemberTeams(7);
+    expect(result).toEqual({ success: true });
+    const s = useTeamStore.getState();
+    expect(s.myMemberTeams).toHaveLength(1);
+    expect(s.myMemberTeams[0].name).toBe('Equipo donde soy corredor');
+  });
+
+  test('fetchMyMemberTeams returns a failure result when the service call rejects', async () => {
+    listTeamsService.mockRejectedValue(new Error('Sin conexión.'));
+    const result = await useTeamStore.getState().fetchMyMemberTeams(7);
+    expect(result).toEqual({ success: false, error: 'Sin conexión.' });
+  });
+
   test('fetchTeam adds a team not yet in the store (deep-link) and decorates it', async () => {
     getTeamService.mockResolvedValue(TEAM_DTO);
     const result = await useTeamStore.getState().fetchTeam('1');

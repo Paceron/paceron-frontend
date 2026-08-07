@@ -117,7 +117,13 @@ export const useTeamStore = create((set, get) => ({
     if (!userId) return { success: true };
     try {
       const dtos = await listTeamsService({ memberId: userId });
-      set({ myMemberTeams: dtos.map((dto) => toTeamModel(dto)) });
+      // El backend agrega al dueño como team_user de su propio equipo
+      // (mismo comportamiento ya confirmado al armar el roster real, ver
+      // team-detail-screen.jsx), así que ?member_id= trae también los
+      // equipos que el usuario administra — se filtran acá para que la
+      // vista de corredor no muestre equipos propios.
+      const myTeams = dtos.map((dto) => toTeamModel(dto)).filter((team) => team.ownerId !== Number(userId));
+      set({ myMemberTeams: myTeams });
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
