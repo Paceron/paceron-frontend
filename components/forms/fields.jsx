@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { validateEmailFormat } from '../../utils/email-validators.js';
 import { BREAKPOINTS } from '../../theme/tokens.js';
+import { searchUsers } from '../../services/user.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
 
@@ -559,12 +560,43 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
 // 2026-07-31). Las opciones del picker son directamente `groups` (ya
 // incluye el grupo principal real) — no hay un "Sin grupo" inventado
 // aparte.
+//
+// Autocompletar (GET /users/search?q=, mínimo 3 caracteres): debounced
+// 300ms, hasta 5 sugerencias. Elegir una solo completa el campo de email
+// (no agrega directo) — el flujo de agregar/validar sigue siendo el
+// mismo de siempre. `selectedEmail` evita que, después de elegir una
+// sugerencia, el propio valor ya completado dispare una nueva búsqueda
+// y vuelva a abrir el dropdown.
 export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com' }) {
   const colors = useThemeColors();
   const slug = 'email-invite-form';
   const [draft, setDraft] = useState('');
   const [draftGroupId, setDraftGroupId] = useState('');
   const [draftError, setDraftError] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+
+  useEffect(() => {
+    const query = draft.trim();
+    if (query.length < 3 || query === selectedEmail) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchUsers(query);
+        if (cancelled) return;
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch {
+        if (!cancelled) { setSuggestions([]); setShowSuggestions(false); }
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [draft, selectedEmail]);
 
   const handleAdd = () => {
     const email = draft.trim();
@@ -581,11 +613,20 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
     setDraft('');
     setDraftGroupId('');
     setDraftError(null);
+    setSelectedEmail(null);
+  };
+
+  const handleSelectSuggestion = (suggestion) => {
+    setDraft(suggestion.email);
+    setSelectedEmail(suggestion.email);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    if (draftError) setDraftError(null);
   };
 
   return (
     <View nativeID={slug} testID={slug}>
-      <View className="flex-row items-center gap-2" nativeID={`${slug}-row`} testID={`${slug}-row`}>
+      <View className="relative flex-row items-center gap-2" nativeID={`${slug}-row`} testID={`${slug}-row`}>
         <View
           className={`h-12 flex-1 flex-row items-center rounded-xl border ${
             draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
@@ -597,7 +638,9 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
             autoCapitalize="none"
             className={INPUT_CLASS}
             keyboardType="email-address"
-            onChangeText={(text) => { setDraft(text); if (draftError) setDraftError(null); }}
+            onBlur={() => { setTimeout(() => setShowSuggestions(false), 150); }}
+            onChangeText={(text) => { setDraft(text); setSelectedEmail(null); if (draftError) setDraftError(null); }}
+            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
             onSubmitEditing={handleAdd}
             placeholder={placeholder}
             placeholderTextColor={colors.onSurfaceVariant}
@@ -628,6 +671,38 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
         >
           <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
         </Pressable>
+
+        {showSuggestions && (
+          <View
+            className="absolute left-0 right-0 top-14 z-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
+            nativeID={`${slug}-suggestions`}
+            testID={`${slug}-suggestions`}
+          >
+            {suggestions.map((suggestion) => {
+              const itemSlug = `${slug}-suggestion-${suggestion.user_id}`;
+              const fullName = `${suggestion.name ?? ''} ${suggestion.surname ?? ''}`.trim();
+              return (
+                <Pressable
+                  className="flex-row items-center gap-2 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  key={suggestion.user_id}
+                  nativeID={itemSlug}
+                  onPress={() => handleSelectSuggestion(suggestion)}
+                  testID={itemSlug}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle-outline" size={18} />
+                  <View className="flex-1" nativeID={`${itemSlug}-info`} testID={`${itemSlug}-info`}>
+                    <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID={`${itemSlug}-name`} numberOfLines={1} testID={`${itemSlug}-name`}>
+                      {fullName || suggestion.email}
+                    </Text>
+                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${itemSlug}-email`} numberOfLines={1} testID={`${itemSlug}-email`}>
+                      {suggestion.email}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       <View className="h-5" nativeID={`${slug}-error-row`} testID={`${slug}-error-row`}>
