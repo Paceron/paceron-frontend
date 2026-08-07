@@ -626,7 +626,7 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
 
   return (
     <View nativeID={slug} testID={slug}>
-      <View className="relative flex-row items-center gap-2" nativeID={`${slug}-row`} testID={`${slug}-row`}>
+      <View className="flex-row items-center gap-2" nativeID={`${slug}-row`} testID={`${slug}-row`}>
         <View
           className={`h-12 flex-1 flex-row items-center rounded-xl border ${
             draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
@@ -671,39 +671,39 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
         >
           <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
         </Pressable>
-
-        {showSuggestions && (
-          <View
-            className="absolute left-0 right-0 top-14 z-10 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
-            nativeID={`${slug}-suggestions`}
-            testID={`${slug}-suggestions`}
-          >
-            {suggestions.map((suggestion) => {
-              const itemSlug = `${slug}-suggestion-${suggestion.user_id}`;
-              const fullName = `${suggestion.name ?? ''} ${suggestion.surname ?? ''}`.trim();
-              return (
-                <Pressable
-                  className="flex-row items-center gap-2 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  key={suggestion.user_id}
-                  nativeID={itemSlug}
-                  onPress={() => handleSelectSuggestion(suggestion)}
-                  testID={itemSlug}
-                >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle-outline" size={18} />
-                  <View className="flex-1" nativeID={`${itemSlug}-info`} testID={`${itemSlug}-info`}>
-                    <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID={`${itemSlug}-name`} numberOfLines={1} testID={`${itemSlug}-name`}>
-                      {fullName || suggestion.email}
-                    </Text>
-                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${itemSlug}-email`} numberOfLines={1} testID={`${itemSlug}-email`}>
-                      {suggestion.email}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
       </View>
+
+      {showSuggestions && (
+        <View
+          className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-surface-2"
+          nativeID={`${slug}-suggestions`}
+          testID={`${slug}-suggestions`}
+        >
+          {suggestions.map((suggestion) => {
+            const itemSlug = `${slug}-suggestion-${suggestion.user_id}`;
+            const fullName = `${suggestion.name ?? ''} ${suggestion.surname ?? ''}`.trim();
+            return (
+              <Pressable
+                className="flex-row items-center gap-2 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+                key={suggestion.user_id}
+                nativeID={itemSlug}
+                onPress={() => handleSelectSuggestion(suggestion)}
+                testID={itemSlug}
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle-outline" size={18} />
+                <View className="flex-1" nativeID={`${itemSlug}-info`} testID={`${itemSlug}-info`}>
+                  <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID={`${itemSlug}-name`} numberOfLines={1} testID={`${itemSlug}-name`}>
+                    {fullName || suggestion.email}
+                  </Text>
+                  <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${itemSlug}-email`} numberOfLines={1} testID={`${itemSlug}-email`}>
+                    {suggestion.email}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       <View className="h-5" nativeID={`${slug}-error-row`} testID={`${slug}-error-row`}>
         {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`${slug}-error`} testID={`${slug}-error`}>{draftError}</Text>}
