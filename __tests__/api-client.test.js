@@ -124,4 +124,18 @@ describe('api client 401 refresh interceptor', () => {
     expect(refreshSession).not.toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  test('skipAuthRefresh opts a request out of the interceptor even with a valid refresh token', async () => {
+    // Cubre POST /users/{id}/trainer-role: un 401 ahí es "contraseña
+    // incorrecta" (negocio), no "sesión vencida" — aunque haya un
+    // refreshToken válido en el store, no debe intentar refrescar.
+    const refreshSession = jest.fn();
+    mockGetState.mockReturnValue({ token: 'old-token', refreshToken: 'old-refresh', refreshSession, logout: jest.fn() });
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ message: 'Contraseña incorrecta.' }) });
+
+    await expect(api.post('/users/1/trainer-role', { password: 'wrong' }, { skipAuthRefresh: true }))
+      .rejects.toMatchObject({ status: 401, message: 'Contraseña incorrecta.' });
+    expect(refreshSession).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });

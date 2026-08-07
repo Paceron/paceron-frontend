@@ -60,9 +60,13 @@ export async function getPermissions(userId) {
 // específicamente (valida contraseña, persiste el alias en 1 sola
 // llamada) — reemplaza el flujo genérico (assignRole + updateUser) que
 // usaba antes. 'corredor' sigue usando el flujo genérico sin cambios.
+// skipAuthRefresh: un 401 acá es "contraseña incorrecta" (negocio), no
+// "sesión vencida" — sin este flag, el interceptor de services/api.js
+// dispararía un refresh de sesión innecesario (y en el peor caso un
+// logout espurio) solo porque el usuario tipeó mal la contraseña.
 export async function activateTrainerRole(userId, { password, bankAlias }) {
   if (USE_MOCKS) return await mockActivateTrainerRole(userId, { password, bankAlias });
-  return await api.post(`/users/${userId}/trainer-role`, { password, bank_alias: bankAlias });
+  return await api.post(`/users/${userId}/trainer-role`, { password, bank_alias: bankAlias }, { skipAuthRefresh: true });
 }
 
 // DELETE /api/v1/users/{id}/trainer-role — a diferencia del DELETE
