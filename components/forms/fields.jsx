@@ -442,7 +442,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
 // de una invitación, o el plan de un grupo). scope identifica la instancia
 // para nativeID/testID (no se muestra), ya que a diferencia de PickerField
 // no hay un label del que derivarlo.
-export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]' }) {
+export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]', showPlaceholderOption = true }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
 
@@ -456,7 +456,7 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
         onChange={(e) => onChange(e.target.value)}
         value={value}
       >
-        <option value="">{placeholder}</option>
+        {showPlaceholderOption && <option value="">{placeholder}</option>}
         {items.map((item) => (
           <option key={item.id} value={item.id}>{item.name}</option>
         ))}
@@ -570,12 +570,21 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
 export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com' }) {
   const colors = useThemeColors();
   const slug = 'email-invite-form';
+  const defaultGroupId = groups.find((g) => g.isDefault)?.id ?? '';
   const [draft, setDraft] = useState('');
-  const [draftGroupId, setDraftGroupId] = useState('');
+  const [draftGroupId, setDraftGroupId] = useState(defaultGroupId);
   const [draftError, setDraftError] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState(null);
+
+  // Los grupos pueden llegar async (todavía no estaban cuando se montó
+  // el form) — mantiene seleccionado el principal mientras el usuario no
+  // haya elegido otro a mano.
+  useEffect(() => {
+    if (!draftGroupId && defaultGroupId) setDraftGroupId(defaultGroupId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultGroupId]);
 
   useEffect(() => {
     const query = draft.trim();
@@ -611,7 +620,7 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
     }
     onAdd({ email, groupId: draftGroupId });
     setDraft('');
-    setDraftGroupId('');
+    setDraftGroupId(defaultGroupId);
     setDraftError(null);
     setSelectedEmail(null);
   };
@@ -651,15 +660,28 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
           />
         </View>
 
-        {groups.length > 0 && (
+        {groups.length > 1 ? (
           <InlinePicker
             onChange={setDraftGroupId}
             options={groups}
             placeholder="Grupo"
             scope={`${slug}-group`}
+            showPlaceholderOption={false}
             value={draftGroupId}
-            widthClass="max-w-[112px]"
+            widthClass="max-w-[160px]"
           />
+        ) : groups.length === 1 && (
+          // Un solo grupo (el principal) — nada para elegir, se muestra
+          // fijo en vez de un select interactivo sin sentido.
+          <View
+            className="h-12 max-w-[160px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-3 dark:border-slate-700 dark:bg-slate-800"
+            nativeID={`${slug}-single-group`}
+            testID={`${slug}-single-group`}
+          >
+            <Text className="text-xs text-slate-600 dark:text-slate-300" nativeID={`${slug}-single-group-label`} numberOfLines={1} testID={`${slug}-single-group-label`}>
+              {groups[0].name}
+            </Text>
+          </View>
         )}
 
         <Pressable
