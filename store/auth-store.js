@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { login as loginService, register as registerService, getUser as getUserService } from '../services/auth.js';
+import { login as loginService, register as registerService, getUser as getUserService, logout as logoutService, refresh as refreshService } from '../services/auth.js';
 import { updateUser as updateUserService, changeStatus as changeStatusService } from '../services/user.js';
-import { assignRole as assignRoleService, removeRole as removeRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
+import { assignRole as assignRoleService, activateTrainerRole as activateTrainerRoleService, deactivateTrainerRole as deactivateTrainerRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 
@@ -61,12 +61,11 @@ export const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     try {
       const result = await loginService(email, password);
-      const token = result?.authorization?.access_token;
+      const token = result?.access_token;
       const user = toUserModel(result?.user);
       if (token && user) {
-        const auth = result.authorization;
-        const expiresAt = auth.expires_in ? Date.now() + auth.expires_in * 1000 : null;
-        const session = { user, token, refreshToken: auth.refresh_token ?? null, expiresAt };
+        const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
+        const session = { user, token, refreshToken: result.refresh_token ?? null, expiresAt };
         set(session);
         const { activeRole } = get();
         await persist({ ...session, activeRole, roles: [] });
@@ -171,17 +170,16 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Asigna el rol entrenador (tier base) y guarda el alias. Verificado
-  // 2026-07-19 contra el backend real: PUT /users/{id} es parcial (un PUT
-  // con solo {bank_alias} no tocó el resto del perfil) — no hace falta
-  // reenviar el perfil completo.
-  activateTrainerRole: async (bankAlias) => {
+  // Activa el rol entrenador — 1 sola llamada al endpoint dedicado (valida
+  // contraseña, persiste el alias). La respuesta (UserRoleResponse) no
+  // trae el perfil actualizado, así que se encadena refreshUser() para
+  // traer el bank_alias real guardado por el backend.
+  activateTrainerRole: async (bankAlias, password) => {
     const { user } = get();
     if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
     try {
-      await assignRoleService(user.userId, 'entrenador');
-      const updateResult = await get().updateUser(user.userId, { bank_alias: bankAlias });
-      if (!updateResult.success) return updateResult;
+      await activateTrainerRoleService(user.userId, { password, bankAlias });
+      await get().refreshUser();
       await get().fetchPermissions();
       return { success: true };
     } catch (error) {
@@ -189,14 +187,18 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Da de baja el rol entrenador. bank_alias NO se toca a propósito — se
-  // mantiene guardado por si el usuario reactiva el perfil más adelante
-  // (ver activate-trainer-screen.jsx, que lo pre-completa en ese caso).
+  // Da de baja el rol entrenador vía el endpoint dedicado — a diferencia
+  // del DELETE genérico de roles, este bloquea con 409 si el usuario
+  // lidera equipos activos. El caller muestra ese mensaje tal cual (ver
+  // profile-screen.jsx), sin caso especial acá. bank_alias NO se toca a
+  // propósito — se mantiene guardado por si el usuario reactiva el perfil
+  // más adelante (ver activate-trainer-screen.jsx, que lo pre-completa en
+  // ese caso).
   deactivateTrainerRole: async () => {
     const { user, activeRole } = get();
     if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
     try {
-      await removeRoleService(user.userId, 'entrenador');
+      await deactivateTrainerRoleService(user.userId);
       if (activeRole === 'trainer') {
         const { token, refreshToken, expiresAt, roles } = get();
         set({ activeRole: 'runner' });
@@ -220,6 +222,13 @@ export const useAuthStore = create((set, get) => ({
   clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
 
   logout: async () => {
+    const { refreshToken } = get();
+    try {
+      if (refreshToken) await logoutService(refreshToken);
+    } catch {
+      // best-effort — igual que persist(), el logout local sigue aunque
+      // esto falle (sin red, refresh token ya vencido, etc.)
+    }
     set({
       user: null,
       token: null,
@@ -230,5 +239,18 @@ export const useAuthStore = create((set, get) => ({
       rolesLoaded: false,
     });
     await removeItem(STORAGE_KEY);
+  },
+
+  // Rota el refresh token (POST /auth/refresh) y persiste el par nuevo.
+  // Usado por services/api.js cuando una request pega 401 — ver ahí el
+  // interceptor que llama a esto antes de reintentar.
+  refreshSession: async () => {
+    const { refreshToken, user, activeRole, roles } = get();
+    if (!refreshToken) throw new Error('No hay refresh token disponible.');
+    const result = await refreshService(refreshToken);
+    const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
+    set({ token: result.access_token, refreshToken: result.refresh_token, expiresAt });
+    await persist({ user, token: result.access_token, refreshToken: result.refresh_token, expiresAt, activeRole, roles });
+    return result.access_token;
   },
 }));

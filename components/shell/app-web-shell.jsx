@@ -17,6 +17,20 @@ function DropdownMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  // logout() ahora pega al backend (revoca el refresh token) antes de
+  // limpiar el estado local — sin esperar esa promesa, el replace a '/'
+  // corría con el usuario todavía autenticado en el store y la ruta raíz
+  // mostraba Home un instante antes de reaccionar al logout real.
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await useAuthStore.getState().logout();
+    setLoggingOut(false);
+    onClose();
+    router.replace('/');
+  };
 
   return (
     <View className="w-64" nativeID="web-shell-dropdown-menu" testID="web-shell-dropdown-menu">
@@ -56,13 +70,20 @@ function DropdownMenu({ onClose }) {
         <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-profile" testID="web-shell-dropdown-divider-profile" />
 
         <Pressable
-          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150"
+          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-50 dark:active:bg-red-900/20 transition-colors duration-150 disabled:opacity-60"
+          disabled={loggingOut}
           nativeID="web-shell-dropdown-logout"
-          onPress={() => { useAuthStore.getState().logout(); onClose(); router.replace('/'); }}
+          onPress={handleLogout}
           testID="web-shell-dropdown-logout"
         >
-          <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
-          <Text className="text-sm font-semibold text-red-600 dark:text-red-400" nativeID="web-shell-dropdown-logout-label" testID="web-shell-dropdown-logout-label">Cerrar sesión</Text>
+          {loggingOut ? (
+            <ActivityIndicator color={colors.error} size="small" />
+          ) : (
+            <MaterialCommunityIcons name="logout" size={18} color={colors.error} />
+          )}
+          <Text className="text-sm font-semibold text-red-600 dark:text-red-400" nativeID="web-shell-dropdown-logout-label" testID="web-shell-dropdown-logout-label">
+            {loggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+          </Text>
         </Pressable>
       </View>
     </View>

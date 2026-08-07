@@ -1,6 +1,9 @@
 import api from './api.js';
 import { USE_MOCKS } from '../config/env.js';
-import { mockGetRoles, mockAssignRole, mockRemoveRole, mockGetPermissions } from './__mocks__/roles-mock.js';
+import {
+  mockGetRoles, mockAssignRole, mockRemoveRole, mockGetPermissions,
+  mockActivateTrainerRole, mockDeactivateTrainerRole,
+} from './__mocks__/roles-mock.js';
 
 // Catálogo estático del backend — se cachea en memoria de módulo (no en
 // el store de Zustand, que es para estado de sesión) y se pide una sola
@@ -50,4 +53,26 @@ export async function removeRole(userId, roleName) {
 export async function getPermissions(userId) {
   if (USE_MOCKS) return await mockGetPermissions(userId);
   return await api.get(`/auth/permissions?user_id=${encodeURIComponent(userId)}`);
+}
+
+// POST /api/v1/users/{id}/trainer-role — userrole.ActivateEntrenadorRequest
+// {password, bank_alias}. Endpoint dedicado para el rol entrenador
+// específicamente (valida contraseña, persiste el alias en 1 sola
+// llamada) — reemplaza el flujo genérico (assignRole + updateUser) que
+// usaba antes. 'corredor' sigue usando el flujo genérico sin cambios.
+// skipAuthRefresh: un 401 acá es "contraseña incorrecta" (negocio), no
+// "sesión vencida" — sin este flag, el interceptor de services/api.js
+// dispararía un refresh de sesión innecesario (y en el peor caso un
+// logout espurio) solo porque el usuario tipeó mal la contraseña.
+export async function activateTrainerRole(userId, { password, bankAlias }) {
+  if (USE_MOCKS) return await mockActivateTrainerRole(userId, { password, bankAlias });
+  return await api.post(`/users/${userId}/trainer-role`, { password, bank_alias: bankAlias }, { skipAuthRefresh: true });
+}
+
+// DELETE /api/v1/users/{id}/trainer-role — a diferencia del DELETE
+// genérico de roles, este bloquea con 409 si el usuario lidera equipos
+// activos (regla de negocio nueva del lado del backend).
+export async function deactivateTrainerRole(userId) {
+  if (USE_MOCKS) return await mockDeactivateTrainerRole(userId);
+  return await api.delete(`/users/${userId}/trainer-role`);
 }

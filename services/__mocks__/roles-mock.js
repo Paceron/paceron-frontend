@@ -41,6 +41,31 @@ export async function mockGetPermissions(userId) {
   };
 }
 
+// POST /users/{id}/trainer-role — a diferencia de mockAssignRole (genérico,
+// sin password), este simula la validación de contraseña que el endpoint
+// real exige.
+export async function mockActivateTrainerRole(userId, { password, bankAlias }) {
+  if (!password) {
+    const error = new Error('La contraseña es requerida.');
+    error.status = 400;
+    throw error;
+  }
+  if (!mockAssignedRoles.includes('entrenador')) {
+    mockAssignedRoles.push('entrenador');
+  }
+  return {
+    id: 1, user_id: userId, role_id: 2, tier_id: 1, status: 'active', assignment_date: new Date().toISOString(),
+  };
+}
+
+// DELETE /users/{id}/trainer-role — el mock no simula el bloqueo por
+// "lidera equipos activos" (409): no hay estado de equipos en este mock,
+// se agrega si algún test lo llega a necesitar.
+export async function mockDeactivateTrainerRole(_userId) {
+  mockAssignedRoles = mockAssignedRoles.filter((name) => name !== 'entrenador');
+  return { message: 'Rol entrenador desactivado.' };
+}
+
 export function __resetMockRoles() {
   mockAssignedRoles = ['corredor'];
 }

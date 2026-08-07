@@ -3,6 +3,9 @@ import { useAuthStore } from '../store/auth-store.js';
 jest.mock('../services/auth.js', () => ({
   login: jest.fn(),
   register: jest.fn(),
+  getUser: jest.fn(),
+  refresh: jest.fn(),
+  logout: jest.fn(),
 }));
 
 jest.mock('../services/roles.js', () => ({
@@ -10,6 +13,8 @@ jest.mock('../services/roles.js', () => ({
   getPermissions: jest.fn(),
   getRoles: jest.fn(),
   getRoleIdByName: jest.fn(),
+  activateTrainerRole: jest.fn(),
+  deactivateTrainerRole: jest.fn(),
 }));
 
 jest.mock('../services/user.js', () => ({
@@ -27,14 +32,14 @@ jest.mock('../services/storage.js', () => {
   };
 });
 
-import { login as loginService, register as registerService } from '../services/auth.js';
-import { assignRole, getPermissions } from '../services/roles.js';
+import { login as loginService, register as registerService, getUser as getUserService, refresh as refreshService, logout as logoutService } from '../services/auth.js';
+import { assignRole, getPermissions, activateTrainerRole as activateTrainerRoleService, deactivateTrainerRole as deactivateTrainerRoleService } from '../services/roles.js';
 import { updateUser as updateUserService } from '../services/user.js';
 import * as storage from '../services/storage.js';
 
 const LOGIN_OK = {
+  access_token: 'tok', refresh_token: 'ref', expires_in: 3600,
   user: { user_id: 3, name: 'pepe', surname: 'lota', email: 'a@b.com', status: 'active' },
-  authorization: { access_token: 'tok', refresh_token: 'ref', expires_in: 3600 },
 };
 
 beforeEach(() => {
@@ -43,6 +48,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   getPermissions.mockResolvedValue({ user_id: 0, roles: [] });
   assignRole.mockResolvedValue({});
+  logoutService.mockResolvedValue({ message: 'ok' });
   useAuthStore.setState({ user: null, token: null, refreshToken: null, expiresAt: null, hydrated: false, activeRole: 'runner', roles: [], rolesLoaded: false });
 });
 
@@ -101,13 +107,50 @@ describe('auth store', () => {
   });
 
   test('logout clears state and storage', async () => {
-    useAuthStore.setState({ user: { userId: 1 }, token: 'abc' });
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: 'rt' });
     await storage.setItem('paceron.auth', 'x');
     await useAuthStore.getState().logout();
     const s = useAuthStore.getState();
     expect(s.user).toBeNull();
     expect(s.token).toBeNull();
     expect(storage.removeItem).toHaveBeenCalledWith('paceron.auth');
+  });
+
+  test('logout calls the revoke endpoint with the current refresh token', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: 'rt-123' });
+    await useAuthStore.getState().logout();
+    expect(logoutService).toHaveBeenCalledWith('rt-123');
+  });
+
+  test('logout clears local state even if the revoke call fails', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: 'rt-123' });
+    logoutService.mockRejectedValueOnce(new Error('network down'));
+    await useAuthStore.getState().logout();
+    expect(useAuthStore.getState().user).toBeNull();
+  });
+
+  test('logout does not call the revoke endpoint when there is no refresh token', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'abc', refreshToken: null });
+    await useAuthStore.getState().logout();
+    expect(logoutService).not.toHaveBeenCalled();
+  });
+
+  test('refreshSession rotates the token pair and persists the new session', async () => {
+    useAuthStore.setState({
+      user: { userId: 1 }, token: 'old-token', refreshToken: 'old-refresh', activeRole: 'runner', roles: [],
+    });
+    refreshService.mockResolvedValue({ access_token: 'new-token', refresh_token: 'new-refresh', expires_in: 3600 });
+    const newToken = await useAuthStore.getState().refreshSession();
+    expect(newToken).toBe('new-token');
+    const s = useAuthStore.getState();
+    expect(s.token).toBe('new-token');
+    expect(s.refreshToken).toBe('new-refresh');
+    expect(storage.setItem).toHaveBeenCalled();
+  });
+
+  test('refreshSession throws when there is no refresh token to use', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'old-token', refreshToken: null });
+    await expect(useAuthStore.getState().refreshSession()).rejects.toThrow();
   });
 });
 
@@ -130,21 +173,43 @@ describe('role management (backend-backed)', () => {
     expect(s.rolesLoaded).toBe(true);
   });
 
-  test('activateTrainerRole assigns the role and updates the bank alias', async () => {
+  test('activateTrainerRole calls the dedicated endpoint and refreshes the user + roles', async () => {
     useAuthStore.setState({ user: { userId: 1, name: 'Demo', surname: 'User' }, token: 'tok', roles: [] });
-    assignRole.mockResolvedValue({});
-    updateUserService.mockResolvedValue({
-      user_id: 1, name: 'Demo', surname: 'User', bank_alias: 'mi.alias',
-    });
+    activateTrainerRoleService.mockResolvedValue({ id: 1, user_id: 1, role_id: 2, status: 'active' });
+    getUserService.mockResolvedValue({ user_id: 1, name: 'Demo', surname: 'User', bank_alias: 'mi.alias' });
     getPermissions.mockResolvedValue({
       user_id: 1,
       roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }],
     });
-    const result = await useAuthStore.getState().activateTrainerRole('mi.alias');
+    const result = await useAuthStore.getState().activateTrainerRole('mi.alias', 'mi-password');
     expect(result.success).toBe(true);
-    expect(assignRole).toHaveBeenCalledWith(1, 'entrenador');
-    expect(updateUserService).toHaveBeenCalledWith(1, { bank_alias: 'mi.alias' }, undefined);
+    expect(activateTrainerRoleService).toHaveBeenCalledWith(1, { password: 'mi-password', bankAlias: 'mi.alias' });
+    expect(useAuthStore.getState().user.bankAlias).toBe('mi.alias');
     expect(useAuthStore.getState().roles.some((r) => r.name === 'entrenador')).toBe(true);
+  });
+
+  test('activateTrainerRole returns the backend error on failure (e.g. wrong password)', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', roles: [] });
+    activateTrainerRoleService.mockRejectedValue(Object.assign(new Error('Contraseña incorrecta.'), { status: 401 }));
+    const result = await useAuthStore.getState().activateTrainerRole('mi.alias', 'wrong-password');
+    expect(result).toEqual({ success: false, error: 'Contraseña incorrecta.' });
+  });
+
+  test('deactivateTrainerRole calls the dedicated endpoint', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', roles: [{ id: 2, name: 'entrenador', tier: 'base', permissions: [] }] });
+    deactivateTrainerRoleService.mockResolvedValue({ message: 'ok' });
+    getPermissions.mockResolvedValue({ user_id: 1, roles: [] });
+    const result = await useAuthStore.getState().deactivateTrainerRole();
+    expect(result.success).toBe(true);
+    expect(deactivateTrainerRoleService).toHaveBeenCalledWith(1);
+    expect(useAuthStore.getState().activeRole).toBe('runner');
+  });
+
+  test('deactivateTrainerRole surfaces the backend 409 message when the user leads active teams', async () => {
+    useAuthStore.setState({ user: { userId: 1 }, token: 'tok', activeRole: 'trainer', roles: [] });
+    deactivateTrainerRoleService.mockRejectedValue(Object.assign(new Error('No podés desactivar el rol mientras lideres equipos activos.'), { status: 409 }));
+    const result = await useAuthStore.getState().deactivateTrainerRole();
+    expect(result).toEqual({ success: false, error: 'No podés desactivar el rol mientras lideres equipos activos.' });
   });
 
   test('switchRole only allows switching to a role the user actually has', async () => {
