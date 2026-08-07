@@ -50,3 +50,15 @@ export async function mockGetUser({ id, email }) {
     phone_contact: '+54 11 8765 4321',
   };
 }
+
+export async function mockRefresh(_refreshToken) {
+  return {
+    access_token: 'mock-access-token-refreshed',
+    refresh_token: 'mock-refresh-token-refreshed',
+    expires_in: 3600,
+  };
+}
+
+export async function mockLogout(_refreshToken) {
+  return { message: 'Sesión cerrada.' };
+}
