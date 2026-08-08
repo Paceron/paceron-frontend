@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { validateEmailFormat } from '../../utils/email-validators.js';
 import { BREAKPOINTS } from '../../theme/tokens.js';
+import { searchUsers } from '../../services/user.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
 
@@ -441,7 +442,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
 // de una invitación, o el plan de un grupo). scope identifica la instancia
 // para nativeID/testID (no se muestra), ya que a diferencia de PickerField
 // no hay un label del que derivarlo.
-export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]' }) {
+export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]', showPlaceholderOption = true }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
 
@@ -455,7 +456,7 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
         onChange={(e) => onChange(e.target.value)}
         value={value}
       >
-        <option value="">{placeholder}</option>
+        {showPlaceholderOption && <option value="">{placeholder}</option>}
         {items.map((item) => (
           <option key={item.id} value={item.id}>{item.name}</option>
         ))}
@@ -559,12 +560,71 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
 // 2026-07-31). Las opciones del picker son directamente `groups` (ya
 // incluye el grupo principal real) — no hay un "Sin grupo" inventado
 // aparte.
+//
+// Autocompletar (GET /users/search?q=, mínimo 3 caracteres): debounced
+// 300ms, hasta 5 sugerencias. Elegir una solo completa el campo de email
+// (no agrega directo) — el flujo de agregar/validar sigue siendo el
+// mismo de siempre. `selectedEmail` evita que, después de elegir una
+// sugerencia, el propio valor ya completado dispare una nueva búsqueda
+// y vuelva a abrir el dropdown.
+//
+// Las sugerencias se muestran en un Modal transparente (no en un View
+// absoluto anidado) — React Native Web pone `position: relative` por
+// default en TODOS los Views, así que un View absoluto anidado dentro de
+// esta card nunca logra escapar visualmente de ella (se probó, terminaba
+// solapándose mal con contenido de más abajo). Modal en RN Web se monta
+// vía portal fuera del árbol normal, evitando ese problema por completo
+// — measureInWindow (coordenadas de ventana, no relativas a un ancestro)
+// es lo correcto acá porque el contenido del Modal ya no está anidado
+// bajo el layout normal de la pantalla.
 export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com' }) {
   const colors = useThemeColors();
   const slug = 'email-invite-form';
+  const defaultGroupId = groups.find((g) => g.isDefault)?.id ?? '';
   const [draft, setDraft] = useState('');
-  const [draftGroupId, setDraftGroupId] = useState('');
+  const [draftGroupId, setDraftGroupId] = useState(defaultGroupId);
   const [draftError, setDraftError] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [anchor, setAnchor] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const inputWrapperRef = useRef(null);
+
+  // Los grupos pueden llegar async (todavía no estaban cuando se montó
+  // el form) — mantiene seleccionado el principal mientras el usuario no
+  // haya elegido otro a mano.
+  useEffect(() => {
+    if (!draftGroupId && defaultGroupId) setDraftGroupId(defaultGroupId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultGroupId]);
+
+  useEffect(() => {
+    const query = draft.trim();
+    if (query.length < 3 || query === selectedEmail) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchUsers(query);
+        if (cancelled) return;
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch {
+        if (!cancelled) { setSuggestions([]); setShowSuggestions(false); }
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [draft, selectedEmail]);
+
+  useEffect(() => {
+    if (!showSuggestions || !inputWrapperRef.current) return;
+    inputWrapperRef.current.measureInWindow((x, y, width, height) => {
+      setAnchor({ x, y, width, height });
+    });
+  }, [showSuggestions]);
 
   const handleAdd = () => {
     const email = draft.trim();
@@ -579,8 +639,17 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
     }
     onAdd({ email, groupId: draftGroupId });
     setDraft('');
-    setDraftGroupId('');
+    setDraftGroupId(defaultGroupId);
     setDraftError(null);
+    setSelectedEmail(null);
+  };
+
+  const handleSelectSuggestion = (suggestion) => {
+    setDraft(suggestion.email);
+    setSelectedEmail(suggestion.email);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    if (draftError) setDraftError(null);
   };
 
   return (
@@ -591,13 +660,16 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
             draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
           }`}
           nativeID={`${slug}-input-wrapper`}
+          ref={inputWrapperRef}
           testID={`${slug}-input-wrapper`}
         >
           <TextInput
             autoCapitalize="none"
             className={INPUT_CLASS}
             keyboardType="email-address"
-            onChangeText={(text) => { setDraft(text); if (draftError) setDraftError(null); }}
+            onBlur={() => { setTimeout(() => setShowSuggestions(false), 150); }}
+            onChangeText={(text) => { setDraft(text); setSelectedEmail(null); if (draftError) setDraftError(null); }}
+            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
             onSubmitEditing={handleAdd}
             placeholder={placeholder}
             placeholderTextColor={colors.onSurfaceVariant}
@@ -608,15 +680,28 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
           />
         </View>
 
-        {groups.length > 0 && (
+        {groups.length > 1 ? (
           <InlinePicker
             onChange={setDraftGroupId}
             options={groups}
             placeholder="Grupo"
             scope={`${slug}-group`}
+            showPlaceholderOption={false}
             value={draftGroupId}
-            widthClass="max-w-[112px]"
+            widthClass="max-w-[160px]"
           />
+        ) : groups.length === 1 && (
+          // Un solo grupo (el principal) — nada para elegir, se muestra
+          // fijo en vez de un select interactivo sin sentido.
+          <View
+            className="h-12 max-w-[160px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-3 dark:border-slate-700 dark:bg-slate-800"
+            nativeID={`${slug}-single-group`}
+            testID={`${slug}-single-group`}
+          >
+            <Text className="text-xs text-slate-600 dark:text-slate-300" nativeID={`${slug}-single-group-label`} numberOfLines={1} testID={`${slug}-single-group-label`}>
+              {groups[0].name}
+            </Text>
+          </View>
         )}
 
         <Pressable
@@ -629,6 +714,54 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
           <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
         </Pressable>
       </View>
+
+      <Modal
+        animationType="none"
+        nativeID={`${slug}-suggestions-modal`}
+        onRequestClose={() => setShowSuggestions(false)}
+        testID={`${slug}-suggestions-modal`}
+        transparent
+        visible={showSuggestions}
+      >
+        <Pressable
+          className="flex-1"
+          nativeID={`${slug}-suggestions-backdrop`}
+          onPress={() => setShowSuggestions(false)}
+          testID={`${slug}-suggestions-backdrop`}
+        >
+          <Pressable
+            className="absolute overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
+            nativeID={`${slug}-suggestions`}
+            onPress={() => {}}
+            style={{ left: anchor.x, top: anchor.y + anchor.height + 4, width: anchor.width }}
+            testID={`${slug}-suggestions`}
+          >
+            {suggestions.map((suggestion) => {
+              const itemSlug = `${slug}-suggestion-${suggestion.user_id}`;
+              const fullName = `${suggestion.name ?? ''} ${suggestion.surname ?? ''}`.trim();
+              return (
+                <Pressable
+                  className="flex-row items-center gap-2 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  key={suggestion.user_id}
+                  nativeID={itemSlug}
+                  onPress={() => handleSelectSuggestion(suggestion)}
+                  testID={itemSlug}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle-outline" size={18} />
+                  <View className="flex-1" nativeID={`${itemSlug}-info`} testID={`${itemSlug}-info`}>
+                    <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID={`${itemSlug}-name`} numberOfLines={1} testID={`${itemSlug}-name`}>
+                      {fullName || suggestion.email}
+                    </Text>
+                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${itemSlug}-email`} numberOfLines={1} testID={`${itemSlug}-email`}>
+                      {suggestion.email}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <View className="h-5" nativeID={`${slug}-error-row`} testID={`${slug}-error-row`}>
         {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`${slug}-error`} testID={`${slug}-error`}>{draftError}</Text>}

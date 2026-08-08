@@ -8,19 +8,13 @@ Doc de seguimiento interno — refleja únicamente los gaps de backend **actualm
 
 **Actualización 2026-08-02 (roster real):** `hooks/use-team-roster.js` arrancó a consumir `GET /teams/{id}/users` + `GET /groups/{id}/users` (reemplaza el roster mock) — ninguno de los dos trae nombre/email, solo `user_id`, así que hace falta un fan-out N+1 contra `GET /auth/user?id=` por cada corredor único (cacheado/dedupeado con TanStack Query, no bloqueante, pero motivó el gap 2 nuevo de abajo).
 
-**Actualización 2026-08-03:** gap 3 (`InvitationResponse` sin quién invita) — **RESUELTO**, el backend sumó `inviter_id`/`inviter_name` directo. Se sacó el workaround de 2 requests (`GET /teams/{id}` → `GET /auth/user?id=`) de `received-invitations-screen.jsx`, ahora usa `invite.inviterName` directo (`services/normalizers.js#toInvitationModel`). Gaps 1 y 2 siguen abiertos — el usuario los está trabajando del lado del backend.
+**Actualización 2026-08-03:** gap 3 (`InvitationResponse` sin quién invita) — **RESUELTO**, el backend sumó `inviter_id`/`inviter_name` directo. Se sacó el workaround de 2 requests (`GET /teams/{id}` → `GET /auth/user?id=`) de `received-invitations-screen.jsx`, ahora usa `invite.inviterName` directo (`services/normalizers.js#toInvitationModel`).
 
-Quedan 2 gaps abiertos y accionables:
+**Actualización 2026-08-07:** gap 1 (búsqueda de usuarios) — **RESUELTO**, `GET /users/search?q=` existe (mínimo 3 caracteres, hasta 5 resultados). Implementado el autocomplete al invitar (`services/user.js#searchUsers`, dropdown de sugerencias en `components/forms/fields.jsx#EmailInviteForm`, debounced 300ms). Gap 2 sigue abierto.
 
-## 1. Sin búsqueda de usuarios por nombre/email parcial
+Queda 1 gap abierto y accionable:
 
-- **Qué hace falta:** un endpoint de búsqueda (ej. `GET /users/search?q=`) que devuelva coincidencias parciales por nombre o email.
-- **Por qué:** al invitar corredores, sería útil sugerir usuarios ya registrados a medida que se tipea el email (autocompletar). Hoy solo existe `GET /auth/user?id=`/`?email=` — lookup exacto, sin buscar por texto parcial.
-- **A qué bloquea:** cualquier UI de autocompletar/sugerir usuarios al invitar — no se puede construir sin este endpoint.
-- **Workaround actual:** ninguno — el campo de invitar sigue siendo un input de email libre, sin sugerencias.
-- **Estado:** abierto.
-
-## 2. Sin lookup de usuarios en lote (por varios ids a la vez)
+## 1. Sin lookup de usuarios en lote (por varios ids a la vez)
 
 - **Qué hace falta:** algo como `GET /users?ids=1,2,3` que devuelva nombre/email de varios usuarios en una sola llamada.
 - **Por qué:** `TeamUserResponse`/`GroupUserResponse` (roster de equipo/grupo) solo traen `user_id`, sin nombre ni email — para mostrar el roster real hay que resolver cada corredor único contra `GET /auth/user?id=` (N+1). No bloqueante (TanStack Query cachea/dedupea el resultado entre pantallas), pero un endpoint en lote lo resolvería de raíz en vez de con un workaround de cliente.
