@@ -15,11 +15,56 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { Row, Col, InputField, DateField, SelectField, PickerField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
+import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
+import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
+import { changePassword } from '../../services/user.js';
 
 // DD/MM/YYYY -> YYYY-MM-DD para el <input type="date"> de web.
 function toDateInput(value) {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value || '');
   return m ? `${m[3]}-${m[2]}-${m[1]}` : value || '';
+}
+
+// Pestañas full-width — variante de TabBar de team-detail-screen.jsx (misma
+// paleta bg-primary-tint-subtle/text-primary cuando está activa), pero acá
+// en las dos plataformas (a diferencia de team-detail, que solo usa tabs en
+// web): con únicamente 2 secciones cortas, apiladas quedaba mal también en
+// mobile.
+const TABS = [
+  { id: 'personal', label: 'Datos personales', icon: 'account-details' },
+  { id: 'password', label: 'Contraseña', icon: 'lock' },
+];
+
+function TabBar({ active, onChange }) {
+  const colors = useThemeColors();
+
+  return (
+    <View className="mb-6 flex-row gap-2" nativeID="edit-profile-screen-tab-bar" testID="edit-profile-screen-tab-bar">
+      {TABS.map((tab) => {
+        const isActive = tab.id === active;
+        return (
+          <Pressable
+            key={tab.id}
+            className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 ${
+              isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            nativeID={`edit-profile-screen-tab-${tab.id}`}
+            onPress={() => onChange(tab.id)}
+            testID={`edit-profile-screen-tab-${tab.id}`}
+          >
+            <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
+            <Text
+              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
+              nativeID={`edit-profile-screen-tab-${tab.id}-label`}
+              testID={`edit-profile-screen-tab-${tab.id}-label`}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 // Guard: TabsLayout ya asegura que la sesión esté hidratada antes de montar
@@ -31,6 +76,7 @@ export function EditProfileScreen() {
 
   useEffect(() => {
     if (!user) router.replace('/login');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (!user) return null;
@@ -40,8 +86,7 @@ export function EditProfileScreen() {
 function EditProfileForm({ user }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
-  const storedTrainerAlias = useAuthStore((s) => s.trainerAlias);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
 
   const [firstName, setFirstName] = useState(user.name ?? '');
   const [lastName, setLastName] = useState(user.surname ?? '');
@@ -50,11 +95,12 @@ function EditProfileForm({ user }) {
   const [email, setEmail] = useState(user.email ?? '');
   const [phone, setPhone] = useState(user.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(user.phoneContact ?? '');
-  const [trainerAlias, setTrainerAlias] = useState(storedTrainerAlias ?? '');
+  const [trainerAlias, setTrainerAlias] = useState(user.bankAlias ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
+  const [activeTab, setActiveTab] = useState('personal');
   const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
 
   const address = useAddressCascade({
@@ -88,7 +134,7 @@ function EditProfileForm({ user }) {
     !validateBirthDate(birthDate) &&
     validateEmailFormat(email) &&
     !isDisposableEmail(email);
-  const trainerOk = !trainerActivated || !validateTrainerAlias(trainerAlias);
+  const trainerOk = !hasTrainerRole || !validateTrainerAlias(trainerAlias);
   const canSubmit = personalOk && trainerOk && (!emailChanged || currentPassword.length > 0);
 
   const handleSubmit = async () => {
@@ -99,7 +145,7 @@ function EditProfileForm({ user }) {
     touch('birthDate');
     touch('email');
     if (emailChanged) touch('currentPassword');
-    if (trainerActivated) touch('trainerAlias');
+    if (hasTrainerRole) touch('trainerAlias');
 
     if (!personalOk) return;
     if (!trainerOk) return;
@@ -120,15 +166,13 @@ function EditProfileForm({ user }) {
         city: address.city,
         street: address.street,
         number: address.number,
+        bankAlias: hasTrainerRole ? trainerAlias : user.bankAlias,
       });
       const result = await useAuthStore.getState().updateUser(
         user.userId,
         payload,
         emailChanged ? currentPassword : undefined,
       );
-      if (trainerActivated) {
-        await useAuthStore.getState().updateTrainerData({ trainerAlias });
-      }
       if (result.success) {
         Toast.show({ type: 'success', text1: 'Datos actualizados', text2: 'Tu perfil se guardó correctamente.' });
         router.replace('/profile');
@@ -144,6 +188,8 @@ function EditProfileForm({ user }) {
 
   return (
     <KeyboardAwareScrollView
+      nativeID="edit-profile-screen-scroll"
+      testID="edit-profile-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       keyboardShouldPersistTaps="handled"
@@ -151,21 +197,27 @@ function EditProfileForm({ user }) {
       enableOnAndroid
       extraScrollHeight={24}
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
-        <View className="mb-8 flex-row items-center gap-2">
+      <View nativeID="edit-profile-screen-container" testID="edit-profile-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
+        <View nativeID="edit-profile-screen-header" testID="edit-profile-screen-header" className="mb-8 flex-row items-center gap-2">
           <Pressable
-            className="flex-row items-center gap-1.5 py-1 pr-1 active:opacity-70"
+            nativeID="edit-profile-screen-back-button"
+            testID="edit-profile-screen-back-button"
+            className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             onPress={() => router.replace('/profile')}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
-            <Text className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
+            <Text nativeID="edit-profile-screen-back-label" testID="edit-profile-screen-back-label" className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
           </Pressable>
-          <Text className="text-sm text-slate-400 dark:text-slate-600">/</Text>
-          <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
+          <Text nativeID="edit-profile-screen-breadcrumb-separator" testID="edit-profile-screen-breadcrumb-separator" className="text-sm text-slate-400 dark:text-slate-600">/</Text>
+          <Text nativeID="edit-profile-screen-title" testID="edit-profile-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
             Editar datos
           </Text>
         </View>
 
+        <TabBar active={activeTab} onChange={setActiveTab} />
+
+        {activeTab === 'personal' && (
+        <>
         <SectionCard icon="account-details" title="Datos personales">
         <Row>
           <Col>
@@ -324,7 +376,7 @@ function EditProfileForm({ user }) {
         </Row>
         </SectionCard>
 
-        {trainerActivated && (
+        {hasTrainerRole && (
           <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
             <InputField
               autoCapitalize="none"
@@ -340,7 +392,9 @@ function EditProfileForm({ user }) {
         )}
 
         <Pressable
-          className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-full ${canSubmit ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
+          nativeID="edit-profile-screen-submit-button"
+          testID="edit-profile-screen-submit-button"
+          className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-full ${canSubmit ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
           disabled={loading}
           onPress={handleSubmit}
         >
@@ -349,13 +403,133 @@ function EditProfileForm({ user }) {
           ) : (
             <>
               <MaterialCommunityIcons color={canSubmit ? colors.onPrimary : colors.onSurfaceVariant} name="content-save" size={18} />
-              <Text className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
+              <Text nativeID="edit-profile-screen-submit-label" testID="edit-profile-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
                 Guardar cambios
               </Text>
             </>
           )}
         </Pressable>
+        </>
+        )}
+
+        {activeTab === 'password' && <ChangePasswordSection userId={user.userId} />}
       </View>
     </KeyboardAwareScrollView>
+  );
+}
+
+// Form independiente del de datos personales de arriba — propio endpoint
+// (PATCH /users/{id}/password, distinto del PUT /users/{id} de arriba),
+// propio botón de guardar, no redirige al confirmar (solo limpia los
+// campos), a diferencia del form de datos personales.
+function ChangePasswordSection({ userId }) {
+  const colors = useThemeColors();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [touched, setTouched] = useState({});
+  const [loading, setLoading] = useState(false);
+  const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
+
+  const passwordReqs = checkPasswordRequirements(newPassword);
+  const newPasswordValid = isPasswordValid(newPassword);
+  const passwordsMatch = newPassword === confirmNewPassword && confirmNewPassword.length > 0;
+  const canSubmit = currentPassword.length > 0 && newPasswordValid && passwordsMatch;
+
+  const handleSubmit = async () => {
+    if (loading) return;
+    touch('currentPassword');
+    touch('newPassword');
+    touch('confirmNewPassword');
+    if (!canSubmit) return;
+
+    setLoading(true);
+    try {
+      await changePassword(userId, { currentPassword, newPassword, confirmPassword: confirmNewPassword });
+      Toast.show({ type: 'success', text1: 'Contraseña actualizada', text2: 'Tu contraseña se cambió correctamente.' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTouched({});
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Error', text2: error.message || 'No se pudo cambiar la contraseña.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SectionCard icon="lock" title="Cambiar contraseña">
+      <InputField
+        autoComplete="current-password"
+        label="Contraseña actual *"
+        onBlur={() => touch('currentPassword')}
+        onChange={setCurrentPassword}
+        onToggleSecure={() => setShowCurrent((v) => !v)}
+        placeholder="Tu contraseña actual"
+        secureTextEntry={!showCurrent}
+        showSecure={showCurrent}
+        textContentType="password"
+        touched={touched.currentPassword}
+        value={currentPassword}
+      />
+
+      <Row>
+        <Col>
+          <InputField
+            autoComplete="new-password"
+            label="Nueva contraseña *"
+            onBlur={() => touch('newPassword')}
+            onChange={(v) => { if (v.length <= PASSWORD_MAX_LENGTH) setNewPassword(v); }}
+            onToggleSecure={() => setShowNew((v) => !v)}
+            placeholder="Tu nueva contraseña"
+            secureTextEntry={!showNew}
+            showSecure={showNew}
+            textContentType="newPassword"
+            value={newPassword}
+          />
+        </Col>
+        <Col>
+          <InputField
+            autoComplete="new-password"
+            error={touched.confirmNewPassword && !passwordsMatch && confirmNewPassword.length > 0 ? 'Las contraseñas no coinciden.' : null}
+            label="Confirmar nueva contraseña *"
+            onBlur={() => touch('confirmNewPassword')}
+            onChange={setConfirmNewPassword}
+            onToggleSecure={() => setShowConfirm((v) => !v)}
+            placeholder="Repetí tu nueva contraseña"
+            secureTextEntry={!showConfirm}
+            showSecure={showConfirm}
+            textContentType="newPassword"
+            value={confirmNewPassword}
+          />
+        </Col>
+      </Row>
+
+      <PasswordRequirementsList reqs={passwordReqs} />
+      <StrengthBar password={newPassword} />
+
+      <Pressable
+        nativeID="edit-profile-screen-change-password-submit-button"
+        testID="edit-profile-screen-change-password-submit-button"
+        className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-full ${canSubmit ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
+        disabled={loading}
+        onPress={handleSubmit}
+      >
+        {loading ? (
+          <ActivityIndicator color="#111518" size="small" />
+        ) : (
+          <>
+            <MaterialCommunityIcons color={canSubmit ? colors.onPrimary : colors.onSurfaceVariant} name="lock-reset" size={18} />
+            <Text nativeID="edit-profile-screen-change-password-submit-label" testID="edit-profile-screen-change-password-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
+              Guardar contraseña
+            </Text>
+          </>
+        )}
+      </Pressable>
+    </SectionCard>
   );
 }

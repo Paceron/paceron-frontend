@@ -23,6 +23,7 @@ export function toUserModel(dto) {
     province: dto.province,
     street: dto.street,
     number: dto.number,
+    bankAlias: dto.bank_alias,
   };
 }
 
@@ -69,5 +70,136 @@ export function toUpdatePayload(form) {
     phone_contact: form.phoneContact ?? '',
     province: form.province ?? '',
     street: form.street ?? '',
+    bank_alias: form.bankAlias ?? '',
   };
+}
+
+export function toTeamModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    description: dto.description,
+    level: dto.level,
+    maxMembers: dto.max_members,
+    ownerId: dto.owner_id,
+    requirements: dto.requirements,
+    status: dto.status,
+    country: dto.country,
+    province: dto.province,
+    city: dto.city,
+    street: dto.street,
+    number: dto.number,
+    showGroupsToRunners: dto.show_groups_to_runners ?? false,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateTeamPayload(form) {
+  const payload = {
+    name: form.name,
+    max_members: form.maxMembers,
+    owner_id: form.ownerId,
+    create_default_group: true,
+  };
+
+  const optional = {
+    description: form.description,
+    level: form.level,
+    requirements: form.requirements,
+  };
+
+  for (const [key, value] of Object.entries(optional)) {
+    if (value && String(value).trim()) payload[key] = value;
+  }
+
+  return payload;
+}
+
+// UpdateTeamRequest del backend no tiene campo de foto (sin campo en el
+// backend todavía, ver docs/BACKEND_API_GAPS.md) — el whitelist de
+// `optional` la descarta automáticamente si viene en `form`. Dirección va
+// aparte (ver toAddressPayload, es un endpoint distinto). show_groups_to_runners
+// se maneja fuera del whitelist genérico porque es boolean — el chequeo
+// `String(value).trim()` de abajo está pensado para strings/números, no
+// para distinguir `false` de "sin valor".
+export function toUpdateTeamPayload(form) {
+  const payload = {};
+  const optional = {
+    name: form.name,
+    description: form.description,
+    level: form.level,
+    max_members: form.maxMembers,
+    requirements: form.requirements,
+  };
+
+  for (const [key, value] of Object.entries(optional)) {
+    if (value !== undefined && value !== null && String(value).trim()) payload[key] = value;
+  }
+
+  if (form.showGroupsToRunners !== undefined) payload.show_groups_to_runners = form.showGroupsToRunners;
+
+  return payload;
+}
+
+export function toAddressPayload(form) {
+  const payload = {};
+  const optional = { country: form.country, province: form.province, city: form.city };
+
+  for (const [key, value] of Object.entries(optional)) {
+    if (value && String(value).trim()) payload[key] = value;
+  }
+
+  return payload;
+}
+
+export function toGroupModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    teamId: String(dto.team_id),
+    name: dto.name,
+    description: dto.description,
+    isDefault: dto.is_main ?? false,
+    trainingPlanId: null,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateGroupPayload(teamId, form) {
+  const payload = { team_id: Number(teamId), name: form.name };
+  if (form.description && String(form.description).trim()) payload.description = form.description.trim();
+  return payload;
+}
+
+export function toUpdateGroupPayload(form) {
+  const payload = {};
+  if (form.name && String(form.name).trim()) payload.name = form.name.trim();
+  if (form.description !== undefined) payload.description = form.description ? String(form.description).trim() : null;
+  return payload;
+}
+
+export function toInvitationModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    teamId: String(dto.team_id),
+    email: dto.invitee_email,
+    inviteeId: dto.invitee_id,
+    inviteeName: dto.invitee_name,
+    groupId: dto.group_id != null ? String(dto.group_id) : null,
+    teamName: dto.team_name ?? null,
+    inviterName: dto.inviter_name ?? null,
+    status: dto.status,
+    expiresAt: dto.expires_at,
+    createdAt: dto.created_at,
+  };
+}
+
+export function toInvitePayload(email, groupId) {
+  const payload = { email };
+  if (groupId) payload.group_id = Number(groupId);
+  return payload;
 }

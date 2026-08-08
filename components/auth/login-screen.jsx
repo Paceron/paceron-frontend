@@ -1,27 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { PaceronBrand } from '../brand/paceron-brand.jsx';
-import { ForgotPasswordForm } from './forgot-password-form.jsx';
+import { AuthCardShell } from './auth-card-shell.jsx';
 
 // --- Login form ---
 
-function LoginForm({ onForgotPassword }) {
+function LoginForm() {
   const router = useRouter();
   const colors = useThemeColors();
   const { login } = useAuthStore();
@@ -69,6 +58,7 @@ function LoginForm({ onForgotPassword }) {
     try {
       const result = await login(email, password);
       if (result.success) {
+        Toast.show({ type: 'success', text1: '¡Bienvenido de nuevo!', text2: 'Iniciaste sesión correctamente.' });
         router.replace('/');
       } else {
         Toast.show({
@@ -90,21 +80,21 @@ function LoginForm({ onForgotPassword }) {
 
   return (
     <>
-      <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-2 text-2xl text-slate-900 dark:text-white">Iniciar sesión</Text>
-      <Text className="mb-8 text-sm text-slate-500 dark:text-slate-400">
+      <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="mb-2 text-2xl text-slate-900 dark:text-white" nativeID="login-screen-form-title" testID="login-screen-form-title">Iniciar sesión</Text>
+      <Text className="mb-8 text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-form-subtitle" testID="login-screen-form-subtitle">
         Ingresá tus credenciales para acceder a Paceron.
       </Text>
 
       {/* Email */}
-      <View className="mb-5">
-        <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">Email</Text>
+      <View className="mb-5" nativeID="login-screen-email-group" testID="login-screen-email-group">
+        <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-email-label" testID="login-screen-email-label">Email</Text>
         <View className={`h-12 flex-row items-center rounded-xl border ${
           emailError
             ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
             : emailOk
             ? 'border-primary bg-white dark:bg-slate-900'
             : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
-        }`}>
+        }`} nativeID="login-screen-email-field-wrapper" testID="login-screen-email-field-wrapper">
           <TextInput
             autoCapitalize="none"
             autoComplete="email"
@@ -118,9 +108,11 @@ function LoginForm({ onForgotPassword }) {
             returnKeyType="next"
             textContentType="emailAddress"
             value={email}
+            nativeID="login-screen-email-input"
+            testID="login-screen-email-input"
           />
           {emailTouched && (
-            <View className="px-3">
+            <View className="px-3" nativeID="login-screen-email-status-icon-wrapper" testID="login-screen-email-status-icon-wrapper">
               {emailError
                 ? <MaterialCommunityIcons color="#ef4444" name="alert-circle-outline" size={18} />
                 : <MaterialCommunityIcons color="#8cc63e" name="check-circle-outline" size={18} />
@@ -128,15 +120,15 @@ function LoginForm({ onForgotPassword }) {
             </View>
           )}
         </View>
-        <View className="h-5">
-          {emailError && <Text className="text-xs text-red-500 dark:text-red-400">{emailError}</Text>}
+        <View className="h-5" nativeID="login-screen-email-error-slot" testID="login-screen-email-error-slot">
+          {emailError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID="login-screen-email-error" testID="login-screen-email-error">{emailError}</Text>}
         </View>
       </View>
 
       {/* Password */}
-      <View className="mb-6">
-        <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">Contraseña</Text>
-        <View className="h-12 flex-row items-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+      <View className="mb-6" nativeID="login-screen-password-group" testID="login-screen-password-group">
+        <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-password-label" testID="login-screen-password-label">Contraseña</Text>
+        <View className="h-12 flex-row items-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900" nativeID="login-screen-password-field-wrapper" testID="login-screen-password-field-wrapper">
           <TextInput
             autoComplete="password"
             className="flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none"
@@ -148,8 +140,10 @@ function LoginForm({ onForgotPassword }) {
             secureTextEntry={!showPassword}
             textContentType="password"
             value={password}
+            nativeID="login-screen-password-input"
+            testID="login-screen-password-input"
           />
-          <Pressable className="px-3" onPress={() => setShowPassword((v) => !v)}>
+          <Pressable className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800" onPress={() => setShowPassword((v) => !v)} nativeID="login-screen-password-toggle-button" testID="login-screen-password-toggle-button">
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -162,34 +156,36 @@ function LoginForm({ onForgotPassword }) {
       {/* Submit button */}
       <Pressable
         className={`mb-4 h-12 items-center justify-center rounded-full ${
-          isFormValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+          isFormValid ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'
         } active:opacity-80`}
         disabled={loading}
         onPress={handleSubmit}
+        nativeID="login-screen-submit-button"
+        testID="login-screen-submit-button"
       >
         {loading ? (
           <ActivityIndicator color={isFormValid ? '#111518' : colors.onSurfaceVariant} size="small" />
         ) : (
           <Text className={`text-sm font-semibold uppercase tracking-wide ${
             isFormValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
-          }`}>
+          }`} nativeID="login-screen-submit-button-label" testID="login-screen-submit-button-label">
             Ingresar
           </Text>
         )}
       </Pressable>
 
       {/* Forgot password */}
-      <Pressable className="items-center py-1" onPress={onForgotPassword}>
-        <Text className="text-sm text-slate-500 dark:text-slate-400">
+      <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/forgot-password')} nativeID="login-screen-forgot-password-button" testID="login-screen-forgot-password-button">
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-forgot-password-label" testID="login-screen-forgot-password-label">
           ¿Olvidaste tu contraseña?
         </Text>
       </Pressable>
 
       {/* Register link */}
-      <Pressable className="items-center py-1" onPress={() => router.push('/register')}>
-        <Text className="text-sm text-slate-500 dark:text-slate-400">
+      <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/register')} nativeID="login-screen-register-link-button" testID="login-screen-register-link-button">
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-register-link-label" testID="login-screen-register-link-label">
           ¿No tenés cuenta?{' '}
-          <Text className="font-semibold text-primary">Registrate</Text>
+          <Text className="font-semibold text-primary" nativeID="login-screen-register-link-emphasis" testID="login-screen-register-link-emphasis">Registrate</Text>
         </Text>
       </Pressable>
     </>
@@ -199,70 +195,9 @@ function LoginForm({ onForgotPassword }) {
 // --- Screen ---
 
 export function LoginScreen() {
-  const router = useRouter();
-  const colors = useThemeColors();
-  const [view, setView] = useState('login'); // 'login' | 'forgot'
-
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(16);
-
-  useEffect(() => {
-    opacity.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
-    translateY.value = withTiming(0, { duration: 350, easing: Easing.out(Easing.cubic) });
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
-  };
-
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']}>
-      <KeyboardAwareScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        enableOnAndroid
-        extraScrollHeight={24}
-      >
-        <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]}>
-            {/* Card */}
-            <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-surface">
-              {/* Back button */}
-              <Pressable
-                className="-ml-2 mb-4 flex-row items-center gap-1.5 self-start rounded-lg px-2 py-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-                onPress={view === 'forgot' ? () => setView('login') : handleBack}
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={16} />
-                <Text className="text-sm text-slate-600 dark:text-slate-300">Volver</Text>
-              </Pressable>
-
-              {/* Logo */}
-              <View className="mb-8 items-center">
-                <Image
-                  resizeMode="contain"
-                  source={require('../../assets/paceron-symbol-transparent.png')}
-                  style={{ width: 48, height: 48 }}
-                />
-                <PaceronBrand size={16} style={{ marginTop: 8 }} />
-              </View>
-
-              {view === 'login' ? (
-                <LoginForm onForgotPassword={() => setView('forgot')} />
-              ) : (
-                <ForgotPasswordForm onBack={() => setView('login')} />
-              )}
-            </View>
-        </Animated.View>
-      </KeyboardAwareScrollView>
-    </SafeAreaView>
+    <AuthCardShell cardClassName="max-w-md p-8">
+      <LoginForm />
+    </AuthCardShell>
   );
 }

@@ -108,25 +108,35 @@ git push origin --delete feature/mi-cambio   # borrar rama remota (si no se borr
 GitHub suele ofrecer borrar la rama remota al mergear; si ya la borró, el último
 comando avisa que no existe (sin problema).
 
+## Versionado (`package.json`)
+
+El bump de versión se hace **incremental**, dentro de la misma PR de la
+feature/fix/chore que lo amerita — no hay una branch dedicada solo a
+bumpear versión. Al llegar el momento del release, `develop` ya tiene la
+versión correcta, y `release/` no necesita ningún commit propio (queda
+como pasamanos puro entre `develop` y `master`, sin divergir de lo que ya
+está en `develop`). Semver pre-1.0 (`0.x.y`) hasta que el equipo decida
+explícitamente pasar a `1.0.0`.
+
 ## Ciclo de release (develop → master)
 
 Cuando develop tiene un avance estable que se quiere llevar a producción:
 
-### 1-3. Cortar release, bumpear versión y abrir PR a master (automatizado)
+### 1-3. Cortar release y abrir PR a master (automatizado)
 
 El workflow `prepare-release.yml` hace esto por vos, disparado a mano
 (nunca automático — un release a producción sigue siendo una decisión
 humana, igual que `auto-pr.yml` nunca dispara sobre `release/**`):
 
 ```bash
-gh workflow run prepare-release.yml -f version=0.1.0
+gh workflow run prepare-release.yml
 ```
 
-(o desde GitHub → Actions → "Prepare Release" → "Run workflow"). Corta
-`release/0.1.0` desde `develop`, bumpea `version` en `package.json`,
-commitea como `github-actions[bot]`, pushea, y abre el PR a `master` con
-la lista de commits desde el último release. La PR **no** es draft y
-**no** se automergea — sigue siendo revisión y merge manual.
+(o desde GitHub → Actions → "Prepare Release" → "Run workflow"). Lee la
+versión actual de `package.json` en `develop`, corta `release/<versión>`
+**sin commits propios**, pushea, y abre el PR a `master` con la lista de
+commits desde el último release. La PR **no** es draft y **no** se
+automergea — sigue siendo revisión y merge manual.
 
 ### 4. CI verde → merge a master en GitHub
 
@@ -159,7 +169,7 @@ backport no es necesario.
 | Publicar y abrir PR | `git push -u origin feature/<nombre>` (el PR draft lo crea auto-pr) |
 | Borrar rama local | `git branch -d feature/<nombre>` |
 | Borrar rama remota | `git push origin --delete feature/<nombre>` |
-| Cortar release + PR a master | `gh workflow run prepare-release.yml -f version=<versión>` |
+| Cortar release + PR a master | `gh workflow run prepare-release.yml` |
 
 ## Despliegues
 

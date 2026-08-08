@@ -1,12 +1,7 @@
 name: Prepare Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version a releasear (ej. 0.2.0, sin prefijo v)"
-        required: true
-        type: string
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -23,23 +18,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create release branch, bump version, and open PR
+      - name: Create passthrough release branch and open PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ inputs.version }}
         run: |
-          RELEASE_BRANCH="release/${VERSION}"
+          git fetch origin develop
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git fetch origin develop
+          # La version se bumpea de forma incremental en cada feature/fix,
+          # no aca: develop ya trae la version correcta al momento del release.
+          VERSION=$(git show origin/develop:package.json | node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).version)")
+          RELEASE_BRANCH="release/${VERSION}"
+
           git checkout -b "$RELEASE_BRANCH" origin/develop
-
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
-          git add package.json package-lock.json
-          git commit -m "chore(release): bump version to ${VERSION}"
-
           git push origin "$RELEASE_BRANCH"
 
           COMMITS=$(git log origin/master..origin/develop --pretty=format:"- %s (%h)")
@@ -51,7 +44,7 @@ jobs:
             --body "$(cat <<EOF
           ## Release ${VERSION}
 
-          Rama cortada desde \`develop\`, versión de \`package.json\` actualizada a \`${VERSION}\`.
+          Rama pasamanos desde \`develop\` (sin commits propios) — la version ya viene bumpeada de forma incremental en cada feature/fix.
 
           ## Cambios incluidos
 

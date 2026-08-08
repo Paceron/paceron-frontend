@@ -23,7 +23,7 @@ const VARIANT = {
 // children (usado por RegisterScreen). variant='amber' da el tratamiento
 // especial usado para datos de entrenador (local-only, no persistido en
 // backend todavía).
-export function SectionCard({ title, icon, children, collapsible = false, collapsed = false, onToggle, variant = 'default' }) {
+export function SectionCard({ title, icon, children, collapsible = false, collapsed = false, onToggle, variant = 'default', headerRight = null }) {
   const colors = useThemeColors();
   const rotateAnim = useSharedValue(collapsed ? 1 : 0);
   const style = VARIANT[variant] ?? VARIANT.default;
@@ -41,19 +41,24 @@ export function SectionCard({ title, icon, children, collapsible = false, collap
   const Header = collapsible ? Pressable : View;
 
   return (
-    <View className={`mb-5 rounded-2xl border p-6 shadow-sm ${style.box}`}>
-      <Header
-        className={`flex-row items-center gap-2 ${collapsible ? 'active:opacity-70' : ''} ${!collapsed || !collapsible ? 'mb-4' : ''}`}
-        onPress={collapsible ? onToggle : undefined}
-      >
-        {collapsible && (
-          <Animated.View style={chevronStyle}>
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={18} />
-          </Animated.View>
-        )}
-        <MaterialCommunityIcons color={style.icon ?? colors.primary} name={icon} size={18} />
-        <Text className={`text-base font-bold ${style.title}`}>{title}</Text>
-      </Header>
+    <View className={`mb-5 rounded-2xl border p-6 shadow-sm ${style.box}`} nativeID="section-card" testID="section-card">
+      <View className={`flex-row items-center gap-2 ${!collapsed || !collapsible ? 'mb-4' : ''}`} nativeID="section-card-header-row" testID="section-card-header-row">
+        <Header
+          className={`flex-1 flex-row items-center gap-2 ${collapsible ? 'hover:opacity-70 active:opacity-70' : ''}`}
+          nativeID="section-card-header"
+          onPress={collapsible ? onToggle : undefined}
+          testID="section-card-header"
+        >
+          {collapsible && (
+            <Animated.View nativeID="section-card-chevron" style={chevronStyle} testID="section-card-chevron">
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={18} />
+            </Animated.View>
+          )}
+          <MaterialCommunityIcons color={style.icon ?? colors.primary} name={icon} size={18} />
+          <Text className={`text-base font-bold ${style.title}`} nativeID="section-card-title" testID="section-card-title">{title}</Text>
+        </Header>
+        {headerRight}
+      </View>
       {(!collapsible || !collapsed) && children}
     </View>
   );

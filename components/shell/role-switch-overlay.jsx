@@ -1,22 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, interpolateColor, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter, usePathname } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 
-const CONTENT_BY_ROLE = {
-  runner: { icon: 'run-fast', label: 'Cambiando a Corredor…', bg: '#8cc63e' },
-  trainer: { icon: 'whistle', label: 'Cambiando a Entrenador…', bg: '#f59e0b' },
-};
+const COLOR_BY_ROLE = { runner: '#8cc63e', trainer: '#f59e0b' };
+const ICON_BY_ROLE = { runner: 'run-fast', trainer: 'whistle' };
 
-const VISIBLE_MS = 2000;
-const FADE_MS = 250;
+const FADE_MS = 150;
+const TOTAL_MS = 1000;
 
-// Transición fullscreen al alternar entre corredor/entrenador (switchRole).
-// No se dispara en la primera activación (esa usa su propio modal). Vive
-// montado a nivel global (app/_layout.jsx) para cubrir cualquier pantalla,
-// sin importar dónde estaba el usuario al cambiar de rol.
+// Fullscreen breve al alternar entre corredor/entrenador (switchRole). El
+// fondo pasa del color del rol actual al del rol destino, con los íconos de
+// ambos roles en cross-fade sobre la misma ventana. Sin texto — solo color
+// + ícono, ~1s en total. Montado a nivel global (app/_layout.jsx). No navega
+// si el usuario ya está en /profile.
 export function RoleSwitchOverlay() {
   const router = useRouter();
   const pathname = usePathname();
@@ -25,39 +23,56 @@ export function RoleSwitchOverlay() {
   const [content, setContent] = useState(null);
 
   const opacity = useSharedValue(0);
+  const progress = useSharedValue(0);
 
   useEffect(() => {
     if (!animating) return;
 
-    setContent(CONTENT_BY_ROLE[animating.role]);
+    setContent(animating);
     if (pathname !== '/profile') router.replace('/');
 
+    progress.value = 0;
     opacity.value = withTiming(1, { duration: FADE_MS, easing: Easing.out(Easing.cubic) });
+    progress.value = withTiming(1, { duration: TOTAL_MS - FADE_MS * 2, easing: Easing.inOut(Easing.cubic) });
 
     const hideTimer = setTimeout(() => {
       opacity.value = withTiming(0, { duration: FADE_MS, easing: Easing.in(Easing.cubic) }, (finished) => {
         if (finished) runOnJS(clearRoleSwitchAnimation)();
       });
-    }, VISIBLE_MS);
+    }, TOTAL_MS - FADE_MS);
 
     return () => clearTimeout(hideTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animating]);
 
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    backgroundColor: content
+      ? interpolateColor(progress.value, [0, 1], [COLOR_BY_ROLE[content.from], COLOR_BY_ROLE[content.to]])
+      : 'transparent',
+  }));
+
+  const fromIconStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
+  const toIconStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   if (!content) return null;
 
   return (
     <Animated.View
+      nativeID="role-switch-overlay"
       pointerEvents={animating ? 'auto' : 'none'}
       style={[
-        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, alignItems: 'center', justifyContent: 'center', backgroundColor: content.bg },
-        animatedStyle,
+        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, alignItems: 'center', justifyContent: 'center' },
+        containerStyle,
       ]}
+      testID="role-switch-overlay"
     >
-      <MaterialCommunityIcons color="#ffffff" name={content.icon} size={72} />
-      <Text className="mt-4 text-lg font-bold text-white">{content.label}</Text>
+      <Animated.View nativeID="role-switch-overlay-from-icon" style={[{ position: 'absolute' }, fromIconStyle]} testID="role-switch-overlay-from-icon">
+        <MaterialCommunityIcons color="#ffffff" name={ICON_BY_ROLE[content.from]} size={72} />
+      </Animated.View>
+      <Animated.View nativeID="role-switch-overlay-to-icon" style={toIconStyle} testID="role-switch-overlay-to-icon">
+        <MaterialCommunityIcons color="#ffffff" name={ICON_BY_ROLE[content.to]} size={72} />
+      </Animated.View>
     </Animated.View>
   );
 }

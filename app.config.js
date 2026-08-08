@@ -8,6 +8,10 @@ module.exports = {
   expo: {
     name: IS_DEV ? 'Paceron Dev' : 'Paceron',
     slug: 'paceron-frontend',
+    // Distinto de dev/prod, igual que android.package — evita que ambas
+    // variantes instaladas a la vez en un mismo device compitan por el
+    // mismo esquema de deep link.
+    scheme: IS_DEV ? 'paceron-dev' : 'paceron',
     version: '1.0.0',
     orientation: 'portrait',
     icon: IS_DEV ? './assets/icon-dev.png' : './assets/icon.png',
@@ -46,6 +50,7 @@ module.exports = {
     plugins: [
       ['expo-router', { sitemap: false }],
       ['expo-location', { locationAlwaysAndWhenInUsePermission: 'Allow Paceron to use your location for tracking runs.' }],
+      ['expo-image-picker', { photosPermission: 'Allow Paceron to access your photos to set a team profile picture.' }],
       'expo-font',
       'expo-secure-store',
       '@react-native-community/datetimepicker',

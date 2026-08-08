@@ -8,8 +8,8 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
-import { RoleBadge } from '../shell/role-badge.jsx';
-import { RoleManagementSection } from '../shell/role-management-section.jsx';
+import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
+import { RoleSwitchToggle } from './role-switch-toggle.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 
 const DASH = '—';
@@ -29,15 +29,16 @@ const STATUS_META = {
 
 // En web reparte los campos en 2 columnas; en mobile, uno por fila.
 function FieldGrid({ children }) {
-  return <View className={isWeb ? 'flex-row flex-wrap' : ''}>{children}</View>;
+  return <View className={isWeb ? 'flex-row flex-wrap' : ''} nativeID="profile-screen-field-grid" testID="profile-screen-field-grid">{children}</View>;
 }
 
 function Field({ label, value }) {
+  const slug = `profile-screen-field-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
-    <View className={isWeb ? 'w-1/2 pr-4' : 'w-full'}>
-      <View className="mb-4">
-        <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</Text>
-        <Text className="text-sm text-slate-900 dark:text-white">{value}</Text>
+    <View className={isWeb ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
+      <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
+        <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
+        <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${slug}-value`} testID={`${slug}-value`}>{value}</Text>
       </View>
     </View>
   );
@@ -55,90 +56,106 @@ function EditButton({ onEdit, colors, full }) {
   return (
     <Pressable
       className={`h-11 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 transition-opacity hover:opacity-90 active:opacity-80 ${full ? 'w-full' : ''}`}
+      nativeID="profile-screen-edit-button"
       onPress={onEdit}
+      testID="profile-screen-edit-button"
     >
       <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={16} />
-      <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]">Editar datos</Text>
+      <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="profile-screen-edit-button-text" testID="profile-screen-edit-button-text">Editar datos</Text>
     </Pressable>
   );
 }
 
-function HeaderPanel({ user, status, fullName, onEdit, colors }) {
-  // Web: header horizontal (avatar + datos + botón a la derecha).
+function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) {
+  // Web: fila superior (avatar + datos + botón editar), fila de switch debajo.
   if (isWeb) {
     return (
-      <View className="mb-5 flex-row items-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
-          <MaterialCommunityIcons color={colors.primary} name="account" size={36} />
-        </View>
-        <View className="flex-1">
-          <Text className="text-lg font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
-          <Text className="text-sm text-slate-500 dark:text-slate-400">{display(user.email)}</Text>
-          <View className={`mt-1.5 self-start rounded-full px-3 py-1 ${status.badge}`}>
-            <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
+      <View className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
+        <View className="flex-row items-center gap-4" nativeID="profile-screen-header-panel-top-row" testID="profile-screen-header-panel-top-row">
+          <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID="profile-screen-avatar" testID="profile-screen-avatar">
+            <MaterialCommunityIcons color={colors.primary} name="account" size={36} />
           </View>
+          <View className="flex-1" nativeID="profile-screen-header-panel-identity" testID="profile-screen-header-panel-identity">
+            <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="profile-screen-full-name" testID="profile-screen-full-name">{display(fullName)}</Text>
+            <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="profile-screen-email" testID="profile-screen-email">{display(user.email)}</Text>
+            <View className={`mt-1.5 self-start rounded-full px-3 py-1 ${status.badge}`} nativeID="profile-screen-status-badge" testID="profile-screen-status-badge">
+              <Text className={`text-xs font-semibold ${status.text}`} nativeID="profile-screen-status-badge-text" testID="profile-screen-status-badge-text">{status.label}</Text>
+            </View>
+          </View>
+          <EditButton onEdit={onEdit} colors={colors} />
         </View>
-        <EditButton onEdit={onEdit} colors={colors} />
+        <View className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800" nativeID="profile-screen-role-switch-row" testID="profile-screen-role-switch-row">
+          <RoleSwitchToggle onUpgradeTier={onUpgradeTier} wide />
+        </View>
       </View>
     );
   }
 
-  // Mobile: panel centrado con botón full-width.
+  // Mobile: panel centrado, botón editar full-width, switch en fila debajo.
   return (
-    <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface">
-      <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15">
+    <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
+      <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID="profile-screen-avatar" testID="profile-screen-avatar">
         <MaterialCommunityIcons color={colors.primary} name="account" size={44} />
       </View>
-      <Text className="text-center text-lg font-bold text-slate-900 dark:text-white">{display(fullName)}</Text>
-      <Text className="mb-2 text-center text-sm text-slate-500 dark:text-slate-400">{display(user.email)}</Text>
-      <View className={`mb-5 rounded-full px-3 py-1 ${status.badge}`}>
-        <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
+      <Text className="text-center text-lg font-bold text-slate-900 dark:text-white" nativeID="profile-screen-full-name" testID="profile-screen-full-name">{display(fullName)}</Text>
+      <Text className="mb-2 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="profile-screen-email" testID="profile-screen-email">{display(user.email)}</Text>
+      <View className={`mb-5 rounded-full px-3 py-1 ${status.badge}`} nativeID="profile-screen-status-badge" testID="profile-screen-status-badge">
+        <Text className={`text-xs font-semibold ${status.text}`} nativeID="profile-screen-status-badge-text" testID="profile-screen-status-badge-text">{status.label}</Text>
       </View>
       <EditButton onEdit={onEdit} colors={colors} full />
+      <View className="mt-4 w-full items-center border-t border-slate-100 pt-4 dark:border-slate-800" nativeID="profile-screen-role-switch-row" testID="profile-screen-role-switch-row">
+        <RoleSwitchToggle onUpgradeTier={onUpgradeTier} wide />
+      </View>
     </View>
   );
 }
 
-function RolesSection({ activeRole, trainerActivated }) {
-  return (
-    <Card title="Roles" icon="account-supervisor">
-      <View className="w-full flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          <RoleBadge active={activeRole === 'runner'} role="runner" size="md" />
-          {trainerActivated && <RoleBadge active={activeRole === 'trainer'} role="trainer" size="md" />}
-        </View>
-        <RoleManagementSection />
-      </View>
-    </Card>
-  );
-}
-
-function TrainerDataSection({ trainerAlias }) {
+function TrainerDataSection({ bankAlias }) {
   return (
     <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
       <FieldGrid>
-        <Field label="Alias de pagos" value={display(trainerAlias)} />
+        <Field label="Alias de pagos" value={display(bankAlias)} />
       </FieldGrid>
     </SectionCard>
   );
 }
 
-function DangerZone({ onDelete }) {
+function DangerZone({ onDelete, hasTrainerRole, onDeactivateTrainer }) {
   return (
-    <View className="mt-2 rounded-2xl border border-red-300 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/20">
-      <View className="mb-2 flex-row items-center gap-2">
+    <View className="mt-2 rounded-2xl border border-red-300 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/20" nativeID="profile-screen-danger-zone" testID="profile-screen-danger-zone">
+      <View className="mb-2 flex-row items-center gap-2" nativeID="profile-screen-danger-zone-header" testID="profile-screen-danger-zone-header">
         <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={18} />
-        <Text className="text-base font-bold text-red-700 dark:text-red-400">Zona de peligro</Text>
+        <Text className="text-base font-bold text-red-700 dark:text-red-400" nativeID="profile-screen-danger-zone-title" testID="profile-screen-danger-zone-title">Zona de peligro</Text>
       </View>
-      <Text className="mb-4 text-sm leading-5 text-red-700/80 dark:text-red-400/80">
+
+      {hasTrainerRole && (
+        <View className="mb-4 border-b border-red-200 pb-4 dark:border-red-900/50" nativeID="profile-screen-deactivate-trainer-block" testID="profile-screen-deactivate-trainer-block">
+          <Text className="mb-3 text-sm leading-5 text-red-700/80 dark:text-red-400/80" nativeID="profile-screen-deactivate-trainer-description" testID="profile-screen-deactivate-trainer-description">
+            Dar de baja tu perfil de entrenador te vuelve a dejar solo con el perfil de corredor. Podés reactivarlo cuando quieras.
+          </Text>
+          <Pressable
+            className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-red-400 px-6 transition-colors hover:bg-red-50 active:opacity-80 dark:border-red-800 dark:hover:bg-red-900/20"
+            nativeID="profile-screen-deactivate-trainer-button"
+            onPress={onDeactivateTrainer}
+            testID="profile-screen-deactivate-trainer-button"
+          >
+            <MaterialCommunityIcons color="#ef4444" name="whistle-outline" size={16} />
+            <Text className="text-sm font-semibold uppercase tracking-wide text-red-600 dark:text-red-400" nativeID="profile-screen-deactivate-trainer-button-text" testID="profile-screen-deactivate-trainer-button-text">Dar de baja perfil de entrenador</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <Text className="mb-4 text-sm leading-5 text-red-700/80 dark:text-red-400/80" nativeID="profile-screen-danger-zone-description" testID="profile-screen-danger-zone-description">
         Dar de baja tu cuenta desactiva tu acceso a Paceron. Podrás solicitar reactivación más adelante.
       </Text>
       <Pressable
-        className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-red-400 px-6 transition-opacity hover:opacity-80 active:opacity-80 dark:border-red-800"
+        className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full border border-red-400 px-6 transition-colors hover:bg-red-50 active:opacity-80 dark:border-red-800 dark:hover:bg-red-900/20"
+        nativeID="profile-screen-delete-account-button"
         onPress={onDelete}
+        testID="profile-screen-delete-account-button"
       >
         <MaterialCommunityIcons color="#ef4444" name="account-off-outline" size={16} />
-        <Text className="text-sm font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">Borrar cuenta</Text>
+        <Text className="text-sm font-semibold uppercase tracking-wide text-red-600 dark:text-red-400" nativeID="profile-screen-delete-account-button-text" testID="profile-screen-delete-account-button-text">Borrar cuenta</Text>
       </Pressable>
     </View>
   );
@@ -150,13 +167,15 @@ export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
-  const activeRole = useAuthStore((s) => s.activeRole);
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
-  const trainerAlias = useAuthStore((s) => s.trainerAlias);
+  const deactivateTrainerRole = useAuthStore((s) => s.deactivateTrainerRole);
+  const roles = useAuthStore((s) => s.roles);
+  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTrainerOpen, setConfirmTrainerOpen] = useState(false);
 
   useEffect(() => {
     if (!user) router.replace('/login');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -186,21 +205,38 @@ export function ProfileScreen() {
     }
   };
 
+  const handleConfirmDeactivateTrainer = async () => {
+    const result = await deactivateTrainerRole();
+    if (result.success) {
+      setConfirmTrainerOpen(false);
+      Toast.show({ type: 'success', text1: 'Perfil de entrenador dado de baja', text2: 'Podés reactivarlo cuando quieras.' });
+    } else {
+      Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudo dar de baja el perfil de entrenador.' });
+    }
+  };
+
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8">
-      <View className={`w-full ${isWeb ? 'max-w-3xl mx-auto' : ''}`}>
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen" testID="profile-screen">
+      <View className={`w-full ${isWeb ? 'max-w-3xl mx-auto' : ''}`} nativeID="profile-screen-content" testID="profile-screen-content">
         <Text
           style={{ fontFamily: 'Orbitron_700Bold' }}
           className="mb-6 text-2xl text-slate-900 dark:text-white"
+          nativeID="profile-screen-title"
+          testID="profile-screen-title"
         >
           Mi perfil
         </Text>
 
-        <HeaderPanel user={user} status={status} fullName={fullName} onEdit={handleEdit} colors={colors} />
+        <HeaderPanel
+          user={user}
+          status={status}
+          fullName={fullName}
+          onEdit={handleEdit}
+          colors={colors}
+          onUpgradeTier={() => router.push('/profile/tier-upgrade')}
+        />
 
-        <RolesSection activeRole={activeRole} trainerActivated={trainerActivated} />
-
-        {trainerActivated && <TrainerDataSection trainerAlias={trainerAlias} />}
+        {hasTrainerRole && <TrainerDataSection bankAlias={user.bankAlias} />}
 
         <Card title="Datos personales" icon="account-details">
           <Field label="Nombre" value={display(user.name)} />
@@ -223,13 +259,23 @@ export function ProfileScreen() {
           <Field label="Teléfono de contacto" value={display(user.phoneContact)} />
         </Card>
 
-        <DangerZone onDelete={() => setConfirmOpen(true)} />
+        <DangerZone
+          hasTrainerRole={hasTrainerRole}
+          onDeactivateTrainer={() => setConfirmTrainerOpen(true)}
+          onDelete={() => setConfirmOpen(true)}
+        />
 
         <DeactivateAccountModal
           onCancel={() => setConfirmOpen(false)}
           onConfirm={handleConfirmDeactivate}
           userEmail={user.email}
           visible={confirmOpen}
+        />
+
+        <DeactivateTrainerModal
+          onCancel={() => setConfirmTrainerOpen(false)}
+          onConfirm={handleConfirmDeactivateTrainer}
+          visible={confirmTrainerOpen}
         />
       </View>
     </ScrollView>

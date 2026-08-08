@@ -8,10 +8,13 @@ Esto incluye, sin limitarse a: incorporar una tecnología/librería nueva de pes
 
 Expo (React Native + React Native Web), NativeWind (Tailwind para RN), Zustand (store), react-native-reanimated, Expo Router (file-based). Backend separado (Go/Gin, otro repo), ver sección Backend.
 
+**Estado de aplicación vs. estado de servidor:** `@tanstack/react-query` está instalado y el `QueryClientProvider` ya está armado (`providers/app-providers.jsx`). **Convención:** Zustand para estado de aplicación (sesión, UI, preferencias locales), TanStack Query para estado de servidor (cualquier dato que se pide/muta contra el backend). Equipos/grupos/invitaciones (CRUD real contra la API, reemplazando el mock original `MOCK_TEAMS`) siguen siendo Zustand (`store/team-store.js`) — decisión tomada antes de que hubiera un caso concreto que justificara el cambio, no se retrofiteó después. El primer uso real de TanStack Query es `hooks/use-team-roster.js` (2026-08-02, rama `feature/team-roster-membership-actions`): roster de un equipo, donde `GET /teams/{id}/users`/`GET /groups/{id}/users` no traen nombre/email y hace falta un fan-out N+1 contra `GET /auth/user?id=` — el cache por `queryKey` es lo que dedupea ese N+1 entre pantallas/equipos sin armarlo a mano. Nuevo trabajo sobre datos de servidor en equipos/grupos/invitaciones puede seguir este patrón (Query, no Zustand); no hay plan de migrar el CRUD ya existente sin una razón concreta.
+
 ## Workflow de branches y PRs
 
 - **Rama base:** `develop`. Producción es `master`, se llega ahí vía `release/<versión>` (ver `docs/BRANCH_POLICIES.md` para el modelo completo — en la práctica todavía no se usó `hotfix/`/`backport/`, pero `release/` sí, vía el workflow descripto abajo).
-- **Release a producción (1-2 veces por sprint):** `gh workflow run prepare-release.yml -f version=<x.y.z>` corta `release/<versión>` desde `develop`, bumpea `package.json`, y abre el PR a `master` — disparo manual siempre (nunca por push ni por schedule, un release a producción es una decisión humana). Revisión y merge siguen siendo manuales. Detalle completo en `docs/WORKFLOW.md` ("Ciclo de release").
+- **Versionado (`package.json`):** el bump se hace de forma **incremental**, dentro de la misma PR de la feature/fix/chore que lo amerita — no existe una branch dedicada solo a bumpear versión (excepto el bootstrap inicial, ya resuelto). Así, al momento de cortar un release, `develop` ya tiene la versión correcta y `release/` no necesita ningún commit propio. Semver pre-1.0 (`0.x.y`) hasta que el equipo decida explícitamente que el producto llegó a un hito `1.0.0`.
+- **Release a producción (1-2 veces por sprint):** `gh workflow run prepare-release.yml` lee la versión actual de `package.json` en `develop`, corta `release/<versión>` **sin commits propios** (pasamanos puro) y abre el PR a `master` — disparo manual siempre (nunca por push ni por schedule, un release a producción es una decisión humana). Revisión y merge siguen siendo manuales. Detalle completo en `docs/WORKFLOW.md` ("Ciclo de release").
 - **Nomenclatura de rama:** `feature/<kebab-case>`, ej. `feature/light-theme-contrast`, `feature/mobile-date-picker`. Siempre creada desde `develop` actualizado.
 - **Quién corre los comandos git:** a elección de cada dev. El agente de IA puede ejecutarlos directamente, o armar el bloque de comandos para que el desarrollador lo corra él mismo (útil para aprender el flujo o mantener control manual). Ninguna de las dos es "la forma correcta" — se acuerda con quien esté trabajando.
 - **Ciclo de PR:** al hacer push de una rama `feature/*`, un CI/CD crea automáticamente una PR en draft hacia `develop` con título/descripción placeholder. Se actualiza título y descripción (ver formato abajo), se marca como lista (`gh pr ready`), se espera CI verde, y se mergea. Después: `git checkout develop && git pull && git branch -d feature/<nombre> && git remote prune origin`.
@@ -19,6 +22,8 @@ Expo (React Native + React Native Web), NativeWind (Tailwind para RN), Zustand (
 ### Mensajes de commit
 
 Formato [Conventional Commits](https://www.conventionalcommits.org/): `tipo(alcance): resumen corto en imperativo`. Tipos usados: `feat`, `fix`, `docs`, `refactor`, `chore`.
+
+**Idioma:** subject del commit, título de PR y nombre de rama van en **inglés** (convención ya establecida en la práctica). El cuerpo del commit (cuando lo amerita) y la descripción de la PR van en **español**.
 
 Preferir simple: **el subject alcanza en la mayoría de los casos.** Agregar cuerpo (1-2 oraciones) solo cuando el "por qué" no sea obvio desde el diff — no narrar el "qué" (el diff ya lo muestra).
 
@@ -78,12 +83,14 @@ Specs viven en `docs/superpowers/specs/YYYY-MM-DD-<tema>-design.md`, planes en `
 
 `npm test` corre Jest sobre `__tests__/` — cubre store, servicios, validadores y normalizers (lógica pura). **No hay tests de render de componentes** — es convención del proyecto, no un hueco a llenar por default: los componentes visuales/presentacionales se verifican manualmente (preview web + en device). Antes de mergear, la suite completa debe estar en verde.
 
+`npm run lint` (ESLint, ver `eslint.config.js`) también debe estar en verde antes de mergear — incluye la regla custom `local/require-native-id` (ver sección "Identificadores de componentes"). Se corre en CI (`.github/workflows/ci.yml`) junto a `npm test`, en el mismo job — el pipeline falla si hay **errores** de lint (warnings preexistentes como `react-hooks/exhaustive-deps` no bloquean todavía, es una decisión deliberada; encararlas es un posible próximo paso, no urgente).
+
 ## Verificación visual
 
 - Cambios chicos de un solo valor visual (tamaño, color puntual) → el desarrollador los confirma él mismo en el preview, no hace falta que el agente levante el server para eso.
 - Flujos multi-paso (varios clicks, transiciones de estado, confirmar que algo NO pasa como un redirect) → vale la pena que el agente los verifique directo con las herramientas de preview.
 - **Mobile real (Expo Go) tiene una limitación de red:** el dispositivo y la máquina donde corre el dev server deben estar en la **misma red WiFi**. En redes restrictivas (corporativas, de invitado, algunos routers) el QR de Expo Go puede fallar directamente ("something went wrong") aunque estén en la misma red. Cuando eso pasa, no hay más diagnóstico que probar en otra red — no es siempre reproducible. Alternativa si esto bloquea seguido: correr un **emulador Android/iOS en el mismo host** donde corre el dev server (evita la dependencia de red local, pero requiere el SDK/Android Studio o Xcode instalado — no configurado todavía en este entorno).
-- El preview web (`react-native-web`) permite verificar layout/lógica de casi todo, **excepto** comportamiento específico de plataforma nativa (ej. el date picker nativo, el gesto de back de Android, el `AppMobileShell` que solo renderiza cuando `Platform.OS !== 'web'`) — eso se prueba solo en device real.
+- El preview web (`react-native-web`) permite verificar layout/lógica de casi todo, **excepto** comportamiento específico de plataforma nativa (ej. el date picker nativo, el gesto de back de Android, el `AppMobileShell` que solo renderiza cuando `Platform.OS !== 'web'`) — eso se prueba solo en device real. Mismo problema, otro mecanismo: rutas con override `.web.jsx` (ej. `app/(tabs)/index.jsx` vs `index.web.jsx`) — el bundle web siempre usa la variante `.web.jsx`, nunca la nativa, sin importar el tamaño de viewport que se pruebe en preview.
 
 ## Theming (claro/oscuro)
 
@@ -91,12 +98,62 @@ Los estilos de tema se definen **inline por componente**, vía clases NativeWind
 
 Lo que sí conviene mantener: cuando un par claro/oscuro se repite en más de un lugar (una card, un badge, un wrapper de página), extraerlo a un componente compartido en vez de duplicar el string de clases — ver `components/forms/section-card.jsx`, `components/shell/role-badge.jsx` como ejemplos ya hechos así. Los tokens de color (paleta base) viven en `tailwind.config.js` (`theme.extend.colors`) — antes de agregar un color nuevo, revisar si ya existe algo cercano ahí.
 
+## Responsive web
+
+**Regla estricta y obligatoria:** toda pantalla o componente nuevo del
+front se construye pensando en que la web debe funcionar en cualquier
+ancho de viewport desde el día uno — no es un caso aparte a resolver
+después. Mismo nivel de obligatoriedad que la regla de `nativeID`/`testID`
+(ver sección "Identificadores de componentes").
+
+La web (`isWeb`) se adapta a cualquier ancho de viewport — no hay una
+versión "solo desktop". El breakpoint (`BREAKPOINTS.lg` en
+`theme/tokens.js`, hoy 1024px — único lugar donde se define el valor,
+`useIsNarrowWeb()` en `hooks/use-is-narrow-web.js` lo importa en vez de
+hardcodearlo) decide en JS (`useWindowDimensions()`, no clases
+`sm:`/`md:`/`lg:` de NativeWind — esas son CSS-only, no sirven para
+decidir qué estructura montar) entre el shell/landing anchos
+(`AppWebShell`, `HomeLandingScreen`) y sus variantes angostas
+(`AppWebShellNarrow`, `HomeWebNarrowScreen`). Ver
+`docs/superpowers/specs/2026-07-23-responsive-web-shell-design.md` para
+el detalle completo de la decisión.
+
+La app nativa compilada (`AppMobileShell`, `HomeMobileScreen`,
+`Platform.OS !== 'web'`) es independiente de todo esto — el diferencial
+entre nativo y web es funcional (GPS, cámara, sensores — ver
+`utils/platform.js`), no de interfaz.
+
+**Formularios — aprovechar el ancho en desktop, apilar en mobile:** todo
+formulario nuevo con 2+ campos relacionados (ej. contraseña +
+confirmar, nombre + apellido) se arma con `Row`/`Col` de
+`components/forms/fields.jsx`, no uno debajo del otro por default. `Row`
+pone los campos en fila **solo en web** (`isWeb ? 'flex-row gap-4' :
+''`); en mobile cada `Col` cae a ancho completo automáticamente (sin
+código adicional). Esto ya es el patrón de `register-screen.jsx` y
+`reset-password-screen.jsx` — la idea es que la web desktop aproveche el
+ancho disponible en vez de quedar con columnas angostas de mobile
+estiradas verticalmente, mientras mobile sigue apilado y usable sin
+ningún cambio de código entre plataformas.
+
+## Identificadores de componentes (`nativeID` / `testID`)
+
+**Regla estricta y obligatoria:** todo componente visual del front (`View`, `Text`, `Pressable`, `TextInput`, `Image`, `ScrollView`, `Touchable*`, `FlatList`, `SectionList`, `Modal`, `SafeAreaView` — incluye sus variantes `Animated.*`) debe llevar `nativeID` y `testID` con un valor identificable y único en su contexto. Ya no es "a partir de ahora" — el backfill retroactivo sobre todo el código existente se hizo (branch `chore/eslint-native-id-rule` + las que le siguieron), así que hoy la regla aplica sin excepción a todo el árbol de `components/`/`app/`.
+
+`nativeID` es el que aporta valor hoy en la práctica: en web (`react-native-web`) se renderiza como el atributo `id` real del DOM, lo que permite apuntarle con selectores CSS estables en vez de tener que recorrer el árbol de `Pressable`s a mano — esto era un problema recurrente al verificar cambios con las herramientas de preview. `testID` no tiene efecto hoy (el proyecto no hace tests de render de componentes, ver sección Testing) pero se agrega igual para dejar el terreno preparado si eso cambia a futuro.
+
+Convención de nombres: kebab-case, con scope propio del componente/rol (ej. `profile-header-edit-button`, `role-switch-corredor-segment`) — evitar nombres genéricos como `button-1` que puedan colisionar entre pantallas.
+
+**Enforcement automático:** regla custom de ESLint (`local/require-native-id`, definida directamente en `eslint.config.js` — no es un paquete separado, solo un plugin inline) falla si falta cualquiera de los dos atributos en alguno de los tags de la lista de arriba. `npm run lint` debe estar en verde antes de mergear, igual que `npm test` — esto incluye código de otros devs (ej. si el compañero tiene una rama en paralelo que no cumple, se corrige al revisar/mergear esa PR). Excepción: un elemento con spread (`{...props}`) no se exige explícitamente, se asume que los ids pueden venir por ahí.
+
 ## Backend
 
 - Repo separado (Go/Gin), no vive en este working directory, lo mantiene otra persona del equipo.
-- URL configurable vía `EXPO_PUBLIC_API_URL` (ver `config/env.js`) — sin esa var, cae al backend remoto en Render (`https://paceron-backend.onrender.com/api/v1`) por default. Para apuntar a un backend local: copiar `.env.example` a `.env`, ajustar `EXPO_PUBLIC_API_URL=http://localhost:<puerto>/api/v1`, y **reiniciar** el dev server (Expo inyecta `EXPO_PUBLIC_*` al bundlear, no es hot-reloadable).
+- URL configurable vía `EXPO_PUBLIC_API_URL` (ver `config/env.js`) — sin esa var, cae al backend remoto en Render (`https://paceron-backend-as9c.onrender.com/api/v1`) por default. **Actualización 2026-08-08:** este dominio cambió — el deploy viejo (`https://paceron-backend.onrender.com`) ahora sirve `master` (sin nada desplegado ahí todavía); el trabajo en curso vive en `develop`, servido por el dominio `-as9c` de arriba. Para apuntar a un backend local: copiar `.env.example` a `.env`, ajustar `EXPO_PUBLIC_API_URL=http://localhost:<puerto>/api/v1`, y **reiniciar** el dev server (Expo inyecta `EXPO_PUBLIC_*` al bundlear, no es hot-reloadable).
 - Render (plan free) tiene cold-start de ~20-25s en la primera request tras inactividad — un "backend caído" suele ser esto, no un error real.
-- El sistema de roles (corredor/entrenador) **no está implementado en el backend todavía** — todo lo relacionado (activación, alias de pago, switch de rol) es 100% local (Zustand + storage), estructurado para poder reemplazarse por datos reales sin cambiar la interfaz que consumen los componentes. Ver `store/auth-store.js`.
+- El sistema de roles (corredor/entrenador) **ya pega contra el backend real** — activación (`assignRole`), alias de pago (`updateUser`) y consulta de roles asignados (`getPermissions` vía `/auth/permissions`) son requests reales, verificados 2026-07-19. Lo único que sigue siendo local-only es `activeRole` (cuál de los roles asignados se muestra activo en la UI en un momento dado) — el backend no tiene ese concepto, solo trackea qué roles tiene asignados un usuario (un conjunto, no una selección). Ver `store/auth-store.js`.
+- Recuperación de contraseña (`forgot-password`/`reset-password`, código OTP de 6 dígitos, vence a los 10 minutos) también pega contra el backend real desde `feature/password-recovery` — ver `services/password.js`, pantallas en `components/auth/forgot-password-screen.jsx`/`reset-password-screen.jsx`.
+- Equipos (`services/teams.js`) pega contra el backend real desde `feature/teams-backend-integration` (Etapa 1 de 3 — ver `docs/superpowers/specs/2026-07-28-teams-backend-integration-design.md`). Grupos e invitaciones siguen local-only en el frontend (Etapa 2/3, sin arrancar), pero **el backend ya tiene los endpoints reales de ambos** (CRUD de `/groups` completo, `/teams/{id}/invitations` para listar pendientes, `/invitations/{id}/accept`/`/reject`) — confirmado re-inspeccionando el swagger el 2026-07-30, ya no son bloqueante para arrancar esas etapas. Huecos de funcionalidad que siguen abiertos (foto de equipo, plan de entrenamiento en grupo) están documentados y trackeados en `docs/BACKEND_API_GAPS.md`, que también lleva el registro de qué se fue cerrando.
+- Cambio de contraseña autenticado (`PATCH /users/{id}/password`, distinto del flujo OTP de recuperación) es un endpoint nuevo en el backend desde 2026-07-30, sin consumidor en el frontend todavía — no hay pantalla de "cambiar contraseña" dentro de Perfil hoy.
 
 ## Documentación existente en `docs/`
 
@@ -106,3 +163,4 @@ Además de `docs/superpowers/{specs,plans}/`, hay documentación previa al uso d
 
 - El wordmark de `PaceronBrand` usa `skewX` para inclinarlo (se ve bien en web); en Android ese transform no se aplica (bug conocido de RN). Ya se probaron y descartaron 2 arreglos: mantener `skewX` (Android queda recto, aceptado) y usar `fontStyle: 'italic'` (cambia la tipografía por completo, rechazado por el usuario). No reintentar ninguno de los dos sin una idea genuinamente nueva.
 - EAS (deploy mobile) usa una cuenta separada (`paceronapp`), con variantes dev/prod para Android (solo Android, iOS descartado). Sin trigger automático por push — el free tier tiene cola compartida de baja prioridad, poco predecible; se dispara a mano (`npm run eas:deploy:develop`/`:production`) cuando se decide publicar. Detalle completo en `docs/WORKFLOW.md`.
+- `npm run lint` puede fallar localmente con `Cannot find module 'typescript'`, incluso recién después de `npm ci --legacy-peer-deps` (CI corre exactamente ese mismo comando y no le pasa, así que parece una diferencia de versión de npm local vs. la del runner). `typescript` figura en `package-lock.json` como peer opcional de `eslint-config-expo`, y algunas versiones de npm no lo materializan en `node_modules` en esa situación. Arreglo local, sin tocar el repo: `npm install typescript@5.9.3 --no-save --legacy-peer-deps` (5.9.3 porque `typescript-eslint` todavía no soporta TS 7). No agregarlo como dependency real de package.json solo para tapar esto sin confirmar antes — es un workaround de entorno, no una decisión de arquitectura.

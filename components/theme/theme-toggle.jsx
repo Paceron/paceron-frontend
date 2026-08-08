@@ -33,6 +33,7 @@ export function ThemeToggle() {
 
   useEffect(() => {
     translateX.value = withTiming(isDark ? THUMB_TRAVEL : 0, { duration: 200, easing: Easing.out(Easing.cubic) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDark]);
 
   const thumbStyle = useAnimatedStyle(() => ({
@@ -44,9 +45,11 @@ export function ThemeToggle() {
       accessibilityLabel={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       accessibilityRole="switch"
       accessibilityState={{ checked: isDark }}
-      className="rounded-full bg-slate-200 dark:bg-slate-800"
+      className="rounded-full bg-slate-200 hover:opacity-90 dark:bg-slate-800"
+      nativeID="theme-toggle"
       onPress={toggleThemeMode}
       style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT, padding: 2 }}
+      testID="theme-toggle"
     >
       {/* Todo en style, nada en className: confirmado con getComputedStyle
           que este Animated.View no aplicaba NINGUNA clase de NativeWind
@@ -54,6 +57,8 @@ export function ThemeToggle() {
           en el DOM pero sin ningún efecto visual real. No es selectivo
           por tipo de propiedad, es el className entero el que no calza. */}
       <Animated.View
+        nativeID="theme-toggle-thumb"
+        testID="theme-toggle-thumb"
         style={[
           {
             width: THUMB_SIZE,

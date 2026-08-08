@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BackHandler, Dimensions, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Dimensions, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,9 +8,11 @@ import { getRoutesByRole } from '../../routes/catalog.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
-import { RoleManagementSection } from './role-management-section.jsx';
+import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
+import { TeamsAccordion } from './teams-accordion.jsx';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -23,21 +25,27 @@ function TopAppBar({ onTogglePress, open }) {
   return (
     <View
       className="h-[60px] w-full flex-row items-center justify-center border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-surface"
+      nativeID="mobile-topbar"
       style={{ zIndex: 70 }}
+      testID="mobile-topbar"
     >
       <Pressable
         accessibilityLabel={open ? 'Cerrar menú' : 'Abrir menú'}
-        className="absolute left-4 rounded-full p-2 active:opacity-70"
+        className="absolute left-4 rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        nativeID="mobile-topbar-menu-toggle"
         onPress={onTogglePress}
+        testID="mobile-topbar-menu-toggle"
       >
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'close' : 'menu'} size={24} />
       </Pressable>
-      <View className="flex-row items-center gap-3">
+      <View className="flex-row items-center gap-3" nativeID="mobile-topbar-brand" testID="mobile-topbar-brand">
         <Image
           accessibilityLabel="Paceron"
+          nativeID="mobile-topbar-brand-logo"
           resizeMode="contain"
           source={require('../../assets/paceron-symbol-transparent.png')}
           style={{ width: 36, height: 36 }}
+          testID="mobile-topbar-brand-logo"
         />
         <PaceronBrand size={18} />
       </View>
@@ -51,16 +59,54 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const [loggingOut, setLoggingOut] = useState(false);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const trainerActivated = useAuthStore((s) => s.trainerActivated);
+  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
+  // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
+  // un usuario puede tener ambos roles y estar activo como corredor.
+  const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
 
   const userRole = user?.role ?? null;
   const routes = getRoutesByRole(userRole);
+
+  const teams = useTeamStore((s) => s.teams);
+  const fetchTeams = useTeamStore((s) => s.fetchTeams);
+  const myMemberTeams = useTeamStore((s) => s.myMemberTeams);
+  const fetchMyMemberTeams = useTeamStore((s) => s.fetchMyMemberTeams);
+  const administeredTeams = selectAdministeredTeams(teams, user?.userId);
+  // Entrenador ve lo que administra, corredor lo que integra — ver
+  // store/team-store.js#fetchMyMemberTeams.
+  const myTeams = activeRole === 'trainer' ? administeredTeams : myMemberTeams;
+  const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
+  const selectTeam = useTeamStore((s) => s.selectTeam);
+  const [teamsExpanded, setTeamsExpanded] = useState(false);
+  const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
+  const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
+
+  useEffect(() => {
+    fetchTeams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (activeRole === 'trainer' || !user?.userId) return;
+    fetchMyMemberTeams(user.userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRole, user?.userId]);
+
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    fetchMyInvitations(user.userId, user.email);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId, user?.email]);
 
   const translateX = useSharedValue(-DRAWER_WIDTH);
 
   useEffect(() => {
     translateX.value = withTiming(open ? 0 : -DRAWER_WIDTH, ANIMATION_CONFIG);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -72,6 +118,10 @@ function NavigationDrawer({ open, pathname, onClose }) {
     return () => sub.remove();
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) setTeamsExpanded(false);
+  }, [open]);
+
   const drawerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
@@ -81,95 +131,169 @@ function NavigationDrawer({ open, pathname, onClose }) {
     onClose();
   };
 
+  // Sin backend de equipos todavía: elegir un equipo guarda la selección
+  // local y navega a su detalle (/teams/[teamId]); crear equipo navega a
+  // su propia pantalla (/teams/create).
+  const handleSelectTeam = (team) => {
+    selectTeam(team.id);
+    onClose();
+    router.push(`/teams/${team.id}`);
+  };
+
+  const handleCreateTeam = () => {
+    onClose();
+    router.push('/teams/create');
+  };
+
+  const handleViewAllTeams = () => {
+    onClose();
+    router.push('/teams');
+  };
+
+  // logout() ahora pega al backend (revoca el refresh token) antes de
+  // limpiar el estado local — sin esperar esa promesa, el replace a '/'
+  // corría con el usuario todavía autenticado en el store y la ruta raíz
+  // mostraba Home un instante antes de reaccionar al logout real.
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await logout();
+    setLoggingOut(false);
+    onClose();
+    router.replace('/');
+  };
+
   return (
     <>
       <Animated.View
+        nativeID="mobile-drawer-panel"
         style={[
           { position: 'absolute', top: 0, bottom: 0, left: 0, width: DRAWER_WIDTH, zIndex: 60 },
           drawerAnimatedStyle,
         ]}
+        testID="mobile-drawer-panel"
       >
-        <View className="flex-1 bg-white dark:bg-surface">
-          <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
-            <View className="flex-1" style={{ paddingTop: 60 }}>
+        <View className="flex-1 bg-white dark:bg-surface" nativeID="mobile-drawer" testID="mobile-drawer">
+          <SafeAreaView className="flex-1" edges={['top', 'bottom']} nativeID="mobile-drawer-safe-area" testID="mobile-drawer-safe-area">
+            <View className="flex-1" nativeID="mobile-drawer-body" style={{ paddingTop: 60 }} testID="mobile-drawer-body">
               {user ? (
                 <Pressable
-                  className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 active:opacity-70 dark:border-slate-800"
+                  className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                  nativeID="mobile-drawer-profile-row"
                   onPress={() => goTo('/profile')}
+                  testID="mobile-drawer-profile-row"
                 >
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" nativeID="mobile-drawer-profile-avatar" testID="mobile-drawer-profile-avatar">
                     <MaterialCommunityIcons color={colors.primary} name="account-circle" size={26} />
                   </View>
-                  <View className="flex-1 flex-row items-center gap-2">
-                    <Text className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</Text>
+                  <View className="flex-1 flex-row items-center gap-2" nativeID="mobile-drawer-profile-info" testID="mobile-drawer-profile-info">
+                    <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="mobile-drawer-user-name" testID="mobile-drawer-user-name">{user.name}</Text>
                     <RoleBadge role={activeRole} />
                   </View>
                   <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
                 </Pressable>
               ) : (
-                <View className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle" size={26} />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm text-slate-600 dark:text-slate-300">Invitado</Text>
-                  </View>
+                <View className="border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-guest-row" testID="mobile-drawer-guest-row">
                   <Pressable
-                    className="rounded-full bg-primary px-4 py-1.5 active:opacity-80"
+                    className="h-11 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
+                    nativeID="mobile-drawer-login-button"
                     onPress={() => { router.push('/login'); onClose(); }}
+                    testID="mobile-drawer-login-button"
                   >
-                    <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]">Ingresar</Text>
+                    <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="mobile-drawer-login-button-label" testID="mobile-drawer-login-button-label">Ingresar</Text>
                   </Pressable>
                 </View>
               )}
 
-              {user && trainerActivated && <RoleManagementSection allowActivate={false} onClose={onClose} />}
+              {user && hasTrainerRole && (
+                <View className="items-center border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-role-switch-row" testID="mobile-drawer-role-switch-row">
+                  <RoleSwitchToggle onClose={onClose} showTierLink={false} wide />
+                </View>
+              )}
 
-              <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-                <View className="flex-row items-center gap-3">
+              <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-theme-row" testID="mobile-drawer-theme-row">
+                <View className="flex-row items-center gap-3" nativeID="mobile-drawer-theme-label-group" testID="mobile-drawer-theme-label-group">
                   <MaterialCommunityIcons color={colors.onSurfaceVariant} name="theme-light-dark" size={20} />
-                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Tema</Text>
+                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-theme-label" testID="mobile-drawer-theme-label">Tema</Text>
                 </View>
                 <ThemeToggle />
               </View>
 
-              <ScrollView className="flex-1 px-2 py-4">
-                {routes.map((route) => {
-                  const isActive = pathname === route.href;
+              {user && (
+                <ScrollView className="flex-1 px-2 py-4" nativeID="mobile-drawer-routes" testID="mobile-drawer-routes">
+                  {routes.map((route) => {
+                    if (route.name === 'teams') {
+                      return (
+                        <TeamsAccordion
+                          key={route.name}
+                          colors={colors}
+                          expanded={teamsExpanded}
+                          icon={route.icon}
+                          label={route.label}
+                          onCreateTeam={canCreateTeam ? handleCreateTeam : undefined}
+                          onSelectTeam={handleSelectTeam}
+                          onToggle={() => setTeamsExpanded((v) => !v)}
+                          onViewAll={handleViewAllTeams}
+                          selectedTeamId={selectedTeamId}
+                          teams={myTeams}
+                        />
+                      );
+                    }
 
-                  return (
-                    <Pressable
-                      key={route.name}
-                      className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
-                        isActive ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10' : ''
-                      }`}
-                      onPress={() => goTo(route.href)}
-                    >
-                      <MaterialCommunityIcons
-                        color={isActive ? colors.primary : colors.onSurfaceVariant}
-                        name={route.icon ?? 'circle-small'}
-                        size={22}
-                      />
-                      <Text
-                        className={`text-sm font-semibold ${
-                          isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+                    const isActive = pathname === route.href;
+
+                    return (
+                      <Pressable
+                        key={route.name}
+                        className={`mb-0.5 flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-90 ${
+                          isActive ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
+                        nativeID={`mobile-drawer-route-${route.name}`}
+                        onPress={() => goTo(route.href)}
+                        testID={`mobile-drawer-route-${route.name}`}
                       >
-                        {route.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+                        <View className="relative" nativeID={`mobile-drawer-route-${route.name}-icon-wrapper`} testID={`mobile-drawer-route-${route.name}-icon-wrapper`}>
+                          <MaterialCommunityIcons
+                            color={isActive ? colors.primary : colors.onSurfaceVariant}
+                            name={route.icon ?? 'circle-small'}
+                            size={22}
+                          />
+                          {route.name === 'invitations' && myInvitationsCount > 0 && (
+                            <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="mobile-drawer-route-invitations-badge" testID="mobile-drawer-route-invitations-badge" />
+                          )}
+                        </View>
+                        <Text
+                          className={`text-sm font-semibold ${
+                            isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+                          }`}
+                          nativeID={`mobile-drawer-route-label-${route.name}`}
+                          testID={`mobile-drawer-route-label-${route.name}`}
+                        >
+                          {route.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
 
               {user && (
-                <View className="border-t border-slate-200 p-3 dark:border-slate-800">
+                <View className="border-t border-slate-200 p-3 dark:border-slate-800" nativeID="mobile-drawer-logout-row" testID="mobile-drawer-logout-row">
                   <Pressable
-                    className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:opacity-80"
-                    onPress={() => { logout(); onClose(); }}
+                    className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 active:opacity-80 dark:hover:bg-red-900/20 disabled:opacity-60"
+                    disabled={loggingOut}
+                    nativeID="mobile-drawer-logout-button"
+                    onPress={handleLogout}
+                    testID="mobile-drawer-logout-button"
                   >
-                    <MaterialCommunityIcons color={colors.error} name="logout" size={20} />
-                    <Text className="text-sm font-semibold text-red-600 dark:text-red-400">Cerrar sesión</Text>
+                    {loggingOut ? (
+                      <ActivityIndicator color={colors.error} size="small" />
+                    ) : (
+                      <MaterialCommunityIcons color={colors.error} name="logout" size={20} />
+                    )}
+                    <Text className="text-sm font-semibold text-red-600 dark:text-red-400" nativeID="mobile-drawer-logout-label" testID="mobile-drawer-logout-label">
+                      {loggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+                    </Text>
                   </Pressable>
                 </View>
               )}
@@ -188,10 +312,12 @@ export function AppMobileShell({ children, pathname }) {
     <SafeAreaView
       className="flex-1 bg-white dark:bg-surface"
       edges={isWeb ? ['top', 'left', 'right'] : ['top', 'bottom']}
+      nativeID="app-mobile-shell"
+      testID="app-mobile-shell"
     >
       <TopAppBar onTogglePress={() => setDrawerOpen((v) => !v)} open={drawerOpen} />
       <NavigationDrawer onClose={() => setDrawerOpen(false)} open={drawerOpen} pathname={pathname} />
-      <View className="flex-1">{children}</View>
+      <View className="flex-1" nativeID="app-mobile-shell-content" testID="app-mobile-shell-content">{children}</View>
     </SafeAreaView>
   );
 }
