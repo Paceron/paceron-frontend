@@ -1,4 +1,4 @@
-import { mockSearchUsers, mockBatchLookupUsers } from '../services/__mocks__/user-mock.js';
+import { mockSearchUsers, mockBatchLookupUsers, mockChangePassword } from '../services/__mocks__/user-mock.js';
 
 describe('mockSearchUsers', () => {
   test('returns no results for queries shorter than 3 characters', async () => {
@@ -40,5 +40,24 @@ describe('mockBatchLookupUsers', () => {
   test('returns one result per id, in order', async () => {
     const res = await mockBatchLookupUsers([102, 101]);
     expect(res.results.map((u) => u.user_id)).toEqual([102, 101]);
+  });
+});
+
+describe('mockChangePassword', () => {
+  const validPayload = { current_password: 'password123', new_password: 'NewPass123!', confirm_password: 'NewPass123!' };
+
+  test('succeeds when the current password matches and confirmation matches the new password', async () => {
+    const res = await mockChangePassword(1, validPayload);
+    expect(res).toEqual(expect.objectContaining({ message: expect.any(String) }));
+  });
+
+  test('rejects with a 401 when the current password is wrong', async () => {
+    await expect(mockChangePassword(1, { ...validPayload, current_password: 'wrong' }))
+      .rejects.toMatchObject({ status: 401 });
+  });
+
+  test('rejects with a 400 when the confirmation does not match the new password', async () => {
+    await expect(mockChangePassword(1, { ...validPayload, confirm_password: 'Mismatch123!' }))
+      .rejects.toMatchObject({ status: 400 });
   });
 });

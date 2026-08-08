@@ -138,4 +138,17 @@ describe('api client 401 refresh interceptor', () => {
     expect(refreshSession).not.toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  test('api.patch also accepts skipAuthRefresh via its options param', async () => {
+    // Cubre PATCH /users/{id}/password: mismo caso de negocio que
+    // trainer-role de arriba, pero por PATCH.
+    const refreshSession = jest.fn();
+    mockGetState.mockReturnValue({ token: 'old-token', refreshToken: 'old-refresh', refreshSession, logout: jest.fn() });
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ message: 'Contraseña actual incorrecta.' }) });
+
+    await expect(api.patch('/users/1/password', { current_password: 'wrong' }, { skipAuthRefresh: true }))
+      .rejects.toMatchObject({ status: 401, message: 'Contraseña actual incorrecta.' });
+    expect(refreshSession).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });
