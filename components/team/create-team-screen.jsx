@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -9,7 +9,9 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailInviteForm, InvitedEmailsList } from '../forms/fields.jsx';
+import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { useEmailSuggestions } from '../../hooks/use-email-suggestions.js';
 import { GroupListEditor } from './group-list-editor.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
@@ -72,6 +74,11 @@ function CreateTeamScreenContent() {
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
+
+  // Raíz de la pantalla — ancla el AnimatedDropdown de sugerencias de
+  // EmailInviteForm (ver hooks/use-email-suggestions.js).
+  const containerRef = useRef(null);
+  const emailSearch = useEmailSuggestions(containerRef);
 
   const [step, setStep] = useState(1);
 
@@ -145,6 +152,7 @@ function CreateTeamScreenContent() {
   };
 
   return (
+    <View className="relative flex-1" nativeID="create-team-screen-root" ref={containerRef} testID="create-team-screen-root">
     <ScrollView
       nativeID="create-team-screen-scroll"
       testID="create-team-screen-scroll"
@@ -200,7 +208,7 @@ function CreateTeamScreenContent() {
         {step === 3 && (
           <>
             <SectionCard icon="email-outline" title="Invitar corredores">
-              <EmailInviteForm existingEmails={invitedEmails.map((invite) => invite.email)} groups={groups} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
+              <EmailInviteForm emailSearch={emailSearch} existingEmails={invitedEmails.map((invite) => invite.email)} groups={groups} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
             </SectionCard>
 
             <SectionCard icon="account-multiple-check" title="Corredores a invitar">
@@ -212,6 +220,14 @@ function CreateTeamScreenContent() {
         )}
       </View>
     </ScrollView>
+    <AnimatedDropdown
+      anchorStyle={{ left: emailSearch.anchor.x, top: emailSearch.anchor.y + emailSearch.anchor.height + 4, width: emailSearch.anchor.width }}
+      onClose={emailSearch.close}
+      open={emailSearch.showSuggestions}
+    >
+      <UserSuggestionsList onSelect={emailSearch.selectSuggestion} scope="create-team-invite" suggestions={emailSearch.suggestions} />
+    </AnimatedDropdown>
+    </View>
   );
 }
 

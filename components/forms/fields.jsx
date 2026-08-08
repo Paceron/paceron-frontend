@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,7 +7,6 @@ import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { validateEmailFormat } from '../../utils/email-validators.js';
 import { BREAKPOINTS } from '../../theme/tokens.js';
-import { searchUsers } from '../../services/user.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
 
@@ -561,34 +560,20 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
 // incluye el grupo principal real) — no hay un "Sin grupo" inventado
 // aparte.
 //
-// Autocompletar (GET /users/search?q=, mínimo 3 caracteres): debounced
-// 300ms, hasta 5 sugerencias. Elegir una solo completa el campo de email
-// (no agrega directo) — el flujo de agregar/validar sigue siendo el
-// mismo de siempre. `selectedEmail` evita que, después de elegir una
-// sugerencia, el propio valor ya completado dispare una nueva búsqueda
-// y vuelva a abrir el dropdown.
-//
-// Las sugerencias se muestran en un Modal transparente (no en un View
-// absoluto anidado) — React Native Web pone `position: relative` por
-// default en TODOS los Views, así que un View absoluto anidado dentro de
-// esta card nunca logra escapar visualmente de ella (se probó, terminaba
-// solapándose mal con contenido de más abajo). Modal en RN Web se monta
-// vía portal fuera del árbol normal, evitando ese problema por completo
-// — measureInWindow (coordenadas de ventana, no relativas a un ancestro)
-// es lo correcto acá porque el contenido del Modal ya no está anidado
-// bajo el layout normal de la pantalla.
-export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com' }) {
+// Autocompletar (GET /users/search?q=, mínimo 3 caracteres): el estado
+// vive en `hooks/use-email-suggestions.js`, llamado por la pantalla
+// dueña (no acá) — el panel de sugerencias es un AnimatedDropdown
+// montado en la raíz de esa pantalla, no puede ser hijo de este
+// componente (ver el comentario del hook para el porqué). `emailSearch`
+// es el valor devuelto por ese hook; `draft`/`onDraftChange`/`onFocus`
+// hacen que el input de email quede controlado desde ahí.
+export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com', emailSearch }) {
   const colors = useThemeColors();
   const slug = 'email-invite-form';
   const defaultGroupId = groups.find((g) => g.isDefault)?.id ?? '';
-  const [draft, setDraft] = useState('');
   const [draftGroupId, setDraftGroupId] = useState(defaultGroupId);
   const [draftError, setDraftError] = useState(null);
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState(null);
-  const [anchor, setAnchor] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const inputWrapperRef = useRef(null);
+  const { draft, inputWrapperRef, handleChange, handleFocus, resetDraft } = emailSearch;
 
   // Los grupos pueden llegar async (todavía no estaban cuando se montó
   // el form) — mantiene seleccionado el principal mientras el usuario no
@@ -597,34 +582,6 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
     if (!draftGroupId && defaultGroupId) setDraftGroupId(defaultGroupId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultGroupId]);
-
-  useEffect(() => {
-    const query = draft.trim();
-    if (query.length < 3 || query === selectedEmail) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return undefined;
-    }
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const results = await searchUsers(query);
-        if (cancelled) return;
-        setSuggestions(results);
-        setShowSuggestions(results.length > 0);
-      } catch {
-        if (!cancelled) { setSuggestions([]); setShowSuggestions(false); }
-      }
-    }, 300);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [draft, selectedEmail]);
-
-  useEffect(() => {
-    if (!showSuggestions || !inputWrapperRef.current) return;
-    inputWrapperRef.current.measureInWindow((x, y, width, height) => {
-      setAnchor({ x, y, width, height });
-    });
-  }, [showSuggestions]);
 
   const handleAdd = () => {
     const email = draft.trim();
@@ -638,18 +595,9 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
       return;
     }
     onAdd({ email, groupId: draftGroupId });
-    setDraft('');
+    resetDraft();
     setDraftGroupId(defaultGroupId);
     setDraftError(null);
-    setSelectedEmail(null);
-  };
-
-  const handleSelectSuggestion = (suggestion) => {
-    setDraft(suggestion.email);
-    setSelectedEmail(suggestion.email);
-    setShowSuggestions(false);
-    setSuggestions([]);
-    if (draftError) setDraftError(null);
   };
 
   return (
@@ -667,9 +615,8 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
             autoCapitalize="none"
             className={INPUT_CLASS}
             keyboardType="email-address"
-            onBlur={() => { setTimeout(() => setShowSuggestions(false), 150); }}
-            onChangeText={(text) => { setDraft(text); setSelectedEmail(null); if (draftError) setDraftError(null); }}
-            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+            onChangeText={(text) => { handleChange(text); if (draftError) setDraftError(null); }}
+            onFocus={handleFocus}
             onSubmitEditing={handleAdd}
             placeholder={placeholder}
             placeholderTextColor={colors.onSurfaceVariant}
@@ -715,57 +662,48 @@ export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], place
         </Pressable>
       </View>
 
-      <Modal
-        animationType="none"
-        nativeID={`${slug}-suggestions-modal`}
-        onRequestClose={() => setShowSuggestions(false)}
-        testID={`${slug}-suggestions-modal`}
-        transparent
-        visible={showSuggestions}
-      >
-        <Pressable
-          className="flex-1"
-          nativeID={`${slug}-suggestions-backdrop`}
-          onPress={() => setShowSuggestions(false)}
-          testID={`${slug}-suggestions-backdrop`}
-        >
-          <Pressable
-            className="absolute overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
-            nativeID={`${slug}-suggestions`}
-            onPress={() => {}}
-            style={{ left: anchor.x, top: anchor.y + anchor.height + 4, width: anchor.width }}
-            testID={`${slug}-suggestions`}
-          >
-            {suggestions.map((suggestion) => {
-              const itemSlug = `${slug}-suggestion-${suggestion.user_id}`;
-              const fullName = `${suggestion.name ?? ''} ${suggestion.surname ?? ''}`.trim();
-              return (
-                <Pressable
-                  className="flex-row items-center gap-2 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  key={suggestion.user_id}
-                  nativeID={itemSlug}
-                  onPress={() => handleSelectSuggestion(suggestion)}
-                  testID={itemSlug}
-                >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle-outline" size={18} />
-                  <View className="flex-1" nativeID={`${itemSlug}-info`} testID={`${itemSlug}-info`}>
-                    <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID={`${itemSlug}-name`} numberOfLines={1} testID={`${itemSlug}-name`}>
-                      {fullName || suggestion.email}
-                    </Text>
-                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${itemSlug}-email`} numberOfLines={1} testID={`${itemSlug}-email`}>
-                      {suggestion.email}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
       <View className="h-5" nativeID={`${slug}-error-row`} testID={`${slug}-error-row`}>
         {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`${slug}-error`} testID={`${slug}-error`}>{draftError}</Text>}
       </View>
+    </View>
+  );
+}
+
+// Contenido del panel de sugerencias de EmailInviteForm — la pantalla
+// dueña lo renderiza dentro de un AnimatedDropdown propio (ver
+// hooks/use-email-suggestions.js), no EmailInviteForm mismo.
+export function UserSuggestionsList({ suggestions, onSelect, scope }) {
+  const colors = useThemeColors();
+
+  return (
+    <View
+      className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
+      nativeID={`${scope}-suggestions`}
+      testID={`${scope}-suggestions`}
+    >
+      {suggestions.map((suggestion) => {
+        const itemSlug = `${scope}-suggestion-${suggestion.user_id}`;
+        const fullName = `${suggestion.name ?? ''} ${suggestion.surname ?? ''}`.trim();
+        return (
+          <Pressable
+            className="flex-row items-center gap-2 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+            key={suggestion.user_id}
+            nativeID={itemSlug}
+            onPress={() => onSelect(suggestion)}
+            testID={itemSlug}
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-circle-outline" size={18} />
+            <View className="flex-1" nativeID={`${itemSlug}-info`} testID={`${itemSlug}-info`}>
+              <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID={`${itemSlug}-name`} numberOfLines={1} testID={`${itemSlug}-name`}>
+                {fullName || suggestion.email}
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${itemSlug}-email`} numberOfLines={1} testID={`${itemSlug}-email`}>
+                {suggestion.email}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

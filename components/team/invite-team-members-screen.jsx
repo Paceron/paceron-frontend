@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -9,7 +9,9 @@ import { useTeamStore } from '../../store/team-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailInviteForm, InvitedEmailsList } from '../forms/fields.jsx';
+import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { useEmailSuggestions } from '../../hooks/use-email-suggestions.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 function PendingInviteRow({ groupName, invite }) {
@@ -46,6 +48,11 @@ function InviteTeamMembersScreenContent({ teamId }) {
   const sendInvite = useTeamStore((s) => s.sendInvite);
   const user = useAuthStore((s) => s.user);
   const fetchGroups = useTeamStore((s) => s.fetchGroups);
+
+  // Raíz de la pantalla — ancla el AnimatedDropdown de sugerencias de
+  // EmailInviteForm (ver hooks/use-email-suggestions.js).
+  const containerRef = useRef(null);
+  const emailSearch = useEmailSuggestions(containerRef);
 
   const [draftInvites, setDraftInvites] = useState([]);
   const [sending, setSending] = useState(false);
@@ -131,6 +138,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
   };
 
   return (
+    <View className="relative flex-1" nativeID="invite-team-screen-root" ref={containerRef} testID="invite-team-screen-root">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
@@ -168,7 +176,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </SectionCard>
 
         <SectionCard icon="account-plus-outline" title="Invitar más corredores">
-          <EmailInviteForm existingEmails={draftInvites.map((invite) => invite.email)} groups={team.groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
+          <EmailInviteForm emailSearch={emailSearch} existingEmails={draftInvites.map((invite) => invite.email)} groups={team.groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
         </SectionCard>
 
         <SectionCard icon="account-multiple-check" title="Corredores a invitar">
@@ -195,6 +203,14 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </SectionCard>
       </View>
     </ScrollView>
+    <AnimatedDropdown
+      anchorStyle={{ left: emailSearch.anchor.x, top: emailSearch.anchor.y + emailSearch.anchor.height + 4, width: emailSearch.anchor.width }}
+      onClose={emailSearch.close}
+      open={emailSearch.showSuggestions}
+    >
+      <UserSuggestionsList onSelect={emailSearch.selectSuggestion} scope="invite-team-invite" suggestions={emailSearch.suggestions} />
+    </AnimatedDropdown>
+    </View>
   );
 }
 
