@@ -25,6 +25,48 @@ function toDateInput(value) {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : value || '';
 }
 
+// Pestañas full-width — variante de TabBar de team-detail-screen.jsx (misma
+// paleta bg-primary-tint-subtle/text-primary cuando está activa), pero acá
+// en las dos plataformas (a diferencia de team-detail, que solo usa tabs en
+// web): con únicamente 2 secciones cortas, apiladas quedaba mal también en
+// mobile.
+const TABS = [
+  { id: 'personal', label: 'Datos personales', icon: 'account-details' },
+  { id: 'password', label: 'Contraseña', icon: 'lock' },
+];
+
+function TabBar({ active, onChange }) {
+  const colors = useThemeColors();
+
+  return (
+    <View className="mb-6 flex-row gap-2" nativeID="edit-profile-screen-tab-bar" testID="edit-profile-screen-tab-bar">
+      {TABS.map((tab) => {
+        const isActive = tab.id === active;
+        return (
+          <Pressable
+            key={tab.id}
+            className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 ${
+              isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            nativeID={`edit-profile-screen-tab-${tab.id}`}
+            onPress={() => onChange(tab.id)}
+            testID={`edit-profile-screen-tab-${tab.id}`}
+          >
+            <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
+            <Text
+              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
+              nativeID={`edit-profile-screen-tab-${tab.id}-label`}
+              testID={`edit-profile-screen-tab-${tab.id}-label`}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 // Guard: TabsLayout ya asegura que la sesión esté hidratada antes de montar
 // esta pantalla. El form vive en un componente hijo que solo se monta con
 // `user` presente, para que los useState pre-carguen con los valores reales.
@@ -58,6 +100,7 @@ function EditProfileForm({ user }) {
   const [showCurrent, setShowCurrent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
+  const [activeTab, setActiveTab] = useState('personal');
   const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
 
   const address = useAddressCascade({
@@ -171,6 +214,10 @@ function EditProfileForm({ user }) {
           </Text>
         </View>
 
+        <TabBar active={activeTab} onChange={setActiveTab} />
+
+        {activeTab === 'personal' && (
+        <>
         <SectionCard icon="account-details" title="Datos personales">
         <Row>
           <Col>
@@ -362,8 +409,10 @@ function EditProfileForm({ user }) {
             </>
           )}
         </Pressable>
+        </>
+        )}
 
-        <ChangePasswordSection userId={user.userId} />
+        {activeTab === 'password' && <ChangePasswordSection userId={user.userId} />}
       </View>
     </KeyboardAwareScrollView>
   );
