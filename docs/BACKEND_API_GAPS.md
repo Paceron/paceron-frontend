@@ -10,14 +10,8 @@ Doc de seguimiento interno — refleja únicamente los gaps de backend **actualm
 
 **Actualización 2026-08-03:** gap 3 (`InvitationResponse` sin quién invita) — **RESUELTO**, el backend sumó `inviter_id`/`inviter_name` directo. Se sacó el workaround de 2 requests (`GET /teams/{id}` → `GET /auth/user?id=`) de `received-invitations-screen.jsx`, ahora usa `invite.inviterName` directo (`services/normalizers.js#toInvitationModel`).
 
-**Actualización 2026-08-07:** gap 1 (búsqueda de usuarios) — **RESUELTO**, `GET /users/search?q=` existe (mínimo 3 caracteres, hasta 5 resultados). Implementado el autocomplete al invitar (`services/user.js#searchUsers`, dropdown de sugerencias en `components/forms/fields.jsx#EmailInviteForm`, debounced 300ms). Gap 2 sigue abierto.
+**Actualización 2026-08-07:** gap 1 (búsqueda de usuarios) — **RESUELTO**, `GET /users/search?q=` existe (mínimo 3 caracteres, hasta 5 resultados). Implementado el autocomplete al invitar (`services/user.js#searchUsers`, dropdown de sugerencias en `components/forms/fields.jsx#EmailInviteForm`, debounced 300ms).
 
-Queda 1 gap abierto y accionable:
+**Actualización 2026-08-08:** gap 2 (lookup de usuarios en lote) — **RESUELTO**, `GET /users?ids=1,2,3` existe (hasta 50 ids). `hooks/use-team-roster.js` dejó el fan-out N+1 contra `GET /auth/user?id=` y pasa a resolver todo el roster en una sola llamada (`services/user.js#batchLookupUsers`).
 
-## 1. Sin lookup de usuarios en lote (por varios ids a la vez)
-
-- **Qué hace falta:** algo como `GET /users?ids=1,2,3` que devuelva nombre/email de varios usuarios en una sola llamada.
-- **Por qué:** `TeamUserResponse`/`GroupUserResponse` (roster de equipo/grupo) solo traen `user_id`, sin nombre ni email — para mostrar el roster real hay que resolver cada corredor único contra `GET /auth/user?id=` (N+1). No bloqueante (TanStack Query cachea/dedupea el resultado entre pantallas), pero un endpoint en lote lo resolvería de raíz en vez de con un workaround de cliente.
-- **A qué bloquea:** nada hoy — es una optimización, no un bloqueo funcional.
-- **Workaround actual:** `hooks/use-team-roster.js` pide `GET /auth/user?id=` una vez por `user_id` único (vía `useQueries`), cacheado por `queryKey: ['user', userId]`.
-- **Estado:** abierto, baja prioridad.
+Sin gaps abiertos por ahora — los próximos (foto de equipo, plan de entrenamiento en el grupo) siguen deliberadamente excluidos hasta que el usuario los retome (ver actualización 2026-08-02 arriba).
