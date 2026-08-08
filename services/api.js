@@ -75,6 +75,6 @@ export default {
   get: async (path) => await request(path, { method: 'GET' }),
   post: async (path, body, options) => await request(path, { method: 'POST', body: JSON.stringify(body), ...options }),
   put: async (path, body, headers) => await request(path, { method: 'PUT', body: JSON.stringify(body), headers }),
-  patch: async (path, body, headers) => await request(path, { method: 'PATCH', body: JSON.stringify(body), headers }),
+  patch: async (path, body, options) => await request(path, { method: 'PATCH', body: JSON.stringify(body), ...options }),
   delete: async (path) => await request(path, { method: 'DELETE' }),
 };

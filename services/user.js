@@ -1,6 +1,6 @@
 import api from './api.js';
 import { USE_MOCKS } from '../config/env.js';
-import { mockUpdateUser, mockChangeStatus, mockSearchUsers, mockBatchLookupUsers } from './__mocks__/user-mock.js';
+import { mockUpdateUser, mockChangeStatus, mockSearchUsers, mockBatchLookupUsers, mockChangePassword } from './__mocks__/user-mock.js';
 
 // PUT /api/v1/users/{id} — UserUpdateRequest. Cambiar el email requiere el header
 // X-Current-Password con la contraseña actual.
@@ -35,4 +35,14 @@ export async function batchLookupUsers(ids) {
   if (ids.length === 0) return [];
   const dto = USE_MOCKS ? await mockBatchLookupUsers(ids) : await api.get(`/users?ids=${ids.join(',')}`);
   return dto?.results ?? [];
+}
+
+// PATCH /api/v1/users/{id}/password — distinto del flujo OTP de
+// forgot/reset-password. skipAuthRefresh: un 401 acá es "contraseña actual
+// incorrecta" (negocio), no "sesión vencida" — mismo caso que
+// activateTrainerRole (services/roles.js).
+export async function changePassword(id, { currentPassword, newPassword, confirmPassword }) {
+  const payload = { current_password: currentPassword, new_password: newPassword, confirm_password: confirmPassword };
+  if (USE_MOCKS) return await mockChangePassword(id, payload);
+  return await api.patch(`/users/${id}/password`, payload, { skipAuthRefresh: true });
 }

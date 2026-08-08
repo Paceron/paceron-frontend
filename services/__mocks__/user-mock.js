@@ -64,3 +64,25 @@ export async function mockBatchLookupUsers(ids) {
   });
   return { results };
 }
+
+// Contraseña "actual" simulada para probar el flujo de cambio de contraseña
+// con EXPO_PUBLIC_USE_MOCKS=true, ya que no hay backend real detrás para
+// verificarla de verdad.
+const MOCK_CURRENT_PASSWORD = 'password123';
+
+// Simula la verificación de user.ChangePasswordRequest del backend real —
+// error con .status análogo a services/api.js para que el caller (mock o
+// real) maneje el error de la misma forma.
+export async function mockChangePassword(id, { current_password: currentPassword, new_password: newPassword, confirm_password: confirmPassword }) {
+  if (currentPassword !== MOCK_CURRENT_PASSWORD) {
+    const error = new Error('La contraseña actual es incorrecta.');
+    error.status = 401;
+    throw error;
+  }
+  if (newPassword !== confirmPassword) {
+    const error = new Error('Las contraseñas no coinciden.');
+    error.status = 400;
+    throw error;
+  }
+  return { message: 'Contraseña actualizada correctamente.' };
+}
