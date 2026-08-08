@@ -1,6 +1,6 @@
 import api from './api.js';
 import { USE_MOCKS } from '../config/env.js';
-import { mockUpdateUser, mockChangeStatus, mockSearchUsers } from './__mocks__/user-mock.js';
+import { mockUpdateUser, mockChangeStatus, mockSearchUsers, mockBatchLookupUsers } from './__mocks__/user-mock.js';
 
 // PUT /api/v1/users/{id} — UserUpdateRequest. Cambiar el email requiere el header
 // X-Current-Password con la contraseña actual.
@@ -23,5 +23,16 @@ export async function changeStatus(id, status) {
 // desenvolverlo.
 export async function searchUsers(query) {
   const dto = USE_MOCKS ? await mockSearchUsers(query) : await api.get(`/users/search?q=${encodeURIComponent(query)}`);
+  return dto?.results ?? [];
+}
+
+// GET /api/v1/users?ids=1,2,3 — resuelve nombre/apellido/email para
+// varios user_id de una sola consulta (hasta 50, según el backend).
+// Reemplaza el fan-out N+1 que hacía hooks/use-team-roster.js contra
+// GET /auth/user?id= uno por uno (ver docs/BACKEND_API_GAPS.md,
+// gap ya resuelto).
+export async function batchLookupUsers(ids) {
+  if (ids.length === 0) return [];
+  const dto = USE_MOCKS ? await mockBatchLookupUsers(ids) : await api.get(`/users?ids=${ids.join(',')}`);
   return dto?.results ?? [];
 }

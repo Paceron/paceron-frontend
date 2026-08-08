@@ -52,3 +52,15 @@ export async function mockSearchUsers(query) {
   )).slice(0, 5);
   return { results };
 }
+
+// Devuelve un resultado por cada id pedido — si coincide con alguien del
+// catálogo de arriba usa esos datos, si no arma un placeholder genérico
+// (los ids de roster mock no necesariamente coinciden con SEARCH_CATALOG).
+export async function mockBatchLookupUsers(ids) {
+  const results = ids.map((id) => {
+    const known = SEARCH_CATALOG.find((u) => u.user_id === Number(id));
+    if (known) return known;
+    return { user_id: Number(id), name: 'Corredor', surname: String(id), email: `corredor${id}@mail.com` };
+  });
+  return { results };
+}
