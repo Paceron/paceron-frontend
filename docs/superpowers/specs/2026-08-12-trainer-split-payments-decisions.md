@@ -1,6 +1,6 @@
 # Split marketplace corredor-entrenador (Sub-proyecto B) — Decisiones y lineamientos
 
-> A diferencia del spec de [Sub-proyecto A](./2026-08-12-subscription-tier-checkout-design.md), este documento sigue sin ser un spec paso a paso — pero, tras confirmar reglas de negocio concretas con el usuario, la arquitectura central ya no es un fork abierto: quedó resuelta. Lo que sigue abierto son valores numéricos (comisión, precio mínimo, duración del plazo de gracia) y algunas decisiones de UX, no de arquitectura.
+> A diferencia del spec de [Sub-proyecto A](./2026-08-12-subscription-tier-checkout-design.md), este documento sigue sin ser un spec paso a paso — pero tras dos rondas de repaso con reglas de negocio confirmadas, la arquitectura y casi todas las decisiones de UX quedaron resueltas. Lo que sigue realmente abierto son tres **valores numéricos** (comisión, precio mínimo, duración del plazo de gracia) y un detalle fino de alcance (qué ve exactamente el corredor en un equipo congelado) — ver checklist al final.
 
 ## Contexto y alcance
 
@@ -8,14 +8,13 @@ Cubre el Caso 2 del [análisis de viabilidad](./2026-08-11-payments-integration-
 
 ## Mecánica de cobro confirmada (regla de negocio, no técnica)
 
-Confirmado por el usuario, no es una suposición del análisis:
-
 - El corredor paga **manualmente** para pertenecer a un equipo — **no hay débito automático**, ni ahora ni como objetivo del producto.
 - Ese pago es **válido por un mes**.
-- Al vencer, hay un **plazo de gracia** para renovar (duración exacta sin definir todavía — mismo tipo de valor que la comisión y el precio mínimo, ver abajo).
+- Al vencer, hay un **plazo de gracia** para renovar (duración exacta sin definir todavía — mismo tipo de valor que la comisión y el precio mínimo).
 - Si no se renueva dentro del plazo de gracia, el corredor es **expulsado automáticamente** del equipo.
+- Antes del primer pago, el equipo puede tener un **período de prueba configurable por el entrenador**: `No` / `1 semana` / `2 semanas` / `4 semanas`. Recién terminado ese período (si lo hay) el pago pasa a ser obligatorio para seguir en el equipo.
 
-Esto resuelve directamente el fork arquitectónico que este documento tenía abierto — ver siguiente sección.
+Esto resuelve el fork arquitectónico que este documento tenía abierto — ver siguiente sección.
 
 ## Fork arquitectónico — resuelto
 
@@ -29,59 +28,58 @@ Reutiliza 100% el mecanismo ya diseñado y documentado para A (`checkout-brick.j
 
 ### Camino descartado — Suscripción real de MP a nombre de Paceron, payout aparte
 
-Se documenta igual, para que quede registrado por qué no se eligió (y para no volver a evaluarlo sin una razón nueva): usar `/preapproval` de MP daría cobro automático real, pero el dinero entraría a la cuenta de Paceron (no hay forma de dirigir un `/preapproval` a una cuenta de tercero vía OAuth), obligando a un proceso de liquidación propio + probable revisión legal/regulatoria por retener y redistribuir dinero de terceros. Como el producto **no quiere débito automático**, esta ventaja (la única razón real para considerar este camino) no aplica — queda descartado, no por complejidad, sino porque resuelve un problema que el producto no tiene.
+Se documenta igual, para que quede registrado por qué no se eligió: usar `/preapproval` de MP daría cobro automático real, pero el dinero entraría a la cuenta de Paceron (no hay forma de dirigir un `/preapproval` a una cuenta de tercero vía OAuth), obligando a un proceso de liquidación propio + probable revisión legal/regulatoria por retener y redistribuir dinero de terceros. Como el producto **no quiere débito automático**, esta ventaja (la única razón real para considerar este camino) no aplica — queda descartado porque resuelve un problema que el producto no tiene, no por complejidad.
 
 ## Qué es compartido con Sub-proyecto A
 
-Ya no es condicional — se reutiliza directamente:
-
 - `checkout-brick.jsx`, la ruta `/checkout`, el mecanismo `WebView`+`postMessage`+inyección de sesión: tal cual, solo cambia el `access_token` server-side que usa el backend al crear la preferencia (el del entrenador conectado vía `mp-connect`, no el de Paceron) y que la preferencia lleve `marketplace_fee`.
 - `services/payments.js` se extiende (no se duplica): `createPreference` necesita aceptar a qué entrenador/equipo corresponde el pago, además de (o en vez de) `tierId`.
+- **"Equipo congelado"** (documentado en el spec de A, sección "Vencimiento y renovación del tier"): cuando un entrenador baja de tier y su equipo excede el nuevo límite de miembros, el equipo se bloquea para entrenador y corredores por igual. Aunque lo dispara A (tier del entrenador), afecta directamente a los corredores de B — el alcance exacto de qué ve un corredor en un equipo congelado sigue sin terminar de definirse (ver checklist).
 
 ## `mp-connect` — vinculación OAuth del entrenador
 
 Mismo patrón de redirección que MP documenta oficialmente para Expo (`WebBrowser.openAuthSessionAsync` + deep link) — el mismo mecanismo que se descartó para el checkout de A por no ser "de marca Paceron" **sí aplica bien acá**, porque el propósito de esta pantalla es explícitamente autorizar una cuenta externa, no simular ser parte del checkout de Paceron (conceptualmente igual a "Conectar con Google").
 
-**Ubicación sugerida:** junto a `bank_alias`, en el flujo del entrenador (`activate-trainer-screen.jsx` o una sección nueva dentro de `edit-profile-screen.jsx`) — mismo dominio conceptual ("cómo cobra el entrenador"). Sigue **abierto** si `mp-connect` reemplaza a `bank_alias` o conviven (ver checklist).
+**Ubicación sugerida:** junto a `bank_alias`, en el flujo del entrenador (`activate-trainer-screen.jsx` o una sección nueva dentro de `edit-profile-screen.jsx`) — mismo dominio conceptual ("cómo cobra el entrenador"). **Conviven, no se reemplazan** — `bank_alias` sigue existiendo tal cual está (sin split), `mp-connect` se suma como mecanismo nuevo específico para pagos con split, sin migrar ni deprecar nada existente.
+
+## Configuración por equipo — precio y período de prueba
+
+Nueva superficie de UI, en `create-team-screen.jsx`/`edit-team-screen.jsx` (no una pantalla aparte, dos campos nuevos en el flujo ya existente de crear/editar equipo):
+
+- **Precio de la mensualidad:** lo fija el entrenador, por equipo (no un valor único de plataforma ni global del entrenador — un mismo entrenador puede tener equipos con precios distintos). Debe ser **mayor o igual al precio mínimo** que define el sistema (backoffice, `platform_settings`, mismo criterio que `marketplace_fee`) — el frontend valida contra ese mínimo, y debería **consultarlo y mostrárselo al entrenador** al momento de configurar el precio (ej. "el mínimo permitido es $X"), no solo rechazar después de intentar guardar un valor menor.
+- **Período de prueba:** selector `No` / `1 semana` / `2 semanas` / `4 semanas`, también por equipo. Determina cuánto tiempo un corredor nuevo puede estar en el equipo antes de que el pago sea obligatorio (`en_prueba` en `SUBSCRIPTION_STATUSES`, que ya existía en el enum sin uso real).
 
 ## Renovación — mismo mecanismo que el pago inicial
 
 Renovar es literalmente pagar de nuevo — mismo `checkout-brick.jsx`/`WebView` que el pago inicial de membership, sin pantalla ni componente nuevo. Dos formas de llegar ahí:
 
 - **Proactiva:** el corredor renueva antes de vencer, desde algún punto de la UI de su equipo (a definir dónde exactamente — candidato natural: `team-detail-screen.jsx` o una vista de "mi membership").
-- **Reactiva:** ya venció y está en plazo de gracia — mismo botón, pero probablemente con urgencia visual distinta (ver estados de mora abajo).
+- **Reactiva:** ya venció y está en plazo de gracia — mismo botón, con un banner de aviso (ver estados de mora abajo).
 
 **Necesita del backend:** una fecha de vencimiento/próximo cobro por membership, expuesta en el roster o en una consulta dedicada — hoy no existe ningún campo así. Sin esto, el frontend no puede mostrar "vence en 3 días" ni decidir cuándo mostrar la urgencia de renovación.
 
 ## Control de pagos — pendiente / realizado / morosidad
 
-El frontend ya tiene el modelo de estados (`SUBSCRIPTION_STATUSES = ['activo', 'vencido', 'en_prueba']`, `store/team-store.js:31`), hoy cosmético — `subscriptionStatus` siempre llega `null` de la API real. Con la mecánica confirmada, esto se puede precisar más:
+El frontend ya tiene el modelo de estados (`SUBSCRIPTION_STATUSES = ['activo', 'vencido', 'en_prueba']`, `store/team-store.js:31`), hoy cosmético — `subscriptionStatus` siempre llega `null` de la API real.
 
 - **Los estados los define el backend, no el frontend** — el frontend nunca infiere `vencido`/`activo` comparando fechas localmente; sería divergir de la fuente de verdad si el backend ajusta la duración del plazo de gracia.
 - **La expulsión automática por mora reutiliza la misma acción que la expulsión manual ya existente** (`RunnerActionsMenu`, ya en producción) — es el backend quien la dispara (job programado), no una acción nueva de frontend. El roster debería reflejar el resultado igual que cuando el entrenador expulsa manualmente hoy.
 - **Dónde se muestra el estado:** `team-detail-screen.jsx` ya tiene el hook de roster (`hooks/use-team-roster.js`) y los tags `SUBSCRIPTION_META` montados — lugar natural, sin pantalla nueva.
-- **Sigue abierto:** qué ve el corredor durante el plazo de gracia (sin restricción, aviso, o bloqueo de funcionalidades del equipo) — cuanto más severa la consecuencia, más importa que el estado sea confiable antes de exponerlo. Ver checklist.
-- **`en_prueba`** sigue sin confirmar si existe (período de prueba antes del primer cobro al unirse a un equipo) — no mencionado en la mecánica de cobro confirmada, sigue como pregunta abierta.
+- **Durante el plazo de gracia:** el corredor sigue usando el equipo con normalidad — **banner de aviso, sin bloquear nada**, indicando que debe renovar antes de tal fecha para no ser expulsado.
+- **`en_prueba`** confirmado que existe, configurable por equipo (ver sección de arriba) — durante ese período no corresponde ningún pago ni aviso de vencimiento.
 
-## Precio — quién lo fija
+## Comisión — porcentual, visible solo para el entrenador
 
-**Resuelto en parte:** lo fija el entrenador (no un valor único de plataforma), pero con un **precio mínimo de mensualidad impuesto por Paceron** (valor exacto sin definir todavía) — confirmado explícitamente por el usuario, con el motivo de negocio explícito: evitar que un entrenador use todas las funciones de la plataforma y después arregle el cobro real en efectivo por fuera, dejando a Paceron sin comisión. Esto significa:
+Confirmado con ejemplo concreto: mensualidad de $100.000 con comisión del 5% → $5.000 le corresponden a Paceron. Coincide exactamente con la fórmula que ya describe el documento de propuesta backend original (`marketplace_fee = round(amount × percentage / 100)`). El valor exacto del porcentaje sigue sin definir (configurable por owner vía backoffice, `platform_settings`).
 
-- Hace falta una pantalla/campo de configuración de precio en el flujo del entrenador — no mencionada hasta ahora en ningún doc, nueva superficie de UI.
-- El frontend necesita validar contra el mínimo (mensaje de error si el entrenador intenta poner un precio menor) — el mínimo en sí lo define y mantiene el backend/backoffice, el frontend solo lo consulta y valida contra él, mismo criterio que `marketplace_fee`/`platform_settings`.
-
-## Comisión — confirmado que es porcentual
-
-Confirmado con ejemplo concreto por el usuario: mensualidad de $100.000 con comisión del 5% → $5.000 le corresponden a Paceron. Coincide exactamente con la fórmula que ya describe el documento de propuesta backend original (`marketplace_fee = round(amount × percentage / 100)`) — no es información nueva sobre el mecanismo, es la confirmación de que el mecanismo ya documentado es el que se va a usar tal cual. El valor exacto del porcentaje sigue sin definir (configurable por owner vía backoffice, `platform_settings`, según el documento original).
-
-**Transparencia para el corredor:** con split real de MP en cada cobro, el desglose (cuánto va al entrenador, cuánto a Paceron) es un dato real disponible antes de pagar — sigue como decisión de producto si se muestra o no (ver checklist), pero ahora es puramente una decisión de UX, no una limitación técnica (a diferencia de lo que hubiera sido en el camino descartado).
+**Transparencia — resuelto, con un matiz importante:** el corredor **no** ve el desglose — solo le importa el precio total del servicio de estar en el equipo. Quien sí necesita ver el desglose (cuánto recibió neto, cuánto se llevó el sistema) es el **entrenador** — es su dinero el que se reparte. Esto implica una superficie de UI nueva, no contemplada hasta ahora: alguna vista de historial/resumen de cobros para el entrenador, mostrando el neto recibido vs. la comisión retenida por pago o de forma acumulada. Ubicación y nivel de detalle todavía sin definir (candidato razonable: una sección dentro del perfil del entrenador, o del propio `team-detail-screen.jsx`).
 
 ## Interacción con membership de equipo ya existente
 
-Equipos ya tiene, en producción, acciones reales de membership (`RunnerActionsMenu`: expulsar, mover de grupo, salir del equipo). Con el Camino elegido, esto se resuelve así:
+Equipos ya tiene, en producción, acciones reales de membership (`RunnerActionsMenu`: expulsar, mover de grupo, salir del equipo). Con el camino elegido:
 
-- **Expulsión manual** (ya la ejecuta hoy el entrenador/owner) y **expulsión automática por mora** (nueva, la dispara el backend) terminan en la misma acción de dominio — el roster no necesita distinguir visualmente por qué alguien fue expulsado, salvo que se decida lo contrario.
-- **Corredor que se va solo** (`salir del equipo`, ya existe): sigue abierto si corta cualquier cobro pendiente en el momento o si simplemente no se renueva al vencer el período ya pagado (ver checklist).
+- **Expulsión manual** (ya la ejecuta hoy el entrenador/owner) y **expulsión automática por mora** (nueva, la dispara el backend) terminan en la misma acción de dominio — el roster no necesita distinguir visualmente por qué alguien fue expulsado.
+- **Corredor que se va solo** (`salir del equipo`, ya existe): **corte inmediato, sin reembolso del período ya pagado** — coincide con cómo ya funciona la acción hoy (instantánea), no se agrega ningún estado nuevo de "se va pero todavía tiene acceso".
 - **Multi-equipo:** un corredor miembro de varios equipos a la vez (ya soportado por el modelo) necesita un pago/membership independiente por equipo — el cobro se identifica por `teamId` además de por usuario, no solo por rol/tier como en A.
 
 ## Testing
@@ -90,12 +88,8 @@ Mismo patrón que A: `services/payments.js` (extendido) + mocks + Jest, sin test
 
 ## Checklist para discutir con el equipo
 
-Recortado respecto a la versión anterior — varios puntos ya se resolvieron con la mecánica de cobro confirmada (fork de arquitectura, si el re-cobro es manual, quién fija el precio, si la comisión es porcentual). Queda:
+Recortado a lo que sigue realmente abierto — casi todo lo demás quedó resuelto en esta ronda:
 
 1. **Valores numéricos sin definir** (existen, no están decididos): porcentaje de comisión, precio mínimo de mensualidad, duración del plazo de gracia antes de la expulsión automática.
-2. `mp-connect` y `bank_alias`: ¿conviven, o el segundo queda obsoleto una vez integrado el primero?
-3. ¿Existe período de prueba (`en_prueba`) antes del primer cobro al unirse a un equipo?
-4. Qué ve el corredor durante el plazo de gracia — sin restricción, aviso, o bloqueo de funcionalidades del equipo.
-5. ¿Se muestra el desglose de comisión al corredor antes de pagar, o queda opaco?
-6. ¿"Salir del equipo" corta el cobro pendiente en el momento, o deja correr hasta el cierre del período ya pagado?
-7. Dónde vive la pantalla de configuración de precio del entrenador (nueva superficie de UI, sin definir ubicación todavía).
+2. **Alcance exacto de "equipo congelado" para el corredor** (ver spec de A) — ¿modo solo lectura, oculta el plan de entrenamiento, o algo más específico?
+3. Ubicación y nivel de detalle de la vista de historial/comisión para el entrenador (nueva superficie de UI, sin definir todavía).
