@@ -56,6 +56,18 @@ El frontend ya tiene el modelo de estados (`SUBSCRIPTION_STATUSES = ['activo', '
 
 En Camino 1, el `marketplace_fee` es un valor real que viaja en la preferencia — técnicamente disponible para mostrarlo antes de pagar ("de tu pago, $X va a tu entrenador, $Y a Paceron"). En Camino 2, el corredor le paga a Paceron directamente — la comisión es interna, no hay nada nativo de MP que mostrar en ese momento del pago. Sugerido: mostrar igual el desglose en la UI (aunque en Camino 2 sea un cálculo propio, no un campo que devuelve MP), por transparencia con el corredor — pero es una decisión de producto, no puramente técnica.
 
+## Interacción con membership de equipo ya existente
+
+Equipos ya tiene, en producción, acciones reales de membership (`RunnerActionsMenu`: expulsar, mover de grupo, salir del equipo — `store/team-store.js`/`hooks/use-team-roster.js`). B no puede diseñarse en el vacío respecto a esto — necesita definir, para cada acción ya existente, qué pasa con el cobro asociado:
+
+- **Expulsión de un corredor** (ya la ejecuta el entrenador/owner hoy): ¿cancela automáticamente cualquier cobro futuro pendiente hacia ese corredor? Si el Camino elegido es 2 (suscripción real de MP), esto implica llamar a la baja de la suscripción (`PUT /preapproval/:id` con `status: cancelled`) en el mismo momento — la acción de expulsar ya existe en el frontend, pero hoy no tiene ningún efecto sobre pagos porque no hay pagos todavía.
+- **Corredor que se va solo** (`salir del equipo`, ya existe): mismo caso — ¿corta el cobro recurrente en el momento, o al cierre del período ya pagado?
+- **¿Puede un corredor estar pagando a más de un entrenador a la vez** (miembro de varios equipos simultáneamente, ya soportado por el modelo de equipos)? Si sí, cada team-membership necesita su propio pago/suscripción independiente — afecta si `createPreference`/la suscripción llevan `teamId` como parte de la identidad del cobro, no solo `tierId`.
+
+## ¿Quién fija el precio que paga el corredor?
+
+No discutido todavía en ningún documento: **el `marketplace_fee` es la comisión de Paceron, pero no define el precio base** que el corredor paga por el servicio del entrenador. ¿Lo fija cada entrenador individualmente (precio libre por equipo), o es un valor fijo de plataforma igual para todos? Esto es anterior a la decisión de Camino 1 vs. 2 — si el precio es libre por entrenador, hace falta una pantalla de configuración de precio en el flujo del entrenador (no mencionada hasta ahora en ningún doc), además de decidir si hay un piso/techo que Paceron impone.
+
 ## Testing
 
 Mismo patrón que A: `services/payments.js` (extendido) + mocks + Jest, sin tests de render. La verificación manual de `mp-connect` (Camino 1) necesita una cuenta de prueba con rol vendedor en el panel de Mercado Pago (ya documentado en el material backend original) — no es simulable con `EXPO_PUBLIC_USE_MOCKS` para el tramo de OAuth en sí, solo para lo que pasa después en el frontend.
@@ -69,3 +81,6 @@ Mismo patrón que A: `services/payments.js` (extendido) + mocks + Jest, sin test
 5. ¿Existe período de prueba (`en_prueba`) antes del primer cobro al unirse a un equipo?
 6. Consecuencia frontend de estar `vencido` — sin restricción, aviso, o bloqueo de funcionalidades.
 7. ¿Se muestra el desglose de comisión al corredor antes de pagar, o queda opaco?
+8. **¿Quién fija el precio base que paga el corredor** — cada entrenador o un valor fijo de plataforma?
+9. ¿Expulsar/salir de un equipo cancela el cobro asociado de forma inmediata, o al cierre del período ya pagado?
+10. ¿Un corredor puede estar pagando a varios entrenadores a la vez (multi-equipo)? Afecta si el cobro se identifica por `teamId` además de por usuario.

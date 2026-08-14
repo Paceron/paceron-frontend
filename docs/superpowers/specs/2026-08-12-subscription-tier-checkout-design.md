@@ -66,7 +66,7 @@ Se define una vez (`config/env.js` + `.env.example`), pero **solo la consume el 
 
 Sigue el patrón de `services/user.js`/`services/roles.js`:
 
-- `getTiers()` → `GET /api/v1/tiers` — catálogo real, reemplaza el hardcode actual de `tier-upgrade-screen.jsx`.
+- `getTiers(activeRole)` → `GET /api/v1/tiers?role=...` (o el parámetro que confirme backend) — catálogo real, reemplaza el hardcode actual de `tier-upgrade-screen.jsx`. **Se asume catálogo distinto por rol** (un tier premium de corredor y uno de entrenador probablemente desbloquean cosas distintas — límite de equipos vs. límite de miembros, por ejemplo) — a confirmar contra backend, ver `docs/BACKEND_PAYMENTS_REQUIREMENTS.md`.
 - `createPreference({ tierId })` → `POST /api/v1/payments/preference` → `{ preference_id, public_key }`.
 - `createPayment({ preferenceId, formData })` → `POST /api/v1/payments` — lo llama el `onSubmit` del Brick.
 - `getPayment(id)` → `GET /api/v1/payments/:id` — usado para el refresh en background post-pago.
@@ -79,8 +79,8 @@ Estado de servidor → TanStack Query, no Zustand (convención ya escrita en `CL
 
 ## Flujo de UX — `tier-upgrade-screen.jsx`
 
-1. Al montar: `useQuery(getTiers)` — reemplaza la pill estática "Próximamente".
-2. Usuario selecciona tier destino → botón "Actualizar" → `useMutation(createPreference)`.
+1. Al montar: `useQuery(getTiers(activeRole))` — reemplaza la pill estática "Próximamente". **Alcance: solo upgrade** — el tier actual del usuario se muestra pero no es seleccionable, y no se listan tiers inferiores al actual. Downgrade queda explícitamente fuera de alcance de este spec (implica definir reembolso/prorrateo del período ya pagado, decisión de producto no tomada).
+2. Usuario selecciona tier destino → botón "Actualizar" (deshabilitado mientras la mutation está en curso, mismo patrón `disabled={loading}` de `ChangePasswordSection` — evita doble submit) → `useMutation(createPreference)`.
 3. Con la preferencia creada:
    - **Web:** se monta `checkout-brick.jsx` inline, dentro de la misma pantalla (reemplaza el bloque de selección, envuelto en `SectionCard`).
    - **Nativo:** se abre un modal de pantalla completa (`Modal` de RN) con el `WebView` apuntando a `${CHECKOUT_URL}/checkout?tierId=...`, token inyectado como se describió arriba.
@@ -106,3 +106,5 @@ Estado de servidor → TanStack Query, no Zustand (convención ya escrita en `CL
 
 - Sub-proyecto B (split/marketplace, OAuth `mp-connect` del entrenador) — spec propio cuando se decida arrancar, reutilizando `checkout-brick.jsx` y el mecanismo de `WebView`+`postMessage` ya definidos acá.
 - Cualquier pantalla de administración de `marketplace_fee`/porcentaje — según el documento de propuesta backend, es 100% configuración de owner vía backoffice, sin UI en este repo.
+- **Downgrade de tier** — decisión explícita (ver "Flujo de UX"), no se contempla en esta iteración.
+- Cancelación de una preferencia creada pero nunca pagada (usuario cierra el modal/navega afuera sin pagar) — no requiere ninguna acción del frontend: la preferencia queda simplemente sin usar del lado de Mercado Pago, no genera cobro ni efecto colateral.

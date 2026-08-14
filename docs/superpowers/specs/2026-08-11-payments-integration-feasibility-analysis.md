@@ -62,6 +62,8 @@ Puntos a resolver, no bloqueantes:
 
 ## Viabilidad — Nativo (iOS/Android vía Expo)
 
+> **Actualización 2026-08-12 — recomendación superada.** Tras confirmar con documentación oficial de MP que Checkout Pro (Opción A) es efectivamente el único camino que Mercado Pago documenta para Expo, y que no existe Brick nativo, se re-evaluó contra el objetivo de **homogeneidad entre plataformas** (no explícito en esta primera pasada) — Checkout Pro redirige a una página 100% de marca Mercado Pago, no de Paceron, lo cual no cumple ese objetivo. La decisión final para Sub-proyecto A es la **Opción B (WebView)**, con un ajuste importante respecto a como se describe abajo: en vez de apuntar al `init_point` de MP, el `WebView` carga la propia ruta `/checkout` de Paceron (mismo Brick que en desktop web), y el resultado se recibe por `postMessage` en vez de por navegación/deep link. Ver el análisis completo y la arquitectura final en [`2026-08-12-subscription-tier-checkout-design.md`](./2026-08-12-subscription-tier-checkout-design.md). Se deja la evaluación original abajo porque el razonamiento (costos, sinergia con `mp-connect`) sigue siendo válido como contexto y vuelve a ser relevante para Sub-proyecto B.
+
 **No viable usar el Brick directamente — requiere una de las dos alternativas que el propio documento backend ya nombra.** Evaluación de cada una contra el estado real del repo:
 
 ### Opción A — Checkout Pro mobile (redirección externa) — recomendada como punto de partida
@@ -90,6 +92,8 @@ Mercado Pago ofrece SDKs nativos (Android/iOS) con checkout nativo real (no HTML
 
 ## Definiciones propuestas (arquitectura frontend, sin implementar todavía)
 
+> **Actualización 2026-08-12:** el punto "Componente Brick — split por archivo" de abajo quedó superado — la arquitectura final (ver [spec de A](./2026-08-12-subscription-tier-checkout-design.md)) no necesita split `.web.jsx`, porque el componente del Brick nunca corre en un árbol nativo puro (ambas plataformas lo consumen vía el bundle web, una directo y la otra a través de un `WebView`). El resto de esta sección sigue vigente.
+
 Mapeado 1:1 contra las convenciones ya establecidas en `CLAUDE.md` y los patrones reales encontrados en el repo:
 
 - **`services/payments.js`** (nuevo): siguiendo el patrón de `services/user.js`/`services/roles.js` — `createPreference(items, concept)`, `createPayment(formData, preferenceId)`, `getPayment(id)`. Mock correspondiente en `services/__mocks__/payments-mock.js` para `EXPO_PUBLIC_USE_MOCKS=true`, con tests en `__tests__/` (servicio + mock, no de render — consistente con la convención de testing del proyecto).
@@ -105,18 +109,18 @@ Mapeado 1:1 contra las convenciones ya establecidas en `CLAUDE.md` y los patrone
 
 Siguiendo el mismo criterio que ya se usó para Teams (etapas 1/2/3 documentadas en `CLAUDE.md`), y porque el propio documento backend separa claramente "pago simple" de "split — iteración 2":
 
-1. **Sub-proyecto A — Pagos sin split (`order`/`subscription`).** Cubre el Caso 1 completo: checkout web (Brick) + checkout nativo (Checkout Pro/`expo-web-browser`) + wiring de `tier-upgrade-screen.jsx`. No requiere OAuth de nadie, un solo vendedor (Paceron). Es la base técnica (servicio, componente Brick, deep link de retorno) que el Sub-proyecto B reutiliza.
-2. **Sub-proyecto B — Split/marketplace (`session`).** Cubre el Caso 2: pantalla de vinculación OAuth del entrenador (`mp-connect`), y el checkout del corredor con `marketplace: true` apuntando al `access_token` del entrenador. Depende de que A ya exista (mismo componente Brick, mismo patrón de redirección nativa, mismo `services/payments.js` extendido).
+1. **Sub-proyecto A — Pagos sin split (`order`/`subscription`).** Cubre el Caso 1 completo: checkout web + nativo (mismo Brick, vía `WebView` en nativo — ver actualización arriba) + wiring de `tier-upgrade-screen.jsx`. No requiere OAuth de nadie, un solo vendedor (Paceron). Es la base técnica (servicio, componente Brick, mecanismo `WebView`+`postMessage`) que el Sub-proyecto B reutiliza si elige el camino que lo permite — ver [decisiones de B](./2026-08-12-trainer-split-payments-decisions.md), no es automático.
+2. **Sub-proyecto B — Split/marketplace (`session`).** Cubre el Caso 2: resultó más complejo de lo que parecía acá — Mercado Pago no combina split y cobro recurrente en un solo mecanismo, lo que abre dos arquitecturas posibles con trade-offs distintos. Ver el documento dedicado en vez de esta descripción original, que quedó incompleta.
 
 Esto es coherente con la guía de `CLAUDE.md` sobre cuándo usar spec/plan: ambos sub-proyectos son "features con flujo real, tocan 5+ archivos, con decisiones de diseño reales" → cada uno amerita su propio spec (`docs/superpowers/specs/`) y su propio plan cuando se decida arrancar, no un plan único gigante.
 
 ## Preguntas abiertas para cuando se decida avanzar
 
-- ¿La experiencia nativa de "salir a un navegador externo" (Opción A) es aceptable para el producto, o vale la pena pagar el costo extra de WebView (Opción B) desde el arranque?
-- ¿El contrato de backend para `POST /payments/preference` / `POST /payments` ya está disponible para consumir (swagger actualizado), o hace falta el mismo proceso de confirmación que se hizo para Teams antes de integrar?
-- ¿Quién es dueño de decidir el `marketplace_fee`/porcentaje (el documento backend dice que es configuración de owner vía backoffice, tabla `platform_settings`) — el frontend necesita alguna pantalla de administración para esto, o es 100% backend/backoffice sin UI en este repo?
-- Para el Caso 2, ¿el pago es un cobro recurrente (mensual, ligado a la membership del equipo) o un cobro puntual por sesión? El documento backend nombra `session` como concepto pero no define periodicidad — esto afecta si hace falta lógica de recordatorio/vencimiento en el frontend o si es 100% manual cada vez.
+- ~~¿La experiencia nativa de "salir a un navegador externo" (Opción A) es aceptable para el producto, o vale la pena pagar el costo extra de WebView (Opción B) desde el arranque?~~ **Resuelto** — WebView desde el arranque, ver actualización arriba y spec de A.
+- ¿El contrato de backend para `POST /payments/preference` / `POST /payments` ya está disponible para consumir (swagger actualizado), o hace falta el mismo proceso de confirmación que se hizo para Teams antes de integrar? — **Sigue sin confirmar**, ver `docs/BACKEND_PAYMENTS_REQUIREMENTS.md`.
+- ¿Quién es dueño de decidir el `marketplace_fee`/porcentaje (el documento backend dice que es configuración de owner vía backoffice, tabla `platform_settings`) — el frontend necesita alguna pantalla de administración para esto, o es 100% backend/backoffice sin UI en este repo? — **Sigue abierto**, ver checklist en decisiones de B.
+- Para el Caso 2, ¿el pago es un cobro recurrente (mensual, ligado a la membership del equipo) o un cobro puntual por sesión? — **Profundizado, no resuelto**: ver el fork Camino 1/Camino 2 en [decisiones de B](./2026-08-12-trainer-split-payments-decisions.md), que depende exactamente de esta pregunta.
 
 ## Próximo paso
 
-Este documento es el insumo de contexto para el ciclo de decisiones (pros/contras, contextos, escenarios) que arranca a continuación, previo a un spec formal (`brainstorming` → `writing-plans`) del Sub-proyecto A. Las conclusiones de ese ciclo se suman a este documento o a uno asociado en esta misma carpeta.
+Este documento fue el insumo de contexto para el ciclo de decisiones (pros/contras, contextos, escenarios) del que salieron el [spec de A](./2026-08-12-subscription-tier-checkout-design.md) y las [decisiones de B](./2026-08-12-trainer-split-payments-decisions.md). A queda listo para pasar a `writing-plans` cuando se decida arrancar; B espera la decisión de arquitectura (Camino 1 vs. 2) documentada en su propio checklist antes de poder spec-earse en el mismo nivel de detalle.

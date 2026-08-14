@@ -8,7 +8,7 @@ Doc de coordinación, mismo espíritu que [`BACKEND_API_GAPS.md`](./BACKEND_API_
 
 | Necesidad | Detalle | Por qué |
 |---|---|---|
-| `GET /api/v1/tiers` | Catálogo de tiers con precio/moneda | `tier-upgrade-screen.jsx` necesita reemplazar el hardcode "Próximamente" por datos reales |
+| `GET /api/v1/tiers` | Catálogo de tiers con precio/moneda, **filtrable/segmentado por rol** (corredor vs. entrenador) | `tier-upgrade-screen.jsx` necesita reemplazar el hardcode "Próximamente" por datos reales. Se asume que un tier premium de corredor y uno de entrenador desbloquean cosas distintas — a confirmar si el mismo endpoint acepta un parámetro de rol o si son catálogos separados |
 | `POST /api/v1/payments/preference` | Según documento de propuesta: `{ preference_id, public_key }` | Primer paso del checkout, ya spec-eado en el diseño backend original |
 | `POST /api/v1/payments` | Recibe `formData` del Brick + `preference_id` | Segundo paso, dispara el cobro |
 | `GET /api/v1/payments/:id` | Estado del pago | Refresh en background post-pago, fuente de verdad final |
@@ -26,6 +26,9 @@ Lo que sí aplica **sin importar qué camino se elija**:
 |---|---|---|
 | Estado real de membership en el roster | `subscriptionStatus` en la respuesta de `GET /teams/{id}/users` (u equivalente) — hoy siempre `null` | `store/team-store.js` ya tiene el enum `SUBSCRIPTION_STATUSES = ['activo', 'vencido', 'en_prueba']` esperando datos reales, y `hooks/use-team-roster.js:64` ya lo hardcodea en `null` a falta de esto — **este ítem ya era un hueco conocido antes de este análisis de pagos**, no es nuevo |
 | Semántica exacta de cada estado | ¿Quién decide el corte a `vencido`? ¿Hay período de gracia? ¿Qué dispara `en_prueba`? | El frontend no debe inferir estos criterios localmente — necesita que el backend sea la fuente de verdad explícita (mismo criterio que el resto del proyecto) |
+| ¿Quién fija el precio base? | Cada entrenador individualmente, o un valor fijo de plataforma | No discutido hasta ahora en ningún doc — si es libre por entrenador, hace falta una pantalla de configuración de precio del lado del entrenador, no contemplada todavía |
+| Efecto de expulsar/salir de un equipo sobre el cobro asociado | `RunnerActionsMenu` (expulsar, mover, salir) **ya existe y está en producción** hoy sin ningún efecto sobre pagos | Cuando B se implemente, esas acciones necesitan disparar la baja del cobro/suscripción asociado — inmediato o al cierre del período pagado, a definir |
+| ¿Un corredor puede pagar a varios entrenadores a la vez? | Ya soportado a nivel de membership de equipo (multi-equipo) | Si sí, el cobro necesita identificarse por `teamId` además de por usuario, no solo por `tierId`/usuario como en A |
 
 ## Env vars nuevas del lado frontend (para que backend sepa qué credenciales exponer)
 
