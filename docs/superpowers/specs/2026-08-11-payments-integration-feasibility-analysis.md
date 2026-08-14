@@ -1,6 +1,8 @@
 # Análisis de viabilidad — Integración de pagos (Mercado Pago Checkout Bricks)
 
 > **Naturaleza de este documento:** no es un plan de implementación — todavía no se decidió desarrollar nada. Es un análisis de viabilidad técnica + definiciones propuestas para el lado frontend, a partir de un documento de diseño ya elaborado del lado backend (Go/Gin, otro repo) y del estado real de `paceron-frontend` hoy. Es un documento **vivo**: a medida que se recorra el ciclo de decisiones (pros/contras, contextos, escenarios) previo a un spec formal, las conclusiones se van sumando acá o en un doc asociado bajo esta misma carpeta.
+>
+> **Punto de entrada de toda la investigación de pagos.** Documentos asociados: [spec Sub-proyecto A](./2026-08-12-subscription-tier-checkout-design.md) (checkout de tier, ya resuelto) · [decisiones Sub-proyecto B](./2026-08-12-trainer-split-payments-decisions.md) (split corredor-entrenador, decisión de arquitectura pendiente con el equipo) · [`BACKEND_PAYMENTS_REQUIREMENTS.md`](../../BACKEND_PAYMENTS_REQUIREMENTS.md) (contrato consolidado para coordinar con backend).
 
 ## Contexto
 

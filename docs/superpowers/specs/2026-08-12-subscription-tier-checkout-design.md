@@ -100,6 +100,7 @@ Estado de servidor → TanStack Query, no Zustand (convención ya escrita en `CL
 - Formato exacto de `formData`/respuesta que espera `POST /api/v1/payments` — el documento de propuesta lo describe, pero puede cambiar al implementarse de verdad.
 - Si el rechazo de pago llega como `200` con `status: rejected` en el body (lo más probable, según el documento) o si algún caso cae como error HTTP — afecta si `createPayment` necesita `skipAuthRefresh` como `changePassword`/`activateTrainerRole`, o si el manejo de rechazo es puramente de datos, sin tocar el interceptor de 401.
 - Si `platform_settings`/precio de cada tier viene expresado en la misma llamada `GET /api/v1/tiers`, o si hace falta una segunda consulta.
+- Si `GET /api/v1/payments/:id` (y la respuesta de `POST /api/v1/payments`) expone `status_detail` tal cual lo devuelve Mercado Pago, no solo `status` — sin eso, el frontend no puede diferenciar "rechazado por fondos insuficientes" de "rechazado por dato mal cargado" para mostrar un mensaje específico al usuario en vez de un error genérico. Ver `docs/BACKEND_PAYMENTS_REQUIREMENTS.md`.
 
 ## Fuera de alcance de este spec
 
