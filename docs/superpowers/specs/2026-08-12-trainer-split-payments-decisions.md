@@ -1,6 +1,6 @@
 # Split marketplace corredor-entrenador (Sub-proyecto B) — Decisiones y lineamientos
 
-> A diferencia del spec de [Sub-proyecto A](./2026-08-12-subscription-tier-checkout-design.md), este documento sigue sin ser un spec paso a paso — pero tras dos rondas de repaso con reglas de negocio confirmadas, la arquitectura y casi todas las decisiones de UX quedaron resueltas. Lo que sigue realmente abierto son tres **valores numéricos** (comisión, precio mínimo, duración del plazo de gracia) y un detalle fino de alcance (qué ve exactamente el corredor en un equipo congelado) — ver checklist al final.
+> A diferencia del spec de [Sub-proyecto A](./2026-08-12-subscription-tier-checkout-design.md), este documento sigue sin ser un spec paso a paso — pero tras varias rondas de repaso con reglas de negocio confirmadas, la arquitectura y casi todas las decisiones de UX/operativas quedaron resueltas. Lo que sigue abierto, **pospuesto deliberadamente** hasta tener más avance, son dos valores puramente financieros/estratégicos: **porcentaje de comisión** y **precio mínimo de mensualidad** — ver checklist al final.
 
 ## Contexto y alcance
 
@@ -10,7 +10,7 @@ Cubre el Caso 2 del [análisis de viabilidad](./2026-08-11-payments-integration-
 
 - El corredor paga **manualmente** para pertenecer a un equipo — **no hay débito automático**, ni ahora ni como objetivo del producto.
 - Ese pago es **válido por un mes**.
-- Al vencer, hay un **plazo de gracia** para renovar (duración exacta sin definir todavía — mismo tipo de valor que la comisión y el precio mínimo).
+- Al vencer, hay un **plazo de gracia de 5 días** para renovar (decidido — mismo valor que Sub-proyecto A, misma mecánica).
 - Si no se renueva dentro del plazo de gracia, el corredor es **expulsado automáticamente** del equipo.
 - Antes del primer pago, el equipo puede tener un **período de prueba configurable por el entrenador**: `No` / `1 semana` / `2 semanas` / `4 semanas`. Recién terminado ese período (si lo hay) el pago pasa a ser obligatorio para seguir en el equipo.
 
@@ -34,7 +34,7 @@ Se documenta igual, para que quede registrado por qué no se eligió: usar `/pre
 
 - `checkout-brick.jsx`, la ruta `/checkout`, el mecanismo `WebView`+`postMessage`+inyección de sesión: tal cual, solo cambia el `access_token` server-side que usa el backend al crear la preferencia (el del entrenador conectado vía `mp-connect`, no el de Paceron) y que la preferencia lleve `marketplace_fee`.
 - `services/payments.js` se extiende (no se duplica): `createPreference` necesita aceptar a qué entrenador/equipo corresponde el pago, además de (o en vez de) `tierId`.
-- **"Equipo congelado"** (documentado en el spec de A, sección "Vencimiento y renovación del tier"): cuando un entrenador baja de tier y su equipo excede el nuevo límite de miembros, el equipo se bloquea para entrenador y corredores por igual. Aunque lo dispara A (tier del entrenador), afecta directamente a los corredores de B — el alcance exacto de qué ve un corredor en un equipo congelado sigue sin terminar de definirse (ver checklist).
+- **"Equipo congelado"** (documentado en el spec de A, sección "Vencimiento y renovación del tier"): cuando un entrenador baja de tier y su equipo excede el nuevo límite de miembros, el equipo se bloquea para entrenador y corredores por igual. Aunque lo dispara A (tier del entrenador), afecta directamente a los corredores de B — **resuelto: modo solo lectura para el corredor**, decidido así por adelantado aunque hoy no exista ninguna función de corredor atada a tier que cortar (el plan de entrenamiento, la más obvia, todavía no está implementado).
 
 ## `mp-connect` — vinculación OAuth del entrenador
 
@@ -72,7 +72,7 @@ El frontend ya tiene el modelo de estados (`SUBSCRIPTION_STATUSES = ['activo', '
 
 Confirmado con ejemplo concreto: mensualidad de $100.000 con comisión del 5% → $5.000 le corresponden a Paceron. Coincide exactamente con la fórmula que ya describe el documento de propuesta backend original (`marketplace_fee = round(amount × percentage / 100)`). El valor exacto del porcentaje sigue sin definir (configurable por owner vía backoffice, `platform_settings`).
 
-**Transparencia — resuelto, con un matiz importante:** el corredor **no** ve el desglose — solo le importa el precio total del servicio de estar en el equipo. Quien sí necesita ver el desglose (cuánto recibió neto, cuánto se llevó el sistema) es el **entrenador** — es su dinero el que se reparte. Esto implica una superficie de UI nueva, no contemplada hasta ahora: alguna vista de historial/resumen de cobros para el entrenador, mostrando el neto recibido vs. la comisión retenida por pago o de forma acumulada. Ubicación y nivel de detalle todavía sin definir (candidato razonable: una sección dentro del perfil del entrenador, o del propio `team-detail-screen.jsx`).
+**Transparencia — resuelto, con un matiz importante:** el corredor **no** ve el desglose — solo le importa el precio total del servicio de estar en el equipo. Quien sí necesita ver el desglose (cuánto recibió neto, cuánto se llevó el sistema) es el **entrenador** — es su dinero el que se reparte. **Ubicación resuelta:** sección nueva en el perfil del entrenador, junto a `bank_alias`/`mp-connect` (mismo dominio conceptual, "cómo cobra el entrenador") — lista simple con fecha, corredor/equipo, monto bruto, comisión retenida, neto. No dentro de `team-detail-screen.jsx`, para que un entrenador con varios equipos tenga una vista consolidada sin entrar a cada uno.
 
 ## Interacción con membership de equipo ya existente
 
@@ -88,8 +88,7 @@ Mismo patrón que A: `services/payments.js` (extendido) + mocks + Jest, sin test
 
 ## Checklist para discutir con el equipo
 
-Recortado a lo que sigue realmente abierto — casi todo lo demás quedó resuelto en esta ronda:
+Recortado a lo que sigue genuinamente abierto — todo lo demás quedó resuelto en las rondas de repaso. Quedan solo dos valores, **pospuestos deliberadamente** (no son resolubles por análisis, necesitan trabajo de negocio propio — benchmarking, unit economics):
 
-1. **Valores numéricos sin definir** (existen, no están decididos): porcentaje de comisión, precio mínimo de mensualidad, duración del plazo de gracia antes de la expulsión automática.
-2. **Alcance exacto de "equipo congelado" para el corredor** (ver spec de A) — ¿modo solo lectura, oculta el plan de entrenamiento, o algo más específico?
-3. Ubicación y nivel de detalle de la vista de historial/comisión para el entrenador (nueva superficie de UI, sin definir todavía).
+1. **Porcentaje de comisión.**
+2. **Precio mínimo de mensualidad.**
