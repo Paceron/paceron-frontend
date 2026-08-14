@@ -6,7 +6,7 @@
 
 ## Objetivo
 
-Que un usuario pueda pagar el upgrade de su tier (corredor o entrenador) desde `tier-upgrade-screen.jsx`, con **una experiencia visual equivalente en web, iOS y Android** — la misma pantalla de pago (Mercado Pago Checkout Bricks) en las tres plataformas, en vez de una UI de pago distinta por plataforma.
+Que un usuario pueda pagar el upgrade **y la renovación mensual** de su tier (corredor o entrenador) desde `tier-upgrade-screen.jsx`, con **una experiencia visual equivalente en web, iOS y Android** — la misma pantalla de pago (Mercado Pago Checkout Bricks) en las tres plataformas, en vez de una UI de pago distinta por plataforma. El tier es una cuota mensual con pago manual (sin débito automático), no una compra única — ver "Vencimiento y renovación del tier" más abajo.
 
 ## Decisión central: un solo checkout web, reutilizado en las tres plataformas
 
@@ -89,6 +89,16 @@ Estado de servidor → TanStack Query, no Zustand (convención ya escrita en `CL
 6. Estado `pending` (3DS/offline): delegado al `<StatusScreen>` del propio Brick — igual en las tres plataformas, porque las tres corren el mismo componente.
 7. Si `createPreference` falla (red, cold-start de Render, etc.): `Toast.show({type:'error'})` antes de intentar abrir cualquier checkout — nunca se monta el Brick/`WebView` sin un `preference_id` válido.
 
+## Vencimiento y renovación del tier
+
+Confirmado por el usuario: el tier **no es una compra única** — es mensual, pago manual (sin débito automático, igual que Sub-proyecto B), con vencimiento y un plazo de gracia para renovar. Esto amplía el alcance de este spec respecto a lo planteado inicialmente (que trataba el tier como un upgrade permanente):
+
+- **Renovar es pagar de nuevo** — mismo `checkout-brick.jsx`/`WebView` que el upgrade inicial, sin pantalla nueva. Puede dispararse proactivamente (antes de vencer) o reactivamente (ya vencido, dentro del plazo de gracia) desde el mismo `tier-upgrade-screen.jsx`.
+- **Si no se renueva dentro del plazo de gracia, el tier baja automáticamente a `base`** — mismo tipo de mecanismo que la expulsión automática de equipo en Sub-proyecto B (lo dispara el backend, el frontend solo refleja el resultado). La duración del plazo de gracia es un valor sin definir todavía (mismo tipo de dato que `marketplace_fee`/precio mínimo en B — existe, no está decidido).
+- **Necesita del backend:** una fecha de vencimiento por tier/rol, no solo el string `tier: 'base'|'premium'` que expone hoy `/auth/permissions` — sin eso, `tier-upgrade-screen.jsx` no puede mostrar "vence en 3 días" ni decidir cuándo pasar de estado normal a estado de renovación urgente.
+- **Caso borde real, ya detectable en el código actual:** `store/team-store.js` define `TEAM_MEMBER_LIMITS` por tier (`base: 10, pro: 50, premium: 300`) para el límite de miembros de un equipo. Si un entrenador premium con, por ejemplo, 50 miembros no renueva y baja a `base` (límite 10), **¿qué pasa con los 40 miembros por encima del nuevo límite?** No hay una respuesta técnica obvia (¿se bloquea agregar nuevos hasta regularizar, sin tocar a los ya existentes? ¿se fuerza una reducción?) — queda como pregunta abierta de producto, igual de real que las de Sub-proyecto B, y aplica también a cualquier otro límite futuro atado a tier.
+- Un usuario tiene **tiers independientes por rol** (ya confirmado: puede ser entrenador premium y corredor base a la vez, o cualquier combinación) — el vencimiento/renovación es por rol, no un estado único de cuenta.
+
 ## Testing
 
 - `services/payments.js` + `services/__mocks__/payments-mock.js`: cobertura Jest completa (creación de preferencia, pago exitoso, pago rechazado, mismatch de mock).
@@ -101,6 +111,8 @@ Estado de servidor → TanStack Query, no Zustand (convención ya escrita en `CL
 - Si el rechazo de pago llega como `200` con `status: rejected` en el body (lo más probable, según el documento) o si algún caso cae como error HTTP — afecta si `createPayment` necesita `skipAuthRefresh` como `changePassword`/`activateTrainerRole`, o si el manejo de rechazo es puramente de datos, sin tocar el interceptor de 401.
 - Si `platform_settings`/precio de cada tier viene expresado en la misma llamada `GET /api/v1/tiers`, o si hace falta una segunda consulta.
 - Si `GET /api/v1/payments/:id` (y la respuesta de `POST /api/v1/payments`) expone `status_detail` tal cual lo devuelve Mercado Pago, no solo `status` — sin eso, el frontend no puede diferenciar "rechazado por fondos insuficientes" de "rechazado por dato mal cargado" para mostrar un mensaje específico al usuario en vez de un error genérico. Ver `docs/BACKEND_PAYMENTS_REQUIREMENTS.md`.
+- Fecha de vencimiento/próxima renovación por tier — no existe hoy ningún campo así en `/auth/permissions`, imprescindible para la sección "Vencimiento y renovación del tier" de arriba.
+- Duración del plazo de gracia antes de la baja automática a `base` — valor de negocio sin definir, mismo tipo de dato que el porcentaje de comisión de B.
 
 ## Fuera de alcance de este spec
 
