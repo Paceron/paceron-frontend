@@ -53,7 +53,7 @@ export function TermsModal({ visible, onClose }) {
           </View>
 
           <ScrollView
-            className="px-6 py-4"
+            className="flex-1 px-6 py-4"
             nativeID="terms-modal-scroll"
             testID="terms-modal-scroll"
           >
