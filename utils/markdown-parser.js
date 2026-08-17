@@ -13,9 +13,14 @@
 //
 // NO SOPORTADO — se renderiza como texto literal, nunca lanza excepción
 //   itálica, links, imágenes, tablas, code blocks, código inline,
-//   blockquotes, listas numeradas, listas anidadas, reglas horizontales,
-//   HTML embebido, y 7 o más '#' seguidos (igual que CommonMark, deja de
-//   ser un heading y cae a párrafo).
+//   blockquotes, listas numeradas, reglas horizontales, HTML embebido,
+//   y 7 o más '#' seguidos (igual que CommonMark, deja de ser un heading
+//   y cae a párrafo).
+//
+// CASO PARTICULAR — listas anidadas no se detectan como tales: cada línea
+// se recorta (trim) antes de evaluarla, así que un item indentado
+// ("  - nested") pierde la indentación y queda como un item más de la
+// misma lista, en vez de quedar como texto literal o marcarse distinto.
 //
 // Si algún día hace falta más que esto, conviene evaluar una librería en
 // vez de seguir estirando este archivo.

@@ -94,6 +94,20 @@ describe('parseMarkdown', () => {
     expect(blocks[0].items).toHaveLength(2);
   });
 
+  test('items indentados (listas anidadas) se aplanan en la misma lista', () => {
+    const blocks = parseMarkdown('- top\n  - nested\n- top2');
+    expect(blocks).toEqual([
+      {
+        type: 'list',
+        items: [
+          [{ text: 'top', bold: false }],
+          [{ text: 'nested', bold: false }],
+          [{ text: 'top2', bold: false }],
+        ],
+      },
+    ]);
+  });
+
   test('negrita dentro de heading y de item de lista', () => {
     const blocks = parseMarkdown('# Hola **mundo**\n\n- item **fuerte**');
     expect(blocks[0].spans).toEqual([
