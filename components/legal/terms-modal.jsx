@@ -70,6 +70,7 @@ export function TermsModal({ visible, onClose }) {
               nativeID="terms-modal-close-button"
               testID="terms-modal-close-button"
               onPress={onClose}
+              accessibilityRole="button"
             >
               <Text
                 className="text-sm font-semibold text-slate-700 dark:text-slate-200"

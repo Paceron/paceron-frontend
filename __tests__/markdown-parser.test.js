@@ -137,6 +137,16 @@ describe('parseMarkdown', () => {
     expect(blocks[2].spans[0].text).toBe('[link](http://x.com)');
   });
 
+  test('sintaxis no soportada en lineas seguidas se une en un solo parrafo corrido', () => {
+    const blocks = parseMarkdown('1. Primero\n2. Segundo\n3. Tercero');
+    expect(blocks).toEqual([
+      {
+        type: 'paragraph',
+        spans: [{ text: '1. Primero 2. Segundo 3. Tercero', bold: false }],
+      },
+    ]);
+  });
+
   test('soporta saltos de linea de Windows', () => {
     const blocks = parseMarkdown('# Uno\r\n\r\nParrafo');
     expect(blocks.map((b) => b.type)).toEqual(['heading', 'paragraph']);

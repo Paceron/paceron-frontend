@@ -11,7 +11,10 @@
 //   * texto          item de lista
 //   **texto**        negrita, dentro de cualquier bloque
 //
-// NO SOPORTADO — se renderiza como texto literal, nunca lanza excepción
+// NO SOPORTADO — no lanza excepción, pero "texto literal" solo es preciso
+//   línea por línea: si la sintaxis no soportada ocupa varias líneas
+//   seguidas (sin línea en blanco de por medio), esas líneas se UNEN en
+//   un solo párrafo corrido, igual que pasaría con texto plano.
 //   itálica, links, imágenes, tablas, code blocks, código inline,
 //   blockquotes, listas numeradas, reglas horizontales, HTML embebido,
 //   y 7 o más '#' seguidos (igual que CommonMark, deja de ser un heading
