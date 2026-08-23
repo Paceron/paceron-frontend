@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { useAuthStore } from '../store/auth-store.js';
 import { registerPushToken } from '../services/notifications.js';
-import { isMobile } from '../utils/platform.js';
+import { isAndroid } from '../utils/platform.js';
 
 // Con la app abierta (foreground) no se muestra el banner nativo del
 // sistema — se maneja con Toast en el segundo useEffect de abajo, mismo
@@ -21,14 +21,15 @@ Notifications.setNotificationHandler({
 
 // Pide permiso tras el login, registra el token contra el backend, y
 // cablea los listeners de foreground (Toast) y tap-to-navigate
-// (data.route). Android-only — en web/iOS no hace nada (isMobile).
+// (data.route). Android-only — en web/iOS no hace nada (isAndroid, no
+// isMobile: iOS no está contemplado todavía, aunque isMobile lo incluya).
 export function usePushNotifications() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const registeredForUserId = useRef(null);
 
   useEffect(() => {
-    if (!isMobile || !user?.userId) return;
+    if (!isAndroid || !user?.userId) return;
     if (registeredForUserId.current === user.userId) return;
     registeredForUserId.current = user.userId;
 
@@ -53,7 +54,7 @@ export function usePushNotifications() {
   }, [user?.userId]);
 
   useEffect(() => {
-    if (!isMobile) return undefined;
+    if (!isAndroid) return undefined;
 
     const foregroundSub = Notifications.addNotificationReceivedListener((notification) => {
       const { title, body } = notification.request.content;
