@@ -14,6 +14,8 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
 import { StrengthBar, PasswordRequirementsList } from '../forms/password-strength.jsx';
+import { CheckboxField } from '../forms/checkbox-field.jsx';
+import { TermsModal } from '../legal/terms-modal.jsx';
 
 export function RegisterScreen() {
   const router = useRouter();
@@ -55,6 +57,9 @@ export function RegisterScreen() {
 
   const [loading, setLoading] = useState(false);
 
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+
   const [touched, setTouched] = useState({});
   const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
 
@@ -80,7 +85,12 @@ export function RegisterScreen() {
     !validateBirthDate(birthDate) &&
     validateEmailFormat(email) &&
     !isDisposableEmail(email);
-  const formValid = personalOk && passwordValid && passwordsMatch;
+  const formValid = personalOk && passwordValid && passwordsMatch && termsAccepted;
+
+  const termsError =
+    touched.terms && !termsAccepted
+      ? 'Debe aceptar los términos y condiciones para continuar.'
+      : null;
 
   const handleSubmit = async () => {
     if (loading) return;
@@ -91,6 +101,7 @@ export function RegisterScreen() {
     touch('email');
     touch('password');
     touch('confirm');
+    touch('terms');
 
     if (!formValid) return;
 
@@ -371,6 +382,31 @@ export function RegisterScreen() {
         <PasswordRequirementsList reqs={passwordReqs} />
         <StrengthBar password={password} />
       </SectionCard>
+
+      <CheckboxField
+        checked={termsAccepted}
+        error={termsError}
+        idPrefix="register-screen-terms"
+        onChange={setTermsAccepted}
+      >
+        <Text
+          className="text-sm text-slate-600 dark:text-slate-300"
+          nativeID="register-screen-terms-text"
+          testID="register-screen-terms-text"
+        >
+          Acepto los{' '}
+          <Text
+            className="font-semibold text-primary"
+            nativeID="register-screen-terms-link"
+            testID="register-screen-terms-link"
+            onPress={() => setShowTerms(true)}
+          >
+            Términos y Condiciones
+          </Text>
+        </Text>
+      </CheckboxField>
+
+      <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
 
       <Pressable
         className={`mt-8 h-12 items-center justify-center rounded-full ${
