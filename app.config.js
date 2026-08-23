@@ -54,6 +54,7 @@ module.exports = {
       'expo-font',
       'expo-secure-store',
       '@react-native-community/datetimepicker',
+      'expo-notifications',
     ],
     extra: {
       eas: {
