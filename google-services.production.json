@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "487570841209",
+    "project_id": "paceron-4b46c",
+    "storage_bucket": "paceron-4b46c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:487570841209:android:97b07e5c754174b9a4fea8",
+        "android_client_info": {
+          "package_name": "com.paceron.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrqqps05z9GU_sgQK7DkyknkXW_FR-qnM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:487570841209:android:d7cd0deee16a3427a4fea8",
+        "android_client_info": {
+          "package_name": "com.paceron.app.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrqqps05z9GU_sgQK7DkyknkXW_FR-qnM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
