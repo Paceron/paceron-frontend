@@ -49,4 +49,8 @@ coverage/
 /ios
 /android
 
+# eas build --local artifacts
+*.apk
+*.aab
+
 notes

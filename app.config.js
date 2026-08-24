@@ -30,6 +30,11 @@ module.exports = {
     },
     android: {
       package: IS_DEV ? 'com.paceron.app.dev' : 'com.paceron.app',
+      // Dos apps Android en el mismo proyecto Firebase (paceron-4b46c) —
+      // misma service account/clave FCM V1 para ambas (está scopeada al
+      // proyecto, no a la app), pero cada variante necesita su propio
+      // google-services.json (distinto api_key/mobilesdk_app_id por package).
+      googleServicesFile: IS_DEV ? './google-services.dev.json' : './google-services.production.json',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         // Mismo foreground en ambas variantes; el fondo distinto (ámbar vs
@@ -54,6 +59,7 @@ module.exports = {
       'expo-font',
       'expo-secure-store',
       '@react-native-community/datetimepicker',
+      'expo-notifications',
     ],
     extra: {
       eas: {
