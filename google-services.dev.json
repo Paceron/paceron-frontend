@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "435794266622",
+    "project_id": "paceron-ab6dc",
+    "storage_bucket": "paceron-ab6dc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:435794266622:android:068c783ac83472b47958af",
+        "android_client_info": {
+          "package_name": "com.paceron.app.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXvLlNrRM-z97_VuE4VFydlL1VUmerYuo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

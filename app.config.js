@@ -30,6 +30,11 @@ module.exports = {
     },
     android: {
       package: IS_DEV ? 'com.paceron.app.dev' : 'com.paceron.app',
+      // Solo la variante dev tiene su google-services.json todavía — la de
+      // producción se suma cuando se registre esa segunda app en Firebase
+      // (mismo proyecto, package com.paceron.app sin sufijo). No referenciar
+      // un archivo que no existe para no romper el build de producción.
+      ...(IS_DEV ? { googleServicesFile: './google-services.dev.json' } : {}),
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         // Mismo foreground en ambas variantes; el fondo distinto (ámbar vs
