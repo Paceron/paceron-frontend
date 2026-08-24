@@ -99,6 +99,18 @@ function CreateTeamScreenContent() {
   const [groups, setGroups] = useState([]);
   const [invitedEmails, setInvitedEmails] = useState([]);
 
+  // EmailInviteForm/InvitedEmailsList (paso 3) esperan que, si el grupo
+  // default existe, venga incluido en `groups` — para un equipo ya creado
+  // (EditTeamScreen) es un grupo real con isDefault:true; acá todavía no
+  // existe (recién lo agrega el backend al crear el equipo), así que se
+  // arma una entrada local con id:'' — mismo sentinel que ya usa
+  // handleRemoveGroup de abajo y que sendInvite() (ver handleSubmit) ya
+  // interpreta como "sin grupo, que el backend asigne el principal". Sin
+  // esto, el picker de grupo del paso 3 nunca ofrecía "Sin grupo" como
+  // opción (bug: con 1 grupo extra quedaba fijo a ese grupo, con 2+ no
+  // había forma de elegir el default en absoluto).
+  const groupsForInvite = [{ id: '', name: 'Sin grupo', isDefault: true }, ...groups];
+
   // Si se saca un grupo que ya tenia invitaciones asignadas, esas
   // invitaciones vuelven a "Sin grupo" en vez de quedar apuntando a un
   // grupo que ya no existe.
@@ -208,11 +220,11 @@ function CreateTeamScreenContent() {
         {step === 3 && (
           <>
             <SectionCard icon="email-outline" title="Invitar corredores">
-              <EmailInviteForm emailSearch={emailSearch} existingEmails={invitedEmails.map((invite) => invite.email)} groups={groups} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
+              <EmailInviteForm emailSearch={emailSearch} existingEmails={invitedEmails.map((invite) => invite.email)} groups={groupsForInvite} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
             </SectionCard>
 
             <SectionCard icon="account-multiple-check" title="Corredores a invitar">
-              <InvitedEmailsList groups={groups} onChange={setInvitedEmails} value={invitedEmails} />
+              <InvitedEmailsList groups={groupsForInvite} onChange={setInvitedEmails} value={invitedEmails} />
 
               <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
             </SectionCard>
