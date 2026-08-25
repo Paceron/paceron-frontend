@@ -60,12 +60,15 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
 }
 
 // Reusado en Profile, el dropdown web y el drawer mobile.
-// - Sin perfil de entrenador: pill de Corredor (siempre activo, rol base) +
-//   botón "Volverse Entrenador" que navega a la pantalla de activación. No
-//   hay switch real en este caso (nada entre lo cual alternar todavía),
-//   pero las dos van dentro del mismo contenedor (`role-switch-toggle-
-//   segments`, mismo id/fondo que abajo) para que se lean como una sola
-//   estructura — antes eran dos pills sueltas una al lado de la otra.
+// - Sin perfil de entrenador: usa el mismo `Segment` que el switch real de
+//   abajo, dentro del mismo contenedor (`role-switch-toggle-segments`,
+//   mismo id/fondo) para que las dos lean como una sola estructura — antes
+//   eran dos pills sueltas una al lado de la otra. Corredor va `active`
+//   (coloreado, es el único rol real hoy — clickearlo no hace nada, igual
+//   que clickear el segmento ya activo del switch real). "Volverse
+//   Entrenador" va `active={false}` (mismo gris apagado que un segmento no
+//   seleccionado) porque no es un rol activo, es un CTA — coloreado en
+//   amber leía como si ya estuviera "activo" igual que Corredor.
 // - Con perfil de entrenador: switch real de dos segmentos, cada uno con
 //   su tier. `wide` estira el switch a todo el ancho disponible (Profile);
 //   sin `wide`, mantiene su ancho intrínseco (dropdown/sidebar).
@@ -88,27 +91,27 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
     return (
       <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
         <View className={`flex-row items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
-          <View
-            className={`flex-row items-center justify-center gap-1.5 rounded-full bg-primary-tint px-3 py-1.5 dark:bg-primary/15 ${wide ? 'flex-1' : ''}`}
-            nativeID="role-switch-toggle-runner-badge"
-            testID="role-switch-toggle-runner-badge"
-          >
-            <MaterialCommunityIcons color="#8cc63e" name="run-fast" size={16} />
-            <Text className="text-xs font-semibold text-on-primary-tint dark:text-primary" nativeID="role-switch-toggle-runner-badge-label" testID="role-switch-toggle-runner-badge-label">
-              Corredor
-            </Text>
-          </View>
-          <Pressable
+          <Segment
+            accessibilityLabel="Corredor"
+            active
+            activeBg="bg-primary-tint dark:bg-primary/15"
+            activeIconColor="#8cc63e"
+            activeTextClass="text-on-primary-tint dark:text-primary"
+            icon="run-fast"
+            id="role-switch-toggle-runner-badge"
+            label="Corredor"
+            onPress={() => {}}
+            wide={wide}
+          />
+          <Segment
             accessibilityLabel="Volverse Entrenador"
-            accessibilityRole="button"
-            className={`flex-row items-center justify-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 hover:opacity-90 active:opacity-70 ${wide ? 'flex-1' : ''}`}
-            nativeID="role-switch-toggle-activate-trainer-button"
+            active={false}
+            icon="whistle"
+            id="role-switch-toggle-activate-trainer-button"
+            label="Volverse Entrenador"
             onPress={handleActivate}
-            testID="role-switch-toggle-activate-trainer-button"
-          >
-            <MaterialCommunityIcons color="#f59e0b" name="whistle" size={16} />
-            <Text className="text-xs font-semibold text-amber-600 dark:text-amber-400" nativeID="role-switch-toggle-activate-trainer-button-text" testID="role-switch-toggle-activate-trainer-button-text">Volverse Entrenador</Text>
-          </Pressable>
+            wide={wide}
+          />
         </View>
         {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />}
       </View>
