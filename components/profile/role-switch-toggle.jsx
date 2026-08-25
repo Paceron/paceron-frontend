@@ -81,6 +81,10 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   const roles = useAuthStore((s) => s.roles);
   const switchRole = useAuthStore((s) => s.switchRole);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
+  // Se calcula acá arriba (no solo en la rama con entrenador) porque el
+  // segmento de Corredor lo necesita en los dos casos — sin esto, el tier
+  // no se mostraba nunca hasta que se activaba el perfil de entrenador.
+  const runnerTier = roles.find((r) => r.name === 'corredor')?.tier;
 
   const handleActivate = () => {
     onClose?.();
@@ -101,6 +105,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             id="role-switch-toggle-runner-badge"
             label="Corredor"
             onPress={() => {}}
+            tier={tierLabel(runnerTier)}
             wide={wide}
           />
           <Segment
@@ -120,7 +125,6 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   const runnerActive = activeRole === 'runner';
   const trainerActive = activeRole === 'trainer';
-  const runnerTier = roles.find((r) => r.name === 'corredor')?.tier;
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
 
   const handlePressRunner = () => {
