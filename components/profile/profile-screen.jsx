@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
@@ -27,15 +28,22 @@ const STATUS_META = {
   suspended: { label: 'Suspendido', badge: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
 };
 
-// En web reparte los campos en 2 columnas; en mobile, uno por fila.
+// En web ancho reparte los campos en 2 columnas; en mobile (nativo o web
+// angosto), uno por fila — ver useIsNarrowWeb(), mismo breakpoint que el
+// resto del shell responsive (no alcanza con `isWeb`, que es true para
+// cualquier ancho de viewport en react-native-web).
 function FieldGrid({ children }) {
-  return <View className={isWeb ? 'flex-row flex-wrap' : ''} nativeID="profile-screen-field-grid" testID="profile-screen-field-grid">{children}</View>;
+  const isNarrowWeb = useIsNarrowWeb();
+  const isDesktopWeb = isWeb && !isNarrowWeb;
+  return <View className={isDesktopWeb ? 'flex-row flex-wrap' : ''} nativeID="profile-screen-field-grid" testID="profile-screen-field-grid">{children}</View>;
 }
 
 function Field({ label, value }) {
+  const isNarrowWeb = useIsNarrowWeb();
+  const isDesktopWeb = isWeb && !isNarrowWeb;
   const slug = `profile-screen-field-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
-    <View className={isWeb ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
+    <View className={isDesktopWeb ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
       <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
         <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
         <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${slug}-value`} testID={`${slug}-value`}>{value}</Text>
@@ -67,8 +75,14 @@ function EditButton({ onEdit, colors, full }) {
 }
 
 function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) {
-  // Web: fila superior (avatar + datos + botón editar), fila de switch debajo.
-  if (isWeb) {
+  const isNarrowWeb = useIsNarrowWeb();
+  // Web ancho: fila superior (avatar + datos + botón editar), fila de
+  // switch debajo. En web angosto el nombre/email/badge no entran junto al
+  // botón "Editar datos" en esa fila (colapsan a una columna de pocos px
+  // de ancho, forzando word-wrap letra por letra) — mismo criterio de
+  // useIsNarrowWeb() que decide el resto del shell responsive, `isWeb`
+  // solo no alcanza porque es true para cualquier ancho en RN Web.
+  if (isWeb && !isNarrowWeb) {
     return (
       <View className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
         <View className="flex-row items-center gap-4" nativeID="profile-screen-header-panel-top-row" testID="profile-screen-header-panel-top-row">
