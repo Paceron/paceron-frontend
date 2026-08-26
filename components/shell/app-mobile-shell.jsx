@@ -67,8 +67,11 @@ function NavigationDrawer({ open, pathname, onClose }) {
   // un usuario puede tener ambos roles y estar activo como corredor.
   const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
 
-  const userRole = user?.role ?? null;
-  const routes = getRoutesByRole(userRole);
+  // activeRole, no un userRole estático que nunca llegó a existir en el
+  // modelo real (el backend no trackea "el" rol, solo el conjunto
+  // asignado) — así "Mis planes"/"Planes de entrenamiento" cambian solos
+  // al switchear de rol, igual que el resto de los gates de esta pantalla.
+  const routes = getRoutesByRole(activeRole);
 
   const teams = useTeamStore((s) => s.teams);
   const fetchTeams = useTeamStore((s) => s.fetchTeams);
