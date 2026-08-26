@@ -847,14 +847,25 @@ function TeamDetailScreenContent({ teamId }) {
       {/* Sin corredores en el equipo (todavía, no por filtro) no tiene
           sentido mostrar el buscador — no hay nada para buscar. */}
       {(loadingRoster || members.length > 0) && (
-        <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 pt-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
-          <Row>
+        <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
+          {/* Ninguno de los dos campos muestra error de validación (son
+              filtros, no un formulario) — hideErrorRow saca la fila de 20px
+              que InputField/PickerField reservan siempre para eso en
+              formularios reales (esos NO cambian, hideErrorRow es opt-in).
+              El margen propio del field también se anula (className="mb-0")
+              — el espacio entre "Buscar corredor" y "Grupo" pasa a
+              controlarlo un solo lugar, el propio Row (narrowClassName). Va
+              en gap-3.5 (14px) y no gap-3 (12px) — igualando visualmente el
+              padding-top del frame (12px) hasta la primera etiqueta, porque
+              ahí no hay ningún borde/caja antes que "coma" espacio como sí
+              lo hace el borde inferior del campo de arriba. */}
+          <Row narrowClassName="gap-3.5">
             <Col>
-              <InputField dense label="Buscar corredor" onChange={setSearch} placeholder={isTrainerView ? 'Nombre o email del corredor' : 'Nombre del corredor'} value={search} />
+              <InputField className="mb-0" dense hideErrorRow label="Buscar corredor" onChange={setSearch} placeholder={isTrainerView ? 'Nombre o email del corredor' : 'Nombre del corredor'} value={search} />
             </Col>
             {canSeeGroups && (
               <Col>
-                <ResponsiveSelectField dense label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
+                <ResponsiveSelectField className="mb-0" dense hideErrorRow label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
               </Col>
             )}
           </Row>
