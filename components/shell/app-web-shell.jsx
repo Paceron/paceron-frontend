@@ -417,10 +417,8 @@ export function AppWebShell({ children, pathname }) {
   }, [user?.userId]);
 
   useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
+    if (!user?.userId) return;
     fetchMyInvitations(user.userId, user.email);
-    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId, user?.email]);
 
