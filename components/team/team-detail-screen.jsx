@@ -844,25 +844,33 @@ function TeamDetailScreenContent({ teamId }) {
       icon="account-multiple"
       title="Corredores"
     >
-      <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
-        <Row>
-          <Col>
-            <InputField dense label="Buscar corredor" onChange={setSearch} placeholder={isTrainerView ? 'Nombre o email del corredor' : 'Nombre del corredor'} value={search} />
-          </Col>
-          {canSeeGroups && (
+      {/* Sin corredores en el equipo (todavía, no por filtro) no tiene
+          sentido mostrar el buscador — no hay nada para buscar. */}
+      {(loadingRoster || members.length > 0) && (
+        <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 pt-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
+          <Row>
             <Col>
-              <ResponsiveSelectField dense label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
+              <InputField dense label="Buscar corredor" onChange={setSearch} placeholder={isTrainerView ? 'Nombre o email del corredor' : 'Nombre del corredor'} value={search} />
             </Col>
-          )}
-        </Row>
-      </View>
+            {canSeeGroups && (
+              <Col>
+                <ResponsiveSelectField dense label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
+              </Col>
+            )}
+          </Row>
+        </View>
+      )}
 
       {loadingRoster ? (
         <View className="items-center py-4" nativeID="team-detail-runners-loading" testID="team-detail-runners-loading">
           <ActivityIndicator color={colors.primary} />
         </View>
-      ) : filteredMembers.length === 0 ? (
+      ) : members.length === 0 ? (
         <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
+          ¡Aún no hay corredores!
+        </Text>
+      ) : filteredMembers.length === 0 ? (
+        <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-no-matches" testID="team-detail-runners-no-matches">
           No hay corredores que coincidan con los filtros.
         </Text>
       ) : (
