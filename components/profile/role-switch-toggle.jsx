@@ -2,7 +2,6 @@ import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
-import { RoleBadge } from '../shell/role-badge.jsx';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
@@ -61,9 +60,15 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
 }
 
 // Reusado en Profile, el dropdown web y el drawer mobile.
-// - Sin perfil de entrenador: pill de Corredor (siempre activo, rol base) +
-//   botón "Volverse Entrenador" que navega a la pantalla de activación.
-//   No hay switch en este caso (nada entre lo cual alternar todavía).
+// - Sin perfil de entrenador: usa el mismo `Segment` que el switch real de
+//   abajo, dentro del mismo contenedor (`role-switch-toggle-segments`,
+//   mismo id/fondo) para que las dos lean como una sola estructura — antes
+//   eran dos pills sueltas una al lado de la otra. Corredor va `active`
+//   (coloreado, es el único rol real hoy — clickearlo no hace nada, igual
+//   que clickear el segmento ya activo del switch real). "Volverse
+//   Entrenador" va `active={false}` (mismo gris apagado que un segmento no
+//   seleccionado) porque no es un rol activo, es un CTA — coloreado en
+//   amber leía como si ya estuviera "activo" igual que Corredor.
 // - Con perfil de entrenador: switch real de dos segmentos, cada uno con
 //   su tier. `wide` estira el switch a todo el ancho disponible (Profile);
 //   sin `wide`, mantiene su ancho intrínseco (dropdown/sidebar).
@@ -76,6 +81,10 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   const roles = useAuthStore((s) => s.roles);
   const switchRole = useAuthStore((s) => s.switchRole);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
+  // Se calcula acá arriba (no solo en la rama con entrenador) porque el
+  // segmento de Corredor lo necesita en los dos casos — sin esto, el tier
+  // no se mostraba nunca hasta que se activaba el perfil de entrenador.
+  const runnerTier = roles.find((r) => r.name === 'corredor')?.tier;
 
   const handleActivate = () => {
     onClose?.();
@@ -84,29 +93,38 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   if (!hasTrainerRole) {
     return (
-      <View className={`flex-row items-center ${wide ? 'w-full justify-between' : 'gap-3'}`} nativeID="role-switch-toggle-runner-only" testID="role-switch-toggle-runner-only">
-        <View className="items-start" nativeID="role-switch-toggle-runner-badge" testID="role-switch-toggle-runner-badge">
-          <RoleBadge active role="runner" size="md" />
-          {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />}
+      <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
+        <View className={`flex-row items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+          <Segment
+            accessibilityLabel="Corredor"
+            active
+            activeBg="bg-primary-tint dark:bg-primary/15"
+            activeIconColor="#8cc63e"
+            activeTextClass="text-on-primary-tint dark:text-primary"
+            icon="run-fast"
+            id="role-switch-toggle-runner-badge"
+            label="Corredor"
+            onPress={() => {}}
+            tier={tierLabel(runnerTier)}
+            wide={wide}
+          />
+          <Segment
+            accessibilityLabel="Volverse Entrenador"
+            active={false}
+            icon="whistle"
+            id="role-switch-toggle-activate-trainer-button"
+            label="Volverse Entrenador"
+            onPress={handleActivate}
+            wide={wide}
+          />
         </View>
-        <Pressable
-          accessibilityLabel="Volverse Entrenador"
-          accessibilityRole="button"
-          className="flex-row items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 hover:opacity-90 active:opacity-70"
-          nativeID="role-switch-toggle-activate-trainer-button"
-          onPress={handleActivate}
-          testID="role-switch-toggle-activate-trainer-button"
-        >
-          <MaterialCommunityIcons color="#f59e0b" name="whistle" size={16} />
-          <Text className="text-xs font-semibold text-amber-600 dark:text-amber-400" nativeID="role-switch-toggle-activate-trainer-button-text" testID="role-switch-toggle-activate-trainer-button-text">Volverse Entrenador</Text>
-        </Pressable>
+        {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />}
       </View>
     );
   }
 
   const runnerActive = activeRole === 'runner';
   const trainerActive = activeRole === 'trainer';
-  const runnerTier = roles.find((r) => r.name === 'corredor')?.tier;
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
 
   const handlePressRunner = () => {
