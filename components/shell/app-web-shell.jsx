@@ -395,7 +395,10 @@ export function AppWebShell({ children, pathname }) {
   const isGuest = !user;
   const userName = user?.name || null;
   const activeRole = useAuthStore((s) => s.activeRole);
-  const routesTab = getRoutesByRole(user?.role || null);
+  // activeRole, no un userRole estático que nunca llegó a existir en el
+  // modelo real — así "Mis planes"/"Planes de entrenamiento" cambian solos
+  // al switchear de rol, igual que el resto de los gates de esta pantalla.
+  const routesTab = getRoutesByRole(activeRole);
   const [activeTab, setActiveTab] = useState(pathname);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [teamsMenuOpen, setTeamsMenuOpen] = useState(false);
