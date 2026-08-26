@@ -71,10 +71,18 @@ function Tag({ label, bg, text, nativeID, testID }) {
   );
 }
 
+// El padding horizontal es más chico que el resto de las cards (px-1.5 en
+// vez de p-4 parejo) porque "Entrenamientos realizados" — la etiqueta más
+// larga de las 3 — necesita ese ancho extra para partir en "Entrenamientos"
+// / "realizados" en mobile (3 tiles angostas, flex-1). Sin esto, la palabra
+// no entraba y se cortaba mitad de palabra en vez de partir prolijo entre
+// las dos. text-[11px] en vez de text-xs (12px) da un margen extra por las
+// dudas en pantallas más angostas — sin numberOfLines: se deja crecer a 2
+// líneas libremente, no se trunca.
 function StatTile({ icon, label, value, colors }) {
   return (
     <View
-      className="flex-1 items-center rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface"
+      className="flex-1 items-center rounded-2xl border border-slate-200 bg-white px-1.5 py-4 dark:border-slate-700 dark:bg-surface"
       nativeID={`team-detail-stat-${label}`}
       testID={`team-detail-stat-${label}`}
     >
@@ -82,7 +90,7 @@ function StatTile({ icon, label, value, colors }) {
       <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID={`team-detail-stat-${label}-value`} testID={`team-detail-stat-${label}-value`}>
         {value}
       </Text>
-      <Text className="text-center text-xs text-slate-500 dark:text-slate-400" nativeID={`team-detail-stat-${label}-label`} testID={`team-detail-stat-${label}-label`}>
+      <Text className="text-center text-[11px] leading-4 text-slate-500 dark:text-slate-400" nativeID={`team-detail-stat-${label}-label`} testID={`team-detail-stat-${label}-label`}>
         {label}
       </Text>
     </View>
@@ -818,7 +826,7 @@ function TeamDetailScreenContent({ teamId }) {
       </SectionCard>
 
       <SectionCard icon="chart-line" title="Estadísticas del equipo">
-        <View className="flex-row gap-3" nativeID="team-detail-stats-row" testID="team-detail-stats-row">
+        <View className="flex-row gap-2" nativeID="team-detail-stats-row" testID="team-detail-stats-row">
           <StatTile colors={colors} icon="account-group" label="Corredores" value={filteredMembers.length} />
           <StatTile colors={colors} icon="run" label="Entrenamientos realizados" value={MOCK_TEAM_METRICS.trainingsCompleted} />
           <StatTile colors={colors} icon="flag-checkered" label="Objetivos cumplidos" value={MOCK_TEAM_METRICS.goalsCompleted} />
