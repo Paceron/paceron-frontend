@@ -28,12 +28,16 @@ function slugify(label) {
 // no apila. Decide por ANCHO real (useWindowDimensions + BREAKPOINTS.lg,
 // mismo breakpoint que useIsNarrowWeb() en el shell responsive), no por
 // plataforma — así una ventana de escritorio angosta también apila, no
-// solo la app nativa.
-export function Row({ children }) {
+// solo la app nativa. `narrowClassName` (default sin gap, el comportamiento
+// de siempre) deja opinar el espaciado entre hijos apilados a quien use
+// Row — por default los hijos manejan su propio margen (ej. el mb-3/mb-5
+// de los fields), pero un caller que ya anula ese margen (className="mb-0"
+// en cada field) puede pedir un gap explícito acá en su lugar.
+export function Row({ children, narrowClassName = '' }) {
   const { width } = useWindowDimensions();
   const wide = width >= BREAKPOINTS.lg;
   return (
-    <View className={wide ? 'flex-row gap-4' : ''} nativeID="row-wrapper" testID="row-wrapper">
+    <View className={wide ? 'flex-row gap-4' : narrowClassName} nativeID="row-wrapper" testID="row-wrapper">
       {children}
     </View>
   );
@@ -51,7 +55,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -59,7 +63,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
   const items = options.map((opt) => (typeof opt === 'string' ? { id: opt, name: opt } : opt));
 
   return (
-    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
+    <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>{label}</Text>
       <View
         className="flex-row items-center gap-2"
@@ -93,9 +97,11 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
           )}
         </View>
       </View>
-      <View className="h-5" nativeID={`select-field-${slug}-error-row`} testID={`select-field-${slug}-error-row`}>
-        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`select-field-${slug}-error`} testID={`select-field-${slug}-error`}>{error}</Text>}
-      </View>
+      {!hideErrorRow && (
+        <View className="h-5" nativeID={`select-field-${slug}-error-row`} testID={`select-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`select-field-${slug}-error`} testID={`select-field-${slug}-error`}>{error}</Text>}
+        </View>
+      )}
     </View>
   );
 }
@@ -252,7 +258,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense }) {
+export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -267,7 +273,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
   const rowSizeClass = multiline ? 'min-h-24 items-start py-3' : 'h-12 items-center';
 
   return (
-    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
+    <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
       <View
         className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
@@ -310,18 +316,20 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           </Pressable>
         )}
       </View>
-      <View className="h-5 pt-1" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
-        {error ? (
-          <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>
-        ) : hint ? (
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`input-field-${slug}-hint`} testID={`input-field-${slug}-hint`}>{hint}</Text>
-        ) : null}
-      </View>
+      {!hideErrorRow && (
+        <View className="h-5 pt-1" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
+          {error ? (
+            <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>
+          ) : hint ? (
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`input-field-${slug}-hint`} testID={`input-field-${slug}-hint`}>{hint}</Text>
+          ) : null}
+        </View>
+      )}
     </View>
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -339,7 +347,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
 
   return (
-    <View className={dense ? 'mb-3' : 'mb-5'} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
+    <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
@@ -367,9 +375,11 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         )}
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={20} />
       </Pressable>
-      <View className="h-5" nativeID={`picker-field-${slug}-error-row`} testID={`picker-field-${slug}-error-row`}>
-        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`picker-field-${slug}-error`} testID={`picker-field-${slug}-error`}>{error}</Text>}
-      </View>
+      {!hideErrorRow && (
+        <View className="h-5" nativeID={`picker-field-${slug}-error-row`} testID={`picker-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`picker-field-${slug}-error`} testID={`picker-field-${slug}-error`}>{error}</Text>}
+        </View>
+      )}
 
       <Modal
         animationType="fade"
