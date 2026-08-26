@@ -1,4 +1,15 @@
-import { __seedDefaultGroup, __resetMockGroups } from './groups-mock.js';
+import { __seedDefaultGroup, __seedGroup, __seedGroupUser, __resetMockGroups } from './groups-mock.js';
+
+// user_id del catálogo fijo de autocomplete (services/__mocks__/user-mock.js
+// #SEARCH_CATALOG) — reusarlos acá hace que el roster sembrado resuelva
+// nombre/email de verdad vía batchLookupUsers, en vez del placeholder
+// genérico ("Corredor" + id) que usa mockBatchLookupUsers para ids
+// desconocidos.
+const FICTITIOUS_RUNNER_IDS = [101, 102, 103, 104, 105, 106];
+
+function daysAgoIso(days) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
 
 // Estado in-memory con la MISMA shape snake_case que el backend real (para
 // que toTeamModel() funcione igual en ambas ramas) — mismo patrón stateful
@@ -7,6 +18,15 @@ import { __seedDefaultGroup, __resetMockGroups } from './groups-mock.js';
 // coincide con el user_id que devuelve auth-mock.js#mockLogin, para que el
 // filtro de "mis equipos" (store/team-store.js#selectAdministeredTeams)
 // tenga algo que mostrar contra el usuario demo.
+//
+// "Runners Mendoza" (id 4) es el único de los cuatro con roster sembrado —
+// los otros tres (incluido "Corredores del Sur") quedan sin corredores a
+// propósito, para poder probar el estado "¡Aún no hay corredores!" de la
+// pestaña Corredores sin tener que vaciar nada a mano. Los 6 corredores
+// ficticios quedan repartidos entre el grupo default ("General", 4) y uno
+// extra ("Avanzado", 2) para poder probar el filtro de grupo también, con
+// antigüedad escalonada (30 días de diferencia entre uno y el siguiente)
+// para que no se vea la misma fecha en todas las filas.
 function buildSeedTeams() {
   const now = new Date().toISOString();
   const teams = [
@@ -28,14 +48,37 @@ function buildSeedTeams() {
       status: 'activo', country: 'ARG', province: 'SF', city: 'Rosario', street: null, number: null,
       created_at: now, updated_at: now,
     },
+    {
+      id: 4, name: 'Runners Mendoza', description: 'Grupo social de running para todos los niveles — salidas los martes y jueves a la tarde.',
+      level: 'amateur', max_members: 20, owner_id: 1, requirements: 'Ganas de correr, no hace falta experiencia previa.',
+      status: 'activo', country: 'ARG', province: 'MZ', city: 'Mendoza Capital', street: null, number: null,
+      created_at: now, updated_at: now,
+    },
   ];
-  teams.forEach((t) => __seedDefaultGroup(t.id));
-  return teams;
+
+  const defaultGroupByTeamId = new Map(teams.map((t) => [t.id, __seedDefaultGroup(t.id)]));
+
+  const advancedGroup = __seedGroup(4, 'Avanzado', { description: 'Corredores con mayor volumen y ritmo.' });
+  const generalGroupId = defaultGroupByTeamId.get(4).id;
+  const teamUsers = {
+    4: FICTITIOUS_RUNNER_IDS.map((userId, i) => ({
+      id: 1000 + userId,
+      user_id: userId,
+      team_id: 4,
+      role_in_team: 'corredor',
+      status: 'active',
+      assignment_date: daysAgoIso((i + 1) * 30),
+    })),
+  };
+  FICTITIOUS_RUNNER_IDS.forEach((userId, i) => {
+    __seedGroupUser(i < 4 ? generalGroupId : advancedGroup.id, userId);
+  });
+
+  return { teams, teamUsers };
 }
 
-let mockTeams = buildSeedTeams();
-let mockTeamUsers = {};
-let nextId = 4;
+let { teams: mockTeams, teamUsers: mockTeamUsers } = buildSeedTeams();
+let nextId = 5;
 
 function findTeamOrThrow(teamId) {
   const team = mockTeams.find((t) => String(t.id) === String(teamId));
@@ -123,9 +166,8 @@ export async function mockRemoveTeamUser(teamId, userId) {
 
 export function __resetMockTeams() {
   __resetMockGroups();
-  mockTeams = buildSeedTeams();
-  mockTeamUsers = {};
-  nextId = 4;
+  ({ teams: mockTeams, teamUsers: mockTeamUsers } = buildSeedTeams());
+  nextId = 5;
 }
 
 export function __getMockTeamName(teamId) {

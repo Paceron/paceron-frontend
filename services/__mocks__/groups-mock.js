@@ -18,14 +18,31 @@ function findGroupOrThrow(groupId) {
   return group;
 }
 
-export function __seedDefaultGroup(teamId) {
+// Helper síncrono compartido por __seedDefaultGroup y por teams-mock.js
+// (siembra de "Runners Mendoza", el único equipo mock con roster de
+// prueba) — mismo motivo que __seedDefaultGroup: setup de datos, no una
+// llamada real a la API, así que no hace falta que sea async como el resto.
+export function __seedGroup(teamId, name, { isMain = false, description = null } = {}) {
   const now = new Date().toISOString();
   const group = {
-    id: nextGroupId++, team_id: Number(teamId), name: 'General', description: null, is_main: true,
+    id: nextGroupId++, team_id: Number(teamId), name, description, is_main: isMain,
     created_at: now, updated_at: now,
   };
   mockGroups.push(group);
   return group;
+}
+
+export function __seedDefaultGroup(teamId) {
+  return __seedGroup(teamId, 'General', { isMain: true });
+}
+
+// Idem __seedGroup pero para la membresía — evita el Date.now() sin
+// desambiguar de mockAddGroupUser, que colisiona si se siembran varios
+// usuarios en el mismo tick.
+export function __seedGroupUser(groupId, userId) {
+  const entry = { id: Date.now() + userId, group_id: Number(groupId), user_id: userId, date_start: new Date().toISOString(), date_end: null };
+  mockGroupUsers[groupId] = [...(mockGroupUsers[groupId] ?? []), entry];
+  return entry;
 }
 
 export async function mockListGroups(teamId, _userId) {

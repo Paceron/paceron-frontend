@@ -1,4 +1,5 @@
-import { mockCreateTeam, mockGetTeam, mockListTeams, mockUpdateTeam, mockUpdateTeamAddress, __resetMockTeams } from '../services/__mocks__/teams-mock.js';
+import { mockCreateTeam, mockGetTeam, mockGetTeamUsers, mockListTeams, mockUpdateTeam, mockUpdateTeamAddress, __resetMockTeams } from '../services/__mocks__/teams-mock.js';
+import { mockListGroups, mockGetGroupUsers } from '../services/__mocks__/groups-mock.js';
 
 beforeEach(() => {
   __resetMockTeams();
@@ -41,5 +42,31 @@ describe('teams mock adapter', () => {
     expect(updated.country).toBe('ARG');
     expect(updated.province).toBe('MZ');
     expect(updated.city).toBe('Mendoza Capital');
+  });
+
+  test('only "Runners Mendoza" (team 4) ships with a seeded roster — the other 3 stay empty on purpose', async () => {
+    const teams = await mockListTeams();
+    for (const team of teams) {
+      const users = await mockGetTeamUsers(team.id);
+      if (team.id === 4) {
+        expect(users.length).toBeGreaterThan(0);
+      } else {
+        expect(users).toEqual([]);
+      }
+    }
+  });
+
+  test('team 4 roster is split across "General" and "Avanzado" groups, with staggered assignment dates', async () => {
+    const users = await mockGetTeamUsers(4);
+    expect(users).toHaveLength(6);
+    const dates = users.map((u) => new Date(u.assignment_date).getTime());
+    expect(new Set(dates).size).toBe(dates.length); // todas distintas, ninguna pisa a otra
+
+    const groups = await mockListGroups(4);
+    expect(groups.map((g) => g.name).sort()).toEqual(['Avanzado', 'General']);
+
+    const usersByGroup = await Promise.all(groups.map((g) => mockGetGroupUsers(g.id)));
+    const totalGroupedUsers = usersByGroup.reduce((sum, list) => sum + list.length, 0);
+    expect(totalGroupedUsers).toBe(6);
   });
 });
