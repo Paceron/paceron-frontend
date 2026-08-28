@@ -203,3 +203,144 @@ export function toInvitePayload(email, groupId) {
   if (groupId) payload.group_id = Number(groupId);
   return payload;
 }
+
+// ---------------------------------------------------------------------
+// Planes de entrenamiento — ver
+// docs/superpowers/specs/2026-08-26-training-plans-design.md. Los blocks
+// (warmup/cooldown/main/set) son la traducción 1:1 del arco exclusivo del
+// schema SQL de referencia: `kind` + los atributos que correspondan a ese
+// kind nada más, sin FKs nullable (acá no hace falta, no es SQL).
+// ---------------------------------------------------------------------
+
+function toWarmcoolBlockModel(dto) {
+  if (!dto) return null;
+  return { kind: dto.kind, minutes: dto.minutes ?? null };
+}
+
+function toWarmcoolBlockPayload(block) {
+  if (!block) return null;
+  const payload = { kind: block.kind };
+  if (block.minutes != null) payload.minutes = block.minutes;
+  return payload;
+}
+
+function toSetBlockModel(dto) {
+  if (!dto) return null;
+  return {
+    repeatCount: dto.repeat_count,
+    restMinutes: dto.rest_minutes,
+    kind: dto.kind,
+    minutes: dto.minutes ?? null,
+    distanceM: dto.distance_m ?? null,
+    speedKph: dto.speed_kph ?? null,
+  };
+}
+
+function toSetBlockPayload(set) {
+  if (!set) return null;
+  const payload = { repeat_count: set.repeatCount, rest_minutes: set.restMinutes, kind: set.kind };
+  if (set.minutes != null) payload.minutes = set.minutes;
+  if (set.distanceM != null) payload.distance_m = set.distanceM;
+  if (set.speedKph != null) payload.speed_kph = set.speedKph;
+  return payload;
+}
+
+function toMainBlockModel(dto) {
+  if (!dto) return null;
+  return {
+    kind: dto.kind,
+    distanceM: dto.distance_m ?? null,
+    minutes: dto.minutes ?? null,
+    set: toSetBlockModel(dto.set),
+  };
+}
+
+function toMainBlockPayload(main) {
+  if (!main) return null;
+  const payload = { kind: main.kind };
+  if (main.distanceM != null) payload.distance_m = main.distanceM;
+  if (main.minutes != null) payload.minutes = main.minutes;
+  if (main.set) payload.set = toSetBlockPayload(main.set);
+  return payload;
+}
+
+function toTrainingSessionModel(dto) {
+  if (!dto) return null;
+  return {
+    warmup: toWarmcoolBlockModel(dto.warmup),
+    main: toMainBlockModel(dto.main),
+    cooldown: toWarmcoolBlockModel(dto.cooldown),
+  };
+}
+
+function toTrainingSessionPayload(session) {
+  if (!session) return null;
+  return {
+    warmup: toWarmcoolBlockPayload(session.warmup),
+    main: toMainBlockPayload(session.main),
+    cooldown: toWarmcoolBlockPayload(session.cooldown),
+  };
+}
+
+function toPlanDayModel(dto) {
+  return {
+    sequenceNo: dto.sequence_no,
+    dayOfWeek: dto.day_of_week,
+    kind: dto.kind,
+    otherName: dto.other_name ?? null,
+    session: toTrainingSessionModel(dto.session),
+  };
+}
+
+function toPlanDayPayload(day) {
+  return {
+    sequence_no: day.sequenceNo,
+    day_of_week: day.dayOfWeek,
+    kind: day.kind,
+    other_name: day.kind === 'other' ? day.otherName : null,
+    session: day.kind === 'training' ? toTrainingSessionPayload(day.session) : null,
+  };
+}
+
+export function toTrainingPlanModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    ownerId: dto.owner_id,
+    name: dto.name,
+    description: dto.description,
+    durationDays: dto.duration_days,
+    days: (dto.days ?? []).map(toPlanDayModel),
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateTrainingPlanPayload(form) {
+  return {
+    owner_id: form.ownerId,
+    name: form.name,
+    description: form.description || null,
+    duration_days: form.durationDays,
+    days: form.days.map(toPlanDayPayload),
+  };
+}
+
+export function toUpdateTrainingPlanPayload(form) {
+  const payload = {};
+  if (form.name !== undefined) payload.name = form.name;
+  if (form.description !== undefined) payload.description = form.description || null;
+  if (form.durationDays !== undefined) payload.duration_days = form.durationDays;
+  if (form.days !== undefined) payload.days = form.days.map(toPlanDayPayload);
+  return payload;
+}
+
+export function toRunnerPlanAssignmentModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    planId: String(dto.plan_id),
+    userId: dto.user_id,
+    assignedAt: dto.assigned_at,
+  };
+}
