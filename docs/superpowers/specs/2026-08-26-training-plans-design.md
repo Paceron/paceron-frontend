@@ -193,6 +193,60 @@ y los campos numéricos que correspondan (minutos, distancia, velocidad,
 repeticiones, descanso) — exactamente los atributos que ya define el
 SQL de referencia por tipo de bloque, ninguno inventado de más.
 
+## Enmienda 2026-08-26: ejercicios y sesiones pasan a ser catálogo reusable
+
+Feedback del usuario tras la primera entrega: la granularidad estaba
+mal — un día de entrenamiento no debería armar sus 3 bloques inline
+cada vez, "ejercicio" y "sesión" son estructuras de datos que van a
+crecer (ej. video por ejercicio a futuro) y se van a poder templarizar
+para reusar entre planes, con sus propias pantallas de ABMC más
+adelante ("otros menús", fuera de esta entrega). Cambios:
+
+- **`Exercise`** (nuevo, catálogo del entrenador): `{id, ownerId, name,
+  kind, minutes?, distanceM?, speedKph?, videoUrl}` — `kind` es
+  walking/jogging/elongation/cruising/running (los 5 tipos hoja del SQL
+  de referencia, ya sin la envoltura `set` — ver abajo). `videoUrl`
+  existe en el modelo desde ya (siempre `null` por ahora) para no tener
+  que migrar el shape el día que se implemente.
+- **`Session`** (nuevo, catálogo del entrenador): `{id, ownerId, name,
+  description, warmupExerciseId, mainExerciseId, mainRepeatCount,
+  mainRestMinutes, cooldownExerciseId}` — reemplaza `TrainingSession`.
+  La "serie" (`set_block` del SQL) deja de ser un tipo de ejercicio
+  aparte: `mainRepeatCount`/`mainRestMinutes` en la sesión envuelven
+  cualquier ejercicio elegido para el bloque principal (repeatCount=1,
+  restMinutes=0 es "una sola vez", igual que antes pero ya no hace
+  falta un `kind: 'set'` separado — un ejercicio de tipo `running`
+  repetido 4 veces con descanso ya expresa lo mismo que antes era
+  `main.kind='set'` + `set.kind='running'`).
+- **`PlanDay`**: un día `kind:'training'` ahora tiene `sessionId`
+  (referencia), no una `session` embebida — arma el plan **eligiendo**
+  una sesión ya creada, no construyéndola de cero cada vez.
+- Formulario de plan (`DayCard` en `training-plan-form-fields.jsx`):
+  para un día de Entrenamiento, un selector de sesión (`Session`
+  existente del entrenador) + botón "Crear sesión" al lado. Ese botón
+  abre `CreateSessionModal` (no navega a otra pantalla — perdería el
+  plan a medio armar) con sus propios selectores de ejercicio para
+  warmup/main/cooldown, cada uno con su propio botón "Crear ejercicio"
+  que abre `CreateExerciseModal`. Los modales son la versión mínima de
+  "alta" pedida ahora ("un botón para acceder al formulario de alta de
+  sesión ahí mismo") — las pantallas completas de catálogo (listar,
+  editar, borrar ejercicios/sesiones sueltas) quedan fuera de esta
+  entrega, explícitamente para "otros menús en el futuro".
+- Vista de detalle (`TrainingPlanDetailScreen`): un día de entrenamiento
+  pasa a ser expandible (mismo patrón acordeón que ya usa `RunnerRow`
+  en mobile) — colapsado muestra el nombre de la sesión, expandido
+  muestra cada ejercicio (warmup/main/cooldown) como su propia fila,
+  "al estilo gimnasio": ícono por tipo, nombre, dato clave (minutos,
+  distancia, velocidad), y el bloque principal muestra "N ×" cuando
+  `mainRepeatCount > 1`.
+- Un poco de personalidad visual pedida también acá: cada `kind` de
+  ejercicio tiene su propio ícono + color (antes todos los tags eran
+  gris neutro) — caminata celeste, trote ámbar, corrida rojo/naranja
+  (mayor intensidad), ritmo continuo verde azulado, elongación violeta.
+  Mismo criterio ya usado en el resto de la app (semáforo de color con
+  intención, no decorativo porque sí) pero acá el "significado" es el
+  tipo de esfuerzo, no un estado de urgencia.
+
 ## Fuera de alcance
 
 Retomar el picker de plan dentro del wizard de creación de equipo
@@ -203,7 +257,10 @@ todos los que lo tengan asignado ahora mismo — no hay snapshot por
 asignación), notificar al corredor cuando se le asigna/cambia un plan,
 progreso/cumplimiento real de las sesiones (marcar un entrenamiento
 como hecho), backend real (sigue sin existir — todo pasa por el mock,
-ver `BACKEND_API_GAPS.md`).
+ver `BACKEND_API_GAPS.md`). Pantallas de catálogo completo de
+ejercicios/sesiones (listar/editar/borrar sueltos, fuera del flujo de
+armar un plan) — "otros menús" a futuro, hoy solo existe el alta rápida
+vía modal. Video por ejercicio (el campo existe, sin UI para cargarlo).
 
 ## Verificación
 

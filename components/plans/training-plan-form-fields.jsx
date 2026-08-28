@@ -1,8 +1,15 @@
-import { Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAuthStore } from '../../store/auth-store.js';
+import { useSessionStore } from '../../store/session-store.js';
+import { useExerciseStore } from '../../store/exercise-store.js';
 import { dayLabel } from '../../store/training-plan-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { CreateSessionModal } from './create-session-modal.jsx';
+import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
 
 const DAY_KIND_OPTIONS = [
   { id: 'rest', name: 'Descanso' },
@@ -11,217 +18,45 @@ const DAY_KIND_OPTIONS = [
   { id: 'training', name: 'Entrenamiento' },
 ];
 
-const WARMCOOL_KIND_OPTIONS = [
-  { id: 'walking', name: 'Caminata' },
-  { id: 'jogging', name: 'Trote suave' },
-  { id: 'elongation', name: 'Elongación' },
-];
+// Mini-preview de lo que trae una sesión elegida (warmup/main/cooldown,
+// con sus íconos por tipo) — para no tener que abrir el detalle del plan
+// recién guardado solo para confirmar qué se está por asignar a ese día.
+function SessionPreview({ session }) {
+  const exercises = useExerciseStore((s) => s.exercises);
+  if (!session) return null;
 
-const MAIN_KIND_OPTIONS = [
-  { id: 'cruising', name: 'Ritmo continuo' },
-  { id: 'walking', name: 'Caminata' },
-  { id: 'jogging', name: 'Trote suave' },
-  { id: 'set', name: 'Serie (repeticiones)' },
-];
-
-const SET_KIND_OPTIONS = [
-  { id: 'walking', name: 'Caminata' },
-  { id: 'jogging', name: 'Trote suave' },
-  { id: 'running', name: 'Corrida' },
-];
-
-const DEFAULT_SESSION = {
-  warmup: { kind: 'walking', minutes: 5 },
-  main: { kind: 'jogging', minutes: 20 },
-  cooldown: { kind: 'elongation' },
-};
-
-function WarmcoolBlockEditor({ idPrefix, label, block, onChange }) {
-  const kind = block?.kind ?? 'walking';
-  const showMinutes = kind === 'walking' || kind === 'jogging';
+  const warmup = exercises.find((e) => e.id === session.warmupExerciseId);
+  const main = exercises.find((e) => e.id === session.mainExerciseId);
+  const cooldown = exercises.find((e) => e.id === session.cooldownExerciseId);
+  const idPrefix = `session-preview-${session.id}`;
 
   return (
-    <SectionCard icon="timer-sand" title={label}>
-      <Row narrowClassName="gap-3">
-        <Col>
-          <PickerField
-            dense
-            hideErrorRow
-            className="mb-0"
-            label="Tipo"
-            onChange={(value) => onChange({ kind: value, minutes: value === 'elongation' ? undefined : (block?.minutes ?? 5) })}
-            options={WARMCOOL_KIND_OPTIONS}
-            value={kind}
-          />
-        </Col>
-        {showMinutes && (
-          <Col>
-            <InputField
-              dense
-              hideErrorRow
-              className="mb-0"
-              keyboardType="number-pad"
-              label="Minutos"
-              onChange={(text) => onChange({ ...block, minutes: text === '' ? null : Number(text) })}
-              value={block?.minutes != null ? String(block.minutes) : ''}
-            />
-          </Col>
-        )}
-      </Row>
-    </SectionCard>
-  );
-}
-
-function SetBlockEditor({ set, onChange }) {
-  const kind = set?.kind ?? 'running';
-  const showMinutes = kind === 'walking' || kind === 'jogging';
-  const showRunningFields = kind === 'running';
-
-  return (
-    <View className="mt-3 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="plan-set-block" testID="plan-set-block">
-      <Row narrowClassName="gap-3">
-        <Col>
-          <InputField
-            dense
-            hideErrorRow
-            className="mb-0"
-            keyboardType="number-pad"
-            label="Repeticiones"
-            onChange={(text) => onChange({ ...set, repeatCount: text === '' ? null : Number(text) })}
-            value={set?.repeatCount != null ? String(set.repeatCount) : ''}
-          />
-        </Col>
-        <Col>
-          <InputField
-            dense
-            hideErrorRow
-            className="mb-0"
-            keyboardType="number-pad"
-            label="Descanso entre series (min)"
-            onChange={(text) => onChange({ ...set, restMinutes: text === '' ? null : Number(text) })}
-            value={set?.restMinutes != null ? String(set.restMinutes) : ''}
-          />
-        </Col>
-      </Row>
-
-      <PickerField
-        dense
-        hideErrorRow
-        className="mb-0"
-        label="Tipo de serie"
-        onChange={(value) => onChange({ ...set, kind: value })}
-        options={SET_KIND_OPTIONS}
-        value={kind}
-      />
-
-      {showMinutes && (
-        <InputField
-          dense
-          hideErrorRow
-          className="mb-0"
-          keyboardType="number-pad"
-          label="Minutos"
-          onChange={(text) => onChange({ ...set, minutes: text === '' ? null : Number(text) })}
-          value={set?.minutes != null ? String(set.minutes) : ''}
-        />
-      )}
-
-      {showRunningFields && (
-        <Row narrowClassName="gap-3">
-          <Col>
-            <InputField
-              dense
-              hideErrorRow
-              className="mb-0"
-              keyboardType="number-pad"
-              label="Distancia (m)"
-              onChange={(text) => onChange({ ...set, distanceM: text === '' ? null : Number(text) })}
-              value={set?.distanceM != null ? String(set.distanceM) : ''}
-            />
-          </Col>
-          <Col>
-            <InputField
-              dense
-              hideErrorRow
-              className="mb-0"
-              keyboardType="number-pad"
-              label="Velocidad (km/h)"
-              onChange={(text) => onChange({ ...set, speedKph: text === '' ? null : Number(text) })}
-              value={set?.speedKph != null ? String(set.speedKph) : ''}
-            />
-          </Col>
-        </Row>
-      )}
+    <View className="mt-2 flex-row flex-wrap gap-1.5" nativeID={idPrefix} testID={idPrefix}>
+      {[warmup, main, cooldown].filter(Boolean).map((exercise, i) => {
+        const meta = EXERCISE_KIND_META[exercise.kind];
+        const label = exercise === main && session.mainRepeatCount > 1 ? `${session.mainRepeatCount}× ${exercise.name}` : exercise.name;
+        return (
+          <View className={`flex-row items-center gap-1 rounded-full px-2.5 py-1 ${meta.bg}`} key={`${idPrefix}-${i}`} nativeID={`${idPrefix}-${i}`} testID={`${idPrefix}-${i}`}>
+            <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={12} />
+            <Text className={`text-xs font-medium ${meta.text}`} nativeID={`${idPrefix}-${i}-label`} testID={`${idPrefix}-${i}-label`}>{label}</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
-function MainBlockEditor({ block, onChange }) {
-  const kind = block?.kind ?? 'cruising';
-  const showDistance = kind === 'cruising';
-  const showMinutes = kind === 'walking' || kind === 'jogging';
-  const showSet = kind === 'set';
-
-  return (
-    <SectionCard icon="run-fast" title="Bloque principal">
-      <PickerField
-        dense
-        hideErrorRow
-        className="mb-0"
-        label="Tipo"
-        onChange={(value) => onChange({
-          kind: value,
-          distanceM: value === 'cruising' ? (block?.distanceM ?? 3000) : undefined,
-          minutes: value === 'walking' || value === 'jogging' ? (block?.minutes ?? 20) : undefined,
-          set: value === 'set' ? (block?.set ?? { repeatCount: 4, restMinutes: 2, kind: 'running', distanceM: 400, speedKph: 10 }) : undefined,
-        })}
-        options={MAIN_KIND_OPTIONS}
-        value={kind}
-      />
-
-      {showDistance && (
-        <View className="mt-3" nativeID="plan-main-distance-wrapper" testID="plan-main-distance-wrapper">
-          <InputField
-            dense
-            hideErrorRow
-            className="mb-0"
-            keyboardType="number-pad"
-            label="Distancia (m)"
-            onChange={(text) => onChange({ ...block, distanceM: text === '' ? null : Number(text) })}
-            value={block?.distanceM != null ? String(block.distanceM) : ''}
-          />
-        </View>
-      )}
-
-      {showMinutes && (
-        <View className="mt-3" nativeID="plan-main-minutes-wrapper" testID="plan-main-minutes-wrapper">
-          <InputField
-            dense
-            hideErrorRow
-            className="mb-0"
-            keyboardType="number-pad"
-            label="Minutos"
-            onChange={(text) => onChange({ ...block, minutes: text === '' ? null : Number(text) })}
-            value={block?.minutes != null ? String(block.minutes) : ''}
-          />
-        </View>
-      )}
-
-      {showSet && <SetBlockEditor onChange={(set) => onChange({ ...block, set })} set={block?.set} />}
-    </SectionCard>
-  );
-}
-
-function DayCard({ day, onChangeDay }) {
+function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
   const idPrefix = `plan-day-${day.sequenceNo}`;
+  const selectedSession = sessions.find((s) => s.id === day.sessionId);
 
   const handleKindChange = (kind) => {
     if (kind === 'training') {
-      onChangeDay({ kind, otherName: null, session: day.session ?? DEFAULT_SESSION });
+      onChangeDay({ kind, otherName: null, sessionId: day.sessionId });
     } else if (kind === 'other') {
-      onChangeDay({ kind, otherName: day.otherName ?? '', session: null });
+      onChangeDay({ kind, otherName: day.otherName ?? '', sessionId: null });
     } else {
-      onChangeDay({ kind, otherName: null, session: null });
+      onChangeDay({ kind, otherName: null, sessionId: null });
     }
   };
 
@@ -251,31 +86,62 @@ function DayCard({ day, onChangeDay }) {
       )}
 
       {day.kind === 'training' && (
-        <View className="mt-2 gap-3" nativeID={`${idPrefix}-session`} testID={`${idPrefix}-session`}>
-          <WarmcoolBlockEditor
-            block={day.session?.warmup}
-            idPrefix={`${idPrefix}-warmup`}
-            label="Entrada en calor"
-            onChange={(warmup) => onChangeDay({ session: { ...day.session, warmup } })}
-          />
-          <MainBlockEditor block={day.session?.main} onChange={(main) => onChangeDay({ session: { ...day.session, main } })} />
-          <WarmcoolBlockEditor
-            block={day.session?.cooldown}
-            idPrefix={`${idPrefix}-cooldown`}
-            label="Vuelta a la calma"
-            onChange={(cooldown) => onChangeDay({ session: { ...day.session, cooldown } })}
-          />
+        <View className="mt-2" nativeID={`${idPrefix}-session-picker`} testID={`${idPrefix}-session-picker`}>
+          <Row narrowClassName="gap-3">
+            <Col flex={2}>
+              <ResponsiveSelectField
+                dense
+                label="Sesión"
+                onChange={(sessionId) => onChangeDay({ sessionId })}
+                options={sessions.map((s) => ({ id: s.id, name: s.name }))}
+                placeholder={sessions.length ? 'Elegí una sesión' : 'Todavía no creaste ninguna sesión'}
+                value={day.sessionId ?? ''}
+              />
+            </Col>
+            <Col flex={1}>
+              <Pressable
+                className="mb-3 h-12 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary px-3 hover:bg-primary-tint-subtle active:opacity-70 dark:hover:bg-primary/10"
+                nativeID={`${idPrefix}-create-session-button`}
+                onPress={onRequestCreateSession}
+                testID={`${idPrefix}-create-session-button`}
+              >
+                <MaterialCommunityIcons color="#8cc63e" name="plus" size={16} />
+                <Text className="text-xs font-semibold text-primary" nativeID={`${idPrefix}-create-session-button-label`} testID={`${idPrefix}-create-session-button-label`}>Crear sesión</Text>
+              </Pressable>
+            </Col>
+          </Row>
+          <SessionPreview session={selectedSession} />
         </View>
       )}
     </View>
   );
 }
 
-// Constructor de los 7 días fijos del plan — un DayCard por día, cada uno
-// con su selector de tipo y (si es "Entrenamiento") sus 3 sub-bloques.
-// Compartido por CreateTrainingPlanScreen y EditTrainingPlanScreen, mismo
-// patrón que TeamGeneralInfoFields con useTeamGeneralInfoForm.
+// Constructor de los 7 días fijos del plan. Un día de tipo "Entrenamiento"
+// ELIGE una sesión ya creada (catálogo del entrenador) en vez de armar
+// warmup/main/cooldown de cero cada vez — ver enmienda 2026-08-26 de
+// docs/superpowers/specs/2026-08-26-training-plans-design.md. El botón
+// "Crear sesión" abre un modal (CreateSessionModal) para no perder el
+// plan a medio armar navegando a otra pantalla.
 export function TrainingPlanFormFields({ form, durationOptions }) {
+  const user = useAuthStore((s) => s.user);
+  const sessions = useSessionStore((s) => s.sessions);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
+  const [createSessionTargetDay, setCreateSessionTargetDay] = useState(null);
+
+  useEffect(() => {
+    if (!user?.userId) return;
+    fetchSessions(user.userId);
+    fetchExercises(user.userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId]);
+
+  const handleSessionCreated = (session) => {
+    if (createSessionTargetDay != null) form.updateDay(createSessionTargetDay, { sessionId: session.id });
+    setCreateSessionTargetDay(null);
+  };
+
   return (
     <>
       <SectionCard icon="clipboard-text-outline" title="Datos del plan">
@@ -297,9 +163,21 @@ export function TrainingPlanFormFields({ form, durationOptions }) {
           </View>
         )}
         {form.days.map((day) => (
-          <DayCard day={day} key={day.sequenceNo} onChangeDay={(updates) => form.updateDay(day.sequenceNo, updates)} />
+          <DayCard
+            day={day}
+            key={day.sequenceNo}
+            onChangeDay={(updates) => form.updateDay(day.sequenceNo, updates)}
+            onRequestCreateSession={() => setCreateSessionTargetDay(day.sequenceNo)}
+            sessions={sessions}
+          />
         ))}
       </SectionCard>
+
+      <CreateSessionModal
+        onClose={() => setCreateSessionTargetDay(null)}
+        onCreated={handleSessionCreated}
+        visible={createSessionTargetDay != null}
+      />
     </>
   );
 }

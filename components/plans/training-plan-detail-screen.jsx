@@ -7,73 +7,114 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTrainingPlanStore, getPlanStatus, dayLabel } from '../../store/training-plan-store.js';
+import { useSessionStore } from '../../store/session-store.js';
+import { useExerciseStore } from '../../store/exercise-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
-
-const DAY_KIND_LABELS = { rest: 'Descanso', marathon: 'Maratón', other: 'Otra actividad', training: 'Entrenamiento' };
-const WARMCOOL_LABELS = { walking: 'Caminata', jogging: 'Trote suave', elongation: 'Elongación' };
-const MAIN_LABELS = { cruising: 'Ritmo continuo', walking: 'Caminata', jogging: 'Trote suave', set: 'Serie' };
-const SET_LABELS = { walking: 'Caminata', jogging: 'Trote suave', running: 'Corrida' };
+import { EXERCISE_KIND_META, DAY_KIND_META } from './exercise-kind-meta.js';
 
 const STATUS_META = {
   activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
   vencido: { label: 'Vencido', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
 };
 
-function describeWarmcool(block) {
-  if (!block) return '—';
-  if (block.kind === 'elongation') return WARMCOOL_LABELS.elongation;
-  return `${WARMCOOL_LABELS[block.kind] ?? block.kind} · ${block.minutes ?? '—'} min`;
-}
+// Fila de ejercicio individual, "al estilo gimnasio" — ícono + color por
+// tipo (EXERCISE_KIND_META), nombre, y el dato que importa (minutos,
+// distancia, velocidad). `repeatCount` > 1 es una serie: se antepone
+// "N ×" al nombre y se suma el descanso entre repeticiones.
+function ExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restMinutes = 0 }) {
+  if (!exercise) return null;
+  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
+  const statParts = [];
+  if (exercise.minutes != null) statParts.push(`${exercise.minutes} min`);
+  if (exercise.distanceM != null) statParts.push(`${exercise.distanceM} m`);
+  if (exercise.speedKph != null) statParts.push(`${exercise.speedKph} km/h`);
+  if (repeatCount > 1) statParts.push(`descanso ${restMinutes} min entre series`);
 
-function describeSet(set) {
-  if (!set) return '—';
-  const detail = set.kind === 'running'
-    ? `${SET_LABELS.running} · ${set.distanceM ?? '—'} m a ${set.speedKph ?? '—'} km/h`
-    : `${SET_LABELS[set.kind] ?? set.kind} · ${set.minutes ?? '—'} min`;
-  return `${set.repeatCount ?? '—'} × (${detail}), descanso ${set.restMinutes ?? '—'} min`;
-}
-
-function describeMain(block) {
-  if (!block) return '—';
-  if (block.kind === 'cruising') return `${MAIN_LABELS.cruising} · ${block.distanceM ?? '—'} m`;
-  if (block.kind === 'set') return `${MAIN_LABELS.set}: ${describeSet(block.set)}`;
-  return `${MAIN_LABELS[block.kind] ?? block.kind} · ${block.minutes ?? '—'} min`;
-}
-
-function DayRow({ day }) {
-  const idPrefix = `plan-detail-day-${day.sequenceNo}`;
   return (
-    <View className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <View className="mb-1 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+    <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
+      <View className={`h-9 w-9 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
+        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
+      </View>
+      <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
+        <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-role`} testID={`${idPrefix}-role`}>
+          {roleLabel}
+        </Text>
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
+          {repeatCount > 1 ? `${repeatCount} × ` : ''}{exercise.name}
+        </Text>
+        {statParts.length > 0 && (
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} testID={`${idPrefix}-stat`}>
+            {statParts.join(' · ')}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// Un día se despliega al tocarlo — pedido explícito del usuario: "cuando
+// hagas click en el div del plan se desplieguen cada uno de los
+// ejercicios individualmente, al estilo de cuando ves los ejercicios de
+// una sesión en un gimnasio". Colapsado muestra el tipo de día (con su
+// color/ícono, DAY_KIND_META) y, si es un día de entrenamiento, el
+// nombre de la sesión; expandido muestra warmup/principal/vuelta a la
+// calma como filas propias (ExerciseRow). Solo un día de entrenamiento
+// con sesión resuelta tiene algo para desplegar — los demás no muestran
+// chevron ni responden al toque.
+function DayRow({ day, session, exercisesById }) {
+  const [expanded, setExpanded] = useState(false);
+  const idPrefix = `plan-detail-day-${day.sequenceNo}`;
+  const kindMeta = DAY_KIND_META[day.kind] ?? DAY_KIND_META.rest;
+  const canExpand = day.kind === 'training' && Boolean(session);
+
+  const header = (
+    <View className="flex-1 flex-row items-center gap-3" nativeID={`${idPrefix}-header-content`} testID={`${idPrefix}-header-content`}>
+      <View className={`h-9 w-9 items-center justify-center rounded-full ${kindMeta.bg}`} nativeID={`${idPrefix}-kind-icon`} testID={`${idPrefix}-kind-icon`}>
+        <MaterialCommunityIcons color={kindMeta.iconColor} name={kindMeta.icon} size={16} />
+      </View>
+      <View className="flex-1" nativeID={`${idPrefix}-label-group`} testID={`${idPrefix}-label-group`}>
         <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
           {dayLabel(day.dayOfWeek)}
         </Text>
-        <View className="rounded-full bg-slate-200 px-2.5 py-1 dark:bg-slate-800" nativeID={`${idPrefix}-kind-tag`} testID={`${idPrefix}-kind-tag`}>
-          <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-kind-tag-label`} testID={`${idPrefix}-kind-tag-label`}>
-            {DAY_KIND_LABELS[day.kind] ?? day.kind}
-          </Text>
-        </View>
-      </View>
-
-      {day.kind === 'other' && (
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-other-name`} testID={`${idPrefix}-other-name`}>
-          {day.otherName}
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-subtitle`} testID={`${idPrefix}-subtitle`}>
+          {day.kind === 'other' ? day.otherName : day.kind === 'training' ? (session?.name ?? 'Sesión no encontrada') : kindMeta.label}
         </Text>
-      )}
+      </View>
+    </View>
+  );
 
-      {day.kind === 'training' && day.session && (
-        <View className="gap-0.5" nativeID={`${idPrefix}-session`} testID={`${idPrefix}-session`}>
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-warmup`} testID={`${idPrefix}-warmup`}>
-            Entrada en calor: {describeWarmcool(day.session.warmup)}
-          </Text>
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-main`} testID={`${idPrefix}-main`}>
-            Principal: {describeMain(day.session.main)}
-          </Text>
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-cooldown`} testID={`${idPrefix}-cooldown`}>
-            Vuelta a la calma: {describeWarmcool(day.session.cooldown)}
-          </Text>
+  if (!canExpand) {
+    return (
+      <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+        {header}
+      </View>
+    );
+  }
+
+  const warmupExercise = exercisesById.get(session.warmupExerciseId);
+  const mainExercise = exercisesById.get(session.mainExerciseId);
+  const cooldownExercise = exercisesById.get(session.cooldownExerciseId);
+
+  return (
+    <View className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <Pressable
+        accessibilityLabel={expanded ? 'Ocultar ejercicios de la sesión' : 'Ver ejercicios de la sesión'}
+        className="flex-row items-center gap-2 px-4 py-3 active:opacity-80"
+        nativeID={`${idPrefix}-toggle`}
+        onPress={() => setExpanded((v) => !v)}
+        testID={`${idPrefix}-toggle`}
+      >
+        {header}
+        <MaterialCommunityIcons color="#94a3b8" name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
+      </Pressable>
+
+      {expanded && (
+        <View className="gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-700" nativeID={`${idPrefix}-exercises`} testID={`${idPrefix}-exercises`}>
+          <ExerciseRow exercise={warmupExercise} idPrefix={`${idPrefix}-warmup`} roleLabel="Entrada en calor" />
+          <ExerciseRow exercise={mainExercise} idPrefix={`${idPrefix}-main`} repeatCount={session.mainRepeatCount} restMinutes={session.mainRestMinutes} roleLabel="Principal" />
+          <ExerciseRow exercise={cooldownExercise} idPrefix={`${idPrefix}-cooldown`} roleLabel="Vuelta a la calma" />
         </View>
       )}
     </View>
@@ -89,10 +130,24 @@ function TrainingPlanDetailScreenContent({ planId }) {
   const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
   const deletePlan = useTrainingPlanStore((s) => s.deletePlan);
   const clonePlan = useTrainingPlanStore((s) => s.clonePlan);
+  const sessions = useSessionStore((s) => s.sessions);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const exercises = useExerciseStore((s) => s.exercises);
+  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
 
   const [loading, setLoading] = useState(!plan);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [cloning, setCloning] = useState(false);
+
+  // Sesiones/ejercicios son del catálogo de QUIEN CREÓ el plan
+  // (plan.ownerId) — no del usuario que está mirando la pantalla, que
+  // puede ser un corredor viendo un plan que no es suyo.
+  useEffect(() => {
+    if (!plan?.ownerId) return;
+    fetchSessions(plan.ownerId);
+    fetchExercises(plan.ownerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.ownerId]);
 
   useEffect(() => {
     if (plan) {
@@ -140,6 +195,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   const canManage = activeRole === 'trainer' && plan.ownerId === user?.userId;
   const status = getPlanStatus(plan);
   const statusMeta = STATUS_META[status];
+  const exercisesById = new Map(exercises.map((e) => [e.id, e]));
 
   const handleClone = async () => {
     if (cloning) return;
@@ -255,7 +311,12 @@ function TrainingPlanDetailScreenContent({ planId }) {
         <SectionCard icon="calendar-week" title="Los 7 días de la semana">
           <View className="gap-2" nativeID="training-plan-detail-days-list" testID="training-plan-detail-days-list">
             {plan.days.map((day) => (
-              <DayRow day={day} key={day.sequenceNo} />
+              <DayRow
+                day={day}
+                exercisesById={exercisesById}
+                key={day.sequenceNo}
+                session={sessions.find((s) => s.id === day.sessionId)}
+              />
             ))}
           </View>
         </SectionCard>
