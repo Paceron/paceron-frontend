@@ -14,4 +14,24 @@ Doc de seguimiento interno — refleja únicamente los gaps de backend **actualm
 
 **Actualización 2026-08-08:** gap 2 (lookup de usuarios en lote) — **RESUELTO**, `GET /users?ids=1,2,3` existe (hasta 50 ids). `hooks/use-team-roster.js` dejó el fan-out N+1 contra `GET /auth/user?id=` y pasa a resolver todo el roster en una sola llamada (`services/user.js#batchLookupUsers`).
 
-Sin gaps abiertos por ahora — los próximos (foto de equipo, plan de entrenamiento en el grupo) siguen deliberadamente excluidos hasta que el usuario los retome (ver actualización 2026-08-02 arriba).
+**Actualización 2026-08-26:** el usuario retomó plan de entrenamiento (ver
+`docs/superpowers/specs/2026-08-26-training-plans-design.md`) — se abre
+como gap propio:
+
+## Gap 4 — planes de entrenamiento: sin dominio en el backend real
+
+No existe ningún endpoint de planes de entrenamiento en el backend real
+(ni el plan en sí, ni su asignación a un grupo o a un corredor). El
+módulo completo (`store/training-plan-store.js`,
+`services/trainingPlans.js`) corre 100% contra
+`services/__mocks__/training-plans-mock.js` — `services/trainingPlans.js`
+ya tiene las rutas REST esperadas comentadas (`/training-plans`, mismo
+estilo que `services/teams.js`) para cuando el backend las implemente,
+pero hoy son inalcanzables (`USE_MOCKS` siempre gana acá, no hay branch
+real que probar). La asignación a un **grupo** reusa el campo
+`trainingPlanId` que ya existía en `toGroupModel` (`store/team-store.js`)
+y que hasta ahora quedaba siempre `null` por este mismo motivo — sigue
+sin campo real en `group`. La asignación a un **corredor individual** es
+relación nueva, sin ningún equivalente en el backend hoy.
+
+Sin gap abierto de foto de equipo — sigue deliberadamente excluido hasta que el usuario lo retome (ver actualización 2026-08-02 arriba).

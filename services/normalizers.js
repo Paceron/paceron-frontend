@@ -203,3 +203,130 @@ export function toInvitePayload(email, groupId) {
   if (groupId) payload.group_id = Number(groupId);
   return payload;
 }
+
+// ---------------------------------------------------------------------
+// Ejercicios y sesiones — catálogo reusable del entrenador (enmienda
+// 2026-08-26 de docs/superpowers/specs/2026-08-26-training-plans-design.md).
+// Un ejercicio es un tipo hoja del schema SQL de referencia (walking/
+// jogging/elongation/cruising/running) + sus atributos; una sesión arma
+// los 3 bloques fijos (warmup/main/cooldown) REFERENCIANDO ejercicios ya
+// creados, no construyéndolos de cero — un plan a su vez referencia una
+// sesión por cada día de entrenamiento (ver toPlanDayModel/Payload).
+// ---------------------------------------------------------------------
+
+export function toExerciseModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    ownerId: dto.owner_id,
+    name: dto.name,
+    kind: dto.kind,
+    minutes: dto.minutes ?? null,
+    distanceM: dto.distance_m ?? null,
+    speedKph: dto.speed_kph ?? null,
+    videoUrl: dto.video_url ?? null,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateExercisePayload(form) {
+  const payload = { owner_id: form.ownerId, name: form.name, kind: form.kind };
+  if (form.minutes != null) payload.minutes = form.minutes;
+  if (form.distanceM != null) payload.distance_m = form.distanceM;
+  if (form.speedKph != null) payload.speed_kph = form.speedKph;
+  return payload;
+}
+
+export function toSessionModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    ownerId: dto.owner_id,
+    name: dto.name,
+    description: dto.description,
+    warmupExerciseId: String(dto.warmup_exercise_id),
+    mainExerciseId: String(dto.main_exercise_id),
+    mainRepeatCount: dto.main_repeat_count ?? 1,
+    mainRestMinutes: dto.main_rest_minutes ?? 0,
+    cooldownExerciseId: String(dto.cooldown_exercise_id),
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateSessionPayload(form) {
+  return {
+    owner_id: form.ownerId,
+    name: form.name,
+    description: form.description || null,
+    warmup_exercise_id: Number(form.warmupExerciseId),
+    main_exercise_id: Number(form.mainExerciseId),
+    main_repeat_count: form.mainRepeatCount ?? 1,
+    main_rest_minutes: form.mainRestMinutes ?? 0,
+    cooldown_exercise_id: Number(form.cooldownExerciseId),
+  };
+}
+
+function toPlanDayModel(dto) {
+  return {
+    sequenceNo: dto.sequence_no,
+    dayOfWeek: dto.day_of_week,
+    kind: dto.kind,
+    otherName: dto.other_name ?? null,
+    sessionId: dto.session_id != null ? String(dto.session_id) : null,
+  };
+}
+
+function toPlanDayPayload(day) {
+  return {
+    sequence_no: day.sequenceNo,
+    day_of_week: day.dayOfWeek,
+    kind: day.kind,
+    other_name: day.kind === 'other' ? day.otherName : null,
+    session_id: day.kind === 'training' && day.sessionId ? Number(day.sessionId) : null,
+  };
+}
+
+export function toTrainingPlanModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    ownerId: dto.owner_id,
+    name: dto.name,
+    description: dto.description,
+    durationDays: dto.duration_days,
+    days: (dto.days ?? []).map(toPlanDayModel),
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+export function toCreateTrainingPlanPayload(form) {
+  return {
+    owner_id: form.ownerId,
+    name: form.name,
+    description: form.description || null,
+    duration_days: form.durationDays,
+    days: form.days.map(toPlanDayPayload),
+  };
+}
+
+export function toUpdateTrainingPlanPayload(form) {
+  const payload = {};
+  if (form.name !== undefined) payload.name = form.name;
+  if (form.description !== undefined) payload.description = form.description || null;
+  if (form.durationDays !== undefined) payload.duration_days = form.durationDays;
+  if (form.days !== undefined) payload.days = form.days.map(toPlanDayPayload);
+  return payload;
+}
+
+export function toRunnerPlanAssignmentModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    planId: String(dto.plan_id),
+    userId: dto.user_id,
+    assignedAt: dto.assigned_at,
+  };
+}

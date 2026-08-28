@@ -444,4 +444,19 @@ export const useTeamStore = create((set, get) => ({
       return { success: false, error: error.message };
     }
   },
+
+  // Asigna (o, con planId null, desasigna) un plan de entrenamiento a un
+  // grupo — 100% local, el backend real no tiene este campo todavía (ver
+  // docs/BACKEND_API_GAPS.md gap 4). Un grupo tiene un solo plan asignado
+  // a la vez: asignar uno nuevo reemplaza al anterior, no se apila. Vive
+  // acá (no en training-plan-store.js) porque `groups` es estado que ya
+  // administra este store — un solo lugar escribe sobre él.
+  setGroupTrainingPlan: (teamId, groupId, planId) => {
+    set((state) => ({
+      teams: state.teams.map((t) => {
+        if (t.id !== teamId) return t;
+        return { ...t, groups: t.groups.map((g) => (g.id === groupId ? { ...g, trainingPlanId: planId } : g)) };
+      }),
+    }));
+  },
 }));
