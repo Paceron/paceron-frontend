@@ -28,9 +28,11 @@ export function dayLabel(dayOfWeek) {
 
 // Arma los 7 días vacíos (todos "rest") en el orden fijo lunes→domingo —
 // punto de partida al crear un plan nuevo, para que el formulario siempre
-// tenga la estructura completa desde el primer render.
+// tenga la estructura completa desde el primer render. Un día
+// "training" referencia una sesión del catálogo (sessionId), no la
+// construye inline — ver enmienda 2026-08-26 de la spec.
 export function buildEmptyPlanDays() {
-  return DAY_ORDER.map((dayOfWeek, i) => ({ sequenceNo: i + 1, dayOfWeek, kind: 'rest', otherName: null, session: null }));
+  return DAY_ORDER.map((dayOfWeek, i) => ({ sequenceNo: i + 1, dayOfWeek, kind: 'rest', otherName: null, sessionId: null }));
 }
 
 // activo/vencido — se deriva en el momento de mostrarlo, no se guarda.

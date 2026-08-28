@@ -20,8 +20,8 @@ export function useTrainingPlanForm({ initial, ownerId } = {}) {
     const next = {};
     if (!name.trim()) next.name = 'Ingresá un nombre para el plan.';
 
-    const trainingDaysWithoutSession = days.some((d) => d.kind === 'training' && !d.session);
-    if (trainingDaysWithoutSession) next.days = 'Completá los 3 bloques (entrada en calor, principal, vuelta a la calma) de cada día de entrenamiento.';
+    const trainingDaysWithoutSession = days.some((d) => d.kind === 'training' && !d.sessionId);
+    if (trainingDaysWithoutSession) next.days = 'Elegí una sesión para cada día de entrenamiento (o creá una nueva con el botón "Crear sesión").';
 
     const otherDaysWithoutName = days.some((d) => d.kind === 'other' && !d.otherName?.trim());
     if (otherDaysWithoutName) next.days = 'Ingresá el nombre de la actividad en los días marcados como "Otra actividad".';

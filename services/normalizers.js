@@ -205,80 +205,66 @@ export function toInvitePayload(email, groupId) {
 }
 
 // ---------------------------------------------------------------------
-// Planes de entrenamiento — ver
-// docs/superpowers/specs/2026-08-26-training-plans-design.md. Los blocks
-// (warmup/cooldown/main/set) son la traducción 1:1 del arco exclusivo del
-// schema SQL de referencia: `kind` + los atributos que correspondan a ese
-// kind nada más, sin FKs nullable (acá no hace falta, no es SQL).
+// Ejercicios y sesiones — catálogo reusable del entrenador (enmienda
+// 2026-08-26 de docs/superpowers/specs/2026-08-26-training-plans-design.md).
+// Un ejercicio es un tipo hoja del schema SQL de referencia (walking/
+// jogging/elongation/cruising/running) + sus atributos; una sesión arma
+// los 3 bloques fijos (warmup/main/cooldown) REFERENCIANDO ejercicios ya
+// creados, no construyéndolos de cero — un plan a su vez referencia una
+// sesión por cada día de entrenamiento (ver toPlanDayModel/Payload).
 // ---------------------------------------------------------------------
 
-function toWarmcoolBlockModel(dto) {
-  if (!dto) return null;
-  return { kind: dto.kind, minutes: dto.minutes ?? null };
-}
-
-function toWarmcoolBlockPayload(block) {
-  if (!block) return null;
-  const payload = { kind: block.kind };
-  if (block.minutes != null) payload.minutes = block.minutes;
-  return payload;
-}
-
-function toSetBlockModel(dto) {
+export function toExerciseModel(dto) {
   if (!dto) return null;
   return {
-    repeatCount: dto.repeat_count,
-    restMinutes: dto.rest_minutes,
+    id: String(dto.id),
+    ownerId: dto.owner_id,
+    name: dto.name,
     kind: dto.kind,
     minutes: dto.minutes ?? null,
     distanceM: dto.distance_m ?? null,
     speedKph: dto.speed_kph ?? null,
+    videoUrl: dto.video_url ?? null,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
   };
 }
 
-function toSetBlockPayload(set) {
-  if (!set) return null;
-  const payload = { repeat_count: set.repeatCount, rest_minutes: set.restMinutes, kind: set.kind };
-  if (set.minutes != null) payload.minutes = set.minutes;
-  if (set.distanceM != null) payload.distance_m = set.distanceM;
-  if (set.speedKph != null) payload.speed_kph = set.speedKph;
+export function toCreateExercisePayload(form) {
+  const payload = { owner_id: form.ownerId, name: form.name, kind: form.kind };
+  if (form.minutes != null) payload.minutes = form.minutes;
+  if (form.distanceM != null) payload.distance_m = form.distanceM;
+  if (form.speedKph != null) payload.speed_kph = form.speedKph;
   return payload;
 }
 
-function toMainBlockModel(dto) {
+export function toSessionModel(dto) {
   if (!dto) return null;
   return {
-    kind: dto.kind,
-    distanceM: dto.distance_m ?? null,
-    minutes: dto.minutes ?? null,
-    set: toSetBlockModel(dto.set),
+    id: String(dto.id),
+    ownerId: dto.owner_id,
+    name: dto.name,
+    description: dto.description,
+    warmupExerciseId: String(dto.warmup_exercise_id),
+    mainExerciseId: String(dto.main_exercise_id),
+    mainRepeatCount: dto.main_repeat_count ?? 1,
+    mainRestMinutes: dto.main_rest_minutes ?? 0,
+    cooldownExerciseId: String(dto.cooldown_exercise_id),
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
   };
 }
 
-function toMainBlockPayload(main) {
-  if (!main) return null;
-  const payload = { kind: main.kind };
-  if (main.distanceM != null) payload.distance_m = main.distanceM;
-  if (main.minutes != null) payload.minutes = main.minutes;
-  if (main.set) payload.set = toSetBlockPayload(main.set);
-  return payload;
-}
-
-function toTrainingSessionModel(dto) {
-  if (!dto) return null;
+export function toCreateSessionPayload(form) {
   return {
-    warmup: toWarmcoolBlockModel(dto.warmup),
-    main: toMainBlockModel(dto.main),
-    cooldown: toWarmcoolBlockModel(dto.cooldown),
-  };
-}
-
-function toTrainingSessionPayload(session) {
-  if (!session) return null;
-  return {
-    warmup: toWarmcoolBlockPayload(session.warmup),
-    main: toMainBlockPayload(session.main),
-    cooldown: toWarmcoolBlockPayload(session.cooldown),
+    owner_id: form.ownerId,
+    name: form.name,
+    description: form.description || null,
+    warmup_exercise_id: Number(form.warmupExerciseId),
+    main_exercise_id: Number(form.mainExerciseId),
+    main_repeat_count: form.mainRepeatCount ?? 1,
+    main_rest_minutes: form.mainRestMinutes ?? 0,
+    cooldown_exercise_id: Number(form.cooldownExerciseId),
   };
 }
 
@@ -288,7 +274,7 @@ function toPlanDayModel(dto) {
     dayOfWeek: dto.day_of_week,
     kind: dto.kind,
     otherName: dto.other_name ?? null,
-    session: toTrainingSessionModel(dto.session),
+    sessionId: dto.session_id != null ? String(dto.session_id) : null,
   };
 }
 
@@ -298,7 +284,7 @@ function toPlanDayPayload(day) {
     day_of_week: day.dayOfWeek,
     kind: day.kind,
     other_name: day.kind === 'other' ? day.otherName : null,
-    session: day.kind === 'training' ? toTrainingSessionPayload(day.session) : null,
+    session_id: day.kind === 'training' && day.sessionId ? Number(day.sessionId) : null,
   };
 }
 

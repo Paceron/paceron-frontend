@@ -6,7 +6,7 @@ import {
 
 function buildValidDays() {
   const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  return daysOfWeek.map((day_of_week, i) => ({ sequence_no: i + 1, day_of_week, kind: 'rest', other_name: null, session: null }));
+  return daysOfWeek.map((day_of_week, i) => ({ sequence_no: i + 1, day_of_week, kind: 'rest', other_name: null, session_id: null }));
 }
 
 beforeEach(() => {
@@ -40,6 +40,26 @@ describe('training-plans-mock', () => {
     const dupDay = buildValidDays();
     dupDay[1].day_of_week = 'monday';
     expect(() => validatePlanDays(dupDay)).toThrow();
+  });
+
+  test('validatePlanDays exige session_id en los días de entrenamiento y other_name en los de otra actividad', () => {
+    const trainingWithoutSession = buildValidDays();
+    trainingWithoutSession[0].kind = 'training';
+    expect(() => validatePlanDays(trainingWithoutSession)).toThrow('sesión para cada día de entrenamiento');
+
+    const trainingWithSession = buildValidDays();
+    trainingWithSession[0].kind = 'training';
+    trainingWithSession[0].session_id = 1;
+    expect(() => validatePlanDays(trainingWithSession)).not.toThrow();
+
+    const otherWithoutName = buildValidDays();
+    otherWithoutName[0].kind = 'other';
+    expect(() => validatePlanDays(otherWithoutName)).toThrow('otra actividad');
+
+    const otherWithName = buildValidDays();
+    otherWithName[0].kind = 'other';
+    otherWithName[0].other_name = 'Natación';
+    expect(() => validatePlanDays(otherWithName)).not.toThrow();
   });
 
   test('mockCreateTrainingPlan agrega un plan nuevo con id incremental', async () => {

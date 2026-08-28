@@ -57,15 +57,13 @@ import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService 
 const PLAN_DTO = {
   id: 1, owner_id: 7, name: 'Base 5K', description: 'desc', duration_days: 7,
   days: [
-    { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session: {
-      warmup: { kind: 'walking', minutes: 5 }, main: { kind: 'cruising', distance_m: 3000 }, cooldown: { kind: 'elongation' },
-    } },
-    { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session: null },
-    { sequence_no: 3, day_of_week: 'wednesday', kind: 'rest', other_name: null, session: null },
-    { sequence_no: 4, day_of_week: 'thursday', kind: 'rest', other_name: null, session: null },
-    { sequence_no: 5, day_of_week: 'friday', kind: 'rest', other_name: null, session: null },
-    { sequence_no: 6, day_of_week: 'saturday', kind: 'rest', other_name: null, session: null },
-    { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session: null },
+    { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session_id: 9 },
+    { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 3, day_of_week: 'wednesday', kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 4, day_of_week: 'thursday', kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 5, day_of_week: 'friday', kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 6, day_of_week: 'saturday', kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session_id: null },
   ],
   created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
 };
@@ -120,7 +118,7 @@ describe('training plan store', () => {
     expect(plans).toHaveLength(1);
     expect(plans[0].id).toBe('1');
     expect(plans[0].days).toHaveLength(7);
-    expect(plans[0].days[0].session.main.distanceM).toBe(3000);
+    expect(plans[0].days[0].sessionId).toBe('9');
   });
 
   test('createPlan agrega el plan creado a la lista', async () => {

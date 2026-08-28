@@ -6,9 +6,11 @@
 // Un plan es siempre 7 días fijos, embebidos directo en el objeto del
 // plan (no hace falta normalizar en tablas separadas como el schema SQL
 // de referencia — eso tenía sentido en Postgres, acá es solo un mock en
-// memoria). Ver docs/superpowers/specs/2026-08-26-training-plans-design.md
-// para la traducción completa de la gramática (arco exclusivo → `kind` +
-// un solo sub-objeto, en vez de FKs nullable).
+// memoria). Un día de tipo "training" referencia una sesión del catálogo
+// (session_id, ver sessions-mock.js) en vez de construirla inline —
+// enmienda 2026-08-26 de docs/superpowers/specs/2026-08-26-training-plans-design.md.
+// session_id 1/2/3 acá abajo son los mismos que siembra sessions-mock.js
+// (Fondo suave / Series de velocidad / Rodaje largo).
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 function buildSeedPlans() {
@@ -23,25 +25,13 @@ function buildSeedPlans() {
       created_at: now,
       updated_at: now,
       days: [
-        { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session: {
-          warmup: { kind: 'walking', minutes: 5 },
-          main: { kind: 'jogging', minutes: 20 },
-          cooldown: { kind: 'elongation' },
-        } },
-        { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session: null },
-        { sequence_no: 3, day_of_week: 'wednesday', kind: 'training', other_name: null, session: {
-          warmup: { kind: 'walking', minutes: 5 },
-          main: { kind: 'set', set: { repeat_count: 4, rest_minutes: 2, kind: 'running', distance_m: 400, speed_kph: 10 } },
-          cooldown: { kind: 'walking', minutes: 5 },
-        } },
-        { sequence_no: 4, day_of_week: 'thursday', kind: 'other', other_name: 'Elongación y movilidad', session: null },
-        { sequence_no: 5, day_of_week: 'friday', kind: 'training', other_name: null, session: {
-          warmup: { kind: 'jogging', minutes: 5 },
-          main: { kind: 'cruising', distance_m: 3000 },
-          cooldown: { kind: 'elongation' },
-        } },
-        { sequence_no: 6, day_of_week: 'saturday', kind: 'rest', other_name: null, session: null },
-        { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session: null },
+        { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session_id: 1 },
+        { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 3, day_of_week: 'wednesday', kind: 'training', other_name: null, session_id: 2 },
+        { sequence_no: 4, day_of_week: 'thursday', kind: 'other', other_name: 'Elongación y movilidad', session_id: null },
+        { sequence_no: 5, day_of_week: 'friday', kind: 'training', other_name: null, session_id: 3 },
+        { sequence_no: 6, day_of_week: 'saturday', kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session_id: null },
       ],
     },
   ];
@@ -78,6 +68,12 @@ export function validatePlanDays(days) {
   const daysOfWeek = new Set(days.map((d) => d.day_of_week));
   if (daysOfWeek.size !== 7 || DAY_ORDER.some((d) => !daysOfWeek.has(d))) {
     throw new Error('Cada día de la semana tiene que aparecer una sola vez.');
+  }
+  if (days.some((d) => d.kind === 'training' && !d.session_id)) {
+    throw new Error('Elegí una sesión para cada día de entrenamiento.');
+  }
+  if (days.some((d) => d.kind === 'other' && !d.other_name)) {
+    throw new Error('Ingresá el nombre de la actividad en los días de "otra actividad".');
   }
 }
 
