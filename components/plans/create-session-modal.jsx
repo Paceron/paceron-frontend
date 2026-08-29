@@ -27,6 +27,7 @@ function ExercisePickerRow({ label, exercises, value, onChange, onRequestCreate 
             onChange={onChange}
             options={exercises.map((e) => ({ id: e.id, name: e.name }))}
             placeholder={exercises.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
+            required
             value={value}
           />
         </Col>

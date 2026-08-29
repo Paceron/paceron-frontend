@@ -71,7 +71,7 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
           </View>
         </Col>
         <Col>
-          <PickerField dense hideErrorRow className="mb-0" label="Tipo de día" onChange={handleKindChange} options={DAY_KIND_OPTIONS} value={day.kind} />
+          <PickerField dense hideErrorRow className="mb-0" label="Tipo de día" onChange={handleKindChange} options={DAY_KIND_OPTIONS} required value={day.kind} />
         </Col>
       </Row>
 
@@ -95,6 +95,7 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
                 onChange={(sessionId) => onChangeDay({ sessionId })}
                 options={sessions.map((s) => ({ id: s.id, name: s.name }))}
                 placeholder={sessions.length ? 'Elegí una sesión' : 'Todavía no creaste ninguna sesión'}
+                required
                 value={day.sessionId ?? ''}
               />
             </Col>
@@ -152,6 +153,7 @@ export function TrainingPlanFormFields({ form, durationOptions }) {
           label="Caducidad"
           onChange={(value) => form.setDurationDays(Number(value))}
           options={durationOptions.map((d) => ({ id: String(d), name: `${d} días` }))}
+          required
           value={String(form.durationDays)}
         />
       </SectionCard>

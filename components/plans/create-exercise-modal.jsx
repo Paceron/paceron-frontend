@@ -82,7 +82,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated }) {
           </View>
 
           <InputField dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Series 400m fuertes" value={name} />
-          <PickerField dense label="Tipo" onChange={setKind} options={EXERCISE_KIND_OPTIONS} value={kind} />
+          <PickerField dense label="Tipo" onChange={setKind} options={EXERCISE_KIND_OPTIONS} required value={kind} />
 
           {showMinutes && <InputField dense keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} />}
           {showDistance && <InputField dense keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} />}
