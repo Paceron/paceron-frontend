@@ -64,7 +64,7 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
     <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
       <Row narrowClassName="gap-3">
         <Col flex={0.6}>
-          <View className="mb-3 h-12 justify-center" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
+          <View className="h-12 justify-center" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label-text`} testID={`${idPrefix}-label-text`}>
               {dayLabel(day.dayOfWeek)}
             </Text>
@@ -78,6 +78,7 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
       {day.kind === 'other' && (
         <InputField
           dense
+          hideErrorRow
           label="Nombre de la actividad"
           onChange={(text) => onChangeDay({ otherName: text })}
           placeholder="Ej. Natación, bicicleta"
@@ -90,7 +91,9 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
           <Row narrowClassName="gap-3">
             <Col flex={2}>
               <ResponsiveSelectField
+                className="mb-0"
                 dense
+                hideErrorRow
                 label="Sesión"
                 onChange={(sessionId) => onChangeDay({ sessionId })}
                 options={sessions.map((s) => ({ id: s.id, name: s.name }))}
@@ -147,9 +150,10 @@ export function TrainingPlanFormFields({ form, durationOptions }) {
     <>
       <SectionCard icon="clipboard-text-outline" title="Datos del plan">
         <InputField dense error={form.errors.name} label="Nombre del plan" onChange={form.setName} placeholder="Ej. Base 5K — nivel inicial" value={form.name} />
-        <InputField dense label="Descripción" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
+        <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
         <ResponsiveSelectField
           dense
+          hideErrorRow
           label="Caducidad"
           onChange={(value) => form.setDurationDays(Number(value))}
           options={durationOptions.map((d) => ({ id: String(d), name: `${d} días` }))}

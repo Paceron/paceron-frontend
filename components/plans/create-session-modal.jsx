@@ -22,7 +22,9 @@ function ExercisePickerRow({ label, exercises, value, onChange, onRequestCreate 
       <Row narrowClassName="gap-3">
         <Col flex={2}>
           <ResponsiveSelectField
+            className="mb-0"
             dense
+            hideErrorRow
             label={label}
             onChange={onChange}
             options={exercises.map((e) => ({ id: e.id, name: e.name }))}
@@ -139,8 +141,8 @@ export function CreateSessionModal({ visible, onClose, onCreated }) {
             </View>
 
             <ScrollView nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
-              <InputField dense label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
-              <InputField dense label="Descripción" multiline numberOfLines={2} onChange={setDescription} value={description} />
+              <InputField dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
+              <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={setDescription} value={description} />
 
               <ExercisePickerRow
                 exercises={warmcoolExercises}
@@ -158,10 +160,10 @@ export function CreateSessionModal({ visible, onClose, onCreated }) {
               />
               <Row narrowClassName="gap-3">
                 <Col>
-                  <InputField dense keyboardType="number-pad" label="Repeticiones" onChange={setMainRepeatCount} value={mainRepeatCount} />
+                  <InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Repeticiones" onChange={setMainRepeatCount} value={mainRepeatCount} />
                 </Col>
                 <Col>
-                  <InputField dense keyboardType="number-pad" label="Descanso entre series (min)" onChange={setMainRestMinutes} value={mainRestMinutes} />
+                  <InputField dense hideErrorRow keyboardType="number-pad" label="Descanso entre series (min)" onChange={setMainRestMinutes} value={mainRestMinutes} />
                 </Col>
               </Row>
               <ExercisePickerRow
