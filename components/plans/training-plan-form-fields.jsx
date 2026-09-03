@@ -9,7 +9,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CreateSessionModal } from './create-session-modal.jsx';
-import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
+import { SessionExercisesPreview } from './session-exercises-preview.jsx';
 
 const DAY_KIND_OPTIONS = [
   { id: 'rest', name: 'Descanso' },
@@ -17,34 +17,6 @@ const DAY_KIND_OPTIONS = [
   { id: 'other', name: 'Otra actividad' },
   { id: 'training', name: 'Entrenamiento' },
 ];
-
-// Mini-preview de lo que trae una sesión elegida (warmup/main/cooldown,
-// con sus íconos por tipo) — para no tener que abrir el detalle del plan
-// recién guardado solo para confirmar qué se está por asignar a ese día.
-function SessionPreview({ session }) {
-  const exercises = useExerciseStore((s) => s.exercises);
-  if (!session) return null;
-
-  const warmup = exercises.find((e) => e.id === session.warmupExerciseId);
-  const main = exercises.find((e) => e.id === session.mainExerciseId);
-  const cooldown = exercises.find((e) => e.id === session.cooldownExerciseId);
-  const idPrefix = `session-preview-${session.id}`;
-
-  return (
-    <View className="mt-2 flex-row flex-wrap gap-1.5" nativeID={idPrefix} testID={idPrefix}>
-      {[warmup, main, cooldown].filter(Boolean).map((exercise, i) => {
-        const meta = EXERCISE_KIND_META[exercise.kind];
-        const label = exercise === main && session.mainRepeatCount > 1 ? `${session.mainRepeatCount}× ${exercise.name}` : exercise.name;
-        return (
-          <View className={`flex-row items-center gap-1 rounded-full px-2.5 py-1 ${meta.bg}`} key={`${idPrefix}-${i}`} nativeID={`${idPrefix}-${i}`} testID={`${idPrefix}-${i}`}>
-            <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={12} />
-            <Text className={`text-xs font-medium ${meta.text}`} nativeID={`${idPrefix}-${i}-label`} testID={`${idPrefix}-${i}-label`}>{label}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
 
 function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
   const idPrefix = `plan-day-${day.sequenceNo}`;
@@ -114,7 +86,7 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
               </Pressable>
             </Col>
           </Row>
-          <SessionPreview session={selectedSession} />
+          <SessionExercisesPreview session={selectedSession} />
         </View>
       )}
     </View>

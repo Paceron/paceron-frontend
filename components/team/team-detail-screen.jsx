@@ -21,6 +21,7 @@ import { InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { TabBar } from '../shared/tab-bar.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
@@ -497,41 +498,6 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
         {editButton}
       </View>
       {expanded && memberList}
-    </View>
-  );
-}
-
-// Solo se usa en web (ver TABS más arriba) — misma paleta que los tabs del
-// header web (bg-primary-tint-subtle + text-primary cuando está activo).
-// `tabs` viene filtrado por el caller (sin "Grupos" para corredor común).
-function TabBar({ active, onChange, tabs }) {
-  const colors = useThemeColors();
-
-  return (
-    <View className="mb-5 flex-row gap-2" nativeID="team-detail-tab-bar" testID="team-detail-tab-bar">
-      {tabs.map((tab) => {
-        const isActive = tab.id === active;
-        return (
-          <Pressable
-            key={tab.id}
-            className={`flex-row items-center gap-1.5 rounded-lg px-3 py-2 ${
-              isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-            nativeID={`team-detail-tab-${tab.id}`}
-            onPress={() => onChange(tab.id)}
-            testID={`team-detail-tab-${tab.id}`}
-          >
-            <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
-            <Text
-              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
-              nativeID={`team-detail-tab-${tab.id}-label`}
-              testID={`team-detail-tab-${tab.id}-label`}
-            >
-              {tab.label}
-            </Text>
-          </Pressable>
-        );
-      })}
     </View>
   );
 }
@@ -1128,7 +1094,7 @@ function TeamDetailScreenContent({ teamId }) {
 
         {isWeb ? (
           <>
-            <TabBar active={activeTab} onChange={setActiveTab} tabs={visibleTabs} />
+            <TabBar active={activeTab} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
             {activeTab === 'general' && generalContent}
             {activeTab === 'corredores' && corredoresContent}
             {activeTab === 'grupos' && gruposContent}
