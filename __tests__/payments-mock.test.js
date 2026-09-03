@@ -37,6 +37,18 @@ describe('mockProcessPayment', () => {
   test('rechaza sin token', async () => {
     await expect(mockProcessPayment({ transaction_amount: 1000, payment_method_id: 'visa', installments: 1, payer_email: 'a@b.com' })).rejects.toMatchObject({ status: 400 });
   });
+
+  test('lee concept y description del mapa de preferencias cuando se proporciona preference_id', async () => {
+    const { preference_id } = await mockCreatePreference({
+      concept: 'subscription',
+      items: [{ title: 'Plan premium', quantity: 1, unit_price: 4999 }],
+    });
+    const payment = await mockProcessPayment({
+      token: 'card-token', transaction_amount: 4999, payment_method_id: 'visa', installments: 1, payer_email: 'a@b.com', preference_id,
+    });
+    expect(payment.concept).toBe('subscription');
+    expect(payment.description).toBe(null);
+  });
 });
 
 describe('mockGetPayment', () => {
