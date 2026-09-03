@@ -13,6 +13,8 @@ import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { TeamsAccordion } from './teams-accordion.jsx';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { getUserInitials } from '../../utils/user-initials.js';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -186,9 +188,14 @@ function NavigationDrawer({ open, pathname, onClose }) {
                   onPress={() => goTo('/profile')}
                   testID="mobile-drawer-profile-row"
                 >
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" nativeID="mobile-drawer-profile-avatar" testID="mobile-drawer-profile-avatar">
-                    <MaterialCommunityIcons color={colors.primary} name="account-circle" size={26} />
-                  </View>
+                  <AvatarPicker
+                    accessibilityLabel="Ver perfil"
+                    fallbackIcon="account"
+                    idPrefix="mobile-drawer-profile-avatar"
+                    initials={getUserInitials(user)}
+                    size={40}
+                    uri={user.photoUrl}
+                  />
                   <View className="flex-1 flex-row items-center gap-2" nativeID="mobile-drawer-profile-info" testID="mobile-drawer-profile-info">
                     <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="mobile-drawer-user-name" testID="mobile-drawer-user-name">{user.name}</Text>
                     <RoleBadge role={activeRole} />

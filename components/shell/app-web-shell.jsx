@@ -12,6 +12,8 @@ import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { getUserInitials } from '../../utils/user-initials.js';
 
 function DropdownMenu({ onClose }) {
   const router = useRouter();
@@ -246,7 +248,7 @@ function TeamsTab({ route, isOpen, colors, onOpen }) {
   );
 }
 
-function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, myInvitationsCount, onTabPress, onUserPress, onTeamsPress }) {
+function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, myInvitationsCount, onTabPress, onUserPress, onTeamsPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -364,13 +366,14 @@ function TopBar({ isGuest, userName, activeRole, dropdownOpen, routesTab, active
             onPress={handleUserPress}
             testID="web-shell-topbar-user-pill"
           >
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint-subtle dark:bg-primary/10" nativeID="web-shell-topbar-user-avatar" testID="web-shell-topbar-user-avatar">
-              <MaterialCommunityIcons
-                color={colors.primary}
-                name="account-circle"
-                size={20}
-              />
-            </View>
+            <AvatarPicker
+              accessibilityLabel={userName ? `Menú de ${userName}` : 'Menú de usuario'}
+              fallbackIcon="account"
+              idPrefix="web-shell-topbar-user-avatar"
+              initials={userInitials}
+              size={32}
+              uri={userPhotoUrl}
+            />
             {userName && (
               <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-topbar-user-name" testID="web-shell-topbar-user-name">
                 {userName}
@@ -394,6 +397,8 @@ export function AppWebShell({ children, pathname }) {
   const user = useAuthStore((s) => s.user);
   const isGuest = !user;
   const userName = user?.name || null;
+  const userPhotoUrl = user?.photoUrl || null;
+  const userInitials = user ? getUserInitials(user) : '';
   const activeRole = useAuthStore((s) => s.activeRole);
   // activeRole, no un userRole estático que nunca llegó a existir en el
   // modelo real — así "Mis planes"/"Planes de entrenamiento" cambian solos
@@ -470,7 +475,9 @@ export function AppWebShell({ children, pathname }) {
           onUserPress={handleUserPress}
           routesTab={routesTab}
           teamsMenuOpen={teamsMenuOpen}
+          userInitials={userInitials}
           userName={userName}
+          userPhotoUrl={userPhotoUrl}
         />
         {!isGuest && (
           <AnimatedDropdown anchorStyle={{ right: 16, top: 60 }} open={dropdownOpen} onClose={handleCloseDropdown}>

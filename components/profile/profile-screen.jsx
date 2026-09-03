@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { getUserInitials } from '../../utils/user-initials.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
@@ -81,7 +82,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
   // hay foto, en vez del ícono genérico. Solo tiene sentido acá (un
   // equipo no tiene "nombre y apellido" — team-detail-screen.jsx no pasa
   // este prop, se queda con el ícono account-group de siempre).
-  const initials = `${user.name?.[0] ?? ''}${user.surname?.[0] ?? ''}`.toUpperCase();
+  const initials = getUserInitials(user);
   const isNarrowWeb = useIsNarrowWeb();
   // Web ancho: fila superior (avatar + datos + botón editar), fila de
   // switch debajo. En web angosto el nombre/email/badge no entran junto al
