@@ -64,6 +64,7 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, marketplace, onA
     } catch {
       return;
     }
+    if (!payload || typeof payload !== 'object') return;
     if (payload.status === 'approved' && payload.payment) {
       setResolved(true);
       onApproved?.(payload.payment);
