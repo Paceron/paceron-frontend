@@ -330,3 +330,72 @@ export function toRunnerPlanAssignmentModel(dto) {
     assignedAt: dto.assigned_at,
   };
 }
+
+// ---------------------------------------------------------------------
+// Tiers — catálogo real GET /api/v1/tiers (ver
+// docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md).
+// ---------------------------------------------------------------------
+
+export function toTierModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    description: dto.description ?? null,
+    paymentRequired: Boolean(dto.payment_required),
+    roleId: dto.role_id,
+    roleName: dto.role_name,
+    tierAmount: dto.tier_amount ?? 0,
+  };
+}
+
+// ---------------------------------------------------------------------
+// Pagos — Fase 0 (checkout genérico, sin split). Ver
+// docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md.
+// ---------------------------------------------------------------------
+
+export function toCreatePreferencePayload(form) {
+  const payload = {
+    concept: form.concept,
+    items: form.items.map((item) => ({ title: item.title, quantity: item.quantity, unit_price: item.unitPrice })),
+  };
+  if (form.description) payload.description = form.description;
+  return payload;
+}
+
+export function toPreferenceResponseModel(dto) {
+  if (!dto) return null;
+  return { preferenceId: dto.preference_id, publicKey: dto.public_key };
+}
+
+export function toProcessPaymentPayload(form) {
+  const payload = {
+    token: form.token,
+    transaction_amount: form.transactionAmount,
+    payment_method_id: form.paymentMethodId,
+    installments: form.installments,
+    payer_email: form.payerEmail,
+  };
+  if (form.preferenceId) payload.preference_id = form.preferenceId;
+  return payload;
+}
+
+export function toPaymentModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    amount: dto.amount,
+    concept: dto.concept,
+    createdAt: dto.created_at,
+    currencyId: dto.currency_id,
+    description: dto.description,
+    externalReference: dto.external_reference,
+    installments: dto.installments,
+    payerEmail: dto.payer_email,
+    paymentId: dto.payment_id,
+    paymentMethodId: dto.payment_method_id,
+    preferenceId: dto.preference_id,
+    status: dto.status,
+    statusDetail: dto.status_detail,
+  };
+}

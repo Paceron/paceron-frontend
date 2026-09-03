@@ -5,15 +5,15 @@ import { useAuthStore } from '../../store/auth-store.js';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
-const ROLE_LABEL = { runner: 'Corredor', trainer: 'Entrenador' };
 
 function tierLabel(tier) {
   return tier === 'premium' ? 'Premium' : 'Base';
 }
 
-// El texto indica de qué rol es el tier a mejorar (el que está activo, o
-// Corredor en el caso de rol único), para que quede claro a qué aplica.
-function TierUpgradeLink({ roleLabel, onPress, className }) {
+// El texto ya no indica el rol — la pantalla de destino muestra los
+// tiers del rol activo, no hace falta anticiparlo en el link (antes
+// "Mejorar tier de {roleLabel}", una entrada de menú por rol).
+function TierUpgradeLink({ onPress, className }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -22,7 +22,7 @@ function TierUpgradeLink({ roleLabel, onPress, className }) {
       onPress={onPress}
       testID="role-switch-toggle-tier-upgrade-link"
     >
-      <Text className="text-[11px] font-semibold text-primary" nativeID="role-switch-toggle-tier-upgrade-link-text" testID="role-switch-toggle-tier-upgrade-link-text">Mejorar tier de {roleLabel}</Text>
+      <Text className="text-[11px] font-semibold text-primary" nativeID="role-switch-toggle-tier-upgrade-link-text" testID="role-switch-toggle-tier-upgrade-link-text">Mejorar tier</Text>
     </Pressable>
   );
 }
@@ -118,7 +118,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             wide={wide}
           />
         </View>
-        {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel="Corredor" />}
+        {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
       </View>
     );
   }
@@ -167,7 +167,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           wide={wide}
         />
       </View>
-      {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} roleLabel={ROLE_LABEL[activeRole]} />}
+      {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
     </View>
   );
 }
