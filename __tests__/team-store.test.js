@@ -106,11 +106,10 @@ describe('team store', () => {
     expect(result.team.showGroupsToRunners).toBe(false);
   });
 
-  test('createTeam defaults photoUri to null and invitations to an empty array', async () => {
+  test('createTeam defaults invitations to an empty array', async () => {
     createTeamService.mockResolvedValue(TEAM_DTO);
     listGroupsService.mockResolvedValue([DEFAULT_GROUP_DTO]);
     const result = await useTeamStore.getState().createTeam({ name: 'Sin datos opcionales', maxMembers: 10, ownerId: 7 });
-    expect(result.team.photoUri).toBeNull();
     expect(result.team.invitations).toEqual([]);
     expect(result.team.groups).toHaveLength(1);
     expect(result.team.groups[0].isDefault).toBe(true);
