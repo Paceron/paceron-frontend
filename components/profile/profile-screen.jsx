@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -8,6 +9,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
 import { RoleSwitchToggle } from './role-switch-toggle.jsx';
@@ -74,7 +76,7 @@ function EditButton({ onEdit, colors, full }) {
   );
 }
 
-function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) {
+function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, photoUploading, onPickPhoto, onRemovePhoto }) {
   const isNarrowWeb = useIsNarrowWeb();
   // Web ancho: fila superior (avatar + datos + botón editar), fila de
   // switch debajo. En web angosto el nombre/email/badge no entran junto al
@@ -86,9 +88,16 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) 
     return (
       <View className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
         <View className="flex-row items-center gap-4" nativeID="profile-screen-header-panel-top-row" testID="profile-screen-header-panel-top-row">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID="profile-screen-avatar" testID="profile-screen-avatar">
-            <MaterialCommunityIcons color={colors.primary} name="account" size={36} />
-          </View>
+          <AvatarPicker
+            accessibilityLabel="Foto de perfil"
+            fallbackIcon="account"
+            idPrefix="profile-screen-avatar"
+            loading={photoUploading}
+            onPick={onPickPhoto}
+            onRemove={onRemovePhoto}
+            size={64}
+            uri={user.photoUrl}
+          />
           <View className="flex-1" nativeID="profile-screen-header-panel-identity" testID="profile-screen-header-panel-identity">
             <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="profile-screen-full-name" testID="profile-screen-full-name">{display(fullName)}</Text>
             <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="profile-screen-email" testID="profile-screen-email">{display(user.email)}</Text>
@@ -108,8 +117,17 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier }) 
   // Mobile: panel centrado, botón editar full-width, switch en fila debajo.
   return (
     <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
-      <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID="profile-screen-avatar" testID="profile-screen-avatar">
-        <MaterialCommunityIcons color={colors.primary} name="account" size={44} />
+      <View className="mb-3" nativeID="profile-screen-avatar-wrapper" testID="profile-screen-avatar-wrapper">
+        <AvatarPicker
+          accessibilityLabel="Foto de perfil"
+          fallbackIcon="account"
+          idPrefix="profile-screen-avatar"
+          loading={photoUploading}
+          onPick={onPickPhoto}
+          onRemove={onRemovePhoto}
+          size={80}
+          uri={user.photoUrl}
+        />
       </View>
       <Text className="text-center text-lg font-bold text-slate-900 dark:text-white" nativeID="profile-screen-full-name" testID="profile-screen-full-name">{display(fullName)}</Text>
       <Text className="mb-2 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="profile-screen-email" testID="profile-screen-email">{display(user.email)}</Text>
@@ -182,10 +200,13 @@ export function ProfileScreen() {
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
   const deactivateTrainerRole = useAuthStore((s) => s.deactivateTrainerRole);
+  const uploadPhoto = useAuthStore((s) => s.uploadPhoto);
+  const deletePhoto = useAuthStore((s) => s.deletePhoto);
   const roles = useAuthStore((s) => s.roles);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTrainerOpen, setConfirmTrainerOpen] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   useEffect(() => {
     if (!user) router.replace('/login');
@@ -229,6 +250,41 @@ export function ProfileScreen() {
     }
   };
 
+  const handlePickPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Toast.show({ type: 'error', text1: 'Permiso necesario', text2: 'Habilitá el acceso a tus fotos para elegir una imagen.' });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      Toast.show({ type: 'error', text1: 'La imagen es muy grande', text2: 'El máximo es 5MB.' });
+      return;
+    }
+    setPhotoUploading(true);
+    const uploadResult = await uploadPhoto(asset.uri, asset.mimeType);
+    setPhotoUploading(false);
+    if (!uploadResult.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos subir la foto', text2: uploadResult.error });
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setPhotoUploading(true);
+    const result = await deletePhoto();
+    setPhotoUploading(false);
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos borrar la foto', text2: result.error });
+    }
+  };
+
   return (
     <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen" testID="profile-screen">
       <View className={`w-full ${isWeb ? 'max-w-3xl mx-auto' : ''}`} nativeID="profile-screen-content" testID="profile-screen-content">
@@ -248,6 +304,9 @@ export function ProfileScreen() {
           onEdit={handleEdit}
           colors={colors}
           onUpgradeTier={() => router.push('/profile/tier-upgrade')}
+          photoUploading={photoUploading}
+          onPickPhoto={handlePickPhoto}
+          onRemovePhoto={handleRemovePhoto}
         />
 
         {hasTrainerRole && <TrainerDataSection bankAlias={user.bankAlias} />}

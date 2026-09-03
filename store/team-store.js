@@ -238,14 +238,12 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Edita los "datos generales" de un equipo ya existente (PUT
-  // /teams/{id}, parcial) — grupos, miembros, invitaciones y status no se
-  // tocan desde acá. `updates` puede traer country/province/city
-  // (secuenciados aparte, ver abajo) y photoUri (interactivo del lado del
-  // cliente, sin campo en el backend — ver docs/BACKEND_API_GAPS.md): se
-  // conserva en el equipo resultante vía `clientOnlyAndGeneralUpdates`,
-  // pero toUpdateTeamPayload lo descarta antes de mandarlo al PUT general.
-  // showGroupsToRunners SÍ tiene campo real en el backend desde
+  // PUT general de datos de equipo (/teams/{id}, parcial) — grupos,
+  // miembros, invitaciones, status e icon_url no se tocan desde acá (el
+  // ícono tiene su propio endpoint, ver uploadTeamIcon/deleteTeamIcon más
+  // abajo). `updates` puede traer country/province/city, secuenciados
+  // aparte contra /teams/{id}/address — ver el bloque de abajo.
+  // showGroupsToRunners sí tiene campo real en el backend desde
   // 2026-07-29 — se manda en el payload y el valor final sale de la
   // respuesta (generalModel), no del echo local. country/province/city se
   // excluyen del merge inicial a propósito — si el PUT de dirección de
