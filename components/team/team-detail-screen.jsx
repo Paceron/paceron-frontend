@@ -7,7 +7,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
-import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
@@ -18,7 +17,7 @@ import { toUserModel } from '../../services/normalizers.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { FIELD_LABEL, InputField, Row, Col } from '../forms/fields.jsx';
+import { InputField, InlinePicker, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
@@ -645,11 +644,6 @@ function TeamDetailScreenContent({ teamId }) {
   // afecta a la vista de corredor común — quien gestiona el equipo siempre
   // ve los grupos, con o sin el toggle prendido.
   const canSeeGroups = isTrainerView || team?.showGroupsToRunners;
-  // Solo importa cuando el buscador (sin label propio) y "Grupo" (con
-  // label) van lado a lado — en ese caso el buscador necesita un
-  // espaciador invisible para alinear su caja con la de "Grupo", ver el
-  // comentario en team-detail-search-row más abajo.
-  const isNarrow = useIsNarrowWeb();
 
   const [activeTab, setActiveTab] = useState('general');
   const [search, setSearch] = useState('');
@@ -780,10 +774,9 @@ function TeamDetailScreenContent({ teamId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, user?.userId]);
 
-  const groupOptions = useMemo(
-    () => (team ? [{ id: '', name: 'Todos los grupos' }, ...team.groups.map((g) => ({ id: g.id, name: g.name }))] : []),
-    [team],
-  );
+  // Sin la opción sintética "Todos los grupos" — InlinePicker ya resuelve
+  // el "sin filtro" con su propio placeholder (showPlaceholderOption).
+  const groupOptions = useMemo(() => (team ? team.groups.map((g) => ({ id: g.id, name: g.name })) : []), [team]);
 
   const filteredMembers = useMemo(() => {
     if (!team) return [];
@@ -869,23 +862,15 @@ function TeamDetailScreenContent({ teamId }) {
           sentido mostrar el buscador — no hay nada para buscar. */}
       {(loadingRoster || members.length > 0) && (
         <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
-          {/* Buscador minimalista (mismo criterio que ExercisesCatalogTab):
-              sin label propio, "Buscar corredor..." vive como placeholder
-              adentro del campo — una sola línea en vez del label + fila de
-              20px de error reservada que sí sigue llevando "Grupo" (select
-              distinto, con su propio label). Cuando los dos van lado a lado
-              (canSeeGroups, ancho web), el buscador necesita un espaciador
-              invisible del mismo alto que un label real — si no, Row los
-              estira parejo pero el buscador (sin label) queda pegado
-              arriba, más alto que la caja de "Grupo". En mobile/angosto no
-              hace falta: van apilados, no hay nada con que alinear. */}
+          {/* Buscadores minimalistas (mismo criterio que
+              ExercisesCatalogTab): sin label propio, el texto vive como
+              placeholder adentro del campo — ninguno de los dos necesita
+              ya alinearse contra un label del otro, así que da lo mismo
+              ancho web o mobile angosto. InlinePicker (no
+              ResponsiveSelectField) para "Grupo" porque ya viene sin
+              label ni fila de error, pensado justo para esto. */}
           <Row narrowClassName="gap-3.5">
             <Col>
-              {canSeeGroups && !isNarrow && (
-                <Text className={`${FIELD_LABEL} opacity-0`} nativeID="team-detail-search-label-spacer" testID="team-detail-search-label-spacer">
-                  Buscar
-                </Text>
-              )}
               <View className="h-12 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-input-wrapper" testID="team-detail-search-input-wrapper">
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
                 <TextInput
@@ -901,7 +886,7 @@ function TeamDetailScreenContent({ teamId }) {
             </Col>
             {canSeeGroups && (
               <Col>
-                <ResponsiveSelectField className="mb-0" dense hideErrorRow label="Grupo" onChange={setGroupFilter} options={groupOptions} placeholder="Todos los grupos" value={groupFilter} />
+                <InlinePicker onChange={setGroupFilter} options={groupOptions} placeholder="Buscar por grupo" scope="team-detail-group-filter" value={groupFilter} widthClass="w-full" />
               </Col>
             )}
           </Row>
