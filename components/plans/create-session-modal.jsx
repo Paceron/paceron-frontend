@@ -52,12 +52,16 @@ function ExercisePickerRow({ label, exercises, value, onChange, onRequestCreate 
 // Alta rápida de una sesión nueva desde adentro de armar un día de
 // entrenamiento en un plan — mismo motivo que CreateExerciseModal: un
 // modal, no una pantalla nueva, para no perder el plan a medio armar.
-export function CreateSessionModal({ visible, onClose, onCreated }) {
+// Con la prop opcional `session` (ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md)
+// dobla como edición, mismo criterio que CreateExerciseModal.
+export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const exercises = useExerciseStore((s) => s.exercises);
   const fetchExercises = useExerciseStore((s) => s.fetchExercises);
   const createSession = useSessionStore((s) => s.createSession);
+  const updateSession = useSessionStore((s) => s.updateSession);
+  const isEditing = Boolean(session);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -78,19 +82,25 @@ export function CreateSessionModal({ visible, onClose, onCreated }) {
   const warmcoolExercises = exercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
   const reset = () => {
-    setName('');
-    setDescription('');
-    setWarmupExerciseId('');
-    setMainExerciseId('');
-    setMainRepeatCount('1');
-    setMainRestMinutes('0');
-    setCooldownExerciseId('');
+    setName(session?.name ?? '');
+    setDescription(session?.description ?? '');
+    setWarmupExerciseId(session?.warmupExerciseId ?? '');
+    setMainExerciseId(session?.mainExerciseId ?? '');
+    setMainRepeatCount(session?.mainRepeatCount != null ? String(session.mainRepeatCount) : '1');
+    setMainRestMinutes(session?.mainRestMinutes != null ? String(session.mainRestMinutes) : '0');
+    setCooldownExerciseId(session?.cooldownExerciseId ?? '');
     setError(null);
   };
 
+  // Precarga (o limpia) el formulario cada vez que el modal se abre —
+  // mismo criterio que CreateExerciseModal.
+  useEffect(() => {
+    if (visible) reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, session?.id]);
+
   const handleClose = () => {
     if (submitting) return;
-    reset();
     onClose();
   };
 
@@ -108,7 +118,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }) {
       return;
     }
     setSubmitting(true);
-    const result = await createSession({
+    const form = {
       ownerId: user?.userId,
       name: name.trim(),
       description: description.trim(),
@@ -117,16 +127,16 @@ export function CreateSessionModal({ visible, onClose, onCreated }) {
       mainRepeatCount: Number(mainRepeatCount) || 1,
       mainRestMinutes: Number(mainRestMinutes) || 0,
       cooldownExerciseId,
-    });
+    };
+    const result = isEditing ? await updateSession(session.id, form) : await createSession(form);
     setSubmitting(false);
 
     if (!result.success) {
-      Toast.show({ type: 'error', text1: 'No pudimos crear la sesión', text2: result.error });
+      Toast.show({ type: 'error', text1: `No pudimos ${isEditing ? 'guardar' : 'crear'} la sesión`, text2: result.error });
       return;
     }
 
-    Toast.show({ type: 'success', text1: 'Sesión creada' });
-    reset();
+    Toast.show({ type: 'success', text1: isEditing ? 'Sesión actualizada' : 'Sesión creada' });
     onCreated(result.session);
   };
 
@@ -136,8 +146,10 @@ export function CreateSessionModal({ visible, onClose, onCreated }) {
         <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" testID="create-session-modal-backdrop">
           <View className="max-h-[90%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-session-modal-card" testID="create-session-modal-card">
             <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
-              <MaterialCommunityIcons color={colors.primary} name="clipboard-plus-outline" size={20} />
-              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">Nueva sesión</Text>
+              <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
+              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
+                {isEditing ? 'Editar sesión' : 'Nueva sesión'}
+              </Text>
             </View>
 
             <ScrollView nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
@@ -197,7 +209,9 @@ export function CreateSessionModal({ visible, onClose, onCreated }) {
                 testID="create-session-modal-confirm-button"
               >
                 {submitting ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
-                  <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="create-session-modal-confirm-label" testID="create-session-modal-confirm-label">Crear</Text>
+                  <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="create-session-modal-confirm-label" testID="create-session-modal-confirm-label">
+                    {isEditing ? 'Guardar cambios' : 'Crear'}
+                  </Text>
                 )}
               </Pressable>
             </View>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,13 +10,17 @@ import { InputField, PickerField } from '../forms/fields.jsx';
 // Alta rápida de un ejercicio nuevo, sin salir de donde se lo pidió (ej.
 // desde adentro de CreateSessionModal) — "un botón para acceder al
 // formulario de alta ahí mismo", ver enmienda 2026-08-26 de
-// docs/superpowers/specs/2026-08-26-training-plans-design.md. El
-// catálogo completo (editar/borrar ejercicios sueltos) es "otro menú" a
-// futuro, esto es solo el alta.
-export function CreateExerciseModal({ visible, onClose, onCreated }) {
+// docs/superpowers/specs/2026-08-26-training-plans-design.md. Con la
+// prop opcional `exercise` (ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md)
+// dobla como edición: precarga los valores, cambia título/botón y
+// llama updateExercise en vez de createExercise — mismo modal, no un
+// componente aparte, para no duplicar el formulario.
+export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const createExercise = useExerciseStore((s) => s.createExercise);
+  const updateExercise = useExerciseStore((s) => s.updateExercise);
+  const isEditing = Boolean(exercise);
 
   const [name, setName] = useState('');
   const [kind, setKind] = useState('walking');
@@ -31,17 +35,23 @@ export function CreateExerciseModal({ visible, onClose, onCreated }) {
   const showSpeed = kind === 'running';
 
   const reset = () => {
-    setName('');
-    setKind('walking');
-    setMinutes('');
-    setDistanceM('');
-    setSpeedKph('');
+    setName(exercise?.name ?? '');
+    setKind(exercise?.kind ?? 'walking');
+    setMinutes(exercise?.minutes != null ? String(exercise.minutes) : '');
+    setDistanceM(exercise?.distanceM != null ? String(exercise.distanceM) : '');
+    setSpeedKph(exercise?.speedKph != null ? String(exercise.speedKph) : '');
     setError(null);
   };
 
+  // Precarga (o limpia) el formulario cada vez que el modal se abre —
+  // así reabrirlo para editar otro ejercicio no arrastra el anterior.
+  useEffect(() => {
+    if (visible) reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, exercise?.id]);
+
   const handleClose = () => {
     if (submitting) return;
-    reset();
     onClose();
   };
 
@@ -52,23 +62,23 @@ export function CreateExerciseModal({ visible, onClose, onCreated }) {
       return;
     }
     setSubmitting(true);
-    const result = await createExercise({
+    const form = {
       ownerId: user?.userId,
       name: name.trim(),
       kind,
       minutes: showMinutes && minutes ? Number(minutes) : null,
       distanceM: showDistance && distanceM ? Number(distanceM) : null,
       speedKph: showSpeed && speedKph ? Number(speedKph) : null,
-    });
+    };
+    const result = isEditing ? await updateExercise(exercise.id, form) : await createExercise(form);
     setSubmitting(false);
 
     if (!result.success) {
-      Toast.show({ type: 'error', text1: 'No pudimos crear el ejercicio', text2: result.error });
+      Toast.show({ type: 'error', text1: `No pudimos ${isEditing ? 'guardar' : 'crear'} el ejercicio`, text2: result.error });
       return;
     }
 
-    Toast.show({ type: 'success', text1: 'Ejercicio creado' });
-    reset();
+    Toast.show({ type: 'success', text1: isEditing ? 'Ejercicio actualizado' : 'Ejercicio creado' });
     onCreated(result.exercise);
   };
 
@@ -77,8 +87,10 @@ export function CreateExerciseModal({ visible, onClose, onCreated }) {
       <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-exercise-modal-backdrop" testID="create-exercise-modal-backdrop">
         <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-exercise-modal-card" testID="create-exercise-modal-card">
           <View className="mb-4 flex-row items-center gap-2" nativeID="create-exercise-modal-header" testID="create-exercise-modal-header">
-            <MaterialCommunityIcons color={colors.primary} name="dumbbell" size={20} />
-            <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-exercise-modal-title" testID="create-exercise-modal-title">Nuevo ejercicio</Text>
+            <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'dumbbell'} size={20} />
+            <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-exercise-modal-title" testID="create-exercise-modal-title">
+              {isEditing ? 'Editar ejercicio' : 'Nuevo ejercicio'}
+            </Text>
           </View>
 
           <InputField dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Series 400m fuertes" value={name} />
@@ -106,7 +118,9 @@ export function CreateExerciseModal({ visible, onClose, onCreated }) {
               testID="create-exercise-modal-confirm-button"
             >
               {submitting ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="create-exercise-modal-confirm-label" testID="create-exercise-modal-confirm-label">Crear</Text>
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="create-exercise-modal-confirm-label" testID="create-exercise-modal-confirm-label">
+                  {isEditing ? 'Guardar cambios' : 'Crear'}
+                </Text>
               )}
             </Pressable>
           </View>

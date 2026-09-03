@@ -3,9 +3,14 @@ import { useSessionStore } from '../store/session-store.js';
 jest.mock('../services/sessions.js', () => ({
   listSessions: jest.fn(),
   createSession: jest.fn(),
+  updateSession: jest.fn(),
+  deleteSession: jest.fn(),
 }));
 
-import { listSessions as listSessionsService, createSession as createSessionService } from '../services/sessions.js';
+import {
+  listSessions as listSessionsService, createSession as createSessionService,
+  updateSession as updateSessionService, deleteSession as deleteSessionService,
+} from '../services/sessions.js';
 
 const SESSION_DTO = {
   id: 1, owner_id: 7, name: 'Fondo suave', description: 'desc',
@@ -46,5 +51,25 @@ describe('session store', () => {
     listSessionsService.mockRejectedValue(new Error('falló'));
     const result = await useSessionStore.getState().fetchSessions(7);
     expect(result).toEqual({ success: false, error: 'falló' });
+  });
+
+  test('updateSession reemplaza la sesión editada en la lista', async () => {
+    useSessionStore.setState({ sessions: [{ id: '1', name: 'Fondo suave' }] });
+    updateSessionService.mockResolvedValue({ ...SESSION_DTO, name: 'Fondo regenerativo' });
+    const result = await useSessionStore.getState().updateSession('1', {
+      ownerId: 7, name: 'Fondo regenerativo', warmupExerciseId: '1', mainExerciseId: '2', cooldownExerciseId: '3',
+    });
+    expect(result.success).toBe(true);
+    expect(result.session.name).toBe('Fondo regenerativo');
+    expect(useSessionStore.getState().sessions).toHaveLength(1);
+    expect(useSessionStore.getState().sessions[0].name).toBe('Fondo regenerativo');
+  });
+
+  test('deleteSession saca la sesión de la lista', async () => {
+    useSessionStore.setState({ sessions: [{ id: '1', name: 'Fondo suave' }] });
+    deleteSessionService.mockResolvedValue(undefined);
+    const result = await useSessionStore.getState().deleteSession('1');
+    expect(result.success).toBe(true);
+    expect(useSessionStore.getState().sessions).toEqual([]);
   });
 });

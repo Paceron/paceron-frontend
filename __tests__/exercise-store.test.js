@@ -3,9 +3,14 @@ import { useExerciseStore, EXERCISE_KIND_OPTIONS } from '../store/exercise-store
 jest.mock('../services/exercises.js', () => ({
   listExercises: jest.fn(),
   createExercise: jest.fn(),
+  updateExercise: jest.fn(),
+  deleteExercise: jest.fn(),
 }));
 
-import { listExercises as listExercisesService, createExercise as createExerciseService } from '../services/exercises.js';
+import {
+  listExercises as listExercisesService, createExercise as createExerciseService,
+  updateExercise as updateExerciseService, deleteExercise as deleteExerciseService,
+} from '../services/exercises.js';
 
 const EXERCISE_DTO = { id: 1, owner_id: 7, name: 'Trote suave', kind: 'jogging', minutes: 20, distance_m: null, speed_kph: null, video_url: null, created_at: '', updated_at: '' };
 
@@ -41,5 +46,23 @@ describe('exercise store', () => {
     listExercisesService.mockRejectedValue(new Error('falló'));
     const result = await useExerciseStore.getState().fetchExercises(7);
     expect(result).toEqual({ success: false, error: 'falló' });
+  });
+
+  test('updateExercise reemplaza el ejercicio editado en la lista', async () => {
+    useExerciseStore.setState({ exercises: [{ id: '1', name: 'Trote suave', kind: 'jogging' }] });
+    updateExerciseService.mockResolvedValue({ ...EXERCISE_DTO, name: 'Trote regenerativo' });
+    const result = await useExerciseStore.getState().updateExercise('1', { ownerId: 7, name: 'Trote regenerativo', kind: 'jogging' });
+    expect(result.success).toBe(true);
+    expect(result.exercise.name).toBe('Trote regenerativo');
+    expect(useExerciseStore.getState().exercises).toHaveLength(1);
+    expect(useExerciseStore.getState().exercises[0].name).toBe('Trote regenerativo');
+  });
+
+  test('deleteExercise saca el ejercicio de la lista', async () => {
+    useExerciseStore.setState({ exercises: [{ id: '1', name: 'Trote suave', kind: 'jogging' }] });
+    deleteExerciseService.mockResolvedValue(undefined);
+    const result = await useExerciseStore.getState().deleteExercise('1');
+    expect(result.success).toBe(true);
+    expect(useExerciseStore.getState().exercises).toEqual([]);
   });
 });
