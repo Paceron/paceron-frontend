@@ -118,6 +118,7 @@ function PaymentsTestbedScreenContent() {
           <SectionCard icon="credit-card-outline" title="Checkout">
             <CheckoutFlow
               amount={Number(amount)}
+              key={preference.preferenceId}
               onApproved={handleApproved}
               onError={handleError}
               preferenceId={preference.preferenceId}
