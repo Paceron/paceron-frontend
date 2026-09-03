@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -7,7 +7,6 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField } from '../forms/fields.jsx';
 import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
@@ -126,11 +125,21 @@ export function ExercisesCatalogTab() {
           </Text>
         ) : (
           <>
-            {/* Igual que el buscador de corredores en TeamDetailScreen: sin
-                error propio (es un filtro, no un form) y sin margen propio,
-                el frame p-3 controla el espacio. */}
-            <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="exercises-catalog-search-row" testID="exercises-catalog-search-row">
-              <InputField className="mb-0" dense hideErrorRow label="Buscar ejercicio" onChange={setSearch} placeholder="Nombre del ejercicio" value={search} />
+            {/* Buscador minimalista: sin label propio ni fila de error —
+                "Buscar ejercicio" vive directamente como placeholder
+                adentro del campo, una sola línea en vez del frame con
+                label del patrón de TeamDetailScreen. */}
+            <View className="mb-4 h-11 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="exercises-catalog-search-row" testID="exercises-catalog-search-row">
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
+              <TextInput
+                className="flex-1 text-sm text-slate-900 outline-none dark:text-white"
+                nativeID="exercises-catalog-search-input"
+                onChangeText={setSearch}
+                placeholder="Buscar ejercicio"
+                placeholderTextColor={colors.onSurfaceVariant}
+                testID="exercises-catalog-search-input"
+                value={search}
+              />
             </View>
 
             {filteredExercises.length === 0 ? (
