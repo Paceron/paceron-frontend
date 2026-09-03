@@ -459,17 +459,26 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
   const selected = items.find((item) => item.id === value);
 
   if (isWeb) {
+    // appearance-none saca la flechita nativa del navegador (queda pegada
+    // al borde, padding-right no la mueve) — se dibuja una propia
+    // (mismo ícono que la rama nativa de acá abajo) con la posición que
+    // se necesite, en vez de depender del rendering default del browser.
     return (
-      <select
-        className={`h-12 ${widthClass} rounded-xl border border-slate-200 bg-slate-50 px-3 ${textClassName} text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white`}
-        onChange={(e) => onChange(e.target.value)}
-        value={value}
-      >
-        {showPlaceholderOption && <option value="">{placeholder}</option>}
-        {items.map((item) => (
-          <option key={item.id} value={item.id}>{item.name}</option>
-        ))}
-      </select>
+      <View className="relative" nativeID={`inline-picker-${scope}-wrapper`} testID={`inline-picker-${scope}-wrapper`}>
+        <select
+          className={`h-12 ${widthClass} appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 ${textClassName} text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white`}
+          onChange={(e) => onChange(e.target.value)}
+          value={value}
+        >
+          {showPlaceholderOption && <option value="">{placeholder}</option>}
+          {items.map((item) => (
+            <option key={item.id} value={item.id}>{item.name}</option>
+          ))}
+        </select>
+        <View className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" nativeID={`inline-picker-${scope}-chevron`} testID={`inline-picker-${scope}-chevron`}>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
+        </View>
+      </View>
     );
   }
 
