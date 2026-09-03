@@ -330,3 +330,21 @@ export function toRunnerPlanAssignmentModel(dto) {
     assignedAt: dto.assigned_at,
   };
 }
+
+// ---------------------------------------------------------------------
+// Tiers — catálogo real GET /api/v1/tiers (ver
+// docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md).
+// ---------------------------------------------------------------------
+
+export function toTierModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    description: dto.description ?? null,
+    paymentRequired: Boolean(dto.payment_required),
+    roleId: dto.role_id,
+    roleName: dto.role_name,
+    tierAmount: dto.tier_amount ?? 0,
+  };
+}

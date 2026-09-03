@@ -1,6 +1,6 @@
 import {
   toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
-  toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload,
+  toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -230,5 +230,30 @@ describe('toInvitePayload', () => {
     expect(toInvitePayload('a@b.com', '')).toEqual({ email: 'a@b.com' });
     expect(toInvitePayload('a@b.com', null)).toEqual({ email: 'a@b.com' });
     expect(toInvitePayload('a@b.com', undefined)).toEqual({ email: 'a@b.com' });
+  });
+});
+
+describe('toTierModel', () => {
+  test('maps snake_case fields to camelCase', () => {
+    const dto = {
+      id: 2, name: 'premium', description: 'Beneficios premium', payment_required: true,
+      role_id: 1, role_name: 'corredor', tier_amount: 4999,
+    };
+    expect(toTierModel(dto)).toEqual({
+      id: '2', name: 'premium', description: 'Beneficios premium', paymentRequired: true,
+      roleId: 1, roleName: 'corredor', tierAmount: 4999,
+    });
+  });
+
+  test('defaults tierAmount to 0 and description to null when absent', () => {
+    const dto = { id: 1, name: 'base', payment_required: false, role_id: 1, role_name: 'corredor' };
+    const model = toTierModel(dto);
+    expect(model.tierAmount).toBe(0);
+    expect(model.description).toBeNull();
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toTierModel(null)).toBeNull();
+    expect(toTierModel(undefined)).toBeNull();
   });
 });
