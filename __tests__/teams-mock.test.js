@@ -1,4 +1,4 @@
-import { mockCreateTeam, mockGetTeam, mockGetTeamUsers, mockListTeams, mockUpdateTeam, mockUpdateTeamAddress, __resetMockTeams } from '../services/__mocks__/teams-mock.js';
+import { mockCreateTeam, mockGetTeam, mockGetTeamUsers, mockListTeams, mockUpdateTeam, mockUpdateTeamAddress, mockUploadTeamIcon, mockDeleteTeamIcon, __resetMockTeams } from '../services/__mocks__/teams-mock.js';
 import { mockListGroups, mockGetGroupUsers } from '../services/__mocks__/groups-mock.js';
 
 beforeEach(() => {
@@ -68,5 +68,25 @@ describe('teams mock adapter', () => {
     const usersByGroup = await Promise.all(groups.map((g) => mockGetGroupUsers(g.id)));
     const totalGroupedUsers = usersByGroup.reduce((sum, list) => sum + list.length, 0);
     expect(totalGroupedUsers).toBe(6);
+  });
+
+  describe('mockUploadTeamIcon / mockDeleteTeamIcon', () => {
+    test('upload devuelve el URI recibido y lo persiste en el equipo', async () => {
+      const result = await mockUploadTeamIcon(1, 'file:///tmp/icono.jpg');
+      expect(result).toEqual({ icon_url: 'file:///tmp/icono.jpg' });
+      const team = await mockGetTeam(1);
+      expect(team.icon_url).toBe('file:///tmp/icono.jpg');
+    });
+
+    test('delete limpia icon_url del equipo', async () => {
+      await mockUploadTeamIcon(1, 'file:///tmp/icono.jpg');
+      await mockDeleteTeamIcon(1);
+      const team = await mockGetTeam(1);
+      expect(team.icon_url).toBeNull();
+    });
+
+    test('upload a un equipo inexistente tira error 404-like', async () => {
+      await expect(mockUploadTeamIcon(9999, 'file:///tmp/icono.jpg')).rejects.toMatchObject({ status: 404 });
+    });
   });
 });

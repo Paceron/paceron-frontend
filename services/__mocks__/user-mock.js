@@ -86,3 +86,24 @@ export async function mockChangePassword(id, { current_password: currentPassword
   }
   return { message: 'Contraseña actualizada correctamente.' };
 }
+
+// Estado in-memory para simular que la foto "quedó subida" entre
+// uploadUserPhoto y cualquier getUser() posterior durante una sesión mock
+// — mismo patrón que mockBankAlias arriba. El mock devuelve el mismo URI
+// local recibido como si fuera la URL ya subida (no hay bucket real
+// detrás en modo mock).
+let mockPhotoUrl = null;
+
+export async function mockUploadUserPhoto(id, uri) {
+  mockPhotoUrl = uri;
+  return { photo_url: uri };
+}
+
+export async function mockDeleteUserPhoto(_id) {
+  mockPhotoUrl = null;
+  return null;
+}
+
+export function getMockPhotoUrl() {
+  return mockPhotoUrl;
+}
