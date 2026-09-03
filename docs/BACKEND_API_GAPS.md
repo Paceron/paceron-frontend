@@ -35,3 +35,20 @@ sin campo real en `group`. La asignación a un **corredor individual** es
 relación nueva, sin ningún equivalente en el backend hoy.
 
 Sin gap abierto de foto de equipo — sigue deliberadamente excluido hasta que el usuario lo retome (ver actualización 2026-08-02 arriba).
+
+**Actualización 2026-09-02:** arrancó el trabajo de Fase 0 de pagos (ver
+`docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md`) —
+se abre un gap propio detectado en el camino:
+
+## Gap 5 — sin endpoint para listar los permisos de un tier ajeno
+
+`POST /api/v1/tiers/{id}/permissions` (asignar un permiso a un tier)
+existe, pero no hay `GET /api/v1/tiers/{id}/permissions` (listar). El
+único lugar donde se resuelven permisos por tier es
+`GET /auth/permissions`, y solo trae los del tier **actual** del usuario
+autenticado. Impacto: la pantalla "Mejorar tier" no puede mostrar la
+lista de beneficios/permisos de un tier al que el usuario todavía no
+accedió — usa el `description` de texto libre del tier como único
+contenido de "beneficios". No bloqueante (la pantalla funciona con
+`description`), pero limita qué tan rica puede ser esa lista sin este
+endpoint.
