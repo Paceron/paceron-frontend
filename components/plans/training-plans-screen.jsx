@@ -7,12 +7,25 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTrainingPlanStore, getPlanStatus } from '../../store/training-plan-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { TabBar } from '../shared/tab-bar.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { SessionsCatalogTab } from './sessions-catalog-tab.jsx';
+import { ExercisesCatalogTab } from './exercises-catalog-tab.jsx';
 
 const STATUS_META = {
   activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
   vencido: { label: 'Vencido', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
 };
+
+// Planes / Sesiones / Ejercicios — a diferencia de TeamDetailScreen
+// (pestañas solo en web), acá van en ambas plataformas: cada pestaña es
+// un catálogo independiente que puede crecer, apilar los 3 en mobile
+// sería un scroll larguísimo. Ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
+const TABS = [
+  { id: 'planes', label: 'Planes', icon: 'clipboard-text-outline' },
+  { id: 'sesiones', label: 'Sesiones', icon: 'clipboard-plus-outline' },
+  { id: 'ejercicios', label: 'Ejercicios', icon: 'dumbbell' },
+];
 
 function PlanRow({ plan, onPress }) {
   const status = getPlanStatus(plan);
@@ -47,7 +60,7 @@ function PlanRow({ plan, onPress }) {
   );
 }
 
-function TrainingPlansScreenContent() {
+function PlansTab() {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
@@ -63,6 +76,47 @@ function TrainingPlansScreenContent() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId]);
+
+  return (
+    <SectionCard
+      headerRight={(
+        <Pressable
+          className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
+          nativeID="training-plans-create-button"
+          onPress={() => router.push('/training-plans/create')}
+          testID="training-plans-create-button"
+        >
+          <Text className="text-sm font-semibold text-primary" nativeID="training-plans-create-button-label" testID="training-plans-create-button-label">
+            Crear plan
+          </Text>
+        </Pressable>
+      )}
+      icon="clipboard-text-outline"
+      title="Tus planes"
+    >
+      {loading ? (
+        <View className="items-center py-6" nativeID="training-plans-loading" testID="training-plans-loading">
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : plans.length === 0 ? (
+        <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="training-plans-empty" testID="training-plans-empty">
+          Todavía no creaste ningún plan de entrenamiento.
+        </Text>
+      ) : (
+        <View className="gap-2" nativeID="training-plans-list" testID="training-plans-list">
+          {plans.map((plan) => (
+            <PlanRow key={plan.id} onPress={() => router.push(`/training-plans/${plan.id}`)} plan={plan} />
+          ))}
+        </View>
+      )}
+    </SectionCard>
+  );
+}
+
+function TrainingPlansScreenContent() {
+  const router = useRouter();
+  const colors = useThemeColors();
+  const [activeTab, setActiveTab] = useState('planes');
 
   return (
     <ScrollView
@@ -87,38 +141,11 @@ function TrainingPlansScreenContent() {
           </Text>
         </View>
 
-        <SectionCard
-          headerRight={(
-            <Pressable
-              className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
-              nativeID="training-plans-create-button"
-              onPress={() => router.push('/training-plans/create')}
-              testID="training-plans-create-button"
-            >
-              <Text className="text-sm font-semibold text-primary" nativeID="training-plans-create-button-label" testID="training-plans-create-button-label">
-                Crear plan
-              </Text>
-            </Pressable>
-          )}
-          icon="clipboard-text-outline"
-          title="Tus planes"
-        >
-          {loading ? (
-            <View className="items-center py-6" nativeID="training-plans-loading" testID="training-plans-loading">
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : plans.length === 0 ? (
-            <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="training-plans-empty" testID="training-plans-empty">
-              Todavía no creaste ningún plan de entrenamiento.
-            </Text>
-          ) : (
-            <View className="gap-2" nativeID="training-plans-list" testID="training-plans-list">
-              {plans.map((plan) => (
-                <PlanRow key={plan.id} onPress={() => router.push(`/training-plans/${plan.id}`)} plan={plan} />
-              ))}
-            </View>
-          )}
-        </SectionCard>
+        <TabBar active={activeTab} onChange={setActiveTab} scope="training-plans-tab-bar" tabs={TABS} />
+
+        {activeTab === 'planes' && <PlansTab />}
+        {activeTab === 'sesiones' && <SessionsCatalogTab />}
+        {activeTab === 'ejercicios' && <ExercisesCatalogTab />}
       </View>
     </ScrollView>
   );
