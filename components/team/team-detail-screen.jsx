@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
@@ -17,7 +18,7 @@ import { toUserModel } from '../../services/normalizers.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, Row, Col } from '../forms/fields.jsx';
+import { FIELD_LABEL, InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
@@ -644,6 +645,11 @@ function TeamDetailScreenContent({ teamId }) {
   // afecta a la vista de corredor común — quien gestiona el equipo siempre
   // ve los grupos, con o sin el toggle prendido.
   const canSeeGroups = isTrainerView || team?.showGroupsToRunners;
+  // Solo importa cuando el buscador (sin label propio) y "Grupo" (con
+  // label) van lado a lado — en ese caso el buscador necesita un
+  // espaciador invisible para alinear su caja con la de "Grupo", ver el
+  // comentario en team-detail-search-row más abajo.
+  const isNarrow = useIsNarrowWeb();
 
   const [activeTab, setActiveTab] = useState('general');
   const [search, setSearch] = useState('');
@@ -863,20 +869,35 @@ function TeamDetailScreenContent({ teamId }) {
           sentido mostrar el buscador — no hay nada para buscar. */}
       {(loadingRoster || members.length > 0) && (
         <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
-          {/* Ninguno de los dos campos muestra error de validación (son
-              filtros, no un formulario) — hideErrorRow saca la fila de 20px
-              que InputField/PickerField reservan siempre para eso en
-              formularios reales (esos NO cambian, hideErrorRow es opt-in).
-              El margen propio del field también se anula (className="mb-0")
-              — el espacio entre "Buscar corredor" y "Grupo" pasa a
-              controlarlo un solo lugar, el propio Row (narrowClassName). Va
-              en gap-3.5 (14px) y no gap-3 (12px) — igualando visualmente el
-              padding-top del frame (12px) hasta la primera etiqueta, porque
-              ahí no hay ningún borde/caja antes que "coma" espacio como sí
-              lo hace el borde inferior del campo de arriba. */}
+          {/* Buscador minimalista (mismo criterio que ExercisesCatalogTab):
+              sin label propio, "Buscar corredor..." vive como placeholder
+              adentro del campo — una sola línea en vez del label + fila de
+              20px de error reservada que sí sigue llevando "Grupo" (select
+              distinto, con su propio label). Cuando los dos van lado a lado
+              (canSeeGroups, ancho web), el buscador necesita un espaciador
+              invisible del mismo alto que un label real — si no, Row los
+              estira parejo pero el buscador (sin label) queda pegado
+              arriba, más alto que la caja de "Grupo". En mobile/angosto no
+              hace falta: van apilados, no hay nada con que alinear. */}
           <Row narrowClassName="gap-3.5">
             <Col>
-              <InputField className="mb-0" dense hideErrorRow label="Buscar corredor" onChange={setSearch} placeholder={isTrainerView ? 'Nombre o email del corredor' : 'Nombre del corredor'} value={search} />
+              {canSeeGroups && !isNarrow && (
+                <Text className={`${FIELD_LABEL} opacity-0`} nativeID="team-detail-search-label-spacer" testID="team-detail-search-label-spacer">
+                  Buscar
+                </Text>
+              )}
+              <View className="h-12 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-input-wrapper" testID="team-detail-search-input-wrapper">
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
+                <TextInput
+                  className="flex-1 text-sm text-slate-900 outline-none dark:text-white"
+                  nativeID="team-detail-search-input"
+                  onChangeText={setSearch}
+                  placeholder={isTrainerView ? 'Buscar corredor por nombre o mail' : 'Buscar corredor por nombre'}
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  testID="team-detail-search-input"
+                  value={search}
+                />
+              </View>
             </Col>
             {canSeeGroups && (
               <Col>
