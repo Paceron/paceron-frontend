@@ -1,7 +1,8 @@
 import {
   mockListTrainingPlans, mockGetTrainingPlan, mockCreateTrainingPlan, mockUpdateTrainingPlan,
   mockDeleteTrainingPlan, mockCloneTrainingPlan, mockListRunnerPlanAssignments, mockAssignPlanToRunner,
-  mockUnassignPlanFromRunner, validatePlanDays, __resetMockTrainingPlans,
+  mockUnassignPlanFromRunner, mockListCurrentPlanMarks, mockMarkPlanAsCurrent, mockUnmarkPlanAsCurrent,
+  validatePlanDays, __resetMockTrainingPlans,
 } from '../services/__mocks__/training-plans-mock.js';
 
 function buildValidDays() {
@@ -121,5 +122,50 @@ describe('training-plans-mock', () => {
     await mockAssignPlanToRunner(1, 42);
     await mockUnassignPlanFromRunner(42);
     expect(await mockListRunnerPlanAssignments({ userId: 42 })).toEqual([]);
+  });
+
+  test('mockListCurrentPlanMarks devuelve el marcado sembrado del corredor demo, filtrable por user_id', async () => {
+    const all = await mockListCurrentPlanMarks();
+    expect(all.length).toBeGreaterThan(0);
+    const forUser1 = await mockListCurrentPlanMarks({ userId: 1 });
+    expect(forUser1.every((m) => m.user_id === 1)).toBe(true);
+    expect(await mockListCurrentPlanMarks({ userId: 999 })).toEqual([]);
+  });
+
+  test('mockMarkPlanAsCurrent agrega el marcado, es idempotente para el mismo plan', async () => {
+    const clone = await mockCloneTrainingPlan(1);
+    const before = await mockListCurrentPlanMarks({ userId: 42 });
+    expect(before).toEqual([]);
+
+    await mockMarkPlanAsCurrent(42, clone.id);
+    const marks = await mockListCurrentPlanMarks({ userId: 42 });
+    expect(marks).toHaveLength(1);
+    expect(marks[0].plan_id).toBe(clone.id);
+
+    // Volver a marcar el mismo plan no duplica.
+    await mockMarkPlanAsCurrent(42, clone.id);
+    expect(await mockListCurrentPlanMarks({ userId: 42 })).toHaveLength(1);
+  });
+
+  test('mockMarkPlanAsCurrent tira al intentar un 3er plan', async () => {
+    const cloneA = await mockCloneTrainingPlan(1);
+    const cloneB = await mockCloneTrainingPlan(1);
+    const cloneC = await mockCloneTrainingPlan(1);
+    await mockMarkPlanAsCurrent(42, cloneA.id);
+    await mockMarkPlanAsCurrent(42, cloneB.id);
+
+    await expect(mockMarkPlanAsCurrent(42, cloneC.id)).rejects.toThrow('Ya tenés 2 planes marcados');
+    expect(await mockListCurrentPlanMarks({ userId: 42 })).toHaveLength(2);
+  });
+
+  test('mockMarkPlanAsCurrent tira si el plan no existe', async () => {
+    await expect(mockMarkPlanAsCurrent(42, 9999)).rejects.toThrow();
+  });
+
+  test('mockUnmarkPlanAsCurrent saca el marcado del corredor', async () => {
+    const clone = await mockCloneTrainingPlan(1);
+    await mockMarkPlanAsCurrent(42, clone.id);
+    await mockUnmarkPlanAsCurrent(42, clone.id);
+    expect(await mockListCurrentPlanMarks({ userId: 42 })).toEqual([]);
   });
 });

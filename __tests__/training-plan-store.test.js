@@ -1,4 +1,7 @@
-import { useTrainingPlanStore, getPlanStatus, buildEmptyPlanDays, dayLabel, PLAN_DURATION_OPTIONS } from '../store/training-plan-store.js';
+import {
+  useTrainingPlanStore, getPlanStatus, getPlanDaysRemaining, getTodayDayOfWeek,
+  buildEmptyPlanDays, dayLabel, PLAN_DURATION_OPTIONS,
+} from '../store/training-plan-store.js';
 import { useTeamStore } from '../store/team-store.js';
 
 jest.mock('../services/trainingPlans.js', () => ({
@@ -11,6 +14,9 @@ jest.mock('../services/trainingPlans.js', () => ({
   listRunnerPlanAssignments: jest.fn(),
   assignPlanToRunner: jest.fn(),
   unassignPlanFromRunner: jest.fn(),
+  listCurrentPlanMarks: jest.fn(),
+  markPlanAsCurrent: jest.fn(),
+  unmarkPlanAsCurrent: jest.fn(),
 }));
 
 import {
@@ -22,6 +28,9 @@ import {
   cloneTrainingPlan as cloneTrainingPlanService,
   listRunnerPlanAssignments as listRunnerPlanAssignmentsService,
   assignPlanToRunner as assignPlanToRunnerService,
+  listCurrentPlanMarks as listCurrentPlanMarksService,
+  markPlanAsCurrent as markPlanAsCurrentService,
+  unmarkPlanAsCurrent as unmarkPlanAsCurrentService,
 } from '../services/trainingPlans.js';
 
 jest.mock('../services/teams.js', () => ({
@@ -70,9 +79,10 @@ const PLAN_DTO = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  useTrainingPlanStore.setState({ plans: [], myPlans: [] });
+  useTrainingPlanStore.setState({ plans: [], myPlans: [], myCurrentPlanIds: [] });
   useTeamStore.setState({ teams: [], myMemberTeams: [], selectedTeamId: null, myInvitations: [] });
   listGroupsService.mockResolvedValue([]);
+  listCurrentPlanMarksService.mockResolvedValue([]);
 });
 
 describe('getPlanStatus', () => {
@@ -84,6 +94,25 @@ describe('getPlanStatus', () => {
   test('vencido cuando ya pasó la caducidad', () => {
     const plan = { createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), durationDays: 7 };
     expect(getPlanStatus(plan)).toBe('vencido');
+  });
+});
+
+describe('getPlanDaysRemaining', () => {
+  test('cuenta los días enteros que quedan hasta la caducidad', () => {
+    const plan = { createdAt: new Date().toISOString(), durationDays: 7 };
+    expect(getPlanDaysRemaining(plan)).toBe(7);
+  });
+
+  test('no devuelve negativo si ya venció', () => {
+    const plan = { createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), durationDays: 7 };
+    expect(getPlanDaysRemaining(plan)).toBe(0);
+  });
+});
+
+describe('getTodayDayOfWeek', () => {
+  test('devuelve uno de los 7 dayOfWeek del dominio', () => {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    expect(days).toContain(getTodayDayOfWeek());
   });
 });
 
@@ -196,5 +225,46 @@ describe('training plan store', () => {
     expect(result.success).toBe(true);
     const ids = useTrainingPlanStore.getState().myPlans.map((p) => p.id).sort();
     expect(ids).toEqual(['7', '9']);
+  });
+
+  test('fetchMyPlans trae los marcados como actuales, filtrados contra los planes realmente asignados', async () => {
+    listTeamsService.mockResolvedValue([]);
+    listRunnerPlanAssignmentsService.mockResolvedValue([{ id: 1, plan_id: 9, user_id: 42, assigned_at: '' }]);
+    getTrainingPlanService.mockImplementation(async (planId) => ({ ...PLAN_DTO, id: Number(planId) }));
+    // '8' no está en la lista de asignados — no debería colarse en myCurrentPlanIds.
+    listCurrentPlanMarksService.mockResolvedValue([
+      { id: 1, plan_id: 9, user_id: 42, marked_at: '' },
+      { id: 2, plan_id: 8, user_id: 42, marked_at: '' },
+    ]);
+
+    await useTrainingPlanStore.getState().fetchMyPlans(42);
+
+    expect(useTrainingPlanStore.getState().myCurrentPlanIds).toEqual(['9']);
+  });
+
+  test('markCurrentPlan agrega el id a myCurrentPlanIds', async () => {
+    useTrainingPlanStore.setState({ myCurrentPlanIds: [] });
+    markPlanAsCurrentService.mockResolvedValue({ id: 1, plan_id: 9, user_id: 42, marked_at: '' });
+    const result = await useTrainingPlanStore.getState().markCurrentPlan(42, '9');
+    expect(markPlanAsCurrentService).toHaveBeenCalledWith(42, '9');
+    expect(result.success).toBe(true);
+    expect(useTrainingPlanStore.getState().myCurrentPlanIds).toEqual(['9']);
+  });
+
+  test('markCurrentPlan devuelve error legible si el servicio rechaza (tope de 2)', async () => {
+    useTrainingPlanStore.setState({ myCurrentPlanIds: ['1', '2'] });
+    markPlanAsCurrentService.mockRejectedValue(new Error('Ya tenés 2 planes marcados como actuales — desmarcá uno primero.'));
+    const result = await useTrainingPlanStore.getState().markCurrentPlan(42, '9');
+    expect(result).toEqual({ success: false, error: 'Ya tenés 2 planes marcados como actuales — desmarcá uno primero.' });
+    expect(useTrainingPlanStore.getState().myCurrentPlanIds).toEqual(['1', '2']);
+  });
+
+  test('unmarkCurrentPlan saca el id de myCurrentPlanIds', async () => {
+    useTrainingPlanStore.setState({ myCurrentPlanIds: ['1', '9'] });
+    unmarkPlanAsCurrentService.mockResolvedValue(null);
+    const result = await useTrainingPlanStore.getState().unmarkCurrentPlan(42, '9');
+    expect(unmarkPlanAsCurrentService).toHaveBeenCalledWith(42, '9');
+    expect(result.success).toBe(true);
+    expect(useTrainingPlanStore.getState().myCurrentPlanIds).toEqual(['1']);
   });
 });

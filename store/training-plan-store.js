@@ -9,9 +9,15 @@ import {
   listRunnerPlanAssignments as listRunnerPlanAssignmentsService,
   assignPlanToRunner as assignPlanToRunnerService,
   unassignPlanFromRunner as unassignPlanFromRunnerService,
+  listCurrentPlanMarks as listCurrentPlanMarksService,
+  markPlanAsCurrent as markPlanAsCurrentService,
+  unmarkPlanAsCurrent as unmarkPlanAsCurrentService,
 } from '../services/trainingPlans.js';
 import { getGroupUsers as getGroupUsersService } from '../services/groups.js';
-import { toTrainingPlanModel, toCreateTrainingPlanPayload, toUpdateTrainingPlanPayload, toRunnerPlanAssignmentModel } from '../services/normalizers.js';
+import {
+  toTrainingPlanModel, toCreateTrainingPlanPayload, toUpdateTrainingPlanPayload,
+  toRunnerPlanAssignmentModel, toCurrentPlanMarkModel,
+} from '../services/normalizers.js';
 import { useTeamStore } from './team-store.js';
 
 // Caducidades soportadas — pedido explícito del usuario (7 o 14 días, no
@@ -44,11 +50,30 @@ export function getPlanStatus(plan) {
   return Date.now() < expiresAt ? 'activo' : 'vencido';
 }
 
+// Días enteros que le quedan de vigencia a un plan — mismo cálculo que
+// getPlanStatus, pero como cantidad en vez de semáforo. 0 (no negativo)
+// si ya venció. Para "Mis planes", fila de abajo del corredor.
+export function getPlanDaysRemaining(plan) {
+  if (!plan?.createdAt || !plan?.durationDays) return 0;
+  const expiresAt = new Date(plan.createdAt).getTime() + plan.durationDays * 24 * 60 * 60 * 1000;
+  return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
+}
+
+// Hoy, como uno de los 7 dayOfWeek del dominio — getDay() de JS es
+// 0=domingo..6=sábado, DAY_ORDER acá arriba arranca en lunes.
+export function getTodayDayOfWeek() {
+  const jsDay = new Date().getDay();
+  return DAY_ORDER[(jsDay + 6) % 7];
+}
+
 export const useTrainingPlanStore = create((set, get) => ({
   // Planes propios del entrenador (Planes de entrenamiento).
   plans: [],
   // Planes que ve el corredor (Mis planes) — individual + por grupo.
   myPlans: [],
+  // Hasta 2 ids de myPlans marcados como "actual" — ver
+  // docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
+  myCurrentPlanIds: [],
 
   // GET /training-plans?owner_id= — biblioteca del entrenador.
   fetchPlans: async (ownerId) => {
@@ -198,7 +223,40 @@ export const useTrainingPlanStore = create((set, get) => ({
 
       const uniquePlanIds = [...new Set([...individualPlanIds, ...groupPlanIds])];
       const plans = await Promise.all(uniquePlanIds.map(async (planId) => toTrainingPlanModel(await getTrainingPlanService(planId))));
-      set({ myPlans: plans });
+
+      // Filtra contra uniquePlanIds — un plan marcado como actual que ya
+      // no está asignado (desasignado del lado del entrenador) no debería
+      // seguir apareciendo en el hero.
+      const markDtos = await listCurrentPlanMarksService({ userId });
+      const currentPlanIds = markDtos
+        .map((dto) => toCurrentPlanMarkModel(dto).planId)
+        .filter((planId) => uniquePlanIds.includes(planId));
+
+      set({ myPlans: plans, myCurrentPlanIds: currentPlanIds });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Marcar/desmarcar un plan como "actual" — preferencia del corredor,
+  // no una asignación nueva (ver spec). El tope de 2 lo hace cumplir el
+  // servicio (mockMarkPlanAsCurrent tira si ya hay 2), acá solo se
+  // propaga el error para que la UI lo muestre.
+  markCurrentPlan: async (userId, planId) => {
+    try {
+      await markPlanAsCurrentService(userId, planId);
+      set((state) => (state.myCurrentPlanIds.includes(planId) ? state : { myCurrentPlanIds: [...state.myCurrentPlanIds, planId] }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  unmarkCurrentPlan: async (userId, planId) => {
+    try {
+      await unmarkPlanAsCurrentService(userId, planId);
+      set((state) => ({ myCurrentPlanIds: state.myCurrentPlanIds.filter((id) => id !== planId) }));
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
