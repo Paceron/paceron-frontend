@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
@@ -83,10 +84,18 @@ export function TierUpgradeScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    listTiers()
-      .then((dtos) => { if (!cancelled) setTiers(dtos.map(toTierModel)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+    const loadTiers = async () => {
+      setLoading(true);
+      try {
+        const dtos = await listTiers();
+        if (!cancelled) setTiers(dtos.map(toTierModel));
+      } catch (error) {
+        if (!cancelled) Toast.show({ type: 'error', text1: 'Error', text2: error.message || 'No se pudieron cargar los tiers.' });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadTiers();
     return () => { cancelled = true; };
   }, []);
 
