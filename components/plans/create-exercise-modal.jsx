@@ -82,11 +82,11 @@ export function CreateExerciseModal({ visible, onClose, onCreated }) {
           </View>
 
           <InputField dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Series 400m fuertes" value={name} />
-          <PickerField dense label="Tipo" onChange={setKind} options={EXERCISE_KIND_OPTIONS} value={kind} />
+          <PickerField dense hideErrorRow label="Tipo" onChange={setKind} options={EXERCISE_KIND_OPTIONS} required value={kind} />
 
-          {showMinutes && <InputField dense keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} />}
-          {showDistance && <InputField dense keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} />}
-          {showSpeed && <InputField dense keyboardType="number-pad" label="Velocidad (km/h)" onChange={setSpeedKph} value={speedKph} />}
+          {showMinutes && <InputField dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} />}
+          {showDistance && <InputField dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} />}
+          {showSpeed && <InputField dense hideErrorRow keyboardType="number-pad" label="Velocidad (km/h)" onChange={setSpeedKph} value={speedKph} />}
 
           <View className="mt-2 flex-row gap-3" nativeID="create-exercise-modal-actions" testID="create-exercise-modal-actions">
             <Pressable

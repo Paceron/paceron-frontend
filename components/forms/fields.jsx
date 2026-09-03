@@ -55,7 +55,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -84,7 +84,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
               </option>
             ))}
           </select>
-          {!disabled && value && (
+          {!disabled && !required && value && (
             <Pressable
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full hover:opacity-70"
               onPress={() => onChange('')}
@@ -329,7 +329,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -362,7 +362,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         >
           {selected ? selected.name : placeholder}
         </Text>
-        {!disabled && value && (
+        {!disabled && !required && value && (
           <Pressable
             className="rounded-full hover:opacity-70"
             onPress={() => { onChange(''); setVisible(false); }}

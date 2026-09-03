@@ -135,12 +135,13 @@ function AssignTrainingPlanScreenContent({ planId }) {
                 onChange={handleTeamChange}
                 options={administeredTeams.map((t) => ({ id: t.id, name: t.name }))}
                 placeholder="Elegí un equipo"
+                required
                 value={teamId}
               />
 
               {teamId && (
                 <>
-                  <PickerField dense label="Asignar a" onChange={setTargetType} options={TARGET_TYPE_OPTIONS} value={targetType} />
+                  <PickerField dense label="Asignar a" onChange={setTargetType} options={TARGET_TYPE_OPTIONS} required value={targetType} />
 
                   {targetType === 'group' ? (
                     <ResponsiveSelectField
@@ -149,6 +150,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
                       onChange={setGroupId}
                       options={groupOptions}
                       placeholder={groupOptions.length ? 'Elegí un grupo' : 'Este equipo todavía no tiene grupos'}
+                      required
                       value={groupId}
                     />
                   ) : loadingRoster ? (
@@ -162,6 +164,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
                       onChange={setRunnerId}
                       options={runnerOptions}
                       placeholder={runnerOptions.length ? 'Elegí un corredor' : 'Este equipo todavía no tiene corredores'}
+                      required
                       value={runnerId}
                     />
                   )}
