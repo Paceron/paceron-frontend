@@ -77,6 +77,11 @@ function EditButton({ onEdit, colors, full }) {
 }
 
 function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, photoUploading, onPickPhoto, onRemovePhoto }) {
+  // Iniciales de nombre + apellido — fallback de AvatarPicker cuando no
+  // hay foto, en vez del ícono genérico. Solo tiene sentido acá (un
+  // equipo no tiene "nombre y apellido" — team-detail-screen.jsx no pasa
+  // este prop, se queda con el ícono account-group de siempre).
+  const initials = `${user.name?.[0] ?? ''}${user.surname?.[0] ?? ''}`.toUpperCase();
   const isNarrowWeb = useIsNarrowWeb();
   // Web ancho: fila superior (avatar + datos + botón editar), fila de
   // switch debajo. En web angosto el nombre/email/badge no entran junto al
@@ -92,6 +97,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
             accessibilityLabel="Foto de perfil"
             fallbackIcon="account"
             idPrefix="profile-screen-avatar"
+            initials={initials}
             loading={photoUploading}
             onPick={onPickPhoto}
             onRemove={onRemovePhoto}
@@ -122,6 +128,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
           accessibilityLabel="Foto de perfil"
           fallbackIcon="account"
           idPrefix="profile-screen-avatar"
+          initials={initials}
           loading={photoUploading}
           onPick={onPickPhoto}
           onRemove={onRemovePhoto}
