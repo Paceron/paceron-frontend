@@ -60,7 +60,8 @@ function PaymentsTestbedScreenContent() {
   const handleApproved = async (payment) => {
     Toast.show({ type: 'success', text1: 'Pago aprobado' });
     try {
-      const dto = await getPayment(payment.paymentId ?? payment.id);
+      // Re-fetch deliberately, to exercise GET /payments/:id (the testbed's job is proving the whole service surface works, not just the happy path CheckoutFlow already returned).
+      const dto = await getPayment(payment.paymentId);
       setLastPayment(toPaymentModel(dto));
     } catch {
       setLastPayment(payment);

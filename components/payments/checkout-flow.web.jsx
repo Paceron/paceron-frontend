@@ -23,26 +23,23 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, marketplace, onA
   // El Brick espera que onSubmit devuelva una Promise: resuelve para que
   // el brick muestre su propio estado de éxito, rechaza para que
   // muestre su propio estado de error (contrato de @mercadopago/sdk-react).
-  const handleSubmit = ({ formData }) => new Promise((resolve, reject) => {
-    processPayment(toProcessPaymentPayload({
-      token: formData.token,
-      transactionAmount: formData.transaction_amount,
-      paymentMethodId: formData.payment_method_id,
-      installments: formData.installments,
-      payerEmail: formData.payer.email,
-      preferenceId,
-    }))
-      .then((dto) => {
-        const payment = toPaymentModel(dto);
-        setApprovedPaymentId(payment.paymentId);
-        onApproved?.(payment);
-        resolve();
-      })
-      .catch((error) => {
-        onError?.(error);
-        reject(error);
-      });
-  });
+  const handleSubmit = ({ formData }) => processPayment(toProcessPaymentPayload({
+    token: formData.token,
+    transactionAmount: formData.transaction_amount,
+    paymentMethodId: formData.payment_method_id,
+    installments: formData.installments,
+    payerEmail: formData.payer.email,
+    preferenceId,
+  }))
+    .then((dto) => {
+      const payment = toPaymentModel(dto);
+      setApprovedPaymentId(payment.paymentId);
+      onApproved?.(payment);
+    })
+    .catch((error) => {
+      onError?.(error);
+      throw error;
+    });
 
   const handleError = (error) => {
     onError?.(error);
