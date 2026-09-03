@@ -2,7 +2,11 @@ import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
-import { CheckoutFlow } from './checkout-flow.jsx';
+// Sin extensión a propósito: Metro solo aplica resolución por plataforma
+// (.web.jsx antes que .jsx) cuando el specifier NO trae extensión — un
+// import con '.jsx' explícito carga ese archivo literal en cualquier
+// plataforma, incluida web, rompiendo el split.
+import { CheckoutFlow } from './checkout-flow';
 
 // Página real de la web (deployada en Vercel), pensada para cargarse
 // standalone dentro de un WebView nativo (ver checkout-flow.jsx, rama

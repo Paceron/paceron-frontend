@@ -10,7 +10,9 @@ import { toCreatePreferencePayload, toPreferenceResponseModel, toPaymentModel } 
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, PickerField } from '../forms/fields.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
-import { CheckoutFlow } from './checkout-flow.jsx';
+// Sin extensión a propósito: Metro solo aplica resolución por plataforma
+// (.web.jsx antes que .jsx) cuando el specifier NO trae extensión.
+import { CheckoutFlow } from './checkout-flow';
 
 const CONCEPT_OPTIONS = [
   { id: 'order', name: 'order' },
