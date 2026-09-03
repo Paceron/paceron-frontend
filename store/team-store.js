@@ -42,23 +42,22 @@ export const SUBSCRIPTION_STATUSES = ['activo', 'vencido', 'en_prueba'];
 export const TRAINING_PLAN_OPTIONS = [];
 
 // Completa un equipo real (ya normalizado por toTeamModel — camelCase, id
-// como string) con los datos que el backend todavia no soporta directo en
-// GET/POST /teams: foto (ver docs/BACKEND_API_GAPS.md). showGroupsToRunners
-// ya viene resuelto en `team` por toTeamModel — el backend lo soporta desde
-// 2026-07-29, solo queda el fallback a false para equipos recien creados
-// que todavia no pasaron por un GET/PUT con ese campo en la respuesta.
-// Grupos, miembros e invitaciones arrancan vacios — ya no se arma un grupo
-// default sintetico aca: los grupos reales llegan por un fetch aparte
-// (fetchGroups) o, para un equipo recien creado, por el flujo de creacion
-// (Task 4); las invitaciones llegan por fetchInvitations, ya como accion
-// separada de la creacion del equipo (Etapa 3). `extra.groups` solo existe
-// recien creado el equipo (viene del wizard) — un equipo traido por
-// fetchTeams/fetchTeam no tiene ese contexto, asi que arranca sin grupos.
+// como string) con datos que no vienen en la respuesta base de
+// GET/POST /teams. showGroupsToRunners ya viene resuelto en `team` por
+// toTeamModel — el backend lo soporta desde 2026-07-29, solo queda el
+// fallback a false para equipos recien creados que todavia no pasaron por
+// un GET/PUT con ese campo en la respuesta. Grupos, miembros e
+// invitaciones arrancan vacios — ya no se arma un grupo default sintetico
+// aca: los grupos reales llegan por un fetch aparte (fetchGroups) o, para
+// un equipo recien creado, por el flujo de creacion (Task 4); las
+// invitaciones llegan por fetchInvitations, ya como accion separada de la
+// creacion del equipo (Etapa 3). `extra.groups` solo existe recien creado
+// el equipo (viene del wizard) — un equipo traido por fetchTeams/fetchTeam
+// no tiene ese contexto, asi que arranca sin grupos.
 function decorateTeam(team, extra = {}) {
   return {
     ...team,
     status: team.status ?? 'activo',
-    photoUri: extra.photoUri ?? null,
     showGroupsToRunners: team.showGroupsToRunners ?? false,
     groups: extra.groups ?? [],
     members: extra.members ?? [],
@@ -191,13 +190,12 @@ export const useTeamStore = create((set, get) => ({
   // default mas los extra que hayan tenido exito). Las invitaciones ya no
   // se orquestan aca — se mandan aparte con sendInvite despues de crear el
   // equipo (Etapa 3), asi que no hace falta remapear ids de grupo draft a
-  // reales. La foto (payload.photoUri) sigue sin campo en el backend (ver
-  // docs/BACKEND_API_GAPS.md) — se guarda solo del lado del cliente.
+  // reales.
   createTeam: async (payload) => {
     try {
       const created = await createTeamService(toCreateTeamPayload(payload));
       const teamId = String(created.id);
-      let team = decorateTeam(toTeamModel(created), { photoUri: payload.photoUri });
+      let team = decorateTeam(toTeamModel(created));
       set((state) => ({ teams: [...state.teams, team], selectedTeamId: team.id }));
 
       const hasAddress = Boolean(payload.country || payload.province || payload.city);
