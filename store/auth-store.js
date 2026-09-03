@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { login as loginService, register as registerService, getUser as getUserService, logout as logoutService, refresh as refreshService } from '../services/auth.js';
-import { updateUser as updateUserService, changeStatus as changeStatusService } from '../services/user.js';
+import { updateUser as updateUserService, changeStatus as changeStatusService, uploadUserPhoto as uploadUserPhotoService, deleteUserPhoto as deleteUserPhotoService } from '../services/user.js';
 import { assignRole as assignRoleService, activateTrainerRole as activateTrainerRoleService, deactivateTrainerRole as deactivateTrainerRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
@@ -122,6 +122,41 @@ export const useAuthStore = create((set, get) => ({
         set({ user: updated });
         await persist({ user: updated, token, refreshToken, expiresAt, activeRole, roles });
       }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Sube (o reemplaza) la foto de perfil — endpoint separado del PUT
+  // general de /users/{id}, mismo criterio que la plomería de pagos: se
+  // llama al servicio, se actualiza user.photoUrl en el store, se
+  // persiste. mimeType opcional (services/user.js#uploadUserPhoto ya
+  // tiene un default).
+  uploadPhoto: async (uri, mimeType) => {
+    const { user } = get();
+    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
+    try {
+      const { photo_url: photoUrl } = await uploadUserPhotoService(user.userId, uri, mimeType);
+      const updated = { ...user, photoUrl };
+      const { token, refreshToken, expiresAt, activeRole, roles } = get();
+      set({ user: updated });
+      await persist({ user: updated, token, refreshToken, expiresAt, activeRole, roles });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  deletePhoto: async () => {
+    const { user } = get();
+    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
+    try {
+      await deleteUserPhotoService(user.userId);
+      const updated = { ...user, photoUrl: null };
+      const { token, refreshToken, expiresAt, activeRole, roles } = get();
+      set({ user: updated });
+      await persist({ user: updated, token, refreshToken, expiresAt, activeRole, roles });
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

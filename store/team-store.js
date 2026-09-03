@@ -6,6 +6,8 @@ import {
   updateTeam as updateTeamService,
   updateTeamAddress as updateTeamAddressService,
   deleteTeam as deleteTeamService,
+  uploadTeamIcon as uploadTeamIconService,
+  deleteTeamIcon as deleteTeamIconService,
 } from '../services/teams.js';
 import { listGroups as listGroupsService, createGroup as createGroupService, updateGroup as updateGroupService, deleteGroup as deleteGroupService, getGroupUsers as getGroupUsersService, addGroupUser as addGroupUserService, removeGroupUser as removeGroupUserService } from '../services/groups.js';
 import { inviteToTeam as inviteToTeamService, listTeamInvitations as listTeamInvitationsService, listMyInvitations as listMyInvitationsService, acceptInvitation as acceptInvitationService, rejectInvitation as rejectInvitationService } from '../services/invitations.js';
@@ -236,14 +238,12 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
-  // Edita los "datos generales" de un equipo ya existente (PUT
-  // /teams/{id}, parcial) — grupos, miembros, invitaciones y status no se
-  // tocan desde acá. `updates` puede traer country/province/city
-  // (secuenciados aparte, ver abajo) y photoUri (interactivo del lado del
-  // cliente, sin campo en el backend — ver docs/BACKEND_API_GAPS.md): se
-  // conserva en el equipo resultante vía `clientOnlyAndGeneralUpdates`,
-  // pero toUpdateTeamPayload lo descarta antes de mandarlo al PUT general.
-  // showGroupsToRunners SÍ tiene campo real en el backend desde
+  // PUT general de datos de equipo (/teams/{id}, parcial) — grupos,
+  // miembros, invitaciones, status e icon_url no se tocan desde acá (el
+  // ícono tiene su propio endpoint, ver uploadTeamIcon/deleteTeamIcon más
+  // abajo). `updates` puede traer country/province/city, secuenciados
+  // aparte contra /teams/{id}/address — ver el bloque de abajo.
+  // showGroupsToRunners sí tiene campo real en el backend desde
   // 2026-07-29 — se manda en el payload y el valor final sale de la
   // respuesta (generalModel), no del echo local. country/province/city se
   // excluyen del merge inicial a propósito — si el PUT de dirección de
@@ -283,6 +283,29 @@ export const useTeamStore = create((set, get) => ({
       } catch {
         return { success: true, team: merged, addressWarning: true };
       }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Sube (o reemplaza) el ícono del equipo — endpoint separado del PUT
+  // general, mismo criterio que updateTeam: llama al servicio, mergea el
+  // resultado en el equipo correspondiente del array `teams`.
+  uploadTeamIcon: async (teamId, uri, mimeType) => {
+    try {
+      const { icon_url: iconUrl } = await uploadTeamIconService(teamId, uri, mimeType);
+      set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? { ...t, iconUrl } : t)) }));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  deleteTeamIcon: async (teamId) => {
+    try {
+      await deleteTeamIconService(teamId);
+      set((state) => ({ teams: state.teams.map((t) => (t.id === teamId ? { ...t, iconUrl: null } : t)) }));
+      return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }

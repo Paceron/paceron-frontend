@@ -13,6 +13,8 @@ import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { TeamsAccordion } from './teams-accordion.jsx';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { getUserInitials } from '../../utils/user-initials.js';
 
 const ANIMATION_CONFIG = { duration: 280, easing: Easing.out(Easing.cubic) };
 
@@ -174,9 +176,14 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                 onPress={() => goTo('/profile')}
                 testID="web-narrow-drawer-profile-row"
               >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" nativeID="web-narrow-drawer-profile-avatar" testID="web-narrow-drawer-profile-avatar">
-                  <MaterialCommunityIcons color={colors.primary} name="account-circle" size={26} />
-                </View>
+                <AvatarPicker
+                  accessibilityLabel="Ver perfil"
+                  fallbackIcon="account"
+                  idPrefix="web-narrow-drawer-profile-avatar"
+                  initials={getUserInitials(user)}
+                  size={40}
+                  uri={user.photoUrl}
+                />
                 <View className="flex-1 flex-row items-center gap-2" nativeID="web-narrow-drawer-profile-info" testID="web-narrow-drawer-profile-info">
                   <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="web-narrow-drawer-user-name" testID="web-narrow-drawer-user-name">{user.name}</Text>
                   <RoleBadge role={activeRole} />

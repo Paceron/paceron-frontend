@@ -1,5 +1,6 @@
 import api from './api.js';
 import { USE_MOCKS } from '../config/env.js';
+import { buildPhotoFormData } from '../utils/build-photo-form-data.js';
 import {
   mockCreateTeam,
   mockGetTeam,
@@ -10,6 +11,8 @@ import {
   mockGetTeamUsers,
   mockAddTeamUser,
   mockRemoveTeamUser,
+  mockUploadTeamIcon,
+  mockDeleteTeamIcon,
 } from './__mocks__/teams-mock.js';
 
 // POST /api/v1/teams — team.CreateTeamRequest.
@@ -79,4 +82,18 @@ export async function addTeamUser(teamId, userId, roleInTeam) {
 export async function removeTeamUser(teamId, userId) {
   if (USE_MOCKS) return await mockRemoveTeamUser(teamId, userId);
   return await api.delete(`/teams/${teamId}/users/${userId}`);
+}
+
+// PUT /api/v1/teams/{id}/icon — multipart/form-data, campo "photo". Solo
+// el entrenador dueño (valida el backend). Máx 5MB, JPEG/PNG/WEBP.
+export async function uploadTeamIcon(teamId, uri, mimeType) {
+  if (USE_MOCKS) return await mockUploadTeamIcon(teamId, uri);
+  const formData = await buildPhotoFormData(uri, { mimeType });
+  return await api.putForm(`/teams/${teamId}/icon`, formData);
+}
+
+// DELETE /api/v1/teams/{id}/icon — solo el entrenador dueño, idempotente (204).
+export async function deleteTeamIcon(teamId) {
+  if (USE_MOCKS) return await mockDeleteTeamIcon(teamId);
+  return await api.delete(`/teams/${teamId}/icon`);
 }

@@ -177,3 +177,20 @@ export function __getMockTeamName(teamId) {
 export function __getMockTeamOwnerId(teamId) {
   return mockTeams.find((t) => String(t.id) === String(teamId))?.owner_id ?? null;
 }
+
+// Mismo criterio que mockUploadUserPhoto (user-mock.js) — el mock "hace
+// como que subió", devolviendo el URI local recibido como si fuera la
+// URL ya subida. A diferencia de la foto de usuario (un solo estado
+// global), el ícono se guarda directo en el objeto del equipo dentro de
+// mockTeams (ya es stateful in-memory, mismo patrón que mockUpdateTeam).
+export async function mockUploadTeamIcon(teamId, uri) {
+  const team = findTeamOrThrow(teamId);
+  team.icon_url = uri;
+  return { icon_url: uri };
+}
+
+export async function mockDeleteTeamIcon(teamId) {
+  const team = findTeamOrThrow(teamId);
+  team.icon_url = null;
+  return null;
+}

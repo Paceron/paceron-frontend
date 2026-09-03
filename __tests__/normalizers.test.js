@@ -30,6 +30,11 @@ describe('toUserModel', () => {
     expect(model.city).toBeUndefined();
     expect(model.street).toBeUndefined();
   });
+
+  test('mapea photo_url, null si no viene', () => {
+    expect(toUserModel({ user_id: 1, photo_url: 'https://x.com/p.jpg?v=123' }).photoUrl).toBe('https://x.com/p.jpg?v=123');
+    expect(toUserModel({ user_id: 1 }).photoUrl).toBeNull();
+  });
 });
 
 describe('toRegisterPayload', () => {
@@ -78,6 +83,7 @@ describe('toTeamModel', () => {
       country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
       showGroupsToRunners: true,
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z',
+      iconUrl: null,
     });
   });
 
@@ -89,6 +95,11 @@ describe('toTeamModel', () => {
   test('returns null for falsy dto', () => {
     expect(toTeamModel(null)).toBeNull();
     expect(toTeamModel(undefined)).toBeNull();
+  });
+
+  test('mapea icon_url, null si no viene', () => {
+    expect(toTeamModel({ id: 1, icon_url: 'https://x.com/i.jpg?v=123' }).iconUrl).toBe('https://x.com/i.jpg?v=123');
+    expect(toTeamModel({ id: 1 }).iconUrl).toBeNull();
   });
 });
 

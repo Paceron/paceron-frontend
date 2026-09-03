@@ -1,4 +1,4 @@
-import { mockSearchUsers, mockBatchLookupUsers, mockChangePassword } from '../services/__mocks__/user-mock.js';
+import { mockSearchUsers, mockBatchLookupUsers, mockChangePassword, mockUploadUserPhoto, mockDeleteUserPhoto, getMockPhotoUrl } from '../services/__mocks__/user-mock.js';
 
 describe('mockSearchUsers', () => {
   test('returns no results for queries shorter than 3 characters', async () => {
@@ -59,5 +59,19 @@ describe('mockChangePassword', () => {
   test('rejects with a 400 when the confirmation does not match the new password', async () => {
     await expect(mockChangePassword(1, { ...validPayload, confirm_password: 'Mismatch123!' }))
       .rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe('mockUploadUserPhoto / mockDeleteUserPhoto', () => {
+  test('upload devuelve el mismo URI recibido como photo_url', async () => {
+    const result = await mockUploadUserPhoto(1, 'file:///tmp/foto.jpg');
+    expect(result).toEqual({ photo_url: 'file:///tmp/foto.jpg' });
+    expect(getMockPhotoUrl()).toBe('file:///tmp/foto.jpg');
+  });
+
+  test('delete limpia el estado in-memory', async () => {
+    await mockUploadUserPhoto(1, 'file:///tmp/foto.jpg');
+    await mockDeleteUserPhoto(1);
+    expect(getMockPhotoUrl()).toBeNull();
   });
 });

@@ -24,6 +24,7 @@ export function toUserModel(dto) {
     street: dto.street,
     number: dto.number,
     bankAlias: dto.bank_alias,
+    photoUrl: dto.photo_url ?? null,
   };
 }
 
@@ -93,6 +94,7 @@ export function toTeamModel(dto) {
     showGroupsToRunners: dto.show_groups_to_runners ?? false,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
+    iconUrl: dto.icon_url ?? null,
   };
 }
 

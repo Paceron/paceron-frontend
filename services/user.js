@@ -1,6 +1,7 @@
 import api from './api.js';
 import { USE_MOCKS } from '../config/env.js';
-import { mockUpdateUser, mockChangeStatus, mockSearchUsers, mockBatchLookupUsers, mockChangePassword } from './__mocks__/user-mock.js';
+import { buildPhotoFormData } from '../utils/build-photo-form-data.js';
+import { mockUpdateUser, mockChangeStatus, mockSearchUsers, mockBatchLookupUsers, mockChangePassword, mockUploadUserPhoto, mockDeleteUserPhoto } from './__mocks__/user-mock.js';
 
 // PUT /api/v1/users/{id} — UserUpdateRequest. Cambiar el email requiere el header
 // X-Current-Password con la contraseña actual.
@@ -45,4 +46,19 @@ export async function changePassword(id, { currentPassword, newPassword, confirm
   const payload = { current_password: currentPassword, new_password: newPassword, confirm_password: confirmPassword };
   if (USE_MOCKS) return await mockChangePassword(id, payload);
   return await api.patch(`/users/${id}/password`, payload, { skipAuthRefresh: true });
+}
+
+// PUT /api/v1/users/{id}/photo — multipart/form-data, campo "photo". Self
+// only (valida el backend). Máx 5MB, JPEG/PNG/WEBP (contenido real, no
+// extensión) — 400 PHOTO_TOO_LARGE/PHOTO_INVALID_TYPE si no cumple.
+export async function uploadUserPhoto(id, uri, mimeType) {
+  if (USE_MOCKS) return await mockUploadUserPhoto(id, uri);
+  const formData = await buildPhotoFormData(uri, { mimeType });
+  return await api.putForm(`/users/${id}/photo`, formData);
+}
+
+// DELETE /api/v1/users/{id}/photo — self only, idempotente (204).
+export async function deleteUserPhoto(id) {
+  if (USE_MOCKS) return await mockDeleteUserPhoto(id);
+  return await api.delete(`/users/${id}/photo`);
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,6 +20,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
@@ -556,6 +558,45 @@ function TeamDetailScreenContent({ teamId }) {
   // realmente es dueño — mostrarlo a cualquier entrenador solo generaría un
   // error del backend para el resto.
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
+  const uploadTeamIcon = useTeamStore((s) => s.uploadTeamIcon);
+  const deleteTeamIcon = useTeamStore((s) => s.deleteTeamIcon);
+  const [iconUploading, setIconUploading] = useState(false);
+
+  const handlePickIcon = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Toast.show({ type: 'error', text1: 'Permiso necesario', text2: 'Habilitá el acceso a tus fotos para elegir una imagen.' });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      Toast.show({ type: 'error', text1: 'La imagen es muy grande', text2: 'El máximo es 5MB.' });
+      return;
+    }
+    setIconUploading(true);
+    const uploadResult = await uploadTeamIcon(team.id, asset.uri, asset.mimeType);
+    setIconUploading(false);
+    if (!uploadResult.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos subir el ícono', text2: uploadResult.error });
+    }
+  };
+
+  const handleRemoveIcon = async () => {
+    setIconUploading(true);
+    const result = await deleteTeamIcon(team.id);
+    setIconUploading(false);
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos borrar el ícono', text2: result.error });
+    }
+  };
+
   const { members: allMembers, loading: loadingRoster } = useTeamRoster(team?.id, team?.groups.map((g) => g.id) ?? []);
   // El dueño del equipo aparece en team_users junto con los corredores
   // reales — se filtra acá (no en el hook, que es agnóstico de "quién es
@@ -1024,13 +1065,16 @@ function TeamDetailScreenContent({ teamId }) {
         </Pressable>
 
         <View className="mb-5 flex-row items-start gap-4" nativeID="team-detail-header" testID="team-detail-header">
-          <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" nativeID="team-detail-photo" testID="team-detail-photo">
-            {team.photoUri ? (
-              <Image accessibilityLabel={`Foto de ${team.name}`} className="h-16 w-16 rounded-full" nativeID="team-detail-photo-image" source={{ uri: team.photoUri }} testID="team-detail-photo-image" />
-            ) : (
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-group" size={30} />
-            )}
-          </View>
+          <AvatarPicker
+            accessibilityLabel={`Ícono de ${team.name}`}
+            fallbackIcon="account-group"
+            idPrefix="team-detail-photo"
+            loading={iconUploading}
+            onPick={canDeleteTeam ? handlePickIcon : undefined}
+            onRemove={canDeleteTeam ? handleRemoveIcon : undefined}
+            size={64}
+            uri={team.iconUrl}
+          />
           <View className="flex-1" nativeID="team-detail-header-info" testID="team-detail-header-info">
             <View className="mb-1 flex-row flex-wrap items-center gap-2" nativeID="team-detail-title-row" testID="team-detail-title-row">
               <Text style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white" nativeID="team-detail-name" testID="team-detail-name">
