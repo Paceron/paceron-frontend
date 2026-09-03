@@ -16,8 +16,9 @@ let refreshPromise = null;
 
 async function request(path, { _isRetry, skipAuthRefresh, ...fetchOptions } = {}) {
   const { token } = useAuthStore.getState();
+  const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(fetchOptions.headers || {}),
   };
 
@@ -75,6 +76,7 @@ export default {
   get: async (path) => await request(path, { method: 'GET' }),
   post: async (path, body, options) => await request(path, { method: 'POST', body: JSON.stringify(body), ...options }),
   put: async (path, body, headers) => await request(path, { method: 'PUT', body: JSON.stringify(body), headers }),
+  putForm: async (path, formData) => await request(path, { method: 'PUT', body: formData }),
   patch: async (path, body, options) => await request(path, { method: 'PATCH', body: JSON.stringify(body), ...options }),
   delete: async (path) => await request(path, { method: 'DELETE' }),
 };
