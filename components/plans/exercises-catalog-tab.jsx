@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { InputField } from '../forms/fields.jsx';
 import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
@@ -70,6 +71,7 @@ export function ExercisesCatalogTab() {
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
 
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [modalExercise, setModalExercise] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
   const [deleteTarget, setDeleteTarget] = useState(null); // { exercise, usedIn }
   const [usageTarget, setUsageTarget] = useState(null); // { exercise, usedIn }
@@ -92,6 +94,9 @@ export function ExercisesCatalogTab() {
     }
     Toast.show({ type: 'success', text1: 'Ejercicio eliminado' });
   };
+
+  const query = search.trim().toLowerCase();
+  const filteredExercises = query ? exercises.filter((e) => e.name.toLowerCase().includes(query)) : exercises;
 
   return (
     <>
@@ -120,21 +125,36 @@ export function ExercisesCatalogTab() {
             Todavía no creaste ningún ejercicio.
           </Text>
         ) : (
-          <View className="gap-2" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
-            {exercises.map((exercise) => {
-              const usedIn = sessionsUsingExercise(exercise.id, sessions);
-              return (
-                <ExerciseRow
-                  exercise={exercise}
-                  key={exercise.id}
-                  onDelete={(ex, u) => setDeleteTarget({ exercise: ex, usedIn: u })}
-                  onEdit={setModalExercise}
-                  onShowUsage={(ex, u) => setUsageTarget({ exercise: ex, usedIn: u })}
-                  usedIn={usedIn}
-                />
-              );
-            })}
-          </View>
+          <>
+            {/* Igual que el buscador de corredores en TeamDetailScreen: sin
+                error propio (es un filtro, no un form) y sin margen propio,
+                el frame p-3 controla el espacio. */}
+            <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="exercises-catalog-search-row" testID="exercises-catalog-search-row">
+              <InputField className="mb-0" dense hideErrorRow label="Buscar ejercicio" onChange={setSearch} placeholder="Nombre del ejercicio" value={search} />
+            </View>
+
+            {filteredExercises.length === 0 ? (
+              <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="exercises-catalog-no-matches" testID="exercises-catalog-no-matches">
+                Ningún ejercicio coincide con la búsqueda.
+              </Text>
+            ) : (
+              <View className="gap-2" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
+                {filteredExercises.map((exercise) => {
+                  const usedIn = sessionsUsingExercise(exercise.id, sessions);
+                  return (
+                    <ExerciseRow
+                      exercise={exercise}
+                      key={exercise.id}
+                      onDelete={(ex, u) => setDeleteTarget({ exercise: ex, usedIn: u })}
+                      onEdit={setModalExercise}
+                      onShowUsage={(ex, u) => setUsageTarget({ exercise: ex, usedIn: u })}
+                      usedIn={usedIn}
+                    />
+                  );
+                })}
+              </View>
+            )}
+          </>
         )}
       </SectionCard>
 
