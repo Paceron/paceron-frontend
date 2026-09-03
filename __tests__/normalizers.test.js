@@ -1,6 +1,7 @@
 import {
   toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
+  toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -255,5 +256,67 @@ describe('toTierModel', () => {
   test('returns null for falsy dto', () => {
     expect(toTierModel(null)).toBeNull();
     expect(toTierModel(undefined)).toBeNull();
+  });
+});
+
+describe('toCreatePreferencePayload', () => {
+  test('mapea items a snake_case, omite description si no viene', () => {
+    const form = { concept: 'order', items: [{ title: 'Item', quantity: 2, unitPrice: 500 }] };
+    expect(toCreatePreferencePayload(form)).toEqual({
+      concept: 'order',
+      items: [{ title: 'Item', quantity: 2, unit_price: 500 }],
+    });
+  });
+
+  test('incluye description cuando viene', () => {
+    const form = { concept: 'order', description: 'Compra de prueba', items: [{ title: 'Item', quantity: 1, unitPrice: 100 }] };
+    expect(toCreatePreferencePayload(form).description).toBe('Compra de prueba');
+  });
+});
+
+describe('toPreferenceResponseModel', () => {
+  test('mapea preference_id/public_key a camelCase', () => {
+    expect(toPreferenceResponseModel({ preference_id: 'pref-1', public_key: 'PUB-KEY' })).toEqual({
+      preferenceId: 'pref-1', publicKey: 'PUB-KEY',
+    });
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toPreferenceResponseModel(null)).toBeNull();
+  });
+});
+
+describe('toProcessPaymentPayload', () => {
+  test('mapea a snake_case, incluye preference_id cuando viene', () => {
+    const form = {
+      token: 'tok', transactionAmount: 1000, paymentMethodId: 'visa', installments: 1, payerEmail: 'a@b.com', preferenceId: 'pref-1',
+    };
+    expect(toProcessPaymentPayload(form)).toEqual({
+      token: 'tok', transaction_amount: 1000, payment_method_id: 'visa', installments: 1, payer_email: 'a@b.com', preference_id: 'pref-1',
+    });
+  });
+
+  test('omite preference_id si no viene', () => {
+    const form = { token: 'tok', transactionAmount: 1000, paymentMethodId: 'visa', installments: 1, payerEmail: 'a@b.com' };
+    expect(toProcessPaymentPayload(form).preference_id).toBeUndefined();
+  });
+});
+
+describe('toPaymentModel', () => {
+  test('maps snake_case fields to camelCase', () => {
+    const dto = {
+      id: 1, amount: 1000, concept: 'order', created_at: '2026-09-02T00:00:00.000Z', currency_id: 'ARS',
+      description: 'desc', external_reference: 'ext-1', installments: 1, payer_email: 'a@b.com',
+      payment_id: 'mp-1', payment_method_id: 'visa', preference_id: 'pref-1', status: 'approved', status_detail: 'accredited',
+    };
+    expect(toPaymentModel(dto)).toEqual({
+      id: '1', amount: 1000, concept: 'order', createdAt: '2026-09-02T00:00:00.000Z', currencyId: 'ARS',
+      description: 'desc', externalReference: 'ext-1', installments: 1, payerEmail: 'a@b.com',
+      paymentId: 'mp-1', paymentMethodId: 'visa', preferenceId: 'pref-1', status: 'approved', statusDetail: 'accredited',
+    });
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toPaymentModel(null)).toBeNull();
   });
 });
