@@ -451,7 +451,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
 // de una invitación, o el plan de un grupo). scope identifica la instancia
 // para nativeID/testID (no se muestra), ya que a diferencia de PickerField
 // no hay un label del que derivarlo.
-export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]', showPlaceholderOption = true }) {
+export function InlinePicker({ scope, value, onChange, options, placeholder = 'Elegir', widthClass = 'max-w-[128px]', showPlaceholderOption = true, textClassName = 'text-xs' }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
 
@@ -461,7 +461,7 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
   if (isWeb) {
     return (
       <select
-        className={`h-12 ${widthClass} rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white`}
+        className={`h-12 ${widthClass} rounded-xl border border-slate-200 bg-slate-50 px-3 ${textClassName} text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white`}
         onChange={(e) => onChange(e.target.value)}
         value={value}
       >
@@ -482,7 +482,7 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
         testID={`inline-picker-${scope}-trigger`}
       >
         <Text
-          className={`flex-1 text-xs ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          className={`flex-1 ${textClassName} ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
           nativeID={`inline-picker-${scope}-trigger-label`}
           numberOfLines={1}
           testID={`inline-picker-${scope}-trigger-label`}
