@@ -25,6 +25,16 @@ function formatTierPrice(tierAmount, paymentRequired) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(tierAmount);
 }
 
+// El backend real devuelve el nombre del tier con el rol pegado como
+// sufijo (ej. "Base_corredor") — el rol ya se muestra en el título de
+// la sección ("Tiers de Corredor"), repetirlo en cada card es ruido.
+// Solo formatea el texto mostrado — nunca tocar tier.name en sí, se usa
+// para comparar contra el tier actual (roles[].tier).
+function formatTierDisplayName(name) {
+  if (!name) return name;
+  return name.replace(/_(corredor|entrenador)$/i, '');
+}
+
 // Card de un tier — "Tier actual" si coincide con roles[].tier del rol
 // activo; si no y es un tier pago, botón "Mejorar" que dispara el
 // flujo real (ver handleUpgrade en TierUpgradeScreen). Tiers gratis
@@ -40,7 +50,7 @@ function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade }) {
       testID={idPrefix}
     >
       <Text className="text-base font-bold capitalize text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
-        {tier.name}
+        {formatTierDisplayName(tier.name)}
       </Text>
       <View className="mt-1 flex-row items-baseline gap-1" nativeID={`${idPrefix}-price-row`} testID={`${idPrefix}-price-row`}>
         <Text className="text-lg font-bold text-primary" nativeID={`${idPrefix}-price`} testID={`${idPrefix}-price`}>
@@ -96,7 +106,7 @@ function PendingPaymentBanner({ subscription, onResume, loading }) {
           Tenés un pago pendiente
         </Text>
         <Text className="mt-0.5 text-xs text-amber-700 dark:text-amber-400" nativeID="tier-upgrade-pending-banner-subtitle" testID="tier-upgrade-pending-banner-subtitle">
-          {formatTierPrice(subscription.installmentAmount, true)} para activar {subscription.tier?.name}
+          {formatTierPrice(subscription.installmentAmount, true)} para activar {formatTierDisplayName(subscription.tier?.name)}
         </Text>
       </View>
       <Pressable
@@ -131,8 +141,8 @@ export function TierUpgradeScreen() {
   const currentRoleId = roles.find((r) => r.name === currentRoleName)?.id;
 
   const { data: tierDtos, isLoading: loadingTiers } = useQuery({
-    queryKey: ['tiers-catalog'],
-    queryFn: listTiers,
+    queryKey: ['tiers-catalog', currentRoleId],
+    queryFn: () => listTiers({ roleId: currentRoleId }),
   });
   const tiers = (tierDtos ?? []).map(toTierModel);
 
@@ -142,9 +152,9 @@ export function TierUpgradeScreen() {
   const [checkoutData, setCheckoutData] = useState(null);
   const [confirming, setConfirming] = useState(false);
 
-  const roleTiers = tiers
-    .filter((t) => t.roleName === currentRoleName)
-    .sort((a, b) => a.tierAmount - b.tierAmount);
+  // Filtrado por rol ahora lo hace el backend (GET /tiers?role_id=), ver
+  // services/tiers.js — solo queda ordenar por precio.
+  const roleTiers = [...tiers].sort((a, b) => a.tierAmount - b.tierAmount);
 
   const startCheckout = ({ installmentId, amount, tierId }) => {
     setProcessingTierId(tierId);
@@ -188,7 +198,7 @@ export function TierUpgradeScreen() {
     try {
       const { data } = await refetchSubscription();
       if (data?.subscriptionStatus === 'active' && data?.tier?.id === expectedTierId) {
-        Toast.show({ type: 'success', text1: 'Tier actualizado', text2: `Ahora tenés ${data.tier.name}.` });
+        Toast.show({ type: 'success', text1: 'Tier actualizado', text2: `Ahora tenés ${formatTierDisplayName(data.tier.name)}.` });
         await fetchPermissions();
       } else {
         Toast.show({ type: 'info', text1: 'Tu pago fue recibido', text2: 'Puede tardar unos minutos en reflejarse.' });
@@ -258,7 +268,7 @@ export function TierUpgradeScreen() {
               Todavía no hay tiers configurados para este rol.
             </Text>
           ) : (
-            <View className={isDesktopWeb ? 'flex-row flex-wrap gap-4' : 'gap-3'} nativeID="tier-upgrade-screen-cards" testID="tier-upgrade-screen-cards">
+            <View className={isDesktopWeb ? 'flex-row flex-wrap justify-center gap-4' : 'gap-3'} nativeID="tier-upgrade-screen-cards" testID="tier-upgrade-screen-cards">
               {roleTiers.map((tier) => (
                 <TierCard
                   isCurrent={tier.name === currentTierName}
