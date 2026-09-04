@@ -4,14 +4,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { dayLabel } from '../../store/training-plan-store.js';
 import { useTodayPlanSession } from '../../hooks/use-today-plan-session.js';
-import { EXERCISE_KIND_META, DAY_KIND_META } from './exercise-kind-meta.js';
+import { EXERCISE_KIND_META, DAY_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
 // Copy corto por tipo de día cuando hoy NO es de entrenamiento — un plan
 // marcado como actual sigue apareciendo en el hero aunque hoy le toque
 // descanso, no desaparece (ver spec).
 const REST_DAY_COPY = {
   rest: 'Día de descanso — dejá que el cuerpo recupere.',
-  marathon: '¡Hoy es el gran día! Disfrutá la carrera.',
   other: 'Hoy toca algo distinto al plan de carrera.',
 };
 
@@ -21,11 +20,7 @@ const REST_DAY_COPY = {
 function HeroExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restMinutes = 0 }) {
   if (!exercise) return null;
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
-  const statParts = [];
-  if (exercise.minutes != null) statParts.push(`${exercise.minutes} min`);
-  if (exercise.distanceM != null) statParts.push(`${exercise.distanceM} m`);
-  if (exercise.speedKph != null) statParts.push(`${exercise.speedKph} km/h`);
-  if (repeatCount > 1) statParts.push(`descanso ${restMinutes} min entre series`);
+  const statLine = buildExerciseStatLine(exercise, { repeatCount, restMinutes });
 
   return (
     <View className="flex-row items-center gap-3" nativeID={idPrefix} testID={idPrefix}>
@@ -39,9 +34,9 @@ function HeroExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restM
         <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
           {repeatCount > 1 ? `${repeatCount} × ` : ''}{exercise.name}
         </Text>
-        {statParts.length > 0 && (
+        {statLine && (
           <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} testID={`${idPrefix}-stat`}>
-            {statParts.join(' · ')}
+            {statLine}
           </Text>
         )}
       </View>
@@ -53,7 +48,7 @@ function HeroExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restM
 // "actual" (ver spec 2026-09-03) con la sesión de HOY resuelta. Header
 // con color/ícono del tipo de día (DAY_KIND_META), cuerpo con los 3
 // ejercicios "estilo gimnasio" si hoy toca entrenamiento, o un estado
-// temático simple si es descanso/maratón/otra actividad.
+// temático simple si es descanso/otra actividad.
 export function TodaySessionCard({ plan }) {
   const router = useRouter();
   const colors = useThemeColors();
