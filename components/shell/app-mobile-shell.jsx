@@ -182,26 +182,40 @@ function NavigationDrawer({ open, pathname, onClose }) {
           <SafeAreaView className="flex-1" edges={['top', 'bottom']} nativeID="mobile-drawer-safe-area" testID="mobile-drawer-safe-area">
             <View className="flex-1" nativeID="mobile-drawer-body" style={{ paddingTop: 60 }} testID="mobile-drawer-body">
               {user ? (
-                <Pressable
-                  className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
-                  nativeID="mobile-drawer-profile-row"
-                  onPress={() => goTo('/profile')}
-                  testID="mobile-drawer-profile-row"
-                >
-                  <AvatarPicker
-                    accessibilityLabel="Ver perfil"
-                    fallbackIcon="account"
-                    idPrefix="mobile-drawer-profile-avatar"
-                    initials={getUserInitials(user)}
-                    size={40}
-                    uri={user.photoUrl}
-                  />
-                  <View className="flex-1 flex-row items-center gap-2" nativeID="mobile-drawer-profile-info" testID="mobile-drawer-profile-info">
-                    <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="mobile-drawer-user-name" testID="mobile-drawer-user-name">{user.name}</Text>
-                    <RoleBadge role={activeRole} />
-                  </View>
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
-                </Pressable>
+                <>
+                  <Pressable
+                    className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                    nativeID="mobile-drawer-profile-row"
+                    onPress={() => goTo('/profile')}
+                    testID="mobile-drawer-profile-row"
+                  >
+                    <AvatarPicker
+                      accessibilityLabel="Ver perfil"
+                      fallbackIcon="account"
+                      idPrefix="mobile-drawer-profile-avatar"
+                      initials={getUserInitials(user)}
+                      size={40}
+                      uri={user.photoUrl}
+                    />
+                    <View className="flex-1 flex-row items-center gap-2" nativeID="mobile-drawer-profile-info" testID="mobile-drawer-profile-info">
+                      <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="mobile-drawer-user-name" testID="mobile-drawer-user-name">{user.name}</Text>
+                      <RoleBadge role={activeRole} />
+                    </View>
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
+                  </Pressable>
+
+                  <Pressable
+                    className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                    nativeID="mobile-drawer-settings-row"
+                    onPress={() => goTo('/settings')}
+                    testID="mobile-drawer-settings-row"
+                  >
+                    <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" nativeID="mobile-drawer-settings-icon" testID="mobile-drawer-settings-icon">
+                      <MaterialCommunityIcons color={colors.primary} name="cog-outline" size={20} />
+                    </View>
+                    <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID="mobile-drawer-settings-label" testID="mobile-drawer-settings-label">Settings</Text>
+                  </Pressable>
+                </>
               ) : (
                 <View className="border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-guest-row" testID="mobile-drawer-guest-row">
                   <Pressable
