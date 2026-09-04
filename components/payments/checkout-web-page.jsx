@@ -52,6 +52,7 @@ export function CheckoutWebPage() {
     <View className="flex-1 bg-paper p-4 dark:bg-ink" nativeID="checkout-page-root" testID="checkout-page-root">
       <CheckoutFlow
         amount={Number(params.amount)}
+        installmentId={params.installmentId ? Number(params.installmentId) : undefined}
         marketplace={params.marketplace === 'true'}
         onApproved={(payment) => postToNative({ status: 'approved', payment })}
         onError={(error) => postToNative({ status: 'error', message: error?.message ?? 'Error desconocido' })}
