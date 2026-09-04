@@ -4,6 +4,7 @@ import { updateUser as updateUserService, changeStatus as changeStatusService, u
 import { assignRole as assignRoleService, activateTrainerRole as activateTrainerRoleService, deactivateTrainerRole as deactivateTrainerRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
+import { seedDefaultTheme } from '../providers/theme-provider.jsx';
 
 const STORAGE_KEY = 'paceron.auth';
 
@@ -55,6 +56,7 @@ export const useAuthStore = create((set, get) => ({
     }
     set({ hydrated: true });
     const { user, token } = get();
+    seedDefaultTheme(user?.defaultTheme);
     if (user?.userId && token) await get().fetchPermissions();
   },
 
@@ -67,6 +69,7 @@ export const useAuthStore = create((set, get) => ({
         const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
         const session = { user, token, refreshToken: result.refresh_token ?? null, expiresAt };
         set(session);
+        seedDefaultTheme(user.defaultTheme);
         const { activeRole } = get();
         await persist({ ...session, activeRole, roles: [] });
         await get().fetchPermissions();

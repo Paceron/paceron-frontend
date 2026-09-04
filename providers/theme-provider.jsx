@@ -55,6 +55,31 @@ function persistNative(mode) {
   if (!isWeb) setItem(STORAGE_KEY, mode);
 }
 
+// Aplica el tema predeterminado sincronizado (Settings) — pero SOLO si este
+// dispositivo todavía no tiene ningún valor propio guardado. Se llama desde
+// auth-store tras login/hydrate, nunca desde el toggle rápido (ese sigue
+// siendo 100% local, ver theme-toggle.jsx). Una vez aplicado acá, el
+// dispositivo ya tiene su propio valor persistido — un cambio posterior del
+// default desde otro dispositivo no vuelve a pisarlo.
+export async function seedDefaultTheme(defaultTheme) {
+  if (!defaultTheme) return;
+  const mode = defaultTheme === 'light' ? 'light' : 'dark';
+
+  if (isWeb) {
+    if (typeof window === 'undefined' || window.localStorage.getItem(STORAGE_KEY)) return;
+    colorScheme.set(mode);
+    applyWebClass(mode);
+    applyNativeRootBackground(mode);
+    return;
+  }
+
+  const existing = await getItem(STORAGE_KEY);
+  if (existing) return;
+  colorScheme.set(mode);
+  applyNativeRootBackground(mode);
+  persistNative(mode);
+}
+
 // Provider SIN suscripción al color scheme: solo fija el scheme inicial una vez
 // con la API imperativa `colorScheme.set()`. Al no llamar `useColorScheme()`,
 // el provider no re-renderiza en cada toggle, y por lo tanto no re-renderiza el
