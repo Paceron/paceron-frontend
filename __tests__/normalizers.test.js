@@ -1,7 +1,7 @@
 import {
   toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
-  toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel,
+  toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -283,6 +283,16 @@ describe('toCreatePreferencePayload', () => {
     const form = { concept: 'order', description: 'Compra de prueba', items: [{ title: 'Item', quantity: 1, unitPrice: 100 }] };
     expect(toCreatePreferencePayload(form).description).toBe('Compra de prueba');
   });
+
+  test('incluye installment_id cuando viene', () => {
+    const form = { concept: 'subscription', items: [{ title: 'Cuota', quantity: 1, unitPrice: 1500 }], installmentId: 501 };
+    expect(toCreatePreferencePayload(form).installment_id).toBe(501);
+  });
+
+  test('omite installment_id si no viene', () => {
+    const form = { concept: 'order', items: [{ title: 'Item', quantity: 1, unitPrice: 100 }] };
+    expect(toCreatePreferencePayload(form).installment_id).toBeUndefined();
+  });
 });
 
 describe('toPreferenceResponseModel', () => {
@@ -311,6 +321,16 @@ describe('toProcessPaymentPayload', () => {
     const form = { token: 'tok', transactionAmount: 1000, paymentMethodId: 'visa', installments: 1, payerEmail: 'a@b.com' };
     expect(toProcessPaymentPayload(form).preference_id).toBeUndefined();
   });
+
+  test('incluye installment_id cuando viene', () => {
+    const form = { token: 'tok', transactionAmount: 1500, paymentMethodId: 'master', installments: 1, payerEmail: 'a@b.com', installmentId: 501 };
+    expect(toProcessPaymentPayload(form).installment_id).toBe(501);
+  });
+
+  test('omite installment_id si no viene', () => {
+    const form = { token: 'tok', transactionAmount: 1000, paymentMethodId: 'visa', installments: 1, payerEmail: 'a@b.com' };
+    expect(toProcessPaymentPayload(form).installment_id).toBeUndefined();
+  });
 });
 
 describe('toPaymentModel', () => {
@@ -329,5 +349,48 @@ describe('toPaymentModel', () => {
 
   test('returns null for falsy dto', () => {
     expect(toPaymentModel(null)).toBeNull();
+  });
+});
+
+describe('toSubscriptionModel', () => {
+  test('maps a first_payment_pending subscription to camelCase', () => {
+    const dto = {
+      subscription_id: 77, subscription_status: 'first_payment_pending',
+      installment_id: 501, installment_number: 1, installment_amount: 1500,
+      next_due_date: null, blocked_date: null, paid_installments: 0,
+      tier: { id: 11, name: 'premium', hierarchy: 2, payment_required: true },
+      role: { id: 3, name: 'corredor' },
+      mercadopago: { public_key: 'APP_USR-test' },
+    };
+    expect(toSubscriptionModel(dto)).toEqual({
+      subscriptionId: 77, subscriptionStatus: 'first_payment_pending',
+      installmentId: 501, installmentNumber: 1, installmentAmount: 1500,
+      nextDueDate: null, blockedDate: null, paidInstallments: 0,
+      tier: { id: 11, name: 'premium', hierarchy: 2, paymentRequired: true },
+      role: { id: 3, name: 'corredor' },
+      mercadopago: { publicKey: 'APP_USR-test' },
+    });
+  });
+
+  test('maps a free-tier subscription (no installment fields) — tier/role only', () => {
+    const dto = { tier: { id: 10, name: 'base', hierarchy: 1, payment_required: false }, role: { id: 3, name: 'corredor' } };
+    const model = toSubscriptionModel(dto);
+    expect(model.subscriptionId).toBeNull();
+    expect(model.subscriptionStatus).toBeNull();
+    expect(model.installmentId).toBeNull();
+    expect(model.paidInstallments).toBe(0);
+    expect(model.tier).toEqual({ id: 10, name: 'base', hierarchy: 1, paymentRequired: false });
+  });
+
+  test('tier and role default to null when absent', () => {
+    const model = toSubscriptionModel({});
+    expect(model.tier).toBeNull();
+    expect(model.role).toBeNull();
+    expect(model.mercadopago).toBeNull();
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toSubscriptionModel(null)).toBeNull();
+    expect(toSubscriptionModel(undefined)).toBeNull();
   });
 });
