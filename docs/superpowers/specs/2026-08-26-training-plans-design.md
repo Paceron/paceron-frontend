@@ -278,3 +278,67 @@ ahí. Borrar el plan desde el lado del entrenador → desaparece de "Mis
 planes" para ambos corredores.
 
 `npm test` y `npm run lint` en verde antes de abrir la PR.
+
+## Enmienda 2026-09-03: sin "Maratón", datos característicos completos por tipo de ejercicio
+
+Dos pedidos del usuario en la misma sesión:
+
+**"Maratón" sale de las opciones de tipo de día.** `DAY_KIND_OPTIONS`
+pasa a `Descanso / Otra actividad / Entrenamiento`, se borra la entrada
+`marathon` de `DAY_KIND_META` (sin uso ya en ningún lado — ningún plan
+sembrado ni test lo usaba). Todo el código que resuelve el tipo de día
+ya caía a `DAY_KIND_META.rest` como fallback ante un kind desconocido,
+así que no rompe nada si quedara algún dato viejo con ese kind.
+
+**Cada tipo de ejercicio necesita sus propios "datos característicos"
+completos**, verbatim del usuario: *"Cada ejercicio tiene un nombre, un
+tipo y otros datos caracteristicos de el ejercicio. Por ejemplo, hay un
+ejercicio elongacion de musculo cuadriceps. O una serie de distancia
+400m y un ritmo."* Repasando los 5 kinds, había dos incompletos:
+
+- **`elongation`** no tenía NINGÚN dato propio — el grupo muscular
+  vivía metido en el `name` como texto libre ("Elongación de
+  cuádriceps"), no como algo consultable/filtrable. Se agrega
+  `muscleGroup`, un picker cerrado (no texto libre) —
+  `MUSCLE_GROUP_OPTIONS` en `store/exercise-store.js`, mismo lugar que
+  ya tiene `EXERCISE_KIND_OPTIONS`: Cuádriceps, Isquiotibiales, Gemelos
+  (pantorrillas), Glúteos, Aductores, Psoas / flexores de cadera, Zona
+  lumbar / cadena posterior, Core / abdominales — los grupos que ya
+  cubrían los 4 ejercicios de elongación sembrados, más los 2 que
+  faltaban para que el picker no quede corto de entrada.
+- **`cruising`** (ritmo continuo) tenía `distanceM` pero no `speedKph`
+  — un ritmo continuo sin ritmo asociado es una inconsistencia real,
+  no una simplificación a propósito. Pasa a compartir `speedKph` con
+  `running` (mismo campo, mismo label "Velocidad (km/h)" — no se
+  inventa una unidad nueva tipo min/km, es más cambio del que se pidió
+  y una fuente de bugs de parseo que no vale la pena para esta vuelta).
+
+`walking`/`jogging` (`minutes`) y `running` (`distanceM` + `speedKph`)
+quedan como estaban — ya tenían su dato característico completo.
+
+Modelo de `Exercise` resultante:
+
+```
+{ id, ownerId, name, kind, minutes, distanceM, speedKph, muscleGroup, videoUrl }
+```
+
+`muscleGroup` solo es relevante (se muestra en el form, se guarda) con
+`kind === 'elongation'` — mismo criterio condicional que ya usan
+`minutes`/`distanceM`/`speedKph` en `CreateExerciseModal`
+(`showMinutes`/`showDistance`/`showSpeed`, ahora + `showMuscleGroup`).
+
+La línea de "stat" de un ejercicio (ícono + nombre + datos) se arma en
+3 lugares por separado (`ExercisesCatalogTab`, `TrainingPlanDetailScreen`,
+`TodaySessionCard`) — con 2 campos más para tejer ahí, se extrae a un
+helper compartido `buildExerciseStatLine(exercise)` en
+`exercise-kind-meta.js` en vez de triplicar la lógica.
+
+### Fuera de alcance (esta enmienda)
+
+Repensar la unidad de `speedKph` (min/km en vez de km/h) — el usuario
+dice "un ritmo" pero cambiar de unidad implica un input mm:ss nuevo,
+parseo/validación, y migrar los datos sembrados; no fue lo
+explícitamente pedido, se deja para si hace falta más adelante.
+`holdSeconds` (segundos sostenidos) para elongación — dato real y
+relevante, pero no lo pidió el usuario, se agrega si surge la
+necesidad concreta en vez de anticiparla.

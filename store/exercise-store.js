@@ -19,6 +19,21 @@ export const EXERCISE_KIND_OPTIONS = [
   { id: 'running', name: 'Corrida' },
 ];
 
+// Dato característico de un ejercicio de elongación — picker cerrado,
+// no texto libre (antes vivía metido en el nombre, ej. "Elongación de
+// cuádriceps"). Ver enmienda 2026-09-03 de
+// docs/superpowers/specs/2026-08-26-training-plans-design.md.
+export const MUSCLE_GROUP_OPTIONS = [
+  { id: 'cuadriceps', name: 'Cuádriceps' },
+  { id: 'isquiotibiales', name: 'Isquiotibiales' },
+  { id: 'gemelos', name: 'Gemelos (pantorrillas)' },
+  { id: 'gluteos', name: 'Glúteos' },
+  { id: 'aductores', name: 'Aductores' },
+  { id: 'psoas', name: 'Psoas / flexores de cadera' },
+  { id: 'lumbares', name: 'Zona lumbar / cadena posterior' },
+  { id: 'core', name: 'Core / abdominales' },
+];
+
 export const useExerciseStore = create((set) => ({
   exercises: [],
 

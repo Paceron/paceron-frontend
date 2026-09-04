@@ -31,6 +31,12 @@ describe('exercises-mock', () => {
     expect(created.video_url).toBeNull();
   });
 
+  test('mockCreateExercise persiste muscle_group para un ejercicio de elongación', async () => {
+    const created = await mockCreateExercise({ owner_id: 7, name: 'Elongación de aductores', kind: 'elongation', muscle_group: 'aductores' });
+    expect(created.muscle_group).toBe('aductores');
+    expect((await mockGetExercise(created.id)).muscle_group).toBe('aductores');
+  });
+
   test('mockUpdateExercise mergea los campos dados', async () => {
     const updated = await mockUpdateExercise(1, { name: 'Nombre nuevo' });
     expect(updated.name).toBe('Nombre nuevo');
