@@ -10,10 +10,10 @@ import { WEB_ORIGIN } from '../../config/env.js';
 
 // Rama nativa de CheckoutFlow — WebView cargando la misma página web del
 // checkout (app/checkout.jsx), en vez de duplicar UI nativa o salir a un
-// navegador externo (Checkout Pro). Firma idéntica a la variante web más
-// un `onCancel` opcional — asimetría real y aceptada: el brick inline en
-// web no tiene concepto de "cerrar", el modal nativo sí. Ver
-// docs/superpowers/specs/2026-09-03-payments-checkout-webview-design.md.
+// navegador externo (Checkout Pro). Firma idéntica a la variante web
+// (ambas son modal + onCancel) — ver
+// docs/superpowers/specs/2026-09-03-payments-checkout-webview-design.md y
+// docs/superpowers/specs/2026-09-04-checkout-modal-unification-design.md.
 export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError, onCancel }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();

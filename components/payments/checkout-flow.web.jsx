@@ -1,67 +1,47 @@
-import { useEffect, useState } from 'react';
-import { View } from 'react-native';
-import { initMercadoPago, Payment, StatusScreen } from '@mercadopago/sdk-react';
-import { processPayment } from '../../services/payments.js';
-import { toProcessPaymentPayload, toPaymentModel } from '../../services/normalizers.js';
+import { Modal, Pressable, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useThemeColors } from '../../theme/colors.js';
+import { CheckoutBrick } from './checkout-brick.web.jsx';
 
-// Único componente de checkout para las 3 fases de pagos — la firma se
-// extiende entre fases (Fase 1 suma `installmentId` opcional), nunca se
-// rompe — Fase 0 sigue funcionando sin pasarlo. Ver
-// docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md.
-// Solo web: Payment Brick es un componente HTML/JS
-// (@mercadopago/sdk-react) — ver checkout-flow.jsx para la rama nativa
-// (placeholder, sin WebView todavía). El wrapper de React del SDK
-// desmonta el brick solo al desmontar este componente — no hace falta
-// llamar unmount() a mano (eso es necesario con el SDK vanilla JS, no
-// con este wrapper).
-export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError }) {
-  const [approvedPaymentId, setApprovedPaymentId] = useState(null);
-
-  useEffect(() => {
-    initMercadoPago(publicKey);
-  }, [publicKey]);
-
-  // El Brick espera que onSubmit devuelva una Promise: resuelve para que
-  // el brick muestre su propio estado de éxito, rechaza para que
-  // muestre su propio estado de error (contrato de @mercadopago/sdk-react).
-  const handleSubmit = ({ formData }) => processPayment(toProcessPaymentPayload({
-    token: formData.token,
-    transactionAmount: formData.transaction_amount,
-    paymentMethodId: formData.payment_method_id,
-    installments: formData.installments,
-    payerEmail: formData.payer.email,
-    preferenceId,
-    installmentId,
-  }))
-    .then((dto) => {
-      const payment = toPaymentModel(dto);
-      setApprovedPaymentId(payment.paymentId);
-      onApproved?.(payment);
-    })
-    .catch((error) => {
-      onError?.(error);
-      throw error;
-    });
-
-  const handleError = (error) => {
-    onError?.(error);
-  };
-
-  if (approvedPaymentId) {
-    return (
-      <View nativeID="checkout-flow-status" testID="checkout-flow-status">
-        <StatusScreen initialization={{ paymentId: approvedPaymentId }} />
-      </View>
-    );
-  }
+// Wrapper de chrome para CheckoutBrick — modal centrado (no fullscreen,
+// a diferencia de la rama nativa) porque en web hay más ancho disponible
+// y este mismo patrón (Modal transparent + backdrop + card centrada) ya
+// es el establecido en el repo para diálogos (ver
+// components/team/delete-team-modal.jsx). Firma idéntica a checkout-flow.jsx
+// (nativo) — ambas variantes de plataforma aceptan las mismas props. Ver
+// docs/superpowers/specs/2026-09-04-checkout-modal-unification-design.md.
+export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError, onCancel }) {
+  const colors = useThemeColors();
 
   return (
-    <View nativeID="checkout-flow-brick" testID="checkout-flow-brick">
-      <Payment
-        initialization={{ amount, preferenceId, ...(marketplace ? { marketplace: true } : {}) }}
-        onError={handleError}
-        onSubmit={handleSubmit}
-      />
-    </View>
+    <Modal animationType="fade" nativeID="checkout-flow-modal" onRequestClose={onCancel} testID="checkout-flow-modal" transparent visible>
+      <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="checkout-flow-modal-backdrop" testID="checkout-flow-modal-backdrop">
+        <View className="w-full max-w-lg rounded-2xl bg-white p-4 dark:bg-surface" nativeID="checkout-flow-modal-card" testID="checkout-flow-modal-card">
+          <View className="mb-3 flex-row items-center justify-between" nativeID="checkout-flow-modal-header" testID="checkout-flow-modal-header">
+            <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="checkout-flow-modal-title" testID="checkout-flow-modal-title">
+              Checkout
+            </Text>
+            <Pressable
+              accessibilityLabel="Cerrar"
+              className="p-1 hover:opacity-70 active:opacity-70"
+              nativeID="checkout-flow-modal-close-button"
+              onPress={onCancel}
+              testID="checkout-flow-modal-close-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
+            </Pressable>
+          </View>
+          <CheckoutBrick
+            amount={amount}
+            installmentId={installmentId}
+            marketplace={marketplace}
+            onApproved={onApproved}
+            onError={onError}
+            preferenceId={preferenceId}
+            publicKey={publicKey}
+          />
+        </View>
+      </View>
+    </Modal>
   );
 }
