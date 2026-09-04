@@ -14,4 +14,10 @@ describe('mockListTiers', () => {
     expect(corredorTiers.find((t) => t.name === 'base').payment_required).toBe(false);
     expect(corredorTiers.find((t) => t.name === 'premium').payment_required).toBe(true);
   });
+
+  test('filtra por role_id cuando se pasa roleId', async () => {
+    const tiers = await mockListTiers({ roleId: 1 });
+    expect(tiers.length).toBeGreaterThan(0);
+    expect(tiers.every((t) => t.role_id === 1)).toBe(true);
+  });
 });

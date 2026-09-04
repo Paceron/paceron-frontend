@@ -1,10 +1,7 @@
-// Catálogo de tiers — GET /api/v1/tiers ya es un endpoint real del
-// backend (no es parte de Fase 0/1/2 de pagos, existe desde antes), pero
-// sin consumidor en el frontend hasta ahora. Sin filtro de rol en el
-// backend: devuelve todos los tiers de todos los roles, el filtro por
-// rol activo se hace client-side (ver
-// components/profile/tier-upgrade-screen.jsx). Mismo patrón in-memory
-// que el resto de los mocks del repo (teams-mock.js).
+// Catálogo de tiers — GET /api/v1/tiers?role_id= ya es un endpoint real
+// del backend (no es parte de Fase 0/1/2 de pagos, existe desde antes).
+// El filtro role_id es opcional, igual que en el backend real. Mismo
+// patrón in-memory que el resto de los mocks del repo (teams-mock.js).
 function buildSeedTiers() {
   const now = new Date().toISOString();
   return [
@@ -33,6 +30,7 @@ function buildSeedTiers() {
 
 const mockTiers = buildSeedTiers();
 
-export async function mockListTiers() {
-  return [...mockTiers];
+export async function mockListTiers({ roleId } = {}) {
+  if (roleId == null) return [...mockTiers];
+  return mockTiers.filter((tier) => tier.role_id === Number(roleId));
 }
