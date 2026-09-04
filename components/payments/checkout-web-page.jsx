@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
-// Sin extensión a propósito: Metro solo aplica resolución por plataforma
-// (.web.jsx antes que .jsx) cuando el specifier NO trae extensión — un
-// import con '.jsx' explícito carga ese archivo literal en cualquier
-// plataforma, incluida web, rompiendo el split.
-import { CheckoutFlow } from './checkout-flow';
+// Con extensión explícita, a propósito: esta página siempre corre en un
+// bundle web (la carga el WebView nativo de checkout-flow.jsx, que ya
+// provee su propio chrome de modal) — quiere siempre el Brick sin chrome,
+// nunca el CheckoutFlow.web.jsx que se envuelve a sí mismo en un modal
+// (eso duplicaría el chrome). No aplica el quirk de resolución por
+// plataforma de Metro porque no hay ambigüedad de plataforma a resolver.
+import { CheckoutBrick } from './checkout-brick.web.jsx';
 
 // Página real de la web (deployada en Vercel), pensada para cargarse
 // standalone dentro de un WebView nativo (ver checkout-flow.jsx, rama
@@ -50,7 +52,7 @@ export function CheckoutWebPage() {
 
   return (
     <View className="flex-1 bg-paper p-4 dark:bg-ink" nativeID="checkout-page-root" testID="checkout-page-root">
-      <CheckoutFlow
+      <CheckoutBrick
         amount={Number(params.amount)}
         installmentId={params.installmentId ? Number(params.installmentId) : undefined}
         marketplace={params.marketplace === 'true'}
