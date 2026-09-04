@@ -69,6 +69,18 @@ function DropdownMenu({ onClose }) {
           <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-dropdown-profile-link-label" testID="web-shell-dropdown-profile-link-label">Ver perfil</Text>
         </Pressable>
 
+        <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-settings-above" testID="web-shell-dropdown-divider-settings-above" />
+
+        <Pressable
+          className="flex-row items-center gap-3 px-4 py-3.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors duration-150"
+          nativeID="web-shell-dropdown-settings-link"
+          onPress={() => { router.push('/settings'); onClose(); }}
+          testID="web-shell-dropdown-settings-link"
+        >
+          <MaterialCommunityIcons name="cog-outline" size={18} color={colors.onSurfaceVariant} />
+          <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-dropdown-settings-link-label" testID="web-shell-dropdown-settings-link-label">Settings</Text>
+        </Pressable>
+
         <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-profile" testID="web-shell-dropdown-divider-profile" />
 
         <Pressable

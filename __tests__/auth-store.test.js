@@ -32,6 +32,15 @@ jest.mock('../services/storage.js', () => {
   };
 });
 
+// theme-provider.jsx importa nativewind/expo-system-ui (RN puro, no
+// transformable por Jest fuera de un componente) — se mockea igual que el
+// resto de las dependencias de auth-store.js. El store solo llama a
+// seedDefaultTheme() fire-and-forget; su comportamiento interno no es
+// responsabilidad de estos tests (ver providers/theme-provider.jsx).
+jest.mock('../providers/theme-provider.jsx', () => ({
+  seedDefaultTheme: jest.fn(),
+}));
+
 import { login as loginService, register as registerService, getUser as getUserService, refresh as refreshService, logout as logoutService } from '../services/auth.js';
 import { assignRole, getPermissions, activateTrainerRole as activateTrainerRoleService, deactivateTrainerRole as deactivateTrainerRoleService } from '../services/roles.js';
 import { updateUser as updateUserService } from '../services/user.js';

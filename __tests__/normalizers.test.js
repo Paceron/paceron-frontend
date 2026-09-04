@@ -1,5 +1,5 @@
 import {
-  toUserModel, toRegisterPayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
+  toUserModel, toRegisterPayload, toUpdatePayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
 } from '../services/normalizers.js';
@@ -34,6 +34,42 @@ describe('toUserModel', () => {
   test('mapea photo_url, null si no viene', () => {
     expect(toUserModel({ user_id: 1, photo_url: 'https://x.com/p.jpg?v=123' }).photoUrl).toBe('https://x.com/p.jpg?v=123');
     expect(toUserModel({ user_id: 1 }).photoUrl).toBeNull();
+  });
+
+  test('maps default_theme and allow_team_invitations', () => {
+    const dto = { user_id: 1, name: 'A', surname: 'B', default_theme: 'light', allow_team_invitations: false };
+    const model = toUserModel(dto);
+    expect(model.defaultTheme).toBe('light');
+    expect(model.allowTeamInvitations).toBe(false);
+  });
+
+  test('defaults allowTeamInvitations to true when absent', () => {
+    const dto = { user_id: 1, name: 'A', surname: 'B' };
+    expect(toUserModel(dto).allowTeamInvitations).toBe(true);
+  });
+});
+
+describe('toUpdatePayload — default_theme / allow_team_invitations', () => {
+  const BASE_FORM = { firstName: 'A', lastName: 'B', dni: '1', birthDate: '01/01/2000', email: 'a@b.com' };
+
+  test('incluye default_theme cuando viene', () => {
+    const payload = toUpdatePayload({ ...BASE_FORM, defaultTheme: 'light' });
+    expect(payload.default_theme).toBe('light');
+  });
+
+  test('omite default_theme si no viene', () => {
+    const payload = toUpdatePayload(BASE_FORM);
+    expect(payload.default_theme).toBeUndefined();
+  });
+
+  test('incluye allow_team_invitations cuando viene (incluso false)', () => {
+    const payload = toUpdatePayload({ ...BASE_FORM, allowTeamInvitations: false });
+    expect(payload.allow_team_invitations).toBe(false);
+  });
+
+  test('omite allow_team_invitations si es undefined', () => {
+    const payload = toUpdatePayload(BASE_FORM);
+    expect(payload.allow_team_invitations).toBeUndefined();
   });
 });
 

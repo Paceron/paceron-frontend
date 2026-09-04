@@ -170,26 +170,40 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
         <SafeAreaView className="flex-1" edges={['top', 'left', 'right', 'bottom']} nativeID="web-narrow-drawer-safe-area" testID="web-narrow-drawer-safe-area">
           <View className="flex-1" nativeID="web-narrow-drawer-body" style={{ paddingTop: 60 }} testID="web-narrow-drawer-body">
             {user ? (
-              <Pressable
-                className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
-                nativeID="web-narrow-drawer-profile-row"
-                onPress={() => goTo('/profile')}
-                testID="web-narrow-drawer-profile-row"
-              >
-                <AvatarPicker
-                  accessibilityLabel="Ver perfil"
-                  fallbackIcon="account"
-                  idPrefix="web-narrow-drawer-profile-avatar"
-                  initials={getUserInitials(user)}
-                  size={40}
-                  uri={user.photoUrl}
-                />
-                <View className="flex-1 flex-row items-center gap-2" nativeID="web-narrow-drawer-profile-info" testID="web-narrow-drawer-profile-info">
-                  <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="web-narrow-drawer-user-name" testID="web-narrow-drawer-user-name">{user.name}</Text>
-                  <RoleBadge role={activeRole} />
-                </View>
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
-              </Pressable>
+              <>
+                <Pressable
+                  className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                  nativeID="web-narrow-drawer-profile-row"
+                  onPress={() => goTo('/profile')}
+                  testID="web-narrow-drawer-profile-row"
+                >
+                  <AvatarPicker
+                    accessibilityLabel="Ver perfil"
+                    fallbackIcon="account"
+                    idPrefix="web-narrow-drawer-profile-avatar"
+                    initials={getUserInitials(user)}
+                    size={40}
+                    uri={user.photoUrl}
+                  />
+                  <View className="flex-1 flex-row items-center gap-2" nativeID="web-narrow-drawer-profile-info" testID="web-narrow-drawer-profile-info">
+                    <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="web-narrow-drawer-user-name" testID="web-narrow-drawer-user-name">{user.name}</Text>
+                    <RoleBadge role={activeRole} />
+                  </View>
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
+                </Pressable>
+
+                <Pressable
+                  className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                  nativeID="web-narrow-drawer-settings-row"
+                  onPress={() => goTo('/settings')}
+                  testID="web-narrow-drawer-settings-row"
+                >
+                  <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" nativeID="web-narrow-drawer-settings-icon" testID="web-narrow-drawer-settings-icon">
+                    <MaterialCommunityIcons color={colors.primary} name="cog-outline" size={20} />
+                  </View>
+                  <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID="web-narrow-drawer-settings-label" testID="web-narrow-drawer-settings-label">Settings</Text>
+                </Pressable>
+              </>
             ) : (
               <View className="border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="web-narrow-drawer-guest-row" testID="web-narrow-drawer-guest-row">
                 <Pressable

@@ -25,6 +25,8 @@ export function toUserModel(dto) {
     number: dto.number,
     bankAlias: dto.bank_alias,
     photoUrl: dto.photo_url ?? null,
+    defaultTheme: dto.default_theme ?? null,
+    allowTeamInvitations: dto.allow_team_invitations ?? true,
   };
 }
 
@@ -58,7 +60,7 @@ export function toRegisterPayload(form) {
 // camelCase form -> UserUpdateRequest (snake_case). Set completo editable
 // (sin password ni status, que no se actualizan por PUT).
 export function toUpdatePayload(form) {
-  return {
+  const payload = {
     name: form.firstName,
     surname: form.lastName,
     email: form.email,
@@ -73,6 +75,9 @@ export function toUpdatePayload(form) {
     street: form.street ?? '',
     bank_alias: form.bankAlias ?? '',
   };
+  if (form.defaultTheme !== undefined) payload.default_theme = form.defaultTheme;
+  if (form.allowTeamInvitations !== undefined) payload.allow_team_invitations = form.allowTeamInvitations;
+  return payload;
 }
 
 export function toTeamModel(dto) {
