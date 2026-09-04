@@ -18,20 +18,20 @@
 function buildSeedExercises() {
   const now = new Date().toISOString();
   return [
-    { id: 1, owner_id: 1, name: 'Caminata regenerativa', kind: 'walking', minutes: 5, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 2, owner_id: 1, name: 'Caminata rápida de entrada en calor', kind: 'walking', minutes: 8, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 3, owner_id: 1, name: 'Trote suave', kind: 'jogging', minutes: 20, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 4, owner_id: 1, name: 'Trote de activación', kind: 'jogging', minutes: 10, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 5, owner_id: 1, name: 'Elongación de isquiotibiales', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 6, owner_id: 1, name: 'Elongación de cuádriceps', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 7, owner_id: 1, name: 'Elongación de gemelos', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 8, owner_id: 1, name: 'Elongación de glúteos', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 9, owner_id: 1, name: 'Ritmo continuo 3K', kind: 'cruising', minutes: null, distance_m: 3000, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 10, owner_id: 1, name: 'Ritmo continuo 5K', kind: 'cruising', minutes: null, distance_m: 5000, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 11, owner_id: 1, name: 'Rodaje suave 8K', kind: 'cruising', minutes: null, distance_m: 8000, speed_kph: null, video_url: null, created_at: now, updated_at: now },
-    { id: 12, owner_id: 1, name: 'Series 400m fuertes', kind: 'running', minutes: null, distance_m: 400, speed_kph: 14, video_url: null, created_at: now, updated_at: now },
-    { id: 13, owner_id: 1, name: 'Series 200m explosivas', kind: 'running', minutes: null, distance_m: 200, speed_kph: 16, video_url: null, created_at: now, updated_at: now },
-    { id: 14, owner_id: 1, name: 'Series 1000m ritmo umbral', kind: 'running', minutes: null, distance_m: 1000, speed_kph: 13, video_url: null, created_at: now, updated_at: now },
+    { id: 1, owner_id: 1, name: 'Caminata regenerativa', kind: 'walking', minutes: 5, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 2, owner_id: 1, name: 'Caminata rápida de entrada en calor', kind: 'walking', minutes: 8, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 3, owner_id: 1, name: 'Trote suave', kind: 'jogging', minutes: 20, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 4, owner_id: 1, name: 'Trote de activación', kind: 'jogging', minutes: 10, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 5, owner_id: 1, name: 'Elongación de isquiotibiales', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'isquiotibiales', video_url: null, created_at: now, updated_at: now },
+    { id: 6, owner_id: 1, name: 'Elongación de cuádriceps', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'cuadriceps', video_url: null, created_at: now, updated_at: now },
+    { id: 7, owner_id: 1, name: 'Elongación de gemelos', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'gemelos', video_url: null, created_at: now, updated_at: now },
+    { id: 8, owner_id: 1, name: 'Elongación de glúteos', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'gluteos', video_url: null, created_at: now, updated_at: now },
+    { id: 9, owner_id: 1, name: 'Ritmo continuo 3K', kind: 'cruising', minutes: null, distance_m: 3000, speed_kph: 10, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 10, owner_id: 1, name: 'Ritmo continuo 5K', kind: 'cruising', minutes: null, distance_m: 5000, speed_kph: 10.5, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 11, owner_id: 1, name: 'Rodaje suave 8K', kind: 'cruising', minutes: null, distance_m: 8000, speed_kph: 9.5, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 12, owner_id: 1, name: 'Series 400m fuertes', kind: 'running', minutes: null, distance_m: 400, speed_kph: 14, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 13, owner_id: 1, name: 'Series 200m explosivas', kind: 'running', minutes: null, distance_m: 200, speed_kph: 16, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+    { id: 14, owner_id: 1, name: 'Series 1000m ritmo umbral', kind: 'running', minutes: null, distance_m: 1000, speed_kph: 13, muscle_group: null, video_url: null, created_at: now, updated_at: now },
   ];
 }
 
@@ -68,6 +68,7 @@ export async function mockCreateExercise(payload) {
     minutes: payload.minutes ?? null,
     distance_m: payload.distance_m ?? null,
     speed_kph: payload.speed_kph ?? null,
+    muscle_group: payload.muscle_group ?? null,
     video_url: null,
     created_at: now,
     updated_at: now,

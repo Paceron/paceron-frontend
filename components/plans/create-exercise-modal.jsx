@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useExerciseStore, EXERCISE_KIND_OPTIONS } from '../../store/exercise-store.js';
+import { useExerciseStore, EXERCISE_KIND_OPTIONS, MUSCLE_GROUP_OPTIONS } from '../../store/exercise-store.js';
 import { InputField, PickerField } from '../forms/fields.jsx';
 
 // Alta rápida de un ejercicio nuevo, sin salir de donde se lo pidió (ej.
@@ -27,12 +27,14 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const [minutes, setMinutes] = useState('');
   const [distanceM, setDistanceM] = useState('');
   const [speedKph, setSpeedKph] = useState('');
+  const [muscleGroup, setMuscleGroup] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const showMinutes = kind === 'walking' || kind === 'jogging';
   const showDistance = kind === 'cruising' || kind === 'running';
-  const showSpeed = kind === 'running';
+  const showSpeed = kind === 'cruising' || kind === 'running';
+  const showMuscleGroup = kind === 'elongation';
 
   const reset = () => {
     setName(exercise?.name ?? '');
@@ -40,6 +42,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
     setMinutes(exercise?.minutes != null ? String(exercise.minutes) : '');
     setDistanceM(exercise?.distanceM != null ? String(exercise.distanceM) : '');
     setSpeedKph(exercise?.speedKph != null ? String(exercise.speedKph) : '');
+    setMuscleGroup(exercise?.muscleGroup ?? '');
     setError(null);
   };
 
@@ -61,6 +64,10 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
       setError('Ingresá un nombre para el ejercicio.');
       return;
     }
+    if (showMuscleGroup && !muscleGroup) {
+      setError('Elegí el grupo muscular que trabaja.');
+      return;
+    }
     setSubmitting(true);
     const form = {
       ownerId: user?.userId,
@@ -69,6 +76,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
       minutes: showMinutes && minutes ? Number(minutes) : null,
       distanceM: showDistance && distanceM ? Number(distanceM) : null,
       speedKph: showSpeed && speedKph ? Number(speedKph) : null,
+      muscleGroup: showMuscleGroup && muscleGroup ? muscleGroup : null,
     };
     const result = isEditing ? await updateExercise(exercise.id, form) : await createExercise(form);
     setSubmitting(false);
@@ -96,6 +104,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
           <InputField dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Series 400m fuertes" value={name} />
           <PickerField dense hideErrorRow label="Tipo" onChange={setKind} options={EXERCISE_KIND_OPTIONS} required value={kind} />
 
+          {showMuscleGroup && <PickerField dense hideErrorRow label="Grupo muscular" onChange={setMuscleGroup} options={MUSCLE_GROUP_OPTIONS} placeholder="Elegí el grupo muscular" required value={muscleGroup} />}
           {showMinutes && <InputField dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} />}
           {showDistance && <InputField dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} />}
           {showSpeed && <InputField dense hideErrorRow keyboardType="number-pad" label="Velocidad (km/h)" onChange={setSpeedKph} value={speedKph} />}

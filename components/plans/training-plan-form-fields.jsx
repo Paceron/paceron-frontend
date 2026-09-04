@@ -13,7 +13,6 @@ import { SessionExercisesPreview } from './session-exercises-preview.jsx';
 
 const DAY_KIND_OPTIONS = [
   { id: 'rest', name: 'Descanso' },
-  { id: 'marathon', name: 'Maratón' },
   { id: 'other', name: 'Otra actividad' },
   { id: 'training', name: 'Entrenamiento' },
 ];
