@@ -274,18 +274,16 @@ export function TierUpgradeScreen() {
         </SectionCard>
 
         {checkoutData && (
-          <SectionCard icon="credit-card-outline" title="Checkout">
-            <CheckoutFlow
-              amount={checkoutData.amount}
-              installmentId={checkoutData.installmentId}
-              key={checkoutData.preferenceId}
-              onApproved={handleApproved}
-              onCancel={handleCheckoutCancel}
-              onError={handleCheckoutError}
-              preferenceId={checkoutData.preferenceId}
-              publicKey={checkoutData.publicKey}
-            />
-          </SectionCard>
+          <CheckoutFlow
+            amount={checkoutData.amount}
+            installmentId={checkoutData.installmentId}
+            key={checkoutData.preferenceId}
+            onApproved={handleApproved}
+            onCancel={handleCheckoutCancel}
+            onError={handleCheckoutError}
+            preferenceId={checkoutData.preferenceId}
+            publicKey={checkoutData.publicKey}
+          />
         )}
       </View>
     </ScrollView>

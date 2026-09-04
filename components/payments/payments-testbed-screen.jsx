@@ -74,6 +74,10 @@ function PaymentsTestbedScreenContent() {
     Toast.show({ type: 'error', text1: 'Error en el checkout', text2: error?.message });
   };
 
+  const handleCheckoutCancel = () => {
+    setPreference(null);
+  };
+
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
@@ -118,16 +122,15 @@ function PaymentsTestbedScreenContent() {
         </SectionCard>
 
         {preference && (
-          <SectionCard icon="credit-card-outline" title="Checkout">
-            <CheckoutFlow
-              amount={Number(amount)}
-              key={preference.preferenceId}
-              onApproved={handleApproved}
-              onError={handleError}
-              preferenceId={preference.preferenceId}
-              publicKey={preference.publicKey}
-            />
-          </SectionCard>
+          <CheckoutFlow
+            amount={Number(amount)}
+            key={preference.preferenceId}
+            onApproved={handleApproved}
+            onCancel={handleCheckoutCancel}
+            onError={handleError}
+            preferenceId={preference.preferenceId}
+            publicKey={preference.publicKey}
+          />
         )}
 
         {lastPayment && (
