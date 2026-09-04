@@ -6,7 +6,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
-import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTierSubscription } from '../../hooks/use-tier-subscription.js';
 import { listTiers } from '../../services/tiers.js';
@@ -30,12 +29,12 @@ function formatTierPrice(tierAmount, paymentRequired) {
 // flujo real (ver handleUpgrade en TierUpgradeScreen). Tiers gratis
 // que no son el actual (no debería pasar hoy, 1 solo tier gratis por
 // rol) no muestran ninguna acción.
-function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade }) {
+function TierCard({ tier, isCurrent, loading, onUpgrade }) {
   const colors = useThemeColors();
   const idPrefix = `tier-card-${tier.id}`;
   return (
     <View
-      className={`rounded-2xl border p-5 ${isCurrent ? 'border-primary bg-primary-tint dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'} ${isDesktopWeb ? 'w-[31%]' : 'w-full'}`}
+      className={`w-full rounded-2xl border p-5 ${isCurrent ? 'border-primary bg-primary-tint dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'}`}
       nativeID={idPrefix}
       testID={idPrefix}
     >
@@ -119,8 +118,6 @@ function PendingPaymentBanner({ subscription, onResume, loading }) {
 export function TierUpgradeScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const isNarrowWeb = useIsNarrowWeb();
-  const isDesktopWeb = isWeb && !isNarrowWeb;
   const activeRole = useAuthStore((s) => s.activeRole);
   const roles = useAuthStore((s) => s.roles);
   const user = useAuthStore((s) => s.user);
@@ -258,11 +255,10 @@ export function TierUpgradeScreen() {
               Todavía no hay tiers configurados para este rol.
             </Text>
           ) : (
-            <View className={isDesktopWeb ? 'flex-row flex-wrap gap-4' : 'gap-3'} nativeID="tier-upgrade-screen-cards" testID="tier-upgrade-screen-cards">
+            <View className="gap-3" nativeID="tier-upgrade-screen-cards" testID="tier-upgrade-screen-cards">
               {roleTiers.map((tier) => (
                 <TierCard
                   isCurrent={tier.name === currentTierName}
-                  isDesktopWeb={isDesktopWeb}
                   key={tier.id}
                   loading={isChangingTier && processingTierId === tier.id}
                   onUpgrade={handleUpgrade}
