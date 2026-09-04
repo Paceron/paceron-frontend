@@ -4,8 +4,9 @@ import { initMercadoPago, Payment, StatusScreen } from '@mercadopago/sdk-react';
 import { processPayment } from '../../services/payments.js';
 import { toProcessPaymentPayload, toPaymentModel } from '../../services/normalizers.js';
 
-// Único componente de checkout para las 3 fases de pagos — la firma no
-// cambia entre Fase 0/1/2, ver
+// Único componente de checkout para las 3 fases de pagos — la firma se
+// extiende entre fases (Fase 1 suma `installmentId` opcional), nunca se
+// rompe — Fase 0 sigue funcionando sin pasarlo. Ver
 // docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md.
 // Solo web: Payment Brick es un componente HTML/JS
 // (@mercadopago/sdk-react) — ver checkout-flow.jsx para la rama nativa
@@ -13,7 +14,7 @@ import { toProcessPaymentPayload, toPaymentModel } from '../../services/normaliz
 // desmonta el brick solo al desmontar este componente — no hace falta
 // llamar unmount() a mano (eso es necesario con el SDK vanilla JS, no
 // con este wrapper).
-export function CheckoutFlow({ preferenceId, publicKey, amount, marketplace, onApproved, onError }) {
+export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError }) {
   const [approvedPaymentId, setApprovedPaymentId] = useState(null);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, marketplace, onA
     installments: formData.installments,
     payerEmail: formData.payer.email,
     preferenceId,
+    installmentId,
   }))
     .then((dto) => {
       const payment = toPaymentModel(dto);

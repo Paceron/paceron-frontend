@@ -14,7 +14,7 @@ import { WEB_ORIGIN } from '../../config/env.js';
 // un `onCancel` opcional — asimetría real y aceptada: el brick inline en
 // web no tiene concepto de "cerrar", el modal nativo sí. Ver
 // docs/superpowers/specs/2026-09-03-payments-checkout-webview-design.md.
-export function CheckoutFlow({ preferenceId, publicKey, amount, marketplace, onApproved, onError, onCancel }) {
+export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError, onCancel }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const webViewRef = useRef(null);
@@ -53,6 +53,7 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, marketplace, onA
     preferenceId,
     publicKey,
     amount: String(amount),
+    ...(installmentId ? { installmentId: String(installmentId) } : {}),
     ...(marketplace ? { marketplace: 'true' } : {}),
   });
   const checkoutUrl = `${WEB_ORIGIN}/checkout?${queryParams.toString()}`;

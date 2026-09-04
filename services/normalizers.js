@@ -362,6 +362,7 @@ export function toCreatePreferencePayload(form) {
     items: form.items.map((item) => ({ title: item.title, quantity: item.quantity, unit_price: item.unitPrice })),
   };
   if (form.description) payload.description = form.description;
+  if (form.installmentId) payload.installment_id = form.installmentId;
   return payload;
 }
 
@@ -379,6 +380,7 @@ export function toProcessPaymentPayload(form) {
     payer_email: form.payerEmail,
   };
   if (form.preferenceId) payload.preference_id = form.preferenceId;
+  if (form.installmentId) payload.installment_id = form.installmentId;
   return payload;
 }
 
@@ -399,5 +401,32 @@ export function toPaymentModel(dto) {
     preferenceId: dto.preference_id,
     status: dto.status,
     statusDetail: dto.status_detail,
+  };
+}
+
+// Fase 1 de pagos — GET /users/{id}/subscriptions/current y la
+// respuesta de PUT /users/{id}/roles/{role_id}/tier comparten
+// exactamente el mismo shape (ChangeTierResponse ===
+// CurrentSubscriptionResponse en el swagger), un solo normalizer sirve
+// para las dos. Ver docs/superpowers/specs/2026-09-03-payments-fase1-tier-upgrade-design.md.
+export function toSubscriptionModel(dto) {
+  if (!dto) return null;
+  return {
+    subscriptionId: dto.subscription_id ?? null,
+    subscriptionStatus: dto.subscription_status ?? null,
+    installmentId: dto.installment_id ?? null,
+    installmentNumber: dto.installment_number ?? null,
+    installmentAmount: dto.installment_amount ?? null,
+    nextDueDate: dto.next_due_date ?? null,
+    blockedDate: dto.blocked_date ?? null,
+    paidInstallments: dto.paid_installments ?? 0,
+    tier: dto.tier ? {
+      id: dto.tier.id,
+      name: dto.tier.name,
+      hierarchy: dto.tier.hierarchy ?? null,
+      paymentRequired: Boolean(dto.tier.payment_required),
+    } : null,
+    role: dto.role ? { id: dto.role.id, name: dto.role.name } : null,
+    mercadopago: dto.mercadopago ? { publicKey: dto.mercadopago.public_key } : null,
   };
 }
