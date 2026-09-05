@@ -14,6 +14,7 @@ import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
+import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
 
 function DropdownMenu({ onClose }) {
   const router = useRouter();
@@ -260,7 +261,7 @@ function TeamsTab({ route, isOpen, colors, onOpen }) {
   );
 }
 
-function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, myInvitationsCount, onTabPress, onUserPress, onTeamsPress }) {
+function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, notificationsBadgeCount, onTabPress, onUserPress, onTeamsPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -330,8 +331,8 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
                       size={16}
                       color={isActive ? colors.primary : colors.onSurfaceVariant}
                     />
-                    {route.name === 'invitations' && myInvitationsCount > 0 && (
-                      <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-nav-tab-invitations-badge" testID="web-shell-nav-tab-invitations-badge" />
+                    {route.name === 'notifications' && notificationsBadgeCount > 0 && (
+                      <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-nav-tab-notifications-badge" testID="web-shell-nav-tab-notifications-badge" />
                     )}
                   </View>
                   <Text
@@ -424,6 +425,8 @@ export function AppWebShell({ children, pathname }) {
   const [teamsLoading, setTeamsLoading] = useState(true);
   const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
   const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
+  const pendingRequestsCount = usePendingRequestsCount(activeRole === 'trainer');
+  const notificationsBadgeCount = activeRole === 'trainer' ? pendingRequestsCount : myInvitationsCount;
 
   useEffect(() => {
     if (!user) {
@@ -481,7 +484,7 @@ export function AppWebShell({ children, pathname }) {
           activeTab={activeTab}
           dropdownOpen={dropdownOpen}
           isGuest={isGuest}
-          myInvitationsCount={myInvitationsCount}
+          notificationsBadgeCount={notificationsBadgeCount}
           onTabPress={handleTabPress}
           onTeamsPress={handleTeamsPress}
           onUserPress={handleUserPress}

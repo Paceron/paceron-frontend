@@ -15,6 +15,7 @@ import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { TeamsAccordion } from './teams-accordion.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
+import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
 
 const ANIMATION_CONFIG = { duration: 280, easing: Easing.out(Easing.cubic) };
 
@@ -86,6 +87,8 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
   const [teamsExpanded, setTeamsExpanded] = useState(false);
   const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
   const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
+  const pendingRequestsCount = usePendingRequestsCount(activeRole === 'trainer');
+  const notificationsBadgeCount = activeRole === 'trainer' ? pendingRequestsCount : myInvitationsCount;
 
   useEffect(() => {
     fetchTeams();
@@ -270,8 +273,8 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                           name={route.icon ?? 'circle-small'}
                           size={22}
                         />
-                        {route.name === 'invitations' && myInvitationsCount > 0 && (
-                          <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-narrow-drawer-route-invitations-badge" testID="web-narrow-drawer-route-invitations-badge" />
+                        {route.name === 'notifications' && notificationsBadgeCount > 0 && (
+                          <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-narrow-drawer-route-notifications-badge" testID="web-narrow-drawer-route-notifications-badge" />
                         )}
                       </View>
                       <Text
