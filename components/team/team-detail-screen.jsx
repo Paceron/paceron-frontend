@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -27,6 +27,7 @@ import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
 import { LeaveGroupModal } from './leave-group-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { TeamRequestsTab } from './team-requests-tab.jsx';
 
 // Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
 // alinear el borde derecho del panel con el del botón de 3 puntitos que lo
@@ -59,6 +60,7 @@ const TABS = [
   { id: 'general', label: 'Información general y estadísticas', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
   { id: 'grupos', label: 'Grupos', icon: 'account-group' },
+  { id: 'solicitudes', label: 'Solicitudes', icon: 'account-question-outline' },
 ];
 
 const DASH = '—';
@@ -645,7 +647,8 @@ function TeamDetailScreenContent({ teamId }) {
   // ve los grupos, con o sin el toggle prendido.
   const canSeeGroups = isTrainerView || team?.showGroupsToRunners;
 
-  const [activeTab, setActiveTab] = useState('general');
+  const params = useLocalSearchParams();
+  const [activeTab, setActiveTab] = useState(TABS.some((t) => t.id === params.tab) ? params.tab : 'general');
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [loadingTeam, setLoadingTeam] = useState(!team);
@@ -1012,7 +1015,8 @@ function TeamDetailScreenContent({ teamId }) {
     </SectionCard>
   );
 
-  const visibleTabs = isTrainerView ? TABS : TABS.filter((tab) => tab.id !== 'grupos');
+  const visibleTabs = TABS.filter((tab) => (tab.id !== 'grupos' || isTrainerView) && (tab.id !== 'solicitudes' || canDeleteTeam));
+  const solicitudesContent = canDeleteTeam && <TeamRequestsTab teamId={team.id} />;
 
   return (
     <View className="relative flex-1" nativeID="team-detail-screen-root" ref={runnerMenuContainerRef} testID="team-detail-screen-root">
@@ -1104,12 +1108,14 @@ function TeamDetailScreenContent({ teamId }) {
             {activeTab === 'general' && generalContent}
             {activeTab === 'corredores' && corredoresContent}
             {activeTab === 'grupos' && gruposContent}
+            {activeTab === 'solicitudes' && solicitudesContent}
           </>
         ) : (
           <>
             {generalContent}
             {corredoresContent}
             {gruposContent}
+            {solicitudesContent}
           </>
         )}
       </View>
