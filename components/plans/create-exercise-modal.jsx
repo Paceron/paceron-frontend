@@ -5,7 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseStore, EXERCISE_KIND_OPTIONS, MUSCLE_GROUP_OPTIONS } from '../../store/exercise-store.js';
-import { InputField, PickerField } from '../forms/fields.jsx';
+import { InputField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 
 // Alta rápida de un ejercicio nuevo, sin salir de donde se lo pidió (ej.
 // desde adentro de CreateSessionModal) — "un botón para acceder al
@@ -102,9 +103,9 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
           </View>
 
           <InputField dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Series 400m fuertes" value={name} />
-          <PickerField dense hideErrorRow label="Tipo" onChange={setKind} options={EXERCISE_KIND_OPTIONS} required value={kind} />
+          <ResponsiveSelectField dense hideErrorRow label="Tipo" onChange={setKind} options={EXERCISE_KIND_OPTIONS} required value={kind} />
 
-          {showMuscleGroup && <PickerField dense hideErrorRow label="Grupo muscular" onChange={setMuscleGroup} options={MUSCLE_GROUP_OPTIONS} placeholder="Elegí el grupo muscular" required value={muscleGroup} />}
+          {showMuscleGroup && <ResponsiveSelectField dense hideErrorRow label="Grupo muscular" onChange={setMuscleGroup} options={MUSCLE_GROUP_OPTIONS} placeholder="Elegí el grupo muscular" required value={muscleGroup} />}
           {showMinutes && <InputField dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} />}
           {showDistance && <InputField dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} />}
           {showSpeed && <InputField dense hideErrorRow keyboardType="number-pad" label="Velocidad (km/h)" onChange={setSpeedKph} value={speedKph} />}
