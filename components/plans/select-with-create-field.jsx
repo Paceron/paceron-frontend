@@ -22,10 +22,13 @@ export function SelectWithCreateField({
   disabled,
   error,
   className,
+  hideLabel,
 }) {
   return (
     <View className={className ?? 'mb-3'} nativeID={scope} testID={scope}>
-      <Text className={FIELD_LABEL} nativeID={`${scope}-label`} testID={`${scope}-label`}>{label}</Text>
+      {!hideLabel && (
+        <Text className={FIELD_LABEL} nativeID={`${scope}-label`} testID={`${scope}-label`}>{label}</Text>
+      )}
       <View className="flex-row items-center gap-2" nativeID={`${scope}-row`} testID={`${scope}-row`}>
         <View className="flex-1" nativeID={`${scope}-field-wrapper`} testID={`${scope}-field-wrapper`}>
           <ResponsiveSelectField

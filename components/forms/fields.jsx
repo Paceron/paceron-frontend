@@ -12,8 +12,14 @@ import { BREAKPOINTS } from '../../theme/tokens.js';
 
 export const INPUT_CLASS = 'flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none';
 export const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200';
-export const SELECT_CLASS = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
-const DATE_BASE = 'h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
+// min-h-12, no h-12: en web, Chrome ignora `height` en <select>/<input
+// type="date"> (controles de formulario "reemplazados" con su propio
+// alto intrínseco) — con h-12 renderizaban a ~38-40px reales pese a la
+// clase, aunque medía 48px en cualquier View normal. min-height sí lo
+// respeta. Detectado 2026-09-05 al notar el botón "+" de
+// SelectWithCreateField más alto que el select de al lado.
+export const SELECT_CLASS = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
+const DATE_BASE = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 
 // Slugifica un label para usarlo como parte de un id estable y legible.
 function slugify(label) {
