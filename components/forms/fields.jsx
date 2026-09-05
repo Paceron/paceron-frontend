@@ -55,7 +55,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -64,7 +64,9 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
 
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
-      <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>{label}</Text>
+      {!hideLabel && (
+        <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>{label}</Text>
+      )}
       <View
         className="flex-row items-center gap-2"
         nativeID={`select-field-${slug}-row`}
@@ -77,7 +79,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
           >
-            <option value="">{placeholder}</option>
+            {(!required || !value) && <option value="">{placeholder}</option>}
             {items.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.name}
@@ -329,7 +331,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -348,7 +350,9 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
 
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
-      <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
+      {!hideLabel && (
+        <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
+      )}
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
         onPress={disabled ? undefined : () => setVisible(true)}

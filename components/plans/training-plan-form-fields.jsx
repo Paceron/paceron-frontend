@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, View } from 'react-native';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
@@ -9,6 +8,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CreateSessionModal } from './create-session-modal.jsx';
+import { SelectWithCreateField } from './select-with-create-field.jsx';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
 
 const DAY_KIND_OPTIONS = [
@@ -59,32 +59,16 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
 
       {day.kind === 'training' && (
         <View className="mt-2" nativeID={`${idPrefix}-session-picker`} testID={`${idPrefix}-session-picker`}>
-          <Row narrowClassName="gap-3">
-            <Col flex={2}>
-              <ResponsiveSelectField
-                className="mb-0"
-                dense
-                hideErrorRow
-                label="Sesión"
-                onChange={(sessionId) => onChangeDay({ sessionId })}
-                options={sessions.map((s) => ({ id: s.id, name: s.name }))}
-                placeholder={sessions.length ? 'Elegí una sesión' : 'Todavía no creaste ninguna sesión'}
-                required
-                value={day.sessionId ?? ''}
-              />
-            </Col>
-            <Col flex={1}>
-              <Pressable
-                className="mb-3 h-12 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary px-3 hover:bg-primary-tint-subtle active:opacity-70 dark:hover:bg-primary/10"
-                nativeID={`${idPrefix}-create-session-button`}
-                onPress={onRequestCreateSession}
-                testID={`${idPrefix}-create-session-button`}
-              >
-                <MaterialCommunityIcons color="#8cc63e" name="plus" size={16} />
-                <Text className="text-xs font-semibold text-primary" nativeID={`${idPrefix}-create-session-button-label`} testID={`${idPrefix}-create-session-button-label`}>Crear sesión</Text>
-              </Pressable>
-            </Col>
-          </Row>
+          <SelectWithCreateField
+            createAccessibilityLabel="Crear sesión"
+            label="Sesión"
+            onChange={(sessionId) => onChangeDay({ sessionId })}
+            onRequestCreate={onRequestCreateSession}
+            options={sessions.map((s) => ({ id: s.id, name: s.name }))}
+            placeholder={sessions.length ? 'Elegí una sesión' : 'Todavía no creaste ninguna sesión'}
+            scope={`${idPrefix}-session-field`}
+            value={day.sessionId ?? ''}
+          />
           <SessionExercisesPreview session={selectedSession} />
         </View>
       )}
