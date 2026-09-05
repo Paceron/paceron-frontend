@@ -129,8 +129,19 @@ tipos de "novedad" en el equipo, no solo solicitudes — por ahora la
 
 ### Notificaciones — reemplaza el tab "Invitaciones", sin dropdown
 
-`routes/catalog.js` pierde `invitationsRoute` — deja de ser un tab de
-navegación. En su lugar:
+`routes/catalog.js` pierde `invitationsRoute`, ahora `notificationsRoute`.
+
+**Implementado 2026-09-05 (difiere de lo planeado acá abajo, ver nota):**
+las 3 plataformas muestran "Notificaciones" como entrada de navegación
+normal (mismo lugar/mecanismo donde antes vivía "Invitaciones"), con
+badge — en `app-web-shell.jsx` es un tab más de la fila de navegación
+del `TopBar` (ícono `bell-outline`), no un ícono de campana aparte a la
+derecha del user pill como se planeaba originalmente. Funcionalmente
+equivalente (mismo badge, mismo destino `/notifications`) y más simple
+de implementar reusando el mecanismo ya existente de
+`getRoutesByRole`/`navigationRoutes` — decisión tomada durante la
+implementación, no en esta ronda de diseño. Lo que sigue abajo es el
+plan original, dejado como referencia:
 
 - **Web ancho** (`app-web-shell.jsx`): ícono de campana en el `TopBar`,
   a la derecha del user pill, con badge si hay pendientes. `onPress` →
