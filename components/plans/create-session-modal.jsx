@@ -7,47 +7,10 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { InputField, Row, Col } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
+import { SelectWithCreateField } from './select-with-create-field.jsx';
 
 const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
-
-// Picker de ejercicio + botón "Nuevo" al lado — mismo espíritu que el
-// resto del módulo: elegir de un catálogo ya armado es el camino
-// principal, dar de alta uno nuevo es la excepción con su propio acceso
-// directo (acá abre CreateExerciseModal, no navega a otro lado).
-function ExercisePickerRow({ label, exercises, value, onChange, onRequestCreate }) {
-  return (
-    <View nativeID={`session-exercise-picker-${label}`} testID={`session-exercise-picker-${label}`}>
-      <Row narrowClassName="gap-3">
-        <Col flex={2}>
-          <ResponsiveSelectField
-            className="mb-0"
-            dense
-            hideErrorRow
-            label={label}
-            onChange={onChange}
-            options={exercises.map((e) => ({ id: e.id, name: e.name }))}
-            placeholder={exercises.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
-            required
-            value={value}
-          />
-        </Col>
-        <Col flex={1}>
-          <Pressable
-            className="mb-3 h-12 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary px-3 hover:bg-primary-tint-subtle active:opacity-70 dark:hover:bg-primary/10"
-            nativeID={`session-exercise-picker-${label}-new-button`}
-            onPress={onRequestCreate}
-            testID={`session-exercise-picker-${label}-new-button`}
-          >
-            <MaterialCommunityIcons color="#8cc63e" name="plus" size={16} />
-            <Text className="text-xs font-semibold text-primary" nativeID={`session-exercise-picker-${label}-new-label`} testID={`session-exercise-picker-${label}-new-label`}>Nuevo</Text>
-          </Pressable>
-        </Col>
-      </Row>
-    </View>
-  );
-}
 
 // Alta rápida de una sesión nueva desde adentro de armar un día de
 // entrenamiento en un plan — mismo motivo que CreateExerciseModal: un
@@ -156,18 +119,24 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
               <InputField dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
               <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={setDescription} value={description} />
 
-              <ExercisePickerRow
-                exercises={warmcoolExercises}
+              <SelectWithCreateField
+                createAccessibilityLabel="Nuevo"
                 label="Entrada en calor"
                 onChange={setWarmupExerciseId}
                 onRequestCreate={() => setCreateExerciseTarget('warmup')}
+                options={warmcoolExercises.map((e) => ({ id: e.id, name: e.name }))}
+                placeholder={warmcoolExercises.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
+                scope="session-exercise-picker-warmup"
                 value={warmupExerciseId}
               />
-              <ExercisePickerRow
-                exercises={exercises}
+              <SelectWithCreateField
+                createAccessibilityLabel="Nuevo"
                 label="Principal"
                 onChange={setMainExerciseId}
                 onRequestCreate={() => setCreateExerciseTarget('main')}
+                options={exercises.map((e) => ({ id: e.id, name: e.name }))}
+                placeholder={exercises.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
+                scope="session-exercise-picker-main"
                 value={mainExerciseId}
               />
               <Row narrowClassName="gap-3">
@@ -178,11 +147,14 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   <InputField dense hideErrorRow keyboardType="number-pad" label="Descanso entre series (min)" onChange={setMainRestMinutes} value={mainRestMinutes} />
                 </Col>
               </Row>
-              <ExercisePickerRow
-                exercises={warmcoolExercises}
+              <SelectWithCreateField
+                createAccessibilityLabel="Nuevo"
                 label="Vuelta a la calma"
                 onChange={setCooldownExerciseId}
                 onRequestCreate={() => setCreateExerciseTarget('cooldown')}
+                options={warmcoolExercises.map((e) => ({ id: e.id, name: e.name }))}
+                placeholder={warmcoolExercises.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
+                scope="session-exercise-picker-cooldown"
                 value={cooldownExerciseId}
               />
 
