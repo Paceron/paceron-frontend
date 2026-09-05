@@ -9,7 +9,7 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { SelectField, PickerField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 const THEME_OPTIONS = [
@@ -92,32 +92,21 @@ function SettingsScreenContent() {
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="settings-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="settings-screen-title">
-            Settings
+            Ajustes
           </Text>
         </View>
 
         <SectionCard icon="palette-outline" title="Apariencia">
           <View className="flex-row items-center gap-3" nativeID="settings-screen-theme-row" testID="settings-screen-theme-row">
             <View className="flex-1" nativeID="settings-screen-theme-picker-wrap" testID="settings-screen-theme-picker-wrap">
-              {isWeb ? (
-                <SelectField
-                  dense
-                  hideErrorRow
-                  label="Tema predeterminado"
-                  onChange={handleThemeChange}
-                  options={THEME_OPTIONS}
-                  value={user.defaultTheme ?? 'dark'}
-                />
-              ) : (
-                <PickerField
-                  dense
-                  hideErrorRow
-                  label="Tema predeterminado"
-                  onChange={handleThemeChange}
-                  options={THEME_OPTIONS}
-                  value={user.defaultTheme ?? 'dark'}
-                />
-              )}
+              <ResponsiveSelectField
+                dense
+                hideErrorRow
+                label="Tema predeterminado"
+                onChange={handleThemeChange}
+                options={THEME_OPTIONS}
+                value={user.defaultTheme ?? 'dark'}
+              />
             </View>
             {savingTheme && <ActivityIndicator color={colors.primary} size="small" />}
           </View>

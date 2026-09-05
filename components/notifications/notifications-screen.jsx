@@ -124,7 +124,7 @@ function MyJoinRequestsSection() {
   };
 
   return (
-    <SectionCard collapsed={collapsed} collapsible icon="account-clock-outline" onToggle={() => setCollapsed((v) => !v)} title="Mis solicitudes enviadas">
+    <SectionCard collapsed={collapsed} collapsible icon="account-clock-outline" onToggle={() => setCollapsed((v) => !v)} scope="notifications-my-requests-section" title="Mis solicitudes enviadas">
       {loading ? (
         <View className="items-center py-6" nativeID="my-join-requests-loading" testID="my-join-requests-loading">
           <ActivityIndicator color={colors.primary} />
@@ -165,7 +165,7 @@ function TrainerPendingRequestsSection() {
   const allPending = administeredTeamIds.flatMap((teamId) => byTeamId.get(teamId) ?? []);
 
   return (
-    <SectionCard collapsed={collapsed} collapsible icon="account-question-outline" onToggle={() => setCollapsed((v) => !v)} title="Solicitudes pendientes">
+    <SectionCard collapsed={collapsed} collapsible icon="account-question-outline" onToggle={() => setCollapsed((v) => !v)} scope="notifications-pending-requests-section" title="Solicitudes pendientes">
       {loading ? (
         <View className="items-center py-6" nativeID="trainer-pending-requests-loading" testID="trainer-pending-requests-loading">
           <ActivityIndicator color={colors.primary} />
@@ -269,7 +269,7 @@ function NotificationsScreenContent() {
           </Text>
         </View>
 
-        <SectionCard collapsed={invitationsCollapsed} collapsible icon="email-outline" onToggle={() => setInvitationsCollapsed((v) => !v)} title="Invitaciones recibidas">
+        <SectionCard collapsed={invitationsCollapsed} collapsible icon="email-outline" onToggle={() => setInvitationsCollapsed((v) => !v)} scope="notifications-invitations-section" title="Invitaciones recibidas">
           {loadingInvitations ? (
             <View className="items-center py-6" nativeID="received-invitations-loading" testID="received-invitations-loading">
               <ActivityIndicator color={colors.primary} />

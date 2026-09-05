@@ -19,6 +19,13 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Desde SDK 53, Expo Go ya no soporta push remoto (ni Android ni iOS) —
+// llamar a las APIs de Notifications ahí solo genera warnings en consola sin
+// aportar nada, la app sigue andando igual. `executionEnvironment` distingue
+// Expo Go ('storeClient') de un build real (dev-client/standalone) donde sí
+// hay soporte nativo completo.
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
 // Pide permiso tras el login, registra el token contra el backend, y
 // cablea los listeners de foreground (Toast) y tap-to-navigate
 // (data.route). Android-only — en web/iOS no hace nada (isAndroid, no
@@ -29,7 +36,7 @@ export function usePushNotifications() {
   const registeredForUserId = useRef(null);
 
   useEffect(() => {
-    if (!isAndroid || !user?.userId) return;
+    if (!isAndroid || isExpoGo || !user?.userId) return;
     if (registeredForUserId.current === user.userId) return;
     registeredForUserId.current = user.userId;
 
@@ -54,7 +61,7 @@ export function usePushNotifications() {
   }, [user?.userId]);
 
   useEffect(() => {
-    if (!isAndroid) return undefined;
+    if (!isAndroid || isExpoGo) return undefined;
 
     const foregroundSub = Notifications.addNotificationReceivedListener((notification) => {
       const { title, body } = notification.request.content;

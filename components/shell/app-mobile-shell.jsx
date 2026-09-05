@@ -236,7 +236,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                     testID="mobile-drawer-settings-row"
                   >
                     <MaterialCommunityIcons color={colors.onSurfaceVariant} name="cog-outline" size={18} />
-                    <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-settings-label" testID="mobile-drawer-settings-label">Settings</Text>
+                    <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-settings-label" testID="mobile-drawer-settings-label">Ajustes</Text>
                   </Pressable>
                   <Pressable
                     className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
