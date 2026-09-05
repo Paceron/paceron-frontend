@@ -386,6 +386,17 @@ export function toRunnerPlanAssignmentModel(dto) {
   };
 }
 
+// "Plan actual" — ver docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
+export function toCurrentPlanMarkModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    planId: String(dto.plan_id),
+    userId: dto.user_id,
+    markedAt: dto.marked_at,
+  };
+}
+
 // ---------------------------------------------------------------------
 // Tiers — catálogo real GET /api/v1/tiers (ver
 // docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md).

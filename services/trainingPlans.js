@@ -10,6 +10,9 @@ import {
   mockListRunnerPlanAssignments,
   mockAssignPlanToRunner,
   mockUnassignPlanFromRunner,
+  mockListCurrentPlanMarks,
+  mockMarkPlanAsCurrent,
+  mockUnmarkPlanAsCurrent,
 } from './__mocks__/training-plans-mock.js';
 
 // Sin backend real de planes de entrenamiento todavía (ver
@@ -79,4 +82,29 @@ export async function assignPlanToRunner(planId, userId) {
 export async function unassignPlanFromRunner(userId) {
   if (USE_MOCKS) return await mockUnassignPlanFromRunner(userId);
   return await api.delete(`/training-plans/assignments/${userId}`);
+}
+
+// "Plan actual" — preferencia del corredor, no una asignación nueva. Sin
+// equivalente real en el backend todavía (gap 4, igual que el resto de
+// este archivo).
+
+// GET /api/v1/training-plans/current-marks?user_id=.
+export async function listCurrentPlanMarks({ userId } = {}) {
+  if (USE_MOCKS) return await mockListCurrentPlanMarks({ userId });
+  const params = new URLSearchParams();
+  if (userId != null) params.set('user_id', userId);
+  return await api.get(`/training-plans/current-marks?${params.toString()}`);
+}
+
+// POST /api/v1/training-plans/{id}/current-marks — tope de 2 por
+// corredor, se hace cumplir del lado del servicio (ver mock).
+export async function markPlanAsCurrent(userId, planId) {
+  if (USE_MOCKS) return await mockMarkPlanAsCurrent(userId, planId);
+  return await api.post(`/training-plans/${planId}/current-marks`, { user_id: userId });
+}
+
+// DELETE /api/v1/training-plans/{id}/current-marks/{user_id}.
+export async function unmarkPlanAsCurrent(userId, planId) {
+  if (USE_MOCKS) return await mockUnmarkPlanAsCurrent(userId, planId);
+  return await api.delete(`/training-plans/${planId}/current-marks/${userId}`);
 }
