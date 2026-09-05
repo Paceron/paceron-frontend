@@ -2,7 +2,7 @@ import { isWeb } from '../../utils/platform.js';
 import { InputField, PickerField, Row, Col, SelectField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 
-const LEVEL_OPTIONS = [
+export const LEVEL_OPTIONS = [
   { id: 'amateur', name: 'Amateur' },
   { id: 'semi-profesional', name: 'Semi-profesional' },
   { id: 'profesional', name: 'Profesional' },
