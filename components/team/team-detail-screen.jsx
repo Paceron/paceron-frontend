@@ -889,7 +889,7 @@ function TeamDetailScreenContent({ teamId }) {
             </Col>
             {canSeeGroups && (
               <Col>
-                <InlinePicker onChange={setGroupFilter} options={groupOptions} placeholder="Buscar por grupo" scope="team-detail-group-filter" value={groupFilter} widthClass="w-full" />
+                <InlinePicker onChange={setGroupFilter} options={groupOptions} placeholder="Buscar por grupo" scope="team-detail-group-filter" textClassName="text-sm" value={groupFilter} widthClass="w-full" />
               </Col>
             )}
           </Row>
