@@ -79,7 +79,7 @@ function DropdownMenu({ onClose }) {
           testID="web-shell-dropdown-settings-link"
         >
           <MaterialCommunityIcons name="cog-outline" size={18} color={colors.onSurfaceVariant} />
-          <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-dropdown-settings-link-label" testID="web-shell-dropdown-settings-link-label">Settings</Text>
+          <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-dropdown-settings-link-label" testID="web-shell-dropdown-settings-link-label">Ajustes</Text>
         </Pressable>
 
         <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-profile" testID="web-shell-dropdown-divider-profile" />
