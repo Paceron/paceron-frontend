@@ -2,6 +2,7 @@ import {
   toUserModel, toRegisterPayload, toUpdatePayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
+  toTeamSearchResultModel, toJoinRequestModel,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -117,7 +118,7 @@ describe('toTeamModel', () => {
       id: '1', name: 'Corredores del Sur', description: 'desc', level: 'amateur',
       maxMembers: 20, ownerId: 7, requirements: 'req', status: 'activo',
       country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
-      showGroupsToRunners: true,
+      showGroupsToRunners: true, visible: true, isPublic: true,
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z',
       iconUrl: null,
     });
@@ -176,6 +177,22 @@ describe('toUpdateTeamPayload', () => {
     const out = toUpdateTeamPayload({ name: 'X' });
     expect(out).not.toHaveProperty('show_groups_to_runners');
   });
+
+  test('includes visible and isPublic when provided', () => {
+    const out = toUpdateTeamPayload({ name: 'X', visible: false, isPublic: true });
+    expect(out).toEqual({ name: 'X', visible: false, is_public: true });
+  });
+
+  test('includes visible/isPublic even when explicitly false', () => {
+    const out = toUpdateTeamPayload({ name: 'X', visible: false, isPublic: false });
+    expect(out).toEqual({ name: 'X', visible: false, is_public: false });
+  });
+
+  test('omits visible/isPublic when not provided', () => {
+    const out = toUpdateTeamPayload({ name: 'X' });
+    expect(out).not.toHaveProperty('visible');
+    expect(out).not.toHaveProperty('is_public');
+  });
 });
 
 describe('toAddressPayload', () => {
@@ -187,6 +204,65 @@ describe('toAddressPayload', () => {
   test('omits empty fields', () => {
     const out = toAddressPayload({ country: 'ARG', province: '', city: '  ' });
     expect(out).toEqual({ country: 'ARG' });
+  });
+});
+
+describe('toTeamSearchResultModel', () => {
+  test('maps search result fields to camelCase and coerces id to string', () => {
+    const dto = {
+      id: 1, name: 'Corredores del Sur', level: 'amateur',
+      max_members: 20, member_count: 12, owner_name: 'Ana Trainer',
+      is_public: true, country: 'ARG', province: 'BA', city: 'La Plata',
+      icon_url: 'https://x.com/i.jpg',
+    };
+    expect(toTeamSearchResultModel(dto)).toEqual({
+      id: '1', name: 'Corredores del Sur', level: 'amateur',
+      maxMembers: 20, memberCount: 12, ownerName: 'Ana Trainer',
+      isPublic: true, country: 'ARG', province: 'BA', city: 'La Plata',
+      iconUrl: 'https://x.com/i.jpg',
+    });
+  });
+
+  test('defaults optional fields to null/0 when absent', () => {
+    const dto = { id: 2, name: 'Team X', max_members: 15, is_public: false };
+    const model = toTeamSearchResultModel(dto);
+    expect(model.level).toBeNull();
+    expect(model.memberCount).toBe(0);
+    expect(model.ownerName).toBeNull();
+    expect(model.country).toBeNull();
+    expect(model.isPublic).toBe(false);
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toTeamSearchResultModel(null)).toBeNull();
+    expect(toTeamSearchResultModel(undefined)).toBeNull();
+  });
+});
+
+describe('toJoinRequestModel', () => {
+  test('maps join request fields to camelCase and coerces ids to string', () => {
+    const dto = {
+      id: 10, team_id: 1, team_name: 'Corredores del Sur',
+      runner_id: 5, runner_name: 'Pepe Lota',
+      status: 'pending', created_at: '2026-09-01T00:00:00.000Z',
+    };
+    expect(toJoinRequestModel(dto)).toEqual({
+      id: '10', teamId: '1', teamName: 'Corredores del Sur',
+      runnerId: 5, runnerName: 'Pepe Lota',
+      status: 'pending', createdAt: '2026-09-01T00:00:00.000Z',
+    });
+  });
+
+  test('defaults teamName/runnerName to null when absent', () => {
+    const dto = { id: 11, team_id: 1, runner_id: 5, status: 'pending', created_at: '2026-09-01T00:00:00.000Z' };
+    const model = toJoinRequestModel(dto);
+    expect(model.teamName).toBeNull();
+    expect(model.runnerName).toBeNull();
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toJoinRequestModel(null)).toBeNull();
+    expect(toJoinRequestModel(undefined)).toBeNull();
   });
 });
 

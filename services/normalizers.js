@@ -97,6 +97,8 @@ export function toTeamModel(dto) {
     street: dto.street,
     number: dto.number,
     showGroupsToRunners: dto.show_groups_to_runners ?? false,
+    visible: dto.visible ?? true,
+    isPublic: dto.is_public ?? true,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
     iconUrl: dto.icon_url ?? null,
@@ -146,6 +148,8 @@ export function toUpdateTeamPayload(form) {
   }
 
   if (form.showGroupsToRunners !== undefined) payload.show_groups_to_runners = form.showGroupsToRunners;
+  if (form.visible !== undefined) payload.visible = form.visible;
+  if (form.isPublic !== undefined) payload.is_public = form.isPublic;
 
   return payload;
 }
@@ -159,6 +163,48 @@ export function toAddressPayload(form) {
   }
 
   return payload;
+}
+
+// Resultado de GET /teams/search — forma DISTINTA a toTeamModel: el
+// backend devuelve un objeto más chico y ya desnormalizado
+// (TeamSearchResult en el swagger real, confirmado 2026-09-05), sin
+// description/requirements/status/showGroupsToRunners/visible (un
+// resultado de búsqueda es visible por definición, no hace falta
+// devolverlo) y con 2 campos que sí son propios de este endpoint:
+// member_count (cupo actual) y owner_name (ya resuelto server-side, sin
+// fan-out extra del lado front).
+export function toTeamSearchResultModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    level: dto.level ?? null,
+    maxMembers: dto.max_members,
+    memberCount: dto.member_count ?? 0,
+    ownerName: dto.owner_name ?? null,
+    isPublic: Boolean(dto.is_public),
+    country: dto.country ?? null,
+    province: dto.province ?? null,
+    city: dto.city ?? null,
+    iconUrl: dto.icon_url ?? null,
+  };
+}
+
+// JoinRequestResponse (swagger real) — sin email del corredor, a
+// diferencia de InvitationResponse. Usado tanto para "mis solicitudes
+// enviadas" (corredor) como "solicitudes de un equipo" (entrenador) —
+// misma forma en los dos casos, el caller decide qué mostrar.
+export function toJoinRequestModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    teamId: String(dto.team_id),
+    teamName: dto.team_name ?? null,
+    runnerId: dto.runner_id,
+    runnerName: dto.runner_name ?? null,
+    status: dto.status,
+    createdAt: dto.created_at,
+  };
 }
 
 export function toGroupModel(dto) {
