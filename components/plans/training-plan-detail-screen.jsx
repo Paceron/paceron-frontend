@@ -12,7 +12,7 @@ import { useExerciseStore } from '../../store/exercise-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
-import { EXERCISE_KIND_META, DAY_KIND_META } from './exercise-kind-meta.js';
+import { EXERCISE_KIND_META, DAY_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
 const STATUS_META = {
   activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
@@ -26,11 +26,7 @@ const STATUS_META = {
 function ExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restMinutes = 0 }) {
   if (!exercise) return null;
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
-  const statParts = [];
-  if (exercise.minutes != null) statParts.push(`${exercise.minutes} min`);
-  if (exercise.distanceM != null) statParts.push(`${exercise.distanceM} m`);
-  if (exercise.speedKph != null) statParts.push(`${exercise.speedKph} km/h`);
-  if (repeatCount > 1) statParts.push(`descanso ${restMinutes} min entre series`);
+  const statLine = buildExerciseStatLine(exercise, { repeatCount, restMinutes });
 
   return (
     <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
@@ -44,9 +40,9 @@ function ExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restMinut
         <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
           {repeatCount > 1 ? `${repeatCount} × ` : ''}{exercise.name}
         </Text>
-        {statParts.length > 0 && (
+        {statLine && (
           <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} testID={`${idPrefix}-stat`}>
-            {statParts.join(' · ')}
+            {statLine}
           </Text>
         )}
       </View>

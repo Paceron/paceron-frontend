@@ -277,6 +277,7 @@ export function toExerciseModel(dto) {
     minutes: dto.minutes ?? null,
     distanceM: dto.distance_m ?? null,
     speedKph: dto.speed_kph ?? null,
+    muscleGroup: dto.muscle_group ?? null,
     videoUrl: dto.video_url ?? null,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
@@ -288,6 +289,7 @@ export function toCreateExercisePayload(form) {
   if (form.minutes != null) payload.minutes = form.minutes;
   if (form.distanceM != null) payload.distance_m = form.distanceM;
   if (form.speedKph != null) payload.speed_kph = form.speedKph;
+  if (form.muscleGroup != null) payload.muscle_group = form.muscleGroup;
   return payload;
 }
 

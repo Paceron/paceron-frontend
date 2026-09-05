@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
+import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
@@ -22,10 +22,7 @@ export function sessionsUsingExercise(exerciseId, sessions) {
 function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
   const idPrefix = `exercise-catalog-row-${exercise.id}`;
-  const statParts = [];
-  if (exercise.minutes != null) statParts.push(`${exercise.minutes} min`);
-  if (exercise.distanceM != null) statParts.push(`${exercise.distanceM} m`);
-  if (exercise.speedKph != null) statParts.push(`${exercise.speedKph} km/h`);
+  const statLine = buildExerciseStatLine(exercise);
 
   return (
     <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
@@ -37,7 +34,7 @@ function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
           {exercise.name}
         </Text>
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} testID={`${idPrefix}-stat`}>
-          {statParts.length > 0 ? statParts.join(' · ') : meta.label}
+          {statLine || meta.label}
         </Text>
       </View>
       <Pressable

@@ -1,4 +1,4 @@
-import { useExerciseStore, EXERCISE_KIND_OPTIONS } from '../store/exercise-store.js';
+import { useExerciseStore, EXERCISE_KIND_OPTIONS, MUSCLE_GROUP_OPTIONS } from '../store/exercise-store.js';
 
 jest.mock('../services/exercises.js', () => ({
   listExercises: jest.fn(),
@@ -22,6 +22,22 @@ beforeEach(() => {
 describe('exercise store', () => {
   test('EXERCISE_KIND_OPTIONS cubre los 5 tipos hoja', () => {
     expect(EXERCISE_KIND_OPTIONS.map((o) => o.id).sort()).toEqual(['cruising', 'elongation', 'jogging', 'running', 'walking']);
+  });
+
+  test('MUSCLE_GROUP_OPTIONS no está vacío', () => {
+    expect(MUSCLE_GROUP_OPTIONS.length).toBeGreaterThan(0);
+  });
+
+  test('fetchExercises normaliza muscleGroup para un ejercicio de elongación', async () => {
+    listExercisesService.mockResolvedValue([{ ...EXERCISE_DTO, id: 2, kind: 'elongation', minutes: null, muscle_group: 'cuadriceps' }]);
+    await useExerciseStore.getState().fetchExercises(7);
+    expect(useExerciseStore.getState().exercises[0].muscleGroup).toBe('cuadriceps');
+  });
+
+  test('createExercise manda muscle_group en el payload cuando corresponde', async () => {
+    createExerciseService.mockResolvedValue({ ...EXERCISE_DTO, id: 3, kind: 'elongation', minutes: null, muscle_group: 'gemelos' });
+    await useExerciseStore.getState().createExercise({ ownerId: 7, name: 'Elongación de gemelos', kind: 'elongation', muscleGroup: 'gemelos' });
+    expect(createExerciseService).toHaveBeenCalledWith(expect.objectContaining({ muscle_group: 'gemelos' }));
   });
 
   test('fetchExercises trae y normaliza el catálogo', async () => {
