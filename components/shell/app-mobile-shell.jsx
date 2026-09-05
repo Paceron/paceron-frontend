@@ -207,17 +207,6 @@ function NavigationDrawer({ open, pathname, onClose }) {
                     <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
                   </Pressable>
 
-                  <Pressable
-                    className="flex-row items-center gap-3 border-b border-slate-200 px-5 py-4 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
-                    nativeID="mobile-drawer-settings-row"
-                    onPress={() => goTo('/settings')}
-                    testID="mobile-drawer-settings-row"
-                  >
-                    <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800" nativeID="mobile-drawer-settings-icon" testID="mobile-drawer-settings-icon">
-                      <MaterialCommunityIcons color={colors.primary} name="cog-outline" size={20} />
-                    </View>
-                    <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID="mobile-drawer-settings-label" testID="mobile-drawer-settings-label">Settings</Text>
-                  </Pressable>
                 </>
               ) : (
                 <View className="border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-guest-row" testID="mobile-drawer-guest-row">
@@ -233,22 +222,43 @@ function NavigationDrawer({ open, pathname, onClose }) {
               )}
 
               {user && hasTrainerRole && (
-                <View className="items-center border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-role-switch-row" testID="mobile-drawer-role-switch-row">
+                <View className="items-center border-b border-slate-200 px-5 py-2 dark:border-slate-800" nativeID="mobile-drawer-role-switch-row" testID="mobile-drawer-role-switch-row">
                   <RoleSwitchToggle onClose={onClose} showTierLink={false} wide />
                 </View>
               )}
 
-              <View className="flex-row items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800" nativeID="mobile-drawer-theme-row" testID="mobile-drawer-theme-row">
-                <View className="flex-row items-center gap-3" nativeID="mobile-drawer-theme-label-group" testID="mobile-drawer-theme-label-group">
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="theme-light-dark" size={20} />
-                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-theme-label" testID="mobile-drawer-theme-label">Tema</Text>
+              {user && (
+                <View className="flex-row border-b border-slate-200 dark:border-slate-800" nativeID="mobile-drawer-quick-actions-row" testID="mobile-drawer-quick-actions-row">
+                  <Pressable
+                    className="flex-1 flex-row items-center justify-center gap-2 border-r border-slate-200 py-2.5 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                    nativeID="mobile-drawer-settings-row"
+                    onPress={() => goTo('/settings')}
+                    testID="mobile-drawer-settings-row"
+                  >
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="cog-outline" size={18} />
+                    <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-settings-label" testID="mobile-drawer-settings-label">Settings</Text>
+                  </Pressable>
+                  <Pressable
+                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                    nativeID="mobile-drawer-notifications-row"
+                    onPress={() => goTo('/notifications')}
+                    testID="mobile-drawer-notifications-row"
+                  >
+                    <View className="relative" nativeID="mobile-drawer-notifications-icon-wrapper" testID="mobile-drawer-notifications-icon-wrapper">
+                      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="bell-outline" size={18} />
+                      {notificationsBadgeCount > 0 && (
+                        <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="mobile-drawer-notifications-badge" testID="mobile-drawer-notifications-badge" />
+                      )}
+                    </View>
+                    <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-notifications-label" testID="mobile-drawer-notifications-label">Notificaciones</Text>
+                  </Pressable>
                 </View>
-                <ThemeToggle />
-              </View>
+              )}
 
               {user && (
                 <ScrollView className="flex-1 px-2 py-4" nativeID="mobile-drawer-routes" testID="mobile-drawer-routes">
                   {routes.map((route) => {
+                    if (route.name === 'notifications') return null;
                     if (route.name === 'teams') {
                       return (
                         <TeamsAccordion
@@ -279,16 +289,11 @@ function NavigationDrawer({ open, pathname, onClose }) {
                         onPress={() => goTo(route.href)}
                         testID={`mobile-drawer-route-${route.name}`}
                       >
-                        <View className="relative" nativeID={`mobile-drawer-route-${route.name}-icon-wrapper`} testID={`mobile-drawer-route-${route.name}-icon-wrapper`}>
-                          <MaterialCommunityIcons
-                            color={isActive ? colors.primary : colors.onSurfaceVariant}
-                            name={route.icon ?? 'circle-small'}
-                            size={22}
-                          />
-                          {route.name === 'notifications' && notificationsBadgeCount > 0 && (
-                            <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="mobile-drawer-route-notifications-badge" testID="mobile-drawer-route-notifications-badge" />
-                          )}
-                        </View>
+                        <MaterialCommunityIcons
+                          color={isActive ? colors.primary : colors.onSurfaceVariant}
+                          name={route.icon ?? 'circle-small'}
+                          size={22}
+                        />
                         <Text
                           className={`text-sm font-semibold ${
                             isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
@@ -304,8 +309,16 @@ function NavigationDrawer({ open, pathname, onClose }) {
                 </ScrollView>
               )}
 
+              <View className="flex-row items-center justify-between border-b border-t border-slate-200 px-5 py-2 dark:border-slate-800" nativeID="mobile-drawer-theme-row" testID="mobile-drawer-theme-row">
+                <View className="flex-row items-center gap-3" nativeID="mobile-drawer-theme-label-group" testID="mobile-drawer-theme-label-group">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="theme-light-dark" size={20} />
+                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-theme-label" testID="mobile-drawer-theme-label">Tema</Text>
+                </View>
+                <ThemeToggle />
+              </View>
+
               {user && (
-                <View className="border-t border-slate-200 p-3 dark:border-slate-800" nativeID="mobile-drawer-logout-row" testID="mobile-drawer-logout-row">
+                <View className="p-3" nativeID="mobile-drawer-logout-row" testID="mobile-drawer-logout-row">
                   <Pressable
                     className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 active:opacity-80 dark:hover:bg-red-900/20 disabled:opacity-60"
                     disabled={loggingOut}

@@ -102,11 +102,15 @@ function SentJoinRequestRow({ request, onCancel, cancelling }) {
   );
 }
 
-// Sección "Mis solicitudes enviadas" — solo corredor.
+// Sección "Mis solicitudes enviadas" — solo corredor. Colapsable, como
+// las demás secciones de esta pantalla, para no saturar si hay mucho
+// contenido.
 function MyJoinRequestsSection() {
+  const colors = useThemeColors();
   const { requests, loading } = useMyJoinRequests();
   const { cancelJoinRequest, isCancelling } = useJoinRequestMutations();
   const [cancellingId, setCancellingId] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleCancel = async (requestId) => {
     setCancellingId(requestId);
@@ -120,10 +124,10 @@ function MyJoinRequestsSection() {
   };
 
   return (
-    <SectionCard icon="account-clock-outline" title="Mis solicitudes enviadas">
+    <SectionCard collapsed={collapsed} collapsible icon="account-clock-outline" onToggle={() => setCollapsed((v) => !v)} title="Mis solicitudes enviadas">
       {loading ? (
         <View className="items-center py-6" nativeID="my-join-requests-loading" testID="my-join-requests-loading">
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : requests.length === 0 ? (
         <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="my-join-requests-empty" testID="my-join-requests-empty">
@@ -147,7 +151,8 @@ function MyJoinRequestsSection() {
 
 // Sección "Solicitudes pendientes" (agregado de equipos administrados) —
 // solo entrenador. Cada ítem linkea a la tab Solicitudes del equipo
-// correspondiente (?tab=solicitudes, ver Task 11).
+// correspondiente (?tab=solicitudes, ver Task 11). Colapsable, mismo
+// criterio que las demás secciones.
 function TrainerPendingRequestsSection() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -155,14 +160,15 @@ function TrainerPendingRequestsSection() {
   const teams = useTeamStore((s) => s.teams);
   const administeredTeamIds = selectAdministeredTeams(teams, user?.userId).map((t) => t.id);
   const { byTeamId, loading } = useTeamsJoinRequestsMap(administeredTeamIds);
+  const [collapsed, setCollapsed] = useState(false);
 
   const allPending = administeredTeamIds.flatMap((teamId) => byTeamId.get(teamId) ?? []);
 
   return (
-    <SectionCard icon="account-question-outline" title="Solicitudes pendientes">
+    <SectionCard collapsed={collapsed} collapsible icon="account-question-outline" onToggle={() => setCollapsed((v) => !v)} title="Solicitudes pendientes">
       {loading ? (
         <View className="items-center py-6" nativeID="trainer-pending-requests-loading" testID="trainer-pending-requests-loading">
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : allPending.length === 0 ? (
         <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-pending-requests-empty" testID="trainer-pending-requests-empty">
@@ -207,6 +213,7 @@ function NotificationsScreenContent() {
 
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [respondingId, setRespondingId] = useState(null);
+  const [invitationsCollapsed, setInvitationsCollapsed] = useState(false);
 
   useEffect(() => {
     if (!user?.userId) return undefined;
@@ -262,7 +269,7 @@ function NotificationsScreenContent() {
           </Text>
         </View>
 
-        <SectionCard icon="email-outline" title="Invitaciones recibidas">
+        <SectionCard collapsed={invitationsCollapsed} collapsible icon="email-outline" onToggle={() => setInvitationsCollapsed((v) => !v)} title="Invitaciones recibidas">
           {loadingInvitations ? (
             <View className="items-center py-6" nativeID="received-invitations-loading" testID="received-invitations-loading">
               <ActivityIndicator color={colors.primary} />
