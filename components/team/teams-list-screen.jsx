@@ -21,7 +21,7 @@ function TeamRow({ team, onPress, hasPendingRequests }) {
       testID={`teams-list-team-${team.id}`}
     >
       <View className="relative" nativeID={`teams-list-team-${team.id}-icon`} testID={`teams-list-team-${team.id}-icon`}>
-        <AvatarPicker fallbackIcon="account-group" idPrefix={`teams-list-team-${team.id}-avatar`} size={36} uri={team.iconUrl} />
+        <AvatarPicker idPrefix={`teams-list-team-${team.id}-avatar`} placeholder="team" size={36} uri={team.iconUrl} />
         {hasPendingRequests && (
           <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID={`teams-list-team-${team.id}-pending-dot`} testID={`teams-list-team-${team.id}-pending-dot`} />
         )}

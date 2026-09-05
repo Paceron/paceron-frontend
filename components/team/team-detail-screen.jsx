@@ -1043,11 +1043,11 @@ function TeamDetailScreenContent({ teamId }) {
         <View className="mb-5 flex-row items-start gap-4" nativeID="team-detail-header" testID="team-detail-header">
           <AvatarPicker
             accessibilityLabel={`Ícono de ${team.name}`}
-            fallbackIcon="account-group"
             idPrefix="team-detail-photo"
             loading={iconUploading}
             onPick={canDeleteTeam ? handlePickIcon : undefined}
             onRemove={canDeleteTeam ? handleRemoveIcon : undefined}
+            placeholder="team"
             size={64}
             uri={team.iconUrl}
           />

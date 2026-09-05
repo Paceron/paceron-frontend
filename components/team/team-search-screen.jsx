@@ -33,7 +33,7 @@ function TeamSearchResultCard({ team, onRequest, requesting }) {
   return (
     <View className="w-full gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:w-[calc(50%-6px)] xl:w-[calc(33.333%-8px)] dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-3" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-        <AvatarPicker fallbackIcon="account-group" idPrefix={`${idPrefix}-avatar`} size={44} uri={team.iconUrl} />
+        <AvatarPicker idPrefix={`${idPrefix}-avatar`} placeholder="team" size={44} uri={team.iconUrl} />
         <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
           <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
             {team.name}
