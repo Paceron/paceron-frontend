@@ -10,7 +10,6 @@ import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { PickerField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
@@ -141,7 +140,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
 
               {teamId && (
                 <>
-                  <PickerField dense label="Asignar a" onChange={setTargetType} options={TARGET_TYPE_OPTIONS} required value={targetType} />
+                  <ResponsiveSelectField dense label="Asignar a" onChange={setTargetType} options={TARGET_TYPE_OPTIONS} required value={targetType} />
 
                   {targetType === 'group' ? (
                     <ResponsiveSelectField

@@ -8,7 +8,8 @@ import { isWeb } from '../../utils/platform.js';
 import { createPreference, getPayment } from '../../services/payments.js';
 import { toCreatePreferencePayload, toPreferenceResponseModel, toPaymentModel } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, PickerField } from '../forms/fields.jsx';
+import { InputField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por plataforma
 // (.web.jsx antes que .jsx) cuando el specifier NO trae extensión.
@@ -104,7 +105,7 @@ function PaymentsTestbedScreenContent() {
         <SectionCard icon="flask-outline" title="Crear preferencia">
           <InputField dense label="Título del item" onChange={setItemTitle} value={itemTitle} />
           <InputField dense keyboardType="number-pad" label="Monto" onChange={setAmount} value={amount} />
-          <PickerField dense label="Concept" onChange={setConcept} options={CONCEPT_OPTIONS} value={concept} />
+          <ResponsiveSelectField dense label="Concept" onChange={setConcept} options={CONCEPT_OPTIONS} value={concept} />
 
           <Pressable
             className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${creating ? 'opacity-60' : ''}`}

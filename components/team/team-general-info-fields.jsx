@@ -1,5 +1,4 @@
-import { isWeb } from '../../utils/platform.js';
-import { InputField, PickerField, Row, Col, SelectField } from '../forms/fields.jsx';
+import { InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 
 export const LEVEL_OPTIONS = [
@@ -22,25 +21,13 @@ export function TeamGeneralInfoFields({ form, maxAllowed, idPrefix }) {
 
       <Row>
         <Col>
-          {isWeb ? (
-            <SelectField dense label="País" onChange={form.handleCountryChange} options={form.countryOptions} placeholder="Seleccioná un país" value={form.country} />
-          ) : (
-            <PickerField dense label="País" onChange={form.handleCountryChange} options={form.countryOptions} placeholder="Seleccioná un país" value={form.country} />
-          )}
+          <ResponsiveSelectField dense label="País" onChange={form.handleCountryChange} options={form.countryOptions} placeholder="Seleccioná un país" value={form.country} />
         </Col>
         <Col>
-          {isWeb ? (
-            <SelectField dense disabled={!form.country} label="Provincia" onChange={form.handleProvinceChange} options={form.provinceOptions} placeholder={form.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={form.province} />
-          ) : (
-            <PickerField dense disabled={!form.country} label="Provincia" onChange={form.handleProvinceChange} options={form.provinceOptions} placeholder={form.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={form.province} />
-          )}
+          <ResponsiveSelectField dense disabled={!form.country} label="Provincia" onChange={form.handleProvinceChange} options={form.provinceOptions} placeholder={form.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={form.province} />
         </Col>
         <Col>
-          {isWeb ? (
-            <SelectField dense disabled={!form.province} label="Localidad" onChange={form.handleCityChange} options={form.cityOptions} placeholder={form.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={form.city} />
-          ) : (
-            <PickerField dense disabled={!form.province} label="Localidad" onChange={form.handleCityChange} options={form.cityOptions} placeholder={form.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={form.city} />
-          )}
+          <ResponsiveSelectField dense disabled={!form.province} label="Localidad" onChange={form.handleCityChange} options={form.cityOptions} placeholder={form.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={form.city} />
         </Col>
       </Row>
 

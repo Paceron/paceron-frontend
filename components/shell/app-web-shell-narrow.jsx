@@ -224,7 +224,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                   testID="web-narrow-drawer-settings-row"
                 >
                   <MaterialCommunityIcons color={colors.onSurfaceVariant} name="cog-outline" size={18} />
-                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-settings-label" testID="web-narrow-drawer-settings-label">Settings</Text>
+                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-settings-label" testID="web-narrow-drawer-settings-label">Ajustes</Text>
                 </Pressable>
                 <Pressable
                   className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
