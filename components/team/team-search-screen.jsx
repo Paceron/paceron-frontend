@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,7 +12,7 @@ import { useTeamSearch } from '../../hooks/use-team-search.js';
 import { useMyJoinRequests, useJoinRequestMutations } from '../../hooks/use-join-requests.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, PickerField, SelectField, Row, Col } from '../forms/fields.jsx';
+import { PickerField, SelectField, Row, Col } from '../forms/fields.jsx';
 import { LEVEL_OPTIONS } from './team-general-info-fields.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -140,9 +140,18 @@ function TeamSearchScreenContent() {
         </View>
 
         <SectionCard collapsed={filtersCollapsed} collapsible icon="magnify" onToggle={() => setFiltersCollapsed((v) => !v)} title="Filtros">
-          <View className="flex-row items-end gap-2" nativeID="team-search-quick-row" testID="team-search-quick-row">
-            <View className="flex-1" nativeID="team-search-name-wrapper" testID="team-search-name-wrapper">
-              <InputField dense hideErrorRow label="Nombre" onChange={setName} placeholder="Buscar por nombre" value={name} />
+          <View className="flex-row items-center gap-2" nativeID="team-search-quick-row" testID="team-search-quick-row">
+            <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-search-name-wrapper" testID="team-search-name-wrapper">
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
+              <TextInput
+                className="flex-1 text-sm text-slate-900 outline-none dark:text-white"
+                nativeID="team-search-name-input"
+                onChangeText={setName}
+                placeholder="Buscar por nombre"
+                placeholderTextColor={colors.onSurfaceVariant}
+                testID="team-search-name-input"
+                value={name}
+              />
             </View>
             <Pressable
               accessibilityLabel={advancedOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}

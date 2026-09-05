@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeamsJoinRequestsMap } from '../../hooks/use-join-requests.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 function TeamRow({ team, onPress, hasPendingRequests }) {
@@ -19,8 +20,8 @@ function TeamRow({ team, onPress, hasPendingRequests }) {
       onPress={onPress}
       testID={`teams-list-team-${team.id}`}
     >
-      <View className="relative h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`teams-list-team-${team.id}-icon`} testID={`teams-list-team-${team.id}-icon`}>
-        <MaterialCommunityIcons color={colors.primary} name="account-group" size={18} />
+      <View className="relative" nativeID={`teams-list-team-${team.id}-icon`} testID={`teams-list-team-${team.id}-icon`}>
+        <AvatarPicker fallbackIcon="account-group" idPrefix={`teams-list-team-${team.id}-avatar`} size={36} uri={team.iconUrl} />
         {hasPendingRequests && (
           <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID={`teams-list-team-${team.id}-pending-dot`} testID={`teams-list-team-${team.id}-pending-dot`} />
         )}
