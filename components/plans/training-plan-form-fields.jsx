@@ -6,7 +6,7 @@ import { useSessionStore } from '../../store/session-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { dayLabel } from '../../store/training-plan-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, PickerField, Row, Col } from '../forms/fields.jsx';
+import { InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CreateSessionModal } from './create-session-modal.jsx';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
@@ -42,7 +42,7 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
           </View>
         </Col>
         <Col>
-          <PickerField dense hideErrorRow className="mb-0" label="Tipo de día" onChange={handleKindChange} options={DAY_KIND_OPTIONS} required value={day.kind} />
+          <ResponsiveSelectField dense hideErrorRow className="mb-0" label="Tipo de día" onChange={handleKindChange} options={DAY_KIND_OPTIONS} required value={day.kind} />
         </Col>
       </Row>
 
