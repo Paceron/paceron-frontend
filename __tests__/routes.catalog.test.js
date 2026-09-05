@@ -1,4 +1,4 @@
-import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, invitationsRoute, myPlansRoute, trainingPlansRoute } from '../routes/catalog.js';
+import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute } from '../routes/catalog.js';
 
 describe('routes catalog', () => {
   test('exposes the home route as the first navigation route', () => {
@@ -36,12 +36,12 @@ describe('getRoutesByRole', () => {
     expect(routes).not.toContainEqual(myPlansRoute);
   });
 
-  test('routes without a role restriction (home, teams, invitations) show for every role', () => {
+  test('routes without a role restriction (home, teams, notifications) show for every role', () => {
     ['runner', 'trainer', null].forEach((role) => {
       const routes = getRoutesByRole(role);
       expect(routes).toContainEqual(homeRoute);
       expect(routes).toContainEqual(teamsRoute);
-      expect(routes).toContainEqual(invitationsRoute);
+      expect(routes).toContainEqual(notificationsRoute);
     });
   });
 });
@@ -53,10 +53,10 @@ describe('teamsRoute', () => {
   });
 });
 
-describe('invitationsRoute', () => {
+describe('notificationsRoute', () => {
   test('uses the English route key and href', () => {
-    expect(invitationsRoute.name).toBe('invitations');
-    expect(invitationsRoute.href).toBe('/invitations');
+    expect(notificationsRoute.name).toBe('notifications');
+    expect(notificationsRoute.href).toBe('/notifications');
   });
 });
 

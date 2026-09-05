@@ -14,11 +14,11 @@ export const teamsRoute = {
   icon: 'account-group',
 };
 
-export const invitationsRoute = {
-  name: 'invitations',
-  label: 'Invitaciones',
-  href: '/invitations',
-  icon: 'email-outline',
+export const notificationsRoute = {
+  name: 'notifications',
+  label: 'Notificaciones',
+  href: '/notifications',
+  icon: 'bell-outline',
 };
 
 // Sin dominio de planes de entrenamiento todavía (ver FUNCTIONAL_PROPOSE.md,
@@ -44,7 +44,7 @@ export const trainingPlansRoute = {
   role: 'trainer',
 };
 
-export const navigationRoutes = [homeRoute, teamsRoute, invitationsRoute, myPlansRoute, trainingPlansRoute];
+export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute];
 
 // `role` es el activeRole actual ('runner'/'trainer'/null) — no el rol
 // asignado, el que se está viendo ahora mismo (ver store/auth-store.js,
