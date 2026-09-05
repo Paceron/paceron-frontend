@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeamsJoinRequestsMap } from '../../hooks/use-join-requests.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
@@ -69,11 +71,14 @@ function TeamsListScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRole, user?.userId]);
 
+  const { refreshing, onRefresh } = usePullToRefresh(() => (activeRole === 'trainer' ? fetchTeams() : fetchMyMemberTeams(user?.userId)));
+
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="teams-list-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="teams-list-screen-scroll"
     >
@@ -105,8 +110,13 @@ function TeamsListScreenContent() {
 
         <SectionCard icon="account-group" title={activeRole === 'trainer' ? 'Equipos que administrás' : 'Equipos en los que participás'}>
           {loading ? (
-            <View className="items-center py-6" nativeID="teams-list-loading" testID="teams-list-loading">
-              <ActivityIndicator color={colors.primary} />
+            <View className="gap-2" nativeID="teams-list-loading" testID="teams-list-loading">
+              {[0, 1, 2].map((i) => (
+                <View className="flex-row items-center gap-3 px-4 py-3" key={i} nativeID={`teams-list-loading-row-${i}`} testID={`teams-list-loading-row-${i}`}>
+                  <SkeletonCircle nativeID={`teams-list-loading-row-${i}-avatar`} size={36} testID={`teams-list-loading-row-${i}-avatar`} />
+                  <SkeletonBlock height={14} nativeID={`teams-list-loading-row-${i}-name`} testID={`teams-list-loading-row-${i}-name`} width="60%" />
+                </View>
+              ))}
             </View>
           ) : myTeams.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="teams-list-empty" testID="teams-list-empty">
