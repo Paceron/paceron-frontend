@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { useTeamSearch } from '../../hooks/use-team-search.js';
 import { useMyJoinRequests, useJoinRequestMutations } from '../../hooks/use-join-requests.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { LEVEL_OPTIONS } from './team-general-info-fields.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -119,6 +121,11 @@ function TeamSearchScreenContent() {
     setFiltersCollapsed(true);
   };
 
+  const { refreshing, onRefresh } = usePullToRefresh(() => {
+    if (!searched) return Promise.resolve();
+    return search({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined });
+  });
+
   const handleRequest = async (teamId) => {
     setRequestingTeamId(teamId);
     try {
@@ -131,7 +138,7 @@ function TeamSearchScreenContent() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="team-search-screen-scroll" showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="team-search-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="team-search-screen-container" testID="team-search-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="team-search-screen-header" testID="team-search-screen-header">
           <Pressable className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70" nativeID="team-search-screen-back-button" onPress={() => router.back()} testID="team-search-screen-back-button">
@@ -200,8 +207,16 @@ function TeamSearchScreenContent() {
 
         {searched && (
           loading && visibleResults.length === 0 ? (
-            <View className="items-center py-6" nativeID="team-search-loading" testID="team-search-loading">
-              <ActivityIndicator color={colors.primary} />
+            <View className="flex-row flex-wrap gap-3" nativeID="team-search-loading" testID="team-search-loading">
+              {[0, 1].map((i) => (
+                <View className="w-full gap-3 rounded-xl border border-slate-200 p-4 lg:w-[calc(50%-6px)] xl:w-[calc(33.333%-8px)] dark:border-slate-700" key={i} nativeID={`team-search-loading-card-${i}`} testID={`team-search-loading-card-${i}`}>
+                  <View className="flex-row items-center gap-3" nativeID={`team-search-loading-card-${i}-header`} testID={`team-search-loading-card-${i}-header`}>
+                    <SkeletonCircle nativeID={`team-search-loading-card-${i}-avatar`} size={44} testID={`team-search-loading-card-${i}-avatar`} />
+                    <SkeletonBlock height={14} nativeID={`team-search-loading-card-${i}-name`} testID={`team-search-loading-card-${i}-name`} width="70%" />
+                  </View>
+                  <SkeletonBlock height={36} nativeID={`team-search-loading-card-${i}-button`} rounded="rounded-full" testID={`team-search-loading-card-${i}-button`} width="100%" />
+                </View>
+              ))}
             </View>
           ) : visibleResults.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="team-search-empty" testID="team-search-empty">
