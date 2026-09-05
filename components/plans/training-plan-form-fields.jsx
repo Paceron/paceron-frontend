@@ -1,25 +1,79 @@
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useThemeColors } from '../../theme/colors.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
+import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { dayLabel } from '../../store/training-plan-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, Row, Col } from '../forms/fields.jsx';
+import { InputField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { DAY_KIND_META } from './exercise-kind-meta.js';
 import { CreateSessionModal } from './create-session-modal.jsx';
 import { SelectWithCreateField } from './select-with-create-field.jsx';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
 
-const DAY_KIND_OPTIONS = [
-  { id: 'rest', name: 'Descanso' },
-  { id: 'other', name: 'Otra actividad' },
-  { id: 'training', name: 'Entrenamiento' },
-];
+const DAY_KIND_ORDER = ['rest', 'other', 'training'];
 
-function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
+// Segmented pill de 3 opciones para "Tipo de día" — reemplaza al <select>
+// de ancho completo que antes repetía el label "Tipo de día" en las 7
+// filas. Un solo call site (DayRow), no se comparte — mismo criterio que
+// Segment dentro de RoleSwitchToggle (components/profile/role-switch-toggle.jsx),
+// que tampoco se exporta.
+function DaySegmentedPicker({ idPrefix, value, onChange }) {
+  return (
+    <View
+      accessibilityLabel="Tipo de día"
+      accessibilityRole="radiogroup"
+      className="flex-row items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800"
+      nativeID={`${idPrefix}-kind-pill`}
+      testID={`${idPrefix}-kind-pill`}
+    >
+      {DAY_KIND_ORDER.map((kind) => {
+        const meta = DAY_KIND_META[kind];
+        const active = value === kind;
+        const segId = `${idPrefix}-kind-${kind}`;
+        return (
+          <Pressable
+            accessibilityLabel={meta.label}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: active }}
+            className={`flex-row items-center gap-1 rounded-full px-2.5 py-1.5 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
+            key={kind}
+            nativeID={segId}
+            onPress={() => onChange(kind)}
+            testID={segId}
+          >
+            <MaterialCommunityIcons color={active ? meta.iconColor : '#94a3b8'} name={meta.icon} size={16} />
+            <Text className={`text-xs font-semibold ${active ? meta.text : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${segId}-label`} testID={`${segId}-label`}>
+              {meta.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// Fila compacta por día — antes era una card completa por día (mucho
+// espacio en blanco en los días de "Descanso", que son la mayoría) con
+// el label "Tipo de día" repetido 7 veces. Ahora: en web (más ancho
+// disponible) la fila viene siempre expandida; en mobile arranca
+// colapsada mostrando solo un chip-resumen, y se expande al tocarla
+// (mismo mecanismo — Pressable + estado local, sin animación de layout —
+// que ya usan RunnerRow en team-detail-screen.jsx y la DayRow de solo
+// lectura en training-plan-detail-screen.jsx, de la que también se toma
+// el estilo de contenedor por fila).
+function DayRow({ day, sessions, onChangeDay, onRequestCreateSession }) {
+  const colors = useThemeColors();
+  const isNarrowWeb = useIsNarrowWeb();
+  const [expanded, setExpanded] = useState(false);
   const idPrefix = `plan-day-${day.sequenceNo}`;
   const selectedSession = sessions.find((s) => s.id === day.sessionId);
+  const kindMeta = DAY_KIND_META[day.kind] ?? DAY_KIND_META.rest;
 
   const handleKindChange = (kind) => {
     if (kind === 'training') {
@@ -31,21 +85,8 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
     }
   };
 
-  return (
-    <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
-      <Row narrowClassName="gap-3">
-        <Col flex={0.6}>
-          <View className="h-12 justify-center" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
-            <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label-text`} testID={`${idPrefix}-label-text`}>
-              {dayLabel(day.dayOfWeek)}
-            </Text>
-          </View>
-        </Col>
-        <Col>
-          <ResponsiveSelectField dense hideErrorRow className="mb-0" label="Tipo de día" onChange={handleKindChange} options={DAY_KIND_OPTIONS} required value={day.kind} />
-        </Col>
-      </Row>
-
+  const conditionalContent = (
+    <>
       {day.kind === 'other' && (
         <InputField
           dense
@@ -56,11 +97,11 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
           value={day.otherName ?? ''}
         />
       )}
-
       {day.kind === 'training' && (
         <View className="mt-2" nativeID={`${idPrefix}-session-picker`} testID={`${idPrefix}-session-picker`}>
           <SelectWithCreateField
             createAccessibilityLabel="Crear sesión"
+            hideLabel
             label="Sesión"
             onChange={(sessionId) => onChangeDay({ sessionId })}
             onRequestCreate={onRequestCreateSession}
@@ -70,6 +111,70 @@ function DayCard({ day, sessions, onChangeDay, onRequestCreateSession }) {
             value={day.sessionId ?? ''}
           />
           <SessionExercisesPreview session={selectedSession} />
+        </View>
+      )}
+    </>
+  );
+
+  // Fila siempre expandida solo cuando hay ancho real de sobra (web
+  // ancho) — en mobile nativo Y en web angosto (mismo ancho de ventana
+  // que un teléfono) se usa la variante colapsable de más abajo. El
+  // contenedor de esta pantalla limita su columna a max-w-3xl, pero
+  // useIsNarrowWeb() mide el ancho real de la ventana (useWindowDimensions),
+  // no el ancho ya recortado de la columna — por eso sigue siendo la
+  // condición correcta y no queda "siempre angosta" por culpa del cap.
+  if (isWeb && !isNarrowWeb) {
+    return (
+      <View
+        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900"
+        nativeID={idPrefix}
+        testID={idPrefix}
+      >
+        <View className="flex-row flex-wrap items-center gap-3" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+          <Text className="w-24 shrink-0 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
+            {dayLabel(day.dayOfWeek)}
+          </Text>
+          <DaySegmentedPicker idPrefix={idPrefix} onChange={handleKindChange} value={day.kind} />
+        </View>
+        {day.kind !== 'rest' && (
+          <View className="w-full pl-24" nativeID={`${idPrefix}-conditional`} testID={`${idPrefix}-conditional`}>
+            {conditionalContent}
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900"
+      nativeID={idPrefix}
+      testID={idPrefix}
+    >
+      <Pressable
+        accessibilityLabel={`${dayLabel(day.dayOfWeek)}, ${kindMeta.label}, ${expanded ? 'ocultar detalle' : 'ver detalle'}`}
+        accessibilityRole="button"
+        className="flex-row items-center gap-2 active:opacity-80"
+        nativeID={`${idPrefix}-toggle`}
+        onPress={() => setExpanded((v) => !v)}
+        testID={`${idPrefix}-toggle`}
+      >
+        <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
+          {dayLabel(day.dayOfWeek)}
+        </Text>
+        <View className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${kindMeta.bg}`} nativeID={`${idPrefix}-summary-chip`} testID={`${idPrefix}-summary-chip`}>
+          <MaterialCommunityIcons color={kindMeta.iconColor} name={kindMeta.icon} size={14} />
+          <Text className={`text-xs font-semibold ${kindMeta.text}`} nativeID={`${idPrefix}-summary-chip-label`} testID={`${idPrefix}-summary-chip-label`}>
+            {kindMeta.label}
+          </Text>
+        </View>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
+      </Pressable>
+
+      {expanded && (
+        <View className="gap-2 pt-2" nativeID={`${idPrefix}-expanded`} testID={`${idPrefix}-expanded`}>
+          <DaySegmentedPicker idPrefix={idPrefix} onChange={handleKindChange} value={day.kind} />
+          {conditionalContent}
         </View>
       )}
     </View>
@@ -123,15 +228,17 @@ export function TrainingPlanFormFields({ form, durationOptions }) {
             <Text className="text-xs text-red-600 dark:text-red-400" nativeID="plan-days-error-text" testID="plan-days-error-text">{form.errors.days}</Text>
           </View>
         )}
-        {form.days.map((day) => (
-          <DayCard
-            day={day}
-            key={day.sequenceNo}
-            onChangeDay={(updates) => form.updateDay(day.sequenceNo, updates)}
-            onRequestCreateSession={() => setCreateSessionTargetDay(day.sequenceNo)}
-            sessions={sessions}
-          />
-        ))}
+        <View className="gap-2" nativeID="plan-days-list" testID="plan-days-list">
+          {form.days.map((day) => (
+            <DayRow
+              day={day}
+              key={day.sequenceNo}
+              onChangeDay={(updates) => form.updateDay(day.sequenceNo, updates)}
+              onRequestCreateSession={() => setCreateSessionTargetDay(day.sequenceNo)}
+              sessions={sessions}
+            />
+          ))}
+        </View>
       </SectionCard>
 
       <CreateSessionModal
