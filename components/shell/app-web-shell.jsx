@@ -14,6 +14,7 @@ import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
+import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
 
 function DropdownMenu({ onClose }) {
   const router = useRouter();
@@ -260,7 +261,7 @@ function TeamsTab({ route, isOpen, colors, onOpen }) {
   );
 }
 
-function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, myInvitationsCount, onTabPress, onUserPress, onTeamsPress }) {
+function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dropdownOpen, routesTab, activeTab, teamsMenuOpen, notificationsBadgeCount, onTabPress, onUserPress, onTeamsPress }) {
   const router = useRouter();
   const colors = useThemeColors();
 
@@ -304,7 +305,7 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
             nativeID="web-shell-nav-tabs-scroll"
             testID="web-shell-nav-tabs-scroll"
           >
-            {routesTab.map((route) => {
+            {routesTab.filter((route) => route.name !== 'notifications').map((route) => {
               if (route.name === 'teams') {
                 return (
                   <TeamsTab key={route.name} colors={colors} isOpen={teamsMenuOpen} onOpen={onTeamsPress} route={route} />
@@ -324,16 +325,11 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
                   onPress={() => onTabPress?.(route.href)}
                   testID={`web-shell-nav-tab-${route.name}`}
                 >
-                  <View className="relative" nativeID={`web-shell-nav-tab-${route.name}-icon-wrapper`} testID={`web-shell-nav-tab-${route.name}-icon-wrapper`}>
-                    <MaterialCommunityIcons
-                      name={route.icon}
-                      size={16}
-                      color={isActive ? colors.primary : colors.onSurfaceVariant}
-                    />
-                    {route.name === 'invitations' && myInvitationsCount > 0 && (
-                      <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-nav-tab-invitations-badge" testID="web-shell-nav-tab-invitations-badge" />
-                    )}
-                  </View>
+                  <MaterialCommunityIcons
+                    color={isActive ? colors.primary : colors.onSurfaceVariant}
+                    name={route.icon}
+                    size={16}
+                  />
                   <Text
                     className={`text-sm whitespace-nowrap ${
                       isActive
@@ -370,34 +366,48 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
             </Pressable>
           </View>
         ) : (
-          <Pressable
-            className={`flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
-              dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
-            }`}
-            nativeID="web-shell-topbar-user-pill"
-            onPress={handleUserPress}
-            testID="web-shell-topbar-user-pill"
-          >
-            <AvatarPicker
-              accessibilityLabel={userName ? `Menú de ${userName}` : 'Menú de usuario'}
-              fallbackIcon="account"
-              idPrefix="web-shell-topbar-user-avatar"
-              initials={userInitials}
-              size={32}
-              uri={userPhotoUrl}
-            />
-            {userName && (
-              <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-topbar-user-name" testID="web-shell-topbar-user-name">
-                {userName}
-              </Text>
-            )}
-            <RoleBadge role={activeRole} />
-            <MaterialCommunityIcons
-              color={colors.onSurfaceVariant}
-              name="chevron-down"
-              size={16}
-            />
-          </Pressable>
+          <>
+            <Pressable
+              accessibilityLabel="Notificaciones"
+              className="relative rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+              nativeID="web-shell-topbar-notifications-button"
+              onPress={() => router.push('/notifications')}
+              testID="web-shell-topbar-notifications-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="bell-outline" size={20} />
+              {notificationsBadgeCount > 0 && (
+                <View className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-topbar-notifications-badge" testID="web-shell-topbar-notifications-badge" />
+              )}
+            </Pressable>
+            <Pressable
+              className={`ml-1 flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
+                dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
+              }`}
+              nativeID="web-shell-topbar-user-pill"
+              onPress={handleUserPress}
+              testID="web-shell-topbar-user-pill"
+            >
+              <AvatarPicker
+                accessibilityLabel={userName ? `Menú de ${userName}` : 'Menú de usuario'}
+                fallbackIcon="account"
+                idPrefix="web-shell-topbar-user-avatar"
+                initials={userInitials}
+                size={32}
+                uri={userPhotoUrl}
+              />
+              {userName && (
+                <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="web-shell-topbar-user-name" testID="web-shell-topbar-user-name">
+                  {userName}
+                </Text>
+              )}
+              <RoleBadge role={activeRole} />
+              <MaterialCommunityIcons
+                color={colors.onSurfaceVariant}
+                name="chevron-down"
+                size={16}
+              />
+            </Pressable>
+          </>
         )}
       </View>
     </View>
@@ -424,6 +434,8 @@ export function AppWebShell({ children, pathname }) {
   const [teamsLoading, setTeamsLoading] = useState(true);
   const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
   const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
+  const pendingRequestsCount = usePendingRequestsCount(activeRole === 'trainer');
+  const notificationsBadgeCount = activeRole === 'trainer' ? pendingRequestsCount : myInvitationsCount;
 
   useEffect(() => {
     if (!user) {
@@ -481,7 +493,7 @@ export function AppWebShell({ children, pathname }) {
           activeTab={activeTab}
           dropdownOpen={dropdownOpen}
           isGuest={isGuest}
-          myInvitationsCount={myInvitationsCount}
+          notificationsBadgeCount={notificationsBadgeCount}
           onTabPress={handleTabPress}
           onTeamsPress={handleTeamsPress}
           onUserPress={handleUserPress}

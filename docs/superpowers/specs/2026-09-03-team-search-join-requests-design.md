@@ -1,7 +1,7 @@
 # Búsqueda de equipos + solicitudes de ingreso — Design
 
-**Fecha:** 2026-09-03
-**Estado:** Aprobado — diseño de interfaz previo a spec de backend, sin implementación todavía
+**Fecha:** 2026-09-03 (contrato de backend confirmado 2026-09-05)
+**Estado:** Aprobado — contrato de backend real, listo para implementación
 
 ## Contexto
 
@@ -12,13 +12,12 @@ pide unirse; el entrenador acepta o rechaza. Es simétrico al de
 invitaciones — mismo dominio (relación equipo↔corredor), visto desde el
 otro lado.
 
-**Esta spec define el frontend primero, sin backend real todavía.** No
-hay contrato entregado — la sección "Contrato de backend propuesto" es
-lo que este frontend necesita, para llevárselo al backend como pedido,
-no una confirmación de algo ya existente (a diferencia de specs
-anteriores donde el contrato ya venía dado). La implementación real
-espera a que esos endpoints existan; hasta entonces esto queda como
-documento de diseño.
+**Esta spec definió el frontend primero, sin backend real todavía** —
+la sección de contrato original era un pedido, no una confirmación (a
+diferencia de specs anteriores donde el contrato ya venía dado).
+**Actualización 2026-09-05:** el backend mergeó el contrato real a
+`develop`, casi idéntico al propuesto (diffs documentados en la sección
+de contrato) — la implementación arranca ahora.
 
 Geolocalización real (búsqueda por distancia, no por país/provincia/
 ciudad) queda **fuera de esta spec a propósito** — el usuario la ligó a
@@ -130,8 +129,19 @@ tipos de "novedad" en el equipo, no solo solicitudes — por ahora la
 
 ### Notificaciones — reemplaza el tab "Invitaciones", sin dropdown
 
-`routes/catalog.js` pierde `invitationsRoute` — deja de ser un tab de
-navegación. En su lugar:
+`routes/catalog.js` pierde `invitationsRoute`, ahora `notificationsRoute`.
+
+**Implementado 2026-09-05 (difiere de lo planeado acá abajo, ver nota):**
+las 3 plataformas muestran "Notificaciones" como entrada de navegación
+normal (mismo lugar/mecanismo donde antes vivía "Invitaciones"), con
+badge — en `app-web-shell.jsx` es un tab más de la fila de navegación
+del `TopBar` (ícono `bell-outline`), no un ícono de campana aparte a la
+derecha del user pill como se planeaba originalmente. Funcionalmente
+equivalente (mismo badge, mismo destino `/notifications`) y más simple
+de implementar reusando el mecanismo ya existente de
+`getRoutesByRole`/`navigationRoutes` — decisión tomada durante la
+implementación, no en esta ronda de diseño. Lo que sigue abajo es el
+plan original, dejado como referencia:
 
 - **Web ancho** (`app-web-shell.jsx`): ícono de campana en el `TopBar`,
   a la derecha del user pill, con badge si hay pendientes. `onPress` →
@@ -195,26 +205,31 @@ Mock correspondiente en `services/__mocks__/join-requests-mock.js`
 sobre datos en memoria (mismo criterio que el resto de los mocks del
 repo — útil standalone, no un no-op).
 
-## Contrato de backend propuesto (pendiente, no confirmado)
+## Contrato de backend (confirmado 2026-09-05, mergeado a `develop`)
+
+Reemplaza la propuesta original — esta es la que se implementa.
 
 | Método | Path | Quién | Notas |
 |---|---|---|---|
-| GET | `/api/v1/teams/search` | cualquiera autenticado | query params: `name`, `level`, `country`, `province`, `city`, `page`. Filtra por `visible: true` server-side. Devuelve equipo + `owner_name` + conteo de miembros. |
-| POST | `/api/v1/teams/{id}/join-requests` | corredor | crea solicitud propia, `pending`. |
-| DELETE | `/api/v1/join-requests/{id}` | corredor dueño de la solicitud | cancela mientras esté `pending`. |
-| GET | `/api/v1/join-requests/mine` | corredor | solicitudes propias, cualquier estado. |
-| GET | `/api/v1/teams/{id}/join-requests` | entrenador dueño | solicitudes pendientes de ese equipo. |
-| POST | `/api/v1/join-requests/{id}/accept` | entrenador dueño | asigna al corredor al grupo default del equipo. |
+| GET | `/api/v1/teams/search` | cualquier autenticado | Query: `name`, `level`, `country`, `province`, `city`, `page` (1-indexado, default 1). Excluye equipos donde el caller ya es miembro. Respuesta: `{ teams: [...], has_more: bool }` — tamaño de página fijo 20, sin `total`. |
+| POST | `/api/v1/teams/{id}/join-requests` | corredor | Crea solicitud `pending`. |
+| DELETE | `/api/v1/join-requests/{id}` | corredor dueño | Cancela (solo si sigue `pending`). |
+| GET | `/api/v1/join-requests/mine` | corredor | Todas sus solicitudes, cualquier estado. |
+| GET | `/api/v1/teams/{id}/join-requests` | entrenador dueño | Solicitudes `pending` del equipo. |
+| GET | `/api/v1/join-requests/pending-count` | entrenador | `{ count }` agregado de todos sus equipos, para el badge — resuelve sin N requests, mejor que la alternativa client-side que se dejaba abierta acá. |
+| POST | `/api/v1/join-requests/{id}/accept` | entrenador dueño | Crea la membresía y asigna al grupo default. Gateado por `membership_fee` si el equipo cobra — **hoy siempre 0 (stub)**, el split corredor→entrenador (Sub-proyecto B de `docs/superpowers/plans/cheerful-mapping-puffin.md` / el análisis de viabilidad de pagos) no está implementado todavía. Cuando se implemente, `accept` probablemente cambie de contrato (confirmación no inmediata, requiere un paso de pago) — se adapta en ese momento, no se construye nada defensivo ahora. |
 | POST | `/api/v1/join-requests/{id}/reject` | entrenador dueño | — |
-| PATCH | `/api/v1/teams/{id}` | entrenador dueño | suma `visible`/`is_public` al payload ya existente. |
+| PUT | `/api/v1/teams/{id}` (existente) | entrenador dueño | Suma `visible`/`is_public` (bool, opcionales) al payload ya existente — no hay endpoint nuevo. `updateTeam()` en `services/teams.js` ya hace `api.put` con el payload completo (mismo patrón que `showGroupsToRunners` en `edit-team-screen.jsx`) — agregar los 2 campos es mecánico, sin cambiar el método HTTP como se especulaba acá antes. |
 
-Falta además una forma de contar solicitudes pendientes agregadas por
-entrenador (para el badge) sin traer el detalle completo de cada
-equipo — a definir con el backend si es un endpoint propio
-(`GET /join-requests/pending-count`) o se resuelve client-side sumando
-`GET /teams/{id}/join-requests` por cada equipo administrado (más
-simple de arrancar, pero N requests si el entrenador tiene varios
-equipos).
+Códigos de error (`code`, junto al 4xx correspondiente): `TEAM_NOT_FOUND`,
+`TEAM_NOT_PUBLIC`, `TEAM_FULL`, `ALREADY_MEMBER`,
+`JOIN_REQUEST_ALREADY_PENDING`, `JOIN_REQUEST_NOT_FOUND`, `FORBIDDEN`,
+`JOIN_REQUEST_NOT_PENDING` — mapear a mensajes de Toast legibles en vez
+de mostrar el código crudo.
+
+`visible`/`is_public` vienen en `true` por default para todos los
+equipos, incluidos los ya existentes — nada que migrar del lado del
+front para que aparezcan buscables desde ya.
 
 ## Fuera de alcance
 
@@ -224,7 +239,11 @@ notificaciones (tipos, leído/no-leído, extensible) — el badge de esta
 spec es puntual, no una infraestructura reusable todavía. Dropdown de
 notificaciones en el topbar wide-web — se navega a pantalla completa
 en las 3 plataformas por ahora. Elegir grupo al aceptar una solicitud
-— siempre va al grupo default, sin selector.
+— siempre va al grupo default, sin selector. Cobro de `membership_fee`
+al aceptar una solicitud (o invitación) — hoy es un stub (`0` siempre);
+el split corredor→entrenador es el Sub-proyecto B del análisis de
+pagos, sin fecha. No se construye nada defensivo para eso acá; cuando
+se implemente, se adapta `accept` en su propia rama.
 
 ## Verificación
 

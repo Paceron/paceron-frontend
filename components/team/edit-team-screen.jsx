@@ -85,13 +85,15 @@ function EditTeamForm({ team, teamId }) {
 
   const generalForm = useTeamGeneralInfoForm({ initial: team, maxAllowed });
   const [showGroupsToRunners, setShowGroupsToRunners] = useState(team.showGroupsToRunners ?? false);
+  const [visible, setVisible] = useState(team.visible ?? true);
+  const [isPublic, setIsPublic] = useState(team.isPublic ?? true);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (submitting) return;
     if (!generalForm.validate()) return;
     setSubmitting(true);
-    const result = await updateTeam(teamId, { ...generalForm.getValues(), showGroupsToRunners });
+    const result = await updateTeam(teamId, { ...generalForm.getValues(), showGroupsToRunners, visible, isPublic });
     setSubmitting(false);
 
     if (!result.success) {
@@ -159,6 +161,58 @@ function EditTeamForm({ team, teamId }) {
               </Text>
               <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="edit-team-show-groups-checkbox-hint" testID="edit-team-show-groups-checkbox-hint">
                 Van a poder ver a qué grupo pertenece cada compañero de equipo. La sección Grupos sigue siendo solo para vos.
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="Visible en búsqueda"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: visible }}
+            className="mt-4 flex-row items-start gap-3 py-1"
+            nativeID="edit-team-visible-checkbox"
+            onPress={() => setVisible((v) => !v)}
+            testID="edit-team-visible-checkbox"
+          >
+            <View
+              className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${visible ? 'border-primary bg-primary' : 'border-slate-300 dark:border-slate-600'}`}
+              nativeID="edit-team-visible-checkbox-box"
+              testID="edit-team-visible-checkbox-box"
+            >
+              {visible && <MaterialCommunityIcons color={colors.onPrimary} name="check-bold" size={14} />}
+            </View>
+            <View className="flex-1" nativeID="edit-team-visible-checkbox-text" testID="edit-team-visible-checkbox-text">
+              <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="edit-team-visible-checkbox-label" testID="edit-team-visible-checkbox-label">
+                Visible en búsqueda
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="edit-team-visible-checkbox-hint" testID="edit-team-visible-checkbox-hint">
+                Aparece en los resultados cuando un corredor busca equipos para unirse.
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="Acepta solicitudes de ingreso"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isPublic }}
+            className="mt-4 flex-row items-start gap-3 py-1"
+            nativeID="edit-team-is-public-checkbox"
+            onPress={() => setIsPublic((v) => !v)}
+            testID="edit-team-is-public-checkbox"
+          >
+            <View
+              className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${isPublic ? 'border-primary bg-primary' : 'border-slate-300 dark:border-slate-600'}`}
+              nativeID="edit-team-is-public-checkbox-box"
+              testID="edit-team-is-public-checkbox-box"
+            >
+              {isPublic && <MaterialCommunityIcons color={colors.onPrimary} name="check-bold" size={14} />}
+            </View>
+            <View className="flex-1" nativeID="edit-team-is-public-checkbox-text" testID="edit-team-is-public-checkbox-text">
+              <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="edit-team-is-public-checkbox-label" testID="edit-team-is-public-checkbox-label">
+                Acepta solicitudes de ingreso
+              </Text>
+              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="edit-team-is-public-checkbox-hint" testID="edit-team-is-public-checkbox-hint">
+                Si está apagado, el equipo puede seguir siendo visible en la búsqueda pero nadie va a poder pedir unirse — solo por invitación.
               </Text>
             </View>
           </Pressable>

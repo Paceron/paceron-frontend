@@ -6,10 +6,12 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
+import { useTeamsJoinRequestsMap } from '../../hooks/use-join-requests.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
-function TeamRow({ team, onPress }) {
+function TeamRow({ team, onPress, hasPendingRequests }) {
   const colors = useThemeColors();
   return (
     <Pressable
@@ -18,8 +20,11 @@ function TeamRow({ team, onPress }) {
       onPress={onPress}
       testID={`teams-list-team-${team.id}`}
     >
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`teams-list-team-${team.id}-icon`} testID={`teams-list-team-${team.id}-icon`}>
-        <MaterialCommunityIcons color={colors.primary} name="account-group" size={18} />
+      <View className="relative" nativeID={`teams-list-team-${team.id}-icon`} testID={`teams-list-team-${team.id}-icon`}>
+        <AvatarPicker fallbackIcon="account-group" idPrefix={`teams-list-team-${team.id}-avatar`} size={36} uri={team.iconUrl} />
+        {hasPendingRequests && (
+          <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID={`teams-list-team-${team.id}-pending-dot`} testID={`teams-list-team-${team.id}-pending-dot`} />
+        )}
       </View>
       <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`teams-list-team-${team.id}-name`} testID={`teams-list-team-${team.id}-name`}>
         {team.name}
@@ -44,6 +49,7 @@ function TeamsListScreenContent() {
   // Como entrenador ve los equipos que administra; como corredor, los que
   // integra — dos fuentes distintas (ver store/team-store.js#fetchMyMemberTeams).
   const myTeams = activeRole === 'trainer' ? administeredTeams : myMemberTeams;
+  const { byTeamId: pendingRequestsByTeamId } = useTeamsJoinRequestsMap(activeRole === 'trainer' ? administeredTeams.map((t) => t.id) : []);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,9 +87,20 @@ function TeamsListScreenContent() {
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
-          <Text className="text-xl text-slate-900 dark:text-white" nativeID="teams-list-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="teams-list-screen-title">
+          <Text className="flex-1 text-xl text-slate-900 dark:text-white" nativeID="teams-list-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="teams-list-screen-title">
             Mis equipos
           </Text>
+          {activeRole === 'runner' && (
+            <Pressable
+              accessibilityLabel="Buscar equipos"
+              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+              nativeID="teams-list-search-button"
+              onPress={() => router.push('/teams/search')}
+              testID="teams-list-search-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={22} />
+            </Pressable>
+          )}
         </View>
 
         <SectionCard icon="account-group" title={activeRole === 'trainer' ? 'Equipos que administrás' : 'Equipos en los que participás'}>
@@ -98,7 +115,12 @@ function TeamsListScreenContent() {
           ) : (
             <View className="gap-2" nativeID="teams-list-list" testID="teams-list-list">
               {myTeams.map((team) => (
-                <TeamRow key={team.id} onPress={() => router.push(`/teams/${team.id}`)} team={team} />
+                <TeamRow
+                  hasPendingRequests={(pendingRequestsByTeamId.get(team.id) ?? []).length > 0}
+                  key={team.id}
+                  onPress={() => router.push(`/teams/${team.id}`)}
+                  team={team}
+                />
               ))}
             </View>
           )}

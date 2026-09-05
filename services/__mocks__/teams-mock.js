@@ -33,25 +33,25 @@ function buildSeedTeams() {
     {
       id: 1, name: 'Corredores del Sur', description: 'Equipo de running enfocado en fondo y medio fondo, entrenamos 3 veces por semana.',
       level: 'amateur', max_members: 20, owner_id: 1, requirements: 'Compromiso de asistencia y ritmo base de 6 min/km.',
-      status: 'activo', country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
+      status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
       created_at: now, updated_at: now,
     },
     {
       id: 2, name: 'Running Cordoba Norte', description: 'Grupo competitivo orientado a carreras de calle de 10K y 21K.',
       level: 'semi-profesional', max_members: 20, owner_id: 99, requirements: 'Experiencia previa en carreras de calle.',
-      status: 'activo', country: 'ARG', province: 'CD', city: 'Córdoba Capital', street: null, number: null,
+      status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'CD', city: 'Córdoba Capital', street: null, number: null,
       created_at: now, updated_at: now,
     },
     {
       id: 3, name: 'Maraton Runners', description: 'Preparación específica para maratón y ultramaratón.',
       level: 'profesional', max_members: 20, owner_id: 99, requirements: 'Base aeróbica mínima de 60km semanales.',
-      status: 'activo', country: 'ARG', province: 'SF', city: 'Rosario', street: null, number: null,
+      status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'SF', city: 'Rosario', street: null, number: null,
       created_at: now, updated_at: now,
     },
     {
       id: 4, name: 'Runners Mendoza', description: 'Grupo social de running para todos los niveles — salidas los martes y jueves a la tarde.',
       level: 'amateur', max_members: 20, owner_id: 1, requirements: 'Ganas de correr, no hace falta experiencia previa.',
-      status: 'activo', country: 'ARG', province: 'MZ', city: 'Mendoza Capital', street: null, number: null,
+      status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'MZ', city: 'Mendoza Capital', street: null, number: null,
       created_at: now, updated_at: now,
     },
   ];
@@ -176,6 +176,14 @@ export function __getMockTeamName(teamId) {
 
 export function __getMockTeamOwnerId(teamId) {
   return mockTeams.find((t) => String(t.id) === String(teamId))?.owner_id ?? null;
+}
+
+// Getter de solo lectura sobre el array completo — usado por
+// join-requests-mock.js para simular GET /teams/search sin duplicar el
+// seed de equipos. Devuelve una copia (no la referencia) para que un
+// caller no pueda mutar mockTeams por accidente vía este atajo.
+export function __getAllMockTeams() {
+  return [...mockTeams];
 }
 
 // Mismo criterio que mockUploadUserPhoto (user-mock.js) — el mock "hace
