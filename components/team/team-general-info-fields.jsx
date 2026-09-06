@@ -14,10 +14,10 @@ export const LEVEL_OPTIONS = [
 // pantallas (nunca están montadas a la vez, pero mantiene los ids legibles
 // para debug). Ya no incluye foto — se sube desde el detalle de equipo ya
 // creado (ver components/team/team-detail-screen.jsx), no en este wizard.
-export function TeamGeneralInfoFields({ form, maxAllowed, idPrefix }) {
+export function TeamGeneralInfoFields({ form, maxAllowed, idPrefix, autoFocusName = false }) {
   return (
     <>
-      <InputField dense error={form.errors.name} label="Nombre del equipo" onChange={form.setName} placeholder="Ej. Corredores del Sur" value={form.name} />
+      <InputField autoFocus={autoFocusName} dense error={form.errors.name} label="Nombre del equipo" onChange={form.setName} placeholder="Ej. Corredores del Sur" value={form.name} />
 
       <Row>
         <Col>

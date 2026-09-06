@@ -12,9 +12,12 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { useEmailSuggestions } from '../../hooks/use-email-suggestions.js';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { GroupListEditor } from './group-list-editor.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 
 const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };
 const TOTAL_STEPS = 3;
@@ -99,6 +102,9 @@ function CreateTeamScreenContent() {
   const [groups, setGroups] = useState([]);
   const [invitedEmails, setInvitedEmails] = useState([]);
 
+  const isDirty = useFormDirty({ general: generalForm.getValues(), groups, invitedEmails });
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+
   // EmailInviteForm/InvitedEmailsList (paso 3) esperan que, si el grupo
   // default existe, venga incluido en `groups` — para un equipo ya creado
   // (EditTeamScreen) es un grupo real con isDefault:true; acá todavía no
@@ -178,7 +184,7 @@ function CreateTeamScreenContent() {
             nativeID="create-team-screen-back-button"
             testID="create-team-screen-back-button"
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
-            onPress={() => router.back()}
+            onPress={() => guardedClose(() => router.back())}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
@@ -199,7 +205,7 @@ function CreateTeamScreenContent() {
 
         {step === 1 && (
           <SectionCard icon="account-group" title="Datos del equipo">
-            <TeamGeneralInfoFields form={generalForm} idPrefix="create-team" maxAllowed={maxAllowed} />
+            <TeamGeneralInfoFields autoFocusName={!isWeb} form={generalForm} idPrefix="create-team" maxAllowed={maxAllowed} />
 
             <StepNav nextLabel="Siguiente" onNext={handleContinueStep1} />
           </SectionCard>
@@ -239,6 +245,7 @@ function CreateTeamScreenContent() {
     >
       <UserSuggestionsList onSelect={emailSearch.selectSuggestion} scope="create-team-invite" suggestions={emailSearch.suggestions} />
     </AnimatedDropdown>
+    <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>
   );
 }
