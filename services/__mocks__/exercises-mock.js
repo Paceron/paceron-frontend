@@ -9,49 +9,13 @@
 // del bloque principal (repeatCount/restMinutes), ver sessions-mock.js.
 // `video_url` existe desde ya (siempre null) para no migrar el shape el
 // día que se implemente.
-// Nombre 100% derivado de tipo + intensidad + duración/distancia/grupo
-// muscular — ya no es texto libre (ver enmienda 2026-09-06 de
-// docs/superpowers/specs/2026-08-26-training-plans-design.md). Copiado a
-// propósito de buildExerciseName (components/plans/exercise-kind-meta.js)
-// en vez de importarlo — mismo criterio ya usado acá para
-// MUSCLE_GROUP_LABELS-equivalente: services/ (capa de datos) no depende
-// de components/plans/ (capa de UI), aunque ese archivo no tenga imports
-// propios y sea técnicamente seguro bajo Jest — es la dirección de
-// dependencia inversa a la que tiene el resto del repo. Si la regla de
-// composición cambia en exercise-kind-meta.js, actualizar en paralelo acá.
-const SEED_KIND_LABELS = { walking: 'Caminata', jogging: 'Trote', elongation: 'Elongación', cruising: 'Ritmo continuo', running: 'Corrida' };
-const SEED_KIND_GENDER = { walking: 'f', jogging: 'm', cruising: 'm', running: 'f' };
-const SEED_INTENSITY_LABELS = { light: 'Suave', moderate: { f: 'Moderada', m: 'Moderado' }, vigorous: 'Fuerte' };
-const SEED_MUSCLE_LABELS = {
-  cuadriceps: 'Cuádriceps', isquiotibiales: 'Isquiotibiales', gemelos: 'Gemelos (pantorrillas)', gluteos: 'Glúteos',
-  aductores: 'Aductores', psoas: 'Psoas / flexores de cadera', lumbares: 'Zona lumbar / cadena posterior', core: 'Core / abdominales',
-};
-
-function seedDistanceToken(distanceM) {
-  if (distanceM < 1000) return `${distanceM}m`;
-  const km = distanceM / 1000;
-  return `${Number.isInteger(km) ? km : km.toFixed(1)}km`;
-}
-
-function seedIntensityLabel(kind, intensity) {
-  const entry = SEED_INTENSITY_LABELS[intensity];
-  if (!entry) return null;
-  return typeof entry === 'string' ? entry : entry[SEED_KIND_GENDER[kind]];
-}
-
-function buildSeedName({ kind, intensity, minutes, distanceM, muscleGroup }) {
-  if (kind === 'elongation') {
-    const muscleLabel = muscleGroup && SEED_MUSCLE_LABELS[muscleGroup];
-    return muscleLabel ? `${SEED_KIND_LABELS[kind]} de ${muscleLabel.charAt(0).toLowerCase()}${muscleLabel.slice(1)}` : SEED_KIND_LABELS[kind];
-  }
-  const parts = [SEED_KIND_LABELS[kind]];
-  const intensityLabel = seedIntensityLabel(kind, intensity);
-  if (intensityLabel) parts.push(intensityLabel.toLowerCase());
-  if (distanceM != null) parts.push(seedDistanceToken(distanceM));
-  else if ((kind === 'walking' || kind === 'jogging') && minutes != null) parts.push(`${minutes} min`);
-  return parts.join(' ');
-}
-
+// Nombre y descripción vuelven a ser texto libre (ver enmienda 2026-09-06,
+// segunda vuelta, de docs/superpowers/specs/2026-08-26-training-plans-design.md
+// — mapear qué característica aplica a qué tipo, y componer el nombre
+// solo, terminó siendo más complejidad de la que valía dado lo variado
+// que es un ejercicio real). `intensity`/`minutes`/`distance_m`/
+// `speed_kph`/`muscle_group` son todos opcionales, sin atarlos a un tipo
+// en particular — cualquier combinación es válida.
 // Nombres reales de estiramientos/ejercicios de running (no inventados) —
 // ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md,
 // sección "Datos de ejemplo más realistas". Fuentes: gymcompany.es "18
@@ -61,23 +25,23 @@ function buildSeedName({ kind, intensity, minutes, distanceM, muscleGroup }) {
 function buildSeedExercises() {
   const now = new Date().toISOString();
   const rows = [
-    { id: 1, kind: 'walking', intensity: 'light', minutes: 5, distanceM: null, speedKph: null, muscleGroup: null },
-    { id: 2, kind: 'walking', intensity: 'moderate', minutes: 8, distanceM: null, speedKph: null, muscleGroup: null },
-    { id: 3, kind: 'jogging', intensity: 'light', minutes: 20, distanceM: null, speedKph: null, muscleGroup: null },
-    { id: 4, kind: 'jogging', intensity: 'light', minutes: null, distanceM: 3000, speedKph: null, muscleGroup: null }, // "Trote suave 3km" — el ejemplo original del usuario
-    { id: 5, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'isquiotibiales' },
-    { id: 6, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'cuadriceps' },
-    { id: 7, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'gemelos' },
-    { id: 8, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'gluteos' },
-    { id: 9, kind: 'cruising', intensity: 'moderate', minutes: null, distanceM: 3000, speedKph: 10, muscleGroup: null },
-    { id: 10, kind: 'cruising', intensity: 'moderate', minutes: null, distanceM: 5000, speedKph: 10.5, muscleGroup: null },
-    { id: 11, kind: 'cruising', intensity: 'light', minutes: null, distanceM: 8000, speedKph: 9.5, muscleGroup: null },
-    { id: 12, kind: 'running', intensity: 'vigorous', minutes: null, distanceM: 400, speedKph: 14, muscleGroup: null },
-    { id: 13, kind: 'running', intensity: 'vigorous', minutes: null, distanceM: 200, speedKph: 16, muscleGroup: null },
-    { id: 14, kind: 'running', intensity: 'moderate', minutes: null, distanceM: 1000, speedKph: 13, muscleGroup: null },
+    { id: 1, name: 'Caminata regenerativa', description: 'Caminata suave para bajar pulsaciones después de una sesión fuerte.', kind: 'walking', intensity: 'light', minutes: 5, distanceM: null, speedKph: null, muscleGroup: null },
+    { id: 2, name: 'Caminata rápida de entrada en calor', description: 'Caminata a paso vivo para activar antes de una sesión.', kind: 'walking', intensity: 'moderate', minutes: 8, distanceM: null, speedKph: null, muscleGroup: null },
+    { id: 3, name: 'Trote suave', description: 'Trote a ritmo conversable, sin exigencia.', kind: 'jogging', intensity: 'light', minutes: 20, distanceM: null, speedKph: null, muscleGroup: null },
+    { id: 4, name: 'Trote suave 3km', description: 'Trote continuo suave, distancia fija en vez de tiempo.', kind: 'jogging', intensity: 'light', minutes: null, distanceM: 3000, speedKph: null, muscleGroup: null },
+    { id: 5, name: 'Elongación de isquiotibiales', description: 'Estiramiento estático de isquiotibiales post-entrenamiento.', kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'isquiotibiales' },
+    { id: 6, name: 'Elongación de cuádriceps', description: 'Estiramiento estático de cuádriceps post-entrenamiento.', kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'cuadriceps' },
+    { id: 7, name: 'Elongación de gemelos', description: 'Estiramiento estático de gemelos post-entrenamiento.', kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'gemelos' },
+    { id: 8, name: 'Elongación de glúteos', description: 'Estiramiento estático de glúteos post-entrenamiento.', kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'gluteos' },
+    { id: 9, name: 'Ritmo continuo 3K', description: 'Fondo a ritmo moderado y sostenido.', kind: 'cruising', intensity: 'moderate', minutes: null, distanceM: 3000, speedKph: 10, muscleGroup: null },
+    { id: 10, name: 'Ritmo continuo 5K', description: 'Fondo a ritmo moderado y sostenido.', kind: 'cruising', intensity: 'moderate', minutes: null, distanceM: 5000, speedKph: 10.5, muscleGroup: null },
+    { id: 11, name: 'Rodaje suave 8K', description: 'Rodaje largo a ritmo cómodo, la sesión más larga de la semana.', kind: 'cruising', intensity: 'light', minutes: null, distanceM: 8000, speedKph: 9.5, muscleGroup: null },
+    { id: 12, name: 'Series 400m fuertes', description: 'Repeticiones cortas a ritmo fuerte, con descanso entre cada una.', kind: 'running', intensity: 'vigorous', minutes: null, distanceM: 400, speedKph: 14, muscleGroup: null },
+    { id: 13, name: 'Series 200m explosivas', description: 'Repeticiones muy cortas a máxima velocidad, foco en potencia.', kind: 'running', intensity: 'vigorous', minutes: null, distanceM: 200, speedKph: 16, muscleGroup: null },
+    { id: 14, name: 'Series 1000m ritmo umbral', description: 'Repeticiones más largas, cerca del umbral anaeróbico.', kind: 'running', intensity: 'moderate', minutes: null, distanceM: 1000, speedKph: 13, muscleGroup: null },
   ];
   return rows.map((r) => ({
-    id: r.id, owner_id: 1, name: buildSeedName(r), kind: r.kind, intensity: r.intensity,
+    id: r.id, owner_id: 1, name: r.name, description: r.description, kind: r.kind, intensity: r.intensity,
     minutes: r.minutes, distance_m: r.distanceM, speed_kph: r.speedKph, muscle_group: r.muscleGroup,
     video_url: null, created_at: now, updated_at: now,
   }));
@@ -112,6 +76,7 @@ export async function mockCreateExercise(payload) {
     id: nextId++,
     owner_id: payload.owner_id,
     name: payload.name,
+    description: payload.description ?? null,
     kind: payload.kind,
     intensity: payload.intensity ?? null,
     minutes: payload.minutes ?? null,
