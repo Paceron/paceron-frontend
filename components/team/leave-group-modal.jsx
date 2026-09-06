@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Mismo patrón que ExpelRunnerModal/DeleteTeamModal. A diferencia de esas
 // dos, es una acción del propio corredor sobre sí mismo, no de quien
@@ -8,6 +9,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 // no team → afuera.
 export function LeaveGroupModal({ visible, groupName, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
+  }, [visible]);
 
   const handleConfirm = async () => {
     if (loading) return;

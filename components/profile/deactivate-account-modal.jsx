@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Confirmación de baja: exige tipear el email exacto de la cuenta antes de habilitar
 // el botón destructivo. Evita bajas por click accidental.
@@ -9,6 +10,10 @@ export function DeactivateAccountModal({ visible, userEmail, onCancel, onConfirm
   const colors = useThemeColors();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
+  }, [visible]);
 
   const matches = input.trim().toLowerCase() === (userEmail ?? '').toLowerCase();
 

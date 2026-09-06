@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Confirmación liviana (a diferencia de DeactivateAccountModal, que exige
 // tipear el email porque borra la cuenta entera) — esto es reversible y no
 // pierde datos (el alias de pagos se mantiene guardado), un click alcanza.
 export function DeactivateTrainerModal({ visible, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
+  }, [visible]);
 
   const handleConfirm = async () => {
     if (loading) return;

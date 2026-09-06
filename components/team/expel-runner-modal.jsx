@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Mismo patrón que DeleteTeamModal — confirmación de una acción
 // destructiva (saca al corredor del equipo entero, DELETE
 // /teams/{id}/users/{user_id}, no solo del grupo actual).
 export function ExpelRunnerModal({ visible, runnerName, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
+  }, [visible]);
 
   const handleConfirm = async () => {
     if (loading) return;

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Mismo patrón que DeactivateTrainerModal — confirmación de una acción
 // destructiva e irreversible (a diferencia de esa, esta sí borra datos:
@@ -8,6 +9,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 // que solo ve quien administra el equipo.
 export function DeleteTeamModal({ visible, teamName, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
+  }, [visible]);
 
   const handleConfirm = async () => {
     if (loading) return;
