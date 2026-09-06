@@ -9,10 +9,14 @@ import { useTeamStore } from '../../store/team-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { useEmailSuggestions } from '../../hooks/use-email-suggestions.js';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 function PendingInviteRow({ groupName, invite }) {
@@ -60,6 +64,9 @@ function InviteTeamMembersScreenContent({ teamId }) {
   const [loadingTeam, setLoadingTeam] = useState(!team);
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(true);
+
+  const isDirty = useFormDirty({ hasDrafts: draftInvites.length > 0 });
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
 
   // Entrar por deep-link (ej. recargar /teams/{id}/invite directo) puede
   // caer acá antes de que el equipo esté en el store — fetchTeam lo trae
@@ -116,7 +123,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
         <Pressable
           className="h-11 flex-row items-center gap-2 rounded-full bg-primary px-6 active:opacity-80"
           nativeID="invite-team-not-found-back-button"
-          onPress={() => router.back()}
+          onPress={() => guardedClose(() => router.back())}
           testID="invite-team-not-found-back-button"
         >
           <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="invite-team-not-found-back-button-label" testID="invite-team-not-found-back-button-label">
@@ -138,9 +145,11 @@ function InviteTeamMembersScreenContent({ teamId }) {
     setSending(false);
     setDraftInvites([]);
     if (failed > 0) {
+      notifyError();
       Toast.show({ type: 'error', text1: 'Algunas invitaciones no se pudieron enviar', text2: `${failed} de ${draftInvites.length} fallaron.` });
       return;
     }
+    notifySuccess();
     Toast.show({ type: 'success', text1: 'Invitaciones enviadas' });
   };
 
@@ -159,7 +168,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="invite-team-screen-back-button"
-            onPress={() => router.back()}
+            onPress={() => guardedClose(() => router.back())}
             testID="invite-team-screen-back-button"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
@@ -218,6 +227,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
     >
       <UserSuggestionsList onSelect={emailSearch.selectSuggestion} scope="invite-team-invite" suggestions={emailSearch.suggestions} />
     </AnimatedDropdown>
+    <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>
   );
 }
