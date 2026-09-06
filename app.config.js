@@ -45,7 +45,7 @@ module.exports = {
       predictiveBackGestureEnabled: false,
     },
     web: {
-      favicon: './assets/favicon.png',
+      favicon: './assets/paceron-symbol-transparent.png',
       bundler: 'metro',
       output: 'static',
     },
