@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
@@ -79,6 +80,9 @@ function EditTeamForm({ team, teamId }) {
   const colors = useThemeColors();
   const roles = useAuthStore((s) => s.roles);
   const updateTeam = useTeamStore((s) => s.updateTeam);
+  const fetchTeam = useTeamStore((s) => s.fetchTeam);
+
+  const { refreshing, onRefresh } = usePullToRefresh(() => fetchTeam(teamId));
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
@@ -114,6 +118,7 @@ function EditTeamForm({ team, teamId }) {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="edit-team-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="edit-team-screen-scroll"
     >

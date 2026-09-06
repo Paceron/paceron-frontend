@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -59,6 +61,14 @@ function AssignTrainingPlanScreenContent({ planId }) {
     selectedTeam?.groups.map((g) => g.id) ?? [],
   );
 
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    fetchTeams(),
+    teamId && user?.userId ? fetchGroups(teamId, user.userId) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['team-users', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['group-users'] }),
+  ]));
+
   const groupOptions = (selectedTeam?.groups ?? []).map((g) => ({ id: g.id, name: g.name }));
   const runnerOptions = roster.map((m) => ({ id: m.userId, name: m.name }));
 
@@ -99,6 +109,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="assign-training-plan-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="assign-training-plan-screen-scroll"
     >
