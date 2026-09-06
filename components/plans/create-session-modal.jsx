@@ -1,14 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { InputField, Row, Col } from '../forms/fields.jsx';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { SelectWithCreateField } from './select-with-create-field.jsx';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
 
@@ -37,6 +42,55 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const [submitting, setSubmitting] = useState(false);
   const [createExerciseTarget, setCreateExerciseTarget] = useState(null); // 'warmup' | 'main' | 'cooldown' | null
 
+  const resetKey = `${visible}-${session?.id ?? 'new'}`;
+  const prevResetKeyRef = useRef(null);
+  const isResetting = visible && resetKey !== prevResetKeyRef.current;
+
+  // Precarga (o limpia) el formulario cada vez que el modal se abre —
+  // mismo criterio que CreateExerciseModal. Se ajusta de forma síncrona
+  // durante el render (no en un useEffect) para que useFormDirty, más
+  // abajo, pueda usar los valores del registro que se está editando en
+  // el mismo render donde cambia el resetKey. Los setState de acá no se
+  // reflejan en `name`/`description`/etc. hasta el próximo render (React
+  // no muta el valor en el render en curso), así que dirtyValues no
+  // puede leerlos directo — usa los valores "efectivos" post-reset
+  // (`resetValues`) mientras `isResetting` es true, y `useFormDirty`
+  // recibe ese objeto como snapshot base en el mismo render donde
+  // resetKey cambia. Sin este ajuste, useFormDirty capturaría el
+  // baseline un render antes de tiempo, con los valores viejos/vacíos
+  // todavía en los states, y marcaría dirty=true de entrada al reabrir
+  // en modo edición (falso positivo).
+  const resetValues = {
+    name: session?.name ?? '',
+    description: session?.description ?? '',
+    warmupExerciseId: session?.warmupExerciseId ?? '',
+    mainExerciseId: session?.mainExerciseId ?? '',
+    mainRepeatCount: session?.mainRepeatCount != null ? String(session.mainRepeatCount) : '1',
+    mainRestMinutes: session?.mainRestMinutes != null ? String(session.mainRestMinutes) : '0',
+    cooldownExerciseId: session?.cooldownExerciseId ?? '',
+  };
+
+  if (isResetting) {
+    prevResetKeyRef.current = resetKey;
+    setName(resetValues.name);
+    setDescription(resetValues.description);
+    setWarmupExerciseId(resetValues.warmupExerciseId);
+    setMainExerciseId(resetValues.mainExerciseId);
+    setMainRepeatCount(resetValues.mainRepeatCount);
+    setMainRestMinutes(resetValues.mainRestMinutes);
+    setCooldownExerciseId(resetValues.cooldownExerciseId);
+    setError(null);
+  } else if (!visible) {
+    prevResetKeyRef.current = null;
+  }
+
+  const dirtyValues = isResetting
+    ? resetValues
+    : { name, description, warmupExerciseId, mainExerciseId, mainRepeatCount, mainRestMinutes, cooldownExerciseId };
+  const formDirty = useFormDirty(dirtyValues, session?.id ?? 'new');
+  const isDirty = visible && formDirty;
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+
   useEffect(() => {
     if (visible && user?.userId) fetchExercises(user.userId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -44,27 +98,9 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
 
   const warmcoolExercises = exercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
-  const reset = () => {
-    setName(session?.name ?? '');
-    setDescription(session?.description ?? '');
-    setWarmupExerciseId(session?.warmupExerciseId ?? '');
-    setMainExerciseId(session?.mainExerciseId ?? '');
-    setMainRepeatCount(session?.mainRepeatCount != null ? String(session.mainRepeatCount) : '1');
-    setMainRestMinutes(session?.mainRestMinutes != null ? String(session.mainRestMinutes) : '0');
-    setCooldownExerciseId(session?.cooldownExerciseId ?? '');
-    setError(null);
-  };
-
-  // Precarga (o limpia) el formulario cada vez que el modal se abre —
-  // mismo criterio que CreateExerciseModal.
-  useEffect(() => {
-    if (visible) reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, session?.id]);
-
   const handleClose = () => {
     if (submitting) return;
-    onClose();
+    guardedClose(onClose);
   };
 
   const handleExerciseCreated = (exercise) => {
@@ -95,10 +131,12 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     setSubmitting(false);
 
     if (!result.success) {
+      notifyError();
       Toast.show({ type: 'error', text1: `No pudimos ${isEditing ? 'guardar' : 'crear'} la sesión`, text2: result.error });
       return;
     }
 
+    notifySuccess();
     Toast.show({ type: 'success', text1: isEditing ? 'Sesión actualizada' : 'Sesión creada' });
     onCreated(result.session);
   };
@@ -106,8 +144,8 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   return (
     <>
       <Modal animationType="fade" nativeID="create-session-modal" onRequestClose={handleClose} testID="create-session-modal" transparent visible={visible}>
-        <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" testID="create-session-modal-backdrop">
-          <View className="max-h-[90%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-session-modal-card" testID="create-session-modal-card">
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
+          <Pressable className="max-h-[90%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
             <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
               <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
@@ -116,7 +154,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
             </View>
 
             <ScrollView nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
-              <InputField dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
+              <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
               <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={setDescription} value={description} />
 
               <SelectWithCreateField
@@ -187,8 +225,8 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <CreateExerciseModal
@@ -196,6 +234,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
         onCreated={handleExerciseCreated}
         visible={createExerciseTarget != null}
       />
+      <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );
 }

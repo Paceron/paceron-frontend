@@ -33,8 +33,8 @@ export function DeleteCatalogItemModal({ visible, itemKind, itemName, usageLabel
 
   return (
     <Modal animationType="fade" nativeID="delete-catalog-item-modal" onRequestClose={handleCancel} testID="delete-catalog-item-modal" transparent visible={visible}>
-      <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="delete-catalog-item-modal-backdrop" testID="delete-catalog-item-modal-backdrop">
-        <View className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface" nativeID="delete-catalog-item-modal-card" testID="delete-catalog-item-modal-card">
+      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="delete-catalog-item-modal-backdrop" onPress={handleCancel} testID="delete-catalog-item-modal-backdrop">
+        <Pressable className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface" nativeID="delete-catalog-item-modal-card" onPress={() => {}} testID="delete-catalog-item-modal-card">
           <View className="mb-3 flex-row items-center gap-2" nativeID="delete-catalog-item-modal-header" testID="delete-catalog-item-modal-header">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text className="text-lg font-bold capitalize text-red-700 dark:text-red-400" nativeID="delete-catalog-item-modal-title" testID="delete-catalog-item-modal-title">
@@ -90,8 +90,8 @@ export function DeleteCatalogItemModal({ visible, itemKind, itemName, usageLabel
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

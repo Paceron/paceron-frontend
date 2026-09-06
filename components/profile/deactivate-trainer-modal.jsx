@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Confirmación liviana (a diferencia de DeactivateAccountModal, que exige
 // tipear el email porque borra la cuenta entera) — esto es reversible y no
 // pierde datos (el alias de pagos se mantiene guardado), un click alcanza.
 export function DeactivateTrainerModal({ visible, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
+  }, [visible]);
 
   const handleConfirm = async () => {
     if (loading) return;
@@ -22,8 +27,8 @@ export function DeactivateTrainerModal({ visible, onCancel, onConfirm }) {
 
   return (
     <Modal nativeID="deactivate-trainer-modal" testID="deactivate-trainer-modal" animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View nativeID="deactivate-trainer-modal-backdrop" testID="deactivate-trainer-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="deactivate-trainer-modal-card" testID="deactivate-trainer-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
+      <Pressable nativeID="deactivate-trainer-modal-backdrop" onPress={handleCancel} testID="deactivate-trainer-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="deactivate-trainer-modal-card" onPress={() => {}} testID="deactivate-trainer-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
           <View nativeID="deactivate-trainer-modal-header" testID="deactivate-trainer-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text nativeID="deactivate-trainer-modal-title" testID="deactivate-trainer-modal-title" className="text-lg font-bold text-red-700 dark:text-red-400">Dar de baja perfil de entrenador</Text>
@@ -57,8 +62,8 @@ export function DeactivateTrainerModal({ visible, onCancel, onConfirm }) {
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

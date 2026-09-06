@@ -11,8 +11,12 @@ import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 const TARGET_TYPE_OPTIONS = [
@@ -39,6 +43,9 @@ function AssignTrainingPlanScreenContent({ planId }) {
   const [groupId, setGroupId] = useState('');
   const [runnerId, setRunnerId] = useState('');
   const [assigning, setAssigning] = useState(false);
+
+  const isDirty = useFormDirty({ teamId, groupId, runnerId });
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,15 +103,18 @@ function AssignTrainingPlanScreenContent({ planId }) {
     setAssigning(false);
 
     if (!result.success) {
+      notifyError();
       Toast.show({ type: 'error', text1: 'No pudimos asignar el plan', text2: result.error });
       return;
     }
 
+    notifySuccess();
     Toast.show({ type: 'success', text1: 'Plan asignado' });
     router.back();
   };
 
   return (
+    <>
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
@@ -118,7 +128,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="assign-training-plan-screen-back-button"
-            onPress={() => router.back()}
+            onPress={() => guardedClose(() => router.back())}
             testID="assign-training-plan-screen-back-button"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
@@ -206,6 +216,8 @@ function AssignTrainingPlanScreenContent({ planId }) {
         )}
       </View>
     </ScrollView>
+    <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
+    </>
   );
 }
 
