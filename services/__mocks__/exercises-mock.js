@@ -9,6 +9,49 @@
 // del bloque principal (repeatCount/restMinutes), ver sessions-mock.js.
 // `video_url` existe desde ya (siempre null) para no migrar el shape el
 // día que se implemente.
+// Nombre 100% derivado de tipo + intensidad + duración/distancia/grupo
+// muscular — ya no es texto libre (ver enmienda 2026-09-06 de
+// docs/superpowers/specs/2026-08-26-training-plans-design.md). Copiado a
+// propósito de buildExerciseName (components/plans/exercise-kind-meta.js)
+// en vez de importarlo — mismo criterio ya usado acá para
+// MUSCLE_GROUP_LABELS-equivalente: services/ (capa de datos) no depende
+// de components/plans/ (capa de UI), aunque ese archivo no tenga imports
+// propios y sea técnicamente seguro bajo Jest — es la dirección de
+// dependencia inversa a la que tiene el resto del repo. Si la regla de
+// composición cambia en exercise-kind-meta.js, actualizar en paralelo acá.
+const SEED_KIND_LABELS = { walking: 'Caminata', jogging: 'Trote', elongation: 'Elongación', cruising: 'Ritmo continuo', running: 'Corrida' };
+const SEED_KIND_GENDER = { walking: 'f', jogging: 'm', cruising: 'm', running: 'f' };
+const SEED_INTENSITY_LABELS = { light: 'Suave', moderate: { f: 'Moderada', m: 'Moderado' }, vigorous: 'Fuerte' };
+const SEED_MUSCLE_LABELS = {
+  cuadriceps: 'Cuádriceps', isquiotibiales: 'Isquiotibiales', gemelos: 'Gemelos (pantorrillas)', gluteos: 'Glúteos',
+  aductores: 'Aductores', psoas: 'Psoas / flexores de cadera', lumbares: 'Zona lumbar / cadena posterior', core: 'Core / abdominales',
+};
+
+function seedDistanceToken(distanceM) {
+  if (distanceM < 1000) return `${distanceM}m`;
+  const km = distanceM / 1000;
+  return `${Number.isInteger(km) ? km : km.toFixed(1)}km`;
+}
+
+function seedIntensityLabel(kind, intensity) {
+  const entry = SEED_INTENSITY_LABELS[intensity];
+  if (!entry) return null;
+  return typeof entry === 'string' ? entry : entry[SEED_KIND_GENDER[kind]];
+}
+
+function buildSeedName({ kind, intensity, minutes, distanceM, muscleGroup }) {
+  if (kind === 'elongation') {
+    const muscleLabel = muscleGroup && SEED_MUSCLE_LABELS[muscleGroup];
+    return muscleLabel ? `${SEED_KIND_LABELS[kind]} de ${muscleLabel.charAt(0).toLowerCase()}${muscleLabel.slice(1)}` : SEED_KIND_LABELS[kind];
+  }
+  const parts = [SEED_KIND_LABELS[kind]];
+  const intensityLabel = seedIntensityLabel(kind, intensity);
+  if (intensityLabel) parts.push(intensityLabel.toLowerCase());
+  if (distanceM != null) parts.push(seedDistanceToken(distanceM));
+  else if ((kind === 'walking' || kind === 'jogging') && minutes != null) parts.push(`${minutes} min`);
+  return parts.join(' ');
+}
+
 // Nombres reales de estiramientos/ejercicios de running (no inventados) —
 // ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md,
 // sección "Datos de ejemplo más realistas". Fuentes: gymcompany.es "18
@@ -17,22 +60,27 @@
 // sobre tipos de entrenamiento (fondo/rodaje, series, tempo run).
 function buildSeedExercises() {
   const now = new Date().toISOString();
-  return [
-    { id: 1, owner_id: 1, name: 'Caminata regenerativa', kind: 'walking', minutes: 5, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 2, owner_id: 1, name: 'Caminata rápida de entrada en calor', kind: 'walking', minutes: 8, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 3, owner_id: 1, name: 'Trote suave', kind: 'jogging', minutes: 20, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 4, owner_id: 1, name: 'Trote de activación', kind: 'jogging', minutes: 10, distance_m: null, speed_kph: null, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 5, owner_id: 1, name: 'Elongación de isquiotibiales', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'isquiotibiales', video_url: null, created_at: now, updated_at: now },
-    { id: 6, owner_id: 1, name: 'Elongación de cuádriceps', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'cuadriceps', video_url: null, created_at: now, updated_at: now },
-    { id: 7, owner_id: 1, name: 'Elongación de gemelos', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'gemelos', video_url: null, created_at: now, updated_at: now },
-    { id: 8, owner_id: 1, name: 'Elongación de glúteos', kind: 'elongation', minutes: null, distance_m: null, speed_kph: null, muscle_group: 'gluteos', video_url: null, created_at: now, updated_at: now },
-    { id: 9, owner_id: 1, name: 'Ritmo continuo 3K', kind: 'cruising', minutes: null, distance_m: 3000, speed_kph: 10, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 10, owner_id: 1, name: 'Ritmo continuo 5K', kind: 'cruising', minutes: null, distance_m: 5000, speed_kph: 10.5, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 11, owner_id: 1, name: 'Rodaje suave 8K', kind: 'cruising', minutes: null, distance_m: 8000, speed_kph: 9.5, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 12, owner_id: 1, name: 'Series 400m fuertes', kind: 'running', minutes: null, distance_m: 400, speed_kph: 14, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 13, owner_id: 1, name: 'Series 200m explosivas', kind: 'running', minutes: null, distance_m: 200, speed_kph: 16, muscle_group: null, video_url: null, created_at: now, updated_at: now },
-    { id: 14, owner_id: 1, name: 'Series 1000m ritmo umbral', kind: 'running', minutes: null, distance_m: 1000, speed_kph: 13, muscle_group: null, video_url: null, created_at: now, updated_at: now },
+  const rows = [
+    { id: 1, kind: 'walking', intensity: 'light', minutes: 5, distanceM: null, speedKph: null, muscleGroup: null },
+    { id: 2, kind: 'walking', intensity: 'moderate', minutes: 8, distanceM: null, speedKph: null, muscleGroup: null },
+    { id: 3, kind: 'jogging', intensity: 'light', minutes: 20, distanceM: null, speedKph: null, muscleGroup: null },
+    { id: 4, kind: 'jogging', intensity: 'light', minutes: null, distanceM: 3000, speedKph: null, muscleGroup: null }, // "Trote suave 3km" — el ejemplo original del usuario
+    { id: 5, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'isquiotibiales' },
+    { id: 6, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'cuadriceps' },
+    { id: 7, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'gemelos' },
+    { id: 8, kind: 'elongation', intensity: null, minutes: null, distanceM: null, speedKph: null, muscleGroup: 'gluteos' },
+    { id: 9, kind: 'cruising', intensity: 'moderate', minutes: null, distanceM: 3000, speedKph: 10, muscleGroup: null },
+    { id: 10, kind: 'cruising', intensity: 'moderate', minutes: null, distanceM: 5000, speedKph: 10.5, muscleGroup: null },
+    { id: 11, kind: 'cruising', intensity: 'light', minutes: null, distanceM: 8000, speedKph: 9.5, muscleGroup: null },
+    { id: 12, kind: 'running', intensity: 'vigorous', minutes: null, distanceM: 400, speedKph: 14, muscleGroup: null },
+    { id: 13, kind: 'running', intensity: 'vigorous', minutes: null, distanceM: 200, speedKph: 16, muscleGroup: null },
+    { id: 14, kind: 'running', intensity: 'moderate', minutes: null, distanceM: 1000, speedKph: 13, muscleGroup: null },
   ];
+  return rows.map((r) => ({
+    id: r.id, owner_id: 1, name: buildSeedName(r), kind: r.kind, intensity: r.intensity,
+    minutes: r.minutes, distance_m: r.distanceM, speed_kph: r.speedKph, muscle_group: r.muscleGroup,
+    video_url: null, created_at: now, updated_at: now,
+  }));
 }
 
 let mockExercises = buildSeedExercises();
@@ -65,6 +113,7 @@ export async function mockCreateExercise(payload) {
     owner_id: payload.owner_id,
     name: payload.name,
     kind: payload.kind,
+    intensity: payload.intensity ?? null,
     minutes: payload.minutes ?? null,
     distance_m: payload.distance_m ?? null,
     speed_kph: payload.speed_kph ?? null,

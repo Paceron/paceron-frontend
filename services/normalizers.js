@@ -274,6 +274,7 @@ export function toExerciseModel(dto) {
     ownerId: dto.owner_id,
     name: dto.name,
     kind: dto.kind,
+    intensity: dto.intensity ?? null,
     minutes: dto.minutes ?? null,
     distanceM: dto.distance_m ?? null,
     speedKph: dto.speed_kph ?? null,
@@ -286,6 +287,7 @@ export function toExerciseModel(dto) {
 
 export function toCreateExercisePayload(form) {
   const payload = { owner_id: form.ownerId, name: form.name, kind: form.kind };
+  if (form.intensity != null) payload.intensity = form.intensity;
   if (form.minutes != null) payload.minutes = form.minutes;
   if (form.distanceM != null) payload.distance_m = form.distanceM;
   if (form.speedKph != null) payload.speed_kph = form.speedKph;
