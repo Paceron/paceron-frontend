@@ -13,10 +13,15 @@ import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
-import { Row, Col, InputField, DateField, SelectField, PickerField } from '../forms/fields.jsx';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
+import { Row, Col, InputField, DateField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { changePassword } from '../../services/user.js';
 
 // DD/MM/YYYY -> YYYY-MM-DD para el <input type="date"> de web.
@@ -111,6 +116,12 @@ function EditProfileForm({ user }) {
     number: user.number,
   });
 
+  const isDirty = useFormDirty({
+    firstName, lastName, dni, birthDate, email, phone, phoneContact, trainerAlias,
+    country: address.country, province: address.province, city: address.city, street: address.street, number: address.number,
+  });
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+
   const emailChanged = email.trim().toLowerCase() !== (user.email ?? '').toLowerCase();
 
   const emailError = touched.email && !email
@@ -174,12 +185,15 @@ function EditProfileForm({ user }) {
         emailChanged ? currentPassword : undefined,
       );
       if (result.success) {
+        notifySuccess();
         Toast.show({ type: 'success', text1: 'Datos actualizados', text2: 'Tu perfil se guardó correctamente.' });
         router.replace('/profile');
       } else {
+        notifyError();
         Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudieron guardar los cambios.' });
       }
     } catch {
+      notifyError();
       Toast.show({ type: 'error', text1: 'Error de conexión', text2: 'Intentá de nuevo más tarde.' });
     } finally {
       setLoading(false);
@@ -187,6 +201,7 @@ function EditProfileForm({ user }) {
   };
 
   return (
+    <>
     <KeyboardAwareScrollView
       nativeID="edit-profile-screen-scroll"
       testID="edit-profile-screen-scroll"
@@ -203,7 +218,7 @@ function EditProfileForm({ user }) {
             nativeID="edit-profile-screen-back-button"
             testID="edit-profile-screen-back-button"
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
-            onPress={() => router.replace('/profile')}
+            onPress={() => guardedClose(() => router.replace('/profile'))}
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
             <Text nativeID="edit-profile-screen-back-label" testID="edit-profile-screen-back-label" className="text-sm font-medium text-slate-500 dark:text-slate-400">Mi perfil</Text>
@@ -330,25 +345,13 @@ function EditProfileForm({ user }) {
         <SectionCard icon="map-marker" title="Dirección">
         <Row>
           <Col>
-            {isWeb ? (
-              <SelectField label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Seleccioná un país" value={address.country} />
-            ) : (
-              <PickerField label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Seleccioná un país" value={address.country} />
-            )}
+            <ResponsiveSelectField label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Seleccioná un país" value={address.country} />
           </Col>
           <Col>
-            {isWeb ? (
-              <SelectField disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={address.province} />
-            ) : (
-              <PickerField disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={address.province} />
-            )}
+            <ResponsiveSelectField disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={address.province} />
           </Col>
           <Col>
-            {isWeb ? (
-              <SelectField disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={address.city} />
-            ) : (
-              <PickerField disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={address.city} />
-            )}
+            <ResponsiveSelectField disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={address.city} />
           </Col>
         </Row>
         <Row>
@@ -415,6 +418,8 @@ function EditProfileForm({ user }) {
         {activeTab === 'password' && <ChangePasswordSection userId={user.userId} />}
       </View>
     </KeyboardAwareScrollView>
+    <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
+    </>
   );
 }
 

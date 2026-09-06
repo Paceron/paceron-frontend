@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -7,10 +7,14 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 // Formulario chico: nombre + descripción + plan de entrenamiento — mismos
 // campos que ya usa GroupListEditor para agregar un grupo nuevo (la
@@ -37,6 +41,9 @@ function EditGroupScreenContent({ teamId, groupId }) {
   const [submitting, setSubmitting] = useState(false);
   const [loadingTeam, setLoadingTeam] = useState(!team);
   const [loadingGroups, setLoadingGroups] = useState(true);
+
+  const isDirty = useFormDirty({ name, description, trainingPlanId });
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
 
   // Entrar por deep-link (ej. recargar /teams/{id}/groups/{groupId}/edit
   // directo) puede caer acá antes de que el equipo esté en el store —
@@ -66,8 +73,10 @@ function EditGroupScreenContent({ teamId, groupId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, user?.userId]);
 
+  const seededRef = useRef(false);
   useEffect(() => {
-    if (group) {
+    if (group && !seededRef.current) {
+      seededRef.current = true;
       setName(group.name);
       setDescription(group.description ?? '');
       setTrainingPlanId(group.trainingPlanId ?? '');
@@ -91,7 +100,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
         <Pressable
           className="h-11 flex-row items-center gap-2 rounded-full bg-primary px-6 active:opacity-80"
           nativeID="edit-group-not-found-back-button"
-          onPress={() => router.back()}
+          onPress={() => guardedClose(() => router.back())}
           testID="edit-group-not-found-back-button"
         >
           <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-group-not-found-back-button-label" testID="edit-group-not-found-back-button-label">
@@ -118,14 +127,17 @@ function EditGroupScreenContent({ teamId, groupId }) {
     const result = await updateGroupReal(teamId, groupId, { name: trimmed, description: description.trim() || null });
     setSubmitting(false);
     if (!result.success) {
+      notifyError();
       Toast.show({ type: 'error', text1: 'No pudimos actualizar el grupo', text2: result.error });
       return;
     }
+    notifySuccess();
     Toast.show({ type: 'success', text1: 'Grupo actualizado' });
     router.back();
   };
 
   return (
+    <>
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
@@ -138,7 +150,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="edit-group-screen-back-button"
-            onPress={() => router.back()}
+            onPress={() => guardedClose(() => router.back())}
             testID="edit-group-screen-back-button"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
@@ -174,6 +186,8 @@ function EditGroupScreenContent({ teamId, groupId }) {
         </SectionCard>
       </View>
     </ScrollView>
+    <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
+    </>
   );
 }
 

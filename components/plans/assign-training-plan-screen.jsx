@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { PickerField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 const TARGET_TYPE_OPTIONS = [
@@ -39,6 +44,9 @@ function AssignTrainingPlanScreenContent({ planId }) {
   const [runnerId, setRunnerId] = useState('');
   const [assigning, setAssigning] = useState(false);
 
+  const isDirty = useFormDirty({ teamId, groupId, runnerId });
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+
   useEffect(() => {
     let cancelled = false;
     setLoadingTeams(true);
@@ -59,6 +67,14 @@ function AssignTrainingPlanScreenContent({ planId }) {
     targetType === 'runner' ? teamId : null,
     selectedTeam?.groups.map((g) => g.id) ?? [],
   );
+
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    fetchTeams(),
+    teamId && user?.userId ? fetchGroups(teamId, user.userId) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['team-users', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['group-users'] }),
+  ]));
 
   const groupOptions = (selectedTeam?.groups ?? []).map((g) => ({ id: g.id, name: g.name }));
   const runnerOptions = roster.map((m) => ({ id: m.userId, name: m.name }));
@@ -87,19 +103,23 @@ function AssignTrainingPlanScreenContent({ planId }) {
     setAssigning(false);
 
     if (!result.success) {
+      notifyError();
       Toast.show({ type: 'error', text1: 'No pudimos asignar el plan', text2: result.error });
       return;
     }
 
+    notifySuccess();
     Toast.show({ type: 'success', text1: 'Plan asignado' });
     router.back();
   };
 
   return (
+    <>
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="assign-training-plan-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="assign-training-plan-screen-scroll"
     >
@@ -108,7 +128,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="assign-training-plan-screen-back-button"
-            onPress={() => router.back()}
+            onPress={() => guardedClose(() => router.back())}
             testID="assign-training-plan-screen-back-button"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
@@ -141,7 +161,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
 
               {teamId && (
                 <>
-                  <PickerField dense label="Asignar a" onChange={setTargetType} options={TARGET_TYPE_OPTIONS} required value={targetType} />
+                  <ResponsiveSelectField dense label="Asignar a" onChange={setTargetType} options={TARGET_TYPE_OPTIONS} required value={targetType} />
 
                   {targetType === 'group' ? (
                     <ResponsiveSelectField
@@ -196,6 +216,8 @@ function AssignTrainingPlanScreenContent({ planId }) {
         )}
       </View>
     </ScrollView>
+    <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
+    </>
   );
 }
 

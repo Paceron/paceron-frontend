@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { useTeamSearch } from '../../hooks/use-team-search.js';
 import { useMyJoinRequests, useJoinRequestMutations } from '../../hooks/use-join-requests.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { PickerField, SelectField, Row, Col } from '../forms/fields.jsx';
+import { Row, Col } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { LEVEL_OPTIONS } from './team-general-info-fields.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -30,26 +34,28 @@ function TeamSearchResultCard({ team, onRequest, requesting }) {
   const locationLine = [team.city, team.province ? getProvinceName(team.country, team.province) : null, team.country ? getCountryName(team.country) : null].filter(Boolean).join(', ');
 
   return (
-    <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <AvatarPicker fallbackIcon="account-group" idPrefix={`${idPrefix}-avatar`} size={44} uri={team.iconUrl} />
-      <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
-          {team.name}
-        </Text>
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-meta`} testID={`${idPrefix}-meta`}>
-          {LEVEL_OPTIONS.find((l) => l.id === team.level)?.name ?? team.level ?? '—'} · {locationLine || '—'} · {team.memberCount}/{team.maxMembers}
-        </Text>
-        {team.ownerName && (
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-owner`} testID={`${idPrefix}-owner`}>
-            Entrenador: {team.ownerName}
+    <View className="w-full gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:w-[calc(50%-6px)] xl:w-[calc(33.333%-8px)] dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <View className="flex-row items-center gap-3" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+        <AvatarPicker idPrefix={`${idPrefix}-avatar`} placeholder="team" size={44} uri={team.iconUrl} />
+        <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
+          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
+            {team.name}
           </Text>
-        )}
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-meta`} testID={`${idPrefix}-meta`}>
+            {LEVEL_OPTIONS.find((l) => l.id === team.level)?.name ?? team.level ?? '—'} · {locationLine || '—'} · {team.memberCount}/{team.maxMembers}
+          </Text>
+          {team.ownerName && (
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-owner`} testID={`${idPrefix}-owner`}>
+              Entrenador: {team.ownerName}
+            </Text>
+          )}
+        </View>
       </View>
       {(() => {
         const state = buttonState(team, onRequest.myPendingTeamIds);
         return (
           <Pressable
-            className={`h-10 flex-row items-center justify-center rounded-full px-4 ${state.disabled ? 'bg-slate-200 dark:bg-slate-700' : 'bg-primary hover:opacity-90 active:opacity-80'}`}
+            className={`h-10 w-full flex-row items-center justify-center rounded-full px-4 ${state.disabled ? 'bg-slate-200 dark:bg-slate-700' : 'bg-primary hover:opacity-90 active:opacity-80'}`}
             disabled={state.disabled || requesting}
             nativeID={`${idPrefix}-request-button`}
             onPress={() => onRequest.handle(team.id)}
@@ -116,6 +122,12 @@ function TeamSearchScreenContent() {
     setFiltersCollapsed(true);
   };
 
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    searched ? search({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['join-requests-mine'] }),
+  ]));
+
   const handleRequest = async (teamId) => {
     setRequestingTeamId(teamId);
     try {
@@ -128,7 +140,7 @@ function TeamSearchScreenContent() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="team-search-screen-scroll" showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="team-search-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="team-search-screen-container" testID="team-search-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="team-search-screen-header" testID="team-search-screen-header">
           <Pressable className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70" nativeID="team-search-screen-back-button" onPress={() => router.back()} testID="team-search-screen-back-button">
@@ -139,7 +151,7 @@ function TeamSearchScreenContent() {
           </Text>
         </View>
 
-        <SectionCard collapsed={filtersCollapsed} collapsible icon="magnify" onToggle={() => setFiltersCollapsed((v) => !v)} title="Filtros">
+        <SectionCard collapsed={filtersCollapsed} collapsible icon="magnify" onToggle={() => setFiltersCollapsed((v) => !v)} scope="team-search-filters-section" title="Filtros">
           <View className="flex-row items-center gap-2" nativeID="team-search-quick-row" testID="team-search-quick-row">
             <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-search-name-wrapper" testID="team-search-name-wrapper">
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
@@ -177,30 +189,18 @@ function TeamSearchScreenContent() {
             <View className="mt-3" nativeID="team-search-advanced-fields" testID="team-search-advanced-fields">
               <Row>
                 <Col>
-                  <PickerField dense label="Nivel" onChange={setLevel} options={LEVEL_OPTIONS} placeholder="Cualquiera" value={level} />
+                  <ResponsiveSelectField dense label="Nivel" onChange={setLevel} options={LEVEL_OPTIONS} placeholder="Cualquiera" value={level} />
                 </Col>
                 <Col>
-                  {isWeb ? (
-                    <SelectField dense label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Cualquiera" value={address.country} />
-                  ) : (
-                    <PickerField dense label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Cualquiera" value={address.country} />
-                  )}
+                  <ResponsiveSelectField dense label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Cualquiera" value={address.country} />
                 </Col>
               </Row>
               <Row>
                 <Col>
-                  {isWeb ? (
-                    <SelectField dense disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Cualquiera' : 'Elegí un país'} value={address.province} />
-                  ) : (
-                    <PickerField dense disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Cualquiera' : 'Elegí un país'} value={address.province} />
-                  )}
+                  <ResponsiveSelectField dense disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Cualquiera' : 'Elegí un país'} value={address.province} />
                 </Col>
                 <Col>
-                  {isWeb ? (
-                    <SelectField dense disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Cualquiera' : 'Elegí una provincia'} value={address.city} />
-                  ) : (
-                    <PickerField dense disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Cualquiera' : 'Elegí una provincia'} value={address.city} />
-                  )}
+                  <ResponsiveSelectField dense disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Cualquiera' : 'Elegí una provincia'} value={address.city} />
                 </Col>
               </Row>
             </View>
@@ -209,8 +209,16 @@ function TeamSearchScreenContent() {
 
         {searched && (
           loading && visibleResults.length === 0 ? (
-            <View className="items-center py-6" nativeID="team-search-loading" testID="team-search-loading">
-              <ActivityIndicator color={colors.primary} />
+            <View className="flex-row flex-wrap gap-3" nativeID="team-search-loading" testID="team-search-loading">
+              {[0, 1].map((i) => (
+                <View className="w-full gap-3 rounded-xl border border-slate-200 p-4 lg:w-[calc(50%-6px)] xl:w-[calc(33.333%-8px)] dark:border-slate-700" key={i} nativeID={`team-search-loading-card-${i}`} testID={`team-search-loading-card-${i}`}>
+                  <View className="flex-row items-center gap-3" nativeID={`team-search-loading-card-${i}-header`} testID={`team-search-loading-card-${i}-header`}>
+                    <SkeletonCircle nativeID={`team-search-loading-card-${i}-avatar`} size={44} testID={`team-search-loading-card-${i}-avatar`} />
+                    <SkeletonBlock height={14} nativeID={`team-search-loading-card-${i}-name`} testID={`team-search-loading-card-${i}-name`} width="70%" />
+                  </View>
+                  <SkeletonBlock height={36} nativeID={`team-search-loading-card-${i}-button`} rounded="rounded-full" testID={`team-search-loading-card-${i}-button`} width="100%" />
+                </View>
+              ))}
             </View>
           ) : visibleResults.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="team-search-empty" testID="team-search-empty">
@@ -218,7 +226,7 @@ function TeamSearchScreenContent() {
             </Text>
           ) : (
             <>
-              <View className="gap-2" nativeID="team-search-results-list" testID="team-search-results-list">
+              <View className="flex-row flex-wrap gap-3" nativeID="team-search-results-list" testID="team-search-results-list">
                 {visibleResults.map((team) => (
                   <TeamSearchResultCard
                     key={team.id}

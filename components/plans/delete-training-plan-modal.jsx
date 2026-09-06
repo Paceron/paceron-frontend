@@ -22,8 +22,8 @@ export function DeleteTrainingPlanModal({ visible, planName, onCancel, onConfirm
 
   return (
     <Modal animationType="fade" nativeID="delete-training-plan-modal" onRequestClose={handleCancel} testID="delete-training-plan-modal" transparent visible={visible}>
-      <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="delete-training-plan-modal-backdrop" testID="delete-training-plan-modal-backdrop">
-        <View className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface" nativeID="delete-training-plan-modal-card" testID="delete-training-plan-modal-card">
+      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="delete-training-plan-modal-backdrop" onPress={handleCancel} testID="delete-training-plan-modal-backdrop">
+        <Pressable className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface" nativeID="delete-training-plan-modal-card" onPress={() => {}} testID="delete-training-plan-modal-card">
           <View className="mb-3 flex-row items-center gap-2" nativeID="delete-training-plan-modal-header" testID="delete-training-plan-modal-header">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text className="text-lg font-bold text-red-700 dark:text-red-400" nativeID="delete-training-plan-modal-title" testID="delete-training-plan-modal-title">Eliminar plan</Text>
@@ -57,8 +57,8 @@ export function DeleteTrainingPlanModal({ visible, planName, onCancel, onConfirm
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

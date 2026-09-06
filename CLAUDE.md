@@ -145,6 +145,45 @@ Convención de nombres: kebab-case, con scope propio del componente/rol (ej. `pr
 
 **Enforcement automático:** regla custom de ESLint (`local/require-native-id`, definida directamente en `eslint.config.js` — no es un paquete separado, solo un plugin inline) falla si falta cualquiera de los dos atributos en alguno de los tags de la lista de arriba. `npm run lint` debe estar en verde antes de mergear, igual que `npm test` — esto incluye código de otros devs (ej. si el compañero tiene una rama en paralelo que no cumple, se corrige al revisar/mergear esa PR). Excepción: un elemento con spread (`{...props}`) no se exige explícitamente, se asume que los ids pueden venir por ahí.
 
+## Selects (`ResponsiveSelectField`)
+
+**Regla estricta:** ningún componente fuera de `components/forms/fields.jsx`/`components/forms/responsive-select-field.jsx` importa `SelectField` (web, `<select>` nativo) o `PickerField` (mobile, modal) directo — siempre `ResponsiveSelectField` (`components/forms/responsive-select-field.jsx`), que resuelve por plataforma internamente. Un ternario `isWeb ? <SelectField/> : <PickerField/>` a mano en un call site es exactamente la duplicación que este componente existe para evitar, y quedarse con uno solo de los dos (sin ternario) rompe el comportamiento correcto en la otra plataforma — bug real encontrado 2 veces así (`payments-testbed-screen.jsx`, `assign-training-plan-screen.jsx`, PR #106).
+
+**Enforcement automático:** `local/no-direct-select-field` (`eslint.config.js`) — falla si algún archivo fuera de los dos exentos importa `SelectField`/`PickerField` desde `forms/fields.jsx`.
+
+## Modales
+
+**Regla explícita (2026-09-06):** todo `Modal` con backdrop debe cerrarse al clickear afuera de la tarjeta. Antes de esta fecha el comportamiento estaba dividido 10-1 entre los modales del repo sin que nadie lo hubiera decidido a propósito — ver historial de este archivo si hace falta el detalle de esa etapa. La decisión ahora es la contraria a la mayoría implícita que había: cerrar siempre, salvo la única excepción de abajo.
+
+Patrón (ver cualquier modal en `components/team/`, `components/profile/`, `components/plans/` como referencia — todos ya migrados):
+- El backdrop (el `View`/`Pressable` externo, `nativeID="*-modal-backdrop"`) es un `Pressable` con `onPress` apuntando al mismo handler que ya usa `onRequestClose` del `Modal` (normalmente `handleCancel`/`handleClose`, ya con su propio guard de "no cerrar mientras está cargando" si el modal dispara una request).
+- La tarjeta interna (`nativeID="*-modal-card"`) es también un `Pressable`, con `onPress={() => {}}` — un no-op que solo existe para frenar la propagación del click y que tocar el contenido de la tarjeta no dispare el cierre del backdrop (patrón ya establecido en `usage-list-modal.jsx` antes de esta decisión, ahora generalizado a todos).
+- Si el modal ya tiene un guard de "cambios sin guardar" (`useUnsavedChangesGuard`, ver sección siguiente — caso de `create-session-modal.jsx`/`create-exercise-modal.jsx`), el backdrop llama a `guardedClose(onClose)` igual que el botón "Cancelar": clickear afuera con datos sin guardar muestra la confirmación de descarte, no cierra directo.
+
+**Única excepción:** el modal de checkout (`components/payments/checkout-flow.web.jsx`) — perder un pago a mitad de carga por un click accidental es peor que la fricción de un botón de cerrar explícito. Documentado también como comentario en ese archivo.
+
+**Enforcement automático:** `local/require-modal-backdrop-close` (`eslint.config.js`) — para todo `<Modal>`, busca un elemento descendiente con `nativeID` terminado en `-backdrop` y falla si no tiene `onPress`. Lista de exención (`BACKDROP_CLOSE_EXEMPT_FILES` en la misma regla) para el caso de checkout de arriba.
+
+## Forms de edición/creación — guard de cambios sin guardar, haptics, auto-focus
+
+Convención establecida 2026-09-06 (rama `feature/ux-form-interaction-polish`) para todo form que edita o crea un recurso real (equipo, grupo, plan de entrenamiento, perfil, sesión/ejercicio del catálogo, invitaciones en curso). **Excluidas a propósito:** pantallas de autenticación (`login`, `register`, `forgot-password`, `reset-password` — no son "edición de un recurso propio") y la pestaña "Contraseña" de `edit-profile-screen.jsx` (acción de seguridad puntual, no datos que valga la pena proteger de perder).
+
+- **`hooks/use-form-dirty.js`** — `useFormDirty(values, resetKey?)` → `boolean`. Detección de cambios sin librería de forms: cada pantalla arma su propio objeto plano con los campos que le importan; se compara contra un snapshot tomado en el primer render (o recapturado cuando cambia `resetKey`, para modales que se reabren con otro registro sin desmontarse — ver `create-session-modal.jsx`/`create-exercise-modal.jsx` para el caso con `resetKey`, gateado además por `visible` para que un modal cerrado no siga contando como "sucio").
+- **`hooks/use-unsaved-changes-guard.js`** — `useUnsavedChangesGuard(isDirty)` → `{ confirmVisible, guardedClose, confirmDiscard, cancelDiscard }`. Intercepta back nativo/gesto/header vía `usePreventRemove` (de `@react-navigation/native`, ya viene con `expo-router` — no agregar `@react-navigation/core` como dependencia directa) y expone `guardedClose(closeFn)` para botones de back explícitos y para el backdrop de modales (ver sección "Modales" arriba). Incluye un flag interno (`bypassing`) que desarma el guard un render antes de ejecutar la acción confirmada — sin esto, `usePreventRemove` reintercepta su propia navegación redisparada y hace falta confirmar el descarte dos veces (bug real, corregido en el mismo branch).
+- **`components/shared/discard-changes-modal.jsx`** — modal de confirmación compartido ("Salir sin guardar" / "Seguir editando"), mismo patrón visual que los modales de confirmación destructiva pero paleta ámbar (perdés tu trabajo, no se borra nada del servidor).
+- **Haptics** (`utils/haptics.js`, `expo-haptics`, no-op fuera de `isMobile`): `notifySuccess()`/`notifyError()` antes del `Toast` correspondiente en cada submit; `notifyWarning()` al mostrarse un modal de confirmación destructiva.
+- **Auto-focus** (`autoFocus` en `InputField`, prop nativa de `TextInput`): solo en el primer campo de forms de **alta** (nunca edición — forzar foco en una pantalla que abre con datos ya cargados saca al usuario de donde estaba mirando), gateado `!isWeb` (autofocus en web es anti-patrón de accesibilidad conocido).
+
+Sin enforcement automático (comportamiento semántico, no sintáctico) — se verifica en code review y manualmente en preview: escribir en un campo, intentar salir, confirmar que aparece el modal y que "seguir editando" cancela la salida.
+
+## Pull-to-refresh (mobile)
+
+**`hooks/use-pull-to-refresh.js`** — `usePullToRefresh(refreshFn)` → `{ refreshing, onRefresh }`, wrapea cualquier función de refresh async. Cableado en la pantalla vía `refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}` en el `ScrollView` raíz — mismo ternario textual en cada pantalla, no varía. Silencioso ante error (delega al manejo de error de la función de refresh que se le pasa).
+
+**Dónde va:** toda pantalla con contenido "listable" que se puede volver a pedir al backend (listas, detalle de un recurso, roster). **Dónde NO va:** forms de creación, `login`/`register`/`forgot-password`, `settings`, la sidebar — mismo criterio de exclusión que el guard de cambios sin guardar de arriba, más los forms de edición cuyo estado local se resincroniza con cada refetch en vez de sembrarse una sola vez (ver `edit-group-screen.jsx` antes de 2026-09-06: tenía un `useEffect` que pisaba el form con cada cambio de referencia del objeto fuente — bug real, ya corregido con un guard `useRef` de "solo la primera vez"). Antes de sumar pull-to-refresh a un form de edición nuevo, confirmar que su patrón de precarga es `useState` sembrado una sola vez (seguro) y no un `useEffect` que resincroniza en cada render del objeto fuente (inseguro sin el mismo guard).
+
+Sin enforcement automático — criterio a aplicar al revisar cualquier PR que toque una pantalla listable nueva.
+
 ## Backend
 
 - Repo separado (Go/Gin), no vive en este working directory, lo mantiene otra persona del equipo.

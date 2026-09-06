@@ -29,8 +29,8 @@ export function MoveRunnerModal({ visible, runnerName, groups, currentGroupId, o
 
   return (
     <Modal nativeID="move-runner-modal" testID="move-runner-modal" animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View nativeID="move-runner-modal-backdrop" testID="move-runner-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="move-runner-modal-card" testID="move-runner-modal-card" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface">
+      <Pressable nativeID="move-runner-modal-backdrop" onPress={handleCancel} testID="move-runner-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="move-runner-modal-card" onPress={() => {}} testID="move-runner-modal-card" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface">
           <View nativeID="move-runner-modal-header" testID="move-runner-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#111518" name="account-switch-outline" size={20} className="dark:text-white" />
             <Text nativeID="move-runner-modal-title" testID="move-runner-modal-title" className="text-lg font-bold text-slate-900 dark:text-white">Mover de grupo</Text>
@@ -74,8 +74,8 @@ export function MoveRunnerModal({ visible, runnerName, groups, currentGroupId, o
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeamsJoinRequestsMap } from '../../hooks/use-join-requests.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
@@ -21,7 +24,7 @@ function TeamRow({ team, onPress, hasPendingRequests }) {
       testID={`teams-list-team-${team.id}`}
     >
       <View className="relative" nativeID={`teams-list-team-${team.id}-icon`} testID={`teams-list-team-${team.id}-icon`}>
-        <AvatarPicker fallbackIcon="account-group" idPrefix={`teams-list-team-${team.id}-avatar`} size={36} uri={team.iconUrl} />
+        <AvatarPicker idPrefix={`teams-list-team-${team.id}-avatar`} placeholder="team" size={36} uri={team.iconUrl} />
         {hasPendingRequests && (
           <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID={`teams-list-team-${team.id}-pending-dot`} testID={`teams-list-team-${team.id}-pending-dot`} />
         )}
@@ -69,11 +72,18 @@ function TeamsListScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRole, user?.userId]);
 
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    activeRole === 'trainer' ? fetchTeams() : fetchMyMemberTeams(user?.userId),
+    queryClient.invalidateQueries({ queryKey: ['join-requests-team'] }),
+  ]));
+
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="teams-list-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="teams-list-screen-scroll"
     >
@@ -101,12 +111,28 @@ function TeamsListScreenContent() {
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={22} />
             </Pressable>
           )}
+          {canCreateTeam && (
+            <Pressable
+              accessibilityLabel="Crear equipo"
+              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+              nativeID="teams-list-create-button"
+              onPress={() => router.push('/teams/create')}
+              testID="teams-list-create-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
+            </Pressable>
+          )}
         </View>
 
         <SectionCard icon="account-group" title={activeRole === 'trainer' ? 'Equipos que administrás' : 'Equipos en los que participás'}>
           {loading ? (
-            <View className="items-center py-6" nativeID="teams-list-loading" testID="teams-list-loading">
-              <ActivityIndicator color={colors.primary} />
+            <View className="gap-2" nativeID="teams-list-loading" testID="teams-list-loading">
+              {[0, 1, 2].map((i) => (
+                <View className="flex-row items-center gap-3 px-4 py-3" key={i} nativeID={`teams-list-loading-row-${i}`} testID={`teams-list-loading-row-${i}`}>
+                  <SkeletonCircle nativeID={`teams-list-loading-row-${i}-avatar`} size={36} testID={`teams-list-loading-row-${i}-avatar`} />
+                  <SkeletonBlock height={14} nativeID={`teams-list-loading-row-${i}-name`} testID={`teams-list-loading-row-${i}-name`} width="60%" />
+                </View>
+              ))}
             </View>
           ) : myTeams.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="teams-list-empty" testID="teams-list-empty">
@@ -123,20 +149,6 @@ function TeamsListScreenContent() {
                 />
               ))}
             </View>
-          )}
-
-          {canCreateTeam && (
-            <Pressable
-              className="mt-4 h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
-              nativeID="teams-list-create-button"
-              onPress={() => router.push('/teams/create')}
-              testID="teams-list-create-button"
-            >
-              <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={18} />
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="teams-list-create-button-label" testID="teams-list-create-button-label">
-                Crear equipo
-              </Text>
-            </Pressable>
           )}
         </SectionCard>
       </View>

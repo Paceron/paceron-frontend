@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Confirmación de baja: exige tipear el email exacto de la cuenta antes de habilitar
 // el botón destructivo. Evita bajas por click accidental.
@@ -9,6 +10,10 @@ export function DeactivateAccountModal({ visible, userEmail, onCancel, onConfirm
   const colors = useThemeColors();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
+  }, [visible]);
 
   const matches = input.trim().toLowerCase() === (userEmail ?? '').toLowerCase();
 
@@ -27,8 +32,8 @@ export function DeactivateAccountModal({ visible, userEmail, onCancel, onConfirm
 
   return (
     <Modal nativeID="deactivate-account-modal" testID="deactivate-account-modal" animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View nativeID="deactivate-account-modal-backdrop" testID="deactivate-account-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="deactivate-account-modal-card" testID="deactivate-account-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
+      <Pressable nativeID="deactivate-account-modal-backdrop" onPress={handleCancel} testID="deactivate-account-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="deactivate-account-modal-card" onPress={() => {}} testID="deactivate-account-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
           <View nativeID="deactivate-account-modal-header" testID="deactivate-account-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text nativeID="deactivate-account-modal-title" testID="deactivate-account-modal-title" className="text-lg font-bold text-red-700 dark:text-red-400">Confirmar baja de cuenta</Text>
@@ -80,8 +85,8 @@ export function DeactivateAccountModal({ visible, userEmail, onCancel, onConfirm
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

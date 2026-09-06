@@ -187,7 +187,7 @@ function DayRow({ day, sessions, onChangeDay, onRequestCreateSession }) {
 // docs/superpowers/specs/2026-08-26-training-plans-design.md. El botón
 // "Crear sesión" abre un modal (CreateSessionModal) para no perder el
 // plan a medio armar navegando a otra pantalla.
-export function TrainingPlanFormFields({ form, durationOptions }) {
+export function TrainingPlanFormFields({ form, durationOptions, autoFocusName = false }) {
   const user = useAuthStore((s) => s.user);
   const sessions = useSessionStore((s) => s.sessions);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
@@ -209,7 +209,7 @@ export function TrainingPlanFormFields({ form, durationOptions }) {
   return (
     <>
       <SectionCard icon="clipboard-text-outline" title="Datos del plan">
-        <InputField dense error={form.errors.name} label="Nombre del plan" onChange={form.setName} placeholder="Ej. Base 5K — nivel inicial" value={form.name} />
+        <InputField autoFocus={autoFocusName} dense error={form.errors.name} label="Nombre del plan" onChange={form.setName} placeholder="Ej. Base 5K — nivel inicial" value={form.name} />
         <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
         <ResponsiveSelectField
           dense

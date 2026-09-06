@@ -266,7 +266,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow }) {
+export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -291,6 +291,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
         <TextInput
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
+          autoFocus={autoFocus}
           className={INPUT_CLASS}
           editable={!disabled}
           keyboardType={keyboardType}

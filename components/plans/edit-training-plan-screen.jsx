@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useTrainingPlanStore, PLAN_DURATION_OPTIONS } from '../../store/training-plan-store.js';
 import { useTrainingPlanForm } from '../../hooks/use-training-plan-form.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { TrainingPlanFormFields } from './training-plan-form-fields.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 // Separado en dos componentes (igual que EditTeamScreen): este resuelve
 // loading/not-found — el plan puede no estar todavía en el store si se
@@ -70,9 +75,15 @@ function EditTrainingPlanForm({ plan, planId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const updatePlan = useTrainingPlanStore((s) => s.updatePlan);
+  const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
 
   const form = useTrainingPlanForm({ initial: plan });
   const [submitting, setSubmitting] = useState(false);
+
+  const isDirty = useFormDirty({ name: form.name, description: form.description, durationDays: form.durationDays, days: form.days });
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+
+  const { refreshing, onRefresh } = usePullToRefresh(() => fetchPlan(planId));
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -82,59 +93,65 @@ function EditTrainingPlanForm({ plan, planId }) {
     setSubmitting(false);
 
     if (!result.success) {
+      notifyError();
       Toast.show({ type: 'error', text1: 'No pudimos guardar los cambios', text2: result.error });
       return;
     }
 
+    notifySuccess();
     Toast.show({ type: 'success', text1: 'Plan actualizado' });
     router.replace(`/training-plans/${planId}`);
   };
 
   return (
-    <ScrollView
-      className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
-      nativeID="edit-training-plan-screen-scroll"
-      showsVerticalScrollIndicator={false}
-      testID="edit-training-plan-screen-scroll"
-    >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="edit-training-plan-screen-container" testID="edit-training-plan-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="edit-training-plan-screen-header" testID="edit-training-plan-screen-header">
+    <>
+      <ScrollView
+        className="flex-1 bg-paper dark:bg-ink"
+        contentContainerClassName="px-4 py-8"
+        nativeID="edit-training-plan-screen-scroll"
+        refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
+        showsVerticalScrollIndicator={false}
+        testID="edit-training-plan-screen-scroll"
+      >
+        <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="edit-training-plan-screen-container" testID="edit-training-plan-screen-container">
+          <View className="mb-8 flex-row items-center gap-2" nativeID="edit-training-plan-screen-header" testID="edit-training-plan-screen-header">
+            <Pressable
+              className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
+              nativeID="edit-training-plan-screen-back-button"
+              onPress={() => guardedClose(() => router.back())}
+              testID="edit-training-plan-screen-back-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+            </Pressable>
+            <Text className="text-xl text-slate-900 dark:text-white" nativeID="edit-training-plan-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="edit-training-plan-screen-title">
+              Editar plan
+            </Text>
+          </View>
+
+          <TrainingPlanFormFields durationOptions={PLAN_DURATION_OPTIONS} form={form} />
+
           <Pressable
-            className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
-            nativeID="edit-training-plan-screen-back-button"
-            onPress={() => router.back()}
-            testID="edit-training-plan-screen-back-button"
+            className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
+            disabled={submitting}
+            nativeID="edit-training-plan-save-button"
+            onPress={handleSubmit}
+            testID="edit-training-plan-save-button"
           >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+            {submitting ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <>
+                <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-training-plan-save-button-label" testID="edit-training-plan-save-button-label">
+                  Guardar cambios
+                </Text>
+              </>
+            )}
           </Pressable>
-          <Text className="text-xl text-slate-900 dark:text-white" nativeID="edit-training-plan-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="edit-training-plan-screen-title">
-            Editar plan
-          </Text>
         </View>
-
-        <TrainingPlanFormFields durationOptions={PLAN_DURATION_OPTIONS} form={form} />
-
-        <Pressable
-          className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
-          disabled={submitting}
-          nativeID="edit-training-plan-save-button"
-          onPress={handleSubmit}
-          testID="edit-training-plan-save-button"
-        >
-          {submitting ? (
-            <ActivityIndicator color={colors.onPrimary} />
-          ) : (
-            <>
-              <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-training-plan-save-button-label" testID="edit-training-plan-save-button-label">
-                Guardar cambios
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </View>
-    </ScrollView>
+      </ScrollView>
+      <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
+    </>
   );
 }
 

@@ -9,7 +9,8 @@ import { validateDNI } from '../../utils/dni-validators.js';
 import { toRegisterPayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { isWeb } from '../../utils/platform.js';
-import { Row, Col, SelectField, DateField, InputField, PickerField } from '../forms/fields.jsx';
+import { Row, Col, DateField, InputField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
@@ -145,7 +146,7 @@ export function RegisterScreen() {
         Completá tus datos para registrarte en Paceron.
       </Text>
 
-      <SectionCard collapsible collapsed={openSection !== 'personal'} icon="account-details" onToggle={() => toggleSection('personal')} title="Datos personales">
+      <SectionCard collapsible collapsed={openSection !== 'personal'} icon="account-details" onToggle={() => toggleSection('personal')} scope="register-personal-section" title="Datos personales">
         <Row>
           <Col>
             <InputField
@@ -252,68 +253,36 @@ export function RegisterScreen() {
         </Row>
       </SectionCard>
 
-      <SectionCard collapsible collapsed={openSection !== 'address'} icon="map-marker" onToggle={() => toggleSection('address')} title="Dirección">
+      <SectionCard collapsible collapsed={openSection !== 'address'} icon="map-marker" onToggle={() => toggleSection('address')} scope="register-address-section" title="Dirección">
         <Row>
           <Col>
-            {isWeb ? (
-              <SelectField
-                label="País"
-                onChange={handleCountryChange}
-                options={countryOptions}
-                placeholder="Seleccioná un país"
-                value={country}
-              />
-            ) : (
-              <PickerField
-                label="País"
-                onChange={handleCountryChange}
-                options={countryOptions}
-                placeholder="Seleccioná un país"
-                value={country}
-              />
-            )}
+            <ResponsiveSelectField
+              label="País"
+              onChange={handleCountryChange}
+              options={countryOptions}
+              placeholder="Seleccioná un país"
+              value={country}
+            />
           </Col>
           <Col>
-            {isWeb ? (
-              <SelectField
-                disabled={!country}
-                label="Provincia"
-                onChange={handleProvinceChange}
-                options={provinceOptions}
-                placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
-                value={province}
-              />
-            ) : (
-              <PickerField
-                disabled={!country}
-                label="Provincia"
-                onChange={handleProvinceChange}
-                options={provinceOptions}
-                placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
-                value={province}
-              />
-            )}
+            <ResponsiveSelectField
+              disabled={!country}
+              label="Provincia"
+              onChange={handleProvinceChange}
+              options={provinceOptions}
+              placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
+              value={province}
+            />
           </Col>
           <Col>
-            {isWeb ? (
-              <SelectField
-                disabled={!province}
-                label="Localidad"
-                onChange={handleCityChange}
-                options={cityOptions}
-                placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
-                value={city}
-              />
-            ) : (
-              <PickerField
-                disabled={!province}
-                label="Localidad"
-                onChange={handleCityChange}
-                options={cityOptions}
-                placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
-                value={city}
-              />
-            )}
+            <ResponsiveSelectField
+              disabled={!province}
+              label="Localidad"
+              onChange={handleCityChange}
+              options={cityOptions}
+              placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
+              value={city}
+            />
           </Col>
         </Row>
 
@@ -344,7 +313,7 @@ export function RegisterScreen() {
         </Row>
       </SectionCard>
 
-      <SectionCard collapsible collapsed={openSection !== 'password'} icon="lock-outline" onToggle={() => toggleSection('password')} title="Contraseña">
+      <SectionCard collapsible collapsed={openSection !== 'password'} icon="lock-outline" onToggle={() => toggleSection('password')} scope="register-password-section" title="Contraseña">
         <Row>
           <Col>
             <InputField
