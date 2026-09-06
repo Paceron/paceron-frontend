@@ -30,7 +30,7 @@ describe('api client error handling', () => {
     });
 
     await expect(api.get('/auth/user')).rejects.toMatchObject({
-      message: 'Request failed with status 500',
+      message: 'Hubo un problema en el servidor. Probá de nuevo en unos minutos.',
       status: 500,
     });
   });
@@ -45,6 +45,32 @@ describe('api client error handling', () => {
     await expect(api.get('/auth/user')).rejects.toMatchObject({
       message: 'Request failed with status 400',
       status: 400,
+    });
+  });
+
+  test('maps a timeout (AbortError) to a friendly message', async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn((_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        const abortError = new Error('The operation was aborted');
+        abortError.name = 'AbortError';
+        reject(abortError);
+      });
+    }));
+
+    const pending = expect(api.get('/teams')).rejects.toMatchObject({
+      message: 'La conexión tardó demasiado. Probá de nuevo.',
+    });
+    jest.advanceTimersByTime(30000);
+    await pending;
+    jest.useRealTimers();
+  });
+
+  test('maps a network failure (fetch rejects) to a connectivity message', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(api.get('/teams')).rejects.toMatchObject({
+      message: 'No pudimos conectarnos. Revisá tu conexión a internet.',
     });
   });
 });

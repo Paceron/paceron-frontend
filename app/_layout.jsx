@@ -11,6 +11,7 @@ import { toastConfig } from '../components/feedback/paceron-toast.jsx';
 import { useThemeMode } from '../providers/theme-provider.jsx';
 import { RoleSwitchOverlay } from '../components/shell/role-switch-overlay.jsx';
 import { usePushNotifications } from '../hooks/use-push-notifications.js';
+import { ErrorBoundary } from '../components/shared/error-boundary.jsx';
 
 // Fondo del Stack navigator en sí (no del contenido de cada screen). Sin
 // esto, el navigator usa su fondo por defecto (claro) durante la animación
@@ -37,12 +38,14 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
-      <AppProviders>
-        <StackNavigator />
-        <RoleSwitchOverlay />
-        <Toast config={toastConfig} topOffset={56} />
-      </AppProviders>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AppProviders>
+          <StackNavigator />
+          <RoleSwitchOverlay />
+          <Toast config={toastConfig} topOffset={56} />
+        </AppProviders>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

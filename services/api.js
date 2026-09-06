@@ -1,5 +1,8 @@
 import { API_BASE_URL } from '../config/env.js';
 import { useAuthStore } from '../store/auth-store.js';
+import { mapNetworkError, mapHttpErrorMessage } from '../utils/network-errors.js';
+
+const REQUEST_TIMEOUT_MS = 30000;
 
 function buildUrl(path) {
   if (/^https?:\/\//i.test(path)) {
@@ -26,10 +29,20 @@ async function request(path, { _isRetry, skipAuthRefresh, ...fetchOptions } = {}
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(buildUrl(path), {
-    ...fetchOptions,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(buildUrl(path), {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    throw mapNetworkError(err);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // skipAuthRefresh: para endpoints donde un 401 significa "credencial de
   // negocio incorrecta" (ej. confirmar contraseña para activar el rol
@@ -55,14 +68,13 @@ async function request(path, { _isRetry, skipAuthRefresh, ...fetchOptions } = {}
   }
 
   if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
+    let body = null;
     try {
-      const body = await response.json();
-      if (body?.message) message = body.message;
+      body = await response.json();
     } catch {
       // sin cuerpo JSON — se usa el mensaje por defecto
     }
-    const error = new Error(message);
+    const error = new Error(mapHttpErrorMessage(response.status, body?.message));
     error.status = response.status;
     throw error;
   }
