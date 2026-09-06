@@ -11,7 +11,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "eas:build:preview": "npx eas-cli build --platform android --profile preview",
+    "eas:build:android:preview:local": "mkdir -p builds && npx eas-cli build --platform android --profile preview --local --output ./builds/paceron-preview-v$npm_package_version.apk",
     "eas:build:production": "npx eas-cli build --platform android --profile production",
+    "eas:build:android:production:local": "mkdir -p builds && npx eas-cli build --platform android --profile production --local --output ./builds/paceron-production-v$npm_package_version.apk",
     "eas:deploy:develop": "npx eas-cli workflow:run .eas/workflows/deploy-develop.yml",
     "eas:deploy:production": "npx eas-cli workflow:run .eas/workflows/deploy-production.yml",
     "lint": "expo lint"
