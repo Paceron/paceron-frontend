@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTrainingPlanStore, getPlanStatus, getPlanDaysRemaining } from '../../store/training-plan-store.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TodaySessionHero } from './today-session-hero.jsx';
 
@@ -132,6 +134,8 @@ function MyPlansScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId]);
 
+  const { refreshing, onRefresh } = usePullToRefresh(() => (user?.userId ? fetchMyPlans(user.userId) : Promise.resolve()));
+
   const currentPlans = myCurrentPlanIds.map((id) => myPlans.find((p) => p.id === id)).filter(Boolean);
   const atCurrentLimit = myCurrentPlanIds.length >= MAX_CURRENT_PLANS;
 
@@ -153,6 +157,7 @@ function MyPlansScreenContent() {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="my-plans-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="my-plans-screen-scroll"
     >
@@ -179,8 +184,8 @@ function MyPlansScreenContent() {
 
         <SectionCard icon="clipboard-text-outline" title="Tus planes asignados">
           {loading ? (
-            <View className="items-center py-6" nativeID="my-plans-loading" testID="my-plans-loading">
-              <ActivityIndicator color={colors.primary} />
+            <View className="gap-2" nativeID="my-plans-loading" testID="my-plans-loading">
+              {[0, 1, 2].map((i) => <SkeletonBlock height={48} key={i} nativeID={`my-plans-loading-row-${i}`} testID={`my-plans-loading-row-${i}`} width="100%" />)}
             </View>
           ) : myPlans.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="my-plans-empty" testID="my-plans-empty">

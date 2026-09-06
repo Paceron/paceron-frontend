@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTrainingPlanStore, getPlanStatus, dayLabel } from '../../store/training-plan-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
@@ -157,6 +158,11 @@ function TrainingPlanDetailScreenContent({ planId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
 
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    fetchPlan(planId),
+    plan?.ownerId ? Promise.all([fetchSessions(plan.ownerId), fetchExercises(plan.ownerId)]) : Promise.resolve(),
+  ]));
+
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="training-plan-detail-loading" testID="training-plan-detail-loading">
@@ -222,6 +228,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="training-plan-detail-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="training-plan-detail-screen-scroll"
     >

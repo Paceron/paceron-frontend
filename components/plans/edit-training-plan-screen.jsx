@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useTrainingPlanStore, PLAN_DURATION_OPTIONS } from '../../store/training-plan-store.js';
 import { useTrainingPlanForm } from '../../hooks/use-training-plan-form.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { TrainingPlanFormFields } from './training-plan-form-fields.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
@@ -70,9 +71,12 @@ function EditTrainingPlanForm({ plan, planId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const updatePlan = useTrainingPlanStore((s) => s.updatePlan);
+  const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
 
   const form = useTrainingPlanForm({ initial: plan });
   const [submitting, setSubmitting] = useState(false);
+
+  const { refreshing, onRefresh } = usePullToRefresh(() => fetchPlan(planId));
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -95,6 +99,7 @@ function EditTrainingPlanForm({ plan, planId }) {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="edit-training-plan-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="edit-training-plan-screen-scroll"
     >

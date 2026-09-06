@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTierSubscription } from '../../hooks/use-tier-subscription.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { listTiers } from '../../services/tiers.js';
 import { createPreference } from '../../services/payments.js';
 import { toTierModel, toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
@@ -140,13 +141,15 @@ export function TierUpgradeScreen() {
   const currentTierName = roles.find((r) => r.name === currentRoleName)?.tier;
   const currentRoleId = roles.find((r) => r.name === currentRoleName)?.id;
 
-  const { data: tierDtos, isLoading: loadingTiers } = useQuery({
+  const { data: tierDtos, isLoading: loadingTiers, refetch: refetchTiers } = useQuery({
     queryKey: ['tiers-catalog', currentRoleId],
     queryFn: () => listTiers({ roleId: currentRoleId }),
   });
   const tiers = (tierDtos ?? []).map(toTierModel);
 
   const { subscription, refetchSubscription, changeTier, isChangingTier } = useTierSubscription(user?.userId, currentRoleId);
+
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([refetchTiers(), refetchSubscription()]));
 
   const [processingTierId, setProcessingTierId] = useState(null);
   const [checkoutData, setCheckoutData] = useState(null);
@@ -226,6 +229,7 @@ export function TierUpgradeScreen() {
       testID="tier-upgrade-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
     >
       <View nativeID="tier-upgrade-screen-container" testID="tier-upgrade-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>

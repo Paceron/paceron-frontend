@@ -1,8 +1,10 @@
 // components/shared/avatar-picker.jsx
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { TeamPlaceholderArt } from './team-placeholder-art.jsx';
 
 // Avatar circular con foto real (si hay `uri`), iniciales (si hay `initials`
 // y no hay foto) o ícono default — compartido entre foto de perfil
@@ -15,7 +17,7 @@ import { useThemeColors } from '../../theme/colors.js';
 // Supabase mientras no estuvo configurado como público (ver
 // docs/superpowers/specs/2026-09-03-profile-team-photo-upload-design.md)
 // cayendo a iniciales/ícono en vez de mostrar una imagen rota.
-export function AvatarPicker({ uri, onPick, onRemove, loading = false, size = 64, fallbackIcon, initials, idPrefix, accessibilityLabel }) {
+export function AvatarPicker({ uri, onPick, onRemove, loading = false, size = 64, fallbackIcon, initials, placeholder, idPrefix, accessibilityLabel }) {
   const colors = useThemeColors();
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -57,6 +59,8 @@ export function AvatarPicker({ uri, onPick, onRemove, loading = false, size = 64
           >
             {initials}
           </Text>
+        ) : placeholder === 'team' ? (
+          <TeamPlaceholderArt size={size} />
         ) : (
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name={fallbackIcon} size={size * 0.5} />
         )}

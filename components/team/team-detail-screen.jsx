@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { removeTeamUser } from '../../services/teams.js';
 import { removeGroupUser, addGroupUser } from '../../services/groups.js';
 import { getUser } from '../../services/auth.js';
@@ -21,6 +22,7 @@ import { InputField, InlinePicker, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
@@ -777,6 +779,15 @@ function TeamDetailScreenContent({ teamId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, user?.userId]);
 
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    fetchTeam(teamId),
+    user?.userId ? fetchGroups(teamId, user.userId) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['team-users', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['group-users'] }),
+    queryClient.invalidateQueries({ queryKey: ['join-requests-team', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['users-batch', teamId] }),
+  ]));
+
   // Sin la opción sintética "Todos los grupos" — InlinePicker ya resuelve
   // el "sin filtro" con su propio placeholder (showPlaceholderOption).
   const groupOptions = useMemo(() => (team ? team.groups.map((g) => ({ id: g.id, name: g.name })) : []), [team]);
@@ -897,8 +908,13 @@ function TeamDetailScreenContent({ teamId }) {
       )}
 
       {loadingRoster ? (
-        <View className="items-center py-4" nativeID="team-detail-runners-loading" testID="team-detail-runners-loading">
-          <ActivityIndicator color={colors.primary} />
+        <View className="gap-2" nativeID="team-detail-runners-loading" testID="team-detail-runners-loading">
+          {[0, 1, 2].map((i) => (
+            <View className="flex-row items-center gap-3 px-4 py-3" key={i} nativeID={`team-detail-runners-loading-row-${i}`} testID={`team-detail-runners-loading-row-${i}`}>
+              <SkeletonCircle nativeID={`team-detail-runners-loading-row-${i}-avatar`} size={36} testID={`team-detail-runners-loading-row-${i}-avatar`} />
+              <SkeletonBlock height={14} nativeID={`team-detail-runners-loading-row-${i}-name`} testID={`team-detail-runners-loading-row-${i}-name`} width="50%" />
+            </View>
+          ))}
         </View>
       ) : members.length === 0 ? (
         <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
@@ -1024,6 +1040,7 @@ function TeamDetailScreenContent({ teamId }) {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="team-detail-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="team-detail-screen-scroll"
     >
@@ -1043,11 +1060,11 @@ function TeamDetailScreenContent({ teamId }) {
         <View className="mb-5 flex-row items-start gap-4" nativeID="team-detail-header" testID="team-detail-header">
           <AvatarPicker
             accessibilityLabel={`Ícono de ${team.name}`}
-            fallbackIcon="account-group"
             idPrefix="team-detail-photo"
             loading={iconUploading}
             onPick={canDeleteTeam ? handlePickIcon : undefined}
             onRemove={canDeleteTeam ? handleRemoveIcon : undefined}
+            placeholder="team"
             size={64}
             uri={team.iconUrl}
           />
