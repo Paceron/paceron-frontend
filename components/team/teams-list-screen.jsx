@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
@@ -71,7 +72,11 @@ function TeamsListScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRole, user?.userId]);
 
-  const { refreshing, onRefresh } = usePullToRefresh(() => (activeRole === 'trainer' ? fetchTeams() : fetchMyMemberTeams(user?.userId)));
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    activeRole === 'trainer' ? fetchTeams() : fetchMyMemberTeams(user?.userId),
+    queryClient.invalidateQueries({ queryKey: ['join-requests-team'] }),
+  ]));
 
   return (
     <ScrollView

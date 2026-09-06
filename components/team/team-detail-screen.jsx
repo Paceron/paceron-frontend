@@ -785,6 +785,7 @@ function TeamDetailScreenContent({ teamId }) {
     queryClient.invalidateQueries({ queryKey: ['team-users', teamId] }),
     queryClient.invalidateQueries({ queryKey: ['group-users'] }),
     queryClient.invalidateQueries({ queryKey: ['join-requests-team', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['users-batch', teamId] }),
   ]));
 
   // Sin la opción sintética "Todos los grupos" — InlinePicker ya resuelve

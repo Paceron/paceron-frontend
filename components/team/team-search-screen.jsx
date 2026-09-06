@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -121,10 +122,11 @@ function TeamSearchScreenContent() {
     setFiltersCollapsed(true);
   };
 
-  const { refreshing, onRefresh } = usePullToRefresh(() => {
-    if (!searched) return Promise.resolve();
-    return search({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined });
-  });
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    searched ? search({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['join-requests-mine'] }),
+  ]));
 
   const handleRequest = async (teamId) => {
     setRequestingTeamId(teamId);
