@@ -14,7 +14,11 @@ import {
 
 const SESSION_DTO = {
   id: 1, owner_id: 7, name: 'Fondo suave', description: 'desc',
-  warmup_exercise_id: 1, main_exercise_id: 2, main_repeat_count: 1, main_rest_minutes: 0, cooldown_exercise_id: 3,
+  exercises: [
+    { exercise_id: 1, role: 'warmup', repeat_count: 1, rest_minutes: 0 },
+    { exercise_id: 2, role: 'main', repeat_count: 1, rest_minutes: 0 },
+    { exercise_id: 3, role: 'cooldown', repeat_count: 1, rest_minutes: 0 },
+  ],
   created_at: '', updated_at: '',
 };
 
@@ -32,16 +36,22 @@ describe('session store', () => {
     const { sessions } = useSessionStore.getState();
     expect(sessions).toHaveLength(1);
     expect(sessions[0].id).toBe('1');
-    expect(sessions[0].warmupExerciseId).toBe('1');
-    expect(sessions[0].mainExerciseId).toBe('2');
-    expect(sessions[0].cooldownExerciseId).toBe('3');
+    expect(sessions[0].exercises).toHaveLength(3);
+    expect(sessions[0].exercises[0].exerciseId).toBe('1');
+    expect(sessions[0].exercises[0].role).toBe('warmup');
+    expect(sessions[0].exercises[1].exerciseId).toBe('2');
+    expect(sessions[0].exercises[2].exerciseId).toBe('3');
   });
 
   test('createSession agrega la sesión creada a la lista', async () => {
     createSessionService.mockResolvedValue(SESSION_DTO);
     const result = await useSessionStore.getState().createSession({
       ownerId: 7, name: 'Fondo suave', description: 'desc',
-      warmupExerciseId: '1', mainExerciseId: '2', cooldownExerciseId: '3',
+      exercises: [
+        { exerciseId: '1', role: 'warmup', repeatCount: 1, restMinutes: 0 },
+        { exerciseId: '2', role: 'main', repeatCount: 1, restMinutes: 0 },
+        { exerciseId: '3', role: 'cooldown', repeatCount: 1, restMinutes: 0 },
+      ],
     });
     expect(result.success).toBe(true);
     expect(useSessionStore.getState().sessions).toContainEqual(result.session);
@@ -57,7 +67,12 @@ describe('session store', () => {
     useSessionStore.setState({ sessions: [{ id: '1', name: 'Fondo suave' }] });
     updateSessionService.mockResolvedValue({ ...SESSION_DTO, name: 'Fondo regenerativo' });
     const result = await useSessionStore.getState().updateSession('1', {
-      ownerId: 7, name: 'Fondo regenerativo', warmupExerciseId: '1', mainExerciseId: '2', cooldownExerciseId: '3',
+      ownerId: 7, name: 'Fondo regenerativo',
+      exercises: [
+        { exerciseId: '1', role: 'warmup', repeatCount: 1, restMinutes: 0 },
+        { exerciseId: '2', role: 'main', repeatCount: 1, restMinutes: 0 },
+        { exerciseId: '3', role: 'cooldown', repeatCount: 1, restMinutes: 0 },
+      ],
     });
     expect(result.success).toBe(true);
     expect(result.session.name).toBe('Fondo regenerativo');

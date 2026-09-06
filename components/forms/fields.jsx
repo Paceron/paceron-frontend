@@ -92,7 +92,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
               </option>
             ))}
           </select>
-          {!disabled && !required && value && (
+          {!disabled && !required && Boolean(value) && (
             <Pressable
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full hover:opacity-70"
               onPress={() => onChange('')}
@@ -372,7 +372,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         >
           {selected ? selected.name : placeholder}
         </Text>
-        {!disabled && !required && value && (
+        {!disabled && !required && Boolean(value) && (
           <Pressable
             className="rounded-full hover:opacity-70"
             onPress={() => { onChange(''); setVisible(false); }}
