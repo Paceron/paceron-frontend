@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTrainingPlanStore, getPlanStatus } from '../../store/training-plan-store.js';
+import { useExerciseStore } from '../../store/exercise-store.js';
+import { useSessionStore } from '../../store/session-store.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SessionsCatalogTab } from './sessions-catalog-tab.jsx';
@@ -62,7 +66,6 @@ function PlanRow({ plan, onPress }) {
 
 function PlansTab() {
   const router = useRouter();
-  const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const plans = useTrainingPlanStore((s) => s.plans);
   const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
@@ -95,8 +98,8 @@ function PlansTab() {
       title="Tus planes"
     >
       {loading ? (
-        <View className="items-center py-6" nativeID="training-plans-loading" testID="training-plans-loading">
-          <ActivityIndicator color={colors.primary} />
+        <View className="gap-2" nativeID="training-plans-loading" testID="training-plans-loading">
+          {[0, 1, 2].map((i) => <SkeletonBlock height={48} key={i} nativeID={`training-plans-loading-row-${i}`} testID={`training-plans-loading-row-${i}`} width="100%" />)}
         </View>
       ) : plans.length === 0 ? (
         <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="training-plans-empty" testID="training-plans-empty">
@@ -117,12 +120,21 @@ function TrainingPlansScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const [activeTab, setActiveTab] = useState('planes');
+  const user = useAuthStore((s) => s.user);
+  const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
+  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const { refreshing, onRefresh } = usePullToRefresh(() => {
+    if (!user?.userId) return Promise.resolve();
+    return Promise.all([fetchPlans(user.userId), fetchExercises(user.userId), fetchSessions(user.userId)]);
+  });
 
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="training-plans-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="training-plans-screen-scroll"
     >
