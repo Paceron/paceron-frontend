@@ -62,5 +62,16 @@ export function useUnsavedChangesGuard(isDirty) {
 
   const cancelDiscard = () => setConfirmVisible(false);
 
-  return { confirmVisible, guardedClose, confirmDiscard, cancelDiscard };
+  // Para navegar después de un submit exitoso: el form sigue "sucio" (los
+  // valores no se resetean, no hay razón si nos vamos de la pantalla), así
+  // que sin esto `usePreventRemove` interceptaría esta misma navegación
+  // como si fuera una salida sin confirmar — mismo mecanismo de bypass que
+  // confirmDiscard, pero sin mostrar el modal (acá no hay nada que
+  // descartar, el guardado ya fue exitoso).
+  const bypassGuard = (action) => {
+    pendingActionRef.current = action;
+    setBypassing(true);
+  };
+
+  return { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard };
 }

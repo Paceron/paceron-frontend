@@ -25,7 +25,7 @@ function CreateTrainingPlanScreenContent() {
   const [submitting, setSubmitting] = useState(false);
 
   const isDirty = useFormDirty({ name: form.name, description: form.description, durationDays: form.durationDays, days: form.days });
-  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -42,7 +42,7 @@ function CreateTrainingPlanScreenContent() {
 
     notifySuccess();
     Toast.show({ type: 'success', text1: 'Plan creado' });
-    router.replace(`/training-plans/${result.plan.id}`);
+    bypassGuard(() => router.replace(`/training-plans/${result.plan.id}`));
   };
 
   return (

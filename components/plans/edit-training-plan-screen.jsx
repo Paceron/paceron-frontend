@@ -81,7 +81,7 @@ function EditTrainingPlanForm({ plan, planId }) {
   const [submitting, setSubmitting] = useState(false);
 
   const isDirty = useFormDirty({ name: form.name, description: form.description, durationDays: form.durationDays, days: form.days });
-  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   const { refreshing, onRefresh } = usePullToRefresh(() => fetchPlan(planId));
 
@@ -100,7 +100,7 @@ function EditTrainingPlanForm({ plan, planId }) {
 
     notifySuccess();
     Toast.show({ type: 'success', text1: 'Plan actualizado' });
-    router.replace(`/training-plans/${planId}`);
+    bypassGuard(() => router.replace(`/training-plans/${planId}`));
   };
 
   return (

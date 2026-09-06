@@ -98,7 +98,7 @@ function EditTeamForm({ team, teamId }) {
   const [submitting, setSubmitting] = useState(false);
 
   const isDirty = useFormDirty({ general: generalForm.getValues(), showGroupsToRunners, visible, isPublic });
-  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -119,7 +119,7 @@ function EditTeamForm({ team, teamId }) {
       text1: 'Equipo actualizado',
       text2: result.addressWarning ? 'La dirección no se pudo guardar — probá de nuevo más tarde.' : undefined,
     });
-    router.back();
+    bypassGuard(() => router.back());
   };
 
   return (

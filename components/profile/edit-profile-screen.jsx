@@ -120,7 +120,7 @@ function EditProfileForm({ user }) {
     firstName, lastName, dni, birthDate, email, phone, phoneContact, trainerAlias,
     country: address.country, province: address.province, city: address.city, street: address.street, number: address.number,
   });
-  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   const emailChanged = email.trim().toLowerCase() !== (user.email ?? '').toLowerCase();
 
@@ -187,7 +187,7 @@ function EditProfileForm({ user }) {
       if (result.success) {
         notifySuccess();
         Toast.show({ type: 'success', text1: 'Datos actualizados', text2: 'Tu perfil se guardó correctamente.' });
-        router.replace('/profile');
+        bypassGuard(() => router.replace('/profile'));
       } else {
         notifyError();
         Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'No se pudieron guardar los cambios.' });

@@ -43,7 +43,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
   const [loadingGroups, setLoadingGroups] = useState(true);
 
   const isDirty = useFormDirty({ name, description, trainingPlanId });
-  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   // Entrar por deep-link (ej. recargar /teams/{id}/groups/{groupId}/edit
   // directo) puede caer acá antes de que el equipo esté en el store —
@@ -133,7 +133,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
     }
     notifySuccess();
     Toast.show({ type: 'success', text1: 'Grupo actualizado' });
-    router.back();
+    bypassGuard(() => router.back());
   };
 
   return (

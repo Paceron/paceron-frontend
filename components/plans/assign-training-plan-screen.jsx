@@ -45,7 +45,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
   const [assigning, setAssigning] = useState(false);
 
   const isDirty = useFormDirty({ teamId, groupId, runnerId });
-  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +110,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
 
     notifySuccess();
     Toast.show({ type: 'success', text1: 'Plan asignado' });
-    router.back();
+    bypassGuard(() => router.back());
   };
 
   return (
