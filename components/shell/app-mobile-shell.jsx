@@ -8,11 +8,10 @@ import { getRoutesByRole } from '../../routes/catalog.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
+import { useTeamStore } from '../../store/team-store.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
-import { TeamsAccordion } from './teams-accordion.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
@@ -65,10 +64,6 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const activeRole = useAuthStore((s) => s.activeRole);
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
-  // No alcanza con tener el rol asignado — "Crear equipo" solo tiene
-  // sentido viendo la app como entrenador ahora mismo. Con RoleSwitchToggle
-  // un usuario puede tener ambos roles y estar activo como corredor.
-  const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
 
   // activeRole, no un userRole estático que nunca llegó a existir en el
   // modelo real (el backend no trackea "el" rol, solo el conjunto
@@ -76,32 +71,10 @@ function NavigationDrawer({ open, pathname, onClose }) {
   // al switchear de rol, igual que el resto de los gates de esta pantalla.
   const routes = getRoutesByRole(activeRole);
 
-  const teams = useTeamStore((s) => s.teams);
-  const fetchTeams = useTeamStore((s) => s.fetchTeams);
-  const myMemberTeams = useTeamStore((s) => s.myMemberTeams);
-  const fetchMyMemberTeams = useTeamStore((s) => s.fetchMyMemberTeams);
-  const administeredTeams = selectAdministeredTeams(teams, user?.userId);
-  // Entrenador ve lo que administra, corredor lo que integra — ver
-  // store/team-store.js#fetchMyMemberTeams.
-  const myTeams = activeRole === 'trainer' ? administeredTeams : myMemberTeams;
-  const selectedTeamId = useTeamStore((s) => s.selectedTeamId);
-  const selectTeam = useTeamStore((s) => s.selectTeam);
-  const [teamsExpanded, setTeamsExpanded] = useState(false);
   const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
   const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
   const pendingRequestsCount = usePendingRequestsCount(activeRole === 'trainer');
   const notificationsBadgeCount = activeRole === 'trainer' ? pendingRequestsCount : myInvitationsCount;
-
-  useEffect(() => {
-    fetchTeams();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (activeRole === 'trainer' || !user?.userId) return;
-    fetchMyMemberTeams(user.userId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRole, user?.userId]);
 
   useEffect(() => {
     if (!user?.userId) return undefined;
@@ -126,10 +99,6 @@ function NavigationDrawer({ open, pathname, onClose }) {
     return () => sub.remove();
   }, [open, onClose]);
 
-  useEffect(() => {
-    if (!open) setTeamsExpanded(false);
-  }, [open]);
-
   const drawerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
@@ -137,25 +106,6 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const goTo = (href) => {
     router.push(href);
     onClose();
-  };
-
-  // Sin backend de equipos todavía: elegir un equipo guarda la selección
-  // local y navega a su detalle (/teams/[teamId]); crear equipo navega a
-  // su propia pantalla (/teams/create).
-  const handleSelectTeam = (team) => {
-    selectTeam(team.id);
-    onClose();
-    router.push(`/teams/${team.id}`);
-  };
-
-  const handleCreateTeam = () => {
-    onClose();
-    router.push('/teams/create');
-  };
-
-  const handleViewAllTeams = () => {
-    onClose();
-    router.push('/teams');
   };
 
   // logout() ahora pega al backend (revoca el refresh token) antes de
@@ -259,23 +209,6 @@ function NavigationDrawer({ open, pathname, onClose }) {
                 <ScrollView className="flex-1 px-2 py-4" nativeID="mobile-drawer-routes" testID="mobile-drawer-routes">
                   {routes.map((route) => {
                     if (route.name === 'notifications') return null;
-                    if (route.name === 'teams') {
-                      return (
-                        <TeamsAccordion
-                          key={route.name}
-                          colors={colors}
-                          expanded={teamsExpanded}
-                          icon={route.icon}
-                          label={route.label}
-                          onCreateTeam={canCreateTeam ? handleCreateTeam : undefined}
-                          onSelectTeam={handleSelectTeam}
-                          onToggle={() => setTeamsExpanded((v) => !v)}
-                          onViewAll={handleViewAllTeams}
-                          selectedTeamId={selectedTeamId}
-                          teams={myTeams}
-                        />
-                      );
-                    }
 
                     const isActive = pathname === route.href;
 

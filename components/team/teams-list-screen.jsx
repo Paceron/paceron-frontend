@@ -111,6 +111,17 @@ function TeamsListScreenContent() {
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={22} />
             </Pressable>
           )}
+          {canCreateTeam && (
+            <Pressable
+              accessibilityLabel="Crear equipo"
+              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+              nativeID="teams-list-create-button"
+              onPress={() => router.push('/teams/create')}
+              testID="teams-list-create-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
+            </Pressable>
+          )}
         </View>
 
         <SectionCard icon="account-group" title={activeRole === 'trainer' ? 'Equipos que administrás' : 'Equipos en los que participás'}>
@@ -138,20 +149,6 @@ function TeamsListScreenContent() {
                 />
               ))}
             </View>
-          )}
-
-          {canCreateTeam && (
-            <Pressable
-              className="mt-4 h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
-              nativeID="teams-list-create-button"
-              onPress={() => router.push('/teams/create')}
-              testID="teams-list-create-button"
-            >
-              <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={18} />
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="teams-list-create-button-label" testID="teams-list-create-button-label">
-                Crear equipo
-              </Text>
-            </Pressable>
           )}
         </SectionCard>
       </View>
