@@ -28,8 +28,8 @@ export function DeleteTeamModal({ visible, teamName, onCancel, onConfirm }) {
 
   return (
     <Modal nativeID="delete-team-modal" testID="delete-team-modal" animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View nativeID="delete-team-modal-backdrop" testID="delete-team-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="delete-team-modal-card" testID="delete-team-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
+      <Pressable nativeID="delete-team-modal-backdrop" onPress={handleCancel} testID="delete-team-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="delete-team-modal-card" onPress={() => {}} testID="delete-team-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
           <View nativeID="delete-team-modal-header" testID="delete-team-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text nativeID="delete-team-modal-title" testID="delete-team-modal-title" className="text-lg font-bold text-red-700 dark:text-red-400">Eliminar equipo</Text>
@@ -63,8 +63,8 @@ export function DeleteTeamModal({ visible, teamName, onCancel, onConfirm }) {
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

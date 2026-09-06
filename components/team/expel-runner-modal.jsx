@@ -27,8 +27,8 @@ export function ExpelRunnerModal({ visible, runnerName, onCancel, onConfirm }) {
 
   return (
     <Modal nativeID="expel-runner-modal" testID="expel-runner-modal" animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View nativeID="expel-runner-modal-backdrop" testID="expel-runner-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="expel-runner-modal-card" testID="expel-runner-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
+      <Pressable nativeID="expel-runner-modal-backdrop" onPress={handleCancel} testID="expel-runner-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="expel-runner-modal-card" onPress={() => {}} testID="expel-runner-modal-card" className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface">
           <View nativeID="expel-runner-modal-header" testID="expel-runner-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text nativeID="expel-runner-modal-title" testID="expel-runner-modal-title" className="text-lg font-bold text-red-700 dark:text-red-400">Sacar del equipo</Text>
@@ -62,8 +62,8 @@ export function ExpelRunnerModal({ visible, runnerName, onCancel, onConfirm }) {
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

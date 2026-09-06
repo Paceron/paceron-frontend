@@ -30,8 +30,8 @@ export function ActivateTrainerPasswordModal({ visible, onCancel, onConfirm }) {
 
   return (
     <Modal nativeID="activate-trainer-password-modal" testID="activate-trainer-password-modal" animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View nativeID="activate-trainer-password-modal-backdrop" testID="activate-trainer-password-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="activate-trainer-password-modal-card" testID="activate-trainer-password-modal-card" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface">
+      <Pressable nativeID="activate-trainer-password-modal-backdrop" onPress={handleCancel} testID="activate-trainer-password-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="activate-trainer-password-modal-card" onPress={() => {}} testID="activate-trainer-password-modal-card" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface">
           <View nativeID="activate-trainer-password-modal-header" testID="activate-trainer-password-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color={colors.primary} name="lock-outline" size={20} />
             <Text nativeID="activate-trainer-password-modal-title" testID="activate-trainer-password-modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
@@ -86,8 +86,8 @@ export function ActivateTrainerPasswordModal({ visible, onCancel, onConfirm }) {
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

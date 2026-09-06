@@ -109,6 +109,56 @@ const noDirectSelectFieldRule = {
   },
 };
 
+// Todo <Modal> con un elemento "backdrop" (nativeID que termina en
+// "-backdrop") debe cerrar al clickear afuera — decisión explícita
+// 2026-09-06, ver CLAUDE.md sección "Modales". Único exento: el modal de
+// checkout (pago), donde perder un pago a mitad de carga por un click
+// accidental es peor que la fricción de un botón de cerrar.
+const BACKDROP_CLOSE_EXEMPT_FILES = ['payments/checkout-flow.jsx', 'payments/checkout-flow.web.jsx'];
+
+function findBackdropElements(node, results) {
+  if (!node || node.type !== 'JSXElement') return;
+  const nativeIdAttr = node.openingElement.attributes.find(
+    (a) => a.type === 'JSXAttribute' && a.name.name === 'nativeID'
+  );
+  if (nativeIdAttr?.value?.type === 'Literal' && typeof nativeIdAttr.value.value === 'string' && nativeIdAttr.value.value.endsWith('-backdrop')) {
+    results.push(node.openingElement);
+  }
+  for (const child of node.children) findBackdropElements(child, results);
+}
+
+const requireModalBackdropCloseRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'Requires the Modal backdrop element to have onPress (close on outside click)',
+    },
+    schema: [],
+    messages: {
+      missing: 'El backdrop de este Modal debe tener onPress para cerrar al clickear afuera (ver CLAUDE.md, "Modales").',
+    },
+  },
+  create(context) {
+    const filename = (context.filename ?? context.getFilename()).replace(/\\/g, '/');
+    if (BACKDROP_CLOSE_EXEMPT_FILES.some((f) => filename.endsWith(f))) return {};
+
+    return {
+      JSXElement(node) {
+        if (elementName(node.openingElement) !== 'Modal') return;
+        const backdrops = [];
+        for (const child of node.children) findBackdropElements(child, backdrops);
+        for (const backdrop of backdrops) {
+          const hasOnPress = backdrop.attributes.some((a) => a.type === 'JSXAttribute' && a.name.name === 'onPress');
+          const hasSpread = backdrop.attributes.some((a) => a.type === 'JSXSpreadAttribute');
+          if (!hasOnPress && !hasSpread) {
+            context.report({ node: backdrop, messageId: 'missing' });
+          }
+        }
+      },
+    };
+  },
+};
+
 module.exports = defineConfig([
   expoConfig,
   {
@@ -116,11 +166,18 @@ module.exports = defineConfig([
   },
   {
     plugins: {
-      local: { rules: { 'require-native-id': requireNativeIdRule, 'no-direct-select-field': noDirectSelectFieldRule } },
+      local: {
+        rules: {
+          'require-native-id': requireNativeIdRule,
+          'no-direct-select-field': noDirectSelectFieldRule,
+          'require-modal-backdrop-close': requireModalBackdropCloseRule,
+        },
+      },
     },
     rules: {
       'local/require-native-id': 'error',
       'local/no-direct-select-field': 'error',
+      'local/require-modal-backdrop-close': 'error',
     },
   },
   {

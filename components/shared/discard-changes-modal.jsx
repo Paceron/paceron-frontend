@@ -8,8 +8,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 export function DiscardChangesModal({ visible, onCancel, onConfirm }) {
   return (
     <Modal nativeID="discard-changes-modal" testID="discard-changes-modal" animationType="fade" onRequestClose={onCancel} transparent visible={visible}>
-      <View nativeID="discard-changes-modal-backdrop" testID="discard-changes-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="discard-changes-modal-card" testID="discard-changes-modal-card" className="w-full max-w-md rounded-2xl border border-amber-300 bg-white p-6 shadow-xl dark:border-amber-900/50 dark:bg-surface">
+      <Pressable nativeID="discard-changes-modal-backdrop" onPress={onCancel} testID="discard-changes-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="discard-changes-modal-card" onPress={() => {}} testID="discard-changes-modal-card" className="w-full max-w-md rounded-2xl border border-amber-300 bg-white p-6 shadow-xl dark:border-amber-900/50 dark:bg-surface">
           <View nativeID="discard-changes-modal-header" testID="discard-changes-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#d97706" name="alert-outline" size={20} />
             <Text nativeID="discard-changes-modal-title" testID="discard-changes-modal-title" className="text-lg font-bold text-amber-700 dark:text-amber-400">Salir sin guardar</Text>
@@ -37,8 +37,8 @@ export function DiscardChangesModal({ visible, onCancel, onConfirm }) {
               <Text nativeID="discard-changes-modal-confirm-label" testID="discard-changes-modal-confirm-label" className="text-sm font-semibold uppercase tracking-wide text-white">Salir sin guardar</Text>
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

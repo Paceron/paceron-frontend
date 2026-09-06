@@ -129,8 +129,8 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   return (
     <>
     <Modal animationType="fade" nativeID="create-exercise-modal" onRequestClose={handleClose} testID="create-exercise-modal" transparent visible={visible}>
-      <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-exercise-modal-backdrop" testID="create-exercise-modal-backdrop">
-        <View className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-exercise-modal-card" testID="create-exercise-modal-card">
+      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-exercise-modal-backdrop" onPress={handleClose} testID="create-exercise-modal-backdrop">
+        <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-exercise-modal-card" onPress={() => {}} testID="create-exercise-modal-card">
           <View className="mb-4 flex-row items-center gap-2" nativeID="create-exercise-modal-header" testID="create-exercise-modal-header">
             <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'dumbbell'} size={20} />
             <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-exercise-modal-title" testID="create-exercise-modal-title">
@@ -170,8 +170,8 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>

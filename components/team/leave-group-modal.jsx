@@ -28,8 +28,8 @@ export function LeaveGroupModal({ visible, groupName, onCancel, onConfirm }) {
 
   return (
     <Modal nativeID="leave-group-modal" testID="leave-group-modal" animationType="fade" onRequestClose={handleCancel} transparent visible={visible}>
-      <View nativeID="leave-group-modal-backdrop" testID="leave-group-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View nativeID="leave-group-modal-card" testID="leave-group-modal-card" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface">
+      <Pressable nativeID="leave-group-modal-backdrop" onPress={handleCancel} testID="leave-group-modal-backdrop" className="flex-1 items-center justify-center bg-black/50 px-4">
+        <Pressable nativeID="leave-group-modal-card" onPress={() => {}} testID="leave-group-modal-card" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface">
           <View nativeID="leave-group-modal-header" testID="leave-group-modal-header" className="mb-3 flex-row items-center gap-2">
             <MaterialCommunityIcons color="#ef4444" name="exit-run" size={20} />
             <Text nativeID="leave-group-modal-title" testID="leave-group-modal-title" className="text-lg font-bold text-red-700 dark:text-red-400">Salir del grupo</Text>
@@ -63,8 +63,8 @@ export function LeaveGroupModal({ visible, groupName, onCancel, onConfirm }) {
               )}
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }

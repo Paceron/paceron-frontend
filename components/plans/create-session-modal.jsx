@@ -144,8 +144,8 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   return (
     <>
       <Modal animationType="fade" nativeID="create-session-modal" onRequestClose={handleClose} testID="create-session-modal" transparent visible={visible}>
-        <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" testID="create-session-modal-backdrop">
-          <View className="max-h-[90%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-session-modal-card" testID="create-session-modal-card">
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
+          <Pressable className="max-h-[90%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
             <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
               <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
@@ -225,8 +225,8 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <CreateExerciseModal

@@ -18,14 +18,16 @@ export function TermsModal({ visible, onClose }) {
       transparent
       visible={visible}
     >
-      <View
+      <Pressable
         className="flex-1 items-center justify-center bg-black/50 px-4"
         nativeID="terms-modal-backdrop"
+        onPress={onClose}
         testID="terms-modal-backdrop"
       >
-        <View
+        <Pressable
           className="max-h-[80%] w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-surface"
           nativeID="terms-modal-card"
+          onPress={() => {}}
           testID="terms-modal-card"
         >
           <View
@@ -81,8 +83,8 @@ export function TermsModal({ visible, onClose }) {
               </Text>
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
