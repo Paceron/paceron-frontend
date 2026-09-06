@@ -91,7 +91,7 @@ function CreateTrainingPlanScreenContent() {
           </Pressable>
         </View>
       </ScrollView>
-      <DiscardChangesModal confirmVisible={confirmVisible} onCancel={cancelDiscard} onConfirm={confirmDiscard} />
+      <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );
 }
