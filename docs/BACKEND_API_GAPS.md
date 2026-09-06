@@ -36,6 +36,8 @@ relación nueva, sin ningún equivalente en el backend hoy.
 
 Sin gap abierto de foto de equipo — sigue deliberadamente excluido hasta que el usuario lo retome (ver actualización 2026-08-02 arriba).
 
+**Actualización 2026-09-06:** spec completa de implementación (entidades, tipos, endpoints, reglas de validación, diagrama ER) en `docs/BACKEND_TRAINING_PLANS_SPEC.md` — cubre además Ejercicios y Sesiones (catálogo reusable, ver `docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md`) y "plan actual" (`docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md`), que también corren 100% mockeados hoy.
+
 **Actualización 2026-09-02:** arrancó el trabajo de Fase 0 de pagos (ver
 `docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md`) —
 se abre un gap propio detectado en el camino:
