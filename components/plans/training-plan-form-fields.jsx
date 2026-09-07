@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { isWeb } from '../../utils/platform.js';
@@ -196,8 +197,12 @@ export function TrainingPlanFormFields({ form, durationOptions, autoFocusName = 
 
   useEffect(() => {
     if (!user?.userId) return;
-    fetchSessions(user.userId);
-    fetchExercises(user.userId);
+    fetchSessions(user.userId).then((result) => {
+      if (!result.success) Toast.show({ type: 'error', text1: 'No pudimos cargar las sesiones', text2: result.error });
+    });
+    fetchExercises(user.userId).then((result) => {
+      if (!result.success) Toast.show({ type: 'error', text1: 'No pudimos cargar los ejercicios', text2: result.error });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.userId]);
 

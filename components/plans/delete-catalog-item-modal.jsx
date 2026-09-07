@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CheckboxField } from '../forms/checkbox-field.jsx';
+import { notifyWarning } from '../../utils/haptics.js';
 
 // Modal de borrado reusado por el catálogo de ejercicios y el de
 // sesiones — ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
@@ -17,6 +18,10 @@ export function DeleteCatalogItemModal({ visible, itemKind, itemName, usageLabel
 
   useEffect(() => {
     if (visible) setUnderstood(false);
+  }, [visible]);
+
+  useEffect(() => {
+    if (visible) notifyWarning();
   }, [visible]);
 
   const handleConfirm = async () => {
