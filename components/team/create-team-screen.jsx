@@ -103,7 +103,7 @@ function CreateTeamScreenContent() {
   const [invitedEmails, setInvitedEmails] = useState([]);
 
   const isDirty = useFormDirty({ general: generalForm.getValues(), groups, invitedEmails });
-  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   // EmailInviteForm/InvitedEmailsList (paso 3) esperan que, si el grupo
   // default existe, venga incluido en `groups` — para un equipo ya creado
@@ -166,7 +166,7 @@ function CreateTeamScreenContent() {
           : undefined,
     });
 
-    router.replace(`/teams/${result.team.id}`);
+    bypassGuard(() => router.replace(`/teams/${result.team.id}`));
   };
 
   return (

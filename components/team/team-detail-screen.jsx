@@ -156,23 +156,24 @@ function SeniorityLine({ member, colors, idPrefix }) {
 // stacking context de su propia card: las cards siguientes lo tapan visualmente
 // y no había backdrop para cerrarlo con un click afuera.
 //
-// Usa measureLayout contra `containerRef` (el View raíz de la pantalla,
-// ver TeamDetailScreen) en vez de measureInWindow: React Native Web pone
-// `position: relative` por default en TODOS los Views, así que el panel
-// absoluto (hijo directo de ese mismo View raíz) termina posicionándose
-// relativo a él, no a la ventana. Usar coordenadas de measureInWindow
-// (relativas a la ventana) ahí desalinea el panel hacia abajo — el offset
-// exacto es la distancia entre el View raíz y el borde de la ventana (acá,
-// la altura del header del shell). measureLayout mide directo contra ese
-// mismo View raíz, evitando tener que calcular ese offset a mano.
+// El panel (hijo del View raíz vía AnimatedDropdown) se posiciona relativo
+// a ese mismo View raíz, no a la ventana — así que hace falta el offset del
+// botón respecto al raíz, no su posición absoluta en pantalla.
+// measureInWindow (relativo a la ventana) en el botón y en `containerRef`
+// por separado, restando ambos, da ese offset sin depender de measureLayout
+// — API legacy que en Android con New Architecture (`newArchEnabled` en
+// app.config.js) puede no disparar su callback de éxito ni el de fallo,
+// dejando el tap sin ningún efecto visible (bug real, encontrado en device).
 function RunnerMenu({ member, colors, onOpenMenu, containerRef }) {
   const ref = useRef(null);
 
   const handlePress = () => {
-    if (!containerRef.current) return;
-    ref.current?.measureLayout(containerRef.current, (x, y, width, height) => {
-      onOpenMenu({ x, y, width, height }, member);
-    }, () => {});
+    if (!containerRef.current || !ref.current) return;
+    containerRef.current.measureInWindow((containerX, containerY) => {
+      ref.current?.measureInWindow((x, y, width, height) => {
+        onOpenMenu({ x: x - containerX, y: y - containerY, width, height }, member);
+      });
+    });
   };
 
   return (
@@ -748,11 +749,17 @@ function TeamDetailScreenContent({ teamId }) {
     try {
       await removeGroupUser(myMembership.groupId, myMembership.userId);
       await addGroupUser(team.id, defaultGroup.id, myMembership.userId);
-      invalidateRoster();
       Toast.show({ type: 'success', text1: 'Saliste del grupo' });
     } catch (error) {
+      // invalidateRoster también en el catch: si removeGroupUser ya se
+      // aplicó server-side pero addGroupUser falla después, el roster en
+      // caché queda desalineado con el estado real (usuario ya sacado del
+      // grupo viejo, todavía no asignado al default) — sin refrescar acá,
+      // la UI sigue mostrando datos viejos y el botón de esta misma acción
+      // puede desaparecer sin explicación (canLeaveGroup ya no matchea).
       Toast.show({ type: 'error', text1: 'No pudimos sacarte del grupo', text2: error.message });
     }
+    invalidateRoster();
     setLeaveGroupModalVisible(false);
   };
 

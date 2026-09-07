@@ -48,9 +48,14 @@ export async function getGroupUsers(groupId) {
 }
 
 // POST /api/v1/teams/{id}/groups/{group_id}/users — groupuser.AddGroupUserRequest.
+// userId llega como string en los dos call sites reales (roster normalizado
+// con String(user_id) en use-team-roster.js) — el backend rechaza el body
+// si user_id no es numérico ("cuerpo de solicitud inválido", bug real
+// encontrado contra el backend real, invisible con mocks porque no
+// validan tipos).
 export async function addGroupUser(teamId, groupId, userId) {
   if (USE_MOCKS) return await mockAddGroupUser(teamId, groupId, userId);
-  return await api.post(`/teams/${teamId}/groups/${groupId}/users`, { user_id: userId });
+  return await api.post(`/teams/${teamId}/groups/${groupId}/users`, { user_id: Number(userId) });
 }
 
 // DELETE /api/v1/groups/{id}/users/{user_id}.
