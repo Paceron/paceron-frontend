@@ -266,7 +266,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus }) {
+export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -282,7 +282,9 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
 
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
-      <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
+      {!hideLabel && (
+        <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
+      )}
       <View
         className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
         nativeID={`input-field-${slug}-row`}
