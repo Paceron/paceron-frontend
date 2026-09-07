@@ -29,6 +29,22 @@ export const DAY_KIND_META = {
   training: { label: 'Entrenamiento', icon: 'run-fast', iconColor: '#8cc63e', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
 };
 
+// Rol de un ejercicio DENTRO de una sesión — antes eran 3 columnas fijas
+// (warmup/main/cooldown), ahora una sesión es una lista libre de
+// ejercicios y cada uno lleva su propio rol (cualquiera admite más de
+// uno) — ver enmienda 2026-09-05 de
+// docs/superpowers/specs/2026-08-26-training-plans-design.md.
+// SESSION_ROLE_ORDER es el orden de lectura (agrupado por rol) que usan
+// todas las pantallas que muestran una sesión ya armada, sin importar el
+// orden en que se hayan cargado/agregado los ejercicios.
+export const SESSION_ROLE_ORDER = ['warmup', 'main', 'cooldown'];
+
+export const SESSION_ROLE_META = {
+  warmup: { label: 'Entrada en calor', icon: 'fire', iconColor: '#e11d48', bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-400' },
+  main: { label: 'Ejercicio Principal', icon: 'weight-lifter', iconColor: '#4f46e5', bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-400' },
+  cooldown: { label: 'Vuelta a la calma', icon: 'snowflake', iconColor: '#0891b2', bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-400' },
+};
+
 // Labels de grupo muscular — duplica a propósito los ids de
 // MUSCLE_GROUP_OPTIONS (store/exercise-store.js, fuente real para el
 // picker del form) en vez de importarlo: ese store arrastra la cadena

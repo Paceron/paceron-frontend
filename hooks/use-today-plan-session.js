@@ -5,18 +5,19 @@ import { toSessionModel, toExerciseModel } from '../services/normalizers.js';
 import { getTodayDayOfWeek } from '../store/training-plan-store.js';
 
 // Resuelve el día de HOY de un plan puntual — y, si es de entrenamiento,
-// la sesión + sus 3 ejercicios. A propósito NO usa useSessionStore/
-// useExerciseStore (esos guardan un array plano por owner y lo pisan en
-// cada fetch) — acá puede haber hasta 2 planes de 2 entrenadores
-// distintos resolviéndose en paralelo (uno por card del hero), así que
-// se pide cada cosa por id puntual vía los servicios singulares. Ver
-// docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
+// la sesión + su lista de ejercicios (cada uno con su rol — ver enmienda
+// 2026-09-05 de docs/superpowers/specs/2026-08-26-training-plans-design.md).
+// A propósito NO usa useSessionStore/useExerciseStore (esos guardan un
+// array plano por owner y lo pisan en cada fetch) — acá puede haber
+// hasta 2 planes de 2 entrenadores distintos resolviéndose en paralelo
+// (uno por card del hero), así que se pide cada cosa por id puntual vía
+// los servicios singulares. Ver docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
 export function useTodayPlanSession(plan) {
-  const [state, setState] = useState({ loading: true, day: null, session: null, warmupExercise: null, mainExercise: null, cooldownExercise: null });
+  const [state, setState] = useState({ loading: true, day: null, session: null, exercises: [] });
 
   useEffect(() => {
     if (!plan) {
-      setState({ loading: false, day: null, session: null, warmupExercise: null, mainExercise: null, cooldownExercise: null });
+      setState({ loading: false, day: null, session: null, exercises: [] });
       return undefined;
     }
 
@@ -27,7 +28,7 @@ export function useTodayPlanSession(plan) {
     const day = plan.days.find((d) => d.dayOfWeek === today) ?? null;
 
     if (!day || day.kind !== 'training' || !day.sessionId) {
-      if (!cancelled) setState({ loading: false, day, session: null, warmupExercise: null, mainExercise: null, cooldownExercise: null });
+      if (!cancelled) setState({ loading: false, day, session: null, exercises: [] });
       return () => { cancelled = true; };
     }
 
@@ -35,24 +36,16 @@ export function useTodayPlanSession(plan) {
       try {
         const sessionDto = await getSession(day.sessionId);
         const session = toSessionModel(sessionDto);
-        const [warmupDto, mainDto, cooldownDto] = await Promise.all([
-          getExercise(session.warmupExerciseId),
-          getExercise(session.mainExerciseId),
-          getExercise(session.cooldownExerciseId),
-        ]);
+        const exercises = await Promise.all(session.exercises.map(async (entry) => ({
+          ...entry,
+          exercise: toExerciseModel(await getExercise(entry.exerciseId)),
+        })));
         if (cancelled) return;
-        setState({
-          loading: false,
-          day,
-          session,
-          warmupExercise: toExerciseModel(warmupDto),
-          mainExercise: toExerciseModel(mainDto),
-          cooldownExercise: toExerciseModel(cooldownDto),
-        });
+        setState({ loading: false, day, session, exercises });
       } catch {
         // Sesión referenciada que ya no existe, o falló el fetch — el
         // card cae al estado "sin sesión resuelta" en vez de romper.
-        if (!cancelled) setState({ loading: false, day, session: null, warmupExercise: null, mainExercise: null, cooldownExercise: null });
+        if (!cancelled) setState({ loading: false, day, session: null, exercises: [] });
       }
     })();
 

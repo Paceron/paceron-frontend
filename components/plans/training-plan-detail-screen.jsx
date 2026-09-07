@@ -13,7 +13,7 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
-import { EXERCISE_KIND_META, DAY_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
+import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
 const STATUS_META = {
   activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
@@ -90,9 +90,7 @@ function DayRow({ day, session, exercisesById }) {
     );
   }
 
-  const warmupExercise = exercisesById.get(session.warmupExerciseId);
-  const mainExercise = exercisesById.get(session.mainExerciseId);
-  const cooldownExercise = exercisesById.get(session.cooldownExerciseId);
+  const orderedEntries = SESSION_ROLE_ORDER.flatMap((role) => session.exercises.filter((e) => e.role === role));
 
   return (
     <View className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
@@ -109,9 +107,16 @@ function DayRow({ day, session, exercisesById }) {
 
       {expanded && (
         <View className="gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-700" nativeID={`${idPrefix}-exercises`} testID={`${idPrefix}-exercises`}>
-          <ExerciseRow exercise={warmupExercise} idPrefix={`${idPrefix}-warmup`} roleLabel="Entrada en calor" />
-          <ExerciseRow exercise={mainExercise} idPrefix={`${idPrefix}-main`} repeatCount={session.mainRepeatCount} restMinutes={session.mainRestMinutes} roleLabel="Principal" />
-          <ExerciseRow exercise={cooldownExercise} idPrefix={`${idPrefix}-cooldown`} roleLabel="Vuelta a la calma" />
+          {orderedEntries.map((entry) => (
+            <ExerciseRow
+              exercise={exercisesById.get(entry.exerciseId)}
+              idPrefix={`${idPrefix}-${entry.localKey}`}
+              key={entry.localKey}
+              repeatCount={entry.repeatCount}
+              restMinutes={entry.restMinutes}
+              roleLabel={SESSION_ROLE_META[entry.role].label}
+            />
+          ))}
         </View>
       )}
     </View>

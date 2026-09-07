@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { dayLabel } from '../../store/training-plan-store.js';
 import { useTodayPlanSession } from '../../hooks/use-today-plan-session.js';
-import { EXERCISE_KIND_META, DAY_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
+import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
 // Copy corto por tipo de día cuando hoy NO es de entrenamiento — un plan
 // marcado como actual sigue apareciendo en el hero aunque hoy le toque
@@ -52,12 +52,13 @@ function HeroExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restM
 export function TodaySessionCard({ plan }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const { loading, day, session, warmupExercise, mainExercise, cooldownExercise } = useTodayPlanSession(plan);
+  const { loading, day, session, exercises } = useTodayPlanSession(plan);
   const idPrefix = `today-session-card-${plan.id}`;
 
   const dayMeta = DAY_KIND_META[day?.kind ?? 'rest'] ?? DAY_KIND_META.rest;
   const isTraining = day?.kind === 'training';
   const hasSession = isTraining && Boolean(session);
+  const orderedExercises = hasSession ? SESSION_ROLE_ORDER.flatMap((role) => exercises.filter((e) => e.role === role)) : [];
 
   return (
     <View className="w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
@@ -91,15 +92,16 @@ export function TodaySessionCard({ plan }) {
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-session-name`} testID={`${idPrefix}-session-name`}>
               {session.name}
             </Text>
-            <HeroExerciseRow exercise={warmupExercise} idPrefix={`${idPrefix}-warmup`} roleLabel="Entrada en calor" />
-            <HeroExerciseRow
-              exercise={mainExercise}
-              idPrefix={`${idPrefix}-main`}
-              repeatCount={session.mainRepeatCount}
-              restMinutes={session.mainRestMinutes}
-              roleLabel="Principal"
-            />
-            <HeroExerciseRow exercise={cooldownExercise} idPrefix={`${idPrefix}-cooldown`} roleLabel="Vuelta a la calma" />
+            {orderedExercises.map((entry) => (
+              <HeroExerciseRow
+                exercise={entry.exercise}
+                idPrefix={`${idPrefix}-${entry.localKey}`}
+                key={entry.localKey}
+                repeatCount={entry.repeatCount}
+                restMinutes={entry.restMinutes}
+                roleLabel={SESSION_ROLE_META[entry.role].label}
+              />
+            ))}
           </>
         ) : (
           <View className="items-center gap-2 py-6" nativeID={`${idPrefix}-no-session`} testID={`${idPrefix}-no-session`}>

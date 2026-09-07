@@ -13,10 +13,11 @@ import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
 
 // Sesiones (deduplicadas) que referencian este ejercicio en cualquiera
-// de sus 3 bloques — uso directo, no transitivo (no cuenta planes). Ver
+// de sus ejercicios (lista libre, cualquier rol) — uso directo, no
+// transitivo (no cuenta planes). Ver
 // docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
 export function sessionsUsingExercise(exerciseId, sessions) {
-  return sessions.filter((s) => [s.warmupExerciseId, s.mainExerciseId, s.cooldownExerciseId].includes(exerciseId));
+  return sessions.filter((s) => s.exercises.some((e) => e.exerciseId === exerciseId));
 }
 
 function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
