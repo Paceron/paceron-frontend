@@ -6,10 +6,21 @@
 // significado es el tipo de ejercicio, no un estado de urgencia.
 export const EXERCISE_KIND_META = {
   walking: { label: 'Caminata', icon: 'walk', iconColor: '#0284c7', bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-700 dark:text-sky-400' },
-  jogging: { label: 'Trote suave', icon: 'run', iconColor: '#d97706', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+  jogging: { label: 'Trote', icon: 'run', iconColor: '#d97706', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
   elongation: { label: 'Elongación', icon: 'yoga', iconColor: '#9333ea', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
   cruising: { label: 'Ritmo continuo', icon: 'speedometer', iconColor: '#0d9488', bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-400' },
   running: { label: 'Corrida', icon: 'run-fast', iconColor: '#ea580c', bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400' },
+};
+
+// Intensidad de esfuerzo — campo propio y opcional, sin atar a un tipo en
+// particular (cualquier ejercicio puede tener una, o ninguna) — ver
+// enmienda 2026-09-06 de docs/superpowers/specs/2026-08-26-training-plans-design.md.
+export const INTENSITY_ORDER = ['light', 'moderate', 'vigorous'];
+
+export const INTENSITY_META = {
+  light: { label: 'Suave', icon: 'speedometer-slow', iconColor: '#059669', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400' },
+  moderate: { label: 'Moderado', icon: 'speedometer-medium', iconColor: '#d97706', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+  vigorous: { label: 'Fuerte', icon: 'speedometer', iconColor: '#e11d48', bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-400' },
 };
 
 export const DAY_KIND_META = {
@@ -53,15 +64,21 @@ const MUSCLE_GROUP_LABELS = {
   core: 'Core / abdominales',
 };
 
-// Línea de "stat" de un ejercicio (debajo del nombre: minutos, distancia,
-// ritmo, grupo muscular, repeticiones) — un dato por kind, el que
-// corresponda tenerlo seteado. Compartida por ExercisesCatalogTab,
-// TrainingPlanDetailScreen y TodaySessionCard (antes triplicada) — ver
-// enmienda 2026-09-03 de docs/superpowers/specs/2026-08-26-training-plans-design.md.
-// Devuelve '' (falsy) si no hay nada para mostrar — cada caller decide su
-// propio fallback (mostrar meta.label, u ocultar la línea entera).
+// Línea de "stat" de un ejercicio (debajo del nombre: intensidad,
+// minutos, distancia, ritmo, grupo muscular, repeticiones) — todos
+// campos opcionales, cualquier combinación puede faltar; cada uno se
+// suma si está cargado, sin atarlo a un tipo en particular (ver enmienda
+// 2026-09-06 de docs/superpowers/specs/2026-08-26-training-plans-design.md
+// — antes esto dependía del tipo, ahora un ejercicio de cualquier tipo
+// puede tener cualquier combinación de estos datos). Compartida por
+// ExercisesCatalogTab, TrainingPlanDetailScreen y TodaySessionCard (antes
+// triplicada). Devuelve '' (falsy) si no hay nada para mostrar — cada
+// caller decide su propio fallback (mostrar meta.label, u ocultar la
+// línea entera).
 export function buildExerciseStatLine(exercise, { repeatCount = 1, restMinutes = 0 } = {}) {
   const parts = [];
+  const intensityMeta = INTENSITY_META[exercise.intensity];
+  if (intensityMeta) parts.push(intensityMeta.label);
   if (exercise.minutes != null) parts.push(`${exercise.minutes} min`);
   if (exercise.distanceM != null) parts.push(`${exercise.distanceM} m`);
   if (exercise.speedKph != null) parts.push(`${exercise.speedKph} km/h`);

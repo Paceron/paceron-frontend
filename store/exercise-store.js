@@ -13,7 +13,7 @@ import { toExerciseModel, toCreateExercisePayload } from '../services/normalizer
 // (pestaña "Ejercicios" en Planes de entrenamiento).
 export const EXERCISE_KIND_OPTIONS = [
   { id: 'walking', name: 'Caminata' },
-  { id: 'jogging', name: 'Trote suave' },
+  { id: 'jogging', name: 'Trote' },
   { id: 'elongation', name: 'Elongación' },
   { id: 'cruising', name: 'Ritmo continuo' },
   { id: 'running', name: 'Corrida' },
