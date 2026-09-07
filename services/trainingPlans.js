@@ -16,14 +16,22 @@ import {
 } from './__mocks__/training-plans-mock.js';
 
 // Sin backend real de planes de entrenamiento todavía (ver
-// docs/BACKEND_API_GAPS.md, gap 4) — USE_MOCKS siempre gana acá hoy. Las
-// rutas de abajo son las esperadas, mismo estilo que services/teams.js,
+// docs/BACKEND_API_GAPS.md, gap 4) — forzado a mocks acá aparte del
+// flag global EXPO_PUBLIC_USE_MOCKS: en un build real (USE_MOCKS=false
+// por default) esto pegaba contra el backend real, contra rutas que no
+// existen — causa sospechada (no confirmada del lado backend, repo
+// aparte) de un logout espurio reportado al entrar a
+// planes/sesiones/ejercicios el 2026-09-07: si esas rutas devuelven 401
+// en vez de 404, el interceptor de services/api.js lo interpreta como
+// sesión vencida. Sacar FORCE_MOCKS cuando el backend implemente el
+// gap. Las rutas de abajo son las esperadas, mismo estilo que services/teams.js,
 // para que alcance con que el backend las implemente y nada más cambie
 // de este lado.
+const FORCE_MOCKS = true;
 
 // GET /api/v1/training-plans?owner_id=.
 export async function listTrainingPlans({ ownerId } = {}) {
-  if (USE_MOCKS) return await mockListTrainingPlans({ ownerId });
+  if (USE_MOCKS || FORCE_MOCKS) return await mockListTrainingPlans({ ownerId });
   const params = new URLSearchParams();
   if (ownerId != null) params.set('owner_id', ownerId);
   const query = params.toString();
@@ -32,37 +40,37 @@ export async function listTrainingPlans({ ownerId } = {}) {
 
 // GET /api/v1/training-plans/{id}.
 export async function getTrainingPlan(planId) {
-  if (USE_MOCKS) return await mockGetTrainingPlan(planId);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockGetTrainingPlan(planId);
   return await api.get(`/training-plans/${planId}`);
 }
 
 // POST /api/v1/training-plans.
 export async function createTrainingPlan(payload) {
-  if (USE_MOCKS) return await mockCreateTrainingPlan(payload);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockCreateTrainingPlan(payload);
   return await api.post('/training-plans', payload);
 }
 
 // PUT /api/v1/training-plans/{id} (parcial).
 export async function updateTrainingPlan(planId, updates) {
-  if (USE_MOCKS) return await mockUpdateTrainingPlan(planId, updates);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockUpdateTrainingPlan(planId, updates);
   return await api.put(`/training-plans/${planId}`, updates);
 }
 
 // DELETE /api/v1/training-plans/{id}.
 export async function deleteTrainingPlan(planId) {
-  if (USE_MOCKS) return await mockDeleteTrainingPlan(planId);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockDeleteTrainingPlan(planId);
   return await api.delete(`/training-plans/${planId}`);
 }
 
 // POST /api/v1/training-plans/{id}/clone.
 export async function cloneTrainingPlan(planId) {
-  if (USE_MOCKS) return await mockCloneTrainingPlan(planId);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockCloneTrainingPlan(planId);
   return await api.post(`/training-plans/${planId}/clone`);
 }
 
 // GET /api/v1/training-plans/assignments?user_id=&plan_id=.
 export async function listRunnerPlanAssignments({ userId, planId } = {}) {
-  if (USE_MOCKS) return await mockListRunnerPlanAssignments({ userId, planId });
+  if (USE_MOCKS || FORCE_MOCKS) return await mockListRunnerPlanAssignments({ userId, planId });
   const params = new URLSearchParams();
   if (userId != null) params.set('user_id', userId);
   if (planId != null) params.set('plan_id', planId);
@@ -74,13 +82,13 @@ export async function listRunnerPlanAssignments({ userId, planId } = {}) {
 // corredor). La asignación a un grupo NO pasa por acá — reusa
 // group.trainingPlanId, ver store/team-store.js#setGroupTrainingPlan.
 export async function assignPlanToRunner(planId, userId) {
-  if (USE_MOCKS) return await mockAssignPlanToRunner(planId, userId);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockAssignPlanToRunner(planId, userId);
   return await api.post(`/training-plans/${planId}/assignments`, { user_id: userId });
 }
 
 // DELETE /api/v1/training-plans/assignments/{user_id}.
 export async function unassignPlanFromRunner(userId) {
-  if (USE_MOCKS) return await mockUnassignPlanFromRunner(userId);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockUnassignPlanFromRunner(userId);
   return await api.delete(`/training-plans/assignments/${userId}`);
 }
 
@@ -90,7 +98,7 @@ export async function unassignPlanFromRunner(userId) {
 
 // GET /api/v1/training-plans/current-marks?user_id=.
 export async function listCurrentPlanMarks({ userId } = {}) {
-  if (USE_MOCKS) return await mockListCurrentPlanMarks({ userId });
+  if (USE_MOCKS || FORCE_MOCKS) return await mockListCurrentPlanMarks({ userId });
   const params = new URLSearchParams();
   if (userId != null) params.set('user_id', userId);
   return await api.get(`/training-plans/current-marks?${params.toString()}`);
@@ -99,12 +107,12 @@ export async function listCurrentPlanMarks({ userId } = {}) {
 // POST /api/v1/training-plans/{id}/current-marks — tope de 2 por
 // corredor, se hace cumplir del lado del servicio (ver mock).
 export async function markPlanAsCurrent(userId, planId) {
-  if (USE_MOCKS) return await mockMarkPlanAsCurrent(userId, planId);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockMarkPlanAsCurrent(userId, planId);
   return await api.post(`/training-plans/${planId}/current-marks`, { user_id: userId });
 }
 
 // DELETE /api/v1/training-plans/{id}/current-marks/{user_id}.
 export async function unmarkPlanAsCurrent(userId, planId) {
-  if (USE_MOCKS) return await mockUnmarkPlanAsCurrent(userId, planId);
+  if (USE_MOCKS || FORCE_MOCKS) return await mockUnmarkPlanAsCurrent(userId, planId);
   return await api.delete(`/training-plans/${planId}/current-marks/${userId}`);
 }
