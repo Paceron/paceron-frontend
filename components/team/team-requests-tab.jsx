@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -57,6 +58,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding }) {
 
 export function TeamRequestsTab({ teamId }) {
   const colors = useThemeColors();
+  const queryClient = useQueryClient();
   const { requests, loading } = useTeamJoinRequests(teamId);
   const { acceptJoinRequest, rejectJoinRequest, isAccepting, isRejecting } = useJoinRequestMutations();
   const [respondingId, setRespondingId] = useState(null);
@@ -65,6 +67,11 @@ export function TeamRequestsTab({ teamId }) {
     setRespondingId(requestId);
     try {
       await acceptJoinRequest(requestId);
+      // El roster (useTeamRoster, TanStack Query) no se entera solo — sin
+      // esto el corredor recién aceptado no aparece en la tab Corredores
+      // hasta un refresh manual.
+      queryClient.invalidateQueries({ queryKey: ['team-users', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['group-users'] });
       Toast.show({ type: 'success', text1: 'Corredor aceptado' });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'No pudimos aceptar la solicitud', text2: error.message });

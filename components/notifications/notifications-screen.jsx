@@ -227,6 +227,7 @@ function NotificationsScreenContent() {
   }, [user?.userId, user?.email]);
 
   const handleAccept = async (invitationId) => {
+    const invitation = myInvitations.find((i) => i.id === invitationId);
     setRespondingId(invitationId);
     const result = await acceptMyInvitation(invitationId, user.userId);
     setRespondingId(null);
@@ -234,6 +235,11 @@ function NotificationsScreenContent() {
       Toast.show({ type: 'error', text1: 'No pudimos aceptar la invitación', text2: result.error });
       return;
     }
+    // El roster (useTeamRoster, TanStack Query) no se entera solo — si el
+    // entrenador ya tiene el equipo abierto, el corredor recién unido no
+    // aparece hasta un refresh manual sin esto.
+    if (invitation?.teamId) queryClient.invalidateQueries({ queryKey: ['team-users', invitation.teamId] });
+    queryClient.invalidateQueries({ queryKey: ['group-users'] });
     Toast.show({ type: 'success', text1: 'Te uniste al equipo' });
   };
 
