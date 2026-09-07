@@ -14,12 +14,14 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { EXERCISE_KIND_META, INTENSITY_ORDER, INTENSITY_META } from './exercise-kind-meta.js';
 
-// Selector de tipo — solo ícono, sin texto por botón: mostrar el nombre
-// del tipo ahí sería redundante con el nombre libre que ya escribe el
-// entrenador un poco más abajo. Mismos íconos/colores que ya identifican
-// cada tipo en el resto de la app (catálogo, sesiones, plan). El orden
-// sale de las propias claves de EXERCISE_KIND_META (ya es estable) en
-// vez de mantener un array de orden aparte.
+// Selector de tipo — ícono solo en reposo (mostrar el nombre de los 5
+// tipos a la vez sería mucho texto uno al lado del otro); el
+// seleccionado se despliega para mostrar su label, así queda claro qué
+// tipo es más allá del ícono sin recargar los que no están activos.
+// Mismos íconos/colores que ya identifican cada tipo en el resto de la
+// app (catálogo, sesiones, plan). El orden sale de las propias claves de
+// EXERCISE_KIND_META (ya es estable) en vez de mantener un array de
+// orden aparte.
 function KindIconPicker({ idPrefix, value, onChange }) {
   return (
     <View
@@ -38,13 +40,18 @@ function KindIconPicker({ idPrefix, value, onChange }) {
             accessibilityLabel={meta.label}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            className={`h-11 w-11 items-center justify-center rounded-full ${active ? meta.bg : 'bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
+            className={`h-11 flex-row items-center justify-center gap-1.5 rounded-full ${active ? `px-3.5 ${meta.bg}` : 'w-11 bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
             key={kind}
             nativeID={segId}
             onPress={() => onChange(kind)}
             testID={segId}
           >
             <MaterialCommunityIcons color={active ? meta.iconColor : '#94a3b8'} name={meta.icon} size={22} />
+            {active && (
+              <Text className={`text-sm font-semibold ${meta.text}`} nativeID={`${segId}-label`} testID={`${segId}-label`}>
+                {meta.label}
+              </Text>
+            )}
           </Pressable>
         );
       })}
@@ -76,7 +83,7 @@ function IntensitySegmentedPicker({ idPrefix, value, onChange }) {
             accessibilityLabel={meta.label}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            className={`flex-row items-center gap-1 rounded-full px-2.5 py-1.5 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
+            className={`flex-1 flex-row items-center justify-center gap-1 rounded-full px-2.5 py-1.5 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
             key={level}
             nativeID={segId}
             onPress={() => onChange(active ? null : level)}
@@ -245,35 +252,39 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
               <KindIconPicker idPrefix="create-exercise-modal" onChange={setKind} value={kind} />
             </View>
 
-            <Pressable
-              className="h-11 flex-row items-center justify-center gap-1.5 self-start rounded-full border border-dashed border-primary px-4 hover:bg-primary-tint-subtle active:opacity-70 dark:hover:bg-primary/10"
-              nativeID="create-exercise-modal-optional-toggle"
-              onPress={() => setShowOptional((v) => !v)}
-              testID="create-exercise-modal-optional-toggle"
-            >
-              <MaterialCommunityIcons color="#8cc63e" name={showOptional ? 'chevron-up' : 'tune-variant'} size={18} />
-              <Text className="text-sm font-semibold text-primary" nativeID="create-exercise-modal-optional-toggle-label" testID="create-exercise-modal-optional-toggle-label">
-                {showOptional ? 'Ocultar detalles opcionales' : 'Agregar detalles opcionales'}
-              </Text>
-            </Pressable>
+            <View className="rounded-xl border border-slate-200 dark:border-slate-700" nativeID="create-exercise-modal-optional-section" testID="create-exercise-modal-optional-section">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showOptional }}
+                className="h-11 flex-row items-center justify-between px-3 active:opacity-70"
+                nativeID="create-exercise-modal-optional-toggle"
+                onPress={() => setShowOptional((v) => !v)}
+                testID="create-exercise-modal-optional-toggle"
+              >
+                <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="create-exercise-modal-optional-toggle-label" testID="create-exercise-modal-optional-toggle-label">
+                  Detalles opcionales
+                </Text>
+                <MaterialCommunityIcons color="#8cc63e" name={showOptional ? 'chevron-up' : 'chevron-down'} size={20} />
+              </Pressable>
 
-            {showOptional && (
-              <View className="gap-3" nativeID="create-exercise-modal-optional" testID="create-exercise-modal-optional">
-                <View nativeID="create-exercise-modal-intensity" testID="create-exercise-modal-intensity">
-                  <Text className={FIELD_LABEL} nativeID="create-exercise-modal-intensity-label" testID="create-exercise-modal-intensity-label">Intensidad</Text>
-                  <IntensitySegmentedPicker idPrefix="create-exercise-modal" onChange={setIntensity} value={intensity} />
+              {showOptional && (
+                <View className="gap-3 border-t border-slate-200 p-3 dark:border-slate-700" nativeID="create-exercise-modal-optional" testID="create-exercise-modal-optional">
+                  <View nativeID="create-exercise-modal-intensity" testID="create-exercise-modal-intensity">
+                    <Text className={FIELD_LABEL} nativeID="create-exercise-modal-intensity-label" testID="create-exercise-modal-intensity-label">Intensidad</Text>
+                    <IntensitySegmentedPicker idPrefix="create-exercise-modal" onChange={setIntensity} value={intensity} />
+                  </View>
+
+                  <Row narrowClassName="gap-3">
+                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} /></Col>
+                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} /></Col>
+                  </Row>
+                  <Row narrowClassName="gap-3">
+                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Velocidad (km/h)" onChange={setSpeedKph} value={speedKph} /></Col>
+                    <Col><ResponsiveSelectField className="mb-0" dense hideErrorRow label="Grupo muscular" onChange={setMuscleGroup} options={MUSCLE_GROUP_OPTIONS} placeholder="Ninguno" value={muscleGroup} /></Col>
+                  </Row>
                 </View>
-
-                <Row narrowClassName="gap-3">
-                  <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} /></Col>
-                  <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} /></Col>
-                </Row>
-                <Row narrowClassName="gap-3">
-                  <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Velocidad (km/h)" onChange={setSpeedKph} value={speedKph} /></Col>
-                  <Col><ResponsiveSelectField className="mb-0" dense hideErrorRow label="Grupo muscular" onChange={setMuscleGroup} options={MUSCLE_GROUP_OPTIONS} placeholder="Ninguno" value={muscleGroup} /></Col>
-                </Row>
-              </View>
-            )}
+              )}
+            </View>
           </View>
 
           <View className="mt-3 flex-row gap-3" nativeID="create-exercise-modal-actions" testID="create-exercise-modal-actions">
