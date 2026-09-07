@@ -1,11 +1,10 @@
-// Catálogo de sesiones del entrenador — una sesión arma los 3 bloques
-// fijos (warmup/main/cooldown) referenciando ejercicios ya creados
-// (exercises-mock.js), no construyéndolos de cero. `main_repeat_count`/
-// `main_rest_minutes` envuelven el ejercicio del bloque principal — es lo
-// que antes era `main.kind === 'set'` en el schema original, ahora es una
-// propiedad de la sesión (cualquier ejercicio del bloque principal puede
-// repetirse N veces con descanso, no hace falta un "kind" de ejercicio
-// aparte para eso). repeatCount 1 + restMinutes 0 = "una sola vez".
+// Catálogo de sesiones del entrenador — una sesión es una lista libre de
+// ejercicios (`exercises`), cada uno con su propio `role`
+// ('warmup'|'main'|'cooldown') en vez de 3 columnas fijas — cualquier rol
+// admite más de un ejercicio (ver enmienda 2026-09-05 de
+// docs/superpowers/specs/2026-08-26-training-plans-design.md).
+// `repeat_count`/`rest_minutes` son por ejercicio, no solo del bloque
+// principal como antes — repeatCount 1 + restMinutes 0 = "una sola vez".
 // Terminología real de entrenamiento de running (fondo/rodaje continuo,
 // series, tempo run) — ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
 // Los ids 1/2/3 se mantienen (mismo nombre) porque
@@ -15,27 +14,50 @@ function buildSeedSessions() {
   return [
     {
       id: 1, owner_id: 1, name: 'Fondo suave', description: 'Trote continuo a ritmo conversable.',
-      warmup_exercise_id: 1, main_exercise_id: 3, main_repeat_count: 1, main_rest_minutes: 0, cooldown_exercise_id: 5,
+      exercises: [
+        { exercise_id: 1, role: 'warmup', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 3, role: 'main', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 5, role: 'cooldown', repeat_count: 1, rest_minutes: 0 },
+      ],
       created_at: now, updated_at: now,
     },
     {
       id: 2, owner_id: 1, name: 'Series de velocidad', description: 'Intervalos cortos a ritmo fuerte, con descanso entre cada uno.',
-      warmup_exercise_id: 2, main_exercise_id: 12, main_repeat_count: 4, main_rest_minutes: 2, cooldown_exercise_id: 6,
+      exercises: [
+        { exercise_id: 2, role: 'warmup', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 12, role: 'main', repeat_count: 4, rest_minutes: 2 },
+        { exercise_id: 6, role: 'cooldown', repeat_count: 1, rest_minutes: 0 },
+      ],
       created_at: now, updated_at: now,
     },
     {
       id: 3, owner_id: 1, name: 'Rodaje largo', description: 'Ritmo continuo sostenido, la sesión más larga de la semana.',
-      warmup_exercise_id: 1, main_exercise_id: 11, main_repeat_count: 1, main_rest_minutes: 0, cooldown_exercise_id: 7,
+      exercises: [
+        { exercise_id: 1, role: 'warmup', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 11, role: 'main', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 7, role: 'cooldown', repeat_count: 1, rest_minutes: 0 },
+      ],
       created_at: now, updated_at: now,
     },
     {
       id: 4, owner_id: 1, name: 'Tempo run', description: 'Ritmo sostenido, cerca del umbral anaeróbico.',
-      warmup_exercise_id: 4, main_exercise_id: 10, main_repeat_count: 1, main_rest_minutes: 0, cooldown_exercise_id: 8,
+      exercises: [
+        { exercise_id: 4, role: 'warmup', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 10, role: 'main', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 8, role: 'cooldown', repeat_count: 1, rest_minutes: 0 },
+      ],
       created_at: now, updated_at: now,
     },
     {
+      // Único seed con 2 ejercicios "main" — ejercita a propósito el caso
+      // de varios ejercicios en un mismo rol.
       id: 5, owner_id: 1, name: 'Series explosivas', description: 'Series cortas a máxima velocidad, foco en potencia.',
-      warmup_exercise_id: 2, main_exercise_id: 13, main_repeat_count: 6, main_rest_minutes: 3, cooldown_exercise_id: 5,
+      exercises: [
+        { exercise_id: 2, role: 'warmup', repeat_count: 1, rest_minutes: 0 },
+        { exercise_id: 13, role: 'main', repeat_count: 6, rest_minutes: 3 },
+        { exercise_id: 14, role: 'main', repeat_count: 4, rest_minutes: 2 },
+        { exercise_id: 5, role: 'cooldown', repeat_count: 1, rest_minutes: 0 },
+      ],
       created_at: now, updated_at: now,
     },
   ];
@@ -71,11 +93,12 @@ export async function mockCreateSession(payload) {
     owner_id: payload.owner_id,
     name: payload.name,
     description: payload.description ?? null,
-    warmup_exercise_id: payload.warmup_exercise_id,
-    main_exercise_id: payload.main_exercise_id,
-    main_repeat_count: payload.main_repeat_count ?? 1,
-    main_rest_minutes: payload.main_rest_minutes ?? 0,
-    cooldown_exercise_id: payload.cooldown_exercise_id,
+    exercises: (payload.exercises ?? []).map((e) => ({
+      exercise_id: e.exercise_id,
+      role: e.role,
+      repeat_count: e.repeat_count ?? 1,
+      rest_minutes: e.rest_minutes ?? 0,
+    })),
     created_at: now,
     updated_at: now,
   };

@@ -293,6 +293,13 @@ export function toCreateExercisePayload(form) {
   return payload;
 }
 
+// Una sesión ya no son 3 bloques fijos (warmup/main/cooldown) sino una
+// lista libre de ejercicios, cada uno con su propio rol — ver
+// docs/superpowers/specs/2026-08-26-training-plans-design.md (enmienda
+// 2026-09-05). `localKey` es puramente de UI (key de lista/remover
+// filas), nunca viaja al backend — para una fila ya persistida se deriva
+// del id de sesión + índice (no hay reordenar, el índice alcanza); una
+// fila nueva en el form la genera el propio modal.
 export function toSessionModel(dto) {
   if (!dto) return null;
   return {
@@ -300,11 +307,13 @@ export function toSessionModel(dto) {
     ownerId: dto.owner_id,
     name: dto.name,
     description: dto.description,
-    warmupExerciseId: String(dto.warmup_exercise_id),
-    mainExerciseId: String(dto.main_exercise_id),
-    mainRepeatCount: dto.main_repeat_count ?? 1,
-    mainRestMinutes: dto.main_rest_minutes ?? 0,
-    cooldownExerciseId: String(dto.cooldown_exercise_id),
+    exercises: (dto.exercises ?? []).map((e, i) => ({
+      localKey: `session-exercise-${dto.id}-${i}`,
+      exerciseId: String(e.exercise_id),
+      role: e.role,
+      repeatCount: e.repeat_count ?? 1,
+      restMinutes: e.rest_minutes ?? 0,
+    })),
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };
@@ -315,11 +324,12 @@ export function toCreateSessionPayload(form) {
     owner_id: form.ownerId,
     name: form.name,
     description: form.description || null,
-    warmup_exercise_id: Number(form.warmupExerciseId),
-    main_exercise_id: Number(form.mainExerciseId),
-    main_repeat_count: form.mainRepeatCount ?? 1,
-    main_rest_minutes: form.mainRestMinutes ?? 0,
-    cooldown_exercise_id: Number(form.cooldownExerciseId),
+    exercises: form.exercises.map((e) => ({
+      exercise_id: Number(e.exerciseId),
+      role: e.role,
+      repeat_count: e.repeatCount ?? 1,
+      rest_minutes: e.restMinutes ?? 0,
+    })),
   };
 }
 
