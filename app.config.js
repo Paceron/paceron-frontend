@@ -3,6 +3,7 @@
 // APP_VARIANT lo setean los profiles de eas.json (env), no depende de nada
 // implícito del entorno de build.
 const IS_DEV = process.env.APP_VARIANT === 'development';
+const { version } = require('./package.json');
 
 module.exports = {
   expo: {
@@ -12,7 +13,10 @@ module.exports = {
     // variantes instaladas a la vez en un mismo device compitan por el
     // mismo esquema de deep link.
     scheme: IS_DEV ? 'paceron-dev' : 'paceron',
-    version: '1.0.0',
+    // Toma la versión de package.json — evitar un segundo lugar donde
+    // bumpear a mano (quedó pisado en 1.0.0 desde el bootstrap inicial,
+    // sin sincronizarse nunca con el versionado incremental real).
+    version,
     orientation: 'portrait',
     icon: IS_DEV ? './assets/icon-dev.png' : './assets/icon.png',
     userInterfaceStyle: 'automatic',
