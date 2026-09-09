@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,7 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
+import { selectAdministeredTeams } from '../../store/team-store.js';
+import { useTeams, useMyMemberTeams } from '../../hooks/use-teams.js';
 import { useTeamsJoinRequestsMap } from '../../hooks/use-join-requests.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -44,37 +44,18 @@ function TeamsListScreenContent() {
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   const activeRole = useAuthStore((s) => s.activeRole);
   const canCreateTeam = hasTrainerRole && activeRole === 'trainer';
-  const teams = useTeamStore((s) => s.teams);
-  const fetchTeams = useTeamStore((s) => s.fetchTeams);
-  const myMemberTeams = useTeamStore((s) => s.myMemberTeams);
-  const fetchMyMemberTeams = useTeamStore((s) => s.fetchMyMemberTeams);
+  const { teams, loading: loadingTeams } = useTeams();
+  const { teams: myMemberTeams, loading: loadingMyMemberTeams } = useMyMemberTeams(activeRole === 'runner' ? user?.userId : null);
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   // Como entrenador ve los equipos que administra; como corredor, los que
-  // integra — dos fuentes distintas (ver store/team-store.js#fetchMyMemberTeams).
+  // integra — dos fuentes distintas (ver hooks/use-teams.js#useMyMemberTeams).
   const myTeams = activeRole === 'trainer' ? administeredTeams : myMemberTeams;
   const { byTeamId: pendingRequestsByTeamId } = useTeamsJoinRequestsMap(activeRole === 'trainer' ? administeredTeams.map((t) => t.id) : []);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchTeams().finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (activeRole === 'trainer' || !user?.userId) return undefined;
-    let cancelled = false;
-    setLoading(true);
-    fetchMyMemberTeams(user.userId).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRole, user?.userId]);
+  const loading = activeRole === 'trainer' ? loadingTeams : loadingMyMemberTeams;
 
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    activeRole === 'trainer' ? fetchTeams() : fetchMyMemberTeams(user?.userId),
+    queryClient.invalidateQueries({ queryKey: activeRole === 'trainer' ? ['teams'] : ['teams-mine', user?.userId] }),
     queryClient.invalidateQueries({ queryKey: ['join-requests-team'] }),
   ]));
 

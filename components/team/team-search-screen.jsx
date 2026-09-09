@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,7 +7,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
+import { selectAdministeredTeams } from '../../store/team-store.js';
+import { useTeams, useMyMemberTeams } from '../../hooks/use-teams.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { useTeamSearch } from '../../hooks/use-team-search.js';
 import { useMyJoinRequests, useJoinRequestMutations } from '../../hooks/use-join-requests.js';
@@ -94,21 +95,8 @@ function TeamSearchScreenContent() {
   // trackeado como team_user en todos los casos). Filtro client-side
   // como red de seguridad, sin depender de que el backend lo resuelva.
   const user = useAuthStore((s) => s.user);
-  const teams = useTeamStore((s) => s.teams);
-  const fetchTeams = useTeamStore((s) => s.fetchTeams);
-  const myMemberTeams = useTeamStore((s) => s.myMemberTeams);
-  const fetchMyMemberTeams = useTeamStore((s) => s.fetchMyMemberTeams);
-
-  useEffect(() => {
-    fetchTeams();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!user?.userId) return;
-    fetchMyMemberTeams(user.userId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId]);
+  const { teams } = useTeams();
+  const { teams: myMemberTeams } = useMyMemberTeams(user?.userId);
 
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
   const excludedTeamIds = new Set([...administeredTeams.map((t) => t.id), ...myMemberTeams.map((t) => t.id)]);
