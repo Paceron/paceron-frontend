@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
-import { useTeamStore } from '../../store/team-store.js';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTeam } from '../../hooks/use-teams.js';
+import { useGroups } from '../../hooks/use-groups.js';
+import { useTeamInvitations, useInvitationMutations } from '../../hooks/use-invitations.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
@@ -47,12 +50,11 @@ function PendingInviteRow({ groupName, invite }) {
 function InviteTeamMembersScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
-  const fetchTeam = useTeamStore((s) => s.fetchTeam);
-  const fetchInvitations = useTeamStore((s) => s.fetchInvitations);
-  const sendInvite = useTeamStore((s) => s.sendInvite);
   const user = useAuthStore((s) => s.user);
-  const fetchGroups = useTeamStore((s) => s.fetchGroups);
+  const { team, loading: loadingTeam } = useTeam(teamId);
+  const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
+  const { invitations, loading: loadingInvitations } = useTeamInvitations(teamId);
+  const { sendInvite } = useInvitationMutations();
 
   // Raíz de la pantalla — ancla el AnimatedDropdown de sugerencias de
   // EmailInviteForm (ver hooks/use-email-suggestions.js).
@@ -61,49 +63,15 @@ function InviteTeamMembersScreenContent({ teamId }) {
 
   const [draftInvites, setDraftInvites] = useState([]);
   const [sending, setSending] = useState(false);
-  const [loadingTeam, setLoadingTeam] = useState(!team);
-  const [loadingInvitations, setLoadingInvitations] = useState(true);
-  const [loadingGroups, setLoadingGroups] = useState(true);
 
   const isDirty = useFormDirty({ hasDrafts: draftInvites.length > 0 });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
 
-  // Entrar por deep-link (ej. recargar /teams/{id}/invite directo) puede
-  // caer acá antes de que el equipo esté en el store — fetchTeam lo trae
-  // puntual.
-  useEffect(() => {
-    if (team) {
-      setLoadingTeam(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setLoadingTeam(true);
-    fetchTeam(teamId).finally(() => { if (!cancelled) setLoadingTeam(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingInvitations(true);
-    fetchInvitations(teamId).finally(() => { if (!cancelled) setLoadingInvitations(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId]);
-
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    setLoadingGroups(true);
-    fetchGroups(teamId, user.userId).finally(() => { if (!cancelled) setLoadingGroups(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, user?.userId]);
-
+  const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    fetchTeam(teamId),
-    fetchInvitations(teamId),
-    user?.userId ? fetchGroups(teamId, user.userId) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['team', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['invitations', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['groups', teamId] }),
   ]));
 
   if (loadingTeam || loadingInvitations || loadingGroups) {
@@ -139,7 +107,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
     setSending(true);
     let failed = 0;
     for (const invite of draftInvites) {
-      const result = await sendInvite(teamId, invite.email, invite.groupId);
+      const result = await sendInvite({ teamId, email: invite.email, groupId: invite.groupId });
       if (!result.success) failed += 1;
     }
     setSending(false);
@@ -179,25 +147,25 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </View>
 
         <SectionCard icon="email-check-outline" title="Solicitudes pendientes">
-          {team.invitations.length === 0 ? (
+          {invitations.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="invite-pending-empty" testID="invite-pending-empty">
               Todavía no invitaste a nadie a este equipo.
             </Text>
           ) : (
             <View className="gap-2" nativeID="invite-pending-list" testID="invite-pending-list">
-              {team.invitations.map((invite) => (
-                <PendingInviteRow groupName={team.groups.find((g) => g.id === invite.groupId)?.name} invite={invite} key={invite.id} />
+              {invitations.map((invite) => (
+                <PendingInviteRow groupName={groups.find((g) => g.id === invite.groupId)?.name} invite={invite} key={invite.id} />
               ))}
             </View>
           )}
         </SectionCard>
 
         <SectionCard icon="account-plus-outline" title="Invitar más corredores">
-          <EmailInviteForm emailSearch={emailSearch} existingEmails={draftInvites.map((invite) => invite.email)} groups={team.groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
+          <EmailInviteForm emailSearch={emailSearch} existingEmails={draftInvites.map((invite) => invite.email)} groups={groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
         </SectionCard>
 
         <SectionCard icon="account-multiple-check" title="Corredores a invitar">
-          <InvitedEmailsList groups={team.groups} onChange={setDraftInvites} value={draftInvites} />
+          <InvitedEmailsList groups={groups} onChange={setDraftInvites} value={draftInvites} />
 
           <Pressable
             className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
