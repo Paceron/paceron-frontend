@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,7 +7,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
+import { selectAdministeredTeams } from '../../store/team-store.js';
+import { useTeams } from '../../hooks/use-teams.js';
+import { useMyInvitations, useInvitationMutations } from '../../hooks/use-invitations.js';
 import { useMyJoinRequests, useJoinRequestMutations, useTeamsJoinRequestsMap } from '../../hooks/use-join-requests.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
@@ -159,7 +161,7 @@ function TrainerPendingRequestsSection() {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
-  const teams = useTeamStore((s) => s.teams);
+  const { teams } = useTeams();
   const administeredTeamIds = selectAdministeredTeams(teams, user?.userId).map((t) => t.id);
   const { byTeamId, loading } = useTeamsJoinRequestsMap(administeredTeamIds);
   const [collapsed, setCollapsed] = useState(false);
@@ -208,44 +210,30 @@ function NotificationsScreenContent() {
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const myInvitations = useTeamStore((s) => s.myInvitations);
-  const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
-  const acceptMyInvitation = useTeamStore((s) => s.acceptMyInvitation);
-  const rejectMyInvitation = useTeamStore((s) => s.rejectMyInvitation);
+  const { invitations: myInvitations, loading: loadingInvitations } = useMyInvitations(user?.userId, user?.email);
+  const { acceptInvitation, rejectInvitation } = useInvitationMutations();
 
-  const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [respondingId, setRespondingId] = useState(null);
   const [invitationsCollapsed, setInvitationsCollapsed] = useState(false);
-
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    setLoadingInvitations(true);
-    fetchMyInvitations(user.userId, user.email).finally(() => { if (!cancelled) setLoadingInvitations(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId, user?.email]);
 
   const handleAccept = async (invitationId) => {
     const invitation = myInvitations.find((i) => i.id === invitationId);
     setRespondingId(invitationId);
-    const result = await acceptMyInvitation(invitationId, user.userId);
+    // El roster (['team-users', teamId]) y ['group-users'] ya se invalidan
+    // solos dentro de useInvitationMutations#acceptInvitation — no hace
+    // falta repetirlo acá.
+    const result = await acceptInvitation({ invitationId, userId: user.userId, teamId: invitation?.teamId });
     setRespondingId(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos aceptar la invitación', text2: result.error });
       return;
     }
-    // El roster (useTeamRoster, TanStack Query) no se entera solo — si el
-    // entrenador ya tiene el equipo abierto, el corredor recién unido no
-    // aparece hasta un refresh manual sin esto.
-    if (invitation?.teamId) queryClient.invalidateQueries({ queryKey: ['team-users', invitation.teamId] });
-    queryClient.invalidateQueries({ queryKey: ['group-users'] });
     Toast.show({ type: 'success', text1: 'Te uniste al equipo' });
   };
 
   const handleReject = async (invitationId) => {
     setRespondingId(invitationId);
-    const result = await rejectMyInvitation(invitationId, user.userId);
+    const result = await rejectInvitation({ invitationId, userId: user.userId });
     setRespondingId(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos rechazar la invitación', text2: result.error });
@@ -256,7 +244,7 @@ function NotificationsScreenContent() {
 
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    user?.userId ? fetchMyInvitations(user.userId, user.email) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['invitations-mine'] }),
     queryClient.invalidateQueries({ queryKey: ['join-requests-mine'] }),
     queryClient.invalidateQueries({ queryKey: ['join-requests-team'] }),
   ]));
