@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, getTeamMemberLimit } from '../../store/team-store.js';
+import { getTeamMemberLimit } from '../../store/team-store.js';
+import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
@@ -32,21 +34,7 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 function EditTeamScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
-  const fetchTeam = useTeamStore((s) => s.fetchTeam);
-  const [loading, setLoading] = useState(!team);
-
-  useEffect(() => {
-    if (team) {
-      setLoading(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setLoading(true);
-    fetchTeam(teamId).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId]);
+  const { team, loading } = useTeam(teamId);
 
   if (loading) {
     return (
@@ -83,10 +71,10 @@ function EditTeamForm({ team, teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const roles = useAuthStore((s) => s.roles);
-  const updateTeam = useTeamStore((s) => s.updateTeam);
-  const fetchTeam = useTeamStore((s) => s.fetchTeam);
+  const { updateTeam } = useTeamMutations();
+  const queryClient = useQueryClient();
 
-  const { refreshing, onRefresh } = usePullToRefresh(() => fetchTeam(teamId));
+  const { refreshing, onRefresh } = usePullToRefresh(() => queryClient.invalidateQueries({ queryKey: ['team', teamId] }));
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
@@ -104,7 +92,7 @@ function EditTeamForm({ team, teamId }) {
     if (submitting) return;
     if (!generalForm.validate()) return;
     setSubmitting(true);
-    const result = await updateTeam(teamId, { ...generalForm.getValues(), showGroupsToRunners, visible, isPublic });
+    const result = await updateTeam({ teamId, updates: { ...generalForm.getValues(), showGroupsToRunners, visible, isPublic } });
     setSubmitting(false);
 
     if (!result.success) {
