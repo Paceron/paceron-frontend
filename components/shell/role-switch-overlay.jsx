@@ -60,9 +60,8 @@ export function RoleSwitchOverlay() {
   return (
     <Animated.View
       nativeID="role-switch-overlay"
-      pointerEvents={animating ? 'auto' : 'none'}
       style={[
-        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, alignItems: 'center', justifyContent: 'center' },
+        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, alignItems: 'center', justifyContent: 'center', pointerEvents: animating ? 'auto' : 'none' },
         containerStyle,
       ]}
       testID="role-switch-overlay"

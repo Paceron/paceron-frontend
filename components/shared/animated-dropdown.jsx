@@ -31,7 +31,7 @@ export function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
   }));
 
   return (
-    <View className="absolute inset-0 z-50" nativeID="animated-dropdown" pointerEvents={open ? 'auto' : 'none'} testID="animated-dropdown">
+    <View className="absolute inset-0 z-50" nativeID="animated-dropdown" style={{ pointerEvents: open ? 'auto' : 'none' }} testID="animated-dropdown">
       <Pressable className="absolute inset-0" nativeID="animated-dropdown-backdrop" onPress={onClose} testID="animated-dropdown-backdrop" />
       <Animated.View nativeID="animated-dropdown-panel" style={[{ position: 'absolute' }, anchorStyle, animatedStyle]} testID="animated-dropdown-panel">
         {children}

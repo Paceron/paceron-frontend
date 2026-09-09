@@ -10,14 +10,21 @@ import { isAndroid } from '../utils/platform.js';
 // Con la app abierta (foreground) no se muestra el banner nativo del
 // sistema — se maneja con Toast en el segundo useEffect de abajo, mismo
 // mecanismo de feedback que el resto de la app (ver
-// docs/superpowers/specs/2026-08-16-notifications-design.md).
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: false,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// docs/superpowers/specs/2026-08-16-notifications-design.md). Gateado por
+// isAndroid igual que los dos useEffect de abajo — sin esto, este call a
+// nivel de módulo corre en cualquier plataforma (usePushNotifications se
+// monta global en app/_layout.jsx) y expo-notifications tira "Listening
+// to push token changes is not yet fully supported on web" en consola web,
+// sin que nada de nuestro código llame a un listener explícito.
+if (isAndroid) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: false,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 // Desde SDK 53, Expo Go ya no soporta push remoto (ni Android ni iOS) —
 // llamar a las APIs de Notifications ahí solo genera warnings en consola sin

@@ -6,7 +6,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { useTeamMutations } from '../../hooks/use-teams.js';
+import { useInvitationMutations } from '../../hooks/use-invitations.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
@@ -72,8 +74,8 @@ function CreateTeamScreenContent() {
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
-  const createTeam = useTeamStore((s) => s.createTeam);
-  const sendInvite = useTeamStore((s) => s.sendInvite);
+  const { createTeam } = useTeamMutations();
+  const { sendInvite } = useInvitationMutations();
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
@@ -151,7 +153,7 @@ function CreateTeamScreenContent() {
     for (const invite of invitedEmails) {
       const draftName = draftGroupNameById.get(invite.groupId);
       const realGroup = draftName ? result.team.groups.find((g) => g.name === draftName) : null;
-      const inviteResult = await sendInvite(result.team.id, invite.email, realGroup?.id);
+      const inviteResult = await sendInvite({ teamId: result.team.id, email: invite.email, groupId: realGroup?.id });
       if (!inviteResult.success) inviteFailures += 1;
     }
     setSubmitting(false);

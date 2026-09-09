@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRoutesByRole } from '../../routes/catalog.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore } from '../../store/team-store.js';
+import { useMyInvitations } from '../../hooks/use-invitations.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
@@ -266,16 +266,10 @@ export function AppWebShell({ children, pathname }) {
   const routesTab = getRoutesByRole(activeRole);
   const [activeTab, setActiveTab] = useState(pathname);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const fetchMyInvitations = useTeamStore((s) => s.fetchMyInvitations);
-  const myInvitationsCount = useTeamStore((s) => s.myInvitations.length);
+  const { invitations: myInvitations } = useMyInvitations(user?.userId, user?.email);
+  const myInvitationsCount = myInvitations.length;
   const pendingRequestsCount = usePendingRequestsCount(activeRole === 'trainer');
   const notificationsBadgeCount = activeRole === 'trainer' ? pendingRequestsCount : myInvitationsCount;
-
-  useEffect(() => {
-    if (!user?.userId) return;
-    fetchMyInvitations(user.userId, user.email);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId, user?.email]);
 
   useEffect(() => {
     setActiveTab(pathname);

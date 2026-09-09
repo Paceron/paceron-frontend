@@ -8,7 +8,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
+import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { removeTeamUser } from '../../services/teams.js';
@@ -510,14 +512,11 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
 function TeamDetailScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
-  const fetchTeam = useTeamStore((s) => s.fetchTeam);
-  const deleteTeam = useTeamStore((s) => s.deleteTeam);
-  const fetchGroups = useTeamStore((s) => s.fetchGroups);
-  const createGroupInTeam = useTeamStore((s) => s.createGroupInTeam);
-  const deleteGroupReal = useTeamStore((s) => s.deleteGroupReal);
-  const [loadingGroups, setLoadingGroups] = useState(true);
   const user = useAuthStore((s) => s.user);
+  const { team, loading: loadingTeam } = useTeam(teamId);
+  const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
+  const { deleteTeam, uploadTeamIcon, deleteTeamIcon } = useTeamMutations();
+  const { createGroup: createGroupInTeam, deleteGroup: deleteGroupReal } = useGroupMutations(teamId);
   const activeRole = useAuthStore((s) => s.activeRole);
   const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
   // Mismo criterio que "Crear equipo" en los shells: sin modelo de dueño de
@@ -529,8 +528,6 @@ function TeamDetailScreenContent({ teamId }) {
   // realmente es dueño — mostrarlo a cualquier entrenador solo generaría un
   // error del backend para el resto.
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
-  const uploadTeamIcon = useTeamStore((s) => s.uploadTeamIcon);
-  const deleteTeamIcon = useTeamStore((s) => s.deleteTeamIcon);
   const [iconUploading, setIconUploading] = useState(false);
 
   const handlePickIcon = async () => {
@@ -552,7 +549,7 @@ function TeamDetailScreenContent({ teamId }) {
       return;
     }
     setIconUploading(true);
-    const uploadResult = await uploadTeamIcon(team.id, asset.uri, asset.mimeType);
+    const uploadResult = await uploadTeamIcon({ teamId: team.id, uri: asset.uri, mimeType: asset.mimeType });
     setIconUploading(false);
     if (!uploadResult.success) {
       Toast.show({ type: 'error', text1: 'No pudimos subir el ícono', text2: uploadResult.error });
@@ -568,7 +565,7 @@ function TeamDetailScreenContent({ teamId }) {
     }
   };
 
-  const { members: allMembers, loading: loadingRoster } = useTeamRoster(team?.id, team?.groups.map((g) => g.id) ?? []);
+  const { members: allMembers, loading: loadingRoster } = useTeamRoster(team?.id, groups.map((g) => g.id));
   // El dueño del equipo aparece en team_users junto con los corredores
   // reales — se filtra acá (no en el hook, que es agnóstico de "quién es
   // dueño") para que no se cuente ni se liste como corredor.
@@ -593,7 +590,7 @@ function TeamDetailScreenContent({ teamId }) {
   const [deletingGroupId, setDeletingGroupId] = useState(null);
 
   const handleConfirmDelete = async () => {
-    const result = await deleteTeam(team.id, user.userId);
+    const result = await deleteTeam({ teamId: team.id, userId: user.userId });
     setDeleteModalVisible(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el equipo', text2: result.error });
@@ -609,12 +606,12 @@ function TeamDetailScreenContent({ teamId }) {
       setNewGroupError('Ingresá un nombre para el grupo.');
       return;
     }
-    if (team.groups.some((g) => g.name.toLowerCase() === trimmed.toLowerCase())) {
+    if (groups.some((g) => g.name.toLowerCase() === trimmed.toLowerCase())) {
       setNewGroupError('Ya existe un grupo con ese nombre.');
       return;
     }
     setAddingGroup(true);
-    const result = await createGroupInTeam(team.id, { name: trimmed, description: newGroupDescription.trim() || null, trainingPlanId: newGroupPlan || null });
+    const result = await createGroupInTeam({ name: trimmed, description: newGroupDescription.trim() || null, trainingPlanId: newGroupPlan || null });
     setAddingGroup(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos crear el grupo', text2: result.error });
@@ -630,7 +627,8 @@ function TeamDetailScreenContent({ teamId }) {
 
   const handleDeleteGroup = async (group) => {
     setDeletingGroupId(group.id);
-    const result = await deleteGroupReal(team.id, group.id);
+    const defaultGroupId = groups.find((g) => g.isDefault)?.id;
+    const result = await deleteGroupReal({ groupId: group.id, defaultGroupId });
     setDeletingGroupId(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el grupo', text2: result.error });
@@ -654,7 +652,6 @@ function TeamDetailScreenContent({ teamId }) {
   const [activeTab, setActiveTab] = useState(TABS.some((t) => t.id === params.tab) ? params.tab : 'general');
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
-  const [loadingTeam, setLoadingTeam] = useState(!team);
 
   // Panel único del menú de un corredor (ver RunnerMenu/RunnerActionsMenu
   // más arriba) — se cierra solo si se cambia de pestaña, para no dejarlo
@@ -682,7 +679,7 @@ function TeamDetailScreenContent({ teamId }) {
 
   const invalidateRoster = () => {
     queryClient.invalidateQueries({ queryKey: ['team-users', team.id] });
-    team.groups.forEach((g) => queryClient.invalidateQueries({ queryKey: ['group-users', g.id] }));
+    groups.forEach((g) => queryClient.invalidateQueries({ queryKey: ['group-users', g.id] }));
   };
 
   const handleRequestExpel = () => {
@@ -741,8 +738,8 @@ function TeamDetailScreenContent({ teamId }) {
   // 6). Solo tiene sentido si ya está en un grupo no-principal; si está en
   // el principal o el roster todavía no cargó, no hay a dónde "salir".
   const myMembership = members.find((m) => m.userId === String(user?.userId));
-  const myGroup = team?.groups.find((g) => g.id === myMembership?.groupId);
-  const defaultGroup = team?.groups.find((g) => g.isDefault);
+  const myGroup = groups.find((g) => g.id === myMembership?.groupId);
+  const defaultGroup = groups.find((g) => g.isDefault);
   const canLeaveGroup = Boolean(myMembership && myGroup && !myGroup.isDefault && defaultGroup);
 
   const handleConfirmLeaveGroup = async () => {
@@ -763,32 +760,9 @@ function TeamDetailScreenContent({ teamId }) {
     setLeaveGroupModalVisible(false);
   };
 
-  // Entrar por deep-link (ej. recargar /teams/{id} directo) puede caer acá
-  // antes de que el equipo esté en el store — fetchTeam lo trae puntual.
-  useEffect(() => {
-    if (team) {
-      setLoadingTeam(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setLoadingTeam(true);
-    fetchTeam(teamId).finally(() => { if (!cancelled) setLoadingTeam(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId]);
-
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    setLoadingGroups(true);
-    fetchGroups(teamId, user.userId).finally(() => { if (!cancelled) setLoadingGroups(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, user?.userId]);
-
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    fetchTeam(teamId),
-    user?.userId ? fetchGroups(teamId, user.userId) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['team', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['groups', teamId] }),
     queryClient.invalidateQueries({ queryKey: ['team-users', teamId] }),
     queryClient.invalidateQueries({ queryKey: ['group-users'] }),
     queryClient.invalidateQueries({ queryKey: ['join-requests-team', teamId] }),
@@ -797,7 +771,7 @@ function TeamDetailScreenContent({ teamId }) {
 
   // Sin la opción sintética "Todos los grupos" — InlinePicker ya resuelve
   // el "sin filtro" con su propio placeholder (showPlaceholderOption).
-  const groupOptions = useMemo(() => (team ? team.groups.map((g) => ({ id: g.id, name: g.name })) : []), [team]);
+  const groupOptions = useMemo(() => groups.map((g) => ({ id: g.id, name: g.name })), [groups]);
 
   const filteredMembers = useMemo(() => {
     if (!team) return [];
@@ -937,7 +911,7 @@ function TeamDetailScreenContent({ teamId }) {
             <RunnerRow
               colors={colors}
               containerRef={runnerMenuContainerRef}
-              groupName={team.groups.find((g) => g.id === member.groupId)?.name ?? '—'}
+              groupName={groups.find((g) => g.id === member.groupId)?.name ?? '—'}
               key={member.id}
               member={member}
               onOpenMenu={handleOpenRunnerMenu}
@@ -1021,7 +995,7 @@ function TeamDetailScreenContent({ teamId }) {
       )}
 
       <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
-        {[...team.groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
+        {[...groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
           <GroupRow
             canEdit={canManageTeam && !group.isDefault}
             colors={colors}
@@ -1163,7 +1137,7 @@ function TeamDetailScreenContent({ teamId }) {
           />
           <MoveRunnerModal
             currentGroupId={runnerMenuMember.groupId}
-            groups={team.groups}
+            groups={groups}
             onCancel={() => setMoveModalVisible(false)}
             onConfirm={handleConfirmMove}
             runnerName={runnerMenuMember.name}

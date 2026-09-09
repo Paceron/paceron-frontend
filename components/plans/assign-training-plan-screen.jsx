@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,7 +7,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, selectAdministeredTeams } from '../../store/team-store.js';
+import { selectAdministeredTeams } from '../../store/team-store.js';
+import { useTeams } from '../../hooks/use-teams.js';
+import { useGroups } from '../../hooks/use-groups.js';
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
@@ -32,12 +34,9 @@ function AssignTrainingPlanScreenContent({ planId }) {
   const assignToGroup = useTrainingPlanStore((s) => s.assignToGroup);
   const assignToRunner = useTrainingPlanStore((s) => s.assignToRunner);
 
-  const teams = useTeamStore((s) => s.teams);
-  const fetchTeams = useTeamStore((s) => s.fetchTeams);
-  const fetchGroups = useTeamStore((s) => s.fetchGroups);
+  const { teams, loading: loadingTeams } = useTeams();
   const administeredTeams = selectAdministeredTeams(teams, user?.userId);
 
-  const [loadingTeams, setLoadingTeams] = useState(true);
   const [teamId, setTeamId] = useState('');
   const [targetType, setTargetType] = useState('group');
   const [groupId, setGroupId] = useState('');
@@ -47,36 +46,22 @@ function AssignTrainingPlanScreenContent({ planId }) {
   const isDirty = useFormDirty({ teamId, groupId, runnerId });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingTeams(true);
-    fetchTeams().finally(() => { if (!cancelled) setLoadingTeams(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const selectedTeam = administeredTeams.find((t) => t.id === teamId);
-
-  useEffect(() => {
-    if (!teamId || !user?.userId) return;
-    fetchGroups(teamId, user.userId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, user?.userId]);
+  const { groups: selectedTeamGroups } = useGroups(teamId, user?.userId);
 
   const { members: roster, loading: loadingRoster } = useTeamRoster(
     targetType === 'runner' ? teamId : null,
-    selectedTeam?.groups.map((g) => g.id) ?? [],
+    selectedTeamGroups.map((g) => g.id),
   );
 
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    fetchTeams(),
-    teamId && user?.userId ? fetchGroups(teamId, user.userId) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['teams'] }),
+    teamId ? queryClient.invalidateQueries({ queryKey: ['groups', teamId] }) : Promise.resolve(),
     queryClient.invalidateQueries({ queryKey: ['team-users', teamId] }),
     queryClient.invalidateQueries({ queryKey: ['group-users'] }),
   ]));
 
-  const groupOptions = (selectedTeam?.groups ?? []).map((g) => ({ id: g.id, name: g.name }));
+  const groupOptions = selectedTeamGroups.map((g) => ({ id: g.id, name: g.name }));
   const runnerOptions = roster.map((m) => ({ id: m.userId, name: m.name }));
 
   const handleTeamChange = (value) => {
