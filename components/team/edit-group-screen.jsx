@@ -6,7 +6,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTeamStore, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { useTeam } from '../../hooks/use-teams.js';
+import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -28,50 +30,19 @@ function EditGroupScreenContent({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const user = useAuthStore((s) => s.user);
-  const team = useTeamStore((s) => s.teams.find((t) => t.id === teamId));
-  const updateGroupReal = useTeamStore((s) => s.updateGroupReal);
-  const fetchTeam = useTeamStore((s) => s.fetchTeam);
-  const fetchGroups = useTeamStore((s) => s.fetchGroups);
-  const group = team?.groups.find((g) => g.id === groupId);
+  const { team, loading: loadingTeam } = useTeam(teamId);
+  const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
+  const { updateGroup } = useGroupMutations(teamId);
+  const group = groups.find((g) => g.id === groupId);
 
   const [name, setName] = useState(group?.name ?? '');
   const [description, setDescription] = useState(group?.description ?? '');
   const [trainingPlanId, setTrainingPlanId] = useState(group?.trainingPlanId ?? '');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [loadingTeam, setLoadingTeam] = useState(!team);
-  const [loadingGroups, setLoadingGroups] = useState(true);
 
   const isDirty = useFormDirty({ name, description, trainingPlanId });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
-
-  // Entrar por deep-link (ej. recargar /teams/{id}/groups/{groupId}/edit
-  // directo) puede caer acá antes de que el equipo esté en el store —
-  // fetchTeam lo trae puntual. El grupo es un sub-objeto sintético del
-  // equipo en este store, no un recurso fetcheable aparte.
-  useEffect(() => {
-    if (team) {
-      setLoadingTeam(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setLoadingTeam(true);
-    fetchTeam(teamId).finally(() => { if (!cancelled) setLoadingTeam(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId]);
-
-  // Los grupos ya no vienen decorados sincrónicamente con el equipo (ver
-  // store/team-store.js#fetchGroups) — este efecto corre siempre, aunque
-  // el equipo ya esté en el store, porque team.groups puede seguir vacío.
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    setLoadingGroups(true);
-    fetchGroups(teamId, user.userId).finally(() => { if (!cancelled) setLoadingGroups(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, user?.userId]);
 
   const seededRef = useRef(false);
   useEffect(() => {
@@ -117,14 +88,14 @@ function EditGroupScreenContent({ teamId, groupId }) {
       setError('Ingresá un nombre para el grupo.');
       return;
     }
-    const duplicate = team.groups.some((g) => g.id !== groupId && g.name.toLowerCase() === trimmed.toLowerCase());
+    const duplicate = groups.some((g) => g.id !== groupId && g.name.toLowerCase() === trimmed.toLowerCase());
     if (duplicate) {
       setError('Ya existe un grupo con ese nombre.');
       return;
     }
     if (submitting) return;
     setSubmitting(true);
-    const result = await updateGroupReal(teamId, groupId, { name: trimmed, description: description.trim() || null });
+    const result = await updateGroup({ groupId, form: { name: trimmed, description: description.trim() || null } });
     setSubmitting(false);
     if (!result.success) {
       notifyError();
