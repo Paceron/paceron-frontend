@@ -13,12 +13,12 @@ import {
   markPlanAsCurrent as markPlanAsCurrentService,
   unmarkPlanAsCurrent as unmarkPlanAsCurrentService,
 } from '../services/trainingPlans.js';
-import { getGroupUsers as getGroupUsersService } from '../services/groups.js';
+import { listTeams as listTeamsService } from '../services/teams.js';
+import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService } from '../services/groups.js';
 import {
   toTrainingPlanModel, toCreateTrainingPlanPayload, toUpdateTrainingPlanPayload,
-  toRunnerPlanAssignmentModel, toCurrentPlanMarkModel,
+  toRunnerPlanAssignmentModel, toCurrentPlanMarkModel, toTeamModel, toGroupModel,
 } from '../services/normalizers.js';
-import { useTeamStore } from './team-store.js';
 
 // Caducidades soportadas — pedido explícito del usuario (7 o 14 días, no
 // un número libre). Ver decisión en la spec: gobierna cuánto dura vigente
@@ -75,6 +75,15 @@ export const useTrainingPlanStore = create((set, get) => ({
   // docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
   myCurrentPlanIds: [],
 
+  // Asignación de plan a grupo — 100% local (sin campo en el backend, ver
+  // docs/BACKEND_API_GAPS.md gap 4). Vivía en store/team-store.js hasta la
+  // migración de equipos/grupos a TanStack Query (2026-09-09) — ese store
+  // ya no tiene ningún array de grupos donde escribir esto, así que pasa a
+  // vivir acá (es, de última, estado del dominio de planes, no de
+  // equipos). Mapa groupId -> planId, no un campo dentro de un objeto
+  // grupo — este store no tiene copia propia de los grupos reales.
+  groupTrainingPlanIds: {},
+
   // GET /training-plans?owner_id= — biblioteca del entrenador.
   fetchPlans: async (ownerId) => {
     try {
@@ -129,22 +138,23 @@ export const useTrainingPlanStore = create((set, get) => ({
   },
 
   // Borra el plan y, del lado del cliente, limpia cualquier grupo que lo
-  // tuviera asignado (trainingPlanId es local-only, ver
-  // store/team-store.js#setGroupTrainingPlan — sin este paso quedaría un
-  // id colgando apuntando a un plan que ya no existe). Las asignaciones
-  // individuales las limpia el mock solo (mockDeleteTrainingPlan).
+  // tuviera asignado en groupTrainingPlanIds (local-only, ver comentario
+  // de arriba — sin este paso quedaría un id colgando apuntando a un plan
+  // que ya no existe). Las asignaciones individuales las limpia el mock
+  // solo (mockDeleteTrainingPlan).
   deletePlan: async (planId) => {
     try {
       await deleteTrainingPlanService(planId);
-      set((state) => ({
-        plans: state.plans.filter((p) => p.id !== planId),
-        myPlans: state.myPlans.filter((p) => p.id !== planId),
-      }));
-      const teamStore = useTeamStore.getState();
-      teamStore.teams.forEach((team) => {
-        team.groups.forEach((group) => {
-          if (group.trainingPlanId === planId) teamStore.setGroupTrainingPlan(team.id, group.id, null);
-        });
+      set((state) => {
+        const groupTrainingPlanIds = { ...state.groupTrainingPlanIds };
+        for (const [groupId, assignedPlanId] of Object.entries(groupTrainingPlanIds)) {
+          if (assignedPlanId === planId) delete groupTrainingPlanIds[groupId];
+        }
+        return {
+          plans: state.plans.filter((p) => p.id !== planId),
+          myPlans: state.myPlans.filter((p) => p.id !== planId),
+          groupTrainingPlanIds,
+        };
       });
       return { success: true };
     } catch (error) {
@@ -163,12 +173,13 @@ export const useTrainingPlanStore = create((set, get) => ({
     }
   },
 
-  // Asignar a grupo no pega a ningún servicio propio — reusa
-  // group.trainingPlanId (ver store/team-store.js). Queda acá como
-  // wrapper fino para que la pantalla de asignar no tenga que conocer dos
-  // stores distintos según el tipo de destino.
+  // Asignar a grupo no pega a ningún servicio propio — escribe en
+  // groupTrainingPlanIds (100% local, ver comentario de arriba). teamId no
+  // hace falta para la escritura en sí (el mapa es por groupId), se
+  // mantiene en la firma para no romper el call site de la pantalla de
+  // asignar.
   assignToGroup: (teamId, groupId, planId) => {
-    useTeamStore.getState().setGroupTrainingPlan(teamId, groupId, planId);
+    set((state) => ({ groupTrainingPlanIds: { ...state.groupTrainingPlanIds, [groupId]: planId } }));
     return { success: true };
   },
 
@@ -196,28 +207,33 @@ export const useTrainingPlanStore = create((set, get) => ({
   // administra). Ver la spec para el detalle de por qué esto es una
   // composición client-side (trainingPlanId no tiene campo real en el
   // backend, así que no hay forma de resolverlo con un solo fetch).
+  // Trae equipos/grupos directo de los servicios (no vía
+  // hooks/use-teams.js#useMyMemberTeams/hooks/use-groups.js#useGroups —
+  // son hooks de React, este es un action de Zustand fuera de un
+  // componente) — mismo GET /teams?member_id=/GET /groups que usan esos
+  // hooks, solo que llamado imperativamente acá.
   fetchMyPlans: async (userId) => {
     try {
-      const teamStore = useTeamStore.getState();
-      if (teamStore.teams.length === 0) await teamStore.fetchTeams();
-      await teamStore.fetchMyMemberTeams(userId);
-
-      const memberTeamIds = new Set(useTeamStore.getState().myMemberTeams.map((t) => t.id));
-      for (const teamId of memberTeamIds) {
-        await teamStore.fetchGroups(teamId, userId);
-      }
+      const teamDtos = await listTeamsService({ memberId: userId });
+      // Mismo criterio que hooks/use-teams.js#useMyMemberTeams: el backend
+      // agrega al dueño como team_user de su propio equipo, así que
+      // ?member_id= también devuelve los equipos que administra.
+      const memberTeams = teamDtos.map((dto) => toTeamModel(dto)).filter((team) => team.ownerId !== Number(userId));
 
       const individualDtos = await listRunnerPlanAssignmentsService({ userId });
       const individualPlanIds = individualDtos.map((dto) => toRunnerPlanAssignmentModel(dto).planId);
 
+      const groupTrainingPlanIds = get().groupTrainingPlanIds;
       const groupPlanIds = [];
-      for (const team of useTeamStore.getState().teams) {
-        if (!memberTeamIds.has(team.id)) continue;
-        for (const group of team.groups) {
-          if (!group.trainingPlanId) continue;
+      for (const team of memberTeams) {
+        const groupDtos = await listGroupsService(team.id, userId);
+        for (const dto of groupDtos) {
+          const group = toGroupModel(dto);
+          const assignedPlanId = groupTrainingPlanIds[group.id];
+          if (!assignedPlanId) continue;
           const groupUserDtos = await getGroupUsersService(group.id);
           const isMember = groupUserDtos.some((u) => u.user_id === Number(userId));
-          if (isMember) groupPlanIds.push(group.trainingPlanId);
+          if (isMember) groupPlanIds.push(assignedPlanId);
         }
       }
 

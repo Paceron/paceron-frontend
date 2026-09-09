@@ -2,7 +2,6 @@ import {
   useTrainingPlanStore, getPlanStatus, getPlanDaysRemaining, getTodayDayOfWeek,
   buildEmptyPlanDays, dayLabel, PLAN_DURATION_OPTIONS,
 } from '../store/training-plan-store.js';
-import { useTeamStore } from '../store/team-store.js';
 
 jest.mock('../services/trainingPlans.js', () => ({
   listTrainingPlans: jest.fn(),
@@ -52,14 +51,6 @@ jest.mock('../services/groups.js', () => ({
   removeGroupUser: jest.fn(),
 }));
 
-jest.mock('../services/invitations.js', () => ({
-  inviteToTeam: jest.fn(),
-  listTeamInvitations: jest.fn(),
-  listMyInvitations: jest.fn(),
-  acceptInvitation: jest.fn(),
-  rejectInvitation: jest.fn(),
-}));
-
 import { listTeams as listTeamsService } from '../services/teams.js';
 import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService } from '../services/groups.js';
 
@@ -79,8 +70,8 @@ const PLAN_DTO = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  useTrainingPlanStore.setState({ plans: [], myPlans: [], myCurrentPlanIds: [] });
-  useTeamStore.setState({ teams: [], myMemberTeams: [], selectedTeamId: null, myInvitations: [] });
+  useTrainingPlanStore.setState({ plans: [], myPlans: [], myCurrentPlanIds: [], groupTrainingPlanIds: {} });
+  listTeamsService.mockResolvedValue([]);
   listGroupsService.mockResolvedValue([]);
   listCurrentPlanMarksService.mockResolvedValue([]);
 });
@@ -176,9 +167,9 @@ describe('training plan store', () => {
   });
 
   test('deletePlan saca el plan de plans/myPlans y limpia trainingPlanId de cualquier grupo que lo tuviera', async () => {
-    useTrainingPlanStore.setState({ plans: [{ id: '1' }], myPlans: [{ id: '1' }] });
-    useTeamStore.setState({
-      teams: [{ id: 't1', groups: [{ id: 'g1', trainingPlanId: '1' }, { id: 'g2', trainingPlanId: '2' }] }],
+    useTrainingPlanStore.setState({
+      plans: [{ id: '1' }], myPlans: [{ id: '1' }],
+      groupTrainingPlanIds: { g1: '1', g2: '2' },
     });
     deleteTrainingPlanService.mockResolvedValue(null);
 
@@ -187,16 +178,15 @@ describe('training plan store', () => {
     expect(result.success).toBe(true);
     expect(useTrainingPlanStore.getState().plans).toEqual([]);
     expect(useTrainingPlanStore.getState().myPlans).toEqual([]);
-    const [team] = useTeamStore.getState().teams;
-    expect(team.groups.find((g) => g.id === 'g1').trainingPlanId).toBeNull();
-    expect(team.groups.find((g) => g.id === 'g2').trainingPlanId).toBe('2'); // no relacionado, no se toca
+    const { groupTrainingPlanIds } = useTrainingPlanStore.getState();
+    expect(groupTrainingPlanIds.g1).toBeUndefined();
+    expect(groupTrainingPlanIds.g2).toBe('2'); // no relacionado, no se toca
   });
 
-  test('assignToGroup setea trainingPlanId en el grupo correcto vía team-store', () => {
-    useTeamStore.setState({ teams: [{ id: 't1', groups: [{ id: 'g1', trainingPlanId: null }] }] });
+  test('assignToGroup setea trainingPlanId en groupTrainingPlanIds', () => {
     const result = useTrainingPlanStore.getState().assignToGroup('t1', 'g1', '5');
     expect(result.success).toBe(true);
-    expect(useTeamStore.getState().teams[0].groups[0].trainingPlanId).toBe('5');
+    expect(useTrainingPlanStore.getState().groupTrainingPlanIds.g1).toBe('5');
   });
 
   test('assignToRunner llama al servicio con planId y userId', async () => {
@@ -213,12 +203,9 @@ describe('training plan store', () => {
     listRunnerPlanAssignmentsService.mockResolvedValue([{ id: 1, plan_id: 9, user_id: 42, assigned_at: '' }]);
     getTrainingPlanService.mockImplementation(async (planId) => ({ ...PLAN_DTO, id: Number(planId) }));
 
-    // El grupo ya tiene un plan asignado localmente (setGroupTrainingPlan
-    // — ver test de arriba) antes de que fetchMyPlans lo lea. fetchMyPlans
-    // llama fetchGroups() por dentro, que preserva ese trainingPlanId ya
-    // en memoria al mergear la respuesta fresca del mock (mismo criterio
-    // que team-store.js#fetchGroups ya usa en el resto de la app).
-    useTeamStore.setState({ teams: [{ id: '5', groups: [{ id: '50', trainingPlanId: '7' }] }], myMemberTeams: [{ id: '5' }] });
+    // El grupo ya tiene un plan asignado localmente (assignToGroup — ver
+    // test de arriba) antes de que fetchMyPlans lo lea.
+    useTrainingPlanStore.setState({ groupTrainingPlanIds: { 50: '7' } });
 
     const result = await useTrainingPlanStore.getState().fetchMyPlans(42);
 
