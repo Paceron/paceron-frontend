@@ -75,7 +75,7 @@ export function AvatarPicker({ uri, onPick, onRemove, loading = false, size = 64
         <View
           className="absolute -bottom-0.5 -right-0.5 h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-primary dark:border-surface"
           nativeID={`${idPrefix}-edit-badge`}
-          pointerEvents="none"
+          style={{ pointerEvents: 'none' }}
           testID={`${idPrefix}-edit-badge`}
         >
           <MaterialCommunityIcons color={colors.onPrimary} name="pencil" size={11} />
