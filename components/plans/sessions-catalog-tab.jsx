@@ -4,9 +4,8 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
-import { useSessionStore } from '../../store/session-store.js';
-import { useExerciseStore } from '../../store/exercise-store.js';
+import { useSessions, useSessionMutations } from '../../hooks/use-sessions.js';
+import { useExercises } from '../../hooks/use-exercises.js';
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
@@ -61,30 +60,29 @@ function SessionRow({ session, usedIn, onEdit, onDelete, onShowUsage }) {
 export function SessionsCatalogTab() {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
-  const sessions = useSessionStore((s) => s.sessions);
-  const fetchSessions = useSessionStore((s) => s.fetchSessions);
-  const deleteSession = useSessionStore((s) => s.deleteSession);
-  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
+  const { sessions, loading: sessionsLoading } = useSessions(userId);
+  const { deleteSession } = useSessionMutations();
+  useExercises(userId); // solo para precargar el cache que usa SessionExercisesPreview de cada fila
   const plans = useTrainingPlanStore((s) => s.plans);
   const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
 
-  const [loading, setLoading] = useState(true);
+  const [plansLoading, setPlansLoading] = useState(true);
   const [modalSession, setModalSession] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
   const [deleteTarget, setDeleteTarget] = useState(null); // { session, usedIn }
   const [usageTarget, setUsageTarget] = useState(null); // { session, usedIn }
+  const loading = sessionsLoading || plansLoading;
 
   useEffect(() => {
-    if (!user?.userId) return undefined;
+    if (!userId) return undefined;
     let cancelled = false;
-    setLoading(true);
-    Promise.all([fetchSessions(user.userId), fetchExercises(user.userId), fetchPlans(user.userId)]).finally(() => { if (!cancelled) setLoading(false); });
+    setPlansLoading(true);
+    fetchPlans(userId).finally(() => { if (!cancelled) setPlansLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId]);
+  }, [userId]);
 
   const handleDelete = async () => {
-    const result = await deleteSession(deleteTarget.session.id);
+    const result = await deleteSession({ ownerId: userId, sessionId: deleteTarget.session.id });
     setDeleteTarget(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar la sesión', text2: result.error });
