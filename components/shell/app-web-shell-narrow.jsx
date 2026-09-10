@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -39,14 +39,6 @@ function TopBarNarrow({ onTogglePress, open }) {
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'close' : 'menu'} size={24} />
       </Pressable>
       <View className="flex-row items-center gap-3" nativeID="web-narrow-topbar-brand" testID="web-narrow-topbar-brand">
-        <Image
-          accessibilityLabel="Paceron"
-          nativeID="web-narrow-topbar-brand-logo"
-          resizeMode="contain"
-          source={require('../../assets/paceron-symbol-transparent.png')}
-          style={{ width: 36, height: 36 }}
-          testID="web-narrow-topbar-brand-logo"
-        />
         <PaceronBrand size={18} />
       </View>
     </View>

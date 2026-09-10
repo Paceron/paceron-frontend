@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -128,14 +128,6 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
         onPress={() => router.replace('/')}
         testID="web-shell-topbar-brand"
       >
-        <Image
-          accessibilityLabel="Paceron"
-          nativeID="web-shell-topbar-brand-logo"
-          resizeMode="contain"
-          source={require('../../assets/paceron-symbol-transparent.png')}
-          style={{ width: 32, height: 32 }}
-          testID="web-shell-topbar-brand-logo"
-        />
         <PaceronBrand size={16} />
       </Pressable>
 
