@@ -4,11 +4,10 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
 import { useTrainingPlanStore, getPlanStatus } from '../../store/training-plan-store.js';
-import { useExerciseStore } from '../../store/exercise-store.js';
-import { useSessionStore } from '../../store/session-store.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
@@ -125,11 +124,14 @@ function TrainingPlansScreenContent() {
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
-  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
-  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => {
     if (!user?.userId) return Promise.resolve();
-    return Promise.all([fetchPlans(user.userId), fetchExercises(user.userId), fetchSessions(user.userId)]);
+    return Promise.all([
+      fetchPlans(user.userId),
+      queryClient.invalidateQueries({ queryKey: ['exercises', user.userId] }),
+      queryClient.invalidateQueries({ queryKey: ['sessions', user.userId] }),
+    ]);
   });
 
   return (
