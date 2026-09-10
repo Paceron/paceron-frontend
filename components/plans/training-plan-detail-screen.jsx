@@ -5,11 +5,11 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
 import { useTrainingPlanStore, getPlanStatus, dayLabel } from '../../store/training-plan-store.js';
-import { useSessionStore } from '../../store/session-store.js';
-import { useExerciseStore } from '../../store/exercise-store.js';
+import { useSessions } from '../../hooks/use-sessions.js';
+import { useExercises } from '../../hooks/use-exercises.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -128,30 +128,20 @@ function TrainingPlanDetailScreenContent({ planId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
   const activeRole = useAuthStore((s) => s.activeRole);
   const plan = useTrainingPlanStore((s) => s.plans.find((p) => p.id === planId) ?? s.myPlans.find((p) => p.id === planId));
   const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
   const deletePlan = useTrainingPlanStore((s) => s.deletePlan);
   const clonePlan = useTrainingPlanStore((s) => s.clonePlan);
-  const sessions = useSessionStore((s) => s.sessions);
-  const fetchSessions = useSessionStore((s) => s.fetchSessions);
-  const exercises = useExerciseStore((s) => s.exercises);
-  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
+  // Sesiones/ejercicios son del catálogo de QUIEN CREÓ el plan
+  // (plan.ownerId) — no del usuario que está mirando la pantalla, que
+  // puede ser un corredor viendo un plan que no es suyo.
+  const { sessions } = useSessions(plan?.ownerId);
+  const { exercises } = useExercises(plan?.ownerId);
 
   const [loading, setLoading] = useState(!plan);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [cloning, setCloning] = useState(false);
-
-  // Sesiones/ejercicios son del catálogo de QUIEN CREÓ el plan
-  // (plan.ownerId) — no del usuario que está mirando la pantalla, que
-  // puede ser un corredor viendo un plan que no es suyo.
-  useEffect(() => {
-    if (!plan?.ownerId) return;
-    fetchSessions(plan.ownerId);
-    fetchExercises(plan.ownerId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan?.ownerId]);
 
   useEffect(() => {
     if (plan) {
@@ -165,9 +155,13 @@ function TrainingPlanDetailScreenContent({ planId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
 
+  const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
     fetchPlan(planId),
-    plan?.ownerId ? Promise.all([fetchSessions(plan.ownerId), fetchExercises(plan.ownerId)]) : Promise.resolve(),
+    plan?.ownerId ? Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['sessions', plan.ownerId] }),
+      queryClient.invalidateQueries({ queryKey: ['exercises', plan.ownerId] }),
+    ]) : Promise.resolve(),
   ]));
 
   if (loading) {
@@ -201,7 +195,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   // Mismo criterio que canDeleteTeam en equipos — sin modelo de
   // "administra este plan" más allá de ser el dueño y estar viendo la app
   // como entrenador ahora mismo.
-  const canManage = activeRole === 'trainer' && plan.ownerId === user?.userId;
+  const canManage = activeRole === 'trainer' && plan.ownerId === userId;
   const status = getPlanStatus(plan);
   const statusMeta = STATUS_META[status];
   const exercisesById = new Map(exercises.map((e) => [e.id, e]));
