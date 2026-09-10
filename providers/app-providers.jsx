@@ -1,20 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { ThemeProvider } from './theme-provider.jsx';
 import { useAuthStore } from '../store/auth-store.js';
-
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60,
-        retry: 1,
-      },
-    },
-  });
+import { queryClient } from '../lib/query-client.js';
 
 export function AppProviders({ children }) {
-  const [queryClient] = useState(createQueryClient);
   const hydrate = useAuthStore((state) => state.hydrate);
   useEffect(() => {
     hydrate();
