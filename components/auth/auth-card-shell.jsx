@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
+import { ThemeToggle } from '../theme/theme-toggle.jsx';
 
 // Shell visual compartido por las pantallas de auth (login, register, forgot
 // password, reset password): fade-in con Reanimated, card centrada con
@@ -43,6 +44,10 @@ export function AuthCardShell({ cardClassName = 'max-w-md p-8', children }) {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="auth-card-shell-safe-area" testID="auth-card-shell-safe-area">
+      <View className="absolute right-4 top-4 z-10" nativeID="auth-card-shell-theme-toggle" testID="auth-card-shell-theme-toggle">
+        <ThemeToggle />
+      </View>
+
       <KeyboardAwareScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
