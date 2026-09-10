@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, useUserMutations } from '../../hooks/use-user.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
@@ -45,8 +46,9 @@ function buildFullPayload(user, overrides) {
 function SettingsScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
-  const updateUser = useAuthStore((s) => s.updateUser);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
+  const { updateUser } = useUserMutations();
   const { setThemeMode } = useThemeMode();
 
   const [savingTheme, setSavingTheme] = useState(false);
@@ -54,7 +56,7 @@ function SettingsScreenContent() {
 
   const handleThemeChange = async (mode) => {
     setSavingTheme(true);
-    const result = await updateUser(user.userId, buildFullPayload(user, { defaultTheme: mode }));
+    const result = await updateUser({ id: user.userId, payload: buildFullPayload(user, { defaultTheme: mode }) });
     setSavingTheme(false);
     if (result.success) {
       setThemeMode(mode);
@@ -66,7 +68,7 @@ function SettingsScreenContent() {
   const handleInvitationsToggle = async () => {
     const next = !user.allowTeamInvitations;
     setSavingInvitations(true);
-    const result = await updateUser(user.userId, buildFullPayload(user, { allowTeamInvitations: next }));
+    const result = await updateUser({ id: user.userId, payload: buildFullPayload(user, { allowTeamInvitations: next }) });
     setSavingInvitations(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos guardar el cambio', text2: result.error });

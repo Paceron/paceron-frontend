@@ -4,7 +4,9 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, usePermissions, useUserMutations } from '../../hooks/use-user.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { getUserInitials } from '../../utils/user-initials.js';
@@ -205,27 +207,24 @@ function DangerZone({ onDelete, hasTrainerRole, onDeactivateTrainer }) {
 export function ProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
-  const refreshUser = useAuthStore((s) => s.refreshUser);
-  const deactivateAccount = useAuthStore((s) => s.deactivateAccount);
-  const deactivateTrainerRole = useAuthStore((s) => s.deactivateTrainerRole);
-  const uploadPhoto = useAuthStore((s) => s.uploadPhoto);
-  const deletePhoto = useAuthStore((s) => s.deletePhoto);
-  const roles = useAuthStore((s) => s.roles);
+  const userId = useAuthStore((s) => s.userId);
+  const queryClient = useQueryClient();
+  const { user } = useUser(userId);
+  const refreshUser = () => queryClient.invalidateQueries({ queryKey: ['user', userId] });
+  const { deactivateAccount, deactivateTrainerRole, uploadPhoto, deletePhoto } = useUserMutations();
+  const { roles } = usePermissions(userId);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTrainerOpen, setConfirmTrainerOpen] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
+  // userId (sesión), no user (perfil, todavía cargando en el momento del
+  // mount) — con user habría un redirect espurio a /login mientras
+  // useUser resuelve, mismo riesgo que components/guards/require-auth.jsx.
   useEffect(() => {
-    if (!user) router.replace('/login');
+    if (!userId) router.replace('/login');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  useEffect(() => {
-    if (user?.userId) refreshUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId]);
+  }, [userId]);
 
   const { refreshing, onRefresh } = usePullToRefresh(refreshUser);
 
@@ -280,7 +279,7 @@ export function ProfileScreen() {
       return;
     }
     setPhotoUploading(true);
-    const uploadResult = await uploadPhoto(asset.uri, asset.mimeType);
+    const uploadResult = await uploadPhoto({ uri: asset.uri, mimeType: asset.mimeType });
     setPhotoUploading(false);
     if (!uploadResult.success) {
       Toast.show({ type: 'error', text1: 'No pudimos subir la foto', text2: uploadResult.error });

@@ -8,6 +8,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, useUserMutations } from '../../hooks/use-user.js';
 import { InputField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ActivateTrainerPasswordModal } from './activate-trainer-password-modal.jsx';
@@ -15,7 +16,9 @@ import { ActivateTrainerPasswordModal } from './activate-trainer-password-modal.
 export function ActivateTrainerScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
+  const { activateTrainerRole } = useUserMutations();
 
   // Si el usuario ya tuvo el perfil de entrenador activo antes (dado de
   // baja, no borra el alias — ver auth-store.js), se pre-completa acá para
@@ -35,7 +38,7 @@ export function ActivateTrainerScreen() {
   };
 
   const handleConfirmActivate = async (password) => {
-    const result = await useAuthStore.getState().activateTrainerRole(trainerAlias, password);
+    const result = await activateTrainerRole({ bankAlias: trainerAlias, password });
     setPasswordModalVisible(false);
     if (result.success) {
       Toast.show({ type: 'success', text1: '¡Perfil de entrenador activado!', text2: 'Ya podés alternar entre corredor y entrenador.' });

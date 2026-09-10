@@ -35,6 +35,10 @@ export function useUserMutations() {
   const invalidateUser = () => queryClient.invalidateQueries({ queryKey: ['user', userId] });
   const invalidatePermissions = () => queryClient.invalidateQueries({ queryKey: ['permissions', userId] });
 
+  // Siembra el cache con el user actualizado que ya viene en la respuesta
+  // de PUT /users/{id}, en vez de invalidar y refetchear (mismo criterio
+  // que login() en auth-store.js) — un GET /users/{id} inmediato después
+  // no está garantizado que devuelva el eco exacto de lo recién guardado.
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, payload, currentPassword }) => {
       try {
@@ -44,7 +48,7 @@ export function useUserMutations() {
         return { success: false, error: error.message };
       }
     },
-    onSuccess: (result) => { if (result.success) invalidateUser(); },
+    onSuccess: (result) => { if (result.success) queryClient.setQueryData(['user', userId], result.user); },
   });
 
   const uploadPhotoMutation = useMutation({
@@ -57,7 +61,10 @@ export function useUserMutations() {
         return { success: false, error: error.message };
       }
     },
-    onSuccess: (result) => { if (result.success) invalidateUser(); },
+    onSuccess: (result) => {
+      if (!result.success) return;
+      queryClient.setQueryData(['user', userId], (old) => (old ? { ...old, photoUrl: result.photoUrl } : old));
+    },
   });
 
   const deletePhotoMutation = useMutation({
@@ -70,7 +77,10 @@ export function useUserMutations() {
         return { success: false, error: error.message };
       }
     },
-    onSuccess: (result) => { if (result.success) invalidateUser(); },
+    onSuccess: (result) => {
+      if (!result.success) return;
+      queryClient.setQueryData(['user', userId], (old) => (old ? { ...old, photoUrl: null } : old));
+    },
   });
 
   // Baja lógica: a diferencia del resto, en éxito cierra sesión

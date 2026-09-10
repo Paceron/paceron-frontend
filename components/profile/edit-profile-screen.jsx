@@ -12,6 +12,7 @@ import { validateDNI } from '../../utils/dni-validators.js';
 import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, usePermissions, useUserMutations } from '../../hooks/use-user.js';
 import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
@@ -77,12 +78,15 @@ function TabBar({ active, onChange }) {
 // `user` presente, para que los useState pre-carguen con los valores reales.
 export function EditProfileScreen() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
 
+  // userId (sesión), no user (perfil, todavía cargando en el momento del
+  // mount) — mismo criterio que components/guards/require-auth.jsx.
   useEffect(() => {
-    if (!user) router.replace('/login');
+    if (!userId) router.replace('/login');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [userId]);
 
   if (!user) return null;
   return <EditProfileForm user={user} />;
@@ -91,7 +95,10 @@ export function EditProfileScreen() {
 function EditProfileForm({ user }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  const userId = useAuthStore((s) => s.userId);
+  const { roles } = usePermissions(userId);
+  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
+  const { updateUser } = useUserMutations();
 
   const [firstName, setFirstName] = useState(user.name ?? '');
   const [lastName, setLastName] = useState(user.surname ?? '');
@@ -179,11 +186,11 @@ function EditProfileForm({ user }) {
         number: address.number,
         bankAlias: hasTrainerRole ? trainerAlias : user.bankAlias,
       });
-      const result = await useAuthStore.getState().updateUser(
-        user.userId,
+      const result = await updateUser({
+        id: user.userId,
         payload,
-        emailChanged ? currentPassword : undefined,
-      );
+        currentPassword: emailChanged ? currentPassword : undefined,
+      });
       if (result.success) {
         notifySuccess();
         Toast.show({ type: 'success', text1: 'Datos actualizados', text2: 'Tu perfil se guardó correctamente.' });
