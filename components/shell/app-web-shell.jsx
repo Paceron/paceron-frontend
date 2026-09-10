@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRoutesByRole } from '../../routes/catalog.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { useMyInvitations } from '../../hooks/use-invitations.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
@@ -19,7 +20,9 @@ import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
 function DropdownMenu({ onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  const userId = useAuthStore((s) => s.userId);
+  const { roles } = usePermissions(userId);
+  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   const [loggingOut, setLoggingOut] = useState(false);
 
   // logout() ahora pega al backend (revoca el refresh token) antes de
@@ -254,8 +257,13 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
 
 export function AppWebShell({ children, pathname }) {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const isGuest = !user;
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
+  // isGuest se basa en userId (sesión), no en user (perfil, todavía
+  // cargando en el momento del mount) — con user habría un flash de
+  // "invitado" mientras useUser resuelve, mismo riesgo que
+  // components/guards/require-auth.jsx.
+  const isGuest = !userId;
   const userName = user?.name || null;
   const userPhotoUrl = user?.photoUrl || null;
   const userInitials = user ? getUserInitials(user) : '';

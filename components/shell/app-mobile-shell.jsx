@@ -8,6 +8,7 @@ import { getRoutesByRole } from '../../routes/catalog.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { useMyInvitations } from '../../hooks/use-invitations.js';
 import { ThemeToggle } from '../theme/theme-toggle.jsx';
 import { RoleBadge } from './role-badge.jsx';
@@ -59,11 +60,13 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const router = useRouter();
   const colors = useThemeColors();
 
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const logout = useAuthStore((s) => s.logout);
   const [loggingOut, setLoggingOut] = useState(false);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  const { roles } = usePermissions(userId);
+  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
 
   // activeRole, no un userRole estático que nunca llegó a existir en el
   // modelo real (el backend no trackea "el" rol, solo el conjunto
