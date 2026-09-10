@@ -10,8 +10,8 @@ import { EXERCISE_KIND_META, SESSION_ROLE_ORDER } from './exercise-kind-meta.js'
 // color por tipo de ejercicio, reusado por el picker de sesión al armar
 // un día de plan (training-plan-form-fields.jsx) y por el catálogo de
 // sesiones (sessions-catalog-tab.jsx). Resuelve los ejercicios contra
-// useExerciseStore, así que asume que ya están cargados (fetchExercises
-// corrido por el caller). Se agrupa por rol (calor, principal, calma)
+// useExercises, así que asume que ya están cargados (el caller ya montó
+// el hook con el mismo ownerId). Se agrupa por rol (calor, principal, calma)
 // para una lectura consistente sin importar el orden de carga/edición.
 export function SessionExercisesPreview({ session }) {
   const userId = useAuthStore((s) => s.userId);
