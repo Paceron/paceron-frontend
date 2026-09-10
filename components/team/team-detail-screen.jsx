@@ -21,12 +21,12 @@ import { toUserModel } from '../../services/normalizers.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, InlinePicker, Row, Col } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { InlinePicker, Row, Col } from '../forms/fields.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
+import { CreateGroupModal } from './create-group-modal.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
@@ -584,12 +584,7 @@ function TeamDetailScreenContent({ teamId }) {
   const ownerUser = ownerQuery.data ? toUserModel(ownerQuery.data) : null;
   const ownerName = ownerUser ? `${ownerUser.name ?? ''} ${ownerUser.surname ?? ''}`.trim() || ownerUser.email : null;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [addGroupVisible, setAddGroupVisible] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDescription, setNewGroupDescription] = useState('');
-  const [newGroupPlan, setNewGroupPlan] = useState('');
-  const [newGroupError, setNewGroupError] = useState(null);
-  const [addingGroup, setAddingGroup] = useState(false);
+  const [createGroupModalVisible, setCreateGroupModalVisible] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState(null);
 
   const handleConfirmDelete = async () => {
@@ -601,31 +596,6 @@ function TeamDetailScreenContent({ teamId }) {
     }
     Toast.show({ type: 'success', text1: 'Equipo eliminado' });
     router.replace('/teams');
-  };
-
-  const handleAddGroup = async () => {
-    const trimmed = newGroupName.trim();
-    if (!trimmed) {
-      setNewGroupError('Ingresá un nombre para el grupo.');
-      return;
-    }
-    if (groups.some((g) => g.name.toLowerCase() === trimmed.toLowerCase())) {
-      setNewGroupError('Ya existe un grupo con ese nombre.');
-      return;
-    }
-    setAddingGroup(true);
-    const result = await createGroupInTeam({ name: trimmed, description: newGroupDescription.trim() || null, trainingPlanId: newGroupPlan || null });
-    setAddingGroup(false);
-    if (!result.success) {
-      Toast.show({ type: 'error', text1: 'No pudimos crear el grupo', text2: result.error });
-      return;
-    }
-    setNewGroupName('');
-    setNewGroupDescription('');
-    setNewGroupPlan('');
-    setNewGroupError(null);
-    setAddGroupVisible(false);
-    Toast.show({ type: 'success', text1: 'Grupo creado' });
   };
 
   const handleDeleteGroup = async (group) => {
@@ -937,7 +907,7 @@ function TeamDetailScreenContent({ teamId }) {
           accessibilityLabel="Agregar grupo"
           className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
           nativeID="team-detail-add-group-button"
-          onPress={() => setAddGroupVisible((v) => !v)}
+          onPress={() => setCreateGroupModalVisible(true)}
           testID="team-detail-add-group-button"
         >
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
@@ -946,57 +916,6 @@ function TeamDetailScreenContent({ teamId }) {
       icon="account-group"
       title="Grupos"
     >
-      {addGroupVisible && (
-        <View className="mb-6 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="team-detail-add-group-form" testID="team-detail-add-group-form">
-          <Row>
-            <Col>
-              <InputField
-                dense
-                error={newGroupError}
-                label="Nombre del grupo"
-                onChange={(text) => { setNewGroupName(text); if (newGroupError) setNewGroupError(null); }}
-                placeholder="Ej. Grupo avanzado"
-                value={newGroupName}
-              />
-              <ResponsiveSelectField
-                dense
-                label="Plan de entrenamiento"
-                onChange={setNewGroupPlan}
-                options={TRAINING_PLAN_OPTIONS}
-                placeholder={TRAINING_PLAN_OPTIONS.length === 0 ? 'Sin planes disponibles todavía' : 'Sin plan asignado'}
-                value={newGroupPlan}
-              />
-            </Col>
-            <Col>
-              <View className="flex-1" nativeID="team-detail-add-group-description-wrapper" testID="team-detail-add-group-description-wrapper">
-                <InputField
-                  dense
-                  label="Descripción del grupo"
-                  multiline
-                  numberOfLines={5}
-                  onChange={setNewGroupDescription}
-                  placeholder="Ej. Corredores con mayor volumen y ritmo."
-                  value={newGroupDescription}
-                />
-              </View>
-            </Col>
-          </Row>
-          <Pressable
-            className="h-10 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-5 hover:opacity-90 active:opacity-80 disabled:opacity-60"
-            disabled={addingGroup}
-            nativeID="team-detail-add-group-submit"
-            onPress={handleAddGroup}
-            testID="team-detail-add-group-submit"
-          >
-            {addingGroup ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="team-detail-add-group-submit-label" testID="team-detail-add-group-submit-label">
-                Crear grupo
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      )}
-
       <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
         {[...groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
           <GroupRow
@@ -1127,6 +1046,20 @@ function TeamDetailScreenContent({ teamId }) {
           onConfirm={handleConfirmDelete}
           teamName={team.name}
           visible={deleteModalVisible}
+        />
+      )}
+
+      {canManageTeam && (
+        <CreateGroupModal
+          existingNames={groups.map((g) => g.name.toLowerCase())}
+          onClose={() => setCreateGroupModalVisible(false)}
+          onSubmit={async ({ name, description, trainingPlanId }) => {
+            const result = await createGroupInTeam({ name, description, trainingPlanId });
+            if (result.success) Toast.show({ type: 'success', text1: 'Grupo creado' });
+            return result;
+          }}
+          planOptions={TRAINING_PLAN_OPTIONS}
+          visible={createGroupModalVisible}
         />
       )}
 
