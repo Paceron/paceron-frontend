@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -12,12 +12,11 @@ import { useTeamMutations } from '../../hooks/use-teams.js';
 import { useInvitationMutations } from '../../hooks/use-invitations.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
-import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
-import { useEmailSuggestions } from '../../hooks/use-email-suggestions.js';
+import { InvitedEmailsList } from '../forms/fields.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { GroupListEditor } from './group-list-editor.jsx';
+import { InviteMemberModal } from './invite-member-modal.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
@@ -82,12 +81,8 @@ function CreateTeamScreenContent() {
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
 
-  // Raíz de la pantalla — ancla el AnimatedDropdown de sugerencias de
-  // EmailInviteForm (ver hooks/use-email-suggestions.js).
-  const containerRef = useRef(null);
-  const emailSearch = useEmailSuggestions(containerRef);
-
   const [step, setStep] = useState(1);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
 
   // Mismo componente y misma cascada país→provincia→localidad que
   // register/editar perfil, vía el hook compartido con EditTeamScreen
@@ -109,23 +104,28 @@ function CreateTeamScreenContent() {
   const isDirty = useFormDirty({ general: generalForm.getValues(), groups, invitedEmails });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
-  // EmailInviteForm/InvitedEmailsList (paso 3) esperan que, si el grupo
+  // InviteMemberModal/InvitedEmailsList (paso 3) esperan que, si el grupo
   // default existe, venga incluido en `groups` — para un equipo ya creado
   // (EditTeamScreen) es un grupo real con isDefault:true; acá todavía no
-  // existe (recién lo agrega el backend al crear el equipo), así que se
-  // arma una entrada local con id:'' — mismo sentinel que ya usa
-  // handleRemoveGroup de abajo y que sendInvite() (ver handleSubmit) ya
-  // interpreta como "sin grupo, que el backend asigne el principal". Sin
-  // esto, el picker de grupo del paso 3 nunca ofrecía "Sin grupo" como
-  // opción (bug: con 1 grupo extra quedaba fijo a ese grupo, con 2+ no
-  // había forma de elegir el default en absoluto).
-  const groupsForInvite = [{ id: '', name: 'Sin grupo', isDefault: true }, ...groups];
+  // existe (recién lo agrega el backend al crear el equipo, con nombre
+  // "General" — ver __seedDefaultGroup en services/__mocks__/groups-mock.js),
+  // así que se arma una entrada local con el mismo nombre para que el
+  // picker y la lista de invitados ya agregados muestren lo mismo que van
+  // a ver apenas se cree el equipo de verdad. `id: 'default'` (no '') es
+  // a propósito — un id vacío haría que ResponsiveSelectField agregue SU
+  // PROPIO placeholder de "nada elegido" además de esta opción, mostrando
+  // dos filas que dicen lo mismo (bug real, encontrado 2026-09-10). Mismo
+  // sentinel que ya usa handleRemoveGroup de abajo; sendInvite() (ver
+  // handleSubmit) ya interpreta cualquier id que no matchee un grupo real
+  // como "sin grupo, que el backend asigne el principal", así que el
+  // valor exacto del sentinel no le importa a esa lógica.
+  const groupsForInvite = [{ id: 'default', name: 'General', isDefault: true }, ...groups];
 
   // Si se saca un grupo que ya tenia invitaciones asignadas, esas
-  // invitaciones vuelven a "Sin grupo" en vez de quedar apuntando a un
+  // invitaciones vuelven al grupo default en vez de quedar apuntando a un
   // grupo que ya no existe.
   const handleRemoveGroup = (groupId) => {
-    setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: '' } : invite)));
+    setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: 'default' } : invite)));
   };
 
   const handleContinueStep1 = () => {
@@ -174,7 +174,7 @@ function CreateTeamScreenContent() {
   };
 
   return (
-    <View className="relative flex-1" nativeID="create-team-screen-root" ref={containerRef} testID="create-team-screen-root">
+    <View className="flex-1" nativeID="create-team-screen-root" testID="create-team-screen-root">
     <ScrollView
       nativeID="create-team-screen-scroll"
       testID="create-team-screen-scroll"
@@ -229,26 +229,40 @@ function CreateTeamScreenContent() {
 
         {step === 3 && (
           <>
-            <SectionCard icon="email-outline" title="Invitar corredores">
-              <EmailInviteForm emailSearch={emailSearch} existingEmails={invitedEmails.map((invite) => invite.email)} groups={groupsForInvite} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
-            </SectionCard>
-
-            <SectionCard icon="account-multiple-check" title="Corredores a invitar">
+            <SectionCard
+              headerRight={(
+                <Pressable
+                  accessibilityLabel="Invitar corredor"
+                  className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                  nativeID="create-team-invite-add-button"
+                  onPress={() => setInviteModalVisible(true)}
+                  testID="create-team-invite-add-button"
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+                </Pressable>
+              )}
+              icon="account-multiple-check"
+              title="Corredores a invitar"
+            >
               <InvitedEmailsList groups={groupsForInvite} onChange={setInvitedEmails} value={invitedEmails} />
 
               <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
             </SectionCard>
+
+            <InviteMemberModal
+              existingEmails={invitedEmails.map((invite) => invite.email)}
+              groups={groupsForInvite}
+              onClose={() => setInviteModalVisible(false)}
+              onSubmit={async (invite) => {
+                setInvitedEmails((prev) => [...prev, invite]);
+                return { success: true };
+              }}
+              visible={inviteModalVisible}
+            />
           </>
         )}
       </View>
     </ScrollView>
-    <AnimatedDropdown
-      anchorStyle={{ left: emailSearch.anchor.x, top: emailSearch.anchor.y + emailSearch.anchor.height + 4, width: emailSearch.anchor.width }}
-      onClose={emailSearch.close}
-      open={emailSearch.showSuggestions}
-    >
-      <UserSuggestionsList onSelect={emailSearch.selectSuggestion} scope="create-team-invite" suggestions={emailSearch.suggestions} />
-    </AnimatedDropdown>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>
   );

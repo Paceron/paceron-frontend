@@ -12,6 +12,7 @@ import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
+import { useInvitationMutations } from '../../hooks/use-invitations.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { removeTeamUser } from '../../services/teams.js';
@@ -21,13 +22,15 @@ import { toUserModel } from '../../services/normalizers.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, InlinePicker, Row, Col } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { InlinePicker, Row, Col } from '../forms/fields.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
+import { CreateGroupModal } from './create-group-modal.jsx';
+import { InviteMemberModal } from './invite-member-modal.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
+import { DeleteGroupModal } from './delete-group-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
 import { LeaveGroupModal } from './leave-group-modal.jsx';
@@ -519,6 +522,7 @@ function TeamDetailScreenContent({ teamId }) {
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { deleteTeam, uploadTeamIcon, deleteTeamIcon } = useTeamMutations();
   const { createGroup: createGroupInTeam, deleteGroup: deleteGroupReal } = useGroupMutations(teamId);
+  const { sendInvite } = useInvitationMutations();
   const activeRole = useAuthStore((s) => s.activeRole);
   const { roles } = usePermissions(userId);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
@@ -584,13 +588,10 @@ function TeamDetailScreenContent({ teamId }) {
   const ownerUser = ownerQuery.data ? toUserModel(ownerQuery.data) : null;
   const ownerName = ownerUser ? `${ownerUser.name ?? ''} ${ownerUser.surname ?? ''}`.trim() || ownerUser.email : null;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [addGroupVisible, setAddGroupVisible] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDescription, setNewGroupDescription] = useState('');
-  const [newGroupPlan, setNewGroupPlan] = useState('');
-  const [newGroupError, setNewGroupError] = useState(null);
-  const [addingGroup, setAddingGroup] = useState(false);
+  const [createGroupModalVisible, setCreateGroupModalVisible] = useState(false);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState(null);
+  const [groupPendingDelete, setGroupPendingDelete] = useState(null);
 
   const handleConfirmDelete = async () => {
     const result = await deleteTeam({ teamId: team.id, userId: user.userId });
@@ -603,36 +604,12 @@ function TeamDetailScreenContent({ teamId }) {
     router.replace('/teams');
   };
 
-  const handleAddGroup = async () => {
-    const trimmed = newGroupName.trim();
-    if (!trimmed) {
-      setNewGroupError('Ingresá un nombre para el grupo.');
-      return;
-    }
-    if (groups.some((g) => g.name.toLowerCase() === trimmed.toLowerCase())) {
-      setNewGroupError('Ya existe un grupo con ese nombre.');
-      return;
-    }
-    setAddingGroup(true);
-    const result = await createGroupInTeam({ name: trimmed, description: newGroupDescription.trim() || null, trainingPlanId: newGroupPlan || null });
-    setAddingGroup(false);
-    if (!result.success) {
-      Toast.show({ type: 'error', text1: 'No pudimos crear el grupo', text2: result.error });
-      return;
-    }
-    setNewGroupName('');
-    setNewGroupDescription('');
-    setNewGroupPlan('');
-    setNewGroupError(null);
-    setAddGroupVisible(false);
-    Toast.show({ type: 'success', text1: 'Grupo creado' });
-  };
-
   const handleDeleteGroup = async (group) => {
     setDeletingGroupId(group.id);
     const defaultGroupId = groups.find((g) => g.isDefault)?.id;
     const result = await deleteGroupReal({ groupId: group.id, defaultGroupId });
     setDeletingGroupId(null);
+    setGroupPendingDelete(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el grupo', text2: result.error });
       return;
@@ -842,16 +819,26 @@ function TeamDetailScreenContent({ teamId }) {
   const corredoresContent = (
     <SectionCard
       headerRight={canManageTeam && (
-        <Pressable
-          className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
-          nativeID="team-detail-invite-button"
-          onPress={() => router.push(`/teams/${team.id}/invite`)}
-          testID="team-detail-invite-button"
-        >
-          <Text className="text-sm font-semibold text-primary" nativeID="team-detail-invite-button-label" testID="team-detail-invite-button-label">
-            Invitar
-          </Text>
-        </Pressable>
+        <View className="flex-row items-center gap-1" nativeID="team-detail-invite-actions" testID="team-detail-invite-actions">
+          <Pressable
+            accessibilityLabel="Ver solicitudes pendientes"
+            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+            nativeID="team-detail-invite-pending-button"
+            onPress={() => router.push(`/teams/${team.id}/invite`)}
+            testID="team-detail-invite-pending-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="email-check-outline" size={20} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Invitar corredor"
+            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+            nativeID="team-detail-invite-button"
+            onPress={() => setInviteModalVisible(true)}
+            testID="team-detail-invite-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+          </Pressable>
+        </View>
       )}
       icon="account-multiple"
       title="Corredores"
@@ -937,7 +924,7 @@ function TeamDetailScreenContent({ teamId }) {
           accessibilityLabel="Agregar grupo"
           className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
           nativeID="team-detail-add-group-button"
-          onPress={() => setAddGroupVisible((v) => !v)}
+          onPress={() => setCreateGroupModalVisible(true)}
           testID="team-detail-add-group-button"
         >
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
@@ -946,57 +933,6 @@ function TeamDetailScreenContent({ teamId }) {
       icon="account-group"
       title="Grupos"
     >
-      {addGroupVisible && (
-        <View className="mb-6 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="team-detail-add-group-form" testID="team-detail-add-group-form">
-          <Row>
-            <Col>
-              <InputField
-                dense
-                error={newGroupError}
-                label="Nombre del grupo"
-                onChange={(text) => { setNewGroupName(text); if (newGroupError) setNewGroupError(null); }}
-                placeholder="Ej. Grupo avanzado"
-                value={newGroupName}
-              />
-              <ResponsiveSelectField
-                dense
-                label="Plan de entrenamiento"
-                onChange={setNewGroupPlan}
-                options={TRAINING_PLAN_OPTIONS}
-                placeholder={TRAINING_PLAN_OPTIONS.length === 0 ? 'Sin planes disponibles todavía' : 'Sin plan asignado'}
-                value={newGroupPlan}
-              />
-            </Col>
-            <Col>
-              <View className="flex-1" nativeID="team-detail-add-group-description-wrapper" testID="team-detail-add-group-description-wrapper">
-                <InputField
-                  dense
-                  label="Descripción del grupo"
-                  multiline
-                  numberOfLines={5}
-                  onChange={setNewGroupDescription}
-                  placeholder="Ej. Corredores con mayor volumen y ritmo."
-                  value={newGroupDescription}
-                />
-              </View>
-            </Col>
-          </Row>
-          <Pressable
-            className="h-10 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-5 hover:opacity-90 active:opacity-80 disabled:opacity-60"
-            disabled={addingGroup}
-            nativeID="team-detail-add-group-submit"
-            onPress={handleAddGroup}
-            testID="team-detail-add-group-submit"
-          >
-            {addingGroup ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="team-detail-add-group-submit-label" testID="team-detail-add-group-submit-label">
-                Crear grupo
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      )}
-
       <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
         {[...groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
           <GroupRow
@@ -1006,7 +942,7 @@ function TeamDetailScreenContent({ teamId }) {
             group={group}
             key={group.id}
             members={members.filter((m) => m.groupId === group.id)}
-            onDelete={() => handleDeleteGroup(group)}
+            onDelete={() => setGroupPendingDelete(group)}
             onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
             planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
           />
@@ -1127,6 +1063,43 @@ function TeamDetailScreenContent({ teamId }) {
           onConfirm={handleConfirmDelete}
           teamName={team.name}
           visible={deleteModalVisible}
+        />
+      )}
+
+      {canManageTeam && (
+        <DeleteGroupModal
+          groupName={groupPendingDelete?.name}
+          onCancel={() => setGroupPendingDelete(null)}
+          onConfirm={() => handleDeleteGroup(groupPendingDelete)}
+          visible={!!groupPendingDelete}
+        />
+      )}
+
+      {canManageTeam && (
+        <CreateGroupModal
+          existingNames={groups.map((g) => g.name.toLowerCase())}
+          onClose={() => setCreateGroupModalVisible(false)}
+          onSubmit={async ({ name, description, trainingPlanId }) => {
+            const result = await createGroupInTeam({ name, description, trainingPlanId });
+            if (result.success) Toast.show({ type: 'success', text1: 'Grupo creado' });
+            return result;
+          }}
+          planOptions={TRAINING_PLAN_OPTIONS}
+          visible={createGroupModalVisible}
+        />
+      )}
+
+      {canManageTeam && (
+        <InviteMemberModal
+          existingEmails={members.map((m) => m.email)}
+          groups={groups}
+          onClose={() => setInviteModalVisible(false)}
+          onSubmit={async ({ email, groupId }) => {
+            const result = await sendInvite({ teamId: team.id, email, groupId });
+            if (result.success) Toast.show({ type: 'success', text1: 'Invitación enviada' });
+            return result;
+          }}
+          visible={inviteModalVisible}
         />
       )}
 

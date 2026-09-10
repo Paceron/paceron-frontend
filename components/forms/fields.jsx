@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
-import { validateEmailFormat } from '../../utils/email-validators.js';
 import { BREAKPOINTS } from '../../theme/tokens.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
@@ -576,128 +575,6 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
         </Pressable>
       </Modal>
     </>
-  );
-}
-
-// Formulario para agregar un email a la vez a una lista de invitados (ej.
-// invitar gente a un equipo antes de que exista, o desde la pantalla de
-// invitar de un equipo ya existente), con grupo opcional por invitación.
-// Solo agrega — no muestra la lista de ya agregados, eso es
-// InvitedEmailsList (abajo), pensado para vivir en su propia sección
-// visual separada ("Invitar" vs. "Invitados"). `groups` es opcional: sin
-// ese prop (o vacío) no se muestra el picker de grupo. Sin grupo elegido,
-// `onAdd` manda `groupId: ''` — el backend asigna el grupo principal del
-// equipo por default (ver docs/BACKEND_API_GAPS.md gap 9, resuelto
-// 2026-07-31). Las opciones del picker son directamente `groups` (ya
-// incluye el grupo principal real) — no hay un "Sin grupo" inventado
-// aparte.
-//
-// Autocompletar (GET /users/search?q=, mínimo 3 caracteres): el estado
-// vive en `hooks/use-email-suggestions.js`, llamado por la pantalla
-// dueña (no acá) — el panel de sugerencias es un AnimatedDropdown
-// montado en la raíz de esa pantalla, no puede ser hijo de este
-// componente (ver el comentario del hook para el porqué). `emailSearch`
-// es el valor devuelto por ese hook; `draft`/`onDraftChange`/`onFocus`
-// hacen que el input de email quede controlado desde ahí.
-export function EmailInviteForm({ onAdd, groups = [], existingEmails = [], placeholder = 'nombre@email.com', emailSearch }) {
-  const colors = useThemeColors();
-  const slug = 'email-invite-form';
-  const defaultGroupId = groups.find((g) => g.isDefault)?.id ?? '';
-  const [draftGroupId, setDraftGroupId] = useState(defaultGroupId);
-  const [draftError, setDraftError] = useState(null);
-  const { draft, inputWrapperRef, handleChange, handleFocus, resetDraft } = emailSearch;
-
-  // Los grupos pueden llegar async (todavía no estaban cuando se montó
-  // el form) — mantiene seleccionado el principal mientras el usuario no
-  // haya elegido otro a mano.
-  useEffect(() => {
-    if (!draftGroupId && defaultGroupId) setDraftGroupId(defaultGroupId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultGroupId]);
-
-  const handleAdd = () => {
-    const email = draft.trim();
-    if (!email) return;
-    if (!validateEmailFormat(email)) {
-      setDraftError('Email inválido');
-      return;
-    }
-    if (existingEmails.includes(email)) {
-      setDraftError('Ya agregaste ese email');
-      return;
-    }
-    onAdd({ email, groupId: draftGroupId });
-    resetDraft();
-    setDraftGroupId(defaultGroupId);
-    setDraftError(null);
-  };
-
-  return (
-    <View nativeID={slug} testID={slug}>
-      <View className="flex-row items-center gap-2" nativeID={`${slug}-row`} testID={`${slug}-row`}>
-        <View
-          className={`h-12 flex-1 flex-row items-center rounded-xl border ${
-            draftError ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
-          }`}
-          nativeID={`${slug}-input-wrapper`}
-          ref={inputWrapperRef}
-          testID={`${slug}-input-wrapper`}
-        >
-          <TextInput
-            autoCapitalize="none"
-            className={INPUT_CLASS}
-            keyboardType="email-address"
-            onChangeText={(text) => { handleChange(text); if (draftError) setDraftError(null); }}
-            onFocus={handleFocus}
-            onSubmitEditing={handleAdd}
-            placeholder={placeholder}
-            placeholderTextColor={colors.onSurfaceVariant}
-            returnKeyType="done"
-            value={draft}
-            nativeID={`${slug}-input`}
-            testID={`${slug}-input`}
-          />
-        </View>
-
-        {groups.length > 1 ? (
-          <InlinePicker
-            onChange={setDraftGroupId}
-            options={groups}
-            placeholder="Grupo"
-            scope={`${slug}-group`}
-            showPlaceholderOption={false}
-            value={draftGroupId}
-            widthClass="max-w-[160px]"
-          />
-        ) : groups.length === 1 && (
-          // Un solo grupo (el principal) — nada para elegir, se muestra
-          // fijo en vez de un select interactivo sin sentido.
-          <View
-            className="h-12 max-w-[160px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-3 dark:border-slate-700 dark:bg-slate-800"
-            nativeID={`${slug}-single-group`}
-            testID={`${slug}-single-group`}
-          >
-            <Text className="text-xs text-slate-600 dark:text-slate-300" nativeID={`${slug}-single-group-label`} numberOfLines={1} testID={`${slug}-single-group-label`}>
-              {groups[0].name}
-            </Text>
-          </View>
-        )}
-
-        <Pressable
-          className="h-12 w-12 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
-          accessibilityLabel="Agregar email"
-          nativeID={`${slug}-add-button`}
-          onPress={handleAdd}
-          testID={`${slug}-add-button`}
-        >
-          <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
-        </Pressable>
-      </View>
-
-      <View className="h-5" nativeID={`${slug}-error-row`} testID={`${slug}-error-row`}>
-        {draftError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`${slug}-error`} testID={`${slug}-error`}>{draftError}</Text>}
-      </View>
-    </View>
   );
 }
 

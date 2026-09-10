@@ -2,43 +2,19 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { InputField, Row, Col } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { CreateGroupModal } from './create-group-modal.jsx';
 
-// Editor controlado de grupos de un equipo, usado en el paso "Grupos" del
-// wizard de creación (components/team/create-team-screen.jsx, sobre datos
-// en borrador — el equipo todavía no existe). Muestra primero el
-// formulario para agregar grupos extra, en 2 columnas: nombre+plan a la
-// izquierda, descripción a la derecha ocupando el mismo alto. Debajo, al
-// final (justo antes de los botones de navegación del wizard), la lista
-// combinada de grupos del equipo: el grupo principal primero (fila fija,
-// sin botón eliminar — el backend lo crea automáticamente vía
-// create_default_group al crear el equipo, acá es solo un preview, no
-// tiene id real todavía) y después cada grupo extra ya agregado, con
-// botón de eliminar.
+// Lista de grupos de un equipo en el paso "Grupos" del wizard de creación
+// (create-team-screen.jsx, sobre datos en borrador — el equipo todavía no
+// existe). El grupo principal primero (fila fija, sin botón eliminar — el
+// backend lo crea automáticamente vía create_default_group al crear el
+// equipo, acá es solo un preview, no tiene id real todavía), después cada
+// grupo extra ya agregado, con botón de eliminar. El alta pasa por
+// CreateGroupModal (botón "+" arriba de la lista) — acá solo se agrega al
+// array local `groups`, sin pegarle a ningún servicio.
 export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
   const colors = useThemeColors();
-  const [draftName, setDraftName] = useState('');
-  const [draftDescription, setDraftDescription] = useState('');
-  const [draftPlan, setDraftPlan] = useState('');
-  const [draftError, setDraftError] = useState(null);
-
-  const handleAdd = () => {
-    const name = draftName.trim();
-    if (!name) {
-      setDraftError('Ingresá un nombre para el grupo.');
-      return;
-    }
-    if (groups.some((g) => g.name.toLowerCase() === name.toLowerCase())) {
-      setDraftError('Ya creaste un grupo con ese nombre.');
-      return;
-    }
-    onChange([...groups, { id: `group-draft-${Date.now()}`, name, description: draftDescription.trim() || null, trainingPlanId: draftPlan || null }]);
-    setDraftName('');
-    setDraftDescription('');
-    setDraftPlan('');
-    setDraftError(null);
-  };
+  const [modalVisible, setModalVisible] = useState(false);
 
   const handleRemove = (groupId) => {
     onChange(groups.filter((g) => g.id !== groupId));
@@ -47,55 +23,18 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
 
   return (
     <View nativeID="group-list-editor" testID="group-list-editor">
-      <View className="mb-6 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="group-list-editor-form" testID="group-list-editor-form">
-        <Row>
-          <Col>
-            <InputField
-              dense
-              error={draftError}
-              label="Nombre del grupo"
-              onChange={(text) => { setDraftName(text); if (draftError) setDraftError(null); }}
-              placeholder="Ej. Grupo avanzado"
-              value={draftName}
-            />
-            <ResponsiveSelectField
-              dense
-              label="Plan de entrenamiento"
-              onChange={setDraftPlan}
-              options={planOptions}
-              placeholder={planOptions.length === 0 ? 'Sin planes disponibles todavía' : 'Sin plan asignado'}
-              value={draftPlan}
-            />
-          </Col>
-          <Col>
-            <View className="flex-1" nativeID="group-list-editor-description-wrapper" testID="group-list-editor-description-wrapper">
-              <InputField
-                dense
-                label="Descripción del grupo"
-                multiline
-                numberOfLines={5}
-                onChange={setDraftDescription}
-                placeholder="Ej. Corredores con mayor volumen y ritmo."
-                value={draftDescription}
-              />
-            </View>
-          </Col>
-        </Row>
-
+      <View className="mb-3 flex-row items-center justify-between" nativeID="group-list-editor-header" testID="group-list-editor-header">
+        <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="group-list-editor-header-label" testID="group-list-editor-header-label">
+          Grupos agregados
+        </Text>
         <Pressable
-          className="h-11 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
+          accessibilityLabel="Agregar grupo"
+          className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
           nativeID="group-list-editor-add-button"
-          onPress={handleAdd}
+          onPress={() => setModalVisible(true)}
           testID="group-list-editor-add-button"
         >
-          <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={18} />
-          <Text
-            className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
-            nativeID="group-list-editor-add-button-label"
-            testID="group-list-editor-add-button-label"
-          >
-            Agregar grupo
-          </Text>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
         </Pressable>
       </View>
 
@@ -170,6 +109,17 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
           );
         })}
       </View>
+
+      <CreateGroupModal
+        existingNames={groups.map((g) => g.name.toLowerCase())}
+        onClose={() => setModalVisible(false)}
+        onSubmit={async ({ name, description, trainingPlanId }) => {
+          onChange([...groups, { id: `group-draft-${Date.now()}`, name, description, trainingPlanId }]);
+          return { success: true };
+        }}
+        planOptions={planOptions}
+        visible={modalVisible}
+      />
     </View>
   );
 }
