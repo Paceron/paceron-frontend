@@ -104,7 +104,7 @@ function CreateTeamScreenContent() {
   const isDirty = useFormDirty({ general: generalForm.getValues(), groups, invitedEmails });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
-  // EmailInviteForm/InvitedEmailsList (paso 3) esperan que, si el grupo
+  // InviteMemberModal/InvitedEmailsList (paso 3) esperan que, si el grupo
   // default existe, venga incluido en `groups` — para un equipo ya creado
   // (EditTeamScreen) es un grupo real con isDefault:true; acá todavía no
   // existe (recién lo agrega el backend al crear el equipo), así que se
