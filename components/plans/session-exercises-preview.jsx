@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useExerciseStore } from '../../store/exercise-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
+import { useExercises } from '../../hooks/use-exercises.js';
 import { EXERCISE_KIND_META, SESSION_ROLE_ORDER } from './exercise-kind-meta.js';
 
 // Preview de lo que trae una sesión (lista libre de ejercicios, cada uno
@@ -13,7 +14,8 @@ import { EXERCISE_KIND_META, SESSION_ROLE_ORDER } from './exercise-kind-meta.js'
 // corrido por el caller). Se agrupa por rol (calor, principal, calma)
 // para una lectura consistente sin importar el orden de carga/edición.
 export function SessionExercisesPreview({ session }) {
-  const exercises = useExerciseStore((s) => s.exercises);
+  const userId = useAuthStore((s) => s.userId);
+  const { exercises } = useExercises(userId);
   if (!session) return null;
 
   const idPrefix = `session-preview-${session.id}`;

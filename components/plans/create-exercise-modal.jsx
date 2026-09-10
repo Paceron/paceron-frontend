@@ -5,8 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
-import { useExerciseStore, MUSCLE_GROUP_OPTIONS } from '../../store/exercise-store.js';
+import { useExerciseMutations, MUSCLE_GROUP_OPTIONS } from '../../hooks/use-exercises.js';
 import { FIELD_LABEL, InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -129,9 +128,7 @@ const hasOptionalData = (exercise) => Boolean(
 export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
-  const createExercise = useExerciseStore((s) => s.createExercise);
-  const updateExercise = useExerciseStore((s) => s.updateExercise);
+  const { createExercise, updateExercise } = useExerciseMutations();
   const isEditing = Boolean(exercise);
 
   const [name, setName] = useState('');
@@ -209,7 +206,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
     }
     setSubmitting(true);
     const form = {
-      ownerId: user?.userId,
+      ownerId: userId,
       name: name.trim(),
       description: description.trim(),
       kind,
@@ -219,7 +216,9 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
       speedKph: speedKph ? Number(speedKph) : null,
       muscleGroup: muscleGroup || null,
     };
-    const result = isEditing ? await updateExercise(exercise.id, form) : await createExercise(form);
+    const result = isEditing
+      ? await updateExercise({ ownerId: userId, exerciseId: exercise.id, form })
+      : await createExercise({ ownerId: userId, form });
     setSubmitting(false);
 
     if (!result.success) {
