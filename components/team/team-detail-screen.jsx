@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
@@ -512,13 +513,15 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
 function TeamDetailScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const { team, loading: loadingTeam } = useTeam(teamId);
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { deleteTeam, uploadTeamIcon, deleteTeamIcon } = useTeamMutations();
   const { createGroup: createGroupInTeam, deleteGroup: deleteGroupReal } = useGroupMutations(teamId);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const hasTrainerRole = useAuthStore((s) => s.roles.some((r) => r.name === 'entrenador'));
+  const { roles } = usePermissions(userId);
+  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   // Mismo criterio que "Crear equipo" en los shells: sin modelo de dueño de
   // equipo todavía, cualquier usuario viendo la app como entrenador activo
   // puede editar equipo/grupos.

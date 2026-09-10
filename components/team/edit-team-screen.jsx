@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { usePermissions } from '../../hooks/use-user.js';
 import { getTeamMemberLimit } from '../../store/team-store.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
@@ -70,7 +71,8 @@ function EditTeamScreenContent({ teamId }) {
 function EditTeamForm({ team, teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const roles = useAuthStore((s) => s.roles);
+  const userId = useAuthStore((s) => s.userId);
+  const { roles } = usePermissions(userId);
   const { updateTeam } = useTeamMutations();
   const queryClient = useQueryClient();
 

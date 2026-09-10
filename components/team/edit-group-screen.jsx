@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
@@ -29,7 +30,8 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 function EditGroupScreenContent({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const { team, loading: loadingTeam } = useTeam(teamId);
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { updateGroup } = useGroupMutations(teamId);
