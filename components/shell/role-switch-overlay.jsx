@@ -7,6 +7,12 @@ import { useAuthStore } from '../../store/auth-store.js';
 const COLOR_BY_ROLE = { runner: '#8cc63e', trainer: '#f59e0b' };
 const ICON_BY_ROLE = { runner: 'run-fast', trainer: 'whistle' };
 
+// Pantallas cuyo contenido se adapta al rol activo en vez de romperse —
+// quedarse ahí al cambiar de rol en vez de mandar a home. El resto
+// (equipos, planes de entrenamiento) tiene acciones/contenido exclusivos
+// de un rol, así que sigue redirigiendo.
+const SHARED_ROLE_SCREENS = ['/', '/notifications', '/profile', '/profile/edit', '/profile/tier-upgrade', '/settings'];
+
 const FADE_MS = 150;
 const TOTAL_MS = 1000;
 
@@ -14,7 +20,7 @@ const TOTAL_MS = 1000;
 // fondo pasa del color del rol actual al del rol destino, con los íconos de
 // ambos roles en cross-fade sobre la misma ventana. Sin texto — solo color
 // + ícono, ~1s en total. Montado a nivel global (app/_layout.jsx). No navega
-// si el usuario ya está en /profile.
+// si el usuario ya está en una de SHARED_ROLE_SCREENS.
 export function RoleSwitchOverlay() {
   const router = useRouter();
   const pathname = usePathname();
@@ -29,7 +35,7 @@ export function RoleSwitchOverlay() {
     if (!animating) return;
 
     setContent(animating);
-    if (pathname !== '/profile') router.replace('/');
+    if (!SHARED_ROLE_SCREENS.includes(pathname)) router.replace('/');
 
     progress.value = 0;
     opacity.value = withTiming(1, { duration: FADE_MS, easing: Easing.out(Easing.cubic) });
