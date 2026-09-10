@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
-import { useExerciseStore } from '../../store/exercise-store.js';
-import { useSessionStore } from '../../store/session-store.js';
+import { useExercises, useExerciseMutations } from '../../hooks/use-exercises.js';
+import { useSessions } from '../../hooks/use-sessions.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
@@ -62,30 +61,17 @@ function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
 export function ExercisesCatalogTab() {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
-  const exercises = useExerciseStore((s) => s.exercises);
-  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
-  const deleteExercise = useExerciseStore((s) => s.deleteExercise);
-  const sessions = useSessionStore((s) => s.sessions);
-  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const { exercises, loading } = useExercises(userId);
+  const { deleteExercise } = useExerciseMutations();
+  const { sessions } = useSessions(userId);
 
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modalExercise, setModalExercise] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
   const [deleteTarget, setDeleteTarget] = useState(null); // { exercise, usedIn }
   const [usageTarget, setUsageTarget] = useState(null); // { exercise, usedIn }
 
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    setLoading(true);
-    Promise.all([fetchExercises(user.userId), fetchSessions(user.userId)]).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId]);
-
   const handleDelete = async () => {
-    const result = await deleteExercise(deleteTarget.exercise.id);
+    const result = await deleteExercise({ ownerId: userId, exerciseId: deleteTarget.exercise.id });
     setDeleteTarget(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el ejercicio', text2: result.error });
