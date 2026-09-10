@@ -2,6 +2,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './landing-content.js';
 
 function FeatureItem({ icon, title, description, colors }) {
@@ -58,6 +59,14 @@ export function HomeMobileScreen() {
         nativeID="home-mobile-hero"
         testID="home-mobile-hero"
       >
+        <View
+          className="mb-6 items-center"
+          nativeID="home-mobile-hero-brand"
+          testID="home-mobile-hero-brand"
+        >
+          <PaceronBrand size={22} />
+        </View>
+
         <View
           className="mb-6 flex-row items-center gap-2 rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5"
           nativeID="home-mobile-hero-badge"

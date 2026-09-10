@@ -58,6 +58,14 @@ export function HomeLandingScreen() {
           testID="home-landing-screen-hero"
         >
           <View
+            className="mb-6 items-center"
+            nativeID="home-landing-screen-hero-brand"
+            testID="home-landing-screen-hero-brand"
+          >
+            <PaceronBrand size={28} />
+          </View>
+
+          <View
             className="mb-6 flex-row items-center gap-2 self-center rounded-full bg-primary-tint dark:bg-primary/20 px-4 py-2"
             nativeID="home-landing-screen-hero-badge"
             testID="home-landing-screen-hero-badge"
