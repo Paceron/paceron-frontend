@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
-import { useExerciseStore } from '../../store/exercise-store.js';
-import { useSessionStore } from '../../store/session-store.js';
+import { useExercises } from '../../hooks/use-exercises.js';
+import { useSessionMutations } from '../../hooks/use-sessions.js';
 import { InputField, Row, Col, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
@@ -161,11 +160,8 @@ function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChange
 export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
-  const catalogExercises = useExerciseStore((s) => s.exercises);
-  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
-  const createSession = useSessionStore((s) => s.createSession);
-  const updateSession = useSessionStore((s) => s.updateSession);
+  const { exercises: catalogExercises } = useExercises(userId);
+  const { createSession, updateSession } = useSessionMutations();
   const isEditing = Boolean(session);
 
   const [name, setName] = useState('');
@@ -224,11 +220,6 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const isDirty = visible && formDirty;
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
 
-  useEffect(() => {
-    if (visible && user?.userId) fetchExercises(user.userId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, user?.userId]);
-
   const handleClose = () => {
     if (submitting) return;
     guardedClose(onClose);
@@ -272,12 +263,14 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     }
     setSubmitting(true);
     const form = {
-      ownerId: user?.userId,
+      ownerId: userId,
       name: name.trim(),
       description: description.trim(),
       exercises,
     };
-    const result = isEditing ? await updateSession(session.id, form) : await createSession(form);
+    const result = isEditing
+      ? await updateSession({ ownerId: userId, sessionId: session.id, form })
+      : await createSession({ ownerId: userId, form });
     setSubmitting(false);
 
     if (!result.success) {

@@ -7,11 +7,11 @@ import { getTodayDayOfWeek } from '../store/training-plan-store.js';
 // Resuelve el día de HOY de un plan puntual — y, si es de entrenamiento,
 // la sesión + su lista de ejercicios (cada uno con su rol — ver enmienda
 // 2026-09-05 de docs/superpowers/specs/2026-08-26-training-plans-design.md).
-// A propósito NO usa useSessionStore/useExerciseStore (esos guardan un
-// array plano por owner y lo pisan en cada fetch) — acá puede haber
-// hasta 2 planes de 2 entrenadores distintos resolviéndose en paralelo
-// (uno por card del hero), así que se pide cada cosa por id puntual vía
-// los servicios singulares. Ver docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
+// A propósito NO usa useSessions/useExercises (esos traen el catálogo
+// completo de un owner) — acá solo hace falta resolver una sesión y sus
+// ejercicios puntuales por id, así que se pide cada cosa directo vía los
+// servicios singulares (getSession/getExercise), sin cargar el catálogo
+// entero para una sola card. Ver docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
 export function useTodayPlanSession(plan) {
   const [state, setState] = useState({ loading: true, day: null, session: null, exercises: [] });
 
