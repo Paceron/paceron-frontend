@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import { login as loginService, register as registerService, getUser as getUserService, logout as logoutService, refresh as refreshService } from '../services/auth.js';
-import { updateUser as updateUserService, changeStatus as changeStatusService, uploadUserPhoto as uploadUserPhotoService, deleteUserPhoto as deleteUserPhotoService } from '../services/user.js';
-import { assignRole as assignRoleService, activateTrainerRole as activateTrainerRoleService, deactivateTrainerRole as deactivateTrainerRoleService, getPermissions as getPermissionsService } from '../services/roles.js';
+import { login as loginService, register as registerService, logout as logoutService, refresh as refreshService } from '../services/auth.js';
+import { assignRole as assignRoleService } from '../services/roles.js';
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 import { seedDefaultTheme } from '../providers/theme-provider.jsx';
@@ -9,6 +8,10 @@ import { queryClient } from '../lib/query-client.js';
 
 const STORAGE_KEY = 'paceron.auth';
 
+// Solo sesión persiste — el perfil (user/roles) se re-pide del backend en
+// cada arranque vía hooks/use-user.js, nunca se escribe acá (ver
+// docs/superpowers/specs/2026-09-09-auth-store-tanstack-query-migration-design.md,
+// sección Persistencia).
 async function persist(session) {
   try {
     await setItem(STORAGE_KEY, JSON.stringify(session));
@@ -18,22 +21,15 @@ async function persist(session) {
 }
 
 export const useAuthStore = create((set, get) => ({
-  user: null,
   token: null,
   refreshToken: null,
   expiresAt: null,
   hydrated: false,
   activeRole: 'runner',
-  // Id liviano de sesión — hooks/use-user.js lo necesita para
-  // useUser(userId)/usePermissions(userId) sin depender del propio
-  // cache de Query para saber a quién pedirle (ver spec, sección
-  // "Sesión: por qué necesita userId").
+  // Id liviano de sesión — hooks/use-user.js lo usa para
+  // useUser(userId)/usePermissions(userId) sin depender del propio cache
+  // de Query para saber a quién pedirle.
   userId: null,
-  // Roles reales del usuario, desde /auth/permissions. activeRole (cuál
-  // se muestra ahora) sigue local-only — el backend no tiene ese concepto,
-  // solo trackea qué roles tiene asignados (un conjunto, no una selección).
-  roles: [],
-  rolesLoaded: false,
   // Dato puro de UI (no persiste, no dispara nada por sí solo): { role }
   // cuando switchRole() acaba de cambiar el rol activo, null en reposo. El
   // componente que lo consume decide qué hacer (animar, navegar según la
@@ -46,25 +42,22 @@ export const useAuthStore = create((set, get) => ({
       if (raw) {
         const data = JSON.parse(raw);
         set({
-          user: data.user ?? null,
           token: data.token ?? null,
           refreshToken: data.refreshToken ?? null,
           expiresAt: data.expiresAt ?? null,
           activeRole: data.activeRole ?? 'runner',
+          // Fallback a data.user?.userId: sesiones persistidas por el
+          // store pre-migración (todo usuario ya logueado hoy en
+          // producción) tienen el user_id anidado en `user`, no en la
+          // raíz — sin este fallback, esas sesiones pierden el login en
+          // el primer hydrate() tras el deploy de esta rama.
           userId: data.userId ?? data.user?.userId ?? null,
-          // Sesiones viejas (pre-roles-de-backend) no tienen esta clave —
-          // se normaliza a [] en vez de romper. rolesLoaded queda false
-          // hasta que el fetchPermissions() de abajo resuelva.
-          roles: Array.isArray(data.roles) ? data.roles : [],
         });
       }
     } catch {
       // sesión corrupta — se ignora y se arranca sin sesión
     }
     set({ hydrated: true });
-    const { user, token } = get();
-    seedDefaultTheme(user?.defaultTheme);
-    if (user?.userId && token) await get().fetchPermissions();
   },
 
   login: async (email, password) => {
@@ -74,16 +67,15 @@ export const useAuthStore = create((set, get) => ({
       const user = toUserModel(result?.user);
       if (token && user) {
         const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
-        const session = { user, token, refreshToken: result.refresh_token ?? null, expiresAt, userId: user.userId };
+        const { activeRole } = get();
+        const session = { token, refreshToken: result.refresh_token ?? null, expiresAt, userId: user.userId, activeRole };
         set(session);
         seedDefaultTheme(user.defaultTheme);
         // Siembra el cache de perfil con el user que ya vino en la
         // respuesta del login — evita un round-trip extra a getUser
         // apenas loguea (hooks/use-user.js#useUser lee de acá).
         queryClient.setQueryData(['user', user.userId], user);
-        const { activeRole } = get();
-        await persist({ ...session, activeRole, roles: [] });
-        await get().fetchPermissions();
+        await persist(session);
         return { success: true };
       }
       return { success: false, error: 'Credenciales incorrectas.' };
@@ -101,9 +93,9 @@ export const useAuthStore = create((set, get) => ({
         // "corredor" automáticamente al registrarse (permissions devolvía
         // roles: [] para un usuario recién creado) — fallback best-effort,
         // logueado si falla en vez de tragarse el error en silencio.
-        const { user } = get();
-        await assignRoleService(user.userId, 'corredor').catch((e) => console.warn('corredor auto-assign failed', e));
-        await get().fetchPermissions();
+        const { userId } = get();
+        await assignRoleService(userId, 'corredor').catch((e) => console.warn('corredor auto-assign failed', e));
+        queryClient.invalidateQueries({ queryKey: ['permissions', userId] });
       }
       return result;
     } catch (error) {
@@ -111,164 +103,28 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Refresca los datos del usuario desde el backend. Best-effort: si falla
-  // (ej. CORS en web, offline), conserva el user actual sin romper.
-  refreshUser: async () => {
-    const { user, token, refreshToken, expiresAt, activeRole, roles } = get();
-    if (!user?.userId) return;
-    try {
-      const fresh = toUserModel(await getUserService({ id: user.userId }));
-      if (fresh) {
-        set({ user: fresh });
-        await persist({ user: fresh, token, refreshToken, expiresAt, activeRole, roles });
-      }
-    } catch {
-      // best-effort — se mantiene el user actual
-    }
-  },
-
-  // Actualiza datos del usuario (PUT). currentPassword solo si cambió el email.
-  updateUser: async (id, payload, currentPassword) => {
-    try {
-      const updated = toUserModel(await updateUserService(id, payload, currentPassword));
-      if (updated) {
-        const { token, refreshToken, expiresAt, activeRole, roles } = get();
-        set({ user: updated });
-        await persist({ user: updated, token, refreshToken, expiresAt, activeRole, roles });
-      }
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Sube (o reemplaza) la foto de perfil — endpoint separado del PUT
-  // general de /users/{id}, mismo criterio que la plomería de pagos: se
-  // llama al servicio, se actualiza user.photoUrl en el store, se
-  // persiste. mimeType opcional (services/user.js#uploadUserPhoto ya
-  // tiene un default).
-  uploadPhoto: async (uri, mimeType) => {
-    const { user } = get();
-    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
-    try {
-      const { photo_url: photoUrl } = await uploadUserPhotoService(user.userId, uri, mimeType);
-      const updated = { ...user, photoUrl };
-      const { token, refreshToken, expiresAt, activeRole, roles } = get();
-      set({ user: updated });
-      await persist({ user: updated, token, refreshToken, expiresAt, activeRole, roles });
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  deletePhoto: async () => {
-    const { user } = get();
-    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
-    try {
-      await deleteUserPhotoService(user.userId);
-      const updated = { ...user, photoUrl: null };
-      const { token, refreshToken, expiresAt, activeRole, roles } = get();
-      set({ user: updated });
-      await persist({ user: updated, token, refreshToken, expiresAt, activeRole, roles });
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Baja lógica: PATCH status a 'inactive' y cierra sesión.
-  deactivateAccount: async () => {
-    const { user } = get();
-    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
-    try {
-      await changeStatusService(user.userId, 'inactive');
-      await get().logout();
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Pide a /auth/permissions los roles reales del usuario. Se llama tras
-  // login/hydrate/activar rol — nunca se confía solo en la copia
-  // persistida (existe solo para evitar un parpadeo mientras esto corre).
-  fetchPermissions: async () => {
-    const { user } = get();
-    if (!user?.userId) return;
-    try {
-      const data = await getPermissionsService(user.userId);
-      const roles = data?.roles ?? [];
-      // activeRole es local-only y puede quedar desincronizado de los roles
-      // reales — ej. una sesión vieja persistida (localStorage/secure-store)
-      // con activeRole:'trainer' de cuando el usuario sí tenía el rol, y
-      // después se lo sacaron desde otra sesión o se reseteó el mock. Sin
-      // este chequeo, la UI podía mostrar el tag "Entrenador"
-      // (RoleBadge usa activeRole tal cual) mientras el resto de la app
-      // (gates por roles.some(...)) correctamente lo trataba como corredor
-      // — el síntoma exacto: tag de entrenador visible pero el botón
-      // "Activar perfil de entrenador" también, porque roles no lo tenía.
-      const { activeRole: currentActiveRole } = get();
-      const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
-      const activeRole = currentActiveRole === 'trainer' && !hasTrainerRole ? 'runner' : currentActiveRole;
-      set({ roles, rolesLoaded: true, activeRole });
-      const { token, refreshToken, expiresAt } = get();
-      await persist({ user, token, refreshToken, expiresAt, activeRole, roles });
-    } catch {
-      // best-effort — se mantiene roles anterior si falla
-    }
-  },
-
-  // Activa el rol entrenador — 1 sola llamada al endpoint dedicado (valida
-  // contraseña, persiste el alias). La respuesta (UserRoleResponse) no
-  // trae el perfil actualizado, así que se encadena refreshUser() para
-  // traer el bank_alias real guardado por el backend.
-  activateTrainerRole: async (bankAlias, password) => {
-    const { user } = get();
-    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
-    try {
-      await activateTrainerRoleService(user.userId, { password, bankAlias });
-      await get().refreshUser();
-      await get().fetchPermissions();
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Da de baja el rol entrenador vía el endpoint dedicado — a diferencia
-  // del DELETE genérico de roles, este bloquea con 409 si el usuario
-  // lidera equipos activos. El caller muestra ese mensaje tal cual (ver
-  // profile-screen.jsx), sin caso especial acá. bank_alias NO se toca a
-  // propósito — se mantiene guardado por si el usuario reactiva el perfil
-  // más adelante (ver activate-trainer-screen.jsx, que lo pre-completa en
-  // ese caso).
-  deactivateTrainerRole: async () => {
-    const { user, activeRole } = get();
-    if (!user?.userId) return { success: false, error: 'No hay sesión activa.' };
-    try {
-      await deactivateTrainerRoleService(user.userId);
-      if (activeRole === 'trainer') {
-        const { token, refreshToken, expiresAt, roles } = get();
-        set({ activeRole: 'runner' });
-        await persist({ user, token, refreshToken, expiresAt, activeRole: 'runner', roles });
-      }
-      await get().fetchPermissions();
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
   switchRole: async () => {
-    const { activeRole, roles, user, token, refreshToken, expiresAt } = get();
-    if (!roles.some((r) => r.name === 'entrenador')) return;
+    // roles ya no vive acá — el gate de "¿tiene rol entrenador?" que
+    // antes se resolvía inline con get().roles ahora lo hace el caller
+    // (role-switch-toggle.jsx, que ya usa usePermissions() y no llama a
+    // switchRole() si no corresponde mostrar el toggle).
+    const { activeRole, token, refreshToken, expiresAt, userId } = get();
     const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
     set({ activeRole: nextRole, roleSwitchAnimating: { from: activeRole, to: nextRole } });
-    await persist({ user, token, refreshToken, expiresAt, activeRole: nextRole, roles });
+    await persist({ token, refreshToken, expiresAt, userId, activeRole: nextRole });
   },
 
   clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
+
+  // Corrección reactiva disparada por hooks/use-user.js#useRoleReconciliation
+  // cuando activeRole quedó en 'trainer' pero los roles reales no incluyen
+  // 'entrenador' — reemplaza la corrección que antes vivía inline en
+  // fetchPermissions().
+  resetActiveRoleIfInvalid: () => {
+    const { token, refreshToken, expiresAt, userId } = get();
+    set({ activeRole: 'runner' });
+    persist({ token, refreshToken, expiresAt, userId, activeRole: 'runner' });
+  },
 
   logout: async () => {
     const { refreshToken } = get();
@@ -279,27 +135,31 @@ export const useAuthStore = create((set, get) => ({
       // esto falle (sin red, refresh token ya vencido, etc.)
     }
     set({
-      user: null,
       token: null,
       refreshToken: null,
       expiresAt: null,
       activeRole: 'runner',
-      roles: [],
-      rolesLoaded: false,
+      userId: null,
     });
     await removeItem(STORAGE_KEY);
+    // Limpia perfil/permisos (y cualquier otro dominio en cache) — evita
+    // que el próximo login muestre por un instante datos del usuario
+    // anterior. Consolida acá el caso manual (botón "Cerrar sesión", 3
+    // shells) y el caso automático (401 con refresh vencido,
+    // services/api.js) en un solo lugar.
+    queryClient.clear();
   },
 
   // Rota el refresh token (POST /auth/refresh) y persiste el par nuevo.
   // Usado por services/api.js cuando una request pega 401 — ver ahí el
   // interceptor que llama a esto antes de reintentar.
   refreshSession: async () => {
-    const { refreshToken, user, activeRole, roles } = get();
+    const { refreshToken, activeRole, userId } = get();
     if (!refreshToken) throw new Error('No hay refresh token disponible.');
     const result = await refreshService(refreshToken);
     const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
     set({ token: result.access_token, refreshToken: result.refresh_token, expiresAt });
-    await persist({ user, token: result.access_token, refreshToken: result.refresh_token, expiresAt, activeRole, roles });
+    await persist({ token: result.access_token, refreshToken: result.refresh_token, expiresAt, activeRole, userId });
     return result.access_token;
   },
 }));

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUser as getUserService } from '../services/auth.js';
 import { updateUser as updateUserService, changeStatus as changeStatusService, uploadUserPhoto as uploadUserPhotoService, deleteUserPhoto as deleteUserPhotoService } from '../services/user.js';
@@ -140,4 +141,24 @@ export function useUserMutations() {
     deactivateTrainerRole: deactivateTrainerRoleMutation.mutateAsync,
     isDeactivatingTrainer: deactivateTrainerRoleMutation.isPending,
   };
+}
+
+// Corrección reactiva: si activeRole quedó en 'trainer' pero los roles
+// reales (recién resueltos) no incluyen 'entrenador' (sesión vieja
+// persistida, o el rol se revocó desde otra sesión), fuerza activeRole a
+// 'runner'. Reemplaza la corrección que antes vivía inline al final de
+// auth-store.js#fetchPermissions (ahora eliminada de ahí).
+// Se monta una sola vez en providers/app-providers.jsx.
+export function useRoleReconciliation() {
+  const userId = useAuthStore((s) => s.userId);
+  const activeRole = useAuthStore((s) => s.activeRole);
+  const resetActiveRoleIfInvalid = useAuthStore((s) => s.resetActiveRoleIfInvalid);
+  const { roles, loading } = usePermissions(userId);
+
+  useEffect(() => {
+    if (loading) return;
+    const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
+    if (activeRole === 'trainer' && !hasTrainerRole) resetActiveRoleIfInvalid();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roles, loading]);
 }
