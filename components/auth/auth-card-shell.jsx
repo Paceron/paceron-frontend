@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -63,14 +63,7 @@ export function AuthCardShell({ cardClassName = 'max-w-md p-8', children }) {
             </Pressable>
 
             <View className="mb-8 items-center" nativeID="auth-card-shell-logo-wrapper" testID="auth-card-shell-logo-wrapper">
-              <Image
-                resizeMode="contain"
-                source={require('../../assets/paceron-symbol-transparent.png')}
-                style={{ width: 48, height: 48 }}
-                nativeID="auth-card-shell-logo-image"
-                testID="auth-card-shell-logo-image"
-              />
-              <PaceronBrand size={16} style={{ marginTop: 8 }} />
+              <PaceronBrand size={24} />
             </View>
 
             {children}

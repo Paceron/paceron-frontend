@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, BackHandler, Dimensions, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Dimensions, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -42,14 +42,6 @@ function TopAppBar({ onTogglePress, open }) {
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'close' : 'menu'} size={24} />
       </Pressable>
       <View className="flex-row items-center gap-3" nativeID="mobile-topbar-brand" testID="mobile-topbar-brand">
-        <Image
-          accessibilityLabel="Paceron"
-          nativeID="mobile-topbar-brand-logo"
-          resizeMode="contain"
-          source={require('../../assets/paceron-symbol-transparent.png')}
-          style={{ width: 36, height: 36 }}
-          testID="mobile-topbar-brand-logo"
-        />
         <PaceronBrand size={18} />
       </View>
     </View>
