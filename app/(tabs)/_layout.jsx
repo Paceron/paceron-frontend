@@ -1,8 +1,11 @@
 import { Slot, usePathname } from 'expo-router';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppWebShell } from '../../components/shell/app-web-shell.jsx';
 import { AppWebShellNarrow } from '../../components/shell/app-web-shell-narrow.jsx';
 import { AppMobileShell } from '../../components/shell/app-mobile-shell.jsx';
 import { AppLoadingScreen } from '../../components/shell/app-loading-screen.jsx';
+import { ThemeToggle } from '../../components/theme/theme-toggle.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
@@ -10,9 +13,26 @@ import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 export default function TabsLayout() {
   const pathname = usePathname();
   const hydrated = useAuthStore((s) => s.hydrated);
+  const userId = useAuthStore((s) => s.userId);
   const isNarrowWeb = useIsNarrowWeb();
 
   if (!hydrated) return <AppLoadingScreen />;
+
+  // Landing pública (sin sesión): sin shell de navegación de usuario
+  // autenticado — solo el toggle de tema, flotante y transparente, arriba
+  // de lo que sea que renderice HomeLandingScreen/HomeWebNarrowScreen/
+  // HomeMobileScreen (decidido por app/(tabs)/index.jsx / index.web.jsx).
+  // Ver docs/superpowers/specs/2026-09-10-landing-without-shell-design.md.
+  if (pathname === '/' && !userId) {
+    return (
+      <SafeAreaView className="flex-1" edges={['top']} nativeID="landing-bare-shell" testID="landing-bare-shell">
+        <View className="absolute right-4 top-4 z-10" nativeID="landing-bare-shell-theme-toggle" testID="landing-bare-shell-theme-toggle">
+          <ThemeToggle />
+        </View>
+        <Slot />
+      </SafeAreaView>
+    );
+  }
 
   if (isWeb) {
     const WebShell = isNarrowWeb ? AppWebShellNarrow : AppWebShell;
