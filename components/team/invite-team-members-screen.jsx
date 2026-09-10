@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -16,10 +16,9 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
-import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { InvitedEmailsList } from '../forms/fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
-import { useEmailSuggestions } from '../../hooks/use-email-suggestions.js';
+import { InviteMemberModal } from './invite-member-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
@@ -58,13 +57,9 @@ function InviteTeamMembersScreenContent({ teamId }) {
   const { invitations, loading: loadingInvitations } = useTeamInvitations(teamId);
   const { sendInvite } = useInvitationMutations();
 
-  // Raíz de la pantalla — ancla el AnimatedDropdown de sugerencias de
-  // EmailInviteForm (ver hooks/use-email-suggestions.js).
-  const containerRef = useRef(null);
-  const emailSearch = useEmailSuggestions(containerRef);
-
   const [draftInvites, setDraftInvites] = useState([]);
   const [sending, setSending] = useState(false);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
 
   const isDirty = useFormDirty({ hasDrafts: draftInvites.length > 0 });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
@@ -124,7 +119,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
   };
 
   return (
-    <View className="relative flex-1" nativeID="invite-team-screen-root" ref={containerRef} testID="invite-team-screen-root">
+    <View className="flex-1" nativeID="invite-team-screen-root" testID="invite-team-screen-root">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
@@ -162,11 +157,21 @@ function InviteTeamMembersScreenContent({ teamId }) {
           )}
         </SectionCard>
 
-        <SectionCard icon="account-plus-outline" title="Invitar más corredores">
-          <EmailInviteForm emailSearch={emailSearch} existingEmails={draftInvites.map((invite) => invite.email)} groups={groups} onAdd={(invite) => setDraftInvites((prev) => [...prev, invite])} placeholder="Email del corredor" />
-        </SectionCard>
-
-        <SectionCard icon="account-multiple-check" title="Corredores a invitar">
+        <SectionCard
+          headerRight={(
+            <Pressable
+              accessibilityLabel="Invitar corredor"
+              className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+              nativeID="invite-team-invite-add-button"
+              onPress={() => setInviteModalVisible(true)}
+              testID="invite-team-invite-add-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+            </Pressable>
+          )}
+          icon="account-multiple-check"
+          title="Corredores a invitar"
+        >
           <InvitedEmailsList groups={groups} onChange={setDraftInvites} value={draftInvites} />
 
           <Pressable
@@ -190,13 +195,16 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </SectionCard>
       </View>
     </ScrollView>
-    <AnimatedDropdown
-      anchorStyle={{ left: emailSearch.anchor.x, top: emailSearch.anchor.y + emailSearch.anchor.height + 4, width: emailSearch.anchor.width }}
-      onClose={emailSearch.close}
-      open={emailSearch.showSuggestions}
-    >
-      <UserSuggestionsList onSelect={emailSearch.selectSuggestion} scope="invite-team-invite" suggestions={emailSearch.suggestions} />
-    </AnimatedDropdown>
+    <InviteMemberModal
+      existingEmails={draftInvites.map((invite) => invite.email)}
+      groups={groups}
+      onClose={() => setInviteModalVisible(false)}
+      onSubmit={async (invite) => {
+        setDraftInvites((prev) => [...prev, invite]);
+        return { success: true };
+      }}
+      visible={inviteModalVisible}
+    />
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>
   );
