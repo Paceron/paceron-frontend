@@ -30,6 +30,7 @@ import { TabBar } from '../shared/tab-bar.jsx';
 import { CreateGroupModal } from './create-group-modal.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
+import { DeleteGroupModal } from './delete-group-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
 import { LeaveGroupModal } from './leave-group-modal.jsx';
@@ -590,6 +591,7 @@ function TeamDetailScreenContent({ teamId }) {
   const [createGroupModalVisible, setCreateGroupModalVisible] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState(null);
+  const [groupPendingDelete, setGroupPendingDelete] = useState(null);
 
   const handleConfirmDelete = async () => {
     const result = await deleteTeam({ teamId: team.id, userId: user.userId });
@@ -607,6 +609,7 @@ function TeamDetailScreenContent({ teamId }) {
     const defaultGroupId = groups.find((g) => g.isDefault)?.id;
     const result = await deleteGroupReal({ groupId: group.id, defaultGroupId });
     setDeletingGroupId(null);
+    setGroupPendingDelete(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el grupo', text2: result.error });
       return;
@@ -939,7 +942,7 @@ function TeamDetailScreenContent({ teamId }) {
             group={group}
             key={group.id}
             members={members.filter((m) => m.groupId === group.id)}
-            onDelete={() => handleDeleteGroup(group)}
+            onDelete={() => setGroupPendingDelete(group)}
             onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
             planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
           />
@@ -1060,6 +1063,15 @@ function TeamDetailScreenContent({ teamId }) {
           onConfirm={handleConfirmDelete}
           teamName={team.name}
           visible={deleteModalVisible}
+        />
+      )}
+
+      {canManageTeam && (
+        <DeleteGroupModal
+          groupName={groupPendingDelete?.name}
+          onCancel={() => setGroupPendingDelete(null)}
+          onConfirm={() => handleDeleteGroup(groupPendingDelete)}
+          visible={!!groupPendingDelete}
         />
       )}
 
