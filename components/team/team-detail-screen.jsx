@@ -12,6 +12,7 @@ import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
+import { useInvitationMutations } from '../../hooks/use-invitations.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { removeTeamUser } from '../../services/teams.js';
@@ -27,6 +28,7 @@ import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { CreateGroupModal } from './create-group-modal.jsx';
+import { InviteMemberModal } from './invite-member-modal.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
 import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
@@ -519,6 +521,7 @@ function TeamDetailScreenContent({ teamId }) {
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { deleteTeam, uploadTeamIcon, deleteTeamIcon } = useTeamMutations();
   const { createGroup: createGroupInTeam, deleteGroup: deleteGroupReal } = useGroupMutations(teamId);
+  const { sendInvite } = useInvitationMutations();
   const activeRole = useAuthStore((s) => s.activeRole);
   const { roles } = usePermissions(userId);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
@@ -585,6 +588,7 @@ function TeamDetailScreenContent({ teamId }) {
   const ownerName = ownerUser ? `${ownerUser.name ?? ''} ${ownerUser.surname ?? ''}`.trim() || ownerUser.email : null;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [createGroupModalVisible, setCreateGroupModalVisible] = useState(false);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState(null);
 
   const handleConfirmDelete = async () => {
@@ -812,16 +816,26 @@ function TeamDetailScreenContent({ teamId }) {
   const corredoresContent = (
     <SectionCard
       headerRight={canManageTeam && (
-        <Pressable
-          className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
-          nativeID="team-detail-invite-button"
-          onPress={() => router.push(`/teams/${team.id}/invite`)}
-          testID="team-detail-invite-button"
-        >
-          <Text className="text-sm font-semibold text-primary" nativeID="team-detail-invite-button-label" testID="team-detail-invite-button-label">
-            Invitar
-          </Text>
-        </Pressable>
+        <View className="flex-row items-center gap-1" nativeID="team-detail-invite-actions" testID="team-detail-invite-actions">
+          <Pressable
+            accessibilityLabel="Ver solicitudes pendientes"
+            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+            nativeID="team-detail-invite-pending-button"
+            onPress={() => router.push(`/teams/${team.id}/invite`)}
+            testID="team-detail-invite-pending-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="email-check-outline" size={20} />
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Invitar corredor"
+            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+            nativeID="team-detail-invite-button"
+            onPress={() => setInviteModalVisible(true)}
+            testID="team-detail-invite-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+          </Pressable>
+        </View>
       )}
       icon="account-multiple"
       title="Corredores"
@@ -1060,6 +1074,20 @@ function TeamDetailScreenContent({ teamId }) {
           }}
           planOptions={TRAINING_PLAN_OPTIONS}
           visible={createGroupModalVisible}
+        />
+      )}
+
+      {canManageTeam && (
+        <InviteMemberModal
+          existingEmails={members.map((m) => m.email)}
+          groups={groups}
+          onClose={() => setInviteModalVisible(false)}
+          onSubmit={async ({ email, groupId }) => {
+            const result = await sendInvite({ teamId: team.id, email, groupId });
+            if (result.success) Toast.show({ type: 'success', text1: 'Invitación enviada' });
+            return result;
+          }}
+          visible={inviteModalVisible}
         />
       )}
 

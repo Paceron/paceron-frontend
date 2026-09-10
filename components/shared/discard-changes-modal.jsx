@@ -26,7 +26,7 @@ export function DiscardChangesModal({ visible, onCancel, onConfirm }) {
               className="h-11 flex-1 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
               onPress={onCancel}
             >
-              <Text nativeID="discard-changes-modal-cancel-label" testID="discard-changes-modal-cancel-label" className="text-sm font-semibold text-slate-700 dark:text-slate-200">Seguir editando</Text>
+              <Text nativeID="discard-changes-modal-cancel-label" testID="discard-changes-modal-cancel-label" className="text-sm font-semibold text-slate-700 dark:text-slate-200">Continuar</Text>
             </Pressable>
             <Pressable
               nativeID="discard-changes-modal-confirm-button"

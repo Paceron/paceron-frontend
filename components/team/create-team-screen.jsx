@@ -107,20 +107,25 @@ function CreateTeamScreenContent() {
   // InviteMemberModal/InvitedEmailsList (paso 3) esperan que, si el grupo
   // default existe, venga incluido en `groups` — para un equipo ya creado
   // (EditTeamScreen) es un grupo real con isDefault:true; acá todavía no
-  // existe (recién lo agrega el backend al crear el equipo), así que se
-  // arma una entrada local con id:'' — mismo sentinel que ya usa
-  // handleRemoveGroup de abajo y que sendInvite() (ver handleSubmit) ya
-  // interpreta como "sin grupo, que el backend asigne el principal". Sin
-  // esto, el picker de grupo del paso 3 nunca ofrecía "Sin grupo" como
-  // opción (bug: con 1 grupo extra quedaba fijo a ese grupo, con 2+ no
-  // había forma de elegir el default en absoluto).
-  const groupsForInvite = [{ id: '', name: 'Sin grupo', isDefault: true }, ...groups];
+  // existe (recién lo agrega el backend al crear el equipo, con nombre
+  // "General" — ver __seedDefaultGroup en services/__mocks__/groups-mock.js),
+  // así que se arma una entrada local con el mismo nombre para que el
+  // picker y la lista de invitados ya agregados muestren lo mismo que van
+  // a ver apenas se cree el equipo de verdad. `id: 'default'` (no '') es
+  // a propósito — un id vacío haría que ResponsiveSelectField agregue SU
+  // PROPIO placeholder de "nada elegido" además de esta opción, mostrando
+  // dos filas que dicen lo mismo (bug real, encontrado 2026-09-10). Mismo
+  // sentinel que ya usa handleRemoveGroup de abajo; sendInvite() (ver
+  // handleSubmit) ya interpreta cualquier id que no matchee un grupo real
+  // como "sin grupo, que el backend asigne el principal", así que el
+  // valor exacto del sentinel no le importa a esa lógica.
+  const groupsForInvite = [{ id: 'default', name: 'General', isDefault: true }, ...groups];
 
   // Si se saca un grupo que ya tenia invitaciones asignadas, esas
-  // invitaciones vuelven a "Sin grupo" en vez de quedar apuntando a un
+  // invitaciones vuelven al grupo default en vez de quedar apuntando a un
   // grupo que ya no existe.
   const handleRemoveGroup = (groupId) => {
-    setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: '' } : invite)));
+    setInvitedEmails((prev) => prev.map((invite) => (invite.groupId === groupId ? { ...invite, groupId: 'default' } : invite)));
   };
 
   const handleContinueStep1 = () => {
