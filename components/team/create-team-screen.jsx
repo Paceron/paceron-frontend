@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -12,12 +12,11 @@ import { useTeamMutations } from '../../hooks/use-teams.js';
 import { useInvitationMutations } from '../../hooks/use-invitations.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
-import { EmailInviteForm, InvitedEmailsList, UserSuggestionsList } from '../forms/fields.jsx';
-import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
-import { useEmailSuggestions } from '../../hooks/use-email-suggestions.js';
+import { InvitedEmailsList } from '../forms/fields.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { GroupListEditor } from './group-list-editor.jsx';
+import { InviteMemberModal } from './invite-member-modal.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
@@ -82,12 +81,8 @@ function CreateTeamScreenContent() {
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
 
-  // Raíz de la pantalla — ancla el AnimatedDropdown de sugerencias de
-  // EmailInviteForm (ver hooks/use-email-suggestions.js).
-  const containerRef = useRef(null);
-  const emailSearch = useEmailSuggestions(containerRef);
-
   const [step, setStep] = useState(1);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
 
   // Mismo componente y misma cascada país→provincia→localidad que
   // register/editar perfil, vía el hook compartido con EditTeamScreen
@@ -174,7 +169,7 @@ function CreateTeamScreenContent() {
   };
 
   return (
-    <View className="relative flex-1" nativeID="create-team-screen-root" ref={containerRef} testID="create-team-screen-root">
+    <View className="flex-1" nativeID="create-team-screen-root" testID="create-team-screen-root">
     <ScrollView
       nativeID="create-team-screen-scroll"
       testID="create-team-screen-scroll"
@@ -229,26 +224,40 @@ function CreateTeamScreenContent() {
 
         {step === 3 && (
           <>
-            <SectionCard icon="email-outline" title="Invitar corredores">
-              <EmailInviteForm emailSearch={emailSearch} existingEmails={invitedEmails.map((invite) => invite.email)} groups={groupsForInvite} onAdd={(invite) => setInvitedEmails((prev) => [...prev, invite])} placeholder="Email del corredor" />
-            </SectionCard>
-
-            <SectionCard icon="account-multiple-check" title="Corredores a invitar">
+            <SectionCard
+              headerRight={(
+                <Pressable
+                  accessibilityLabel="Invitar corredor"
+                  className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                  nativeID="create-team-invite-add-button"
+                  onPress={() => setInviteModalVisible(true)}
+                  testID="create-team-invite-add-button"
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+                </Pressable>
+              )}
+              icon="account-multiple-check"
+              title="Corredores a invitar"
+            >
               <InvitedEmailsList groups={groupsForInvite} onChange={setInvitedEmails} value={invitedEmails} />
 
               <StepNav disabled={submitting} loading={submitting} nextIcon="check" nextLabel="Crear" onBack={() => setStep(2)} onNext={handleSubmit} />
             </SectionCard>
+
+            <InviteMemberModal
+              existingEmails={invitedEmails.map((invite) => invite.email)}
+              groups={groupsForInvite}
+              onClose={() => setInviteModalVisible(false)}
+              onSubmit={async (invite) => {
+                setInvitedEmails((prev) => [...prev, invite]);
+                return { success: true };
+              }}
+              visible={inviteModalVisible}
+            />
           </>
         )}
       </View>
     </ScrollView>
-    <AnimatedDropdown
-      anchorStyle={{ left: emailSearch.anchor.x, top: emailSearch.anchor.y + emailSearch.anchor.height + 4, width: emailSearch.anchor.width }}
-      onClose={emailSearch.close}
-      open={emailSearch.showSuggestions}
-    >
-      <UserSuggestionsList onSelect={emailSearch.selectSuggestion} scope="create-team-invite" suggestions={emailSearch.suggestions} />
-    </AnimatedDropdown>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>
   );
