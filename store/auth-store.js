@@ -5,6 +5,7 @@ import { assignRole as assignRoleService, activateTrainerRole as activateTrainer
 import { toUserModel } from '../services/normalizers.js';
 import { getItem, setItem, removeItem } from '../services/storage.js';
 import { seedDefaultTheme } from '../providers/theme-provider.jsx';
+import { queryClient } from '../lib/query-client.js';
 
 const STORAGE_KEY = 'paceron.auth';
 
@@ -23,6 +24,11 @@ export const useAuthStore = create((set, get) => ({
   expiresAt: null,
   hydrated: false,
   activeRole: 'runner',
+  // Id liviano de sesión — hooks/use-user.js lo necesita para
+  // useUser(userId)/usePermissions(userId) sin depender del propio
+  // cache de Query para saber a quién pedirle (ver spec, sección
+  // "Sesión: por qué necesita userId").
+  userId: null,
   // Roles reales del usuario, desde /auth/permissions. activeRole (cuál
   // se muestra ahora) sigue local-only — el backend no tiene ese concepto,
   // solo trackea qué roles tiene asignados (un conjunto, no una selección).
@@ -45,6 +51,7 @@ export const useAuthStore = create((set, get) => ({
           refreshToken: data.refreshToken ?? null,
           expiresAt: data.expiresAt ?? null,
           activeRole: data.activeRole ?? 'runner',
+          userId: data.userId ?? data.user?.userId ?? null,
           // Sesiones viejas (pre-roles-de-backend) no tienen esta clave —
           // se normaliza a [] en vez de romper. rolesLoaded queda false
           // hasta que el fetchPermissions() de abajo resuelva.
@@ -67,9 +74,13 @@ export const useAuthStore = create((set, get) => ({
       const user = toUserModel(result?.user);
       if (token && user) {
         const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
-        const session = { user, token, refreshToken: result.refresh_token ?? null, expiresAt };
+        const session = { user, token, refreshToken: result.refresh_token ?? null, expiresAt, userId: user.userId };
         set(session);
         seedDefaultTheme(user.defaultTheme);
+        // Siembra el cache de perfil con el user que ya vino en la
+        // respuesta del login — evita un round-trip extra a getUser
+        // apenas loguea (hooks/use-user.js#useUser lee de acá).
+        queryClient.setQueryData(['user', user.userId], user);
         const { activeRole } = get();
         await persist({ ...session, activeRole, roles: [] });
         await get().fetchPermissions();
