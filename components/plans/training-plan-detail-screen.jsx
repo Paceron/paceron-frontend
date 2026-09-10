@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useTrainingPlanStore, getPlanStatus, dayLabel } from '../../store/training-plan-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
@@ -126,7 +127,8 @@ function DayRow({ day, session, exercisesById }) {
 function TrainingPlanDetailScreenContent({ planId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const activeRole = useAuthStore((s) => s.activeRole);
   const plan = useTrainingPlanStore((s) => s.plans.find((p) => p.id === planId) ?? s.myPlans.find((p) => p.id === planId));
   const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);

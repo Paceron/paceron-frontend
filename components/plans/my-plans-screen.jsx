@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useTrainingPlanStore, getPlanStatus, getPlanDaysRemaining } from '../../store/training-plan-store.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -117,7 +118,8 @@ function MyPlanRow({ plan, isCurrent, atCurrentLimit, onPress, onToggleCurrent }
 function MyPlansScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const myPlans = useTrainingPlanStore((s) => s.myPlans);
   const myCurrentPlanIds = useTrainingPlanStore((s) => s.myCurrentPlanIds);
   const fetchMyPlans = useTrainingPlanStore((s) => s.fetchMyPlans);

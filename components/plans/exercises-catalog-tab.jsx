@@ -4,6 +4,7 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -60,7 +61,8 @@ function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
 
 export function ExercisesCatalogTab() {
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const exercises = useExerciseStore((s) => s.exercises);
   const fetchExercises = useExerciseStore((s) => s.fetchExercises);
   const deleteExercise = useExerciseStore((s) => s.deleteExercise);

@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useTrainingPlanStore, PLAN_DURATION_OPTIONS } from '../../store/training-plan-store.js';
 import { useTrainingPlanForm } from '../../hooks/use-training-plan-form.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -18,7 +19,8 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 function CreateTrainingPlanScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const createPlan = useTrainingPlanStore((s) => s.createPlan);
 
   const form = useTrainingPlanForm({ ownerId: user?.userId });
