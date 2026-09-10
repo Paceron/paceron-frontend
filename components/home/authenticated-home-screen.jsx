@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useThemeColors } from '../../theme/colors.js';
 
 // Home placeholder para usuarios autenticados. Sin roles todavía del lado del
@@ -8,7 +9,8 @@ import { useThemeColors } from '../../theme/colors.js';
 // el sistema de roles esté disponible (equipos, planificación, etc por rol).
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const firstName = user?.name || '';
 
   return (

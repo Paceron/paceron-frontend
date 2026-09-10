@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
+import { usePermissions } from '../../hooks/use-user.js';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
@@ -78,7 +79,8 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
 export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTierLink = wide }) {
   const router = useRouter();
   const activeRole = useAuthStore((s) => s.activeRole);
-  const roles = useAuthStore((s) => s.roles);
+  const userId = useAuthStore((s) => s.userId);
+  const { roles } = usePermissions(userId);
   const switchRole = useAuthStore((s) => s.switchRole);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   // Se calcula acá arriba (no solo en la rama con entrenador) porque el
