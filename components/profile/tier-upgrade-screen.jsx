@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { useTierSubscription } from '../../hooks/use-tier-subscription.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { listTiers } from '../../services/tiers.js';
@@ -133,9 +134,11 @@ export function TierUpgradeScreen() {
   const isNarrowWeb = useIsNarrowWeb();
   const isDesktopWeb = isWeb && !isNarrowWeb;
   const activeRole = useAuthStore((s) => s.activeRole);
-  const roles = useAuthStore((s) => s.roles);
-  const user = useAuthStore((s) => s.user);
-  const fetchPermissions = useAuthStore((s) => s.fetchPermissions);
+  const userId = useAuthStore((s) => s.userId);
+  const { roles } = usePermissions(userId);
+  const { user } = useUser(userId);
+  const queryClient = useQueryClient();
+  const fetchPermissions = () => queryClient.invalidateQueries({ queryKey: ['permissions', userId] });
 
   const currentRoleName = activeRole === 'runner' ? 'corredor' : 'entrenador';
   const currentTierName = roles.find((r) => r.name === currentRoleName)?.tier;

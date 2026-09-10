@@ -5,9 +5,9 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 
 export default function HomeScreenWeb() {
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
   const isNarrowWeb = useIsNarrowWeb();
 
-  if (user) return <AuthenticatedHomeScreen />;
+  if (userId) return <AuthenticatedHomeScreen />;
   return isNarrowWeb ? <HomeWebNarrowScreen /> : <HomeLandingScreen />;
 }

@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeamMutations } from '../../hooks/use-teams.js';
 import { useInvitationMutations } from '../../hooks/use-invitations.js';
@@ -72,8 +73,9 @@ function StepNav({ onBack, onNext, nextLabel, nextIcon = 'arrow-right', loading 
 function CreateTeamScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
-  const roles = useAuthStore((s) => s.roles);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
+  const { roles } = usePermissions(userId);
   const { createTeam } = useTeamMutations();
   const { sendInvite } = useInvitationMutations();
 

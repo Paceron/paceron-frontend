@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { InputField, Row, Col, FIELD_LABEL } from '../forms/fields.jsx';
@@ -159,7 +160,8 @@ function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChange
 // pide al menos 1 ejercicio de cada rol al guardar.
 export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const catalogExercises = useExerciseStore((s) => s.exercises);
   const fetchExercises = useExerciseStore((s) => s.fetchExercises);
   const createSession = useSessionStore((s) => s.createSession);

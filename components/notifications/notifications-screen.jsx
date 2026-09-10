@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeams } from '../../hooks/use-teams.js';
 import { useMyInvitations, useInvitationMutations } from '../../hooks/use-invitations.js';
@@ -160,9 +161,9 @@ function MyJoinRequestsSection() {
 function TrainerPendingRequestsSection() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
   const { teams } = useTeams();
-  const administeredTeamIds = selectAdministeredTeams(teams, user?.userId).map((t) => t.id);
+  const administeredTeamIds = selectAdministeredTeams(teams, userId).map((t) => t.id);
   const { byTeamId, loading } = useTeamsJoinRequestsMap(administeredTeamIds);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -208,7 +209,8 @@ function TrainerPendingRequestsSection() {
 function NotificationsScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const activeRole = useAuthStore((s) => s.activeRole);
   const { invitations: myInvitations, loading: loadingInvitations } = useMyInvitations(user?.userId, user?.email);
   const { acceptInvitation, rejectInvitation } = useInvitationMutations();

@@ -3,6 +3,6 @@ import { AuthenticatedHomeScreen } from '../../components/home/authenticated-hom
 import { useAuthStore } from '../../store/auth-store.js';
 
 export default function HomeScreen() {
-  const user = useAuthStore((s) => s.user);
-  return user ? <AuthenticatedHomeScreen /> : <HomeMobileScreen />;
+  const userId = useAuthStore((s) => s.userId);
+  return userId ? <AuthenticatedHomeScreen /> : <HomeMobileScreen />;
 }

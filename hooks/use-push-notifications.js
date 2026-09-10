@@ -39,13 +39,13 @@ const isExpoGo = Constants.executionEnvironment === 'storeClient';
 // isMobile: iOS no está contemplado todavía, aunque isMobile lo incluya).
 export function usePushNotifications() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
   const registeredForUserId = useRef(null);
 
   useEffect(() => {
-    if (!isAndroid || isExpoGo || !user?.userId) return;
-    if (registeredForUserId.current === user.userId) return;
-    registeredForUserId.current = user.userId;
+    if (!isAndroid || isExpoGo || !userId) return;
+    if (registeredForUserId.current === userId) return;
+    registeredForUserId.current = userId;
 
     (async () => {
       try {
@@ -65,7 +65,7 @@ export function usePushNotifications() {
         // el arranque de la app; el badge in-app sigue siendo el fallback
       }
     })();
-  }, [user?.userId]);
+  }, [userId]);
 
   useEffect(() => {
     if (!isAndroid || isExpoGo) return undefined;

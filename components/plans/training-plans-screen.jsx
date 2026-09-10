@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useTrainingPlanStore, getPlanStatus } from '../../store/training-plan-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useSessionStore } from '../../store/session-store.js';
@@ -66,7 +67,8 @@ function PlanRow({ plan, onPress }) {
 
 function PlansTab() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const plans = useTrainingPlanStore((s) => s.plans);
   const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,8 @@ function TrainingPlansScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const [activeTab, setActiveTab] = useState('planes');
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
   const fetchExercises = useExerciseStore((s) => s.fetchExercises);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);

@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeams } from '../../hooks/use-teams.js';
 import { useGroups } from '../../hooks/use-groups.js';
@@ -29,7 +30,8 @@ const TARGET_TYPE_OPTIONS = [
 function AssignTrainingPlanScreenContent({ planId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const plan = useTrainingPlanStore((s) => s.plans.find((p) => p.id === planId));
   const assignToGroup = useTrainingPlanStore((s) => s.assignToGroup);
   const assignToRunner = useTrainingPlanStore((s) => s.assignToRunner);

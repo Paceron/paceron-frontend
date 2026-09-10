@@ -4,6 +4,7 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
@@ -59,7 +60,8 @@ function SessionRow({ session, usedIn, onEdit, onDelete, onShowUsage }) {
 
 export function SessionsCatalogTab() {
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const sessions = useSessionStore((s) => s.sessions);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const deleteSession = useSessionStore((s) => s.deleteSession);

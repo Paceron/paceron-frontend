@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useExerciseStore, MUSCLE_GROUP_OPTIONS } from '../../store/exercise-store.js';
 import { FIELD_LABEL, InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
@@ -127,7 +128,8 @@ const hasOptionalData = (exercise) => Boolean(
 // nombre libre era información duplicada).
 export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const createExercise = useExerciseStore((s) => s.createExercise);
   const updateExercise = useExerciseStore((s) => s.updateExercise);
   const isEditing = Boolean(exercise);

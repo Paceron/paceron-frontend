@@ -10,6 +10,7 @@ import { useTeam } from '../../hooks/use-teams.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { useTeamInvitations, useInvitationMutations } from '../../hooks/use-invitations.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -50,7 +51,8 @@ function PendingInviteRow({ groupName, invite }) {
 function InviteTeamMembersScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const { team, loading: loadingTeam } = useTeam(teamId);
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { invitations, loading: loadingInvitations } = useTeamInvitations(teamId);

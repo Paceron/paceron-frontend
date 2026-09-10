@@ -6,6 +6,7 @@ import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useSessionStore } from '../../store/session-store.js';
 import { useExerciseStore } from '../../store/exercise-store.js';
 import { dayLabel } from '../../store/training-plan-store.js';
@@ -258,7 +259,8 @@ function DayRow({ day, sessions, onChangeDay }) {
 // warmup/main/cooldown de cero cada vez — ver enmienda 2026-08-26 de
 // docs/superpowers/specs/2026-08-26-training-plans-design.md.
 export function TrainingPlanFormFields({ form, durationOptions, autoFocusName = false }) {
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const sessions = useSessionStore((s) => s.sessions);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const fetchExercises = useExerciseStore((s) => s.fetchExercises);
