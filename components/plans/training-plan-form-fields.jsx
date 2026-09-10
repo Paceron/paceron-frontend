@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
-import { useSessionStore } from '../../store/session-store.js';
-import { useExerciseStore } from '../../store/exercise-store.js';
+import { useSessions } from '../../hooks/use-sessions.js';
+import { useExercises } from '../../hooks/use-exercises.js';
 import { dayLabel } from '../../store/training-plan-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField } from '../forms/fields.jsx';
@@ -260,21 +258,8 @@ function DayRow({ day, sessions, onChangeDay }) {
 // docs/superpowers/specs/2026-08-26-training-plans-design.md.
 export function TrainingPlanFormFields({ form, durationOptions, autoFocusName = false }) {
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
-  const sessions = useSessionStore((s) => s.sessions);
-  const fetchSessions = useSessionStore((s) => s.fetchSessions);
-  const fetchExercises = useExerciseStore((s) => s.fetchExercises);
-
-  useEffect(() => {
-    if (!user?.userId) return;
-    fetchSessions(user.userId).then((result) => {
-      if (!result.success) Toast.show({ type: 'error', text1: 'No pudimos cargar las sesiones', text2: result.error });
-    });
-    fetchExercises(user.userId).then((result) => {
-      if (!result.success) Toast.show({ type: 'error', text1: 'No pudimos cargar los ejercicios', text2: result.error });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId]);
+  const { sessions } = useSessions(userId);
+  useExercises(userId); // precarga el cache que usa SessionExercisesPreview del picker de sesión
 
   return (
     <>
