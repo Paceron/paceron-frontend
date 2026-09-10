@@ -54,6 +54,10 @@ function SettingsScreenContent() {
   const [savingTheme, setSavingTheme] = useState(false);
   const [savingInvitations, setSavingInvitations] = useState(false);
 
+  // user (perfil) puede tardar en cargar — mismo guard que
+  // edit-profile-screen.jsx, evita leer user.defaultTheme/etc contra null.
+  if (!user) return null;
+
   const handleThemeChange = async (mode) => {
     setSavingTheme(true);
     const result = await updateUser({ id: user.userId, payload: buildFullPayload(user, { defaultTheme: mode }) });
