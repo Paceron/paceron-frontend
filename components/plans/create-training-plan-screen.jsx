@@ -7,7 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
-import { useTrainingPlanStore, PLAN_DURATION_OPTIONS } from '../../store/training-plan-store.js';
+import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { useTrainingPlanForm } from '../../hooks/use-training-plan-form.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
@@ -26,7 +26,7 @@ function CreateTrainingPlanScreenContent() {
   const form = useTrainingPlanForm({ ownerId: user?.userId });
   const [submitting, setSubmitting] = useState(false);
 
-  const isDirty = useFormDirty({ name: form.name, description: form.description, durationDays: form.durationDays, days: form.days });
+  const isDirty = useFormDirty({ name: form.name, description: form.description, dayCount: form.days.length });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   const handleSubmit = async () => {
@@ -71,7 +71,7 @@ function CreateTrainingPlanScreenContent() {
             </Text>
           </View>
 
-          <TrainingPlanFormFields autoFocusName={!isWeb} durationOptions={PLAN_DURATION_OPTIONS} form={form} />
+          <TrainingPlanFormFields autoFocusName={!isWeb} form={form} />
 
           <Pressable
             className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
