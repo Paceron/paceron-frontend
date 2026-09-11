@@ -300,7 +300,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
           </Text>
         </SectionCard>
 
-        <SectionCard icon="calendar-week" title="Los 7 días de la semana">
+        <SectionCard icon="calendar-week" title="Días del plan">
           <View className="gap-2" nativeID="training-plan-detail-days-list" testID="training-plan-detail-days-list">
             {plan.days.map((day) => (
               <DayRow

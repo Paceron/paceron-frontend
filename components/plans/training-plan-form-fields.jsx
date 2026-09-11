@@ -251,7 +251,7 @@ function DayRow({ day, sessions, onChangeDay }) {
   );
 }
 
-// Constructor de los 7 días fijos del plan. Un día de tipo "Entrenamiento"
+// Constructor de los días del plan. Un día de tipo "Entrenamiento"
 // ELIGE una sesión ya creada (catálogo del entrenador) en vez de armar
 // warmup/main/cooldown de cero cada vez — ver enmienda 2026-08-26 de
 // docs/superpowers/specs/2026-08-26-training-plans-design.md.

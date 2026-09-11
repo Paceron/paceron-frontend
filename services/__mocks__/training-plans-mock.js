@@ -140,7 +140,7 @@ export async function mockDeleteTrainingPlan(planId) {
   return null;
 }
 
-// Copia profunda de los 7 días — nombre con sufijo "(copia)" para que se
+// Copia profunda de los días — nombre con sufijo "(copia)" para que se
 // distinga de entrada en la lista, editable después como cualquier otro.
 // Nace sin ninguna asignación (ni de grupo — eso lo resuelve
 // training-plan-store.js del lado de team-store — ni individual, la

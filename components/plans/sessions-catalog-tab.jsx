@@ -15,7 +15,7 @@ import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
 
 // Planes (deduplicados por plan, no por día) que referencian esta
-// sesión en alguno de sus 7 días. Ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
+// sesión en alguno de sus días. Ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
 export function plansUsingSession(sessionId, plans) {
   return plans.filter((p) => p.days.some((d) => d.sessionId === sessionId));
 }
