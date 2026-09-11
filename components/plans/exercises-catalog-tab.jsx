@@ -183,7 +183,7 @@ export function ExercisesCatalogTab() {
   const filteredExercises = query ? exercises.filter((e) => e.name.toLowerCase().includes(query)) : exercises;
 
   return (
-    <>
+    <View className="relative flex-1" nativeID="exercises-catalog-tab-root" ref={containerRef} testID="exercises-catalog-tab-root">
       <SectionCard
         headerRight={(
           <Pressable
@@ -232,7 +232,7 @@ export function ExercisesCatalogTab() {
                 Ningún ejercicio coincide con la búsqueda.
               </Text>
             ) : (
-              <View className="gap-2" nativeID="exercises-catalog-list" ref={containerRef} testID="exercises-catalog-list">
+              <View className="gap-2" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
                 {filteredExercises.map((exercise) => {
                   const usedIn = sessionsUsingExercise(exercise.id, sessions);
                   return (
@@ -294,6 +294,6 @@ export function ExercisesCatalogTab() {
           visible
         />
       )}
-    </>
+    </View>
   );
 }
