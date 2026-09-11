@@ -20,6 +20,19 @@ export function sessionsUsingExercise(exerciseId, sessions) {
   return sessions.filter((s) => s.exercises.some((e) => e.exerciseId === exerciseId));
 }
 
+// Para cada id de la selección, sus sesiones de uso (reusa
+// sessionsUsingExercise de arriba) — usado por BulkDeleteExercisesModal
+// para saber a cuáles avisar antes de borrar en bloque. Solo devuelve
+// los que SÍ tienen uso (los sin uso no necesitan aviso).
+export function exercisesWithUsage(exerciseIds, exercises, sessions) {
+  return exerciseIds
+    .map((id) => ({
+      exercise: exercises.find((e) => e.id === id),
+      usedIn: sessionsUsingExercise(id, sessions),
+    }))
+    .filter((entry) => entry.usedIn.length > 0);
+}
+
 function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
   const idPrefix = `exercise-catalog-row-${exercise.id}`;

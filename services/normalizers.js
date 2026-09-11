@@ -336,6 +336,28 @@ export function toCreateSessionPayload(form) {
   };
 }
 
+// Fusiona ejercicios nuevos (agregados al final, rol "principal" por
+// default) con los que ya tiene una sesión — usada por la acción
+// "Adjuntar a sesión existente" del catálogo de ejercicios
+// (exercises-catalog-tab.jsx). No aplica la validación de "1 ejercicio
+// por rol" del formulario de alta/edición manual (create-session-modal.jsx)
+// — acá la sesión destino ya es válida, solo se agregan filas.
+export function mergeSessionExercises(session, newExerciseIds) {
+  const existing = session.exercises.map((e) => ({
+    exerciseId: e.exerciseId,
+    role: e.role,
+    repeatCount: e.repeatCount,
+    restMinutes: e.restMinutes,
+  }));
+  const added = newExerciseIds.map((exerciseId) => ({
+    exerciseId,
+    role: 'main',
+    repeatCount: 1,
+    restMinutes: 0,
+  }));
+  return [...existing, ...added];
+}
+
 function toPlanDayModel(dto) {
   return {
     sequenceNo: dto.sequence_no,
