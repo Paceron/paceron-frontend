@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useExercises, useExerciseMutations } from '../../hooks/use-exercises.js';
 import { useSessions } from '../../hooks/use-sessions.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
@@ -33,13 +34,88 @@ export function exercisesWithUsage(exerciseIds, exercises, sessions) {
     .filter((entry) => entry.usedIn.length > 0);
 }
 
-function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
+function ExerciseMenuButton({ exercise, onOpenMenu, containerRef }) {
+  const colors = useThemeColors();
+  const ref = useRef(null);
+
+  const handlePress = () => {
+    if (!containerRef.current || !ref.current) return;
+    containerRef.current.measureInWindow((containerX, containerY) => {
+      ref.current?.measureInWindow((x, y, width, height) => {
+        onOpenMenu({ x: x - containerX, y: y - containerY, width, height }, exercise);
+      });
+    });
+  };
+
+  return (
+    <Pressable
+      ref={ref}
+      accessibilityLabel="Más opciones"
+      className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+      nativeID={`exercise-catalog-row-${exercise.id}-menu-toggle`}
+      onPress={handlePress}
+      testID={`exercise-catalog-row-${exercise.id}-menu-toggle`}
+    >
+      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+    </Pressable>
+  );
+}
+
+function ExerciseActionsMenu({ exercise, onEdit, onClone, onDelete }) {
+  const colors = useThemeColors();
+
+  return (
+    <View className="w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID="exercise-catalog-menu-panel" testID="exercise-catalog-menu-panel">
+      <Pressable
+        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        nativeID="exercise-catalog-menu-edit"
+        onPress={() => onEdit(exercise)}
+        testID="exercise-catalog-menu-edit"
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={16} />
+        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="exercise-catalog-menu-edit-label" testID="exercise-catalog-menu-edit-label">Editar</Text>
+      </Pressable>
+      <Pressable
+        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        nativeID="exercise-catalog-menu-clone"
+        onPress={() => onClone(exercise)}
+        testID="exercise-catalog-menu-clone"
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="content-copy" size={16} />
+        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="exercise-catalog-menu-clone-label" testID="exercise-catalog-menu-clone-label">Clonar</Text>
+      </Pressable>
+      <Pressable
+        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        nativeID="exercise-catalog-menu-delete"
+        onPress={() => onDelete(exercise)}
+        testID="exercise-catalog-menu-delete"
+      >
+        <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={16} />
+        <Text className="text-sm text-red-600 dark:text-red-400" nativeID="exercise-catalog-menu-delete-label" testID="exercise-catalog-menu-delete-label">Eliminar</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, selectionMode, selected, onToggleSelected }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
   const idPrefix = `exercise-catalog-row-${exercise.id}`;
   const statLine = buildExerciseStatLine(exercise);
 
   return (
     <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      {selectionMode && (
+        <Pressable
+          accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: selected }}
+          nativeID={`${idPrefix}-checkbox`}
+          onPress={() => onToggleSelected(exercise.id)}
+          testID={`${idPrefix}-checkbox`}
+        >
+          <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} />
+        </Pressable>
+      )}
       <View className={`h-10 w-10 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
         <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
       </View>
@@ -61,12 +137,7 @@ function ExerciseRow({ exercise, usedIn, onEdit, onDelete, onShowUsage }) {
           Usado en {usedIn.length} {usedIn.length === 1 ? 'sesión' : 'sesiones'}
         </Text>
       </Pressable>
-      <Pressable className="rounded-lg p-1.5 hover:bg-slate-200 active:opacity-70 dark:hover:bg-slate-800" nativeID={`${idPrefix}-edit-button`} onPress={() => onEdit(exercise)} testID={`${idPrefix}-edit-button`}>
-        <MaterialCommunityIcons color="#94a3b8" name="pencil-outline" size={18} />
-      </Pressable>
-      <Pressable className="rounded-lg p-1.5 hover:bg-red-100 active:opacity-70 dark:hover:bg-red-900/20" nativeID={`${idPrefix}-delete-button`} onPress={() => onDelete(exercise, usedIn)} testID={`${idPrefix}-delete-button`}>
-        <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-      </Pressable>
+      {!selectionMode && <ExerciseMenuButton containerRef={containerRef} exercise={exercise} onOpenMenu={onOpenMenu} />}
     </View>
   );
 }
@@ -75,13 +146,28 @@ export function ExercisesCatalogTab() {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const { exercises, loading } = useExercises(userId);
-  const { deleteExercise } = useExerciseMutations();
+  const { deleteExercise, cloneExercise } = useExerciseMutations();
   const { sessions } = useSessions(userId);
 
   const [search, setSearch] = useState('');
   const [modalExercise, setModalExercise] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
   const [deleteTarget, setDeleteTarget] = useState(null); // { exercise, usedIn }
   const [usageTarget, setUsageTarget] = useState(null); // { exercise, usedIn }
+  const containerRef = useRef(null);
+  const [openMenu, setOpenMenu] = useState(null); // { anchor, exercise } | null
+
+  const handleOpenMenu = (anchor, exercise) => setOpenMenu({ anchor, exercise });
+  const handleCloseMenu = () => setOpenMenu(null);
+
+  const handleCloneOne = async (exercise) => {
+    handleCloseMenu();
+    const result = await cloneExercise({ ownerId: userId, exerciseId: exercise.id });
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos clonar el ejercicio', text2: result.error });
+      return;
+    }
+    Toast.show({ type: 'success', text1: 'Ejercicio clonado' });
+  };
 
   const handleDelete = async () => {
     const result = await deleteExercise({ ownerId: userId, exerciseId: deleteTarget.exercise.id });
@@ -146,15 +232,15 @@ export function ExercisesCatalogTab() {
                 Ningún ejercicio coincide con la búsqueda.
               </Text>
             ) : (
-              <View className="gap-2" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
+              <View className="gap-2" nativeID="exercises-catalog-list" ref={containerRef} testID="exercises-catalog-list">
                 {filteredExercises.map((exercise) => {
                   const usedIn = sessionsUsingExercise(exercise.id, sessions);
                   return (
                     <ExerciseRow
+                      containerRef={containerRef}
                       exercise={exercise}
                       key={exercise.id}
-                      onDelete={(ex, u) => setDeleteTarget({ exercise: ex, usedIn: u })}
-                      onEdit={setModalExercise}
+                      onOpenMenu={handleOpenMenu}
                       onShowUsage={(ex, u) => setUsageTarget({ exercise: ex, usedIn: u })}
                       usedIn={usedIn}
                     />
@@ -172,6 +258,21 @@ export function ExercisesCatalogTab() {
         onCreated={() => setModalExercise(undefined)}
         visible={modalExercise !== undefined}
       />
+
+      <AnimatedDropdown
+        anchorStyle={openMenu ? { left: openMenu.anchor.x, top: openMenu.anchor.y + openMenu.anchor.height + 4, width: 192 } : {}}
+        onClose={handleCloseMenu}
+        open={Boolean(openMenu)}
+      >
+        {openMenu && (
+          <ExerciseActionsMenu
+            exercise={openMenu.exercise}
+            onClone={handleCloneOne}
+            onDelete={(ex) => { handleCloseMenu(); setDeleteTarget({ exercise: ex, usedIn: sessionsUsingExercise(ex.id, sessions) }); }}
+            onEdit={(ex) => { handleCloseMenu(); setModalExercise(ex); }}
+          />
+        )}
+      </AnimatedDropdown>
 
       {deleteTarget && (
         <DeleteCatalogItemModal

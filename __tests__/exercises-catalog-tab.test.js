@@ -15,10 +15,11 @@ jest.mock('../theme/colors.js', () => ({ useThemeColors: () => ({}) }));
 jest.mock('../store/auth-store.js', () => ({ useAuthStore: () => null }));
 jest.mock('../hooks/use-exercises.js', () => ({
   useExercises: () => ({ exercises: [], loading: false }),
-  useExerciseMutations: () => ({ deleteExercise: jest.fn() }),
+  useExerciseMutations: () => ({ deleteExercise: jest.fn(), cloneExercise: jest.fn() }),
 }));
 jest.mock('../hooks/use-sessions.js', () => ({ useSessions: () => ({ sessions: [] }) }));
 jest.mock('../components/forms/section-card.jsx', () => ({ SectionCard: 'SectionCard' }));
+jest.mock('../components/shared/animated-dropdown.jsx', () => ({ AnimatedDropdown: 'AnimatedDropdown' }));
 jest.mock('../components/plans/exercise-kind-meta.js', () => ({
   EXERCISE_KIND_META: {},
   buildExerciseStatLine: () => '',
