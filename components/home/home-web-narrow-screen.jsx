@@ -60,7 +60,7 @@ export function HomeWebNarrowScreen() {
         testID="home-web-narrow-screen-hero"
       >
         <View
-          className="mb-8 items-center"
+          className="mb-12 items-center"
           nativeID="home-web-narrow-screen-hero-brand"
           testID="home-web-narrow-screen-hero-brand"
         >

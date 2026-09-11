@@ -60,7 +60,7 @@ export function HomeMobileScreen() {
         testID="home-mobile-hero"
       >
         <View
-          className="mb-8 items-center"
+          className="mb-12 items-center"
           nativeID="home-mobile-hero-brand"
           testID="home-mobile-hero-brand"
         >

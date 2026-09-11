@@ -29,7 +29,7 @@ export default function TabsLayout() {
   // docs/superpowers/specs/2026-09-10-landing-without-shell-design.md.
   if (pathname === '/' && !userId) {
     return (
-      <SafeAreaView className="flex-1" edges={['top']} nativeID="landing-bare-shell" testID="landing-bare-shell">
+      <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top']} nativeID="landing-bare-shell" testID="landing-bare-shell">
         <View className="flex-row justify-end px-4 py-2" nativeID="landing-bare-shell-theme-toggle" testID="landing-bare-shell-theme-toggle">
           <ThemeToggle />
         </View>

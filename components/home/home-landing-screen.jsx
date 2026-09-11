@@ -58,7 +58,7 @@ export function HomeLandingScreen() {
           testID="home-landing-screen-hero"
         >
           <View
-            className="mb-10 items-center"
+            className="mb-14 items-center"
             nativeID="home-landing-screen-hero-brand"
             testID="home-landing-screen-hero-brand"
           >
