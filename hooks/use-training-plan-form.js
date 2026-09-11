@@ -8,17 +8,34 @@ import { buildEmptyPlanDays } from '../store/training-plan-store.js';
 export function useTrainingPlanForm({ initial, ownerId } = {}) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [durationDays, setDurationDays] = useState(initial?.durationDays ?? 7);
-  const [days, setDays] = useState(initial?.days ?? buildEmptyPlanDays());
+  const [days, setDays] = useState(initial?.days ?? buildEmptyPlanDays(7));
   const [errors, setErrors] = useState({});
 
   const updateDay = (sequenceNo, updates) => {
     setDays((prev) => prev.map((day) => (day.sequenceNo === sequenceNo ? { ...day, ...updates } : day)));
   };
 
+  // Sube o baja la cantidad de días — agrega/quita del final de la
+  // lista para no reordenar los que ya están cargados. Clampeado a
+  // [2, 31] acá mismo, no solo en el input que lo llama (defensa contra
+  // un valor inválido que llegue por otro lado).
+  const setDayCount = (nextCount) => {
+    const clamped = Math.max(2, Math.min(31, nextCount));
+    setDays((prev) => {
+      if (clamped === prev.length) return prev;
+      if (clamped < prev.length) return prev.slice(0, clamped);
+      const extra = Array.from({ length: clamped - prev.length }, (_, i) => ({
+        sequenceNo: prev.length + i + 1, kind: 'rest', otherName: null, sessionId: null,
+      }));
+      return [...prev, ...extra];
+    });
+  };
+
   const validate = () => {
     const next = {};
     if (!name.trim()) next.name = 'Ingresá un nombre para el plan.';
+
+    if (days.length < 2 || days.length > 31) next.days = 'El plan tiene que tener entre 2 y 31 días.';
 
     const trainingDaysWithoutSession = days.some((d) => d.kind === 'training' && !d.sessionId);
     if (trainingDaysWithoutSession) next.days = 'Elegí una sesión para cada día de entrenamiento (o creá una nueva con el botón "Crear sesión").';
@@ -34,15 +51,13 @@ export function useTrainingPlanForm({ initial, ownerId } = {}) {
     ownerId,
     name: name.trim(),
     description: description.trim(),
-    durationDays,
     days,
   });
 
   return {
     name, setName,
     description, setDescription,
-    durationDays, setDurationDays,
-    days, updateDay,
+    days, updateDay, setDayCount,
     errors,
     validate,
     getValues,
