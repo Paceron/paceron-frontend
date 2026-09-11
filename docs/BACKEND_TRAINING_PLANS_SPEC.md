@@ -79,26 +79,34 @@ Ya establecidas por los dominios reales existentes (equipos, usuarios, tiers) �
 | `owner_id` | bigint FK → user | no | el entrenador dueño — el plan es reusable/asignable a cualquiera de sus equipos/grupos/corredores, no pertenece a un equipo |
 | `name` | varchar | no | |
 | `description` | text | sí | |
-| `duration_days` | int | no | hoy la UI solo ofrece `7`/`14` — no hace falta un CHECK constraint duro, es una restricción de la UI, no del dominio |
 | `created_at` / `updated_at` | timestamptz | no | |
 
-**`status` (activo/vencido) NO es una columna** — se deriva siempre en el momento de mostrar: `status = now() < created_at + duration_days días ? 'activo' : 'vencido'`. Nunca se persiste, y un plan vencido no se borra solo (borrarlo es una acción explícita aparte).
+**Sin caducidad propia** (decisión 2026-09-10, reemplaza el modelo
+anterior de `duration_days` 7/14 con `status` derivado) — un plan es un
+template puro, reusable indefinidamente. La noción de "vigencia" pasa
+a resolverse en la futura capa de asignación/calendario (fuera de
+alcance de este documento), no en el plan en sí.
 
-### 3.5 `PlanDay` (exactamente 7 filas por plan, tabla propia)
+### 3.5 `PlanDay` (entre 2 y 31 filas por plan, tabla propia)
 
 | Campo | Tipo | Nullable | Notas |
 |---|---|---|---|
 | `plan_id` | bigint FK → training_plan | no | `ON DELETE CASCADE` |
-| `sequence_no` | int | no | `1`..`7` |
-| `day_of_week` | enum | no | `monday` \| `tuesday` \| `wednesday` \| `thursday` \| `friday` \| `saturday` \| `sunday` |
+| `sequence_no` | int | no | `1`..`N`, `N` = cantidad de días del plan (entre 2 y 31) |
 | `kind` | enum | no | `rest` \| `other` \| `training` |
 | `other_name` | varchar | sí | obligatorio *solo* si `kind = 'other'` |
 | `session_id` | bigint FK → session | sí | obligatorio *solo* si `kind = 'training'` |
 
-**Validación al crear/editar un plan** (ya implementada del lado mock, el backend debe re-validarla, nunca confiar solo en el frontend):
-- Exactamente 7 filas.
-- `sequence_no` cubre `1..7` sin repetidos.
-- Cada uno de los 7 valores de `day_of_week` aparece exactamente una vez.
+**Sin `day_of_week`** (decisión 2026-09-10) — un plan-template ya no se
+ata a un día real de la semana; los días son puramente secuenciales
+(`sequence_no`). Esto reemplaza el modelo anterior de exactamente 7
+filas, una por cada día de la semana.
+
+**Validación al crear/editar un plan** (ya implementada del lado mock,
+el backend debe re-validarla, nunca confiar solo en el frontend):
+- Entre 2 y 31 filas.
+- `sequence_no` cubre `1..N` sin repetidos, donde `N` es la cantidad de
+  filas.
 - `kind = 'training'` ⇒ `session_id` no nulo (y `other_name` nulo).
 - `kind = 'other'` ⇒ `other_name` no nulo (y `session_id` nulo).
 - `kind = 'rest'` ⇒ ambos nulos.
