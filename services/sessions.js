@@ -6,6 +6,7 @@ import {
   mockCreateSession,
   mockUpdateSession,
   mockDeleteSession,
+  mockCloneSession,
 } from './__mocks__/sessions-mock.js';
 
 // Sin backend real todavía (ver docs/BACKEND_API_GAPS.md gap 4) — mismo
@@ -44,4 +45,10 @@ export async function updateSession(sessionId, updates) {
 export async function deleteSession(sessionId) {
   if (USE_MOCKS || FORCE_MOCKS) return await mockDeleteSession(sessionId);
   return await api.delete(`/sessions/${sessionId}`);
+}
+
+// POST /api/v1/sessions/{id}/clone.
+export async function cloneSession(sessionId) {
+  if (USE_MOCKS || FORCE_MOCKS) return await mockCloneSession(sessionId);
+  return await api.post(`/sessions/${sessionId}/clone`);
 }
