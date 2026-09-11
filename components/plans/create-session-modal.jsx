@@ -7,6 +7,7 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useExercises } from '../../hooks/use-exercises.js';
 import { useSessionMutations } from '../../hooks/use-sessions.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { InputField, Row, Col, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
@@ -15,6 +16,8 @@ import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { SessionDragProvider, useSessionDropTarget } from './session-drag-and-drop.jsx';
+import { SessionExercisePanel } from './session-exercise-panel.jsx';
 
 const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
 
@@ -168,6 +171,55 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
   );
 }
 
+// Cuerpo del modal en layout ancho — 2 columnas: sesión a la izquierda
+// (mismos campos y lista de SessionExerciseRow que la variante angosta,
+// SIN el botón "+ Agregar ejercicio" — acá las filas se crean soltando
+// una tarjeta del panel), catálogo de ejercicios arrastrable a la
+// derecha. El `View` de la lista de la sesión se registra como drop
+// target vía useSessionDropTarget().
+function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onMove, onRemove, onExerciseDropped, error, visible }) {
+  const dropTargetRef = useSessionDropTarget();
+
+  return (
+    <View className="flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
+      <ScrollView className="w-[380px] shrink-0" nativeID="create-session-modal-form-column" testID="create-session-modal-form-column">
+        <InputField autoFocus={visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
+        <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={onSetDescription} value={description} />
+
+        <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
+        <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-drop-hint" testID="create-session-modal-drop-hint">
+          Arrastrá ejercicios del panel de la derecha para agregarlos acá.
+        </Text>
+
+        <View className="min-h-[80px] gap-2 rounded-xl border border-dashed border-slate-300 p-2 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
+          {exercises.map((entry, index) => (
+            <SessionExerciseRow
+              catalogExercises={catalogExercises}
+              entry={entry}
+              idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
+              index={index}
+              key={entry.localKey}
+              onChangeExercise={onChangeExercise}
+              onChangeRole={onChangeRole}
+              onMove={onMove}
+              onRemove={onRemove}
+              totalCount={exercises.length}
+            />
+          ))}
+        </View>
+
+        {error && (
+          <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
+        )}
+      </ScrollView>
+
+      <View className="flex-1 border-l border-slate-200 pl-4 dark:border-slate-700" nativeID="create-session-modal-exercise-panel-column" testID="create-session-modal-exercise-panel-column">
+        <SessionExercisePanel onExerciseAdded={onExerciseDropped} />
+      </View>
+    </View>
+  );
+}
+
 // Alta rápida de una sesión nueva desde adentro de armar un día de
 // entrenamiento en un plan — mismo motivo que CreateExerciseModal: un
 // modal, no una pantalla nueva, para no perder el plan a medio armar.
@@ -183,6 +235,8 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const { exercises: catalogExercises } = useExercises(userId);
   const { createSession, updateSession } = useSessionMutations();
   const isEditing = Boolean(session);
+  const isNarrowWeb = useIsNarrowWeb();
+  const isWideLayout = isWeb && !isNarrowWeb;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -323,7 +377,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     <>
       <Modal animationType="fade" nativeID="create-session-modal" onRequestClose={handleClose} testID="create-session-modal" transparent visible={visible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
-          <Pressable className="max-h-[90%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
+          <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'max-w-5xl' : 'max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
             <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
               <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
@@ -331,57 +385,77 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
               </Text>
             </View>
 
-            <ScrollView nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
-              <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
-              <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={setDescription} value={description} />
+            {isWideLayout ? (
+              <SessionDragProvider>
+                <SessionModalWideBody
+                  catalogExercises={catalogExercises}
+                  description={description}
+                  error={error}
+                  exercises={exercises}
+                  onChangeExercise={handleChangeExercise}
+                  onChangeRole={handleChangeRole}
+                  onExerciseDropped={(exercise) => setExercises((rows) => [...rows, { ...makeBlankRow('main'), exerciseId: exercise.id }])}
+                  onMove={handleMoveExercise}
+                  onRemove={handleRemoveExercise}
+                  onSetDescription={setDescription}
+                  onSetName={setName}
+                  name={name}
+                  visible={visible}
+                />
+              </SessionDragProvider>
+            ) : (
+              <ScrollView nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
+                <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
+                <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={setDescription} value={description} />
 
-              <View className="mb-2 flex-row items-center justify-between" nativeID="create-session-modal-exercises-header" testID="create-session-modal-exercises-header">
-                <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
+                <View className="mb-2 flex-row items-center justify-between" nativeID="create-session-modal-exercises-header" testID="create-session-modal-exercises-header">
+                  <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
+                  <Pressable
+                    className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
+                    nativeID="create-session-modal-create-exercise-button"
+                    onPress={() => setShowCreateExerciseModal(true)}
+                    testID="create-session-modal-create-exercise-button"
+                  >
+                    <Text className="text-sm font-semibold text-primary" nativeID="create-session-modal-create-exercise-button-label" testID="create-session-modal-create-exercise-button-label">
+                      + Crear ejercicio
+                    </Text>
+                  </Pressable>
+                </View>
+
+                <View className="gap-2" nativeID="create-session-modal-exercises-list" testID="create-session-modal-exercises-list">
+                  {exercises.map((entry, index) => (
+                    <SessionExerciseRow
+                      catalogExercises={catalogExercises}
+                      entry={entry}
+                      idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
+                      index={index}
+                      key={entry.localKey}
+                      onChangeExercise={handleChangeExercise}
+                      onChangeRole={handleChangeRole}
+                      onMove={handleMoveExercise}
+                      onRemove={handleRemoveExercise}
+                      totalCount={exercises.length}
+                    />
+                  ))}
+                </View>
+
                 <Pressable
-                  className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
-                  nativeID="create-session-modal-create-exercise-button"
-                  onPress={() => setShowCreateExerciseModal(true)}
-                  testID="create-session-modal-create-exercise-button"
+                  className="mb-3 mt-2 h-11 flex-row items-center justify-center gap-1.5 self-start rounded-full border border-dashed border-primary px-4 hover:bg-primary-tint-subtle active:opacity-70 dark:hover:bg-primary/10"
+                  nativeID="create-session-modal-add-exercise-button"
+                  onPress={handleAddExercise}
+                  testID="create-session-modal-add-exercise-button"
                 >
-                  <Text className="text-sm font-semibold text-primary" nativeID="create-session-modal-create-exercise-button-label" testID="create-session-modal-create-exercise-button-label">
-                    + Crear ejercicio
+                  <MaterialCommunityIcons color="#8cc63e" name="plus" size={18} />
+                  <Text className="text-sm font-semibold text-primary" nativeID="create-session-modal-add-exercise-button-label" testID="create-session-modal-add-exercise-button-label">
+                    Agregar ejercicio
                   </Text>
                 </Pressable>
-              </View>
 
-              <View className="gap-2" nativeID="create-session-modal-exercises-list" testID="create-session-modal-exercises-list">
-                {exercises.map((entry, index) => (
-                  <SessionExerciseRow
-                    catalogExercises={catalogExercises}
-                    entry={entry}
-                    idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
-                    index={index}
-                    key={entry.localKey}
-                    onChangeExercise={handleChangeExercise}
-                    onChangeRole={handleChangeRole}
-                    onMove={handleMoveExercise}
-                    onRemove={handleRemoveExercise}
-                    totalCount={exercises.length}
-                  />
-                ))}
-              </View>
-
-              <Pressable
-                className="mb-3 mt-2 h-11 flex-row items-center justify-center gap-1.5 self-start rounded-full border border-dashed border-primary px-4 hover:bg-primary-tint-subtle active:opacity-70 dark:hover:bg-primary/10"
-                nativeID="create-session-modal-add-exercise-button"
-                onPress={handleAddExercise}
-                testID="create-session-modal-add-exercise-button"
-              >
-                <MaterialCommunityIcons color="#8cc63e" name="plus" size={18} />
-                <Text className="text-sm font-semibold text-primary" nativeID="create-session-modal-add-exercise-button-label" testID="create-session-modal-add-exercise-button-label">
-                  Agregar ejercicio
-                </Text>
-              </Pressable>
-
-              {error && (
-                <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
-              )}
-            </ScrollView>
+                {error && (
+                  <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
+                )}
+              </ScrollView>
+            )}
 
             <View className="mt-2 flex-row gap-3" nativeID="create-session-modal-actions" testID="create-session-modal-actions">
               <Pressable
