@@ -20,50 +20,11 @@ import {
   toRunnerPlanAssignmentModel, toCurrentPlanMarkModel, toTeamModel, toGroupModel,
 } from '../services/normalizers.js';
 
-// Caducidades soportadas — pedido explícito del usuario (7 o 14 días, no
-// un número libre). Ver decisión en la spec: gobierna cuánto dura vigente
-// el ciclo semanal fijo de 7 días, no cuántos días tiene el plan.
-export const PLAN_DURATION_OPTIONS = [7, 14];
-
-const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-const DAY_LABELS = { monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo' };
-
-export function dayLabel(dayOfWeek) {
-  return DAY_LABELS[dayOfWeek] ?? dayOfWeek;
-}
-
-// Arma los 7 días vacíos (todos "rest") en el orden fijo lunes→domingo —
-// punto de partida al crear un plan nuevo, para que el formulario siempre
-// tenga la estructura completa desde el primer render. Un día
-// "training" referencia una sesión del catálogo (sessionId), no la
-// construye inline — ver enmienda 2026-08-26 de la spec.
-export function buildEmptyPlanDays() {
-  return DAY_ORDER.map((dayOfWeek, i) => ({ sequenceNo: i + 1, dayOfWeek, kind: 'rest', otherName: null, sessionId: null }));
-}
-
-// activo/vencido — se deriva en el momento de mostrarlo, no se guarda.
-// Mismo criterio de semáforo que el resto de la app (SUBSCRIPTION_META,
-// TEAM_STATUS_META en team-detail-screen.jsx).
-export function getPlanStatus(plan) {
-  if (!plan?.createdAt || !plan?.durationDays) return 'activo';
-  const expiresAt = new Date(plan.createdAt).getTime() + plan.durationDays * 24 * 60 * 60 * 1000;
-  return Date.now() < expiresAt ? 'activo' : 'vencido';
-}
-
-// Días enteros que le quedan de vigencia a un plan — mismo cálculo que
-// getPlanStatus, pero como cantidad en vez de semáforo. 0 (no negativo)
-// si ya venció. Para "Mis planes", fila de abajo del corredor.
-export function getPlanDaysRemaining(plan) {
-  if (!plan?.createdAt || !plan?.durationDays) return 0;
-  const expiresAt = new Date(plan.createdAt).getTime() + plan.durationDays * 24 * 60 * 60 * 1000;
-  return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
-}
-
-// Hoy, como uno de los 7 dayOfWeek del dominio — getDay() de JS es
-// 0=domingo..6=sábado, DAY_ORDER acá arriba arranca en lunes.
-export function getTodayDayOfWeek() {
-  const jsDay = new Date().getDay();
-  return DAY_ORDER[(jsDay + 6) % 7];
+// Arma dayCount días vacíos (todos "rest"), numerados 1..dayCount —
+// punto de partida al crear un plan nuevo o al agregar/quitar días en
+// el form. Sin día de la semana: el orden es puramente secuencial.
+export function buildEmptyPlanDays(dayCount) {
+  return Array.from({ length: dayCount }, (_, i) => ({ sequenceNo: i + 1, kind: 'rest', otherName: null, sessionId: null }));
 }
 
 export const useTrainingPlanStore = create((set, get) => ({
