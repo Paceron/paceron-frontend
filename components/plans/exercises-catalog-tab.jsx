@@ -155,9 +155,32 @@ export function ExercisesCatalogTab() {
   const [usageTarget, setUsageTarget] = useState(null); // { exercise, usedIn }
   const containerRef = useRef(null);
   const [openMenu, setOpenMenu] = useState(null); // { anchor, exercise } | null
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
 
   const handleOpenMenu = (anchor, exercise) => setOpenMenu({ anchor, exercise });
   const handleCloseMenu = () => setOpenMenu(null);
+
+  const handleToggleSelectionMode = () => {
+    setSelectionMode((v) => !v);
+    setSelectedIds(new Set());
+    setBulkMenuOpen(false);
+  };
+
+  const handleToggleSelected = (exerciseId) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(exerciseId)) next.delete(exerciseId); else next.add(exerciseId);
+      return next;
+    });
+  };
+
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkMenuOpen(false);
+  };
 
   const handleCloneOne = async (exercise) => {
     handleCloseMenu();
@@ -185,17 +208,48 @@ export function ExercisesCatalogTab() {
   return (
     <View className="relative flex-1" nativeID="exercises-catalog-tab-root" ref={containerRef} testID="exercises-catalog-tab-root">
       <SectionCard
-        headerRight={(
+        headerRight={selectedIds.size > 0 ? (
+          <View className="flex-row items-center gap-2" nativeID="exercises-catalog-bulk-bar" testID="exercises-catalog-bulk-bar">
+            <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="exercises-catalog-bulk-count" testID="exercises-catalog-bulk-count">
+              {selectedIds.size} seleccionado{selectedIds.size === 1 ? '' : 's'}
+            </Text>
+            <Pressable
+              nativeID="exercises-catalog-bulk-menu-toggle"
+              onPress={() => setBulkMenuOpen((v) => !v)}
+              testID="exercises-catalog-bulk-menu-toggle"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={20} />
+            </Pressable>
+          </View>
+        ) : selectionMode ? (
           <Pressable
             className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
-            nativeID="exercises-catalog-create-button"
-            onPress={() => setModalExercise(null)}
-            testID="exercises-catalog-create-button"
+            nativeID="exercises-catalog-cancel-selection-button"
+            onPress={handleToggleSelectionMode}
+            testID="exercises-catalog-cancel-selection-button"
           >
-            <Text className="text-sm font-semibold text-primary" nativeID="exercises-catalog-create-button-label" testID="exercises-catalog-create-button-label">
-              Crear ejercicio
-            </Text>
+            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400" nativeID="exercises-catalog-cancel-selection-button-label" testID="exercises-catalog-cancel-selection-button-label">Cancelar</Text>
           </Pressable>
+        ) : (
+          <View className="flex-row items-center gap-3" nativeID="exercises-catalog-header-actions" testID="exercises-catalog-header-actions">
+            <Pressable
+              nativeID="exercises-catalog-select-button"
+              onPress={handleToggleSelectionMode}
+              testID="exercises-catalog-select-button"
+            >
+              <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400" nativeID="exercises-catalog-select-button-label" testID="exercises-catalog-select-button-label">Seleccionar</Text>
+            </Pressable>
+            <Pressable
+              className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
+              nativeID="exercises-catalog-create-button"
+              onPress={() => setModalExercise(null)}
+              testID="exercises-catalog-create-button"
+            >
+              <Text className="text-sm font-semibold text-primary" nativeID="exercises-catalog-create-button-label" testID="exercises-catalog-create-button-label">
+                Crear ejercicio
+              </Text>
+            </Pressable>
+          </View>
         )}
         icon="dumbbell"
         title="Tus ejercicios"
@@ -242,6 +296,9 @@ export function ExercisesCatalogTab() {
                       key={exercise.id}
                       onOpenMenu={handleOpenMenu}
                       onShowUsage={(ex, u) => setUsageTarget({ exercise: ex, usedIn: u })}
+                      onToggleSelected={handleToggleSelected}
+                      selected={selectedIds.has(exercise.id)}
+                      selectionMode={selectionMode}
                       usedIn={usedIn}
                     />
                   );
@@ -271,6 +328,18 @@ export function ExercisesCatalogTab() {
             onDelete={(ex) => { handleCloseMenu(); setDeleteTarget({ exercise: ex, usedIn: sessionsUsingExercise(ex.id, sessions) }); }}
             onEdit={(ex) => { handleCloseMenu(); setModalExercise(ex); }}
           />
+        )}
+      </AnimatedDropdown>
+
+      <AnimatedDropdown
+        anchorStyle={{ right: 16, top: 56 }}
+        onClose={() => setBulkMenuOpen(false)}
+        open={bulkMenuOpen}
+      >
+        {bulkMenuOpen && (
+          <View className="w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID="exercises-catalog-bulk-menu-panel" testID="exercises-catalog-bulk-menu-panel">
+            {/* Adjuntar a sesión existente, Clonar, Eliminar — se agregan en los tasks 5/6/7 */}
+          </View>
         )}
       </AnimatedDropdown>
 
