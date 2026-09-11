@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { PaceronBrand } from '../brand/paceron-brand.jsx';
+import { ThemeToggle } from '../theme/theme-toggle.jsx';
 
 // Shell visual compartido por las pantallas de auth (login, register, forgot
 // password, reset password): fade-in con Reanimated, card centrada con
@@ -43,6 +44,13 @@ export function AuthCardShell({ cardClassName = 'max-w-md p-8', children }) {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="auth-card-shell-safe-area" testID="auth-card-shell-safe-area">
+      {/* Row en flujo normal, no `position: absolute` — un toggle absoluto
+          colisionaba con la status bar en mobile nativo (mismo bug y mismo
+          arreglo que app/(tabs)/_layout.jsx para la landing sin sesión). */}
+      <View className="flex-row justify-end px-4 py-2" nativeID="auth-card-shell-theme-toggle" testID="auth-card-shell-theme-toggle">
+        <ThemeToggle />
+      </View>
+
       <KeyboardAwareScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"

@@ -2,12 +2,13 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { PaceronBrand } from '../brand/paceron-brand.jsx';
 import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './landing-content.js';
 
 function FeatureItem({ icon, title, description, colors }) {
   return (
     <View
-      className="flex-row gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-[#1d2125]"
+      className="flex-row gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-surface-2"
       nativeID={`home-mobile-feature-card-${icon}`}
       testID={`home-mobile-feature-card-${icon}`}
     >
@@ -48,7 +49,7 @@ export function HomeMobileScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-paper dark:bg-[#111518]"
+      className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-gutter pb-16"
       nativeID="home-mobile-screen"
       testID="home-mobile-screen"
@@ -59,22 +60,11 @@ export function HomeMobileScreen() {
         testID="home-mobile-hero"
       >
         <View
-          className="mb-6 flex-row items-center gap-2 rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5"
-          nativeID="home-mobile-hero-badge"
-          testID="home-mobile-hero-badge"
+          className="mb-12 items-center"
+          nativeID="home-mobile-hero-brand"
+          testID="home-mobile-hero-brand"
         >
-          <MaterialCommunityIcons
-            color={colors.primary}
-            name="brain"
-            size={16}
-          />
-          <Text
-            className="text-xs font-semibold uppercase tracking-wide text-primary"
-            nativeID="home-mobile-hero-badge-label"
-            testID="home-mobile-hero-badge-label"
-          >
-            {HERO_CONTENT.badge}
-          </Text>
+          <PaceronBrand size={40} />
         </View>
 
         <Text
@@ -156,7 +146,7 @@ export function HomeMobileScreen() {
         testID="home-mobile-ai-panel"
       >
         <View
-          className="overflow-hidden rounded-2xl border border-primary/20 bg-white p-8 shadow-lg dark:bg-[#282d31]"
+          className="overflow-hidden rounded-2xl border border-primary/20 bg-white p-8 shadow-lg dark:bg-surface-2"
           nativeID="home-mobile-ai-panel-card"
           testID="home-mobile-ai-panel-card"
         >
@@ -205,7 +195,7 @@ export function HomeMobileScreen() {
         {AUDIENCE_CARDS.map((card) => (
           <View
             key={card.icon}
-            className="flex-1 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1d2125]"
+            className="flex-1 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-surface-2"
             nativeID={`home-mobile-audience-card-${card.icon}`}
             testID={`home-mobile-audience-card-${card.icon}`}
           >

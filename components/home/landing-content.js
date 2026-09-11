@@ -2,7 +2,6 @@
 // versión corta (antes vivía duplicada y ya divergente en cada screen).
 
 export const HERO_CONTENT = {
-  badge: 'Potenciado por Inteligencia Artificial',
   title: 'Entrená, seguí y gestioná tu equipo de running',
   description:
     'La plataforma integral diseñada para optimizar el rendimiento, facilitar la administración de equipos y conectar a entrenadores con sus corredores a través de tecnología de punta.',

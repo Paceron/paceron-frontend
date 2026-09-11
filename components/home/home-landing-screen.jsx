@@ -8,7 +8,7 @@ import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './land
 function FeatureCard({ icon, title, description, colors }) {
   return (
     <View
-      className="flex-1 min-w-[280px] rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-[#1d2125]"
+      className="flex-1 min-w-[280px] rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-surface-2"
       nativeID={`home-landing-screen-feature-card-${icon}`}
       testID={`home-landing-screen-feature-card-${icon}`}
     >
@@ -43,7 +43,7 @@ export function HomeLandingScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-paper dark:bg-[#0d1013]"
+      className="flex-1 bg-paper dark:bg-ink"
       nativeID="home-landing-screen-root"
       testID="home-landing-screen-root"
     >
@@ -58,18 +58,11 @@ export function HomeLandingScreen() {
           testID="home-landing-screen-hero"
         >
           <View
-            className="mb-6 flex-row items-center gap-2 self-center rounded-full bg-primary-tint dark:bg-primary/20 px-4 py-2"
-            nativeID="home-landing-screen-hero-badge"
-            testID="home-landing-screen-hero-badge"
+            className="mb-14 items-center"
+            nativeID="home-landing-screen-hero-brand"
+            testID="home-landing-screen-hero-brand"
           >
-            <MaterialCommunityIcons color={colors.primary} name="brain" size={16} />
-            <Text
-              className="text-xs font-semibold uppercase tracking-wider text-primary"
-              nativeID="home-landing-screen-hero-badge-label"
-              testID="home-landing-screen-hero-badge-label"
-            >
-              {HERO_CONTENT.badge}
-            </Text>
+            <PaceronBrand size={70} />
           </View>
 
           <Text
@@ -137,7 +130,7 @@ export function HomeLandingScreen() {
         </View>
 
         <View
-          className="mb-16 overflow-hidden rounded-2xl border border-primary/20 bg-white p-12 shadow-lg dark:bg-[#1d2125]"
+          className="mb-16 overflow-hidden rounded-2xl border border-primary/20 bg-white p-12 shadow-lg dark:bg-surface-2"
           nativeID="home-landing-screen-ai-panel"
           testID="home-landing-screen-ai-panel"
         >
@@ -198,7 +191,7 @@ export function HomeLandingScreen() {
           {AUDIENCE_CARDS.map((card) => (
             <View
               key={card.icon}
-              className="flex-1 rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-[#1d2125]"
+              className="flex-1 rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-surface-2"
               nativeID={`home-landing-screen-audience-card-${card.icon}`}
               testID={`home-landing-screen-audience-card-${card.icon}`}
             >
@@ -229,7 +222,7 @@ export function HomeLandingScreen() {
       </View>
 
       <View
-        className="border-t border-slate-200 bg-white py-10 dark:border-slate-800 dark:bg-[#111518]"
+        className="border-t border-slate-200 bg-white py-10 dark:border-slate-800 dark:bg-surface-2"
         nativeID="home-landing-screen-footer"
         testID="home-landing-screen-footer"
       >
