@@ -26,6 +26,7 @@ jest.mock('../components/plans/exercise-kind-meta.js', () => ({
 }));
 jest.mock('../components/plans/create-exercise-modal.jsx', () => ({ CreateExerciseModal: 'CreateExerciseModal' }));
 jest.mock('../components/plans/delete-catalog-item-modal.jsx', () => ({ DeleteCatalogItemModal: 'DeleteCatalogItemModal' }));
+jest.mock('../components/plans/bulk-delete-exercises-modal.jsx', () => ({ BulkDeleteExercisesModal: 'BulkDeleteExercisesModal' }));
 jest.mock('../components/plans/usage-list-modal.jsx', () => ({ UsageListModal: 'UsageListModal' }));
 
 import { sessionsUsingExercise, exercisesWithUsage } from '../components/plans/exercises-catalog-tab.jsx';

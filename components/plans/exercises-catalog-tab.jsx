@@ -11,6 +11,7 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
+import { BulkDeleteExercisesModal } from './bulk-delete-exercises-modal.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
 
 // Sesiones (deduplicadas) que referencian este ejercicio en cualquiera
@@ -158,6 +159,7 @@ export function ExercisesCatalogTab() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
+  const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
 
   const handleOpenMenu = (anchor, exercise) => setOpenMenu({ anchor, exercise });
   const handleCloseMenu = () => setOpenMenu(null);
@@ -203,6 +205,19 @@ export function ExercisesCatalogTab() {
       return;
     }
     Toast.show({ type: 'success', text1: `${ids.length} ejercicio${ids.length === 1 ? '' : 's'} clonado${ids.length === 1 ? '' : 's'}` });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    const results = await Promise.all(ids.map((id) => deleteExercise({ ownerId: userId, exerciseId: id })));
+    const failed = results.filter((r) => !r.success).length;
+    setBulkDeleteVisible(false);
+    exitSelection();
+    if (failed > 0) {
+      Toast.show({ type: 'error', text1: 'Algunos ejercicios no se pudieron eliminar', text2: `${failed} de ${ids.length} fallaron.` });
+      return;
+    }
+    Toast.show({ type: 'success', text1: `${ids.length} ejercicio${ids.length === 1 ? '' : 's'} eliminado${ids.length === 1 ? '' : 's'}` });
   };
 
   const handleDelete = async () => {
@@ -360,6 +375,15 @@ export function ExercisesCatalogTab() {
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="content-copy" size={16} />
               <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="exercises-catalog-bulk-clone-label" testID="exercises-catalog-bulk-clone-label">Clonar</Text>
             </Pressable>
+            <Pressable
+              className="flex-row items-center gap-2 px-3 py-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
+              nativeID="exercises-catalog-bulk-delete"
+              onPress={() => { setBulkMenuOpen(false); setBulkDeleteVisible(true); }}
+              testID="exercises-catalog-bulk-delete"
+            >
+              <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={16} />
+              <Text className="text-sm text-red-600 dark:text-red-400" nativeID="exercises-catalog-bulk-delete-label" testID="exercises-catalog-bulk-delete-label">Eliminar</Text>
+            </Pressable>
           </View>
         )}
       </AnimatedDropdown>
@@ -384,6 +408,14 @@ export function ExercisesCatalogTab() {
           visible
         />
       )}
+
+      <BulkDeleteExercisesModal
+        items={Array.from(selectedIds)}
+        onCancel={() => setBulkDeleteVisible(false)}
+        onConfirm={handleBulkDelete}
+        visible={bulkDeleteVisible}
+        withUsage={exercisesWithUsage(Array.from(selectedIds), exercises, sessions)}
+      />
     </View>
   );
 }
