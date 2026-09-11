@@ -192,6 +192,19 @@ export function ExercisesCatalogTab() {
     Toast.show({ type: 'success', text1: 'Ejercicio clonado' });
   };
 
+  const handleBulkClone = async () => {
+    setBulkMenuOpen(false);
+    const ids = Array.from(selectedIds);
+    const results = await Promise.all(ids.map((id) => cloneExercise({ ownerId: userId, exerciseId: id })));
+    const failed = results.filter((r) => !r.success).length;
+    exitSelection();
+    if (failed > 0) {
+      Toast.show({ type: 'error', text1: 'Algunos ejercicios no se pudieron clonar', text2: `${failed} de ${ids.length} fallaron.` });
+      return;
+    }
+    Toast.show({ type: 'success', text1: `${ids.length} ejercicio${ids.length === 1 ? '' : 's'} clonado${ids.length === 1 ? '' : 's'}` });
+  };
+
   const handleDelete = async () => {
     const result = await deleteExercise({ ownerId: userId, exerciseId: deleteTarget.exercise.id });
     setDeleteTarget(null);
@@ -338,7 +351,15 @@ export function ExercisesCatalogTab() {
       >
         {bulkMenuOpen && (
           <View className="w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID="exercises-catalog-bulk-menu-panel" testID="exercises-catalog-bulk-menu-panel">
-            {/* Adjuntar a sesión existente, Clonar, Eliminar — se agregan en los tasks 5/6/7 */}
+            <Pressable
+              className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+              nativeID="exercises-catalog-bulk-clone"
+              onPress={handleBulkClone}
+              testID="exercises-catalog-bulk-clone"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="content-copy" size={16} />
+              <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="exercises-catalog-bulk-clone-label" testID="exercises-catalog-bulk-clone-label">Clonar</Text>
+            </Pressable>
           </View>
         )}
       </AnimatedDropdown>
