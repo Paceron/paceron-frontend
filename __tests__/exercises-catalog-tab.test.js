@@ -17,7 +17,10 @@ jest.mock('../hooks/use-exercises.js', () => ({
   useExercises: () => ({ exercises: [], loading: false }),
   useExerciseMutations: () => ({ deleteExercise: jest.fn(), cloneExercise: jest.fn() }),
 }));
-jest.mock('../hooks/use-sessions.js', () => ({ useSessions: () => ({ sessions: [] }) }));
+jest.mock('../hooks/use-sessions.js', () => ({
+  useSessions: () => ({ sessions: [] }),
+  useSessionMutations: () => ({ updateSession: jest.fn() }),
+}));
 jest.mock('../components/forms/section-card.jsx', () => ({ SectionCard: 'SectionCard' }));
 jest.mock('../components/shared/animated-dropdown.jsx', () => ({ AnimatedDropdown: 'AnimatedDropdown' }));
 jest.mock('../components/plans/exercise-kind-meta.js', () => ({
@@ -27,6 +30,7 @@ jest.mock('../components/plans/exercise-kind-meta.js', () => ({
 jest.mock('../components/plans/create-exercise-modal.jsx', () => ({ CreateExerciseModal: 'CreateExerciseModal' }));
 jest.mock('../components/plans/delete-catalog-item-modal.jsx', () => ({ DeleteCatalogItemModal: 'DeleteCatalogItemModal' }));
 jest.mock('../components/plans/bulk-delete-exercises-modal.jsx', () => ({ BulkDeleteExercisesModal: 'BulkDeleteExercisesModal' }));
+jest.mock('../components/plans/attach-to-session-picker.jsx', () => ({ AttachToSessionPicker: 'AttachToSessionPicker' }));
 jest.mock('../components/plans/usage-list-modal.jsx', () => ({ UsageListModal: 'UsageListModal' }));
 
 import { sessionsUsingExercise, exercisesWithUsage } from '../components/plans/exercises-catalog-tab.jsx';

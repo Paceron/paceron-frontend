@@ -5,13 +5,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useExercises, useExerciseMutations } from '../../hooks/use-exercises.js';
-import { useSessions } from '../../hooks/use-sessions.js';
+import { useSessions, useSessionMutations } from '../../hooks/use-sessions.js';
+import { mergeSessionExercises } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
 import { BulkDeleteExercisesModal } from './bulk-delete-exercises-modal.jsx';
+import { AttachToSessionPicker } from './attach-to-session-picker.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
 
 // Sesiones (deduplicadas) que referencian este ejercicio en cualquiera
@@ -149,6 +151,7 @@ export function ExercisesCatalogTab() {
   const { exercises, loading } = useExercises(userId);
   const { deleteExercise, cloneExercise } = useExerciseMutations();
   const { sessions } = useSessions(userId);
+  const { updateSession } = useSessionMutations();
 
   const [search, setSearch] = useState('');
   const [modalExercise, setModalExercise] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
@@ -160,6 +163,7 @@ export function ExercisesCatalogTab() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
+  const [attachPickerVisible, setAttachPickerVisible] = useState(false);
 
   const handleOpenMenu = (anchor, exercise) => setOpenMenu({ anchor, exercise });
   const handleCloseMenu = () => setOpenMenu(null);
@@ -218,6 +222,27 @@ export function ExercisesCatalogTab() {
       return;
     }
     Toast.show({ type: 'success', text1: `${ids.length} ejercicio${ids.length === 1 ? '' : 's'} eliminado${ids.length === 1 ? '' : 's'}` });
+  };
+
+  const handleAttachToSession = async (sessionId) => {
+    const targetSession = sessions.find((s) => s.id === sessionId);
+    const result = await updateSession({
+      ownerId: userId,
+      sessionId,
+      form: {
+        ownerId: userId,
+        name: targetSession.name,
+        description: targetSession.description,
+        exercises: mergeSessionExercises(targetSession, Array.from(selectedIds)),
+      },
+    });
+    setAttachPickerVisible(false);
+    exitSelection();
+    if (!result.success) {
+      Toast.show({ type: 'error', text1: 'No pudimos adjuntar los ejercicios', text2: result.error });
+      return;
+    }
+    Toast.show({ type: 'success', text1: `Ejercicios agregados a "${targetSession.name}"` });
   };
 
   const handleDelete = async () => {
@@ -376,6 +401,15 @@ export function ExercisesCatalogTab() {
               <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="exercises-catalog-bulk-clone-label" testID="exercises-catalog-bulk-clone-label">Clonar</Text>
             </Pressable>
             <Pressable
+              className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+              nativeID="exercises-catalog-bulk-attach"
+              onPress={() => { setBulkMenuOpen(false); setAttachPickerVisible(true); }}
+              testID="exercises-catalog-bulk-attach"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clipboard-plus-outline" size={16} />
+              <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="exercises-catalog-bulk-attach-label" testID="exercises-catalog-bulk-attach-label">Adjuntar a sesión existente</Text>
+            </Pressable>
+            <Pressable
               className="flex-row items-center gap-2 px-3 py-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
               nativeID="exercises-catalog-bulk-delete"
               onPress={() => { setBulkMenuOpen(false); setBulkDeleteVisible(true); }}
@@ -415,6 +449,13 @@ export function ExercisesCatalogTab() {
         onConfirm={handleBulkDelete}
         visible={bulkDeleteVisible}
         withUsage={exercisesWithUsage(Array.from(selectedIds), exercises, sessions)}
+      />
+
+      <AttachToSessionPicker
+        onClose={() => setAttachPickerVisible(false)}
+        onConfirm={handleAttachToSession}
+        sessions={sessions}
+        visible={attachPickerVisible}
       />
     </View>
   );
