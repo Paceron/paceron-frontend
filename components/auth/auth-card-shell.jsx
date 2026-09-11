@@ -44,7 +44,10 @@ export function AuthCardShell({ cardClassName = 'max-w-md p-8', children }) {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="auth-card-shell-safe-area" testID="auth-card-shell-safe-area">
-      <View className="absolute right-4 top-4 z-10" nativeID="auth-card-shell-theme-toggle" testID="auth-card-shell-theme-toggle">
+      {/* Row en flujo normal, no `position: absolute` — un toggle absoluto
+          colisionaba con la status bar en mobile nativo (mismo bug y mismo
+          arreglo que app/(tabs)/_layout.jsx para la landing sin sesión). */}
+      <View className="flex-row justify-end px-4 py-2" nativeID="auth-card-shell-theme-toggle" testID="auth-card-shell-theme-toggle">
         <ThemeToggle />
       </View>
 

@@ -19,14 +19,18 @@ export default function TabsLayout() {
   if (!hydrated) return <AppLoadingScreen />;
 
   // Landing pública (sin sesión): sin shell de navegación de usuario
-  // autenticado — solo el toggle de tema, flotante y transparente, arriba
-  // de lo que sea que renderice HomeLandingScreen/HomeWebNarrowScreen/
+  // autenticado — solo el toggle de tema, transparente, arriba de lo que
+  // sea que renderice HomeLandingScreen/HomeWebNarrowScreen/
   // HomeMobileScreen (decidido por app/(tabs)/index.jsx / index.web.jsx).
-  // Ver docs/superpowers/specs/2026-09-10-landing-without-shell-design.md.
+  // El toggle va en un row normal (no `position: absolute`) para que quede
+  // debajo del padding-top que agrega el SafeAreaView — absoluto colisionaba
+  // con la status bar en mobile nativo (bug real, encontrado en preview de
+  // usuario 2026-09-10). Ver
+  // docs/superpowers/specs/2026-09-10-landing-without-shell-design.md.
   if (pathname === '/' && !userId) {
     return (
       <SafeAreaView className="flex-1" edges={['top']} nativeID="landing-bare-shell" testID="landing-bare-shell">
-        <View className="absolute right-4 top-4 z-10" nativeID="landing-bare-shell-theme-toggle" testID="landing-bare-shell-theme-toggle">
+        <View className="flex-row justify-end px-4 py-2" nativeID="landing-bare-shell-theme-toggle" testID="landing-bare-shell-theme-toggle">
           <ThemeToggle />
         </View>
         <Slot />
