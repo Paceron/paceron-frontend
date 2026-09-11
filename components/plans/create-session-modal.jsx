@@ -64,7 +64,7 @@ function SessionRoleSegmentedPicker({ idPrefix, value, onChange }) {
 // altura (h-12 los 3); "Serie repetida" es un toggle chico aparte —
 // colapsado por default para que la fila no crezca salvo que haga falta,
 // mismo criterio ya usado para los días de un plan.
-function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChangeExercise, onChangeRole, onRemove }) {
+function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercises, onChangeExercise, onChangeRole, onRemove, onMove }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
@@ -92,6 +92,26 @@ function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChange
             value={entry.exerciseId}
           />
         </View>
+        <Pressable
+          accessibilityLabel="Subir ejercicio"
+          className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
+          disabled={index === 0}
+          nativeID={`${idPrefix}-move-up-button`}
+          onPress={() => onMove(entry.localKey, -1)}
+          testID={`${idPrefix}-move-up-button`}
+        >
+          <MaterialCommunityIcons color="#94a3b8" name="chevron-up" size={18} />
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Bajar ejercicio"
+          className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
+          disabled={index === totalCount - 1}
+          nativeID={`${idPrefix}-move-down-button`}
+          onPress={() => onMove(entry.localKey, 1)}
+          testID={`${idPrefix}-move-down-button`}
+        >
+          <MaterialCommunityIcons color="#94a3b8" name="chevron-down" size={18} />
+        </Pressable>
         <Pressable
           accessibilityLabel="Quitar ejercicio"
           className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
@@ -246,6 +266,21 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const handleAddExercise = () => setExercises((rows) => [...rows, makeBlankRow('main')]);
   const handleRemoveExercise = (localKey) => setExercises((rows) => rows.filter((r) => r.localKey !== localKey));
 
+  // Intercambia la fila con su vecina inmediata en la dirección dada
+  // (-1 = subir, +1 = bajar) — sin efecto si ya está en la punta (la UI
+  // ya deshabilita el botón ahí, esto es la defensa del lado de la
+  // función).
+  const handleMoveExercise = (localKey, direction) => {
+    setExercises((rows) => {
+      const index = rows.findIndex((r) => r.localKey === localKey);
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= rows.length) return rows;
+      const next = [...rows];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  };
+
   const handleSubmit = async () => {
     if (submitting) return;
     if (!name.trim() || exercises.length === 0) {
@@ -324,7 +359,9 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                     key={entry.localKey}
                     onChangeExercise={handleChangeExercise}
                     onChangeRole={handleChangeRole}
+                    onMove={handleMoveExercise}
                     onRemove={handleRemoveExercise}
+                    totalCount={exercises.length}
                   />
                 ))}
               </View>
