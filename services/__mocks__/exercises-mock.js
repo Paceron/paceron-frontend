@@ -102,6 +102,24 @@ export async function mockDeleteExercise(exerciseId) {
   return null;
 }
 
+// Copia con sufijo "(copia)" — mismo criterio que mockCloneTrainingPlan
+// (services/__mocks__/training-plans-mock.js). No hereda uso en
+// sesiones: una sesión existente sigue apuntando al exerciseId
+// original, no al clon.
+export async function mockCloneExercise(exerciseId) {
+  const original = findExerciseOrThrow(exerciseId);
+  const now = new Date().toISOString();
+  const clone = {
+    ...original,
+    id: nextId++,
+    name: `${original.name} (copia)`,
+    created_at: now,
+    updated_at: now,
+  };
+  mockExercises.push(clone);
+  return clone;
+}
+
 export function __resetMockExercises() {
   mockExercises = buildSeedExercises();
   nextId = 15;
