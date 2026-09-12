@@ -100,36 +100,50 @@ function ExerciseActionsMenu({ exercise, onEdit, onClone, onDelete }) {
   );
 }
 
+// Box/card en vez de fila — la cantidad de columnas surge sola del
+// flex-wrap del contenedor (exercises-catalog-list) según el ancho
+// disponible, sin breakpoints explícitos (mismo criterio de
+// responsividad "automática" que el resto del catálogo).
 function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, selectionMode, selected, onToggleSelected }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
   const idPrefix = `exercise-catalog-row-${exercise.id}`;
   const statLine = buildExerciseStatLine(exercise);
 
   return (
-    <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      {selectionMode && (
-        <Pressable
-          accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: selected }}
-          nativeID={`${idPrefix}-checkbox`}
-          onPress={() => onToggleSelected(exercise.id)}
-          testID={`${idPrefix}-checkbox`}
-        >
-          <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} />
-        </Pressable>
-      )}
-      <View className={`h-10 w-10 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
-        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
+    <View
+      className={`w-[210px] gap-2 rounded-xl border p-3 ${selected ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`}
+      nativeID={idPrefix}
+      testID={idPrefix}
+    >
+      <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-top`} testID={`${idPrefix}-top`}>
+        <View className={`h-10 w-10 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
+          <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
+        </View>
+        {selectionMode ? (
+          <Pressable
+            accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: selected }}
+            nativeID={`${idPrefix}-checkbox`}
+            onPress={() => onToggleSelected(exercise.id)}
+            testID={`${idPrefix}-checkbox`}
+          >
+            <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} />
+          </Pressable>
+        ) : (
+          <ExerciseMenuButton containerRef={containerRef} exercise={exercise} onOpenMenu={onOpenMenu} />
+        )}
       </View>
-      <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
+
+      <View nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={2} testID={`${idPrefix}-name`}>
           {exercise.name}
         </Text>
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} testID={`${idPrefix}-stat`}>
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} numberOfLines={1} testID={`${idPrefix}-stat`}>
           {statLine || meta.label}
         </Text>
       </View>
+
       <Pressable
         disabled={usedIn.length === 0}
         nativeID={`${idPrefix}-usage-button`}
@@ -140,7 +154,6 @@ function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, 
           Usado en {usedIn.length} {usedIn.length === 1 ? 'sesión' : 'sesiones'}
         </Text>
       </Pressable>
-      {!selectionMode && <ExerciseMenuButton containerRef={containerRef} exercise={exercise} onOpenMenu={onOpenMenu} />}
     </View>
   );
 }
@@ -293,14 +306,13 @@ export function ExercisesCatalogTab() {
               <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400" nativeID="exercises-catalog-select-button-label" testID="exercises-catalog-select-button-label">Seleccionar</Text>
             </Pressable>
             <Pressable
-              className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
+              accessibilityLabel="Crear ejercicio"
+              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
               nativeID="exercises-catalog-create-button"
               onPress={() => setModalExercise(null)}
               testID="exercises-catalog-create-button"
             >
-              <Text className="text-sm font-semibold text-primary" nativeID="exercises-catalog-create-button-label" testID="exercises-catalog-create-button-label">
-                Crear ejercicio
-              </Text>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
             </Pressable>
           </View>
         )}
@@ -339,7 +351,7 @@ export function ExercisesCatalogTab() {
                 Ningún ejercicio coincide con la búsqueda.
               </Text>
             ) : (
-              <View className="gap-2" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
+              <View className="flex-row flex-wrap gap-3" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
                 {filteredExercises.map((exercise) => {
                   const usedIn = sessionsUsingExercise(exercise.id, sessions);
                   return (

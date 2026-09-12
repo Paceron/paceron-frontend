@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -99,6 +99,17 @@ function IntensitySegmentedPicker({ idPrefix, value, onChange }) {
     </View>
   );
 }
+
+// Deja pasar solo dígitos y un único punto decimal — minutos, distancia
+// y velocidad son datos numéricos; keyboardType solo cambia el teclado
+// virtual en mobile, no restringe lo que puede tipearse con teclado
+// físico/en web.
+const sanitizeNumericInput = (text) => {
+  const cleaned = text.replace(/[^0-9.]/g, '');
+  const firstDot = cleaned.indexOf('.');
+  if (firstDot === -1) return cleaned;
+  return `${cleaned.slice(0, firstDot + 1)}${cleaned.slice(firstDot + 1).replace(/\./g, '')}`;
+};
 
 const hasOptionalData = (exercise) => Boolean(
   exercise && (
@@ -200,8 +211,8 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
 
   const handleSubmit = async () => {
     if (submitting) return;
-    if (!name.trim() || !description.trim()) {
-      setError('Completá el nombre y la descripción.');
+    if (!name.trim()) {
+      setError('Completá el nombre.');
       return;
     }
     setSubmitting(true);
@@ -236,7 +247,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
     <>
     <Modal animationType="fade" nativeID="create-exercise-modal" onRequestClose={handleClose} testID="create-exercise-modal" transparent visible={visible}>
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-exercise-modal-backdrop" onPress={handleClose} testID="create-exercise-modal-backdrop">
-        <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-exercise-modal-card" onPress={() => {}} testID="create-exercise-modal-card">
+        <Pressable className="max-h-[90%] w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-exercise-modal-card" onPress={() => {}} testID="create-exercise-modal-card">
           <View className="mb-4 flex-row items-center gap-2" nativeID="create-exercise-modal-header" testID="create-exercise-modal-header">
             <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'dumbbell'} size={20} />
             <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-exercise-modal-title" testID="create-exercise-modal-title">
@@ -244,9 +255,14 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
             </Text>
           </View>
 
+          {/* max-h-[90%] en el card de arriba solo. Sin este ScrollView, el
+              card no tenía forma de exponer el contenido que quedara
+              tapado por esa altura máxima en pantallas chicas (mobile) —
+              una View sola no scrollea, por más que el padre la recorte. */}
+          <ScrollView nativeID="create-exercise-modal-scroll" showsVerticalScrollIndicator={false} testID="create-exercise-modal-scroll">
           <View className="gap-3" nativeID="create-exercise-modal-fields" testID="create-exercise-modal-fields">
             <InputField autoFocus={!isWeb && visible} className="mb-0" dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Fartlek de martes" value={name} />
-            <InputField className="mb-0" dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={setDescription} placeholder="Para qué sirve, cómo se hace." value={description} />
+            <InputField className="mb-0" dense hideErrorRow label="Descripción (opcional)" onChange={setDescription} placeholder="Para qué sirve, cómo se hace." value={description} />
 
             <View nativeID="create-exercise-modal-kind" testID="create-exercise-modal-kind">
               <Text className={FIELD_LABEL} nativeID="create-exercise-modal-kind-label" testID="create-exercise-modal-kind-label">Tipo</Text>
@@ -276,17 +292,18 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                   </View>
 
                   <Row narrowClassName="gap-3">
-                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={setMinutes} value={minutes} /></Col>
-                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={setDistanceM} value={distanceM} /></Col>
+                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={(v) => setMinutes(sanitizeNumericInput(v))} value={minutes} /></Col>
+                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={(v) => setDistanceM(sanitizeNumericInput(v))} value={distanceM} /></Col>
                   </Row>
                   <Row narrowClassName="gap-3">
-                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Velocidad (km/h)" onChange={setSpeedKph} value={speedKph} /></Col>
+                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="decimal-pad" label="Velocidad (km/h)" onChange={(v) => setSpeedKph(sanitizeNumericInput(v))} value={speedKph} /></Col>
                     <Col><ResponsiveSelectField className="mb-0" dense hideErrorRow label="Grupo muscular" onChange={setMuscleGroup} options={MUSCLE_GROUP_OPTIONS} placeholder="Ninguno" value={muscleGroup} /></Col>
                   </Row>
                 </View>
               )}
             </View>
           </View>
+          </ScrollView>
 
           <View className="mt-3 flex-row gap-3" nativeID="create-exercise-modal-actions" testID="create-exercise-modal-actions">
             <Pressable

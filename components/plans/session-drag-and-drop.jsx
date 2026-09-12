@@ -2,6 +2,7 @@ import { createContext, useContext, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { isWeb } from '../../utils/platform.js';
 
 // Mecánica de arrastre a mano (sin librería de terceros — ver
 // docs/superpowers/specs/2026-09-10-sessions-drag-and-drop-design.md
@@ -70,12 +71,23 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
   );
 }
 
-// Overlay de pantalla completa que sigue al dedo/cursor mientras hay un
-// arrastre en curso — vive en un solo lugar (montado una vez por
-// SessionDragProvider) para que el "fantasma" pueda visualmente cruzar
-// de la columna del panel a la columna de la sesión sin quedar
-// recortado por el overflow de ninguna de las 2 (mismo problema que ya
-// resuelve el patrón absolute-inset-0 de components/shared/animated-dropdown.jsx).
+// Overlay que sigue al cursor mientras hay un arrastre en curso — vive
+// en un solo lugar (montado una vez por SessionDragProvider) para que el
+// "fantasma" pueda visualmente cruzar de la columna del panel a la
+// columna de la sesión sin quedar recortado por el overflow de ninguna
+// de las 2 (mismo problema que ya resuelve el patrón absolute-inset-0 de
+// components/shared/animated-dropdown.jsx). CRÍTICO: en RN Web todo View
+// es `position: relative` por default, así que un `inset-0` clásico
+// (className `absolute`) no ancla contra la ventana sino contra el
+// ancestro posicionado más cercano — acá el card del modal, que está
+// centrado y con padding, es decir con un offset propio respecto a la
+// pantalla. `dragX`/`dragY` vienen de `e.absoluteX/absoluteY` (coordenadas
+// de PANTALLA), así que mezclarlas con un origen que NO es la pantalla
+// corría el fantasma hacia la derecha/abajo por exactamente ese offset
+// (bug reportado: el fantasma no queda debajo del cursor). En web, este
+// overlay solo se monta dentro del layout ancho de escritorio — nunca en
+// mobile nativo —, así que `position: fixed` (ancla contra el viewport,
+// no contra el ancestro) es seguro acá sin tocar la rama nativa.
 function DragGhost() {
   const { dragX, dragY, draggedExercise } = useContext(SessionDragContext);
   const style = useAnimatedStyle(() => ({
@@ -84,7 +96,12 @@ function DragGhost() {
 
   if (!draggedExercise) return null;
   return (
-    <View className="absolute inset-0 z-50" nativeID="session-drag-ghost-overlay" style={{ pointerEvents: 'none' }} testID="session-drag-ghost-overlay">
+    <View
+      className="inset-0 z-50"
+      nativeID="session-drag-ghost-overlay"
+      style={{ position: isWeb ? 'fixed' : 'absolute', pointerEvents: 'none' }}
+      testID="session-drag-ghost-overlay"
+    >
       <Animated.View
         className="w-44 rounded-xl border border-primary bg-white px-3 py-2 opacity-90 shadow-lg dark:bg-surface"
         nativeID="session-drag-ghost-card"

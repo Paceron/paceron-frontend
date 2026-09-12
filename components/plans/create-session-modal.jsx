@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -8,7 +8,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useExercises } from '../../hooks/use-exercises.js';
 import { useSessionMutations } from '../../hooks/use-sessions.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
-import { InputField, Row, Col, FIELD_LABEL } from '../forms/fields.jsx';
+import { InputField, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { SESSION_ROLE_ORDER, SESSION_ROLE_META } from './exercise-kind-meta.js';
@@ -58,6 +58,29 @@ function SessionRoleSegmentedPicker({ idPrefix, value, onChange }) {
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+// Pill inline chico (ícono + input numérico + sufijo) — reemplaza al
+// InputField con label propio que usaban repeticiones/descanso: ese
+// combo (label + input h-12) agregaba una fila entera de alto aparte del
+// toggle "Serie repetida" cuando estaba activo. Acá los dos viven en la
+// MISMA fila que el toggle (ver series-row más abajo), sin fila extra.
+function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibilityLabel }) {
+  return (
+    <View className="h-8 flex-row items-center gap-1 rounded-full bg-slate-100 px-2 dark:bg-slate-800" nativeID={idPrefix} testID={idPrefix}>
+      <MaterialCommunityIcons color="#94a3b8" name={icon} size={14} />
+      <TextInput
+        accessibilityLabel={accessibilityLabel}
+        className="w-6 text-xs text-slate-900 outline-none dark:text-white"
+        keyboardType="number-pad"
+        nativeID={`${idPrefix}-input`}
+        onChangeText={onChange}
+        testID={`${idPrefix}-input`}
+        value={value}
+      />
+      <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-suffix`} testID={`${idPrefix}-suffix`}>{suffix}</Text>
     </View>
   );
 }
@@ -126,47 +149,43 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
         </Pressable>
       </View>
 
-      <Pressable
-        accessibilityLabel="Marcar como serie repetida"
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: isSeries }}
-        className="flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1"
-        nativeID={`${idPrefix}-series-toggle`}
-        onPress={handleToggleSeries}
-        testID={`${idPrefix}-series-toggle`}
-      >
-        <MaterialCommunityIcons color={isSeries ? '#8cc63e' : '#94a3b8'} name="repeat-variant" size={16} />
-        <Text className={`text-xs font-semibold ${isSeries ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-series-toggle-label`} testID={`${idPrefix}-series-toggle-label`}>
-          Serie repetida
-        </Text>
-      </Pressable>
+      <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>
+        <Pressable
+          accessibilityLabel="Marcar como serie repetida"
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: isSeries }}
+          className="flex-row items-center gap-1.5 rounded-full px-2.5 py-1"
+          nativeID={`${idPrefix}-series-toggle`}
+          onPress={handleToggleSeries}
+          testID={`${idPrefix}-series-toggle`}
+        >
+          <MaterialCommunityIcons color={isSeries ? '#8cc63e' : '#94a3b8'} name="repeat-variant" size={16} />
+          <Text className={`text-xs font-semibold ${isSeries ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-series-toggle-label`} testID={`${idPrefix}-series-toggle-label`}>
+            Serie repetida
+          </Text>
+        </Pressable>
 
-      {isSeries && (
-        <Row narrowClassName="gap-3">
-          <Col>
-            <InputField
-              className="mb-0"
-              dense
-              hideErrorRow
-              keyboardType="number-pad"
-              label="Repeticiones"
+        {isSeries && (
+          <>
+            <CompactNumberPill
+              accessibilityLabel="Repeticiones"
+              icon="repeat-variant"
+              idPrefix={`${idPrefix}-repeat-count`}
               onChange={(v) => onChangeExercise(entry.localKey, { repeatCount: Number(v) || 1 })}
+              suffix="×"
               value={String(entry.repeatCount)}
             />
-          </Col>
-          <Col>
-            <InputField
-              className="mb-0"
-              dense
-              hideErrorRow
-              keyboardType="number-pad"
-              label="Descanso entre series (min)"
+            <CompactNumberPill
+              accessibilityLabel="Descanso en minutos"
+              icon="timer-outline"
+              idPrefix={`${idPrefix}-rest-minutes`}
               onChange={(v) => onChangeExercise(entry.localKey, { restMinutes: Number(v) || 0 })}
+              suffix="min"
               value={String(entry.restMinutes)}
             />
-          </Col>
-        </Row>
-      )}
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -182,38 +201,58 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
 
   return (
     <View className="flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
-      <ScrollView className="w-[380px] shrink-0" nativeID="create-session-modal-form-column" testID="create-session-modal-form-column">
+      {/* La sesión (lo que se está armando) tiene más protagonismo que el
+          catálogo adjunto (solo una fuente para arrastrar) — por eso esta
+          columna es la que crece (flex-1) y el panel de más abajo el que
+          queda con ancho fijo y angosto, no al revés. ScrollView por
+          default crece con flexGrow:1 propio, que pisa cualquier ancho
+          puesto en su className — por eso el `flex-1` va en este View
+          envolvente y el ScrollView de adentro solo se limita a
+          scrollear dentro de ese ancho. */}
+      <View className="flex-1" nativeID="create-session-modal-form-column" testID="create-session-modal-form-column">
+      <ScrollView nativeID="create-session-modal-form-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-form-scroll">
         <InputField autoFocus={visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
-        <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={onSetDescription} value={description} />
+        <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
 
         <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
         <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-drop-hint" testID="create-session-modal-drop-hint">
           Arrastrá ejercicios del panel de la derecha para agregarlos acá.
         </Text>
 
-        <View className="min-h-[80px] gap-2 rounded-xl border border-dashed border-slate-300 p-2 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
-          {exercises.map((entry, index) => (
-            <SessionExerciseRow
-              catalogExercises={catalogExercises}
-              entry={entry}
-              idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
-              index={index}
-              key={entry.localKey}
-              onChangeExercise={onChangeExercise}
-              onChangeRole={onChangeRole}
-              onMove={onMove}
-              onRemove={onRemove}
-              totalCount={exercises.length}
-            />
-          ))}
+        {/* Alto fijo (no crece ni se achica al agregar/quitar filas) —
+            agregar ejercicios hace overflow con scroll propio en vez de
+            estirar el modal entero. dropTargetRef mide este contenedor
+            (no el ScrollView interno) para el cálculo de soltado. */}
+        <View className="h-[280px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
+          <ScrollView contentContainerClassName="gap-2 p-2" nativeID="create-session-modal-exercises-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-exercises-scroll">
+            {exercises.length === 0 ? (
+              <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
+                Todavía no agregaste ejercicios.
+              </Text>
+            ) : exercises.map((entry, index) => (
+              <SessionExerciseRow
+                catalogExercises={catalogExercises}
+                entry={entry}
+                idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
+                index={index}
+                key={entry.localKey}
+                onChangeExercise={onChangeExercise}
+                onChangeRole={onChangeRole}
+                onMove={onMove}
+                onRemove={onRemove}
+                totalCount={exercises.length}
+              />
+            ))}
+          </ScrollView>
         </View>
 
         {error && (
           <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
         )}
       </ScrollView>
+      </View>
 
-      <View className="flex-1 border-l border-slate-200 pl-4 dark:border-slate-700" nativeID="create-session-modal-exercise-panel-column" testID="create-session-modal-exercise-panel-column">
+      <View className="w-[280px] shrink-0 border-l border-slate-200 pl-4 dark:border-slate-700" nativeID="create-session-modal-exercise-panel-column" testID="create-session-modal-exercise-panel-column">
         <SessionExercisePanel onExerciseAdded={onExerciseDropped} />
       </View>
     </View>
@@ -276,7 +315,15 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const resetValues = {
     name: session?.name ?? '',
     description: session?.description ?? '',
-    exercises: session?.exercises?.length ? session.exercises.map((e) => ({ ...e })) : SESSION_ROLE_ORDER.map(makeBlankRow),
+    // En layout ancho, el panel de ejercicios adjunto reemplaza al
+    // "arranque con 3 filas en blanco" — el usuario arrastra lo que
+    // necesita, y arrancar vacío deja el alto fijo del área de
+    // ejercicios (ver más abajo) consistente desde el primer render. En
+    // mobile/narrow se mantiene el arranque con 1 fila en blanco por rol,
+    // que sigue siendo la forma de cargar ejercicios ahí.
+    exercises: session?.exercises?.length
+      ? session.exercises.map((e) => ({ ...e }))
+      : (isWideLayout ? [] : SESSION_ROLE_ORDER.map(makeBlankRow)),
   };
 
   if (isResetting) {
@@ -404,9 +451,15 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                 />
               </SessionDragProvider>
             ) : (
-              <ScrollView nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
+              /* flex-1 (no solo max-h en el card ancestro): sin esto, un
+                 ScrollView dentro de un contenedor column con altura
+                 máxima no se ve obligado a ceder al tamaño disponible —
+                 toma el alto de su contenido igual, y el resto de la
+                 tarjeta termina recortado sin poder scrollear, sobre todo
+                 notorio en mobile nativo con teclado/contenido largo. */
+              <ScrollView className="flex-1" nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
                 <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
-                <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={2} onChange={setDescription} value={description} />
+                <InputField dense hideErrorRow label="Descripción (opcional)" onChange={setDescription} value={description} />
 
                 <View className="mb-2 flex-row items-center justify-between" nativeID="create-session-modal-exercises-header" testID="create-session-modal-exercises-header">
                   <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>

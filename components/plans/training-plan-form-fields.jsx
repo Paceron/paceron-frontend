@@ -40,7 +40,7 @@ function DaySegmentedPicker({ idPrefix, value, onChange }) {
             accessibilityLabel={meta.label}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            className={`flex-1 flex-row items-center justify-center gap-1 rounded-full px-1.5 py-2 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
+            className={`flex-1 flex-row items-center justify-center gap-1 rounded-full px-1.5 py-1.5 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
             key={kind}
             nativeID={segId}
             onPress={() => onChange(kind)}
@@ -85,7 +85,7 @@ function DayHeaderRowWide({ day, sessions, onChangeDay, onKindChange, idPrefix }
 
             if (expanded) {
               return (
-                <View className={`h-14 flex-1 flex-row items-center gap-2 rounded-full px-3.5 ${meta.bg}`} key={kind} nativeID={segId} testID={segId}>
+                <View className={`h-11 flex-1 flex-row items-center gap-2 rounded-full px-3.5 ${meta.bg}`} key={kind} nativeID={segId} testID={segId}>
                   <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
                   {kind === 'other' && (
                     <InputField
@@ -121,7 +121,7 @@ function DayHeaderRowWide({ day, sessions, onChangeDay, onKindChange, idPrefix }
                 accessibilityLabel={meta.label}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active }}
-                className={`h-14 items-center justify-center rounded-full ${compact ? 'w-14' : 'flex-1 flex-row gap-1.5'} ${active ? meta.bg : 'bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
+                className={`h-11 items-center justify-center rounded-full ${compact ? 'w-11' : 'flex-1 flex-row gap-1.5'} ${active ? meta.bg : 'bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
                 key={kind}
                 nativeID={segId}
                 onPress={() => onKindChange(kind)}
@@ -182,7 +182,7 @@ function DayRow({ day, sessions, onChangeDay }) {
   // condición correcta y no queda "siempre angosta" por culpa del cap.
   if (isWeb && !isNarrowWeb) {
     return (
-      <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
         <DayHeaderRowWide day={day} idPrefix={idPrefix} onChangeDay={onChangeDay} onKindChange={handleKindChange} sessions={sessions} />
       </View>
     );
@@ -220,7 +220,7 @@ function DayRow({ day, sessions, onChangeDay }) {
   );
 
   return (
-    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
       <Pressable
         accessibilityLabel={`${'Día ' + day.sequenceNo}, ${kindMeta.label}, ${expanded ? 'ocultar detalle' : 'ver detalle'}`}
         accessibilityRole="button"
@@ -264,7 +264,7 @@ export function TrainingPlanFormFields({ form, autoFocusName = false }) {
     <>
       <SectionCard icon="clipboard-text-outline" title="Datos del plan">
         <InputField autoFocus={autoFocusName} dense error={form.errors.name} label="Nombre del plan" onChange={form.setName} placeholder="Ej. Base 5K — nivel inicial" value={form.name} />
-        <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
+        <InputField dense hideErrorRow label="Descripción (opcional)" onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
       </SectionCard>
 
       <SectionCard icon="calendar-week" title="Días del plan">
@@ -286,22 +286,24 @@ export function TrainingPlanFormFields({ form, autoFocusName = false }) {
           />
           <View className="flex-row gap-2" nativeID="plan-day-count-buttons" testID="plan-day-count-buttons">
             <Pressable
-              className="h-10 items-center justify-center rounded-full border border-slate-200 px-3 disabled:opacity-40 dark:border-slate-700"
+              accessibilityLabel="Quitar último día"
+              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
               disabled={form.days.length <= 2}
               nativeID="plan-day-count-remove-button"
               onPress={() => form.setDayCount(form.days.length - 1)}
               testID="plan-day-count-remove-button"
             >
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="plan-day-count-remove-button-label" testID="plan-day-count-remove-button-label">Quitar último día</Text>
+              <MaterialCommunityIcons color="#94a3b8" name="minus" size={18} />
             </Pressable>
             <Pressable
-              className="h-10 items-center justify-center rounded-full border border-slate-200 px-3 disabled:opacity-40 dark:border-slate-700"
+              accessibilityLabel="Agregar día"
+              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
               disabled={form.days.length >= 31}
               nativeID="plan-day-count-add-button"
               onPress={() => form.setDayCount(form.days.length + 1)}
               testID="plan-day-count-add-button"
             >
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="plan-day-count-add-button-label" testID="plan-day-count-add-button-label">Agregar día</Text>
+              <MaterialCommunityIcons color="#94a3b8" name="plus" size={18} />
             </Pressable>
           </View>
         </View>

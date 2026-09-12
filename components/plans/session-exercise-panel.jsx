@@ -50,13 +50,13 @@ export function SessionExercisePanel({ onExerciseAdded }) {
       <View className="mb-2 flex-row items-center justify-between" nativeID="session-exercise-panel-header" testID="session-exercise-panel-header">
         <Text className={FIELD_LABEL} nativeID="session-exercise-panel-header-label" testID="session-exercise-panel-header-label">Catálogo de ejercicios</Text>
         <Pressable
+          accessibilityLabel="Crear ejercicio"
+          className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
           nativeID="session-exercise-panel-create-button"
           onPress={() => setShowCreateModal(true)}
           testID="session-exercise-panel-create-button"
         >
-          <Text className="text-sm font-semibold text-primary" nativeID="session-exercise-panel-create-button-label" testID="session-exercise-panel-create-button-label">
-            + Crear ejercicio
-          </Text>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
         </Pressable>
       </View>
 

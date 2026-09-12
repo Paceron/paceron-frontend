@@ -135,7 +135,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
 
         <SectionCard icon="account-multiple" title={`Datos de "${group.name}"`}>
           <InputField dense error={error} label="Nombre del grupo" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Grupo avanzado" value={name} />
-          <InputField dense label="Descripción del grupo" multiline numberOfLines={2} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
+          <InputField dense label="Descripción del grupo (opcional)" multiline numberOfLines={2} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
           <ResponsiveSelectField dense label="Plan de entrenamiento" onChange={setTrainingPlanId} options={TRAINING_PLAN_OPTIONS} placeholder="Sin plan asignado" value={trainingPlanId} />
 
           <Pressable

@@ -170,14 +170,13 @@ export function SessionsCatalogTab() {
       <SectionCard
         headerRight={(
           <Pressable
-            className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
+            accessibilityLabel="Crear sesión"
+            className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
             nativeID="sessions-catalog-create-button"
             onPress={() => setModalSession(null)}
             testID="sessions-catalog-create-button"
           >
-            <Text className="text-sm font-semibold text-primary" nativeID="sessions-catalog-create-button-label" testID="sessions-catalog-create-button-label">
-              Crear sesión
-            </Text>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
           </Pressable>
         )}
         icon="clipboard-plus-outline"
