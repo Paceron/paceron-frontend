@@ -1,14 +1,16 @@
 # Spec de backend — Planes de entrenamiento, Sesiones y Ejercicios
 
-> Documento para el equipo de backend (Go/Gin, repo separado). Describe el dominio completo tal como lo modela y necesita el frontend hoy, para implementar los endpoints reales que hoy no existen (ver `docs/BACKEND_API_GAPS.md`, Gap 4). No es una spec de frontend — no sigue la convención fechada de `docs/superpowers/specs/`, vive junto a `BACKEND_API_GAPS.md`/`BACKEND_DEFINITIONS.md` y se actualiza in-place a medida que el diseño evolucione.
+> Documento para el equipo de backend (Go/Gin, repo separado). Describe el **catálogo** (ejercicios, sesiones, planes-template) tal como lo modela y necesita el frontend hoy, para implementar los endpoints reales que hoy no existen (ver `docs/BACKEND_API_GAPS.md`, Gap 4). No es una spec de frontend — no sigue la convención fechada de `docs/superpowers/specs/`, vive junto a `BACKEND_API_GAPS.md`/`BACKEND_DEFINITIONS.md` y se actualiza in-place a medida que el diseño evolucione.
+>
+> **Subproyecto hermano:** la asignación de planes a grupos (calendario, sesiones presenciales, cancelaciones, etc.) tiene spec propia en `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` — este documento cubre únicamente el catálogo reusable (Exercise/Session/TrainingPlan/PlanDay), no cómo se asigna ni se calendariza.
 
 ## 1. Estado actual y por qué existe este documento
 
-Todo el módulo — planes, sesiones, ejercicios, asignación a grupos/corredores, "plan actual" — corre 100% contra mocks in-memory (`services/__mocks__/*.js`). `services/exercises.js`, `services/sessions.js` y `services/trainingPlans.js` ya tienen las rutas REST esperadas escritas (mismo estilo que `services/teams.js`, que sí es real), pero son inalcanzables: `USE_MOCKS` siempre gana porque no hay ningún endpoint real que probar. Este documento formaliza ese contrato ya especulado por el frontend, completándolo donde hacía falta (reglas de validación, tipos exactos, qué pasa al borrar algo referenciado).
+Todo el módulo de catálogo — planes, sesiones, ejercicios — corre 100% contra mocks in-memory (`services/__mocks__/*.js`). `services/exercises.js`, `services/sessions.js` y `services/trainingPlans.js` ya tienen las rutas REST esperadas escritas (mismo estilo que `services/teams.js`, que sí es real), pero son inalcanzables: `USE_MOCKS` siempre gana porque no hay ningún endpoint real que probar. Este documento formaliza ese contrato ya especulado por el frontend, completándolo donde hacía falta (reglas de validación, tipos exactos, qué pasa al borrar algo referenciado).
 
 **Nota de reconciliación** (para quien mire el historial de git del frontend y encuentre versiones contradictorias): el modelo descripto acá combina dos cambios que se hicieron en ramas separadas y **nunca convivieron en una sola rama del frontend**:
 - El modelo de **Sesión** con lista libre de ejercicios y rol por ejercicio (en vez de 3 bloques fijos) viene de la rama `feature/session-exercises-rework`.
-- El modelo de **Ejercicio** con `description` obligatoria e `intensity` opcional (independiente del tipo) viene de la rama `feature/exercise-name-auto-compose`.
+- El modelo de **Ejercicio** con `intensity` opcional (independiente del tipo) viene de la rama `feature/exercise-name-auto-compose`. Esa rama tenía `description` obligatoria — la rama `feature/catalog-redesign` (2026-09-11) la volvió opcional (ver §3.1), como parte de un pulido más amplio del catálogo (ver también §4, clonar ejercicios/sesiones).
 
 Ambas ramas seguían sin mergear a `develop` (ni entre sí) al momento de escribir esto. Lo que sigue es el diseño combinado — la versión realmente vigente del dominio — no lo que hoy corre en `develop`.
 
@@ -36,7 +38,7 @@ Ya establecidas por los dominios reales existentes (equipos, usuarios, tiers) �
 | `id` | bigint PK | no | |
 | `owner_id` | bigint FK → user | no | el entrenador dueño del catálogo |
 | `name` | varchar | no | texto libre |
-| `description` | text | **no** | único campo de texto obligatorio junto con `name` — ver §6, se decidió deliberadamente no derivarlo de las características |
+| `description` | text | **sí** | opcional (decisión 2026-09-11, reemplaza el modelo anterior donde era obligatoria junto con `name` — ver nota de reconciliación en §1 y §6) |
 | `kind` | enum | no | `walking` \| `jogging` \| `elongation` \| `cruising` \| `running` |
 | `intensity` | enum | sí | `light` \| `moderate` \| `vigorous` — **independiente del `kind`**, cualquier tipo puede tener cualquier intensidad o ninguna |
 | `minutes` | int | sí | |
@@ -83,9 +85,9 @@ Ya establecidas por los dominios reales existentes (equipos, usuarios, tiers) �
 
 **Sin caducidad propia** (decisión 2026-09-10, reemplaza el modelo
 anterior de `duration_days` 7/14 con `status` derivado) — un plan es un
-template puro, reusable indefinidamente. La noción de "vigencia" pasa
-a resolverse en la futura capa de asignación/calendario (fuera de
-alcance de este documento), no en el plan en sí.
+template puro, reusable indefinidamente. La noción de "vigencia" se
+resuelve en el calendario de cada grupo (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md`),
+no en el plan en sí.
 
 ### 3.5 `PlanDay` (entre 2 y 31 filas por plan, tabla propia)
 
@@ -96,6 +98,11 @@ alcance de este documento), no en el plan en sí.
 | `kind` | enum | no | `rest` \| `other` \| `training` |
 | `other_name` | varchar | sí | obligatorio *solo* si `kind = 'other'` |
 | `session_id` | bigint FK → session | sí | obligatorio *solo* si `kind = 'training'` |
+| `default_presencial` | bool | no, default `false` | ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3 — solo tiene sentido si `kind = 'training'` |
+| `default_time` | time | sí | horario default (24h) que hereda el día de calendario al estamparse este plan — solo si `default_presencial` |
+| `default_location` | jsonb `{lat, lng, label?}` | sí | ubicación default, misma lógica que `default_time` |
+
+**Los 3 campos `default_*` son puramente informativos para el momento del stamp** (ver doc de asignaciones) — no afectan nada del catálogo en sí, y cambiarlos después no toca calendarios ya estampados con el valor anterior.
 
 **Sin `day_of_week`** (decisión 2026-09-10) — un plan-template ya no se
 ata a un día real de la semana; los días son puramente secuenciales
@@ -111,35 +118,11 @@ el backend debe re-validarla, nunca confiar solo en el frontend):
 - `kind = 'other'` ⇒ `other_name` no nulo (y `session_id` nulo).
 - `kind = 'rest'` ⇒ ambos nulos.
 
-### 3.6 Asignación — dos mecanismos distintos, no uno unificado
+### 3.6 Asignación — no vive en este documento
 
-**`RunnerPlanAssignment`** (relación real, corredor individual):
+**Superado 2026-09-12.** Este documento tuvo hasta esta fecha un §3.6 (`RunnerPlanAssignment`, asignación directa a un corredor individual) y un §3.7 (`CurrentPlanMark`) más un campo `Group.training_plan_id` — los tres describían un mecanismo de asignación simple que **nunca se llegó a implementar en el backend real** (siempre `null`/mock) y que el usuario reemplazó por un diseño distinto antes de que se implementara. Se ven todavía en el historial de git de este archivo si hace falta contexto, pero no son una referencia válida.
 
-| Campo | Tipo | Nullable | Notas |
-|---|---|---|---|
-| `id` | bigint PK | no | |
-| `plan_id` | bigint FK → training_plan | no | |
-| `user_id` | bigint FK → user | no | **`UNIQUE`** — un corredor tiene a lo sumo 1 asignación individual activa; asignarle un plan nuevo reemplaza la anterior (upsert por `user_id`, no acumula filas) |
-| `assigned_at` | timestamptz | no | |
-
-**`Group.training_plan_id`** (campo simple en la entidad `Group` ya existente, **no** una tabla de relación aparte):
-
-| Campo | Tipo | Nullable | Notas |
-|---|---|---|---|
-| `training_plan_id` | bigint FK → training_plan | sí | columna nueva a agregar al `Group` ya real — 1 plan por grupo, asignar uno nuevo reemplaza (no apila). El frontend (`toGroupModel`) ya trae este campo mapeado del lado del modelo, siempre en `null` hasta hoy porque no existe en el backend. |
-
-Un corredor puede ver simultáneamente el plan de su grupo Y su asignación individual (el frontend compone ambas fuentes, deduplicadas por `plan_id`) — no son excluyentes.
-
-### 3.7 `CurrentPlanMark` ("plan actual" — preferencia del corredor, no la asignación en sí)
-
-| Campo | Tipo | Nullable | Notas |
-|---|---|---|---|
-| `id` | bigint PK | no | |
-| `plan_id` | bigint FK → training_plan | no | |
-| `user_id` | bigint FK → user | no | |
-| `marked_at` | timestamptz | no | |
-
-`UNIQUE(plan_id, user_id)`. **Tope de 2 marcas por `user_id`**, validado del lado del servidor (rechazar la 3ra marca de un plan *distinto* con `422`; volver a marcar un plan que el usuario ya tiene marcado es un no-op idempotente, no un error). Es una preferencia sobre cuáles de los planes ya asignados destacar — no cambia ni reemplaza `RunnerPlanAssignment`/`Group.training_plan_id`.
+El modelo vigente — asignación siempre a un **grupo** (nunca a un corredor individual), calendario por grupo con días editables atómicamente, sesiones presenciales, cancelaciones — vive en `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md`. `CurrentPlanMark` no tiene reemplazo directo: en el modelo nuevo "la asignación" de un corredor es, para cada grupo del que es miembro, el calendario de ese grupo — no hay un concepto de "marcar un plan como actual" entre varias asignaciones.
 
 ## 4. Endpoints
 
@@ -149,9 +132,10 @@ Un corredor puede ver simultáneamente el plan de su grupo Y su asignación indi
 |---|---|---|---|
 | `GET` | `/exercises?owner_id={id}` | — | `200` array de `Exercise` |
 | `GET` | `/exercises/{id}` | — | `200` `Exercise` \| `404` |
-| `POST` | `/exercises` | `{owner_id, name, description, kind, intensity?, minutes?, distance_m?, speed_kph?, muscle_group?}` | `201` `Exercise` |
+| `POST` | `/exercises` | `{owner_id, name, description?, kind, intensity?, minutes?, distance_m?, speed_kph?, muscle_group?}` | `201` `Exercise` — solo `owner_id`/`name`/`kind` son obligatorios (ver §3.1) |
 | `PUT` | `/exercises/{id}` | igual shape que `POST` | `200` `Exercise` \| `404` — reemplazo completo, el frontend siempre manda el form entero |
 | `DELETE` | `/exercises/{id}` | — | `204` \| `404` — ver §5, no bloquear por estar en uso |
+| `POST` | `/exercises/{id}/clone` | — | `201` nuevo `Exercise` (mismo `owner_id`, copia de todos los campos, nombre con sufijo `" (copia)"`) — no hereda usos: una sesión que referenciaba el original sigue apuntando al original, no al clon |
 
 ### Session
 
@@ -160,8 +144,9 @@ Un corredor puede ver simultáneamente el plan de su grupo Y su asignación indi
 | `GET` | `/sessions?owner_id={id}` | — | `200` array de `Session` (con `exercises` embebido en la respuesta) |
 | `GET` | `/sessions/{id}` | — | `200` `Session` \| `404` |
 | `POST` | `/sessions` | `{owner_id, name, description?, exercises: [{exercise_id, role, repeat_count?, rest_minutes?}]}` | `201` `Session` — validar ≥1 ejercicio por rol (§3.3) |
-| `PUT` | `/sessions/{id}` | igual shape | `200` `Session` \| `404` — `exercises` reemplaza el conjunto entero |
+| `PUT` | `/sessions/{id}` | igual shape | `200` `Session` \| `404` — `exercises` reemplaza el conjunto entero. **Si la sesión tiene ≥1 asignación en algún calendario de grupo**, ver el flujo de clonado por divergencia en `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §5 antes de aplicar este `PUT` a ciegas |
 | `DELETE` | `/sessions/{id}` | — | `204` \| `404` — ver §5 |
+| `POST` | `/sessions/{id}/clone` | — | `201` nueva `Session` (mismo `owner_id`, copia profunda de `exercises`, nombre con sufijo `" (copia)"`) — no hereda usos en planes |
 
 ### TrainingPlan
 
@@ -169,26 +154,14 @@ Un corredor puede ver simultáneamente el plan de su grupo Y su asignación indi
 |---|---|---|---|
 | `GET` | `/training-plans?owner_id={id}` | — | `200` array de `TrainingPlan` (con `days` embebido) |
 | `GET` | `/training-plans/{id}` | — | `200` `TrainingPlan` \| `404` |
-| `POST` | `/training-plans` | `{owner_id, name, description?, duration_days, days: [...7]}` | `201` — validar §3.5 |
-| `PUT` | `/training-plans/{id}` | parcial — solo las claves presentes se actualizan; si viene `days`, debe ser el set de 7 completo y válido de nuevo | `200` \| `404` |
-| `DELETE` | `/training-plans/{id}` | — | `204` \| `404` — **cascada**: borrar toda `RunnerPlanAssignment`/`CurrentPlanMark` de este plan y limpiar cualquier `Group.training_plan_id` que apunte acá |
-| `POST` | `/training-plans/{id}/clone` | — | `201` nuevo `TrainingPlan` (mismo `owner_id`, copia profunda de `days`) — **no** copia asignaciones ni marcas, el clon nace sin asignar |
-| `GET` | `/training-plans/assignments?user_id=&plan_id=` | — | `200` array de `RunnerPlanAssignment` (ambos filtros opcionales) |
-| `POST` | `/training-plans/{id}/assignments` | `{user_id}` | `201` — reemplaza cualquier asignación previa de ese `user_id` |
-| `DELETE` | `/training-plans/assignments/{user_id}` | — | `204` |
-| `GET` | `/training-plans/current-marks?user_id=` | — | `200` array de `CurrentPlanMark` |
-| `POST` | `/training-plans/{id}/current-marks` | `{user_id}` | `201` \| `422` si ya tiene 2 marcas de planes distintos (marcar de nuevo el mismo plan es no-op `200`) |
-| `DELETE` | `/training-plans/{id}/current-marks/{user_id}` | — | `204` |
-
-### Group (endpoint ya real, solo agrega un campo)
-
-| Método | Path | Body | Notas |
-|---|---|---|---|
-| `PATCH`/`PUT` | `/groups/{id}` (el que ya exista) | agregar `training_plan_id` (nullable) al set de campos aceptados | `null` para desasignar |
+| `POST` | `/training-plans` | `{owner_id, name, description?, days: [...N]}` (`N` entre 2 y 31) | `201` — validar §3.5 |
+| `PUT` | `/training-plans/{id}` | parcial — solo las claves presentes se actualizan; si viene `days`, debe ser el set completo (entre 2 y 31 filas) y válido de nuevo, no un patch fila por fila | `200` \| `404` |
+| `DELETE` | `/training-plans/{id}` | — | `204` \| `404` — un plan borrado puede tener calendarios de grupo que lo estamparon en el pasado; esas filas de calendario NO se tocan (ya copiaron los datos físicamente), solo se les pone `source_plan_id = null` (ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3) |
+| `POST` | `/training-plans/{id}/clone` | — | `201` nuevo `TrainingPlan` (mismo `owner_id`, copia profunda de `days`) |
 
 ## 5. Borrar algo que está referenciado en otro lado
 
-El frontend **permite** borrar un `Exercise`/`Session` en uso (con una confirmación que lista dónde se usa, no un bloqueo duro — ver `docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md`). Esto es distinto de borrar un `TrainingPlan` (§4, cascada explícita hacia asignaciones/marcas). Para `Exercise`/`Session`, **no se recomienda un DELETE físico con `ON DELETE RESTRICT`** (rompería el flujo ya decidido del frontend) ni `CASCADE`/`SET NULL` silencioso (corrompería sesiones/planes existentes sin avisar). Recomendación: **borrado lógico** (`deleted_at`/`archived` en `Exercise`/`Session`) — el catálogo activo filtra por no-borrado, pero las filas siguen resolviendo correctamente en sesiones/planes ya creados que las referencian. Queda como decisión abierta del equipo de backend, no algo que el mock actual resuelva bien (hoy simplemente filtra el array en memoria, sin backend real detrás).
+El frontend **permite** borrar un `Exercise`/`Session` en uso (con una confirmación que lista dónde se usa, no un bloqueo duro — ver `docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md`). Esto es distinto de borrar un `TrainingPlan` (§4 — no hay cascada real, solo se limpia `source_plan_id` en el calendario). Para `Exercise`/`Session`, **no se recomienda un DELETE físico con `ON DELETE RESTRICT`** (rompería el flujo ya decidido del frontend) ni `CASCADE`/`SET NULL` silencioso (corrompería sesiones/planes existentes sin avisar). Recomendación: **borrado lógico** (`deleted_at`/`archived` en `Exercise`/`Session`) — el catálogo activo filtra por no-borrado, pero las filas siguen resolviendo correctamente en sesiones/planes ya creados que las referencian. Queda como decisión abierta del equipo de backend, no algo que el mock actual resuelva bien (hoy simplemente filtra el array en memoria, sin backend real detrás).
 
 ## 6. Fuera de alcance / decisiones diferidas
 
@@ -196,10 +169,11 @@ Ya señaladas en las specs de frontend, documentadas acá para que el backend no
 - Unidad de `speed_kph` — hoy siempre km/h, se evaluó y descartó introducir min/km para no arriesgar bugs de parseo.
 - `holdSeconds` (segundos de sostenimiento) para ejercicios de elongación — no existe todavía.
 - Carga real de `video_url` (foto/video del ejercicio) — el campo existe reservado, sin flujo de subida.
-- Versionado de plan al editar — editar un plan afecta a todos los que ya lo tienen asignado/marcado, no hay snapshot por asignación.
-- Notificaciones al asignar un plan, o al desasignar.
-- Tracking de progreso/completado de una sesión o un día.
-- Por qué `Exercise.description` es obligatoria pero no se deriva de `kind`/`intensity`/etc.: se probó (y se descartó) un nombre 100% auto-compuesto por características — terminaba siendo más complejidad de la que valía dado lo variado que es un ejercicio real; se volvió a texto libre para `name` y se sumó `description` como el lugar para contexto adicional.
+- Versionado de plan al editar — editar un plan NO afecta calendarios ya estampados (el stamp copia los datos físicamente, ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3), así que no hace falta snapshot. Distinto es el caso de `Session` editada con asignaciones activas, que sí tiene su propio mecanismo de clonado — ver ese mismo doc §5, no confundir los dos.
+- Notificaciones al estampar/editar un calendario de grupo.
+- Tracking de progreso/completado de una sesión o un día (ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §6).
+- Por qué `name` es texto libre y no se deriva de `kind`/`intensity`/etc.: se probó (y se descartó) un nombre 100% auto-compuesto por características — terminaba siendo más complejidad de la que valía dado lo variado que es un ejercicio real. `description` nació en ese momento como el lugar para contexto adicional, obligatoria; pasó a opcional en 2026-09-11 al notar que en la práctica se dejaba vacía casi siempre — no se le pide al entrenador un campo que no aporta si no quiere completarlo.
+- **Selección múltiple/acciones en bloque del catálogo de ejercicios** (clonar N, eliminar N, adjuntar N a una sesión existente) son **client-side**: el frontend repite la request individual (`POST .../clone`, `DELETE`, `PUT` de la sesión destino) una vez por ítem seleccionado — no hay ni se espera un endpoint de batch (`POST /exercises/bulk-delete` o similar).
 
 ## 7. Diagrama de relaciones
 
@@ -237,38 +211,22 @@ erDiagram
         bigint owner_id FK
         varchar name
         text description
-        int duration_days
     }
     PLAN_DAY {
         bigint plan_id FK
         int sequence_no
-        varchar day_of_week
         varchar kind
         varchar other_name
         bigint session_id FK
-    }
-    RUNNER_PLAN_ASSIGNMENT {
-        bigint id PK
-        bigint plan_id FK
-        bigint user_id FK
-        timestamptz assigned_at
-    }
-    CURRENT_PLAN_MARK {
-        bigint id PK
-        bigint plan_id FK
-        bigint user_id FK
-        timestamptz marked_at
-    }
-    GROUP {
-        bigint id PK
-        bigint training_plan_id FK
+        bool default_presencial
+        time default_time
+        jsonb default_location
     }
 
     SESSION ||--o{ SESSION_EXERCISE : contiene
     EXERCISE ||--o{ SESSION_EXERCISE : "referenciado por"
-    TRAINING_PLAN ||--|{ PLAN_DAY : "tiene 7"
+    TRAINING_PLAN ||--|{ PLAN_DAY : "tiene entre 2 y 31"
     SESSION ||--o{ PLAN_DAY : "referenciada (kind=training)"
-    TRAINING_PLAN ||--o{ RUNNER_PLAN_ASSIGNMENT : "asignado a un corredor"
-    TRAINING_PLAN ||--o{ CURRENT_PLAN_MARK : "marcado como actual"
-    TRAINING_PLAN ||--o{ GROUP : "asignado a (1 por grupo)"
 ```
+
+Asignación/calendario (`GroupCalendarDay` y relacionados) vive en el diagrama de `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md`, no acá.
