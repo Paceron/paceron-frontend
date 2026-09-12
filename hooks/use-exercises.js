@@ -4,6 +4,7 @@ import {
   createExercise as createExerciseService,
   updateExercise as updateExerciseService,
   deleteExercise as deleteExerciseService,
+  cloneExercise as cloneExerciseService,
 } from '../services/exercises.js';
 import { toExerciseModel, toCreateExercisePayload } from '../services/normalizers.js';
 
@@ -84,6 +85,20 @@ export function useExerciseMutations() {
     },
   });
 
+  const cloneExerciseMutation = useMutation({
+    mutationFn: async ({ exerciseId }) => {
+      try {
+        const cloned = await cloneExerciseService(exerciseId);
+        return { success: true, exercise: toExerciseModel(cloned) };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) queryClient.invalidateQueries({ queryKey: ['exercises', variables.ownerId] });
+    },
+  });
+
   return {
     createExercise: createExerciseMutation.mutateAsync,
     isCreating: createExerciseMutation.isPending,
@@ -91,5 +106,7 @@ export function useExerciseMutations() {
     isUpdating: updateExerciseMutation.isPending,
     deleteExercise: deleteExerciseMutation.mutateAsync,
     isDeleting: deleteExerciseMutation.isPending,
+    cloneExercise: cloneExerciseMutation.mutateAsync,
+    isCloning: cloneExerciseMutation.isPending,
   };
 }

@@ -2,7 +2,7 @@ import {
   toUserModel, toRegisterPayload, toUpdatePayload, toTeamModel, toCreateTeamPayload, toUpdateTeamPayload, toAddressPayload,
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
-  toTeamSearchResultModel, toJoinRequestModel,
+  toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -504,5 +504,34 @@ describe('toSubscriptionModel', () => {
   test('returns null for falsy dto', () => {
     expect(toSubscriptionModel(null)).toBeNull();
     expect(toSubscriptionModel(undefined)).toBeNull();
+  });
+});
+
+describe('mergeSessionExercises', () => {
+  const session = {
+    exercises: [
+      { exerciseId: '1', role: 'warmup', repeatCount: 1, restMinutes: 0 },
+      { exerciseId: '2', role: 'main', repeatCount: 3, restMinutes: 2 },
+    ],
+  };
+
+  test('agrega los ids nuevos al final, con rol "main" y defaults', () => {
+    const result = mergeSessionExercises(session, ['5', '6']);
+    expect(result).toEqual([
+      { exerciseId: '1', role: 'warmup', repeatCount: 1, restMinutes: 0 },
+      { exerciseId: '2', role: 'main', repeatCount: 3, restMinutes: 2 },
+      { exerciseId: '5', role: 'main', repeatCount: 1, restMinutes: 0 },
+      { exerciseId: '6', role: 'main', repeatCount: 1, restMinutes: 0 },
+    ]);
+  });
+
+  test('no muta el array de ejercicios original de la sesión', () => {
+    const before = JSON.stringify(session.exercises);
+    mergeSessionExercises(session, ['9']);
+    expect(JSON.stringify(session.exercises)).toBe(before);
+  });
+
+  test('con lista vacía de ids nuevos, devuelve los existentes sin cambios', () => {
+    expect(mergeSessionExercises(session, [])).toEqual(session.exercises);
   });
 });

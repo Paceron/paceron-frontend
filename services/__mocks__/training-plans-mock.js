@@ -3,16 +3,14 @@
 // mismo patrón que teams-mock.js) — hoy no hay ningún endpoint de planes
 // de entrenamiento (ver docs/BACKEND_API_GAPS.md, gap 4).
 //
-// Un plan es siempre 7 días fijos, embebidos directo en el objeto del
-// plan (no hace falta normalizar en tablas separadas como el schema SQL
-// de referencia — eso tenía sentido en Postgres, acá es solo un mock en
-// memoria). Un día de tipo "training" referencia una sesión del catálogo
+// Un plan tiene una cantidad variable de días (2-31), embebidos directo
+// en el objeto del plan (no hace falta normalizar en tablas separadas
+// como el schema SQL de referencia — eso tenía sentido en Postgres, acá
+// es solo un mock en memoria). Un día de tipo "training" referencia una sesión del catálogo
 // (session_id, ver sessions-mock.js) en vez de construirla inline —
 // enmienda 2026-08-26 de docs/superpowers/specs/2026-08-26-training-plans-design.md.
 // session_id 1/2/3 acá abajo son los mismos que siembra sessions-mock.js
 // (Fondo suave / Series de velocidad / Rodaje largo).
-const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
 function buildSeedPlans() {
   const now = new Date().toISOString();
   return [
@@ -21,35 +19,33 @@ function buildSeedPlans() {
       owner_id: 1,
       name: 'Base 5K — nivel inicial',
       description: 'Progresión de 7 días para arrancar a correr 5K sin lesionarse — 3 sesiones de entrenamiento, resto descanso activo.',
-      duration_days: 7,
       created_at: now,
       updated_at: now,
       days: [
-        { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session_id: 1 },
-        { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session_id: null },
-        { sequence_no: 3, day_of_week: 'wednesday', kind: 'training', other_name: null, session_id: 2 },
-        { sequence_no: 4, day_of_week: 'thursday', kind: 'other', other_name: 'Elongación y movilidad', session_id: null },
-        { sequence_no: 5, day_of_week: 'friday', kind: 'training', other_name: null, session_id: 3 },
-        { sequence_no: 6, day_of_week: 'saturday', kind: 'rest', other_name: null, session_id: null },
-        { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 1, kind: 'training', other_name: null, session_id: 1 },
+        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 3, kind: 'training', other_name: null, session_id: 2 },
+        { sequence_no: 4, kind: 'other', other_name: 'Elongación y movilidad', session_id: null },
+        { sequence_no: 5, kind: 'training', other_name: null, session_id: 3 },
+        { sequence_no: 6, kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 7, kind: 'rest', other_name: null, session_id: null },
       ],
     },
     {
       id: 2,
       owner_id: 1,
       name: 'Series y velocidad — nivel intermedio',
-      description: 'Ciclo de 14 días con foco en velocidad — series y tempo run, con descanso completo entre estímulos fuertes.',
-      duration_days: 14,
+      description: 'Ciclo de 7 días con foco en velocidad — series y tempo run, con descanso completo entre estímulos fuertes.',
       created_at: now,
       updated_at: now,
       days: [
-        { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session_id: 2 },
-        { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session_id: null },
-        { sequence_no: 3, day_of_week: 'wednesday', kind: 'training', other_name: null, session_id: 4 },
-        { sequence_no: 4, day_of_week: 'thursday', kind: 'rest', other_name: null, session_id: null },
-        { sequence_no: 5, day_of_week: 'friday', kind: 'training', other_name: null, session_id: 5 },
-        { sequence_no: 6, day_of_week: 'saturday', kind: 'other', other_name: 'Trote regenerativo suave', session_id: null },
-        { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 1, kind: 'training', other_name: null, session_id: 2 },
+        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 3, kind: 'training', other_name: null, session_id: 4 },
+        { sequence_no: 4, kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 5, kind: 'training', other_name: null, session_id: 5 },
+        { sequence_no: 6, kind: 'other', other_name: 'Trote regenerativo suave', session_id: null },
+        { sequence_no: 7, kind: 'rest', other_name: null, session_id: null },
       ],
     },
   ];
@@ -84,22 +80,17 @@ function findPlanOrThrow(planId) {
   return plan;
 }
 
-// Valida que los 7 días vengan completos y en orden — nada se manda al
-// "backend" sin esto, ni siquiera el mock (mismo espíritu que el
-// UNIQUE(plan_id, sequence_no) / UNIQUE(plan_id, day_of_week) del SQL de
-// referencia, hecho a mano porque acá no hay motor de base de datos que
-// lo valide solo).
+// Valida que los días (entre 2 y 31) vengan completos y en orden — nada
+// se manda al "backend" sin esto, ni siquiera el mock (mismo espíritu
+// que el UNIQUE(plan_id, sequence_no) del SQL de referencia, hecho a
+// mano porque acá no hay motor de base de datos que lo valide solo).
 export function validatePlanDays(days) {
-  if (!Array.isArray(days) || days.length !== 7) {
-    throw new Error('Un plan necesita exactamente 7 días.');
+  if (!Array.isArray(days) || days.length < 2 || days.length > 31) {
+    throw new Error('Un plan tiene que tener entre 2 y 31 días.');
   }
   const sequences = days.map((d) => d.sequence_no).sort((a, b) => a - b);
   if (sequences.some((s, i) => s !== i + 1)) {
-    throw new Error('Los 7 días tienen que cubrir del 1 al 7 sin repetir.');
-  }
-  const daysOfWeek = new Set(days.map((d) => d.day_of_week));
-  if (daysOfWeek.size !== 7 || DAY_ORDER.some((d) => !daysOfWeek.has(d))) {
-    throw new Error('Cada día de la semana tiene que aparecer una sola vez.');
+    throw new Error(`Los días tienen que numerarse del 1 al ${days.length} sin repetir.`);
   }
   if (days.some((d) => d.kind === 'training' && !d.session_id)) {
     throw new Error('Elegí una sesión para cada día de entrenamiento.');
@@ -127,7 +118,6 @@ export async function mockCreateTrainingPlan(payload) {
     owner_id: payload.owner_id,
     name: payload.name,
     description: payload.description ?? null,
-    duration_days: payload.duration_days,
     days: payload.days,
     created_at: now,
     updated_at: now,
@@ -150,7 +140,7 @@ export async function mockDeleteTrainingPlan(planId) {
   return null;
 }
 
-// Copia profunda de los 7 días — nombre con sufijo "(copia)" para que se
+// Copia profunda de los días — nombre con sufijo "(copia)" para que se
 // distinga de entrada en la lista, editable después como cualquier otro.
 // Nace sin ninguna asignación (ni de grupo — eso lo resuelve
 // training-plan-store.js del lado de team-store — ni individual, la

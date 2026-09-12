@@ -31,7 +31,7 @@ export function TeamGeneralInfoFields({ form, maxAllowed, idPrefix, autoFocusNam
         </Col>
       </Row>
 
-      <InputField dense label="Descripción del equipo" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Contales a los corredores de qué se trata este equipo." value={form.description} />
+      <InputField dense label="Descripción del equipo (opcional)" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Contales a los corredores de qué se trata este equipo." value={form.description} />
 
       <Row>
         <Col>

@@ -1,5 +1,5 @@
 import {
-  mockListSessions, mockGetSession, mockCreateSession, mockUpdateSession, mockDeleteSession, __resetMockSessions,
+  mockListSessions, mockGetSession, mockCreateSession, mockUpdateSession, mockDeleteSession, mockCloneSession, __resetMockSessions,
 } from '../services/__mocks__/sessions-mock.js';
 
 beforeEach(() => {
@@ -50,5 +50,22 @@ describe('sessions-mock', () => {
   test('mockDeleteSession saca la sesión de la lista', async () => {
     await mockDeleteSession(1);
     await expect(mockGetSession(1)).rejects.toThrow();
+  });
+
+  test('mockCloneSession clona con id nuevo, nombre con sufijo "(copia)" y copia profunda de exercises', async () => {
+    const original = await mockGetSession(1);
+    const clone = await mockCloneSession(1);
+    expect(clone.id).not.toBe(original.id);
+    expect(clone.name).toBe(`${original.name} (copia)`);
+    expect(clone.exercises).toEqual(original.exercises);
+
+    // Deep copy real — mutar el clon no toca el original.
+    clone.exercises[0].role = 'cooldown';
+    const originalAfter = await mockGetSession(1);
+    expect(originalAfter.exercises[0].role).not.toBe('cooldown');
+  });
+
+  test('mockCloneSession tira 404-like si el id no existe', async () => {
+    await expect(mockCloneSession(9999)).rejects.toThrow();
   });
 });

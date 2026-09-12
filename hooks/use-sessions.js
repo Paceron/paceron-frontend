@@ -4,6 +4,7 @@ import {
   createSession as createSessionService,
   updateSession as updateSessionService,
   deleteSession as deleteSessionService,
+  cloneSession as cloneSessionService,
 } from '../services/sessions.js';
 import { toSessionModel, toCreateSessionPayload } from '../services/normalizers.js';
 
@@ -64,6 +65,20 @@ export function useSessionMutations() {
     },
   });
 
+  const cloneSessionMutation = useMutation({
+    mutationFn: async ({ sessionId }) => {
+      try {
+        const cloned = await cloneSessionService(sessionId);
+        return { success: true, session: toSessionModel(cloned) };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) queryClient.invalidateQueries({ queryKey: ['sessions', variables.ownerId] });
+    },
+  });
+
   return {
     createSession: createSessionMutation.mutateAsync,
     isCreating: createSessionMutation.isPending,
@@ -71,5 +86,7 @@ export function useSessionMutations() {
     isUpdating: updateSessionMutation.isPending,
     deleteSession: deleteSessionMutation.mutateAsync,
     isDeleting: deleteSessionMutation.isPending,
+    cloneSession: cloneSessionMutation.mutateAsync,
+    isCloning: cloneSessionMutation.isPending,
   };
 }

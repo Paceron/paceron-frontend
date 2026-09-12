@@ -4,6 +4,7 @@ import '../global.css';
 import { useFonts } from 'expo-font';
 import { Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { AppProviders } from '../providers/app-providers.jsx';
@@ -38,14 +39,16 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <AppProviders>
-          <StackNavigator />
-          <RoleSwitchOverlay />
-          <Toast config={toastConfig} topOffset={56} />
-        </AppProviders>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <AppProviders>
+            <StackNavigator />
+            <RoleSwitchOverlay />
+            <Toast config={toastConfig} topOffset={56} />
+          </AppProviders>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

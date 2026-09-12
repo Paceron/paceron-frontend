@@ -7,7 +7,6 @@ import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessions } from '../../hooks/use-sessions.js';
 import { useExercises } from '../../hooks/use-exercises.js';
-import { dayLabel } from '../../store/training-plan-store.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
@@ -41,7 +40,7 @@ function DaySegmentedPicker({ idPrefix, value, onChange }) {
             accessibilityLabel={meta.label}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            className={`flex-1 flex-row items-center justify-center gap-1 rounded-full px-1.5 py-2 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
+            className={`flex-1 flex-row items-center justify-center gap-1 rounded-full px-1.5 py-1.5 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
             key={kind}
             nativeID={segId}
             onPress={() => onChange(kind)}
@@ -75,7 +74,7 @@ function DayHeaderRowWide({ day, sessions, onChangeDay, onKindChange, idPrefix }
     <>
       <View className="flex-row items-center gap-3" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
         <Text className="w-24 shrink-0 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
-          {dayLabel(day.dayOfWeek)}
+          {`Día ${day.sequenceNo}`}
         </Text>
         <View className="flex-1 flex-row items-center gap-2" nativeID={`${idPrefix}-kind-pill`} testID={`${idPrefix}-kind-pill`}>
           {DAY_KIND_ORDER.map((kind) => {
@@ -86,7 +85,7 @@ function DayHeaderRowWide({ day, sessions, onChangeDay, onKindChange, idPrefix }
 
             if (expanded) {
               return (
-                <View className={`h-14 flex-1 flex-row items-center gap-2 rounded-full px-3.5 ${meta.bg}`} key={kind} nativeID={segId} testID={segId}>
+                <View className={`h-11 flex-1 flex-row items-center gap-2 rounded-full px-3.5 ${meta.bg}`} key={kind} nativeID={segId} testID={segId}>
                   <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
                   {kind === 'other' && (
                     <InputField
@@ -122,7 +121,7 @@ function DayHeaderRowWide({ day, sessions, onChangeDay, onKindChange, idPrefix }
                 accessibilityLabel={meta.label}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active }}
-                className={`h-14 items-center justify-center rounded-full ${compact ? 'w-14' : 'flex-1 flex-row gap-1.5'} ${active ? meta.bg : 'bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
+                className={`h-11 items-center justify-center rounded-full ${compact ? 'w-11' : 'flex-1 flex-row gap-1.5'} ${active ? meta.bg : 'bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
                 key={kind}
                 nativeID={segId}
                 onPress={() => onKindChange(kind)}
@@ -183,7 +182,7 @@ function DayRow({ day, sessions, onChangeDay }) {
   // condición correcta y no queda "siempre angosta" por culpa del cap.
   if (isWeb && !isNarrowWeb) {
     return (
-      <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
         <DayHeaderRowWide day={day} idPrefix={idPrefix} onChangeDay={onChangeDay} onKindChange={handleKindChange} sessions={sessions} />
       </View>
     );
@@ -221,9 +220,9 @@ function DayRow({ day, sessions, onChangeDay }) {
   );
 
   return (
-    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
       <Pressable
-        accessibilityLabel={`${dayLabel(day.dayOfWeek)}, ${kindMeta.label}, ${expanded ? 'ocultar detalle' : 'ver detalle'}`}
+        accessibilityLabel={`${'Día ' + day.sequenceNo}, ${kindMeta.label}, ${expanded ? 'ocultar detalle' : 'ver detalle'}`}
         accessibilityRole="button"
         className="flex-row items-center gap-2 active:opacity-80"
         nativeID={`${idPrefix}-toggle`}
@@ -231,7 +230,7 @@ function DayRow({ day, sessions, onChangeDay }) {
         testID={`${idPrefix}-toggle`}
       >
         <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
-          {dayLabel(day.dayOfWeek)}
+          {`Día ${day.sequenceNo}`}
         </Text>
         <View className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${kindMeta.bg}`} nativeID={`${idPrefix}-summary-chip`} testID={`${idPrefix}-summary-chip`}>
           <MaterialCommunityIcons color={kindMeta.iconColor} name={kindMeta.icon} size={14} />
@@ -252,11 +251,11 @@ function DayRow({ day, sessions, onChangeDay }) {
   );
 }
 
-// Constructor de los 7 días fijos del plan. Un día de tipo "Entrenamiento"
+// Constructor de los días del plan. Un día de tipo "Entrenamiento"
 // ELIGE una sesión ya creada (catálogo del entrenador) en vez de armar
 // warmup/main/cooldown de cero cada vez — ver enmienda 2026-08-26 de
 // docs/superpowers/specs/2026-08-26-training-plans-design.md.
-export function TrainingPlanFormFields({ form, durationOptions, autoFocusName = false }) {
+export function TrainingPlanFormFields({ form, autoFocusName = false }) {
   const userId = useAuthStore((s) => s.userId);
   const { sessions } = useSessions(userId);
   useExercises(userId); // precarga el cache que usa SessionExercisesPreview del picker de sesión
@@ -265,24 +264,50 @@ export function TrainingPlanFormFields({ form, durationOptions, autoFocusName = 
     <>
       <SectionCard icon="clipboard-text-outline" title="Datos del plan">
         <InputField autoFocus={autoFocusName} dense error={form.errors.name} label="Nombre del plan" onChange={form.setName} placeholder="Ej. Base 5K — nivel inicial" value={form.name} />
-        <InputField dense hideErrorRow label="Descripción" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
-        <ResponsiveSelectField
-          dense
-          hideErrorRow
-          label="Caducidad"
-          onChange={(value) => form.setDurationDays(Number(value))}
-          options={durationOptions.map((d) => ({ id: String(d), name: `${d} días` }))}
-          required
-          value={String(form.durationDays)}
-        />
+        <InputField dense hideErrorRow label="Descripción (opcional)" onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
       </SectionCard>
 
-      <SectionCard icon="calendar-week" title="Los 7 días de la semana">
+      <SectionCard icon="calendar-week" title="Días del plan">
         {form.errors.days && (
           <View className="mb-4 rounded-xl bg-red-50 px-4 py-3 dark:bg-red-900/20" nativeID="plan-days-error" testID="plan-days-error">
             <Text className="text-xs text-red-600 dark:text-red-400" nativeID="plan-days-error-text" testID="plan-days-error-text">{form.errors.days}</Text>
           </View>
         )}
+
+        <View className="mb-4 flex-row items-center justify-between" nativeID="plan-day-count-control" testID="plan-day-count-control">
+          <InputField
+            className="mb-0 w-32"
+            dense
+            hideErrorRow
+            keyboardType="number-pad"
+            label="Cantidad de días"
+            onChange={(v) => form.setDayCount(Number(v) || form.days.length)}
+            value={String(form.days.length)}
+          />
+          <View className="flex-row gap-2" nativeID="plan-day-count-buttons" testID="plan-day-count-buttons">
+            <Pressable
+              accessibilityLabel="Quitar último día"
+              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
+              disabled={form.days.length <= 2}
+              nativeID="plan-day-count-remove-button"
+              onPress={() => form.setDayCount(form.days.length - 1)}
+              testID="plan-day-count-remove-button"
+            >
+              <MaterialCommunityIcons color="#94a3b8" name="minus" size={18} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Agregar día"
+              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
+              disabled={form.days.length >= 31}
+              nativeID="plan-day-count-add-button"
+              onPress={() => form.setDayCount(form.days.length + 1)}
+              testID="plan-day-count-add-button"
+            >
+              <MaterialCommunityIcons color="#94a3b8" name="plus" size={18} />
+            </Pressable>
+          </View>
+        </View>
+
         <View className="gap-2" nativeID="plan-days-list" testID="plan-days-list">
           {form.days.map((day) => (
             <DayRow

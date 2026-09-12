@@ -6,6 +6,7 @@ import {
   mockCreateExercise,
   mockUpdateExercise,
   mockDeleteExercise,
+  mockCloneExercise,
 } from './__mocks__/exercises-mock.js';
 
 // Sin backend real todavía (ver docs/BACKEND_API_GAPS.md gap 4) — mismo
@@ -44,4 +45,10 @@ export async function updateExercise(exerciseId, updates) {
 export async function deleteExercise(exerciseId) {
   if (USE_MOCKS || FORCE_MOCKS) return await mockDeleteExercise(exerciseId);
   return await api.delete(`/exercises/${exerciseId}`);
+}
+
+// POST /api/v1/exercises/{id}/clone.
+export async function cloneExercise(exerciseId) {
+  if (USE_MOCKS || FORCE_MOCKS) return await mockCloneExercise(exerciseId);
+  return await api.post(`/exercises/${exerciseId}/clone`);
 }

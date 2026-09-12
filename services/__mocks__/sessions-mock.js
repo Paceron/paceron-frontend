@@ -117,6 +117,25 @@ export async function mockDeleteSession(sessionId) {
   return null;
 }
 
+// Copia con sufijo "(copia)" y deep-copy de exercises — mismo criterio
+// que mockCloneExercise/mockCloneTrainingPlan. No hereda uso en planes
+// (un plan que referencia la sesión original sigue apuntando a esa, no
+// al clon).
+export async function mockCloneSession(sessionId) {
+  const original = findSessionOrThrow(sessionId);
+  const now = new Date().toISOString();
+  const clone = {
+    ...original,
+    id: nextId++,
+    name: `${original.name} (copia)`,
+    exercises: JSON.parse(JSON.stringify(original.exercises)),
+    created_at: now,
+    updated_at: now,
+  };
+  mockSessions.push(clone);
+  return clone;
+}
+
 export function __resetMockSessions() {
   mockSessions = buildSeedSessions();
   nextId = 6;

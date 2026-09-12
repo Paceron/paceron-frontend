@@ -1,7 +1,4 @@
-import {
-  useTrainingPlanStore, getPlanStatus, getPlanDaysRemaining, getTodayDayOfWeek,
-  buildEmptyPlanDays, dayLabel, PLAN_DURATION_OPTIONS,
-} from '../store/training-plan-store.js';
+import { useTrainingPlanStore, buildEmptyPlanDays } from '../store/training-plan-store.js';
 
 jest.mock('../services/trainingPlans.js', () => ({
   listTrainingPlans: jest.fn(),
@@ -55,15 +52,15 @@ import { listTeams as listTeamsService } from '../services/teams.js';
 import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService } from '../services/groups.js';
 
 const PLAN_DTO = {
-  id: 1, owner_id: 7, name: 'Base 5K', description: 'desc', duration_days: 7,
+  id: 1, owner_id: 7, name: 'Base 5K', description: 'desc',
   days: [
-    { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session_id: 9 },
-    { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 3, day_of_week: 'wednesday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 4, day_of_week: 'thursday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 5, day_of_week: 'friday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 6, day_of_week: 'saturday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 1, kind: 'training', other_name: null, session_id: 9 },
+    { sequence_no: 2, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 3, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 4, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 5, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 6, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 7, kind: 'rest', other_name: null, session_id: null },
   ],
   created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
 };
@@ -76,55 +73,17 @@ beforeEach(() => {
   listCurrentPlanMarksService.mockResolvedValue([]);
 });
 
-describe('getPlanStatus', () => {
-  test('activo cuando todavía no pasó la caducidad', () => {
-    const plan = { createdAt: new Date().toISOString(), durationDays: 7 };
-    expect(getPlanStatus(plan)).toBe('activo');
-  });
-
-  test('vencido cuando ya pasó la caducidad', () => {
-    const plan = { createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), durationDays: 7 };
-    expect(getPlanStatus(plan)).toBe('vencido');
-  });
-});
-
-describe('getPlanDaysRemaining', () => {
-  test('cuenta los días enteros que quedan hasta la caducidad', () => {
-    const plan = { createdAt: new Date().toISOString(), durationDays: 7 };
-    expect(getPlanDaysRemaining(plan)).toBe(7);
-  });
-
-  test('no devuelve negativo si ya venció', () => {
-    const plan = { createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), durationDays: 7 };
-    expect(getPlanDaysRemaining(plan)).toBe(0);
-  });
-});
-
-describe('getTodayDayOfWeek', () => {
-  test('devuelve uno de los 7 dayOfWeek del dominio', () => {
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    expect(days).toContain(getTodayDayOfWeek());
-  });
-});
-
 describe('buildEmptyPlanDays', () => {
-  test('arma los 7 días en orden lunes a domingo, todos rest', () => {
-    const days = buildEmptyPlanDays();
-    expect(days).toHaveLength(7);
-    expect(days.map((d) => d.dayOfWeek)).toEqual(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
+  test('arma dayCount días numerados 1..dayCount, todos rest, sin día de la semana', () => {
+    const days = buildEmptyPlanDays(10);
+    expect(days).toHaveLength(10);
+    expect(days.map((d) => d.sequenceNo)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(days.every((d) => d.kind === 'rest')).toBe(true);
-    expect(days.map((d) => d.sequenceNo)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-  });
-});
-
-describe('dayLabel / PLAN_DURATION_OPTIONS', () => {
-  test('traduce el día de la semana al español', () => {
-    expect(dayLabel('monday')).toBe('Lunes');
-    expect(dayLabel('sunday')).toBe('Domingo');
+    expect(days.every((d) => !('dayOfWeek' in d))).toBe(true);
   });
 
-  test('soporta exactamente 7 y 14 días', () => {
-    expect(PLAN_DURATION_OPTIONS).toEqual([7, 14]);
+  test('con dayCount 2, arma exactamente 2 días', () => {
+    expect(buildEmptyPlanDays(2)).toHaveLength(2);
   });
 });
 
@@ -144,7 +103,7 @@ describe('training plan store', () => {
   test('createPlan agrega el plan creado a la lista', async () => {
     createTrainingPlanService.mockResolvedValue(PLAN_DTO);
     const result = await useTrainingPlanStore.getState().createPlan({
-      ownerId: 7, name: 'Base 5K', description: 'desc', durationDays: 7, days: [],
+      ownerId: 7, name: 'Base 5K', description: 'desc', days: [],
     });
     expect(result.success).toBe(true);
     expect(useTrainingPlanStore.getState().plans).toContainEqual(result.plan);
