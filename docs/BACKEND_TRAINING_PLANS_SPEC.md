@@ -171,7 +171,7 @@ Ya señaladas en las specs de frontend, documentadas acá para que el backend no
 - Carga real de `video_url` (foto/video del ejercicio) — el campo existe reservado, sin flujo de subida.
 - Versionado de plan al editar — editar un plan NO afecta calendarios ya estampados (el stamp copia los datos físicamente, ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3), así que no hace falta snapshot. Distinto es el caso de `Session` editada con asignaciones activas, que sí tiene su propio mecanismo de clonado — ver ese mismo doc §5, no confundir los dos.
 - Notificaciones al estampar/editar un calendario de grupo.
-- Tracking de progreso/completado de una sesión o un día (ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §6).
+- Tracking de progreso/completado de una sesión o un día (ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §7).
 - Por qué `name` es texto libre y no se deriva de `kind`/`intensity`/etc.: se probó (y se descartó) un nombre 100% auto-compuesto por características — terminaba siendo más complejidad de la que valía dado lo variado que es un ejercicio real. `description` nació en ese momento como el lugar para contexto adicional, obligatoria; pasó a opcional en 2026-09-11 al notar que en la práctica se dejaba vacía casi siempre — no se le pide al entrenador un campo que no aporta si no quiere completarlo.
 - **Selección múltiple/acciones en bloque del catálogo de ejercicios** (clonar N, eliminar N, adjuntar N a una sesión existente) son **client-side**: el frontend repite la request individual (`POST .../clone`, `DELETE`, `PUT` de la sesión destino) una vez por ítem seleccionado — no hay ni se espera un endpoint de batch (`POST /exercises/bulk-delete` o similar).
 
