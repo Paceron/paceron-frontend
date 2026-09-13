@@ -73,7 +73,7 @@ export function SessionExercisePanel({ onExerciseAdded }) {
         />
       </View>
 
-      <ScrollView nativeID="session-exercise-panel-list" showsVerticalScrollIndicator={false} testID="session-exercise-panel-list">
+      <ScrollView nativeID="session-exercise-panel-list" testID="session-exercise-panel-list">
         {filtered.length === 0 ? (
           <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="session-exercise-panel-empty" testID="session-exercise-panel-empty">
             Ningún ejercicio coincide.

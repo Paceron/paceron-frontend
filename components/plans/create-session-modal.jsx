@@ -190,41 +190,52 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
   );
 }
 
-// Cuerpo del modal en layout ancho — 2 columnas: sesión a la izquierda
-// (mismos campos y lista de SessionExerciseRow que la variante angosta,
-// SIN el botón "+ Agregar ejercicio" — acá las filas se crean soltando
-// una tarjeta del panel), catálogo de ejercicios arrastrable a la
-// derecha. El `View` de la lista de la sesión se registra como drop
-// target vía useSessionDropTarget().
+// Cuerpo del modal en layout ancho — 2 columnas: datos de la sesión +
+// catálogo de origen del arrastre a la izquierda (angosta), lista de
+// ejercicios DE LA SESIÓN a la derecha ocupando todo el alto y la mayor
+// parte del ancho — es la unidad de trabajo real, el catálogo es solo
+// una fuente de la que arrastrar (ver enmienda 2026-09-13: antes las 3
+// cosas de la izquierda competían por el mismo alto que el catálogo de
+// la derecha, dejando lugar para apenas 2-3 filas visibles). El `View`
+// de la lista de la sesión se registra como drop target vía
+// useSessionDropTarget(). El alto de las 2 columnas sale de que el
+// padre (`create-session-modal-body`) es `flex-1` dentro de una card de
+// alto FIJO (`create-session-modal-card`, ver CreateSessionModal) — no
+// de un alto propio en cada columna.
 function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onMove, onRemove, onExerciseDropped, error, visible }) {
   const dropTargetRef = useSessionDropTarget();
 
   return (
-    <View className="flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
-      {/* La sesión (lo que se está armando) tiene más protagonismo que el
-          catálogo adjunto (solo una fuente para arrastrar) — por eso esta
-          columna es la que crece (flex-1) y el panel de más abajo el que
-          queda con ancho fijo y angosto, no al revés. ScrollView por
-          default crece con flexGrow:1 propio, que pisa cualquier ancho
-          puesto en su className — por eso el `flex-1` va en este View
-          envolvente y el ScrollView de adentro solo se limita a
-          scrollear dentro de ese ancho. */}
-      <View className="flex-1" nativeID="create-session-modal-form-column" testID="create-session-modal-form-column">
-      <ScrollView nativeID="create-session-modal-form-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-form-scroll">
+    <View className="flex-1 flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
+      <View className="w-[320px] shrink-0" nativeID="create-session-modal-form-column" testID="create-session-modal-form-column">
         <InputField autoFocus={visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
         <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
 
+        <View className="flex-1" nativeID="create-session-modal-catalog-wrapper" testID="create-session-modal-catalog-wrapper">
+          <SessionExercisePanel onExerciseAdded={onExerciseDropped} />
+        </View>
+      </View>
+
+      <View className="flex-1" nativeID="create-session-modal-exercises-column" testID="create-session-modal-exercises-column">
         <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
         <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-drop-hint" testID="create-session-modal-drop-hint">
-          Arrastrá ejercicios del panel de la derecha para agregarlos acá.
+          Arrastrá ejercicios del catálogo de la izquierda para agregarlos acá.
         </Text>
 
-        {/* Alto fijo (no crece ni se achica al agregar/quitar filas) —
-            agregar ejercicios hace overflow con scroll propio en vez de
-            estirar el modal entero. dropTargetRef mide este contenedor
-            (no el ScrollView interno) para el cálculo de soltado. */}
-        <View className="h-[280px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
-          <ScrollView contentContainerClassName="gap-2 p-2" nativeID="create-session-modal-exercises-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-exercises-scroll">
+        {/* flex-1: ocupa todo el alto que sobra en la columna, fijo por
+            el alto fijo de la card — agregar ejercicios hace overflow
+            con scroll propio en vez de estirar el modal. dropTargetRef
+            mide este contenedor (no el ScrollView interno) para el
+            cálculo de soltado. Sin showsVerticalScrollIndicator={false}:
+            esa prop en RNW oculta el scrollbar del browser por completo
+            (tiene sentido en mobile nativo, no en desktop, donde el
+            usuario necesita ver que hay más contenido) — bug real,
+            encontrado por el usuario, el área nunca mostraba scrollbar
+            pese a desbordar. El estilo del scrollbar (fino, temático)
+            ya lo define global.css para cualquier elemento con scroll,
+            así que no hace falta nada más acá. */}
+        <View className="flex-1 rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
+          <ScrollView contentContainerClassName="gap-2 p-2" nativeID="create-session-modal-exercises-scroll" testID="create-session-modal-exercises-scroll">
             {exercises.length === 0 ? (
               <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
                 Todavía no agregaste ejercicios.
@@ -249,11 +260,6 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
         {error && (
           <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
         )}
-      </ScrollView>
-      </View>
-
-      <View className="w-[280px] shrink-0 border-l border-slate-200 pl-4 dark:border-slate-700" nativeID="create-session-modal-exercise-panel-column" testID="create-session-modal-exercise-panel-column">
-        <SessionExercisePanel onExerciseAdded={onExerciseDropped} />
       </View>
     </View>
   );
@@ -424,7 +430,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     <>
       <Modal animationType="fade" nativeID="create-session-modal" onRequestClose={handleClose} testID="create-session-modal" transparent visible={visible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
-          <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'max-w-5xl' : 'max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
+          <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
             <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
               <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
