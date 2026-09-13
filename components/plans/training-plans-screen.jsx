@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { isWeb, isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
-import { useTrainingPlanStore } from '../../store/training-plan-store.js';
+import { useTrainingPlans } from '../../hooks/use-training-plans.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
@@ -56,18 +56,7 @@ function PlansTab() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
-  const plans = useTrainingPlanStore((s) => s.plans);
-  const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    setLoading(true);
-    fetchPlans(user.userId).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId]);
+  const { plans, loading } = useTrainingPlans(user?.userId);
 
   return (
     <SectionCard
@@ -111,12 +100,11 @@ function TrainingPlansScreenContent() {
   const [activeTab, setActiveTab] = useState('planes');
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
-  const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => {
     if (!user?.userId) return Promise.resolve();
     return Promise.all([
-      fetchPlans(user.userId),
+      queryClient.invalidateQueries({ queryKey: ['training-plans', user.userId] }),
       queryClient.invalidateQueries({ queryKey: ['exercises', user.userId] }),
       queryClient.invalidateQueries({ queryKey: ['sessions', user.userId] }),
     ]);

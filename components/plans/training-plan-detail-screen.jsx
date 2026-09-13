@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -8,6 +8,7 @@ import { isWeb, isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
+import { useTrainingPlan, useTrainingPlanMutations } from '../../hooks/use-training-plans.js';
 import { useSessions } from '../../hooks/use-sessions.js';
 import { useExercises } from '../../hooks/use-exercises.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
@@ -124,35 +125,28 @@ function TrainingPlanDetailScreenContent({ planId }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const plan = useTrainingPlanStore((s) => s.plans.find((p) => p.id === planId) ?? s.myPlans.find((p) => p.id === planId));
-  const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
-  const deletePlan = useTrainingPlanStore((s) => s.deletePlan);
-  const clonePlan = useTrainingPlanStore((s) => s.clonePlan);
+  // myPlans (corredor viendo un plan asignado a su grupo/persona) sigue
+  // siendo Zustand — no es catálogo del entrenador, es la composición
+  // client-side de asignaciones (ver store). Se usa como fallback
+  // mientras el query resuelve, y como única fuente si el query devuelve
+  // vacío (ej. el corredor no es owner, cachear por owner no aplica).
+  const myPlanFallback = useTrainingPlanStore((s) => s.myPlans.find((p) => p.id === planId));
+  const { plan: queriedPlan, loading: queryLoading } = useTrainingPlan(planId);
+  const { deletePlan, clonePlan } = useTrainingPlanMutations();
+  const plan = queriedPlan ?? myPlanFallback;
   // Sesiones/ejercicios son del catálogo de QUIEN CREÓ el plan
   // (plan.ownerId) — no del usuario que está mirando la pantalla, que
   // puede ser un corredor viendo un plan que no es suyo.
   const { sessions } = useSessions(plan?.ownerId);
   const { exercises } = useExercises(plan?.ownerId);
 
-  const [loading, setLoading] = useState(!plan);
+  const loading = queryLoading && !myPlanFallback;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [cloning, setCloning] = useState(false);
 
-  useEffect(() => {
-    if (plan) {
-      setLoading(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setLoading(true);
-    fetchPlan(planId).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planId]);
-
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    fetchPlan(planId),
+    queryClient.invalidateQueries({ queryKey: ['training-plan', planId] }),
     plan?.ownerId ? Promise.all([
       queryClient.invalidateQueries({ queryKey: ['sessions', plan.ownerId] }),
       queryClient.invalidateQueries({ queryKey: ['exercises', plan.ownerId] }),
@@ -196,7 +190,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   const handleClone = async () => {
     if (cloning) return;
     setCloning(true);
-    const result = await clonePlan(planId);
+    const result = await clonePlan({ ownerId: plan.ownerId, planId });
     setCloning(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos clonar el plan', text2: result.error });
@@ -207,7 +201,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   };
 
   const handleDelete = async () => {
-    const result = await deletePlan(planId);
+    const result = await deletePlan({ ownerId: plan.ownerId, planId });
     setDeleteModalVisible(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el plan', text2: result.error });

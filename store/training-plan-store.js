@@ -1,11 +1,6 @@
 import { create } from 'zustand';
 import {
-  listTrainingPlans as listTrainingPlansService,
   getTrainingPlan as getTrainingPlanService,
-  createTrainingPlan as createTrainingPlanService,
-  updateTrainingPlan as updateTrainingPlanService,
-  deleteTrainingPlan as deleteTrainingPlanService,
-  cloneTrainingPlan as cloneTrainingPlanService,
   listRunnerPlanAssignments as listRunnerPlanAssignmentsService,
   assignPlanToRunner as assignPlanToRunnerService,
   unassignPlanFromRunner as unassignPlanFromRunnerService,
@@ -16,7 +11,7 @@ import {
 import { listTeams as listTeamsService } from '../services/teams.js';
 import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService } from '../services/groups.js';
 import {
-  toTrainingPlanModel, toCreateTrainingPlanPayload, toUpdateTrainingPlanPayload,
+  toTrainingPlanModel,
   toRunnerPlanAssignmentModel, toCurrentPlanMarkModel, toTeamModel, toGroupModel,
 } from '../services/normalizers.js';
 
@@ -27,9 +22,11 @@ export function buildEmptyPlanDays(dayCount) {
   return Array.from({ length: dayCount }, (_, i) => ({ sequenceNo: i + 1, kind: 'rest', otherName: null, sessionId: null }));
 }
 
+// CRUD del catálogo de planes (list/get/create/update/delete/clone) vive
+// en hooks/use-training-plans.js (TanStack Query, ver CLAUDE.md) — este
+// store quedó solo con lo que NO es catálogo puro: asignación (vieja,
+// mockeada, ver comentario de groupTrainingPlanIds) y "plan actual".
 export const useTrainingPlanStore = create((set, get) => ({
-  // Planes propios del entrenador (Planes de entrenamiento).
-  plans: [],
   // Planes que ve el corredor (Mis planes) — individual + por grupo.
   myPlans: [],
   // Hasta 2 ids de myPlans marcados como "actual" — ver
@@ -45,93 +42,23 @@ export const useTrainingPlanStore = create((set, get) => ({
   // grupo — este store no tiene copia propia de los grupos reales.
   groupTrainingPlanIds: {},
 
-  // GET /training-plans?owner_id= — biblioteca del entrenador.
-  fetchPlans: async (ownerId) => {
-    try {
-      const dtos = await listTrainingPlansService({ ownerId });
-      set({ plans: dtos.map(toTrainingPlanModel) });
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Trae un plan puntual — para deep-link directo a /training-plans/{id}
-  // o /plans/{id} sin haber pasado antes por la lista.
-  fetchPlan: async (planId) => {
-    try {
-      const dto = await getTrainingPlanService(planId);
-      const model = toTrainingPlanModel(dto);
-      set((state) => {
-        const inPlans = state.plans.some((p) => p.id === model.id);
-        const inMyPlans = state.myPlans.some((p) => p.id === model.id);
-        return {
-          plans: inPlans ? state.plans.map((p) => (p.id === model.id ? model : p)) : [...state.plans, model],
-          myPlans: inMyPlans ? state.myPlans.map((p) => (p.id === model.id ? model : p)) : state.myPlans,
-        };
-      });
-      return { success: true, plan: model };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  createPlan: async (form) => {
-    try {
-      const created = await createTrainingPlanService(toCreateTrainingPlanPayload(form));
-      const plan = toTrainingPlanModel(created);
-      set((state) => ({ plans: [...state.plans, plan] }));
-      return { success: true, plan };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  updatePlan: async (planId, form) => {
-    try {
-      const updated = await updateTrainingPlanService(planId, toUpdateTrainingPlanPayload(form));
-      const plan = toTrainingPlanModel(updated);
-      set((state) => ({ plans: state.plans.map((p) => (p.id === planId ? plan : p)) }));
-      return { success: true, plan };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Borra el plan y, del lado del cliente, limpia cualquier grupo que lo
-  // tuviera asignado en groupTrainingPlanIds (local-only, ver comentario
-  // de arriba — sin este paso quedaría un id colgando apuntando a un plan
-  // que ya no existe). Las asignaciones individuales las limpia el mock
-  // solo (mockDeleteTrainingPlan).
-  deletePlan: async (planId) => {
-    try {
-      await deleteTrainingPlanService(planId);
-      set((state) => {
-        const groupTrainingPlanIds = { ...state.groupTrainingPlanIds };
-        for (const [groupId, assignedPlanId] of Object.entries(groupTrainingPlanIds)) {
-          if (assignedPlanId === planId) delete groupTrainingPlanIds[groupId];
-        }
-        return {
-          plans: state.plans.filter((p) => p.id !== planId),
-          myPlans: state.myPlans.filter((p) => p.id !== planId),
-          groupTrainingPlanIds,
-        };
-      });
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  clonePlan: async (planId) => {
-    try {
-      const cloned = await cloneTrainingPlanService(planId);
-      const plan = toTrainingPlanModel(cloned);
-      set((state) => ({ plans: [...state.plans, plan] }));
-      return { success: true, plan };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+  // Limpieza local tras borrar un plan (hooks/use-training-plans.js#useTrainingPlanMutations
+  // llama a esto en el onSuccess de deletePlan) — el plan en sí ya lo
+  // borró el service real, esto solo saca referencias que quedarían
+  // colgando en estado 100% local de este store: cualquier grupo que lo
+  // tuviera asignado en groupTrainingPlanIds, y su entrada en myPlans si
+  // el corredor lo tenía asignado.
+  cleanupAfterPlanDeleted: (planId) => {
+    set((state) => {
+      const groupTrainingPlanIds = { ...state.groupTrainingPlanIds };
+      for (const [groupId, assignedPlanId] of Object.entries(groupTrainingPlanIds)) {
+        if (assignedPlanId === planId) delete groupTrainingPlanIds[groupId];
+      }
+      return {
+        myPlans: state.myPlans.filter((p) => p.id !== planId),
+        groupTrainingPlanIds,
+      };
+    });
   },
 
   // Asignar a grupo no pega a ningún servicio propio — escribe en

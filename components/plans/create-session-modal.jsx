@@ -252,6 +252,7 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
               cambios). onReorder ya entrega el array completo reordenado,
               no hace falta computar índices a mano. */}
           <DraxList
+            containerStyle={{ flex: 1 }}
             contentContainerStyle={{ gap: 8, padding: 8 }}
             data={exercises}
             itemDraxViewProps={{ dragHandle: true }}

@@ -7,7 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
-import { useTrainingPlanStore } from '../../store/training-plan-store.js';
+import { useTrainingPlanMutations } from '../../hooks/use-training-plans.js';
 import { useTrainingPlanForm } from '../../hooks/use-training-plan-form.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
@@ -21,7 +21,7 @@ function CreateTrainingPlanScreenContent() {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
-  const createPlan = useTrainingPlanStore((s) => s.createPlan);
+  const { createPlan } = useTrainingPlanMutations();
 
   const form = useTrainingPlanForm({ ownerId: user?.userId });
   const [submitting, setSubmitting] = useState(false);
@@ -33,7 +33,7 @@ function CreateTrainingPlanScreenContent() {
     if (submitting) return;
     if (!form.validate()) return;
     setSubmitting(true);
-    const result = await createPlan(form.getValues());
+    const result = await createPlan({ ownerId: user?.userId, form: form.getValues() });
     setSubmitting(false);
 
     if (!result.success) {

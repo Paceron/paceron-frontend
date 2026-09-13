@@ -16,12 +16,7 @@ jest.mock('../services/trainingPlans.js', () => ({
 }));
 
 import {
-  listTrainingPlans as listTrainingPlansService,
   getTrainingPlan as getTrainingPlanService,
-  createTrainingPlan as createTrainingPlanService,
-  updateTrainingPlan as updateTrainingPlanService,
-  deleteTrainingPlan as deleteTrainingPlanService,
-  cloneTrainingPlan as cloneTrainingPlanService,
   listRunnerPlanAssignments as listRunnerPlanAssignmentsService,
   assignPlanToRunner as assignPlanToRunnerService,
   listCurrentPlanMarks as listCurrentPlanMarksService,
@@ -88,54 +83,19 @@ describe('buildEmptyPlanDays', () => {
 });
 
 describe('training plan store', () => {
-  test('fetchPlans trae y normaliza los planes del entrenador', async () => {
-    listTrainingPlansService.mockResolvedValue([PLAN_DTO]);
-    const result = await useTrainingPlanStore.getState().fetchPlans(7);
-    expect(listTrainingPlansService).toHaveBeenCalledWith({ ownerId: 7 });
-    expect(result.success).toBe(true);
-    const { plans } = useTrainingPlanStore.getState();
-    expect(plans).toHaveLength(1);
-    expect(plans[0].id).toBe('1');
-    expect(plans[0].days).toHaveLength(7);
-    expect(plans[0].days[0].sessionId).toBe('9');
-  });
-
-  test('createPlan agrega el plan creado a la lista', async () => {
-    createTrainingPlanService.mockResolvedValue(PLAN_DTO);
-    const result = await useTrainingPlanStore.getState().createPlan({
-      ownerId: 7, name: 'Base 5K', description: 'desc', days: [],
-    });
-    expect(result.success).toBe(true);
-    expect(useTrainingPlanStore.getState().plans).toContainEqual(result.plan);
-  });
-
-  test('updatePlan reemplaza el plan en la lista', async () => {
-    useTrainingPlanStore.setState({ plans: [{ id: '1', name: 'Viejo' }] });
-    updateTrainingPlanService.mockResolvedValue({ ...PLAN_DTO, name: 'Nuevo nombre' });
-    const result = await useTrainingPlanStore.getState().updatePlan('1', { name: 'Nuevo nombre' });
-    expect(result.success).toBe(true);
-    expect(useTrainingPlanStore.getState().plans[0].name).toBe('Nuevo nombre');
-  });
-
-  test('clonePlan agrega el clon a la lista', async () => {
-    cloneTrainingPlanService.mockResolvedValue({ ...PLAN_DTO, id: 2, name: 'Base 5K (copia)' });
-    const result = await useTrainingPlanStore.getState().clonePlan('1');
-    expect(result.success).toBe(true);
-    expect(result.plan.name).toBe('Base 5K (copia)');
-    expect(useTrainingPlanStore.getState().plans.map((p) => p.id)).toContain('2');
-  });
-
-  test('deletePlan saca el plan de plans/myPlans y limpia trainingPlanId de cualquier grupo que lo tuviera', async () => {
+  // list/get/create/update/delete/clone de TrainingPlan viven ahora en
+  // hooks/use-training-plans.js (TanStack Query, sin test dedicado —
+  // mismo criterio que hooks/use-exercises.js/use-sessions.js, ver
+  // CLAUDE.md). Este store solo conserva la limpieza local que dispara
+  // el onSuccess de deletePlan.
+  test('cleanupAfterPlanDeleted saca el plan de myPlans y limpia trainingPlanId de cualquier grupo que lo tuviera', () => {
     useTrainingPlanStore.setState({
-      plans: [{ id: '1' }], myPlans: [{ id: '1' }],
+      myPlans: [{ id: '1' }],
       groupTrainingPlanIds: { g1: '1', g2: '2' },
     });
-    deleteTrainingPlanService.mockResolvedValue(null);
 
-    const result = await useTrainingPlanStore.getState().deletePlan('1');
+    useTrainingPlanStore.getState().cleanupAfterPlanDeleted('1');
 
-    expect(result.success).toBe(true);
-    expect(useTrainingPlanStore.getState().plans).toEqual([]);
     expect(useTrainingPlanStore.getState().myPlans).toEqual([]);
     const { groupTrainingPlanIds } = useTrainingPlanStore.getState();
     expect(groupTrainingPlanIds.g1).toBeUndefined();

@@ -12,6 +12,7 @@ import { selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeams } from '../../hooks/use-teams.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { useTrainingPlanStore } from '../../store/training-plan-store.js';
+import { useTrainingPlan } from '../../hooks/use-training-plans.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -32,7 +33,7 @@ function AssignTrainingPlanScreenContent({ planId }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
-  const plan = useTrainingPlanStore((s) => s.plans.find((p) => p.id === planId));
+  const { plan } = useTrainingPlan(planId);
   const assignToGroup = useTrainingPlanStore((s) => s.assignToGroup);
   const assignToRunner = useTrainingPlanStore((s) => s.assignToRunner);
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,7 +6,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessions, useSessionMutations } from '../../hooks/use-sessions.js';
 import { useExercises } from '../../hooks/use-exercises.js';
-import { useTrainingPlanStore } from '../../store/training-plan-store.js';
+import { useTrainingPlans } from '../../hooks/use-training-plans.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
@@ -122,10 +122,8 @@ export function SessionsCatalogTab() {
   const { sessions, loading: sessionsLoading } = useSessions(userId);
   const { deleteSession, cloneSession } = useSessionMutations();
   useExercises(userId); // solo para precargar el cache que usa SessionExercisesPreview de cada fila
-  const plans = useTrainingPlanStore((s) => s.plans);
-  const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
+  const { plans, loading: plansLoading } = useTrainingPlans(userId);
 
-  const [plansLoading, setPlansLoading] = useState(true);
   const [modalSession, setModalSession] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
   const [deleteTarget, setDeleteTarget] = useState(null); // { session, usedIn }
   const [usageTarget, setUsageTarget] = useState(null); // { session, usedIn }
@@ -145,15 +143,6 @@ export function SessionsCatalogTab() {
     }
     Toast.show({ type: 'success', text1: 'Sesión clonada' });
   };
-
-  useEffect(() => {
-    if (!userId) return undefined;
-    let cancelled = false;
-    setPlansLoading(true);
-    fetchPlans(userId).finally(() => { if (!cancelled) setPlansLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
 
   const handleDelete = async () => {
     const result = await deleteSession({ ownerId: userId, sessionId: deleteTarget.session.id });
