@@ -4,6 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { isWeb } from '../../utils/platform.js';
+import { useThemeColors } from '../../theme/colors.js';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
 // Alto de fila aproximado — usado solo para estimar en qué posición de
@@ -21,14 +22,41 @@ const ESTIMATED_ROW_HEIGHT = 110;
 // modal — no es estado global de la app.
 const SessionDragContext = createContext(null);
 
+// Cuánto antes del borde del contenedor (en px de pantalla) empieza a
+// autoscrollear, y cuánto scrollea por frame de arrastre. EDGE chico
+// haría falta acercarse demasiado al borde real (mala UX en mobile,
+// donde el dedo tapa la zona); STEP grande se siente a los saltos.
+const AUTO_SCROLL_EDGE = 56;
+const AUTO_SCROLL_STEP = 14;
+
 export function SessionDragProvider({ children }) {
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
+  // Medición del drop target cacheada una vez al empezar el arrastre
+  // (no en cada frame) — se usa tanto para el indicador de posición en
+  // vivo (hoverIndexSV/isHoveringSV, leídos desde un worklet) como para
+  // decidir el drop final, sin repetir measureInWindow al soltar.
+  const targetX = useSharedValue(0);
+  const targetY = useSharedValue(0);
+  const targetWidth = useSharedValue(0);
+  const targetHeight = useSharedValue(0);
+  const hoverIndexSV = useSharedValue(0);
+  const isHoveringSV = useSharedValue(0);
   const [draggedExercise, setDraggedExercise] = useState(null);
   const dropTargetRef = useRef(null);
+  // Ref al componente de lista (FlatList, vía el prop `ref` que DraxList
+  // reenvía) — imperativo, para autoscroll. Separado del scroll offset
+  // (rastreado por onScroll en el consumidor) porque scrollToOffset no
+  // tiene forma de preguntar "en qué offset estoy ahora".
+  const autoScrollRef = useRef(null);
+  const scrollOffsetRef = useRef(0);
 
   return (
-    <SessionDragContext.Provider value={{ dragX, dragY, draggedExercise, setDraggedExercise, dropTargetRef }}>
+    <SessionDragContext.Provider value={{
+      dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
+      draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef,
+    }}
+    >
       {children}
       <DragGhost />
     </SessionDragContext.Provider>
@@ -36,41 +64,121 @@ export function SessionDragProvider({ children }) {
 }
 
 // El contenedor de la lista de la sesión (destino del drop) se registra
-// acá — measureInWindow se usa recién al soltar, así que no hace falta
-// re-medir en cada frame del arrastre.
+// acá.
 export function useSessionDropTarget() {
   const { dropTargetRef } = useContext(SessionDragContext);
   return dropTargetRef;
 }
 
-// Tarjeta arrastrable del panel de ejercicios. `onDropped(exercise)` se
-// llama solo si el punto de soltado cae dentro del contenedor
-// registrado en dropTargetRef.
-export function DraggableExerciseCard({ exercise, onDropped, children }) {
-  const { dragX, dragY, setDraggedExercise, dropTargetRef } = useContext(SessionDragContext);
+// Ref imperativo a la lista (FlatList detrás de DraxList) + callback de
+// scroll — para autoscroll cerca de los bordes mientras se arrastra
+// desde el catálogo. `onListScroll` se cablea al `onScroll` del
+// DraxList/FlatList consumidor.
+export function useSessionAutoScrollTarget() {
+  const { autoScrollRef, scrollOffsetRef } = useContext(SessionDragContext);
+  const onListScroll = (e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; };
+  return { autoScrollRef, onListScroll };
+}
 
-  const checkDrop = (absoluteX, absoluteY) => {
+// Índice estimado (y si hay arrastre activo sobre el target) para
+// pintar un indicador de "acá va a caer" — ver SessionDropIndicator más
+// abajo, se monta una vez dentro del contenedor de ejercicios de la
+// sesión.
+export function useSessionDropIndicator() {
+  const { hoverIndexSV, isHoveringSV } = useContext(SessionDragContext);
+  return { hoverIndexSV, isHoveringSV };
+}
+
+// Línea horizontal que marca dónde caería el ejercicio si se soltara
+// ahora — se monta una sola vez, adentro del `View` con `ref={dropTargetRef}`.
+// Position absolute + top animado en vez de un ítem más de la lista:
+// la lista está virtualizada (DraxList/FlatList), insertar un item fantasma
+// ahí complicaría mucho más de lo que vale.
+export function SessionDropIndicator() {
+  const colors = useThemeColors();
+  const { hoverIndexSV, isHoveringSV } = useSessionDropIndicator();
+  const style = useAnimatedStyle(() => ({
+    opacity: isHoveringSV.value,
+    transform: [{ translateY: hoverIndexSV.value * ESTIMATED_ROW_HEIGHT }],
+  }));
+
+  return (
+    <Animated.View
+      nativeID="session-drop-indicator"
+      style={[
+        { position: 'absolute', left: 8, right: 8, top: 0, height: 3, borderRadius: 2, backgroundColor: colors.primary },
+        style,
+      ]}
+      testID="session-drop-indicator"
+    />
+  );
+}
+
+// Tarjeta arrastrable del panel de ejercicios. `onDropped(exercise, index)`
+// se llama solo si el punto de soltado cae dentro del contenedor
+// registrado en dropTargetRef, con el índice estimado de inserción.
+export function DraggableExerciseCard({ exercise, onDropped, children }) {
+  const {
+    dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
+    setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef,
+  } = useContext(SessionDragContext);
+
+  const cacheTargetMeasurements = () => {
     if (!dropTargetRef.current) return;
     dropTargetRef.current.measureInWindow((x, y, width, height) => {
-      const inside = absoluteX >= x && absoluteX <= x + width && absoluteY >= y && absoluteY <= y + height;
-      if (!inside) return;
-      const insertIndex = Math.max(0, Math.round((absoluteY - y) / ESTIMATED_ROW_HEIGHT));
-      onDropped(exercise, insertIndex);
+      targetX.value = x;
+      targetY.value = y;
+      targetWidth.value = width;
+      targetHeight.value = height;
     });
+  };
+
+  // Autoscroll: JS-thread, llamado desde el worklet de onUpdate vía
+  // runOnJS — el offset actual se rastrea por afuera (scrollOffsetRef,
+  // actualizado por onScroll) porque scrollToOffset no tiene forma de
+  // preguntar "en qué offset estoy ahora".
+  const maybeAutoScroll = (absoluteY, top, height) => {
+    if (!autoScrollRef.current) return;
+    const relativeY = absoluteY - top;
+    let next = null;
+    if (relativeY < AUTO_SCROLL_EDGE) {
+      next = Math.max(0, scrollOffsetRef.current - AUTO_SCROLL_STEP);
+    } else if (relativeY > height - AUTO_SCROLL_EDGE) {
+      next = scrollOffsetRef.current + AUTO_SCROLL_STEP;
+    }
+    if (next === null || next === scrollOffsetRef.current) return;
+    scrollOffsetRef.current = next;
+    autoScrollRef.current.scrollToOffset({ offset: next, animated: false });
+  };
+
+  const checkDrop = (absoluteY) => {
+    if (!isHoveringSV.value) return;
+    const insertIndex = Math.max(0, Math.round((absoluteY - targetY.value) / ESTIMATED_ROW_HEIGHT));
+    onDropped(exercise, insertIndex);
   };
 
   const pan = Gesture.Pan()
     .onStart((e) => {
       runOnJS(setDraggedExercise)(exercise);
+      runOnJS(cacheTargetMeasurements)();
       dragX.value = e.absoluteX;
       dragY.value = e.absoluteY;
     })
     .onUpdate((e) => {
       dragX.value = e.absoluteX;
       dragY.value = e.absoluteY;
+      const inside = targetWidth.value > 0
+        && e.absoluteX >= targetX.value && e.absoluteX <= targetX.value + targetWidth.value
+        && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
+      isHoveringSV.value = inside ? 1 : 0;
+      if (inside) {
+        hoverIndexSV.value = Math.max(0, Math.round((e.absoluteY - targetY.value) / ESTIMATED_ROW_HEIGHT));
+        runOnJS(maybeAutoScroll)(e.absoluteY, targetY.value, targetHeight.value);
+      }
     })
     .onEnd((e) => {
-      runOnJS(checkDrop)(e.absoluteX, e.absoluteY);
+      runOnJS(checkDrop)(e.absoluteY);
+      isHoveringSV.value = 0;
       runOnJS(setDraggedExercise)(null);
     });
 
@@ -101,6 +209,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
 // mobile nativo —, así que `position: fixed` (ancla contra el viewport,
 // no contra el ancestro) es seguro acá sin tocar la rama nativa.
 function DragGhost() {
+  const colors = useThemeColors();
   const { dragX, dragY, draggedExercise } = useContext(SessionDragContext);
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: dragX.value - 90 }, { translateY: dragY.value - 24 }],
@@ -119,11 +228,33 @@ function DragGhost() {
       {/* Mismo contenido que PanelExerciseCard (ícono + nombre + stat) en
           vez de solo el nombre en texto plano — la idea es que lo que se
           ve arrastrado sea reconociblemente "la card", no una etiqueta
-          genérica (pedido explícito del usuario). */}
+          genérica (pedido explícito del usuario). Todo en `style`, nada
+          en `className` acá — mismo bug ya documentado en
+          theme-toggle.jsx: un Animated.View de reanimated no aplica
+          NINGUNA clase de NativeWind (confirmado con getComputedStyle),
+          así que un className acá se ve como si no tuviera card/caja en
+          absoluto, solo ícono+texto flotando (bug real reportado por el
+          usuario). */}
       <Animated.View
-        className="w-44 flex-row items-center gap-2 rounded-xl border border-primary bg-white px-3 py-2 opacity-90 shadow-lg dark:bg-surface"
         nativeID="session-drag-ghost-card"
-        style={[{ position: 'absolute' }, style]}
+        style={[
+          {
+            position: 'absolute',
+            width: 176,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.primary,
+            backgroundColor: colors.surface,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            opacity: 0.9,
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+          },
+          style,
+        ]}
         testID="session-drag-ghost-card"
       >
         <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID="session-drag-ghost-card-icon" testID="session-drag-ghost-card-icon">

@@ -17,7 +17,7 @@ import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { DraxProvider, DraxList, DraxHandle } from 'react-native-drax';
-import { SessionDragProvider, useSessionDropTarget } from './session-drag-and-drop.jsx';
+import { SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 
 const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
@@ -215,6 +215,7 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
 // de un alto propio en cada columna.
 function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorderExercises, onRemove, onExerciseDropped, error, visible }) {
   const dropTargetRef = useSessionDropTarget();
+  const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
   return (
     <View className="flex-1 flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
@@ -263,6 +264,8 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
               </Text>
             )}
             onReorder={({ data }) => onReorderExercises(data)}
+            onScroll={onListScroll}
+            ref={autoScrollRef}
             renderItem={({ item, index }) => (
               <SessionExerciseRow
                 catalogExercises={catalogExercises}
@@ -275,8 +278,10 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
                 reorderMode="handle"
               />
             )}
+            scrollEventThrottle={16}
             style={{ flex: 1 }}
           />
+          <SessionDropIndicator />
         </View>
 
         {error && (
