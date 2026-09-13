@@ -151,8 +151,18 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
     autoScrollRef.current.scrollToOffset({ offset: next, animated: false });
   };
 
-  const checkDrop = (absoluteY) => {
-    if (!isHoveringSV.value) return;
+  // Chequeo fresco con la posición final real (absoluteX/Y del propio
+  // onEnd), no el `isHoveringSV` acumulado de onUpdate — un arrastre
+  // rápido/con pocos frames intermedios puede llegar a onEnd sin que el
+  // último onUpdate haya corrido todavía, dejando isHoveringSV desactualizado
+  // y el drop se perdía en silencio (bug real: soltar en la lista vacía
+  // no cargaba nada). Sigue sin re-medir con measureInWindow — usa los
+  // mismos target* cacheados en onStart, solo la comparación es nueva.
+  const checkDrop = (absoluteX, absoluteY) => {
+    if (targetWidth.value <= 0) return;
+    const inside = absoluteX >= targetX.value && absoluteX <= targetX.value + targetWidth.value
+      && absoluteY >= targetY.value && absoluteY <= targetY.value + targetHeight.value;
+    if (!inside) return;
     const insertIndex = Math.max(0, Math.round((absoluteY - targetY.value) / ESTIMATED_ROW_HEIGHT));
     onDropped(exercise, insertIndex);
   };
@@ -177,7 +187,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
       }
     })
     .onEnd((e) => {
-      runOnJS(checkDrop)(e.absoluteY);
+      runOnJS(checkDrop)(e.absoluteX, e.absoluteY);
       isHoveringSV.value = 0;
       runOnJS(setDraggedExercise)(null);
     });
