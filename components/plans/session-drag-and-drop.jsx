@@ -2,7 +2,17 @@ import { createContext, useContext, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { isWeb } from '../../utils/platform.js';
+import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
+
+// Alto de fila aproximado — usado solo para estimar en qué posición de
+// la lista de la sesión se soltó una card del catálogo (no hay forma de
+// medir cada fila real sin virtualización de por medio, ver DraxList en
+// create-session-modal.jsx). No pretende ser exacto, alcanza para que
+// "soltar arriba" inserte cerca del principio y "soltar abajo" cerca
+// del final, en vez de ir siempre al final sin importar dónde se soltó.
+const ESTIMATED_ROW_HEIGHT = 110;
 
 // Mecánica de arrastre a mano (sin librería de terceros — ver
 // docs/superpowers/specs/2026-09-10-sessions-drag-and-drop-design.md
@@ -43,7 +53,9 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
     if (!dropTargetRef.current) return;
     dropTargetRef.current.measureInWindow((x, y, width, height) => {
       const inside = absoluteX >= x && absoluteX <= x + width && absoluteY >= y && absoluteY <= y + height;
-      if (inside) onDropped(exercise);
+      if (!inside) return;
+      const insertIndex = Math.max(0, Math.round((absoluteY - y) / ESTIMATED_ROW_HEIGHT));
+      onDropped(exercise, insertIndex);
     });
   };
 
@@ -95,6 +107,8 @@ function DragGhost() {
   }));
 
   if (!draggedExercise) return null;
+  const meta = EXERCISE_KIND_META[draggedExercise.kind] ?? EXERCISE_KIND_META.walking;
+  const statLine = buildExerciseStatLine(draggedExercise);
   return (
     <View
       className="inset-0 z-50"
@@ -102,15 +116,27 @@ function DragGhost() {
       style={{ position: isWeb ? 'fixed' : 'absolute', pointerEvents: 'none' }}
       testID="session-drag-ghost-overlay"
     >
+      {/* Mismo contenido que PanelExerciseCard (ícono + nombre + stat) en
+          vez de solo el nombre en texto plano — la idea es que lo que se
+          ve arrastrado sea reconociblemente "la card", no una etiqueta
+          genérica (pedido explícito del usuario). */}
       <Animated.View
-        className="w-44 rounded-xl border border-primary bg-white px-3 py-2 opacity-90 shadow-lg dark:bg-surface"
+        className="w-44 flex-row items-center gap-2 rounded-xl border border-primary bg-white px-3 py-2 opacity-90 shadow-lg dark:bg-surface"
         nativeID="session-drag-ghost-card"
         style={[{ position: 'absolute' }, style]}
         testID="session-drag-ghost-card"
       >
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="session-drag-ghost-card-label" numberOfLines={1} testID="session-drag-ghost-card-label">
-          {draggedExercise.name}
-        </Text>
+        <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID="session-drag-ghost-card-icon" testID="session-drag-ghost-card-icon">
+          <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={16} />
+        </View>
+        <View className="flex-1" nativeID="session-drag-ghost-card-info" testID="session-drag-ghost-card-info">
+          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="session-drag-ghost-card-label" numberOfLines={1} testID="session-drag-ghost-card-label">
+            {draggedExercise.name}
+          </Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-drag-ghost-card-stat" numberOfLines={1} testID="session-drag-ghost-card-stat">
+            {statLine || meta.label}
+          </Text>
+        </View>
       </Animated.View>
     </View>
   );
