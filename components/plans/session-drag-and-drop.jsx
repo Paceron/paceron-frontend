@@ -181,8 +181,18 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs })
     onDropped(exercise, insertIndex);
   };
 
-  let pan = Gesture.Pan();
-  if (holdMs) pan = pan.activateAfterLongPress(holdMs);
+  let pan = Gesture.Pan().runOnJS(true);
+  if (holdMs) {
+    // failOffsetX: si el dedo se mueve más de esto ANTES de cumplirse
+    // el hold, el gesto falla de inmediato y libera el toque al
+    // ScrollView horizontal (scroll normal de la tira) — sin esto, un
+    // swipe rápido para scrollear quedaba capturado por este Pan sin
+    // activarse nunca y sin soltar el toque a tiempo para que el
+    // ScrollView pudiera scrollear con él (bug real reportado: la tira
+    // no scrolleaba nada). activateAfterLongPress solo, sin este tope,
+    // no alcanza.
+    pan = pan.activateAfterLongPress(holdMs).failOffsetX([-10, 10]);
+  }
   pan = pan
     .onStart((e) => {
       runOnJS(setDraggedExercise)(exercise);
@@ -303,8 +313,21 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
     onReorderRef.current(from, to);
   };
 
+  // failOffsetY: mismo motivo que failOffsetX en DraggableExerciseCard —
+  // sin esto, un intento de scrollear la lista (swipe rápido, sin hold)
+  // quedaba atrapado por este Pan sin activarse nunca y sin soltar el
+  // toque a tiempo para que el ScrollView pudiera tomarlo (bug real:
+  // scroll bloqueado en la lista de ejercicios). Gesture.Native(),
+  // combinado vía Simultaneous, es lo que deja que los controles de
+  // adentro de la fila (selector de rol, quitar, el select de ejercicio)
+  // sigan recibiendo taps normales — sin esto, el GestureDetector de
+  // este Pan se queda con el toque incluso para un tap corto y esos
+  // controles dejan de responder (bug real reportado: el ícono de rol no
+  // abría el menú).
   const pan = Gesture.Pan()
+    .runOnJS(true)
     .activateAfterLongPress(300)
+    .failOffsetY([-10, 10])
     .onStart(() => {
       activeIndexSV.value = index;
       targetIndexSV.value = index;
@@ -327,6 +350,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
       targetIndexSV.value = -1;
       dragOffsetY.value = 0;
     });
+  const rowGesture = Gesture.Simultaneous(pan, Gesture.Native());
 
   const rowStyle = useAnimatedStyle(() => {
     const isActive = activeIndexSV.value === index;
@@ -338,7 +362,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
   });
 
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={rowGesture}>
       <Animated.View nativeID={`reorderable-exercise-row-${index}`} style={rowStyle} testID={`reorderable-exercise-row-${index}`}>
         {children}
       </Animated.View>

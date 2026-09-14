@@ -218,14 +218,6 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
             </Pressable>
           </>
         )}
-        {compact && (
-          // Puro hint visual (no interactivo — el gesto real está en
-          // ReorderableRow, sobre toda la fila): sin las flechas ya no
-          // queda ninguna señal de que la fila se puede mover.
-          <View accessibilityElementsHidden className="h-12 w-5 items-center justify-center" importantForAccessibility="no-hide-descendants" nativeID={`${idPrefix}-drag-hint`} testID={`${idPrefix}-drag-hint`}>
-            <MaterialCommunityIcons color="#cbd5e1" name="drag-horizontal-variant" size={16} />
-          </View>
-        )}
         <Pressable
           accessibilityLabel="Quitar ejercicio"
           className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
