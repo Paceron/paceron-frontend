@@ -218,8 +218,18 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs })
       runOnJS(setDraggedExercise)(null);
     });
 
+  // Simultaneous(pan, Native()) solo cuando hay holdMs (tira horizontal
+  // de mobile/narrow) — mismo motivo que en ReorderableRow: sin el
+  // Native() de acompañamiento, failOffsetX solo no alcanzaba para que
+  // el ScrollView hermano recuperara el toque a tiempo (bug real: scroll
+  // horizontal seguía sin funcionar incluso con failOffsetX). El panel
+  // ancho de escritorio (sin holdMs, activación inmediata) no lo
+  // necesita — ahí no hay ScrollView compitiendo en la misma dirección
+  // del drag, y ya está confirmado funcionando sin esto.
+  const cardGesture = holdMs ? Gesture.Simultaneous(pan, Gesture.Native()) : pan;
+
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={cardGesture}>
       <View nativeID={`draggable-exercise-card-${exercise.id}`} testID={`draggable-exercise-card-${exercise.id}`}>
         {children}
       </View>

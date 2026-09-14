@@ -7,7 +7,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View 
 // en nativo (bug real, mismo motivo documentado en
 // session-exercise-panel.jsx) — el resto del archivo sigue con el
 // ScrollView de 'react-native' de siempre, sin cambios.
-import { GestureHandlerRootView, ScrollView as GestureScrollView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -95,16 +95,26 @@ function SessionRoleClosedSelect({ idPrefix, value, onChange }) {
 
   return (
     <>
-      <Pressable
-        accessibilityLabel={`Rol: ${meta.label}`}
-        className={`h-12 w-12 items-center justify-center rounded-full ${meta.bg}`}
-        nativeID={`${idPrefix}-role-select`}
-        onPress={handleOpen}
-        ref={buttonRef}
-        testID={`${idPrefix}-role-select`}
-      >
-        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
-      </Pressable>
+      {/* GestureDetector + Gesture.Native(): esta fila vive adentro de
+          ReorderableRow, que envuelve todo con su propio Pan
+          (mantener-presionado-y-arrastrar) — sin este acompañamiento
+          nativo, el Pan se quedaba con el toque incluso para un tap
+          corto y este botón nunca disparaba onPress (bug real
+          reportado: el ícono de rol no abría el menú). Mismo mecanismo
+          documentado en CLAUDE.md para ReorderableRow, acá aplicado
+          puntual sobre el control anidado en vez de la fila entera. */}
+      <GestureDetector gesture={Gesture.Native()}>
+        <Pressable
+          accessibilityLabel={`Rol: ${meta.label}`}
+          className={`h-12 w-12 items-center justify-center rounded-full ${meta.bg}`}
+          nativeID={`${idPrefix}-role-select`}
+          onPress={handleOpen}
+          ref={buttonRef}
+          testID={`${idPrefix}-role-select`}
+        >
+          <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
+        </Pressable>
+      </GestureDetector>
       <AnimatedDropdown anchorStyle={{ top: anchor.top, left: anchor.left }} onClose={() => setOpen(false)} open={open}>
         <View className="w-48 gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-role-select-menu`} testID={`${idPrefix}-role-select-menu`}>
           {SESSION_ROLE_ORDER.map((role) => {
@@ -180,20 +190,36 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
         ) : (
           <SessionRoleSegmentedPicker idPrefix={idPrefix} onChange={(role) => onChangeRole(entry.localKey, role)} value={entry.role} />
         )}
-        <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
-          <ResponsiveSelectField
-            className="mb-0"
-            dense
-            hideErrorRow
-            hideLabel
-            label={`Ejercicio ${index + 1}`}
-            onChange={(exerciseId) => onChangeExercise(entry.localKey, { exerciseId })}
-            options={roleOptions.map((e) => ({ id: e.id, name: e.name }))}
-            placeholder={roleOptions.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
-            required
-            value={entry.exerciseId}
-          />
-        </View>
+        {(() => {
+          const selectField = (
+            <ResponsiveSelectField
+              className="mb-0"
+              dense
+              hideErrorRow
+              hideLabel
+              label={`Ejercicio ${index + 1}`}
+              onChange={(exerciseId) => onChangeExercise(entry.localKey, { exerciseId })}
+              options={roleOptions.map((e) => ({ id: e.id, name: e.name }))}
+              placeholder={roleOptions.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
+              required
+              value={entry.exerciseId}
+            />
+          );
+          // Mismo motivo que SessionRoleClosedSelect/el botón de quitar —
+          // este selector también vive adentro de ReorderableRow en modo
+          // compact.
+          return compact ? (
+            <GestureDetector gesture={Gesture.Native()}>
+              <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
+                {selectField}
+              </View>
+            </GestureDetector>
+          ) : (
+            <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
+              {selectField}
+            </View>
+          );
+        })()}
         {!compact && (
           <>
             <Pressable
@@ -218,15 +244,34 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
             </Pressable>
           </>
         )}
-        <Pressable
-          accessibilityLabel="Quitar ejercicio"
-          className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
-          nativeID={`${idPrefix}-remove-button`}
-          onPress={() => onRemove(entry.localKey)}
-          testID={`${idPrefix}-remove-button`}
-        >
-          <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-        </Pressable>
+        {compact ? (
+          // Mismo motivo que SessionRoleClosedSelect: este botón vive
+          // adentro de ReorderableRow, necesita su propio Gesture.Native()
+          // para no perder el tap contra el Pan de la fila. No hace falta
+          // en modo no-compact (wide), ahí no hay ReorderableRow de por
+          // medio.
+          <GestureDetector gesture={Gesture.Native()}>
+            <Pressable
+              accessibilityLabel="Quitar ejercicio"
+              className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
+              nativeID={`${idPrefix}-remove-button`}
+              onPress={() => onRemove(entry.localKey)}
+              testID={`${idPrefix}-remove-button`}
+            >
+              <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
+            </Pressable>
+          </GestureDetector>
+        ) : (
+          <Pressable
+            accessibilityLabel="Quitar ejercicio"
+            className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
+            nativeID={`${idPrefix}-remove-button`}
+            onPress={() => onRemove(entry.localKey)}
+            testID={`${idPrefix}-remove-button`}
+          >
+            <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
+          </Pressable>
+        )}
       </View>
 
       <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>
@@ -384,10 +429,10 @@ function SessionModalNarrowBody({ name, onSetName, description, onSetDescription
         Mantené presionado un ejercicio del catálogo para sumarlo, o una fila para reordenarla.
       </Text>
 
-      <View className="h-[280px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
+      <View className="h-[320px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
         <ReorderProvider>
           <GestureScrollView
-            contentContainerClassName="gap-2 p-2"
+            contentContainerClassName="gap-2 p-2 pb-4"
             nativeID="create-session-modal-exercises-scroll"
             onScroll={onListScroll}
             ref={autoScrollRef}
@@ -626,7 +671,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
         <GestureHandlerRootView style={{ flex: 1 }}>
         <SessionDragProvider>
           <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
-            <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[90%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
+            <Pressable className={`max-h-[94%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[94%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
               <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
                 <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
                 <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
@@ -659,7 +704,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                    notorio en mobile nativo con teclado/contenido largo.
                    Esto solo, sin embargo, no alcanza: el card ancestro
                    (create-session-modal-card, rama angosta) necesita además
-                   una altura EXPLÍCITA (h-[90%], no solo max-h-[90%]) —
+                   una altura EXPLÍCITA (h-[94%], no solo max-h-[94%]) —
                    bug real encontrado 2026-09-14 en Expo Go: max-height sin
                    height deja el card con tamaño intrínseco (a su
                    contenido) en Yoga nativo, así que este ScrollView
@@ -668,7 +713,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                    consola). Web tolera ese mismo layout sin colapsar por
                    diferencias del algoritmo flexbox del browser vs Yoga —
                    por eso nunca se notó ahí. Mismo criterio que el fix ya
-                   aplicado a la rama ancha (h-[640px] junto a max-h-[90%]). */
+                   aplicado a la rama ancha (h-[640px] junto a max-h-[94%]). */
                 <SessionModalNarrowBody
                   catalogExercises={catalogExercises}
                   description={description}
