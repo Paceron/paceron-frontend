@@ -17,6 +17,7 @@ import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { DraxProvider, DraxList, DraxHandle } from 'react-native-drax';
+import { FlatList as GestureFlatList } from 'react-native-gesture-handler';
 import { SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 
@@ -253,6 +254,7 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
               cambios). onReorder ya entrega el array completo reordenado,
               no hace falta computar índices a mano. */}
           <DraxList
+            component={GestureFlatList}
             containerStyle={{ flex: 1 }}
             contentContainerStyle={{ gap: 8, padding: 8 }}
             data={exercises}
