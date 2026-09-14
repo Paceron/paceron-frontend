@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -6,14 +6,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { isWeb } from '../../utils/platform.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
+import { ESTIMATED_ROW_HEIGHT, estimateIndexFromOffset, clampIndex, reorderList } from './session-reorder-math.js';
 
-// Alto de fila aproximado — usado solo para estimar en qué posición de
-// la lista de la sesión se soltó una card del catálogo (no hay forma de
-// medir cada fila real sin virtualización de por medio, ver DraxList en
-// create-session-modal.jsx). No pretende ser exacto, alcanza para que
-// "soltar arriba" inserte cerca del principio y "soltar abajo" cerca
-// del final, en vez de ir siempre al final sin importar dónde se soltó.
-const ESTIMATED_ROW_HEIGHT = 110;
+export { reorderList };
 
 // Mecánica de arrastre a mano (sin librería de terceros — ver
 // docs/superpowers/specs/2026-09-10-sessions-drag-and-drop-design.md
@@ -44,10 +39,10 @@ export function SessionDragProvider({ children }) {
   const isHoveringSV = useSharedValue(0);
   const [draggedExercise, setDraggedExercise] = useState(null);
   const dropTargetRef = useRef(null);
-  // Ref al componente de lista (FlatList, vía el prop `ref` que DraxList
-  // reenvía) — imperativo, para autoscroll. Separado del scroll offset
-  // (rastreado por onScroll en el consumidor) porque scrollToOffset no
-  // tiene forma de preguntar "en qué offset estoy ahora".
+  // Ref imperativo al ScrollView de la lista destino — para autoscroll.
+  // Separado del scroll offset (rastreado por onScroll en el consumidor)
+  // porque el ScrollView no tiene forma de preguntar "en qué offset estoy
+  // ahora", solo de pedirle uno nuevo (scrollTo).
   const autoScrollRef = useRef(null);
   const scrollOffsetRef = useRef(0);
 
@@ -58,10 +53,21 @@ export function SessionDragProvider({ children }) {
     }}
     >
       {children}
-      <DragGhost />
     </SessionDragContext.Provider>
   );
 }
+
+// DragGhost ya no se automonta dentro de SessionDragProvider — necesita
+// montarse como hijo DIRECTO del <Modal> (hermano de la tarjeta/backdrop,
+// no anidado adentro), para que su `position: 'absolute'` en nativo
+// ancle contra la vista de host del modal (pantalla completa) en vez de
+// contra algún ancestro con padding/centrado. Antes esto no importaba
+// porque SessionDragProvider solo se montaba en el layout ancho (solo
+// web, donde `position: 'fixed'` ignora la jerarquía de todos modos);
+// ahora que la rama angosta también usa arrastre (mobile nativo
+// incluido), el caso nativo pasa a ejercitarse de verdad — ver
+// CreateSessionModal.
+export { DragGhost };
 
 // El contenedor de la lista de la sesión (destino del drop) se registra
 // acá.
@@ -117,7 +123,15 @@ export function SessionDropIndicator() {
 // Tarjeta arrastrable del panel de ejercicios. `onDropped(exercise, index)`
 // se llama solo si el punto de soltado cae dentro del contenedor
 // registrado en dropTargetRef, con el índice estimado de inserción.
-export function DraggableExerciseCard({ exercise, onDropped, children }) {
+// holdMs (opcional): si viene, el arrastre solo se activa después de
+// mantener presionado ese tiempo (`activateAfterLongPress` de
+// gesture-handler) — necesario cuando la card vive dentro de un
+// ScrollView cuyo gesto de scroll competiría por el mismo movimiento
+// (ej. la tira horizontal del catálogo en mobile/narrow); sin holdMs
+// (undefined) el arrastre se activa de inmediato, comportamiento
+// original sin cambios (panel ancho de escritorio, confirmado
+// funcionando, no se toca).
+export function DraggableExerciseCard({ exercise, onDropped, children, holdMs }) {
   const {
     dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
     setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef,
@@ -163,11 +177,13 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
     const inside = absoluteX >= targetX.value && absoluteX <= targetX.value + targetWidth.value
       && absoluteY >= targetY.value && absoluteY <= targetY.value + targetHeight.value;
     if (!inside) return;
-    const insertIndex = Math.max(0, Math.round((absoluteY - targetY.value) / ESTIMATED_ROW_HEIGHT));
+    const insertIndex = estimateIndexFromOffset(absoluteY - targetY.value);
     onDropped(exercise, insertIndex);
   };
 
-  const pan = Gesture.Pan()
+  let pan = Gesture.Pan();
+  if (holdMs) pan = pan.activateAfterLongPress(holdMs);
+  pan = pan
     .onStart((e) => {
       runOnJS(setDraggedExercise)(exercise);
       runOnJS(cacheTargetMeasurements)();
@@ -182,7 +198,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
         && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
       isHoveringSV.value = inside ? 1 : 0;
       if (inside) {
-        hoverIndexSV.value = Math.max(0, Math.round((e.absoluteY - targetY.value) / ESTIMATED_ROW_HEIGHT));
+        hoverIndexSV.value = estimateIndexFromOffset(e.absoluteY - targetY.value);
         runOnJS(maybeAutoScroll)(e.absoluteY, targetY.value, targetHeight.value);
       }
     })
@@ -197,6 +213,135 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
       <View nativeID={`draggable-exercise-card-${exercise.id}`} testID={`draggable-exercise-card-${exercise.id}`}>
         {children}
       </View>
+    </GestureDetector>
+  );
+}
+
+// Reordenamiento por mantener-presionado dentro de la MISMA lista —
+// mecanismo separado del cross-container de arriba (arrastra un
+// ejercicio ya cargado a otra posición, no trae uno nuevo del catálogo).
+// Contexto propio (no SessionDragContext) porque la semántica es
+// distinta: no hay medición de un contenedor destino externo, el
+// desplazamiento es relativo a la fila que se está moviendo, no a
+// coordenadas absolutas de pantalla — evita competir con el autoscroll
+// del cross-container y mantiene los dos sistemas independientes.
+const ReorderContext = createContext(null);
+
+// itemCount se pasa por prop en cada fila (no como prop del Provider)
+// porque la lista puede crecer/achicarse mientras el Provider ya está
+// montado — se guarda en un shared value (leído desde el worklet de
+// onUpdate) y en un ref (leído desde runOnJS) actualizados en cada
+// render vía useEffect en ReorderableRow.
+export function ReorderProvider({ children }) {
+  const activeIndexSV = useSharedValue(-1);
+  const targetIndexSV = useSharedValue(-1);
+  const dragOffsetY = useSharedValue(0);
+  const itemCountSV = useSharedValue(0);
+
+  return (
+    <ReorderContext.Provider value={{ activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV }}>
+      {children}
+    </ReorderContext.Provider>
+  );
+}
+
+// Línea que marca dónde caería la fila si se soltara ahora, mismo
+// criterio visual que SessionDropIndicator pero leyendo del
+// ReorderContext — se monta una vez, adentro del contenedor con las
+// filas de la lista de la sesión (mismo `View` que ya tiene
+// SessionDropIndicator montado, ambos inactivos salvo que su propio
+// gesto esté en curso).
+export function ReorderDropIndicator() {
+  const colors = useThemeColors();
+  const { activeIndexSV, targetIndexSV } = useContext(ReorderContext);
+  const style = useAnimatedStyle(() => ({
+    opacity: activeIndexSV.value >= 0 ? 1 : 0,
+    transform: [{ translateY: targetIndexSV.value * ESTIMATED_ROW_HEIGHT }],
+  }));
+
+  return (
+    <Animated.View
+      nativeID="session-reorder-drop-indicator"
+      style={[
+        { position: 'absolute', left: 8, right: 8, top: 0, height: 3, borderRadius: 2, backgroundColor: colors.primary },
+        style,
+      ]}
+      testID="session-reorder-drop-indicator"
+    />
+  );
+}
+
+// Fila reordenable — envuelve el contenido real (SessionExerciseRow) con
+// el gesto de mantener-presionado-y-arrastrar. `activateAfterLongPress`
+// (gesture-handler) hace que el Pan solo se active tras el hold: antes
+// de eso, un movimiento del dedo lo cede al ScrollView vertical que
+// contiene la lista, que puede scrollear con normalidad — sin esto, un
+// simple gesto de scroll en la lista de ejercicios competiría por el
+// mismo movimiento vertical que el reordenamiento (a diferencia del
+// cross-container de arriba, que vive en columnas separadas sin este
+// conflicto). Solo la fila activa se traduce visualmente seteando su
+// propio offset (dragOffsetY, compartido en el contexto porque solo una
+// fila se arrastra por vez); las demás no se reacomodan en vivo — la
+// línea de ReorderDropIndicator ya comunica el destino, evitar animar
+// cada vecina mantiene el mecanismo simple y predecible.
+export function ReorderableRow({ index, itemCount, onReorder, children }) {
+  const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV } = useContext(ReorderContext);
+  const onReorderRef = useRef(onReorder);
+
+  useEffect(() => {
+    onReorderRef.current = onReorder;
+    itemCountSV.value = itemCount;
+  });
+
+  const commitReorder = () => {
+    const from = activeIndexSV.value;
+    const to = targetIndexSV.value;
+    activeIndexSV.value = -1;
+    targetIndexSV.value = -1;
+    dragOffsetY.value = 0;
+    if (from === -1 || to === -1 || from === to) return;
+    onReorderRef.current(from, to);
+  };
+
+  const pan = Gesture.Pan()
+    .activateAfterLongPress(300)
+    .onStart(() => {
+      activeIndexSV.value = index;
+      targetIndexSV.value = index;
+      dragOffsetY.value = 0;
+    })
+    .onUpdate((e) => {
+      dragOffsetY.value = e.translationY;
+      // Delta de fila con signo (a diferencia de estimateIndexFromOffset,
+      // pensada para una distancia siempre positiva desde el top de un
+      // contenedor) — acá el desplazamiento es relativo a la fila propia
+      // y puede ir para cualquier lado.
+      const rowDelta = Math.round(e.translationY / ESTIMATED_ROW_HEIGHT);
+      targetIndexSV.value = clampIndex(index + rowDelta, itemCountSV.value);
+    })
+    .onEnd(() => {
+      runOnJS(commitReorder)();
+    })
+    .onFinalize(() => {
+      activeIndexSV.value = -1;
+      targetIndexSV.value = -1;
+      dragOffsetY.value = 0;
+    });
+
+  const rowStyle = useAnimatedStyle(() => {
+    const isActive = activeIndexSV.value === index;
+    return {
+      transform: [{ translateY: isActive ? dragOffsetY.value : 0 }, { scale: isActive ? 1.02 : 1 }],
+      zIndex: isActive ? 10 : 0,
+      opacity: isActive ? 0.95 : 1,
+    };
+  });
+
+  return (
+    <GestureDetector gesture={pan}>
+      <Animated.View nativeID={`reorderable-exercise-row-${index}`} style={rowStyle} testID={`reorderable-exercise-row-${index}`}>
+        {children}
+      </Animated.View>
     </GestureDetector>
   );
 }

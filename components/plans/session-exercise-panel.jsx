@@ -35,7 +35,35 @@ function PanelExerciseCard({ exercise }) {
   );
 }
 
-export function SessionExercisePanel({ onExerciseAdded }) {
+// Variante compacta (icono + nombre, sin stat) para la tira horizontal
+// de mobile/narrow — ancho fijo chico, pensada para caber varias en fila
+// con scroll horizontal, a diferencia de PanelExerciseCard (fila entera,
+// solo layout ancho de escritorio).
+function PanelExerciseCardCompact({ exercise }) {
+  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
+  const idPrefix = `session-exercise-panel-card-compact-${exercise.id}`;
+
+  return (
+    <View className="w-20 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
+        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={16} />
+      </View>
+      <Text className="text-center text-[11px] font-medium text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={2} testID={`${idPrefix}-name`}>
+        {exercise.name}
+      </Text>
+    </View>
+  );
+}
+
+// horizontal (mobile/narrow): tira con scroll horizontal en vez de lista
+// vertical con buscador — el buscador se saca acá a propósito (poco
+// ancho disponible, no alcanza para agregar otro control más sin
+// apretar todo); si hace falta buscar, el catálogo completo sigue
+// existiendo en la pestaña Ejercicios. El botón "Crear ejercicio" (antes
+// un link de texto arriba de la lista de ejercicios de la sesión, ver
+// CreateSessionModal) se muda acá, mismo ícono "+" que ya usa la
+// variante ancha.
+export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const { exercises } = useExercises(userId);
@@ -44,6 +72,51 @@ export function SessionExercisePanel({ onExerciseAdded }) {
 
   const query = search.trim().toLowerCase();
   const filtered = query ? exercises.filter((e) => e.name.toLowerCase().includes(query)) : exercises;
+
+  if (horizontal) {
+    return (
+      <View nativeID="session-exercise-panel" testID="session-exercise-panel">
+        <View className="mb-2 flex-row items-center justify-between" nativeID="session-exercise-panel-header" testID="session-exercise-panel-header">
+          <Text className={FIELD_LABEL} nativeID="session-exercise-panel-header-label" testID="session-exercise-panel-header-label">Catálogo de ejercicios</Text>
+          <Pressable
+            accessibilityLabel="Crear ejercicio"
+            className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+            nativeID="session-exercise-panel-create-button"
+            onPress={() => setShowCreateModal(true)}
+            testID="session-exercise-panel-create-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+          </Pressable>
+        </View>
+
+        {exercises.length === 0 ? (
+          <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="session-exercise-panel-empty" testID="session-exercise-panel-empty">
+            Todavía no creaste ningún ejercicio.
+          </Text>
+        ) : (
+          <ScrollView
+            contentContainerClassName="gap-2 pb-1"
+            horizontal
+            nativeID="session-exercise-panel-list"
+            showsHorizontalScrollIndicator={false}
+            testID="session-exercise-panel-list"
+          >
+            {exercises.map((exercise) => (
+              // holdMs: la tira scrollea horizontal, el drag hacia la
+              // lista de ejercicios de la sesión es vertical — sin el
+              // delay, cualquier intento de scrollear la tira se
+              // interpretaría como el inicio de un arrastre.
+              <DraggableExerciseCard exercise={exercise} holdMs={300} key={exercise.id} onDropped={onExerciseAdded}>
+                <PanelExerciseCardCompact exercise={exercise} />
+              </DraggableExerciseCard>
+            ))}
+          </ScrollView>
+        )}
+
+        <CreateExerciseModal onClose={() => setShowCreateModal(false)} onCreated={() => setShowCreateModal(false)} visible={showCreateModal} />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1" nativeID="session-exercise-panel" testID="session-exercise-panel">

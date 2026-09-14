@@ -10,13 +10,16 @@ import { useSessionMutations } from '../../hooks/use-sessions.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { InputField, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { CreateExerciseModal } from './create-exercise-modal.jsx';
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { SESSION_ROLE_ORDER, SESSION_ROLE_META } from './exercise-kind-meta.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
-import { SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator } from './session-drag-and-drop.jsx';
+import {
+  SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator,
+  ReorderProvider, ReorderableRow, ReorderDropIndicator, DragGhost, reorderList,
+} from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 
 const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
@@ -62,6 +65,62 @@ function SessionRoleSegmentedPicker({ idPrefix, value, onChange }) {
   );
 }
 
+// Selector de rol cerrado — mismo dato que SessionRoleSegmentedPicker
+// (icono siempre visible) pero para variante `compact` (mobile/narrow):
+// en vez de mostrar los 3 iconos en fila, muestra solo el activo y abre
+// un menú (AnimatedDropdown, mismo patrón que el resto de dropdowns
+// anclados a un botón) al tocarlo. Gana el ancho de 2 iconos para el
+// nombre del ejercicio — costo: cambiar de rol pasa de 1 tap directo a
+// abrir + elegir (decisión explícita del usuario, 2026-09-14).
+function SessionRoleClosedSelect({ idPrefix, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+  const meta = SESSION_ROLE_META[value];
+
+  const handleOpen = () => {
+    buttonRef.current?.measureInWindow((x, y, width, height) => {
+      setAnchor({ top: y + height + 4, left: x });
+      setOpen(true);
+    });
+  };
+
+  return (
+    <>
+      <Pressable
+        accessibilityLabel={`Rol: ${meta.label}`}
+        className={`h-12 w-12 items-center justify-center rounded-full ${meta.bg}`}
+        nativeID={`${idPrefix}-role-select`}
+        onPress={handleOpen}
+        ref={buttonRef}
+        testID={`${idPrefix}-role-select`}
+      >
+        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
+      </Pressable>
+      <AnimatedDropdown anchorStyle={{ top: anchor.top, left: anchor.left }} onClose={() => setOpen(false)} open={open}>
+        <View className="w-48 gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-role-select-menu`} testID={`${idPrefix}-role-select-menu`}>
+          {SESSION_ROLE_ORDER.map((role) => {
+            const roleMeta = SESSION_ROLE_META[role];
+            const optId = `${idPrefix}-role-select-option-${role}`;
+            return (
+              <Pressable
+                className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                key={role}
+                nativeID={optId}
+                onPress={() => { onChange(role); setOpen(false); }}
+                testID={optId}
+              >
+                <MaterialCommunityIcons color={roleMeta.iconColor} name={roleMeta.icon} size={16} />
+                <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${optId}-label`} testID={`${optId}-label`}>{roleMeta.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </AnimatedDropdown>
+    </>
+  );
+}
+
 // Pill inline chico (ícono + input numérico + sufijo) — reemplaza al
 // InputField con label propio que usaban repeticiones/descanso: ese
 // combo (label + input h-12) agregaba una fila entera de alto aparte del
@@ -90,7 +149,12 @@ function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibil
 // altura (h-12 los 3); "Serie repetida" es un toggle chico aparte —
 // colapsado por default para que la fila no crezca salvo que haga falta,
 // mismo criterio ya usado para los días de un plan.
-function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercises, onChangeExercise, onChangeRole, onRemove, onMove }) {
+// `compact` (mobile/narrow, 2026-09-14): saca los botones subir/bajar
+// (el reordenamiento ahí es por mantener-presionado-y-arrastrar sobre la
+// fila entera, ver ReorderableRow) y cambia el selector de rol al
+// select cerrado — ambos cambios ganan ancho para el nombre del
+// ejercicio. `onMove` queda sin uso en este modo (no se pasa).
+function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercises, onChangeExercise, onChangeRole, onRemove, onMove, compact }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
@@ -103,7 +167,11 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
   return (
     <View className="gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-fields`} testID={`${idPrefix}-fields`}>
-        <SessionRoleSegmentedPicker idPrefix={idPrefix} onChange={(role) => onChangeRole(entry.localKey, role)} value={entry.role} />
+        {compact ? (
+          <SessionRoleClosedSelect idPrefix={idPrefix} onChange={(role) => onChangeRole(entry.localKey, role)} value={entry.role} />
+        ) : (
+          <SessionRoleSegmentedPicker idPrefix={idPrefix} onChange={(role) => onChangeRole(entry.localKey, role)} value={entry.role} />
+        )}
         <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
           <ResponsiveSelectField
             className="mb-0"
@@ -118,26 +186,38 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
             value={entry.exerciseId}
           />
         </View>
-        <Pressable
-          accessibilityLabel="Subir ejercicio"
-          className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
-          disabled={index === 0}
-          nativeID={`${idPrefix}-move-up-button`}
-          onPress={() => onMove(entry.localKey, -1)}
-          testID={`${idPrefix}-move-up-button`}
-        >
-          <MaterialCommunityIcons color="#94a3b8" name="chevron-up" size={18} />
-        </Pressable>
-        <Pressable
-          accessibilityLabel="Bajar ejercicio"
-          className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
-          disabled={index === totalCount - 1}
-          nativeID={`${idPrefix}-move-down-button`}
-          onPress={() => onMove(entry.localKey, 1)}
-          testID={`${idPrefix}-move-down-button`}
-        >
-          <MaterialCommunityIcons color="#94a3b8" name="chevron-down" size={18} />
-        </Pressable>
+        {!compact && (
+          <>
+            <Pressable
+              accessibilityLabel="Subir ejercicio"
+              className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
+              disabled={index === 0}
+              nativeID={`${idPrefix}-move-up-button`}
+              onPress={() => onMove(entry.localKey, -1)}
+              testID={`${idPrefix}-move-up-button`}
+            >
+              <MaterialCommunityIcons color="#94a3b8" name="chevron-up" size={18} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Bajar ejercicio"
+              className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
+              disabled={index === totalCount - 1}
+              nativeID={`${idPrefix}-move-down-button`}
+              onPress={() => onMove(entry.localKey, 1)}
+              testID={`${idPrefix}-move-down-button`}
+            >
+              <MaterialCommunityIcons color="#94a3b8" name="chevron-down" size={18} />
+            </Pressable>
+          </>
+        )}
+        {compact && (
+          // Puro hint visual (no interactivo — el gesto real está en
+          // ReorderableRow, sobre toda la fila): sin las flechas ya no
+          // queda ninguna señal de que la fila se puede mover.
+          <View accessibilityElementsHidden className="h-12 w-5 items-center justify-center" importantForAccessibility="no-hide-descendants" nativeID={`${idPrefix}-drag-hint`} testID={`${idPrefix}-drag-hint`}>
+            <MaterialCommunityIcons color="#cbd5e1" name="drag-horizontal-variant" size={16} />
+          </View>
+        )}
         <Pressable
           accessibilityLabel="Quitar ejercicio"
           className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
@@ -280,6 +360,72 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
   );
 }
 
+// Cuerpo del modal en layout angosto (mobile nativo + web angosto) —
+// todo apilado en una sola columna con scroll vertical: nombre,
+// descripción, catálogo de ejercicios como tira horizontal (arrastrable
+// con hold), y la lista de ejercicios DE LA SESIÓN con alto fijo y
+// scroll propio (mismo criterio que la columna derecha del layout
+// ancho — ver SessionModalWideBody). Reemplaza al antiguo botón
+// "Agregar ejercicio" + filas pre-cargadas por rol (2026-09-14): ahora
+// arranca vacío y se carga por drag, igual que el layout ancho.
+function SessionModalNarrowBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, visible }) {
+  const dropTargetRef = useSessionDropTarget();
+  const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
+
+  return (
+    <ScrollView className="flex-1" nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
+      <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
+      <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
+
+      <SessionExercisePanel horizontal onExerciseAdded={onExerciseDropped} />
+
+      <Text className={`${FIELD_LABEL} mb-1 mt-3`} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
+      <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-drop-hint" testID="create-session-modal-drop-hint">
+        Mantené presionado un ejercicio del catálogo para sumarlo, o una fila para reordenarla.
+      </Text>
+
+      <View className="h-[280px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
+        <ReorderProvider>
+          <ScrollView
+            contentContainerClassName="gap-2 p-2"
+            nativeID="create-session-modal-exercises-scroll"
+            onScroll={onListScroll}
+            ref={autoScrollRef}
+            scrollEventThrottle={16}
+            testID="create-session-modal-exercises-scroll"
+          >
+            {exercises.length === 0 ? (
+              <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
+                Todavía no agregaste ejercicios.
+              </Text>
+            ) : exercises.map((entry, index) => (
+              <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
+                <SessionExerciseRow
+                  catalogExercises={catalogExercises}
+                  compact
+                  entry={entry}
+                  idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
+                  index={index}
+                  onChangeExercise={onChangeExercise}
+                  onChangeRole={onChangeRole}
+                  onRemove={onRemove}
+                  totalCount={exercises.length}
+                />
+              </ReorderableRow>
+            ))}
+          </ScrollView>
+          <SessionDropIndicator />
+          <ReorderDropIndicator />
+        </ReorderProvider>
+      </View>
+
+      {error && (
+        <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
+      )}
+    </ScrollView>
+  );
+}
+
 // Alta rápida de una sesión nueva desde adentro de armar un día de
 // entrenamiento en un plan — mismo motivo que CreateExerciseModal: un
 // modal, no una pantalla nueva, para no perder el plan a medio armar.
@@ -303,7 +449,6 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const [exercises, setExercises] = useState([]);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showCreateExerciseModal, setShowCreateExerciseModal] = useState(false);
   const draftSeq = useRef(0);
 
   const makeBlankRow = (role) => ({
@@ -331,20 +476,16 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   // resetKey cambia. Sin este ajuste, useFormDirty capturaría el
   // baseline un render antes de tiempo, con los valores viejos/vacíos
   // todavía en los states, y marcaría dirty=true de entrada al reabrir
-  // en modo edición (falso positivo). Una sesión nueva arranca con 1
-  // fila en blanco por rol (mismo criterio que antes de este merge).
+  // en modo edición (falso positivo).
   const resetValues = {
     name: session?.name ?? '',
     description: session?.description ?? '',
-    // En layout ancho, el panel de ejercicios adjunto reemplaza al
-    // "arranque con 3 filas en blanco" — el usuario arrastra lo que
-    // necesita, y arrancar vacío deja el alto fijo del área de
-    // ejercicios (ver más abajo) consistente desde el primer render. En
-    // mobile/narrow se mantiene el arranque con 1 fila en blanco por rol,
-    // que sigue siendo la forma de cargar ejercicios ahí.
-    exercises: session?.exercises?.length
-      ? session.exercises.map((e) => ({ ...e }))
-      : (isWideLayout ? [] : SESSION_ROLE_ORDER.map(makeBlankRow)),
+    // El panel de ejercicios adjunto (catálogo, arrastrable) reemplaza al
+    // "arranque con filas en blanco" en las dos plataformas por igual
+    // desde 2026-09-14 — el usuario arrastra lo que necesita, arrancar
+    // vacío deja el alto fijo del área de ejercicios (ver más abajo)
+    // consistente desde el primer render.
+    exercises: session?.exercises?.length ? session.exercises.map((e) => ({ ...e })) : [],
   };
 
   if (isResetting) {
@@ -385,13 +526,13 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     }));
   };
 
-  const handleAddExercise = () => setExercises((rows) => [...rows, makeBlankRow('main')]);
   const handleRemoveExercise = (localKey) => setExercises((rows) => rows.filter((r) => r.localKey !== localKey));
 
   // Intercambia la fila con su vecina inmediata en la dirección dada
   // (-1 = subir, +1 = bajar) — sin efecto si ya está en la punta (la UI
   // ya deshabilita el botón ahí, esto es la defensa del lado de la
-  // función).
+  // función). Solo layout ancho (botones subir/bajar); narrow reordena
+  // por drag, ver handleReorderExercises.
   const handleMoveExercise = (localKey, direction) => {
     setExercises((rows) => {
       const index = rows.findIndex((r) => r.localKey === localKey);
@@ -402,6 +543,22 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
       return next;
     });
   };
+
+  // Reordenamiento por drag (mobile/narrow, ver ReorderableRow) — mismo
+  // resultado final que handleMoveExercise pero recibe directamente los
+  // índices de origen/destino en vez de una dirección relativa.
+  const handleReorderExercises = (fromIndex, toIndex) => {
+    setExercises((rows) => reorderList(rows, fromIndex, toIndex));
+  };
+
+  // Inserta un ejercicio nuevo arrastrado desde el catálogo (cross-
+  // container) en la posición estimada — compartido por los dos
+  // layouts, ver onExerciseDropped en SessionModalWideBody/NarrowBody.
+  const handleExerciseDropped = (exercise, insertIndex) => setExercises((rows) => {
+    const next = [...rows];
+    next.splice(Math.min(insertIndex, next.length), 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
+    return next;
+  });
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -444,17 +601,28 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   return (
     <>
       <Modal animationType="fade" nativeID="create-session-modal" onRequestClose={handleClose} testID="create-session-modal" transparent visible={visible}>
-        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
-          <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[90%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
-            <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
-              <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
-              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
-                {isEditing ? 'Editar sesión' : 'Nueva sesión'}
-              </Text>
-            </View>
+        {/* SessionDragProvider (+ DragGhost hermano, no anidado) sube acá,
+            envolviendo TODO el contenido del modal — antes solo envolvía
+            SessionModalWideBody (layout ancho, web-only), donde
+            `position: 'fixed'` del ghost ignora la jerarquía de todos
+            modos. Ahora que el layout angosto (incluye mobile nativo)
+            también arrastra, `position: 'absolute'` SÍ depende de dónde
+            se monta: como hijo directo del host de pantalla completa que
+            `Modal` arma, ancla contra la pantalla real — anidado más
+            adentro (dentro del padding/centrado de la tarjeta) quedaría
+            offseteado del cursor real, mismo bug ya documentado y
+            corregido para web pero ahora en nativo. */}
+        <SessionDragProvider>
+          <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
+            <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[90%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
+              <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
+                <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
+                <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
+                  {isEditing ? 'Editar sesión' : 'Nueva sesión'}
+                </Text>
+              </View>
 
-            {isWideLayout ? (
-              <SessionDragProvider>
+              {isWideLayout ? (
                 <SessionModalWideBody
                   catalogExercises={catalogExercises}
                   description={description}
@@ -462,11 +630,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   exercises={exercises}
                   onChangeExercise={handleChangeExercise}
                   onChangeRole={handleChangeRole}
-                  onExerciseDropped={(exercise, insertIndex) => setExercises((rows) => {
-                    const next = [...rows];
-                    next.splice(Math.min(insertIndex, next.length), 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
-                    return next;
-                  })}
+                  onExerciseDropped={handleExerciseDropped}
                   onMove={handleMoveExercise}
                   onRemove={handleRemoveExercise}
                   onSetDescription={setDescription}
@@ -474,79 +638,41 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   name={name}
                   visible={visible}
                 />
-              </SessionDragProvider>
-            ) : (
-              /* flex-1 (no solo max-h en el card ancestro): sin esto, un
-                 ScrollView dentro de un contenedor column con altura
-                 máxima no se ve obligado a ceder al tamaño disponible —
-                 toma el alto de su contenido igual, y el resto de la
-                 tarjeta termina recortado sin poder scrollear, sobre todo
-                 notorio en mobile nativo con teclado/contenido largo.
-                 Esto solo, sin embargo, no alcanza: el card ancestro
-                 (create-session-modal-card, rama angosta) necesita además
-                 una altura EXPLÍCITA (h-[90%], no solo max-h-[90%]) —
-                 bug real encontrado 2026-09-14 en Expo Go: max-height sin
-                 height deja el card con tamaño intrínseco (a su
-                 contenido) en Yoga nativo, así que este ScrollView
-                 flex-1 no tenía a qué alto crecer y colapsaba a 0 (modal
-                 se veía en blanco, solo título y botones, sin error en
-                 consola). Web tolera ese mismo layout sin colapsar por
-                 diferencias del algoritmo flexbox del browser vs Yoga —
-                 por eso nunca se notó ahí. Mismo criterio que el fix ya
-                 aplicado a la rama ancha (h-[640px] junto a max-h-[90%],
-                 ver create-session-modal-card más abajo). */
-              <ScrollView className="flex-1" nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
-                <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
-                <InputField dense hideErrorRow label="Descripción (opcional)" onChange={setDescription} value={description} />
-
-                <View className="mb-2 flex-row items-center justify-between" nativeID="create-session-modal-exercises-header" testID="create-session-modal-exercises-header">
-                  <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
-                  <Pressable
-                    className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
-                    nativeID="create-session-modal-create-exercise-button"
-                    onPress={() => setShowCreateExerciseModal(true)}
-                    testID="create-session-modal-create-exercise-button"
-                  >
-                    <Text className="text-sm font-semibold text-primary" nativeID="create-session-modal-create-exercise-button-label" testID="create-session-modal-create-exercise-button-label">
-                      + Crear ejercicio
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <View className="gap-2" nativeID="create-session-modal-exercises-list" testID="create-session-modal-exercises-list">
-                  {exercises.map((entry, index) => (
-                    <SessionExerciseRow
-                      catalogExercises={catalogExercises}
-                      entry={entry}
-                      idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
-                      index={index}
-                      key={entry.localKey}
-                      onChangeExercise={handleChangeExercise}
-                      onChangeRole={handleChangeRole}
-                      onMove={handleMoveExercise}
-                      onRemove={handleRemoveExercise}
-                      totalCount={exercises.length}
-                    />
-                  ))}
-                </View>
-
-                <Pressable
-                  className="mb-3 mt-2 h-11 flex-row items-center justify-center gap-1.5 self-start rounded-full border border-dashed border-primary px-4 hover:bg-primary-tint-subtle active:opacity-70 dark:hover:bg-primary/10"
-                  nativeID="create-session-modal-add-exercise-button"
-                  onPress={handleAddExercise}
-                  testID="create-session-modal-add-exercise-button"
-                >
-                  <MaterialCommunityIcons color="#8cc63e" name="plus" size={18} />
-                  <Text className="text-sm font-semibold text-primary" nativeID="create-session-modal-add-exercise-button-label" testID="create-session-modal-add-exercise-button-label">
-                    Agregar ejercicio
-                  </Text>
-                </Pressable>
-
-                {error && (
-                  <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
-                )}
-              </ScrollView>
-            )}
+              ) : (
+                /* flex-1 (no solo max-h en el card ancestro): sin esto, un
+                   ScrollView dentro de un contenedor column con altura
+                   máxima no se ve obligado a ceder al tamaño disponible —
+                   toma el alto de su contenido igual, y el resto de la
+                   tarjeta termina recortado sin poder scrollear, sobre todo
+                   notorio en mobile nativo con teclado/contenido largo.
+                   Esto solo, sin embargo, no alcanza: el card ancestro
+                   (create-session-modal-card, rama angosta) necesita además
+                   una altura EXPLÍCITA (h-[90%], no solo max-h-[90%]) —
+                   bug real encontrado 2026-09-14 en Expo Go: max-height sin
+                   height deja el card con tamaño intrínseco (a su
+                   contenido) en Yoga nativo, así que este ScrollView
+                   flex-1 no tenía a qué alto crecer y colapsaba a 0 (modal
+                   se veía en blanco, solo título y botones, sin error en
+                   consola). Web tolera ese mismo layout sin colapsar por
+                   diferencias del algoritmo flexbox del browser vs Yoga —
+                   por eso nunca se notó ahí. Mismo criterio que el fix ya
+                   aplicado a la rama ancha (h-[640px] junto a max-h-[90%]). */
+                <SessionModalNarrowBody
+                  catalogExercises={catalogExercises}
+                  description={description}
+                  error={error}
+                  exercises={exercises}
+                  onChangeExercise={handleChangeExercise}
+                  onChangeRole={handleChangeRole}
+                  onExerciseDropped={handleExerciseDropped}
+                  onRemove={handleRemoveExercise}
+                  onReorder={handleReorderExercises}
+                  onSetDescription={setDescription}
+                  onSetName={setName}
+                  name={name}
+                  visible={visible}
+                />
+              )}
 
             <View className="mt-2 flex-row gap-3" nativeID="create-session-modal-actions" testID="create-session-modal-actions">
               <Pressable
@@ -572,15 +698,12 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                 )}
               </Pressable>
             </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+          <DragGhost />
+        </SessionDragProvider>
       </Modal>
 
-      <CreateExerciseModal
-        onClose={() => setShowCreateExerciseModal(false)}
-        onCreated={() => setShowCreateExerciseModal(false)}
-        visible={showCreateExerciseModal}
-      />
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );
