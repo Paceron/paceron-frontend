@@ -7,7 +7,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View 
 // en nativo (bug real, mismo motivo documentado en
 // session-exercise-panel.jsx) — el resto del archivo sigue con el
 // ScrollView de 'react-native' de siempre, sin cambios.
-import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -609,9 +609,20 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   return (
     <>
       <Modal animationType="fade" nativeID="create-session-modal" onRequestClose={handleClose} testID="create-session-modal" transparent visible={visible}>
-        {/* SessionDragProvider (+ DragGhost hermano, no anidado) sube acá,
-            envolviendo TODO el contenido del modal — antes solo envolvía
-            SessionModalWideBody (layout ancho, web-only), donde
+        {/* GestureHandlerRootView propio acá adentro: react-native Modal
+            monta su contenido en una superficie nativa SEPARADA (fuera
+            del árbol de vistas de la app) — el GestureHandlerRootView de
+            app/_layout.jsx, que envuelve toda la app, no llega hasta acá
+            en nativo (documentado en gesture-handler: todo Modal con
+            gestos necesita su propio root). Sin esto, cualquier gesto
+            adentro del modal queda mudo en nativo sin ningún error
+            (bug real reportado en Expo Go: ni el scroll ni el
+            hold-and-drag respondían) — en web nunca se notó porque el
+            Modal de react-native-web es solo una View con estilos, no
+            una superficie nativa aparte.
+            SessionDragProvider (+ DragGhost hermano, no anidado) sube
+            acá, envolviendo TODO el contenido del modal — antes solo
+            envolvía SessionModalWideBody (layout ancho, web-only), donde
             `position: 'fixed'` del ghost ignora la jerarquía de todos
             modos. Ahora que el layout angosto (incluye mobile nativo)
             también arrastra, `position: 'absolute'` SÍ depende de dónde
@@ -620,6 +631,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
             adentro (dentro del padding/centrado de la tarjeta) quedaría
             offseteado del cursor real, mismo bug ya documentado y
             corregido para web pero ahora en nativo. */}
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <SessionDragProvider>
           <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
             <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[90%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
@@ -710,6 +722,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
           </Pressable>
           <DragGhost />
         </SessionDragProvider>
+        </GestureHandlerRootView>
       </Modal>
 
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
