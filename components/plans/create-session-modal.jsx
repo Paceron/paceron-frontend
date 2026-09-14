@@ -445,7 +445,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     <>
       <Modal animationType="fade" nativeID="create-session-modal" onRequestClose={handleClose} testID="create-session-modal" transparent visible={visible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
-          <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
+          <Pressable className={`max-h-[90%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[90%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
             <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
               <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
@@ -481,7 +481,20 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                  máxima no se ve obligado a ceder al tamaño disponible —
                  toma el alto de su contenido igual, y el resto de la
                  tarjeta termina recortado sin poder scrollear, sobre todo
-                 notorio en mobile nativo con teclado/contenido largo. */
+                 notorio en mobile nativo con teclado/contenido largo.
+                 Esto solo, sin embargo, no alcanza: el card ancestro
+                 (create-session-modal-card, rama angosta) necesita además
+                 una altura EXPLÍCITA (h-[90%], no solo max-h-[90%]) —
+                 bug real encontrado 2026-09-14 en Expo Go: max-height sin
+                 height deja el card con tamaño intrínseco (a su
+                 contenido) en Yoga nativo, así que este ScrollView
+                 flex-1 no tenía a qué alto crecer y colapsaba a 0 (modal
+                 se veía en blanco, solo título y botones, sin error en
+                 consola). Web tolera ese mismo layout sin colapsar por
+                 diferencias del algoritmo flexbox del browser vs Yoga —
+                 por eso nunca se notó ahí. Mismo criterio que el fix ya
+                 aplicado a la rama ancha (h-[640px] junto a max-h-[90%],
+                 ver create-session-modal-card más abajo). */
               <ScrollView className="flex-1" nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
                 <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={setName} placeholder="Ej. Series de velocidad" value={name} />
                 <InputField dense hideErrorRow label="Descripción (opcional)" onChange={setDescription} value={description} />
