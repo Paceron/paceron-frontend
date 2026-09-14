@@ -16,8 +16,6 @@ import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
-import { DraxProvider, DraxList, DraxHandle } from 'react-native-drax';
-import { FlatList as GestureFlatList } from 'react-native-gesture-handler';
 import { SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 
@@ -92,7 +90,7 @@ function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibil
 // altura (h-12 los 3); "Serie repetida" es un toggle chico aparte —
 // colapsado por default para que la fila no crezca salvo que haga falta,
 // mismo criterio ya usado para los días de un plan.
-function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercises, onChangeExercise, onChangeRole, onRemove, onMove, reorderMode = 'buttons' }) {
+function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercises, onChangeExercise, onChangeRole, onRemove, onMove }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
@@ -120,36 +118,26 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
             value={entry.exerciseId}
           />
         </View>
-        {reorderMode === 'handle' ? (
-          <DraxHandle style={{ height: 48, width: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
-            <View accessibilityLabel="Arrastrar para reordenar" nativeID={`${idPrefix}-drag-handle`} testID={`${idPrefix}-drag-handle`}>
-              <MaterialCommunityIcons color="#94a3b8" name="menu" size={18} />
-            </View>
-          </DraxHandle>
-        ) : (
-          <>
-            <Pressable
-              accessibilityLabel="Subir ejercicio"
-              className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
-              disabled={index === 0}
-              nativeID={`${idPrefix}-move-up-button`}
-              onPress={() => onMove(entry.localKey, -1)}
-              testID={`${idPrefix}-move-up-button`}
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="chevron-up" size={18} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Bajar ejercicio"
-              className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
-              disabled={index === totalCount - 1}
-              nativeID={`${idPrefix}-move-down-button`}
-              onPress={() => onMove(entry.localKey, 1)}
-              testID={`${idPrefix}-move-down-button`}
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="chevron-down" size={18} />
-            </Pressable>
-          </>
-        )}
+        <Pressable
+          accessibilityLabel="Subir ejercicio"
+          className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
+          disabled={index === 0}
+          nativeID={`${idPrefix}-move-up-button`}
+          onPress={() => onMove(entry.localKey, -1)}
+          testID={`${idPrefix}-move-up-button`}
+        >
+          <MaterialCommunityIcons color="#94a3b8" name="chevron-up" size={18} />
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Bajar ejercicio"
+          className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
+          disabled={index === totalCount - 1}
+          nativeID={`${idPrefix}-move-down-button`}
+          onPress={() => onMove(entry.localKey, 1)}
+          testID={`${idPrefix}-move-down-button`}
+        >
+          <MaterialCommunityIcons color="#94a3b8" name="chevron-down" size={18} />
+        </Pressable>
         <Pressable
           accessibilityLabel="Quitar ejercicio"
           className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
@@ -214,7 +202,7 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
 // padre (`create-session-modal-body`) es `flex-1` dentro de una card de
 // alto FIJO (`create-session-modal-card`, ver CreateSessionModal) — no
 // de un alto propio en cada columna.
-function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorderExercises, onRemove, onExerciseDropped, error, visible }) {
+function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onMove, onRemove, onExerciseDropped, error, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
@@ -246,43 +234,41 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
             encontrado por el usuario, el área nunca mostraba scrollbar
             pese a desbordar. El estilo del scrollbar (fino, temático)
             ya lo define global.css para cualquier elemento con scroll,
-            así que no hace falta nada más acá. */}
+            así que no hace falta nada más acá.
+            Reorder por handle (react-native-drax) evaluado y revertido
+            2026-09-14: falló 2 veces con mouse real (nunca activaba el
+            gesto) y coincide con un crash en Expo Go — la librería pide
+            gesture-handler v3, el proyecto tiene v2.28 (peer dep mínima
+            ">=2.0.0" mal cumplida en la práctica). Vuelve a botones
+            arriba/abajo, ya probados. Ver nota en CLAUDE.md. */}
         <View className="flex-1 rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
-          {/* DraxList: reorder por arrastre (handle de 3 rayitas) en vez
-              de botones subir/bajar — solo en este layout ancho, el
-              angosto/mobile sigue con los botones (ver más abajo, sin
-              cambios). onReorder ya entrega el array completo reordenado,
-              no hace falta computar índices a mano. */}
-          <DraxList
-            component={GestureFlatList}
-            containerStyle={{ flex: 1 }}
-            contentContainerStyle={{ gap: 8, padding: 8 }}
-            data={exercises}
-            itemDraxViewProps={{ dragHandle: true }}
-            keyExtractor={(entry) => entry.localKey}
-            ListEmptyComponent={() => (
+          <ScrollView
+            contentContainerClassName="gap-2 p-2"
+            nativeID="create-session-modal-exercises-scroll"
+            onScroll={onListScroll}
+            ref={autoScrollRef}
+            scrollEventThrottle={16}
+            testID="create-session-modal-exercises-scroll"
+          >
+            {exercises.length === 0 ? (
               <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
                 Todavía no agregaste ejercicios.
               </Text>
-            )}
-            onReorder={({ data }) => onReorderExercises(data)}
-            onScroll={onListScroll}
-            ref={autoScrollRef}
-            renderItem={({ item, index }) => (
+            ) : exercises.map((entry, index) => (
               <SessionExerciseRow
                 catalogExercises={catalogExercises}
-                entry={item}
-                idPrefix={`create-session-modal-exercise-row-${item.localKey}`}
+                entry={entry}
+                idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
                 index={index}
+                key={entry.localKey}
                 onChangeExercise={onChangeExercise}
                 onChangeRole={onChangeRole}
+                onMove={onMove}
                 onRemove={onRemove}
-                reorderMode="handle"
+                totalCount={exercises.length}
               />
-            )}
-            scrollEventThrottle={16}
-            style={{ flex: 1 }}
-          />
+            ))}
+          </ScrollView>
           <SessionDropIndicator />
         </View>
 
@@ -417,11 +403,6 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     });
   };
 
-  // Layout ancho: DraxList ya entrega el array completo en el orden
-  // final tras un arrastre — solo hace falta guardarlo, sin recalcular
-  // índices a mano (a diferencia de handleMoveExercise, de a un paso).
-  const handleReorderExercises = (nextExercises) => setExercises(nextExercises);
-
   const handleSubmit = async () => {
     if (submitting) return;
     if (!name.trim() || exercises.length === 0) {
@@ -473,29 +454,27 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
             </View>
 
             {isWideLayout ? (
-              <DraxProvider>
-                <SessionDragProvider>
-                  <SessionModalWideBody
-                    catalogExercises={catalogExercises}
-                    description={description}
-                    error={error}
-                    exercises={exercises}
-                    onChangeExercise={handleChangeExercise}
-                    onChangeRole={handleChangeRole}
-                    onExerciseDropped={(exercise, insertIndex) => setExercises((rows) => {
-                      const next = [...rows];
-                      next.splice(Math.min(insertIndex, next.length), 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
-                      return next;
-                    })}
-                    onReorderExercises={handleReorderExercises}
-                    onRemove={handleRemoveExercise}
-                    onSetDescription={setDescription}
-                    onSetName={setName}
-                    name={name}
-                    visible={visible}
-                  />
-                </SessionDragProvider>
-              </DraxProvider>
+              <SessionDragProvider>
+                <SessionModalWideBody
+                  catalogExercises={catalogExercises}
+                  description={description}
+                  error={error}
+                  exercises={exercises}
+                  onChangeExercise={handleChangeExercise}
+                  onChangeRole={handleChangeRole}
+                  onExerciseDropped={(exercise, insertIndex) => setExercises((rows) => {
+                    const next = [...rows];
+                    next.splice(Math.min(insertIndex, next.length), 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
+                    return next;
+                  })}
+                  onMove={handleMoveExercise}
+                  onRemove={handleRemoveExercise}
+                  onSetDescription={setDescription}
+                  onSetName={setName}
+                  name={name}
+                  visible={visible}
+                />
+              </SessionDragProvider>
             ) : (
               /* flex-1 (no solo max-h en el card ancestro): sin esto, un
                  ScrollView dentro de un contenedor column con altura

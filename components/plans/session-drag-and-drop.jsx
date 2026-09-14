@@ -70,10 +70,10 @@ export function useSessionDropTarget() {
   return dropTargetRef;
 }
 
-// Ref imperativo a la lista (FlatList detrás de DraxList) + callback de
-// scroll — para autoscroll cerca de los bordes mientras se arrastra
-// desde el catálogo. `onListScroll` se cablea al `onScroll` del
-// DraxList/FlatList consumidor.
+// Ref imperativo al ScrollView de la lista + callback de scroll — para
+// autoscroll cerca de los bordes mientras se arrastra desde el
+// catálogo. `onListScroll` se cablea al `onScroll` del ScrollView
+// consumidor.
 export function useSessionAutoScrollTarget() {
   const { autoScrollRef, scrollOffsetRef } = useContext(SessionDragContext);
   const onListScroll = (e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; };
@@ -91,9 +91,9 @@ export function useSessionDropIndicator() {
 
 // Línea horizontal que marca dónde caería el ejercicio si se soltara
 // ahora — se monta una sola vez, adentro del `View` con `ref={dropTargetRef}`.
-// Position absolute + top animado en vez de un ítem más de la lista:
-// la lista está virtualizada (DraxList/FlatList), insertar un item fantasma
-// ahí complicaría mucho más de lo que vale.
+// Position absolute + top animado en vez de una fila más de la lista:
+// más simple que insertar/sacar una fila fantasma en cada frame de
+// arrastre.
 export function SessionDropIndicator() {
   const colors = useThemeColors();
   const { hoverIndexSV, isHoveringSV } = useSessionDropIndicator();
@@ -135,8 +135,8 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
 
   // Autoscroll: JS-thread, llamado desde el worklet de onUpdate vía
   // runOnJS — el offset actual se rastrea por afuera (scrollOffsetRef,
-  // actualizado por onScroll) porque scrollToOffset no tiene forma de
-  // preguntar "en qué offset estoy ahora".
+  // actualizado por onScroll) porque el ScrollView no tiene forma de
+  // preguntar "en qué offset estoy ahora", solo de pedirle uno nuevo.
   const maybeAutoScroll = (absoluteY, top, height) => {
     if (!autoScrollRef.current) return;
     const relativeY = absoluteY - top;
@@ -148,7 +148,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children }) {
     }
     if (next === null || next === scrollOffsetRef.current) return;
     scrollOffsetRef.current = next;
-    autoScrollRef.current.scrollToOffset({ offset: next, animated: false });
+    autoScrollRef.current.scrollTo({ y: next, animated: false });
   };
 
   // Chequeo fresco con la posición final real (absoluteX/Y del propio
