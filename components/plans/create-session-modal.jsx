@@ -1,5 +1,13 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+// ScrollView de gesture-handler, alias aparte — solo para el contenedor
+// de ejercicios de la sesión en layout angosto (envuelve las
+// ReorderableRow, cada una con su propio GestureDetector). Un ScrollView
+// plano de 'react-native' no negocia bien con un GestureDetector anidado
+// en nativo (bug real, mismo motivo documentado en
+// session-exercise-panel.jsx) — el resto del archivo sigue con el
+// ScrollView de 'react-native' de siempre, sin cambios.
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -386,7 +394,7 @@ function SessionModalNarrowBody({ name, onSetName, description, onSetDescription
 
       <View className="h-[280px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
         <ReorderProvider>
-          <ScrollView
+          <GestureScrollView
             contentContainerClassName="gap-2 p-2"
             nativeID="create-session-modal-exercises-scroll"
             onScroll={onListScroll}
@@ -413,7 +421,7 @@ function SessionModalNarrowBody({ name, onSetName, description, onSetDescription
                 />
               </ReorderableRow>
             ))}
-          </ScrollView>
+          </GestureScrollView>
           <SessionDropIndicator />
           <ReorderDropIndicator />
         </ReorderProvider>

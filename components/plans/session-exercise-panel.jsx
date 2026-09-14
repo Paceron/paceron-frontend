@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
+// ScrollView de gesture-handler (no el de 'react-native' plano) — en
+// nativo, un ScrollView plano no negocia correctamente con un
+// GestureDetector anidado adentro (acá, las DraggableExerciseCard con
+// holdMs): sin esto, el scroll horizontal de la tira quedaba
+// completamente bloqueado apenas se tocaba una card, incluso sin llegar
+// a activarse el drag (bug real reportado en Expo Go, 2026-09-14). Este
+// ScrollView es API-compatible con el de 'react-native' (mismo props),
+// así que reemplaza sin cambios en el resto del archivo.
+import { ScrollView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -36,15 +45,18 @@ function PanelExerciseCard({ exercise }) {
 }
 
 // Variante compacta (icono + nombre, sin stat) para la tira horizontal
-// de mobile/narrow — ancho fijo chico, pensada para caber varias en fila
-// con scroll horizontal, a diferencia de PanelExerciseCard (fila entera,
-// solo layout ancho de escritorio).
+// de mobile/narrow — rectángulo ancho fijo (más ancho que alto, para el
+// nombre) y alto fijo (h-20, no solo w-*): sin alto fijo, el texto a 1 o
+// 2 líneas hacía que cada card tuviera una altura distinta según el
+// nombre del ejercicio (bug real reportado, todas debían quedar
+// parejas) — justify-center además centra el contenido cuando el
+// nombre entra en 1 sola línea.
 function PanelExerciseCardCompact({ exercise }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
   const idPrefix = `session-exercise-panel-card-compact-${exercise.id}`;
 
   return (
-    <View className="w-20 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+    <View className="h-20 w-28 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
       <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
         <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={16} />
       </View>
