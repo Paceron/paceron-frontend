@@ -7,7 +7,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View 
 // en nativo (bug real, mismo motivo documentado en
 // session-exercise-panel.jsx) — el resto del archivo sigue con el
 // ScrollView de 'react-native' de siempre, sin cambios.
-import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView as GestureScrollView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -95,26 +95,16 @@ function SessionRoleClosedSelect({ idPrefix, value, onChange }) {
 
   return (
     <>
-      {/* GestureDetector + Gesture.Native(): esta fila vive adentro de
-          ReorderableRow, que envuelve todo con su propio Pan
-          (mantener-presionado-y-arrastrar) — sin este acompañamiento
-          nativo, el Pan se quedaba con el toque incluso para un tap
-          corto y este botón nunca disparaba onPress (bug real
-          reportado: el ícono de rol no abría el menú). Mismo mecanismo
-          documentado en CLAUDE.md para ReorderableRow, acá aplicado
-          puntual sobre el control anidado en vez de la fila entera. */}
-      <GestureDetector gesture={Gesture.Native()}>
-        <Pressable
-          accessibilityLabel={`Rol: ${meta.label}`}
-          className={`h-12 w-12 items-center justify-center rounded-full ${meta.bg}`}
-          nativeID={`${idPrefix}-role-select`}
-          onPress={handleOpen}
-          ref={buttonRef}
-          testID={`${idPrefix}-role-select`}
-        >
-          <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
-        </Pressable>
-      </GestureDetector>
+      <Pressable
+        accessibilityLabel={`Rol: ${meta.label}`}
+        className={`h-12 w-12 items-center justify-center rounded-full ${meta.bg}`}
+        nativeID={`${idPrefix}-role-select`}
+        onPress={handleOpen}
+        ref={buttonRef}
+        testID={`${idPrefix}-role-select`}
+      >
+        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
+      </Pressable>
       <AnimatedDropdown anchorStyle={{ top: anchor.top, left: anchor.left }} onClose={() => setOpen(false)} open={open}>
         <View className="w-48 gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-role-select-menu`} testID={`${idPrefix}-role-select-menu`}>
           {SESSION_ROLE_ORDER.map((role) => {
@@ -167,12 +157,13 @@ function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibil
 // altura (h-12 los 3); "Serie repetida" es un toggle chico aparte —
 // colapsado por default para que la fila no crezca salvo que haga falta,
 // mismo criterio ya usado para los días de un plan.
-// `compact` (mobile/narrow, 2026-09-14): saca los botones subir/bajar
-// (el reordenamiento ahí es por mantener-presionado-y-arrastrar sobre la
-// fila entera, ver ReorderableRow) y cambia el selector de rol al
-// select cerrado — ambos cambios ganan ancho para el nombre del
-// ejercicio. `onMove` queda sin uso en este modo (no se pasa).
-function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercises, onChangeExercise, onChangeRole, onRemove, onMove, compact }) {
+// El reordenamiento es SIEMPRE por mantener-presionado-y-arrastrar sobre
+// la fila entera (ReorderableRow, en ambos layouts desde 2026-09-14) —
+// ya no hay botones subir/bajar. `compact` (mobile/narrow) sigue
+// controlando solo el selector de rol: cerrado (1 ícono + menú) en vez
+// del segmentado de 3 íconos, para ganar ancho para el nombre del
+// ejercicio — en desktop sobra espacio, se mantiene el segmentado.
+function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChangeExercise, onChangeRole, onRemove, compact }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
@@ -190,88 +181,29 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
         ) : (
           <SessionRoleSegmentedPicker idPrefix={idPrefix} onChange={(role) => onChangeRole(entry.localKey, role)} value={entry.role} />
         )}
-        {(() => {
-          const selectField = (
-            <ResponsiveSelectField
-              className="mb-0"
-              dense
-              hideErrorRow
-              hideLabel
-              label={`Ejercicio ${index + 1}`}
-              onChange={(exerciseId) => onChangeExercise(entry.localKey, { exerciseId })}
-              options={roleOptions.map((e) => ({ id: e.id, name: e.name }))}
-              placeholder={roleOptions.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
-              required
-              value={entry.exerciseId}
-            />
-          );
-          // Mismo motivo que SessionRoleClosedSelect/el botón de quitar —
-          // este selector también vive adentro de ReorderableRow en modo
-          // compact.
-          return compact ? (
-            <GestureDetector gesture={Gesture.Native()}>
-              <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
-                {selectField}
-              </View>
-            </GestureDetector>
-          ) : (
-            <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
-              {selectField}
-            </View>
-          );
-        })()}
-        {!compact && (
-          <>
-            <Pressable
-              accessibilityLabel="Subir ejercicio"
-              className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
-              disabled={index === 0}
-              nativeID={`${idPrefix}-move-up-button`}
-              onPress={() => onMove(entry.localKey, -1)}
-              testID={`${idPrefix}-move-up-button`}
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="chevron-up" size={18} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Bajar ejercicio"
-              className="h-12 w-9 items-center justify-center rounded-xl border border-slate-200 disabled:opacity-30 dark:border-slate-700"
-              disabled={index === totalCount - 1}
-              nativeID={`${idPrefix}-move-down-button`}
-              onPress={() => onMove(entry.localKey, 1)}
-              testID={`${idPrefix}-move-down-button`}
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="chevron-down" size={18} />
-            </Pressable>
-          </>
-        )}
-        {compact ? (
-          // Mismo motivo que SessionRoleClosedSelect: este botón vive
-          // adentro de ReorderableRow, necesita su propio Gesture.Native()
-          // para no perder el tap contra el Pan de la fila. No hace falta
-          // en modo no-compact (wide), ahí no hay ReorderableRow de por
-          // medio.
-          <GestureDetector gesture={Gesture.Native()}>
-            <Pressable
-              accessibilityLabel="Quitar ejercicio"
-              className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
-              nativeID={`${idPrefix}-remove-button`}
-              onPress={() => onRemove(entry.localKey)}
-              testID={`${idPrefix}-remove-button`}
-            >
-              <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-            </Pressable>
-          </GestureDetector>
-        ) : (
-          <Pressable
-            accessibilityLabel="Quitar ejercicio"
-            className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
-            nativeID={`${idPrefix}-remove-button`}
-            onPress={() => onRemove(entry.localKey)}
-            testID={`${idPrefix}-remove-button`}
-          >
-            <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-          </Pressable>
-        )}
+        <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
+          <ResponsiveSelectField
+            className="mb-0"
+            dense
+            hideErrorRow
+            hideLabel
+            label={`Ejercicio ${index + 1}`}
+            onChange={(exerciseId) => onChangeExercise(entry.localKey, { exerciseId })}
+            options={roleOptions.map((e) => ({ id: e.id, name: e.name }))}
+            placeholder={roleOptions.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
+            required
+            value={entry.exerciseId}
+          />
+        </View>
+        <Pressable
+          accessibilityLabel="Quitar ejercicio"
+          className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
+          nativeID={`${idPrefix}-remove-button`}
+          onPress={() => onRemove(entry.localKey)}
+          testID={`${idPrefix}-remove-button`}
+        >
+          <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
+        </Pressable>
       </View>
 
       <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>
@@ -327,7 +259,7 @@ function SessionExerciseRow({ idPrefix, entry, index, totalCount, catalogExercis
 // padre (`create-session-modal-body`) es `flex-1` dentro de una card de
 // alto FIJO (`create-session-modal-card`, ver CreateSessionModal) — no
 // de un alto propio en cada columna.
-function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onMove, onRemove, onExerciseDropped, error, visible }) {
+function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
@@ -345,7 +277,7 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
       <View className="flex-1" nativeID="create-session-modal-exercises-column" testID="create-session-modal-exercises-column">
         <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
         <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-drop-hint" testID="create-session-modal-drop-hint">
-          Arrastrá ejercicios del catálogo de la izquierda para agregarlos acá.
+          Arrastrá ejercicios del catálogo de la izquierda para agregarlos acá. Mantené presionada una fila para reordenarla.
         </Text>
 
         {/* flex-1: ocupa todo el alto que sobra en la columna, fijo por
@@ -360,41 +292,43 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
             pese a desbordar. El estilo del scrollbar (fino, temático)
             ya lo define global.css para cualquier elemento con scroll,
             así que no hace falta nada más acá.
-            Reorder por handle (react-native-drax) evaluado y revertido
-            2026-09-14: falló 2 veces con mouse real (nunca activaba el
-            gesto) y coincide con un crash en Expo Go — la librería pide
-            gesture-handler v3, el proyecto tiene v2.28 (peer dep mínima
-            ">=2.0.0" mal cumplida en la práctica). Vuelve a botones
-            arriba/abajo, ya probados. Ver nota en CLAUDE.md. */}
+            Reordenamiento por mantener-presionado (ReorderableRow, ver
+            session-drag-and-drop.jsx) desde 2026-09-14, unificado con
+            mobile/narrow — antes esta columna usaba botones arriba/abajo
+            (que a su vez habían reemplazado a react-native-drax,
+            evaluado y descartado el mismo día por incompatibilidad con
+            gesture-handler v2, ver CLAUDE.md). */}
         <View className="flex-1 rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
-          <ScrollView
-            contentContainerClassName="gap-2 p-2"
-            nativeID="create-session-modal-exercises-scroll"
-            onScroll={onListScroll}
-            ref={autoScrollRef}
-            scrollEventThrottle={16}
-            testID="create-session-modal-exercises-scroll"
-          >
-            {exercises.length === 0 ? (
-              <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
-                Todavía no agregaste ejercicios.
-              </Text>
-            ) : exercises.map((entry, index) => (
-              <SessionExerciseRow
-                catalogExercises={catalogExercises}
-                entry={entry}
-                idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
-                index={index}
-                key={entry.localKey}
-                onChangeExercise={onChangeExercise}
-                onChangeRole={onChangeRole}
-                onMove={onMove}
-                onRemove={onRemove}
-                totalCount={exercises.length}
-              />
-            ))}
-          </ScrollView>
-          <SessionDropIndicator />
+          <ReorderProvider>
+            <GestureScrollView
+              contentContainerClassName="gap-2 p-2"
+              nativeID="create-session-modal-exercises-scroll"
+              onScroll={onListScroll}
+              ref={autoScrollRef}
+              scrollEventThrottle={16}
+              testID="create-session-modal-exercises-scroll"
+            >
+              {exercises.length === 0 ? (
+                <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
+                  Todavía no agregaste ejercicios.
+                </Text>
+              ) : exercises.map((entry, index) => (
+                <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
+                  <SessionExerciseRow
+                    catalogExercises={catalogExercises}
+                    entry={entry}
+                    idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
+                    index={index}
+                    onChangeExercise={onChangeExercise}
+                    onChangeRole={onChangeRole}
+                    onRemove={onRemove}
+                  />
+                </ReorderableRow>
+              ))}
+            </GestureScrollView>
+            <SessionDropIndicator />
+            <ReorderDropIndicator />
+          </ReorderProvider>
         </View>
 
         {error && (
@@ -573,25 +507,9 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
 
   const handleRemoveExercise = (localKey) => setExercises((rows) => rows.filter((r) => r.localKey !== localKey));
 
-  // Intercambia la fila con su vecina inmediata en la dirección dada
-  // (-1 = subir, +1 = bajar) — sin efecto si ya está en la punta (la UI
-  // ya deshabilita el botón ahí, esto es la defensa del lado de la
-  // función). Solo layout ancho (botones subir/bajar); narrow reordena
-  // por drag, ver handleReorderExercises.
-  const handleMoveExercise = (localKey, direction) => {
-    setExercises((rows) => {
-      const index = rows.findIndex((r) => r.localKey === localKey);
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= rows.length) return rows;
-      const next = [...rows];
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-      return next;
-    });
-  };
-
-  // Reordenamiento por drag (mobile/narrow, ver ReorderableRow) — mismo
-  // resultado final que handleMoveExercise pero recibe directamente los
-  // índices de origen/destino en vez de una dirección relativa.
+  // Reordenamiento por mantener-presionado-y-arrastrar (ReorderableRow),
+  // unificado en ambos layouts desde 2026-09-14 — recibe directamente
+  // los índices de origen/destino.
   const handleReorderExercises = (fromIndex, toIndex) => {
     setExercises((rows) => reorderList(rows, fromIndex, toIndex));
   };
@@ -688,8 +606,8 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   onChangeExercise={handleChangeExercise}
                   onChangeRole={handleChangeRole}
                   onExerciseDropped={handleExerciseDropped}
-                  onMove={handleMoveExercise}
                   onRemove={handleRemoveExercise}
+                  onReorder={handleReorderExercises}
                   onSetDescription={setDescription}
                   onSetName={setName}
                   name={name}

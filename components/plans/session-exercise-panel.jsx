@@ -117,8 +117,14 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
               // holdMs: la tira scrollea horizontal, el drag hacia la
               // lista de ejercicios de la sesión es vertical — sin el
               // delay, cualquier intento de scrollear la tira se
-              // interpretaría como el inicio de un arrastre.
-              <DraggableExerciseCard exercise={exercise} holdMs={300} key={exercise.id} onDropped={onExerciseAdded}>
+              // interpretaría como el inicio de un arrastre. Subido de
+              // 300 a 450ms (2026-09-14, mismo motivo que en
+              // ReorderableRow): con 300ms, un scroll LENTO deliberado
+              // podía tardar más en cruzar el umbral de failOffsetX que
+              // en llegar al hold, activándose como drag en vez de ceder
+              // al ScrollView (bug real: solo un swipe agresivo
+              // scrolleaba).
+              <DraggableExerciseCard exercise={exercise} holdMs={450} key={exercise.id} onDropped={onExerciseAdded}>
                 <PanelExerciseCardCompact exercise={exercise} />
               </DraggableExerciseCard>
             ))}
