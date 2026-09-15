@@ -291,32 +291,22 @@ export function ReorderDropIndicator() {
   );
 }
 
-// Fila reordenable — el gesto de mantener-presionado-y-arrastrar vive en
-// una capa INVISIBLE, hermana del contenido real (no ancestro de él):
-// `activateAfterLongPress` (gesture-handler) hace que el Pan solo se
-// active tras el hold, pero un GestureDetector que envuelve al contenido
-// real como ancestro se queda con el toque incluso para un tap corto en
-// un control anidado (ícono de rol, botón de quitar) — probado, sigue
-// pasando aunque el propio control tenga su Gesture.Native() (bug real
-// reportado 2 veces: el selector de rol nunca abría). Separar la capa
-// de arrastre del contenido evita el problema de raíz en vez de
-// intentar resolver el arbitraje: el sistema de touch nativo entrega el
-// toque a lo que esté MÁS ARRIBA en el z-order en ese punto de pantalla
-// — un botón real (Pressable) dibujado ENCIMA de la capa de arrastre
-// gana el toque ahí sin competir por ningún gesto; el resto de la fila
-// (sin nada dibujado encima) cae a la capa de abajo. La capa de
-// arrastre es `position: absolute, inset 0` dentro de un contenedor
-// `position: relative` cuyo alto lo determina el contenido real (en
-// flujo normal, no absoluto) — mismo patrón de overlay ya usado en
-// DragGhost/AnimatedDropdown.
-// `Gesture.Simultaneous(pan, Gesture.Native())` en la capa de arrastre
-// sigue haciendo falta para el otro arbitraje (esta fila vs. el
-// ScrollView vertical que la contiene) — ese es un problema distinto
-// (ancestro-vs-hermano del contenedor scrolleable, no fila-vs-control
-// anidado) y sí se resolvió con esta combinación (confirmado por el
-// usuario). `failOffsetY` ahí evita que un intento de scroll (swipe
-// rápido) quede atrapado sin activarse y sin soltar el toque a tiempo.
-// Solo la fila activa se traduce visualmente seteando su propio offset
+// Fila reordenable — envuelve el contenido real (SessionExerciseRow) con
+// el gesto de mantener-presionado-y-arrastrar. `activateAfterLongPress`
+// (gesture-handler) hace que el Pan solo se active tras el hold: antes
+// de eso, un movimiento del dedo lo cede al ScrollView vertical que
+// contiene la lista, que puede scrollear con normalidad. `Gesture.
+// Simultaneous(pan, Gesture.Native())` es lo que permite que ScrollView
+// hermano recupere el toque a tiempo para un swipe (confirmado
+// funcionando por el usuario). Intento de sacar el Pan del ancestro de
+// los controles anidados (capa invisible hermana, 2026-09-14) revertido
+// el mismo día: rompió el propio arrastre en web Y mobile — no se
+// investigó a fondo por qué, prioridad fue restaurar lo que andaba. El
+// problema de "el ícono de rol no abre el menú" pese al tap registrando
+// (confirmado con console.log por el usuario) parece NO ser arbitraje
+// de gestos — más probable un problema de stacking/z-index del
+// AnimatedDropdown anidado tan profundo, a investigar por separado. Solo
+// la fila activa se traduce visualmente seteando su propio offset
 // (dragOffsetY, compartido en el contexto porque solo una fila se
 // arrastra por vez); las demás no se reacomodan en vivo — la línea de
 // ReorderDropIndicator ya comunica el destino.
@@ -374,7 +364,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
       targetIndexSV.value = -1;
       dragOffsetY.value = 0;
     });
-  const dragSurfaceGesture = Gesture.Simultaneous(pan, Gesture.Native());
+  const rowGesture = Gesture.Simultaneous(pan, Gesture.Native());
 
   const rowStyle = useAnimatedStyle(() => {
     const isActive = activeIndexSV.value === index;
@@ -386,18 +376,11 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
   });
 
   return (
-    <View nativeID={`reorderable-exercise-row-${index}`} style={{ position: 'relative' }} testID={`reorderable-exercise-row-${index}`}>
-      <GestureDetector gesture={dragSurfaceGesture}>
-        <View
-          nativeID={`reorderable-exercise-row-${index}-drag-surface`}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          testID={`reorderable-exercise-row-${index}-drag-surface`}
-        />
-      </GestureDetector>
-      <Animated.View nativeID={`reorderable-exercise-row-${index}-content`} style={rowStyle} testID={`reorderable-exercise-row-${index}-content`}>
+    <GestureDetector gesture={rowGesture}>
+      <Animated.View nativeID={`reorderable-exercise-row-${index}`} style={rowStyle} testID={`reorderable-exercise-row-${index}`}>
         {children}
       </Animated.View>
-    </View>
+    </GestureDetector>
   );
 }
 

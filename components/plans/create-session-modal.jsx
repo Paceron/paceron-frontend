@@ -87,6 +87,7 @@ function SessionRoleClosedSelect({ idPrefix, value, onChange }) {
   const meta = SESSION_ROLE_META[value];
 
   const handleOpen = () => {
+    console.log('SessionRoleClosedSelect.handleOpen: buttonRef.current =', buttonRef.current);
     buttonRef.current?.measureInWindow((x, y, width, height) => {
       setAnchor({ top: y + height + 4, left: x });
       setOpen(true);
