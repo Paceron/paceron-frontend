@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { isWeb, isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
-import { useTrainingPlanStore, getPlanStatus } from '../../store/training-plan-store.js';
+import { useTrainingPlans } from '../../hooks/use-training-plans.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
@@ -15,11 +15,6 @@ import { TabBar } from '../shared/tab-bar.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SessionsCatalogTab } from './sessions-catalog-tab.jsx';
 import { ExercisesCatalogTab } from './exercises-catalog-tab.jsx';
-
-const STATUS_META = {
-  activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  vencido: { label: 'Vencido', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
-};
 
 // Planes / Sesiones / Ejercicios — a diferencia de TeamDetailScreen
 // (pestañas solo en web), acá van en ambas plataformas: cada pestaña es
@@ -32,8 +27,6 @@ const TABS = [
 ];
 
 function PlanRow({ plan, onPress }) {
-  const status = getPlanStatus(plan);
-  const statusMeta = STATUS_META[status];
   const trainingDaysCount = plan.days.filter((d) => d.kind === 'training').length;
 
   return (
@@ -51,12 +44,7 @@ function PlanRow({ plan, onPress }) {
           {plan.name}
         </Text>
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`training-plan-row-${plan.id}-meta`} testID={`training-plan-row-${plan.id}-meta`}>
-          {trainingDaysCount} {trainingDaysCount === 1 ? 'sesión' : 'sesiones'} de entrenamiento · caduca a los {plan.durationDays} días
-        </Text>
-      </View>
-      <View className={`rounded-full px-2.5 py-1 ${statusMeta.bg}`} nativeID={`training-plan-row-${plan.id}-status-tag`} testID={`training-plan-row-${plan.id}-status-tag`}>
-        <Text className={`text-xs font-semibold ${statusMeta.text}`} nativeID={`training-plan-row-${plan.id}-status-tag-label`} testID={`training-plan-row-${plan.id}-status-tag-label`}>
-          {statusMeta.label}
+          {plan.days.length} días · {trainingDaysCount} {trainingDaysCount === 1 ? 'sesión' : 'sesiones'} de entrenamiento
         </Text>
       </View>
       <MaterialCommunityIcons color="#94a3b8" name="chevron-right" size={20} />
@@ -68,18 +56,7 @@ function PlansTab() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
-  const plans = useTrainingPlanStore((s) => s.plans);
-  const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    setLoading(true);
-    fetchPlans(user.userId).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.userId]);
+  const { plans, loading } = useTrainingPlans(user?.userId);
 
   return (
     <SectionCard
@@ -123,12 +100,11 @@ function TrainingPlansScreenContent() {
   const [activeTab, setActiveTab] = useState('planes');
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
-  const fetchPlans = useTrainingPlanStore((s) => s.fetchPlans);
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => {
     if (!user?.userId) return Promise.resolve();
     return Promise.all([
-      fetchPlans(user.userId),
+      queryClient.invalidateQueries({ queryKey: ['training-plans', user.userId] }),
       queryClient.invalidateQueries({ queryKey: ['exercises', user.userId] }),
       queryClient.invalidateQueries({ queryKey: ['sessions', user.userId] }),
     ]);

@@ -1,11 +1,6 @@
 import { create } from 'zustand';
 import {
-  listTrainingPlans as listTrainingPlansService,
   getTrainingPlan as getTrainingPlanService,
-  createTrainingPlan as createTrainingPlanService,
-  updateTrainingPlan as updateTrainingPlanService,
-  deleteTrainingPlan as deleteTrainingPlanService,
-  cloneTrainingPlan as cloneTrainingPlanService,
   listRunnerPlanAssignments as listRunnerPlanAssignmentsService,
   assignPlanToRunner as assignPlanToRunnerService,
   unassignPlanFromRunner as unassignPlanFromRunnerService,
@@ -16,59 +11,22 @@ import {
 import { listTeams as listTeamsService } from '../services/teams.js';
 import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService } from '../services/groups.js';
 import {
-  toTrainingPlanModel, toCreateTrainingPlanPayload, toUpdateTrainingPlanPayload,
+  toTrainingPlanModel,
   toRunnerPlanAssignmentModel, toCurrentPlanMarkModel, toTeamModel, toGroupModel,
 } from '../services/normalizers.js';
 
-// Caducidades soportadas — pedido explícito del usuario (7 o 14 días, no
-// un número libre). Ver decisión en la spec: gobierna cuánto dura vigente
-// el ciclo semanal fijo de 7 días, no cuántos días tiene el plan.
-export const PLAN_DURATION_OPTIONS = [7, 14];
-
-const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-const DAY_LABELS = { monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo' };
-
-export function dayLabel(dayOfWeek) {
-  return DAY_LABELS[dayOfWeek] ?? dayOfWeek;
+// Arma dayCount días vacíos (todos "rest"), numerados 1..dayCount —
+// punto de partida al crear un plan nuevo o al agregar/quitar días en
+// el form. Sin día de la semana: el orden es puramente secuencial.
+export function buildEmptyPlanDays(dayCount) {
+  return Array.from({ length: dayCount }, (_, i) => ({ sequenceNo: i + 1, kind: 'rest', otherName: null, sessionId: null }));
 }
 
-// Arma los 7 días vacíos (todos "rest") en el orden fijo lunes→domingo —
-// punto de partida al crear un plan nuevo, para que el formulario siempre
-// tenga la estructura completa desde el primer render. Un día
-// "training" referencia una sesión del catálogo (sessionId), no la
-// construye inline — ver enmienda 2026-08-26 de la spec.
-export function buildEmptyPlanDays() {
-  return DAY_ORDER.map((dayOfWeek, i) => ({ sequenceNo: i + 1, dayOfWeek, kind: 'rest', otherName: null, sessionId: null }));
-}
-
-// activo/vencido — se deriva en el momento de mostrarlo, no se guarda.
-// Mismo criterio de semáforo que el resto de la app (SUBSCRIPTION_META,
-// TEAM_STATUS_META en team-detail-screen.jsx).
-export function getPlanStatus(plan) {
-  if (!plan?.createdAt || !plan?.durationDays) return 'activo';
-  const expiresAt = new Date(plan.createdAt).getTime() + plan.durationDays * 24 * 60 * 60 * 1000;
-  return Date.now() < expiresAt ? 'activo' : 'vencido';
-}
-
-// Días enteros que le quedan de vigencia a un plan — mismo cálculo que
-// getPlanStatus, pero como cantidad en vez de semáforo. 0 (no negativo)
-// si ya venció. Para "Mis planes", fila de abajo del corredor.
-export function getPlanDaysRemaining(plan) {
-  if (!plan?.createdAt || !plan?.durationDays) return 0;
-  const expiresAt = new Date(plan.createdAt).getTime() + plan.durationDays * 24 * 60 * 60 * 1000;
-  return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
-}
-
-// Hoy, como uno de los 7 dayOfWeek del dominio — getDay() de JS es
-// 0=domingo..6=sábado, DAY_ORDER acá arriba arranca en lunes.
-export function getTodayDayOfWeek() {
-  const jsDay = new Date().getDay();
-  return DAY_ORDER[(jsDay + 6) % 7];
-}
-
+// CRUD del catálogo de planes (list/get/create/update/delete/clone) vive
+// en hooks/use-training-plans.js (TanStack Query, ver CLAUDE.md) — este
+// store quedó solo con lo que NO es catálogo puro: asignación (vieja,
+// mockeada, ver comentario de groupTrainingPlanIds) y "plan actual".
 export const useTrainingPlanStore = create((set, get) => ({
-  // Planes propios del entrenador (Planes de entrenamiento).
-  plans: [],
   // Planes que ve el corredor (Mis planes) — individual + por grupo.
   myPlans: [],
   // Hasta 2 ids de myPlans marcados como "actual" — ver
@@ -84,93 +42,23 @@ export const useTrainingPlanStore = create((set, get) => ({
   // grupo — este store no tiene copia propia de los grupos reales.
   groupTrainingPlanIds: {},
 
-  // GET /training-plans?owner_id= — biblioteca del entrenador.
-  fetchPlans: async (ownerId) => {
-    try {
-      const dtos = await listTrainingPlansService({ ownerId });
-      set({ plans: dtos.map(toTrainingPlanModel) });
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Trae un plan puntual — para deep-link directo a /training-plans/{id}
-  // o /plans/{id} sin haber pasado antes por la lista.
-  fetchPlan: async (planId) => {
-    try {
-      const dto = await getTrainingPlanService(planId);
-      const model = toTrainingPlanModel(dto);
-      set((state) => {
-        const inPlans = state.plans.some((p) => p.id === model.id);
-        const inMyPlans = state.myPlans.some((p) => p.id === model.id);
-        return {
-          plans: inPlans ? state.plans.map((p) => (p.id === model.id ? model : p)) : [...state.plans, model],
-          myPlans: inMyPlans ? state.myPlans.map((p) => (p.id === model.id ? model : p)) : state.myPlans,
-        };
-      });
-      return { success: true, plan: model };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  createPlan: async (form) => {
-    try {
-      const created = await createTrainingPlanService(toCreateTrainingPlanPayload(form));
-      const plan = toTrainingPlanModel(created);
-      set((state) => ({ plans: [...state.plans, plan] }));
-      return { success: true, plan };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  updatePlan: async (planId, form) => {
-    try {
-      const updated = await updateTrainingPlanService(planId, toUpdateTrainingPlanPayload(form));
-      const plan = toTrainingPlanModel(updated);
-      set((state) => ({ plans: state.plans.map((p) => (p.id === planId ? plan : p)) }));
-      return { success: true, plan };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Borra el plan y, del lado del cliente, limpia cualquier grupo que lo
-  // tuviera asignado en groupTrainingPlanIds (local-only, ver comentario
-  // de arriba — sin este paso quedaría un id colgando apuntando a un plan
-  // que ya no existe). Las asignaciones individuales las limpia el mock
-  // solo (mockDeleteTrainingPlan).
-  deletePlan: async (planId) => {
-    try {
-      await deleteTrainingPlanService(planId);
-      set((state) => {
-        const groupTrainingPlanIds = { ...state.groupTrainingPlanIds };
-        for (const [groupId, assignedPlanId] of Object.entries(groupTrainingPlanIds)) {
-          if (assignedPlanId === planId) delete groupTrainingPlanIds[groupId];
-        }
-        return {
-          plans: state.plans.filter((p) => p.id !== planId),
-          myPlans: state.myPlans.filter((p) => p.id !== planId),
-          groupTrainingPlanIds,
-        };
-      });
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  clonePlan: async (planId) => {
-    try {
-      const cloned = await cloneTrainingPlanService(planId);
-      const plan = toTrainingPlanModel(cloned);
-      set((state) => ({ plans: [...state.plans, plan] }));
-      return { success: true, plan };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+  // Limpieza local tras borrar un plan (hooks/use-training-plans.js#useTrainingPlanMutations
+  // llama a esto en el onSuccess de deletePlan) — el plan en sí ya lo
+  // borró el service real, esto solo saca referencias que quedarían
+  // colgando en estado 100% local de este store: cualquier grupo que lo
+  // tuviera asignado en groupTrainingPlanIds, y su entrada en myPlans si
+  // el corredor lo tenía asignado.
+  cleanupAfterPlanDeleted: (planId) => {
+    set((state) => {
+      const groupTrainingPlanIds = { ...state.groupTrainingPlanIds };
+      for (const [groupId, assignedPlanId] of Object.entries(groupTrainingPlanIds)) {
+        if (assignedPlanId === planId) delete groupTrainingPlanIds[groupId];
+      }
+      return {
+        myPlans: state.myPlans.filter((p) => p.id !== planId),
+        groupTrainingPlanIds,
+      };
+    });
   },
 
   // Asignar a grupo no pega a ningún servicio propio — escribe en

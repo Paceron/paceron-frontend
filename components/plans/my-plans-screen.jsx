@@ -8,31 +8,19 @@ import { isWeb, isMobile } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
-import { useTrainingPlanStore, getPlanStatus, getPlanDaysRemaining } from '../../store/training-plan-store.js';
+import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TodaySessionHero } from './today-session-hero.jsx';
 
-const STATUS_META = {
-  activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  vencido: { label: 'Vencido', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
-};
-
 const MAX_CURRENT_PLANS = 2;
 
 function MyPlanRow({ plan, isCurrent, atCurrentLimit, onPress, onToggleCurrent }) {
   const isNarrow = useIsNarrowWeb();
-  const status = getPlanStatus(plan);
-  const statusMeta = STATUS_META[status];
-  const daysRemaining = getPlanDaysRemaining(plan);
   const trainingDaysCount = plan.days.filter((d) => d.kind === 'training').length;
   const idPrefix = `my-plan-row-${plan.id}`;
-  // Vigencia reemplaza el label fijo ("Activo"/"Vencido") en vez de
-  // sumarse — el color del badge ya comunica el estado, no hace falta
-  // repetirlo en texto.
-  const vigenciaLabel = status === 'activo' ? `Quedan ${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'}` : 'Venció';
 
   const icon = (
     <View className="h-10 w-10 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
@@ -49,13 +37,6 @@ function MyPlanRow({ plan, isCurrent, atCurrentLimit, onPress, onToggleCurrent }
       </Text>
     </View>
   );
-  const statusTag = (
-    <View className={`shrink-0 rounded-full px-2.5 py-1 ${statusMeta.bg}`} nativeID={`${idPrefix}-status-tag`} testID={`${idPrefix}-status-tag`}>
-      <Text className={`text-xs font-semibold ${statusMeta.text}`} nativeID={`${idPrefix}-status-tag-label`} numberOfLines={1} testID={`${idPrefix}-status-tag-label`}>
-        {vigenciaLabel}
-      </Text>
-    </View>
-  );
   const currentToggle = (
     <Pressable
       className={`rounded-lg p-1.5 ${isCurrent || !atCurrentLimit ? 'hover:bg-slate-200 active:opacity-70 dark:hover:bg-slate-800' : 'opacity-40'}`}
@@ -68,10 +49,6 @@ function MyPlanRow({ plan, isCurrent, atCurrentLimit, onPress, onToggleCurrent }
   );
   const chevron = <MaterialCommunityIcons color="#94a3b8" name="chevron-right" size={20} />;
 
-  // Angosto: 5 elementos (ícono, info, badge, estrella, chevron) no
-  // entran en una sola fila sin desbordar — badge + estrella pasan a una
-  // 2da línea, alineados debajo del nombre (icon w-10 + gap-3 = 52px).
-  // Ancho: todo en una sola fila, como antes.
   if (isNarrow) {
     return (
       <Pressable
@@ -86,7 +63,6 @@ function MyPlanRow({ plan, isCurrent, atCurrentLimit, onPress, onToggleCurrent }
           {chevron}
         </View>
         <View className="flex-row items-center gap-2 pl-[52px]" nativeID={`${idPrefix}-meta-row`} testID={`${idPrefix}-meta-row`}>
-          {statusTag}
           {currentToggle}
         </View>
       </Pressable>
@@ -102,7 +78,6 @@ function MyPlanRow({ plan, isCurrent, atCurrentLimit, onPress, onToggleCurrent }
     >
       {icon}
       {info}
-      {statusTag}
       {currentToggle}
       {chevron}
     </Pressable>

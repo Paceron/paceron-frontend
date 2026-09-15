@@ -5,9 +5,8 @@ import {
   validatePlanDays, __resetMockTrainingPlans,
 } from '../services/__mocks__/training-plans-mock.js';
 
-function buildValidDays() {
-  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  return daysOfWeek.map((day_of_week, i) => ({ sequence_no: i + 1, day_of_week, kind: 'rest', other_name: null, session_id: null }));
+function buildValidDays(count = 7) {
+  return Array.from({ length: count }, (_, i) => ({ sequence_no: i + 1, kind: 'rest', other_name: null, session_id: null }));
 }
 
 beforeEach(() => {
@@ -30,17 +29,20 @@ describe('training-plans-mock', () => {
     await expect(mockGetTrainingPlan(9999)).rejects.toThrow('Plan de entrenamiento no encontrado.');
   });
 
-  test('validatePlanDays exige exactamente 7 días, secuencia 1..7 y los 7 días de la semana sin repetir', () => {
-    expect(() => validatePlanDays(buildValidDays())).not.toThrow();
-    expect(() => validatePlanDays(buildValidDays().slice(0, 6))).toThrow('exactamente 7 días');
+  test('validatePlanDays exige entre 2 y 31 días, en secuencia 1..N sin repetir', () => {
+    expect(() => validatePlanDays(buildValidDays(7))).not.toThrow();
+    expect(() => validatePlanDays(buildValidDays(2))).not.toThrow();
+    expect(() => validatePlanDays(buildValidDays(31))).not.toThrow();
+    expect(() => validatePlanDays(buildValidDays(1))).toThrow('entre 2 y 31 días');
+    expect(() => validatePlanDays(buildValidDays(32))).toThrow('entre 2 y 31 días');
 
-    const dupSequence = buildValidDays();
+    const dupSequence = buildValidDays(7);
     dupSequence[1].sequence_no = 1;
     expect(() => validatePlanDays(dupSequence)).toThrow();
 
-    const dupDay = buildValidDays();
-    dupDay[1].day_of_week = 'monday';
-    expect(() => validatePlanDays(dupDay)).toThrow();
+    const gapSequence = buildValidDays(7);
+    gapSequence[6].sequence_no = 9;
+    expect(() => validatePlanDays(gapSequence)).toThrow();
   });
 
   test('validatePlanDays exige session_id en los días de entrenamiento y other_name en los de otra actividad', () => {
@@ -65,15 +67,14 @@ describe('training-plans-mock', () => {
 
   test('mockCreateTrainingPlan agrega un plan nuevo con id incremental', async () => {
     const before = await mockListTrainingPlans();
-    const created = await mockCreateTrainingPlan({ owner_id: 5, name: 'Plan nuevo', description: null, duration_days: 14, days: buildValidDays() });
+    const created = await mockCreateTrainingPlan({ owner_id: 5, name: 'Plan nuevo', description: null, days: buildValidDays() });
     const after = await mockListTrainingPlans();
     expect(after.length).toBe(before.length + 1);
     expect(created.name).toBe('Plan nuevo');
-    expect(created.duration_days).toBe(14);
   });
 
   test('mockCreateTrainingPlan rechaza días inválidos', async () => {
-    await expect(mockCreateTrainingPlan({ owner_id: 5, name: 'X', duration_days: 7, days: [] })).rejects.toThrow();
+    await expect(mockCreateTrainingPlan({ owner_id: 5, name: 'X', days: [] })).rejects.toThrow();
   });
 
   test('mockUpdateTrainingPlan mergea los campos dados', async () => {
