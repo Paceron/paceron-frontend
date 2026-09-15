@@ -319,12 +319,17 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
     itemCountSV.value = itemCount;
   });
 
-  const commitReorder = () => {
-    const from = activeIndexSV.value;
-    const to = targetIndexSV.value;
-    activeIndexSV.value = -1;
-    targetIndexSV.value = -1;
-    dragOffsetY.value = 0;
+  // from/to llegan como ARGUMENTOS (leídos en el propio worklet de
+  // onEnd, antes de diferir a JS con runOnJS), no releídos acá adentro
+  // desde los shared values — mismo criterio que checkDrop en
+  // DraggableExerciseCard. onFinalize corre justo después de onEnd y
+  // resetea esos mismos shared values a -1; si esta función los
+  // releyera en vez de recibirlos ya capturados, una carrera entre el
+  // runOnJS diferido y el reset síncrono de onFinalize podía dejarlos en
+  // -1 antes de que esta función llegara a leerlos — bug real
+  // reportado: el reordenamiento no aplicaba en web (visualmente
+  // arrastraba bien, pero al soltar no reordenaba).
+  const commitReorder = (from, to) => {
     if (from === -1 || to === -1 || from === to) return;
     onReorderRef.current(from, to);
   };
@@ -357,7 +362,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
       targetIndexSV.value = clampIndex(index + rowDelta, itemCountSV.value);
     })
     .onEnd(() => {
-      runOnJS(commitReorder)();
+      runOnJS(commitReorder)(activeIndexSV.value, targetIndexSV.value);
     })
     .onFinalize(() => {
       activeIndexSV.value = -1;
