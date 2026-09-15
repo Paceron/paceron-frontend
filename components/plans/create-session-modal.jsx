@@ -18,7 +18,6 @@ import { useSessionMutations } from '../../hooks/use-sessions.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { InputField, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { SESSION_ROLE_ORDER, SESSION_ROLE_META } from './exercise-kind-meta.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
@@ -32,95 +31,11 @@ import { SessionExercisePanel } from './session-exercise-panel.jsx';
 
 const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
 
-// Selector de rol de un ejercicio dentro de la sesión — solo-ícono (sin
-// label visible, accessibilityLabel por segmento) para que, junto al
-// select de ejercicio y el botón de quitar, una fila entera quepa en una
-// sola línea incluso en mobile. El contenedor fuerza h-12 explícito en
-// vez de dejar que el padding lo determine solo — a diferencia de
-// DaySegmentedPicker (training-plan-form-fields.jsx), que nunca tuvo un
-// vecino de altura fija al lado y por eso nadie notó que su alto
-// orgánico no daba justo 48px. Acá sí importa (pedido explícito: selector
-// de rol "a la misma altura" que el resto de los campos).
-function SessionRoleSegmentedPicker({ idPrefix, value, onChange }) {
-  return (
-    <View
-      accessibilityLabel="Rol del ejercicio"
-      accessibilityRole="radiogroup"
-      className="h-12 flex-row items-center gap-1 self-start rounded-full bg-slate-100 px-1 dark:bg-slate-800"
-      nativeID={`${idPrefix}-role-pill`}
-      testID={`${idPrefix}-role-pill`}
-    >
-      {SESSION_ROLE_ORDER.map((role) => {
-        const meta = SESSION_ROLE_META[role];
-        const active = value === role;
-        const segId = `${idPrefix}-role-${role}`;
-        return (
-          <Pressable
-            accessibilityLabel={meta.label}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
-            className={`h-9 w-9 items-center justify-center rounded-full ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
-            key={role}
-            nativeID={segId}
-            onPress={() => onChange(role)}
-            testID={segId}
-          >
-            <MaterialCommunityIcons color={active ? meta.iconColor : '#94a3b8'} name={meta.icon} size={18} />
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-// Selector de rol cerrado — mismo dato que SessionRoleSegmentedPicker
-// (icono siempre visible) pero para variante `compact` (mobile/narrow):
-// en vez de mostrar los 3 iconos en fila, muestra solo el activo; el
-// menú de verdad (AnimatedDropdown) NO se monta acá adentro — se monta
-// UNA sola vez arriba, en CreateSessionModal (ver roleMenu ahí). Este
-// componente solo es el botón disparador: mide su propia posición
-// MENOS la del contenedor de referencia (mismo patrón que
-// ExerciseMenuButton en exercises-catalog-tab.jsx — measureInWindow da
-// coordenadas de PANTALLA, pero el menú se posiciona relativo al
-// contenedor, no a la pantalla) y reporta esas coordenadas relativas
-// hacia arriba vía onOpenMenu.
-// Bug real corregido 2026-09-14: antes este componente montaba su
-// propio AnimatedDropdown, anidado varios niveles adentro de una fila
-// con transform (ReorderableRow) dentro de un Modal — measureInWindow
-// SÍ daba coordenadas de pantalla correctas (confirmado con
-// console.log, el tap y la medición andaban bien), pero se las pasaba
-// directo como top/left al panel, que en RN Web se posiciona relativo
-// al ancestro posicionado más cercano (nunca la pantalla real cuando
-// está tan anidado) — el menú terminaba renderizado fuera de la vista
-// visible o detrás de otro contenido. Ganancia de espacio para el
-// nombre queda igual — costo sigue siendo el mismo (abrir + elegir en
-// vez de 1 tap directo).
-function SessionRoleClosedSelect({ idPrefix, value, containerRef, onOpenMenu }) {
-  const buttonRef = useRef(null);
-  const meta = SESSION_ROLE_META[value];
-
-  const handleOpen = () => {
-    if (!containerRef?.current || !buttonRef.current) return;
-    containerRef.current.measureInWindow((containerX, containerY) => {
-      buttonRef.current?.measureInWindow((x, y, width, height) => {
-        onOpenMenu({ top: y - containerY + height + 4, left: x - containerX });
-      });
-    });
-  };
-
-  return (
-    <Pressable
-      accessibilityLabel={`Rol: ${meta.label}`}
-      className={`h-12 w-12 items-center justify-center rounded-full ${meta.bg}`}
-      nativeID={`${idPrefix}-role-select`}
-      onPress={handleOpen}
-      ref={buttonRef}
-      testID={`${idPrefix}-role-select`}
-    >
-      <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
-    </Pressable>
-  );
-}
+// Opciones del select de rol — mismo shape {id, name} que cualquier otro
+// ResponsiveSelectField (ver más abajo, SessionExerciseRow). Constante a
+// nivel módulo: el array de opciones no cambia entre renders, no hace
+// falta recalcularlo por fila.
+const SESSION_ROLE_OPTIONS = SESSION_ROLE_ORDER.map((role) => ({ id: role, name: SESSION_ROLE_META[role].label }));
 
 // Pill inline chico (ícono + input numérico + sufijo) — reemplaza al
 // InputField con label propio que usaban repeticiones/descanso: ese
@@ -145,18 +60,27 @@ function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibil
   );
 }
 
-// Una fila = un ejercicio de la sesión. Rol (pill solo-ícono) + select de
-// ejercicio + botón de quitar en una sola línea, siempre a la misma
-// altura (h-12 los 3); "Serie repetida" es un toggle chico aparte —
-// colapsado por default para que la fila no crezca salvo que haga falta,
-// mismo criterio ya usado para los días de un plan.
+// Una fila = un ejercicio de la sesión. Rol (ResponsiveSelectField) +
+// select de ejercicio + botón de quitar en una sola línea; "Serie
+// repetida" es un toggle chico aparte — colapsado por default para que
+// la fila no crezca salvo que haga falta, mismo criterio ya usado para
+// los días de un plan.
 // El reordenamiento es SIEMPRE por mantener-presionado-y-arrastrar sobre
-// la fila entera (ReorderableRow, en ambos layouts desde 2026-09-14) —
-// ya no hay botones subir/bajar. `compact` (mobile/narrow) sigue
-// controlando solo el selector de rol: cerrado (1 ícono + menú) en vez
-// del segmentado de 3 íconos, para ganar ancho para el nombre del
-// ejercicio — en desktop sobra espacio, se mantiene el segmentado.
-function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChangeExercise, onChangeRole, onRemove, compact, roleMenuContainerRef, onOpenRoleMenu }) {
+// la fila entera (ReorderableRow, en ambos layouts) — no hay botones
+// subir/bajar.
+// El selector de rol usa el mismo ResponsiveSelectField que cualquier
+// otro select del proyecto (2026-09-15, reemplaza a los custom
+// SessionRoleSegmentedPicker/SessionRoleClosedSelect de antes) — regla
+// estricta del proyecto (ver CLAUDE.md, "Selects"): nada fuera de
+// forms/fields.jsx/responsive-select-field.jsx debería armar su propio
+// selector. De paso resuelve de raíz el bug de posicionamiento que
+// tenía el dropdown custom (ver historial de este archivo/CLAUDE.md) —
+// en mobile abre como el picker modal estándar de la app, en web como
+// un <select> normal mostrando el label. Único costo: la fila ya no
+// muestra los 3 roles como iconos siempre visibles (ganancia de espacio
+// visual desde el diseño original de columnas fijas) — ahora es 1
+// select como cualquier otro, en ambos layouts por igual.
+function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChangeExercise, onChangeRole, onRemove }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
@@ -169,11 +93,18 @@ function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChange
   return (
     <View className="gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-fields`} testID={`${idPrefix}-fields`}>
-        {compact ? (
-          <SessionRoleClosedSelect containerRef={roleMenuContainerRef} idPrefix={idPrefix} onOpenMenu={(anchor) => onOpenRoleMenu(entry.localKey, anchor)} value={entry.role} />
-        ) : (
-          <SessionRoleSegmentedPicker idPrefix={idPrefix} onChange={(role) => onChangeRole(entry.localKey, role)} value={entry.role} />
-        )}
+        <View className="w-36" nativeID={`${idPrefix}-role-select-wrapper`} testID={`${idPrefix}-role-select-wrapper`}>
+          <ResponsiveSelectField
+            className="mb-0"
+            dense
+            hideErrorRow
+            hideLabel
+            label="Rol"
+            onChange={(role) => onChangeRole(entry.localKey, role)}
+            options={SESSION_ROLE_OPTIONS}
+            value={entry.role}
+          />
+        </View>
         <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
           <ResponsiveSelectField
             className="mb-0"
@@ -340,7 +271,7 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
 // ancho — ver SessionModalWideBody). Reemplaza al antiguo botón
 // "Agregar ejercicio" + filas pre-cargadas por rol (2026-09-14): ahora
 // arranca vacío y se carga por drag, igual que el layout ancho.
-function SessionModalNarrowBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, visible, roleMenuContainerRef, onOpenRoleMenu }) {
+function SessionModalNarrowBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
@@ -374,15 +305,12 @@ function SessionModalNarrowBody({ name, onSetName, description, onSetDescription
               <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
                 <SessionExerciseRow
                   catalogExercises={catalogExercises}
-                  compact
                   entry={entry}
                   idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
                   index={index}
                   onChangeExercise={onChangeExercise}
                   onChangeRole={onChangeRole}
-                  onOpenRoleMenu={onOpenRoleMenu}
                   onRemove={onRemove}
-                  roleMenuContainerRef={roleMenuContainerRef}
                 />
               </ReorderableRow>
             ))}
@@ -423,15 +351,6 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const draftSeq = useRef(0);
-
-  // Menú de rol (mobile/narrow) montado UNA sola vez acá, no por fila —
-  // ver SessionRoleClosedSelect para el porqué (measureInWindow da
-  // coordenadas de pantalla, pero el panel se posiciona relativo al
-  // ancestro más cercano — cardRef es ese ancestro de referencia, tanto
-  // para las filas que reportan su posición como para este mismo menú).
-  const cardRef = useRef(null);
-  const [roleMenu, setRoleMenu] = useState(null);
-  const roleMenuEntry = roleMenu ? exercises.find((e) => e.localKey === roleMenu.localKey) : null;
 
   const makeBlankRow = (role) => ({
     localKey: `session-exercise-draft-${Date.now()}-${draftSeq.current++}`,
@@ -592,7 +511,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
         <GestureHandlerRootView style={{ flex: 1 }}>
         <SessionDragProvider>
           <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
-            <Pressable className={`max-h-[94%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[94%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} ref={cardRef} style={{ position: 'relative' }} testID="create-session-modal-card">
+            <Pressable className={`max-h-[94%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[94%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
               <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
                 <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
                 <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
@@ -643,13 +562,11 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   onChangeExercise={handleChangeExercise}
                   onChangeRole={handleChangeRole}
                   onExerciseDropped={handleExerciseDropped}
-                  onOpenRoleMenu={(localKey, anchor) => setRoleMenu({ localKey, anchor })}
                   onRemove={handleRemoveExercise}
                   onReorder={handleReorderExercises}
                   onSetDescription={setDescription}
                   onSetName={setName}
                   name={name}
-                  roleMenuContainerRef={cardRef}
                   visible={visible}
                 />
               )}
@@ -678,37 +595,6 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                 )}
               </Pressable>
             </View>
-
-            {/* Montado UNA sola vez acá (no por fila) — ver
-                SessionRoleClosedSelect para el porqué. cardRef es el
-                mismo ancestro de referencia que cada fila usa para
-                reportar su posición relativa. */}
-            <AnimatedDropdown
-              anchorStyle={roleMenu ? { top: roleMenu.anchor.top, left: roleMenu.anchor.left } : {}}
-              onClose={() => setRoleMenu(null)}
-              open={Boolean(roleMenu)}
-            >
-              {roleMenuEntry && (
-                <View className="w-48 gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-surface" nativeID="create-session-modal-role-menu" testID="create-session-modal-role-menu">
-                  {SESSION_ROLE_ORDER.map((role) => {
-                    const roleMeta = SESSION_ROLE_META[role];
-                    const optId = `create-session-modal-role-menu-option-${role}`;
-                    return (
-                      <Pressable
-                        className="flex-row items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-                        key={role}
-                        nativeID={optId}
-                        onPress={() => { handleChangeRole(roleMenuEntry.localKey, role); setRoleMenu(null); }}
-                        testID={optId}
-                      >
-                        <MaterialCommunityIcons color={roleMeta.iconColor} name={roleMeta.icon} size={16} />
-                        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${optId}-label`} testID={`${optId}-label`}>{roleMeta.label}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </AnimatedDropdown>
             </Pressable>
           </Pressable>
           <DragGhost />
