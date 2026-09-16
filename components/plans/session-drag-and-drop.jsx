@@ -334,19 +334,24 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
     onReorderRef.current(from, to);
   };
 
-  // Hold subido de 300ms a 450ms (2026-09-14, reporte real): con 300ms,
-  // un scroll LENTO deliberado (a diferencia de un swipe rápido) podía
-  // tardar más en cruzar el umbral de failOffsetY que en llegar a los
-  // 300ms del hold — el Pan terminaba activándose como arrastre antes de
-  // fallar por movimiento, tragándose el scroll lento. Con más margen de
-  // tiempo, un movimiento de scroll (lento o rápido) cruza failOffsetY
-  // primero casi siempre.
-  const HOLD_MS = 450;
-
-  const pan = Gesture.Pan()
-    .runOnJS(true)
-    .activateAfterLongPress(HOLD_MS)
-    .failOffsetY([-10, 10])
+  // Hold SOLO en nativo (2026-09-15): en touch, el mismo dedo que
+  // reordena es el que scrollea la lista, hace falta la espera para
+  // distinguir una intención de la otra. En web el mouse no tiene ese
+  // problema — la rueda/trackpad scrollea vía eventos wheel, que ni
+  // pasan por este Pan de gesture-handler (solo reacciona a
+  // pointerdown/move) — así que ahí el click-y-arrastrar puede
+  // reordenar de inmediato, sin esperar nada, igual que cualquier
+  // drag-and-drop de escritorio (Trello, Notion, etc. tampoco piden
+  // mantener presionado con mouse).
+  // Antes esto estaba fijo en 450ms para ambas plataformas — en web no
+  // hacía falta, y de paso perdía sensibilidad: con 300ms, un scroll
+  // LENTO deliberado tardaba más en cruzar el umbral de failOffsetY que
+  // en llegar al hold, activándose como arrastre en vez de ceder al
+  // scroll (motivo original de subirlo a 450, ya no aplica en web al no
+  // usarse ninguno de los dos acá).
+  let pan = Gesture.Pan().runOnJS(true);
+  if (!isWeb) pan = pan.activateAfterLongPress(450).failOffsetY([-10, 10]);
+  pan = pan
     .onStart(() => {
       activeIndexSV.value = index;
       targetIndexSV.value = index;

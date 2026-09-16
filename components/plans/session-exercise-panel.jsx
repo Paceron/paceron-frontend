@@ -10,6 +10,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 // así que reemplaza sin cambios en el resto del archivo.
 import { ScrollView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { isWeb } from '../../utils/platform.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useExercises } from '../../hooks/use-exercises.js';
@@ -114,17 +115,21 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
             testID="session-exercise-panel-list"
           >
             {exercises.map((exercise) => (
-              // holdMs: la tira scrollea horizontal, el drag hacia la
-              // lista de ejercicios de la sesión es vertical — sin el
-              // delay, cualquier intento de scrollear la tira se
-              // interpretaría como el inicio de un arrastre. Subido de
-              // 300 a 450ms (2026-09-14, mismo motivo que en
-              // ReorderableRow): con 300ms, un scroll LENTO deliberado
-              // podía tardar más en cruzar el umbral de failOffsetX que
-              // en llegar al hold, activándose como drag en vez de ceder
-              // al ScrollView (bug real: solo un swipe agresivo
-              // scrolleaba).
-              <DraggableExerciseCard exercise={exercise} holdMs={450} key={exercise.id} onDropped={onExerciseAdded}>
+              // holdMs SOLO en nativo (2026-09-15): en touch, el mismo
+              // dedo que arrastra es el que scrollea — sin delay,
+              // cualquier intento de scrollear la tira se interpretaría
+              // como el inicio de un arrastre, hace falta la espera para
+              // distinguir "quiere scrollear" de "quiere arrastrar". En
+              // web el mouse no tiene ese problema: la rueda/trackpad
+              // scrollea sin pasar por el Pan de gesture-handler para
+              // nada (son eventos wheel, no pointerdown/move), así que
+              // el click-y-arrastrar puede activarse de inmediato, igual
+              // que el panel ancho de escritorio (nunca tuvo holdMs).
+              // Antes esto estaba fijo en 450ms para ambas plataformas —
+              // en web, esa espera no hacía falta y encima competía mal
+              // contra failOffsetX en scrolls lentos (bug real: solo un
+              // swipe agresivo scrolleaba).
+              <DraggableExerciseCard exercise={exercise} holdMs={isWeb ? undefined : 450} key={exercise.id} onDropped={onExerciseAdded}>
                 <PanelExerciseCardCompact exercise={exercise} />
               </DraggableExerciseCard>
             ))}
