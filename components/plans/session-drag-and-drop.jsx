@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -141,8 +141,22 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
   } = useContext(SessionDragContext);
   // Tamaño real de la card, medido con onLayout — solo se usa cuando
   // holdMs está seteado (tira horizontal de mobile/narrow), ver el
-  // return más abajo.
-  const [cardSize, setCardSize] = useState({ width: 0, height: 0 });
+  // return más abajo. SharedValue, no useState: escribir un SharedValue
+  // no dispara re-render de React, así que el Gesture.Pan() memoizado más
+  // abajo no se reconstruye durante el montaje (ver nota en `pan` sobre
+  // el bug real que esto causaba con useState).
+  const cardWidthSV = useSharedValue(0);
+  const cardHeightSV = useSharedValue(0);
+  // Hook incondicional (regla de hooks) aunque solo se use en la rama
+  // holdMs más abajo — lee un SharedValue, así que no cuesta nada
+  // mantenerlo activo en la rama sin holdMs (panel ancho).
+  const dragSurfaceStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: cardWidthSV.value || undefined,
+    height: cardHeightSV.value || undefined,
+  }));
 
   const cacheTargetMeasurements = () => {
     if (!dropTargetRef.current) return;
@@ -188,52 +202,66 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     onDropped(exercise, insertIndex);
   };
 
-  let pan = Gesture.Pan().runOnJS(true);
-  if (holdMs) {
-    // failOffsetX: si el dedo se mueve más de esto ANTES de cumplirse
-    // el hold, el gesto falla de inmediato y libera el toque al
-    // ScrollView horizontal (scroll normal de la tira) — sin esto, un
-    // swipe rápido para scrollear quedaba capturado por este Pan sin
-    // activarse nunca y sin soltar el toque a tiempo para que el
-    // ScrollView pudiera scrollear con él (bug real reportado: la tira
-    // no scrolleaba nada). activateAfterLongPress solo, sin este tope,
-    // no alcanza.
-    pan = pan.activateAfterLongPress(holdMs).failOffsetX([-10, 10]);
-    // simultaneousWithExternalGesture: relación EXPLÍCITA con el
-    // ScrollView que envuelve esta card (via ref, no un Gesture.Native()
-    // genérico sin nada a lo que referenciar) — deja que el ScrollView
-    // reconozca el toque en simultáneo desde el primer frame, en vez de
-    // esperar pasivamente a que este Pan falle. failOffsetX seguía sin
-    // alcanzar solo (bug real: scroll horizontal seguía sin funcionar en
-    // mobile incluso con failOffsetX + Gesture.Native() genérico) — sin
-    // una relación real hacia el ScrollView específico, gesture-handler
-    // no tenía ningún native handler concreto con el que negociar.
-    if (scrollViewRef) pan = pan.simultaneousWithExternalGesture(scrollViewRef);
-  }
-  pan = pan
-    .onStart((e) => {
-      runOnJS(setDraggedExercise)(exercise);
-      runOnJS(cacheTargetMeasurements)();
-      dragX.value = e.absoluteX;
-      dragY.value = e.absoluteY;
-    })
-    .onUpdate((e) => {
-      dragX.value = e.absoluteX;
-      dragY.value = e.absoluteY;
-      const inside = targetWidth.value > 0
-        && e.absoluteX >= targetX.value && e.absoluteX <= targetX.value + targetWidth.value
-        && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
-      isHoveringSV.value = inside ? 1 : 0;
-      if (inside) {
-        hoverIndexSV.value = estimateIndexFromOffset(e.absoluteY - targetY.value);
-        runOnJS(maybeAutoScroll)(e.absoluteY, targetY.value, targetHeight.value);
-      }
-    })
-    .onEnd((e) => {
-      runOnJS(checkDrop)(e.absoluteX, e.absoluteY);
-      isHoveringSV.value = 0;
-      runOnJS(setDraggedExercise)(null);
-    });
+  // Memoizado (2026-09-16): sin esto, Gesture.Pan() se reconstruye en
+  // CADA render y entrega un objeto de gesto nuevo al GestureDetector
+  // nativo — inofensivo la mayoría del tiempo, pero si algo dispara un
+  // re-render justo después del montaje (como hacía el onLayout+useState
+  // de cardSize, ya migrado arriba a SharedValue), el nuevo objeto podía
+  // llegar en la ventana crítica de inicialización nativa y desarmar el
+  // registro del gesto en silencio (hipótesis del intento 9 documentada
+  // en docs/2026-09-16-session-modal-drag-scroll-investigation.md).
+  // Deps: solo lo que el gesto realmente necesita capturar por closure —
+  // exercise/onDropped porque van directo en checkDrop, holdMs/
+  // scrollViewRef porque cambian la cadena de configuración del Pan.
+  const pan = useMemo(() => {
+    let p = Gesture.Pan().runOnJS(true);
+    if (holdMs) {
+      // failOffsetX: si el dedo se mueve más de esto ANTES de cumplirse
+      // el hold, el gesto falla de inmediato y libera el toque al
+      // ScrollView horizontal (scroll normal de la tira) — sin esto, un
+      // swipe rápido para scrollear quedaba capturado por este Pan sin
+      // activarse nunca y sin soltar el toque a tiempo para que el
+      // ScrollView pudiera scrollear con él (bug real reportado: la tira
+      // no scrolleaba nada). activateAfterLongPress solo, sin este tope,
+      // no alcanza.
+      p = p.activateAfterLongPress(holdMs).failOffsetX([-10, 10]);
+      // simultaneousWithExternalGesture: relación EXPLÍCITA con el
+      // ScrollView que envuelve esta card (via ref, no un Gesture.Native()
+      // genérico sin nada a lo que referenciar) — deja que el ScrollView
+      // reconozca el toque en simultáneo desde el primer frame, en vez de
+      // esperar pasivamente a que este Pan falle. failOffsetX seguía sin
+      // alcanzar solo (bug real: scroll horizontal seguía sin funcionar en
+      // mobile incluso con failOffsetX + Gesture.Native() genérico) — sin
+      // una relación real hacia el ScrollView específico, gesture-handler
+      // no tenía ningún native handler concreto con el que negociar.
+      if (scrollViewRef) p = p.simultaneousWithExternalGesture(scrollViewRef);
+    }
+    return p
+      .onStart((e) => {
+        runOnJS(setDraggedExercise)(exercise);
+        runOnJS(cacheTargetMeasurements)();
+        dragX.value = e.absoluteX;
+        dragY.value = e.absoluteY;
+      })
+      .onUpdate((e) => {
+        dragX.value = e.absoluteX;
+        dragY.value = e.absoluteY;
+        const inside = targetWidth.value > 0
+          && e.absoluteX >= targetX.value && e.absoluteX <= targetX.value + targetWidth.value
+          && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
+        isHoveringSV.value = inside ? 1 : 0;
+        if (inside) {
+          hoverIndexSV.value = estimateIndexFromOffset(e.absoluteY - targetY.value);
+          runOnJS(maybeAutoScroll)(e.absoluteY, targetY.value, targetHeight.value);
+        }
+      })
+      .onEnd((e) => {
+        runOnJS(checkDrop)(e.absoluteX, e.absoluteY);
+        isHoveringSV.value = 0;
+        runOnJS(setDraggedExercise)(null);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise, onDropped, holdMs, scrollViewRef]);
 
   // Sin holdMs (panel ancho de escritorio): wrapper simple, sin cambios
   // — confirmado funcionando, no necesita la separación de capas de
@@ -261,15 +289,18 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
   return (
     <View nativeID={`draggable-exercise-card-${exercise.id}-wrapper`} style={{ position: 'relative' }} testID={`draggable-exercise-card-${exercise.id}-wrapper`}>
       <GestureDetector gesture={pan}>
-        <View
+        <Animated.View
           nativeID={`draggable-exercise-card-${exercise.id}-drag-surface`}
-          style={{ position: 'absolute', top: 0, left: 0, width: cardSize.width || undefined, height: cardSize.height || undefined }}
+          style={dragSurfaceStyle}
           testID={`draggable-exercise-card-${exercise.id}-drag-surface`}
         />
       </GestureDetector>
       <View
         nativeID={`draggable-exercise-card-${exercise.id}`}
-        onLayout={(e) => setCardSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+        onLayout={(e) => {
+          cardWidthSV.value = e.nativeEvent.layout.width;
+          cardHeightSV.value = e.nativeEvent.layout.height;
+        }}
         testID={`draggable-exercise-card-${exercise.id}`}
       >
         {children}
@@ -357,8 +388,11 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // Alto real de la fila, medido con onLayout — ver el return más abajo
   // para el porqué (capa de arrastre separada del contenido, necesita
   // saber cuánto medir sin depender de la auto-medición de Yoga contra
-  // un hermano).
-  const [rowHeight, setRowHeight] = useState(0);
+  // un hermano). SharedValue, no useState — mismo motivo que cardWidthSV/
+  // cardHeightSV en DraggableExerciseCard: escribir acá no dispara
+  // re-render, así que el Gesture.Pan() memoizado más abajo no se
+  // reconstruye durante el montaje.
+  const rowHeightSV = useSharedValue(0);
 
   useEffect(() => {
     onReorderRef.current = onReorder;
@@ -395,34 +429,44 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // en llegar al hold, activándose como arrastre en vez de ceder al
   // scroll (motivo original de subirlo a 450, ya no aplica en web al no
   // usarse ninguno de los dos acá).
-  let pan = Gesture.Pan().runOnJS(true);
-  if (!isWeb) {
-    pan = pan.activateAfterLongPress(450).failOffsetY([-10, 10]);
-    if (scrollViewRef) pan = pan.simultaneousWithExternalGesture(scrollViewRef);
-  }
-  pan = pan
-    .onStart(() => {
-      activeIndexSV.value = index;
-      targetIndexSV.value = index;
-      dragOffsetY.value = 0;
-    })
-    .onUpdate((e) => {
-      dragOffsetY.value = e.translationY;
-      // Delta de fila con signo (a diferencia de estimateIndexFromOffset,
-      // pensada para una distancia siempre positiva desde el top de un
-      // contenedor) — acá el desplazamiento es relativo a la fila propia
-      // y puede ir para cualquier lado.
-      const rowDelta = Math.round(e.translationY / ESTIMATED_ROW_HEIGHT);
-      targetIndexSV.value = clampIndex(index + rowDelta, itemCountSV.value);
-    })
-    .onEnd(() => {
-      runOnJS(commitReorder)(activeIndexSV.value, targetIndexSV.value);
-    })
-    .onFinalize(() => {
-      activeIndexSV.value = -1;
-      targetIndexSV.value = -1;
-      dragOffsetY.value = 0;
-    });
+  // Memoizado (2026-09-16), mismo motivo que en DraggableExerciseCard —
+  // ver esa nota. Deps: index (necesario en los closures de onStart/
+  // onUpdate) y scrollViewRef (cambia la config del Pan); activeIndexSV/
+  // targetIndexSV/dragOffsetY/itemCountSV vienen del contexto y son
+  // SharedValues estables (su .value se lee fresco en cada worklet sin
+  // importar cuándo se memoizó el closure), commitReorder solo reenvía a
+  // través de onReorderRef.current (también estable).
+  const pan = useMemo(() => {
+    let p = Gesture.Pan().runOnJS(true);
+    if (!isWeb) {
+      p = p.activateAfterLongPress(450).failOffsetY([-10, 10]);
+      if (scrollViewRef) p = p.simultaneousWithExternalGesture(scrollViewRef);
+    }
+    return p
+      .onStart(() => {
+        activeIndexSV.value = index;
+        targetIndexSV.value = index;
+        dragOffsetY.value = 0;
+      })
+      .onUpdate((e) => {
+        dragOffsetY.value = e.translationY;
+        // Delta de fila con signo (a diferencia de estimateIndexFromOffset,
+        // pensada para una distancia siempre positiva desde el top de un
+        // contenedor) — acá el desplazamiento es relativo a la fila propia
+        // y puede ir para cualquier lado.
+        const rowDelta = Math.round(e.translationY / ESTIMATED_ROW_HEIGHT);
+        targetIndexSV.value = clampIndex(index + rowDelta, itemCountSV.value);
+      })
+      .onEnd(() => {
+        runOnJS(commitReorder)(activeIndexSV.value, targetIndexSV.value);
+      })
+      .onFinalize(() => {
+        activeIndexSV.value = -1;
+        targetIndexSV.value = -1;
+        dragOffsetY.value = 0;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, scrollViewRef]);
   const rowStyle = useAnimatedStyle(() => {
     const isActive = activeIndexSV.value === index;
     return {
@@ -431,6 +475,13 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
       opacity: isActive ? 0.95 : 1,
     };
   });
+  const dragSurfaceStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: rowHeightSV.value || undefined,
+  }));
 
   // Capa de arrastre INVISIBLE, hermana del contenido real (no
   // ancestro) — segundo intento, 2026-09-14/15. El primer intento
@@ -456,15 +507,15 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   return (
     <View nativeID={`reorderable-exercise-row-${index}`} style={{ position: 'relative' }} testID={`reorderable-exercise-row-${index}`}>
       <GestureDetector gesture={pan}>
-        <View
+        <Animated.View
           nativeID={`reorderable-exercise-row-${index}-drag-surface`}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: rowHeight || undefined }}
+          style={dragSurfaceStyle}
           testID={`reorderable-exercise-row-${index}-drag-surface`}
         />
       </GestureDetector>
       <Animated.View
         nativeID={`reorderable-exercise-row-${index}-content`}
-        onLayout={(e) => setRowHeight(e.nativeEvent.layout.height)}
+        onLayout={(e) => { rowHeightSV.value = e.nativeEvent.layout.height; }}
         style={rowStyle}
         testID={`reorderable-exercise-row-${index}-content`}
       >
