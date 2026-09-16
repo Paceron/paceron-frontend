@@ -139,6 +139,10 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
     setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef,
   } = useContext(SessionDragContext);
+  // Tamaño real de la card, medido con onLayout — solo se usa cuando
+  // holdMs está seteado (tira horizontal de mobile/narrow), ver el
+  // return más abajo.
+  const [cardSize, setCardSize] = useState({ width: 0, height: 0 });
 
   const cacheTargetMeasurements = () => {
     if (!dropTargetRef.current) return;
@@ -231,12 +235,46 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
       runOnJS(setDraggedExercise)(null);
     });
 
+  // Sin holdMs (panel ancho de escritorio): wrapper simple, sin cambios
+  // — confirmado funcionando, no necesita la separación de capas de
+  // abajo (no hay ScrollView compitiendo en la misma dirección del
+  // drag ahí).
+  if (!holdMs) {
+    return (
+      <GestureDetector gesture={pan}>
+        <View nativeID={`draggable-exercise-card-${exercise.id}`} testID={`draggable-exercise-card-${exercise.id}`}>
+          {children}
+        </View>
+      </GestureDetector>
+    );
+  }
+
+  // Con holdMs (tira horizontal de mobile/narrow): misma separación de
+  // capas que ReorderableRow y mismo motivo — con un solo GestureDetector
+  // envolviendo la card entera, el scroll horizontal del ScrollView que
+  // contiene la tira solo funcionaba bien si el toque arrancaba fuera de
+  // esta card (bug real: scroll horizontal seguía sin funcionar pese a
+  // failOffsetX + simultaneousWithExternalGesture). Tamaño medido con
+  // onLayout, no inferido por Yoga desde un hermano (ver nota de
+  // ReorderableRow sobre por qué la primera versión de esta idea rompió
+  // el arrastre por completo).
   return (
-    <GestureDetector gesture={pan}>
-      <View nativeID={`draggable-exercise-card-${exercise.id}`} testID={`draggable-exercise-card-${exercise.id}`}>
+    <View nativeID={`draggable-exercise-card-${exercise.id}-wrapper`} style={{ position: 'relative' }} testID={`draggable-exercise-card-${exercise.id}-wrapper`}>
+      <GestureDetector gesture={pan}>
+        <View
+          nativeID={`draggable-exercise-card-${exercise.id}-drag-surface`}
+          style={{ position: 'absolute', top: 0, left: 0, width: cardSize.width || undefined, height: cardSize.height || undefined }}
+          testID={`draggable-exercise-card-${exercise.id}-drag-surface`}
+        />
+      </GestureDetector>
+      <View
+        nativeID={`draggable-exercise-card-${exercise.id}`}
+        onLayout={(e) => setCardSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+        testID={`draggable-exercise-card-${exercise.id}`}
+      >
         {children}
       </View>
-    </GestureDetector>
+    </View>
   );
 }
 
@@ -316,6 +354,11 @@ export function ReorderDropIndicator() {
 export function ReorderableRow({ index, itemCount, onReorder, children, scrollViewRef }) {
   const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV } = useContext(ReorderContext);
   const onReorderRef = useRef(onReorder);
+  // Alto real de la fila, medido con onLayout — ver el return más abajo
+  // para el porqué (capa de arrastre separada del contenido, necesita
+  // saber cuánto medir sin depender de la auto-medición de Yoga contra
+  // un hermano).
+  const [rowHeight, setRowHeight] = useState(0);
 
   useEffect(() => {
     onReorderRef.current = onReorder;
@@ -355,16 +398,6 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   let pan = Gesture.Pan().runOnJS(true);
   if (!isWeb) {
     pan = pan.activateAfterLongPress(450).failOffsetY([-10, 10]);
-    // simultaneousWithExternalGesture (2026-09-15): relación EXPLÍCITA
-    // con el ScrollView vertical que contiene esta fila (via ref) — el
-    // Gesture.Native() genérico que había antes acá no apuntaba a nada
-    // concreto, y de hecho el scroll seguía sin funcionar bien en mobile
-    // real pese a él (bug real reportado). Con esta relación el
-    // ScrollView reconoce el toque en simultáneo desde el primer frame
-    // en vez de esperar pasivamente a que este Pan falle. El tap en
-    // controles anidados (selector de rol, quitar) ya no depende de
-    // esto — se resolvió aparte con la capa de arrastre invisible
-    // hermana del contenido real (ver el return de este componente).
     if (scrollViewRef) pan = pan.simultaneousWithExternalGesture(scrollViewRef);
   }
   pan = pan
@@ -399,12 +432,45 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
     };
   });
 
+  // Capa de arrastre INVISIBLE, hermana del contenido real (no
+  // ancestro) — segundo intento, 2026-09-14/15. El primer intento
+  // (mismo día) usaba `top/left/right/bottom: 0` para que la capa
+  // copiara el tamaño de su hermano automáticamente vía Yoga, confiando
+  // en que el padre `position: relative` (sin alto propio, determinado
+  // por el hijo en flujo normal) resolviera bien esa auto-medición en
+  // un solo pase — pero eso rompió el arrastre por completo (en web Y
+  // en mobile), revertido el mismo día (ver CLAUDE.md). Esta vez el
+  // alto NO se infiere: se mide de verdad con `onLayout` sobre el
+  // contenido real y se aplica explícito (`height: rowHeight`) a la
+  // capa de arrastre — nada que Yoga tenga que adivinar entre hermanos.
+  // El motivo de separar las capas sigue siendo el mismo: con un solo
+  // GestureDetector envolviendo TODO (fondo de la fila + controles), el
+  // scroll del ScrollView que contiene la lista solo funcionaba bien
+  // cuando el toque arrancaba sobre un control nativo (Pressable/select,
+  // que esquiva nuestro Pan de entrada) — tocar el fondo de la fila
+  // quedaba atrapado por nuestro Pan indefinidamente, confirmado con un
+  // hold subido a 5000ms sin que cambiara nada (descartando que fuera
+  // timing/carrera contra failOffset — la relación
+  // simultaneousWithExternalGesture de arriba no alcanza sola cuando el
+  // Pan envuelve directamente el contenido interactivo).
   return (
-    <GestureDetector gesture={pan}>
-      <Animated.View nativeID={`reorderable-exercise-row-${index}`} style={rowStyle} testID={`reorderable-exercise-row-${index}`}>
+    <View nativeID={`reorderable-exercise-row-${index}`} style={{ position: 'relative' }} testID={`reorderable-exercise-row-${index}`}>
+      <GestureDetector gesture={pan}>
+        <View
+          nativeID={`reorderable-exercise-row-${index}-drag-surface`}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: rowHeight || undefined }}
+          testID={`reorderable-exercise-row-${index}-drag-surface`}
+        />
+      </GestureDetector>
+      <Animated.View
+        nativeID={`reorderable-exercise-row-${index}-content`}
+        onLayout={(e) => setRowHeight(e.nativeEvent.layout.height)}
+        style={rowStyle}
+        testID={`reorderable-exercise-row-${index}-content`}
+      >
         {children}
       </Animated.View>
-    </GestureDetector>
+    </View>
   );
 }
 
