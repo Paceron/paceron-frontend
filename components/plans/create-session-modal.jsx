@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 // ScrollView de gesture-handler, alias aparte — solo para el contenedor
 // de ejercicios de la sesión en layout angosto (envuelve las
 // ReorderableRow, cada una con su propio GestureDetector). Un ScrollView
@@ -17,8 +17,7 @@ import { useExercises } from '../../hooks/use-exercises.js';
 import { useSessionMutations } from '../../hooks/use-sessions.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { InputField, FIELD_LABEL } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { SESSION_ROLE_ORDER, SESSION_ROLE_META } from './exercise-kind-meta.js';
+import { SESSION_ROLE_ORDER, SESSION_ROLE_META, WARMCOOL_KINDS } from './exercise-kind-meta.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
@@ -28,148 +27,7 @@ import {
   ReorderProvider, ReorderableRow, ReorderDropIndicator, DragGhost, reorderList,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
-
-const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
-
-// Opciones del select de rol — mismo shape {id, name} que cualquier otro
-// ResponsiveSelectField (ver más abajo, SessionExerciseRow). Constante a
-// nivel módulo: el array de opciones no cambia entre renders, no hace
-// falta recalcularlo por fila.
-const SESSION_ROLE_OPTIONS = SESSION_ROLE_ORDER.map((role) => ({ id: role, name: SESSION_ROLE_META[role].label }));
-
-// Pill inline chico (ícono + input numérico + sufijo) — reemplaza al
-// InputField con label propio que usaban repeticiones/descanso: ese
-// combo (label + input h-12) agregaba una fila entera de alto aparte del
-// toggle "Serie repetida" cuando estaba activo. Acá los dos viven en la
-// MISMA fila que el toggle (ver series-row más abajo), sin fila extra.
-function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibilityLabel }) {
-  return (
-    <View className="h-8 flex-row items-center gap-1 rounded-full bg-slate-100 px-2 dark:bg-slate-800" nativeID={idPrefix} testID={idPrefix}>
-      <MaterialCommunityIcons color="#94a3b8" name={icon} size={14} />
-      <TextInput
-        accessibilityLabel={accessibilityLabel}
-        className="w-6 text-xs text-slate-900 outline-none dark:text-white"
-        keyboardType="number-pad"
-        nativeID={`${idPrefix}-input`}
-        onChangeText={onChange}
-        testID={`${idPrefix}-input`}
-        value={value}
-      />
-      <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-suffix`} testID={`${idPrefix}-suffix`}>{suffix}</Text>
-    </View>
-  );
-}
-
-// Una fila = un ejercicio de la sesión. Rol (ResponsiveSelectField) +
-// select de ejercicio + botón de quitar en una sola línea; "Serie
-// repetida" es un toggle chico aparte — colapsado por default para que
-// la fila no crezca salvo que haga falta, mismo criterio ya usado para
-// los días de un plan.
-// El reordenamiento es SIEMPRE por mantener-presionado-y-arrastrar sobre
-// la fila entera (ReorderableRow, en ambos layouts) — no hay botones
-// subir/bajar.
-// El selector de rol usa el mismo ResponsiveSelectField que cualquier
-// otro select del proyecto (2026-09-15, reemplaza a los custom
-// SessionRoleSegmentedPicker/SessionRoleClosedSelect de antes) — regla
-// estricta del proyecto (ver CLAUDE.md, "Selects"): nada fuera de
-// forms/fields.jsx/responsive-select-field.jsx debería armar su propio
-// selector. De paso resuelve de raíz el bug de posicionamiento que
-// tenía el dropdown custom (ver historial de este archivo/CLAUDE.md) —
-// en mobile abre como el picker modal estándar de la app, en web como
-// un <select> normal mostrando el label. Único costo: la fila ya no
-// muestra los 3 roles como iconos siempre visibles (ganancia de espacio
-// visual desde el diseño original de columnas fijas) — ahora es 1
-// select como cualquier otro, en ambos layouts por igual.
-function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChangeExercise, onChangeRole, onRemove }) {
-  const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
-  const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
-
-  const handleToggleSeries = () => {
-    const next = !isSeries;
-    setIsSeries(next);
-    if (!next) onChangeExercise(entry.localKey, { repeatCount: 1, restMinutes: 0 });
-  };
-
-  return (
-    <View className="gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-fields`} testID={`${idPrefix}-fields`}>
-        <View className="w-36" nativeID={`${idPrefix}-role-select-wrapper`} testID={`${idPrefix}-role-select-wrapper`}>
-          <ResponsiveSelectField
-            className="mb-0"
-            dense
-            hideErrorRow
-            hideLabel
-            label="Rol"
-            onChange={(role) => onChangeRole(entry.localKey, role)}
-            options={SESSION_ROLE_OPTIONS}
-            value={entry.role}
-          />
-        </View>
-        <View className="flex-1" nativeID={`${idPrefix}-select-wrapper`} testID={`${idPrefix}-select-wrapper`}>
-          <ResponsiveSelectField
-            className="mb-0"
-            dense
-            hideErrorRow
-            hideLabel
-            label={`Ejercicio ${index + 1}`}
-            onChange={(exerciseId) => onChangeExercise(entry.localKey, { exerciseId })}
-            options={roleOptions.map((e) => ({ id: e.id, name: e.name }))}
-            placeholder={roleOptions.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
-            required
-            value={entry.exerciseId}
-          />
-        </View>
-        <Pressable
-          accessibilityLabel="Quitar ejercicio"
-          className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
-          nativeID={`${idPrefix}-remove-button`}
-          onPress={() => onRemove(entry.localKey)}
-          testID={`${idPrefix}-remove-button`}
-        >
-          <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-        </Pressable>
-      </View>
-
-      <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>
-        <Pressable
-          accessibilityLabel="Marcar como serie repetida"
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: isSeries }}
-          className="flex-row items-center gap-1.5 rounded-full px-2.5 py-1"
-          nativeID={`${idPrefix}-series-toggle`}
-          onPress={handleToggleSeries}
-          testID={`${idPrefix}-series-toggle`}
-        >
-          <MaterialCommunityIcons color={isSeries ? '#8cc63e' : '#94a3b8'} name="repeat-variant" size={16} />
-          <Text className={`text-xs font-semibold ${isSeries ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-series-toggle-label`} testID={`${idPrefix}-series-toggle-label`}>
-            Serie repetida
-          </Text>
-        </Pressable>
-
-        {isSeries && (
-          <>
-            <CompactNumberPill
-              accessibilityLabel="Repeticiones"
-              icon="repeat-variant"
-              idPrefix={`${idPrefix}-repeat-count`}
-              onChange={(v) => onChangeExercise(entry.localKey, { repeatCount: Number(v) || 1 })}
-              suffix="×"
-              value={String(entry.repeatCount)}
-            />
-            <CompactNumberPill
-              accessibilityLabel="Descanso en minutos"
-              icon="timer-outline"
-              idPrefix={`${idPrefix}-rest-minutes`}
-              onChange={(v) => onChangeExercise(entry.localKey, { restMinutes: Number(v) || 0 })}
-              suffix="min"
-              value={String(entry.restMinutes)}
-            />
-          </>
-        )}
-      </View>
-    </View>
-  );
-}
+import { SessionExerciseRow, SessionFormBody } from './session-form-body.jsx';
 
 // Cuerpo del modal en layout ancho — 2 columnas: datos de la sesión +
 // catálogo de origen del arrastre a la izquierda (angosta), lista de
@@ -260,70 +118,6 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
         )}
       </View>
     </View>
-  );
-}
-
-// Cuerpo del modal en layout angosto (mobile nativo + web angosto) —
-// todo apilado en una sola columna con scroll vertical: nombre,
-// descripción, catálogo de ejercicios como tira horizontal (arrastrable
-// con hold), y la lista de ejercicios DE LA SESIÓN con alto fijo y
-// scroll propio (mismo criterio que la columna derecha del layout
-// ancho — ver SessionModalWideBody). Reemplaza al antiguo botón
-// "Agregar ejercicio" + filas pre-cargadas por rol (2026-09-14): ahora
-// arranca vacío y se carga por drag, igual que el layout ancho.
-function SessionModalNarrowBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, visible }) {
-  const dropTargetRef = useSessionDropTarget();
-  const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
-
-  return (
-    <ScrollView className="flex-1" nativeID="create-session-modal-scroll" showsVerticalScrollIndicator={false} testID="create-session-modal-scroll">
-      <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
-      <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
-
-      <SessionExercisePanel horizontal onExerciseAdded={onExerciseDropped} />
-
-      <Text className={`${FIELD_LABEL} mb-1 mt-3`} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
-      <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-drop-hint" testID="create-session-modal-drop-hint">
-        Mantené presionado un ejercicio del catálogo para sumarlo, o una fila para reordenarla.
-      </Text>
-
-      <View className="h-[320px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
-        <ReorderProvider>
-          <GestureScrollView
-            contentContainerClassName="gap-2 p-2 pb-4"
-            nativeID="create-session-modal-exercises-scroll"
-            onScroll={onListScroll}
-            ref={autoScrollRef}
-            scrollEventThrottle={16}
-            testID="create-session-modal-exercises-scroll"
-          >
-            {exercises.length === 0 ? (
-              <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
-                Todavía no agregaste ejercicios.
-              </Text>
-            ) : exercises.map((entry, index) => (
-              <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
-                <SessionExerciseRow
-                  catalogExercises={catalogExercises}
-                  entry={entry}
-                  idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
-                  index={index}
-                  onChangeExercise={onChangeExercise}
-                  onChangeRole={onChangeRole}
-                  onRemove={onRemove}
-                />
-              </ReorderableRow>
-            ))}
-          </GestureScrollView>
-          <SessionDropIndicator />
-          <ReorderDropIndicator />
-        </ReorderProvider>
-      </View>
-
-      {error && (
-        <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
-      )}
-    </ScrollView>
   );
 }
 
@@ -554,7 +348,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                    diferencias del algoritmo flexbox del browser vs Yoga —
                    por eso nunca se notó ahí. Mismo criterio que el fix ya
                    aplicado a la rama ancha (h-[640px] junto a max-h-[94%]). */
-                <SessionModalNarrowBody
+                <SessionFormBody
                   catalogExercises={catalogExercises}
                   description={description}
                   error={error}
