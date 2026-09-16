@@ -131,7 +131,10 @@ export function SessionDropIndicator() {
 // (undefined) el arrastre se activa de inmediato, comportamiento
 // original sin cambios (panel ancho de escritorio, confirmado
 // funcionando, no se toca).
-export function DraggableExerciseCard({ exercise, onDropped, children, holdMs }) {
+// scrollViewRef (opcional, va junto con holdMs): ref al mismo
+// ScrollView de gesture-handler que envuelve esta card — ver
+// `.simultaneousWithExternalGesture` más abajo para el porqué.
+export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, scrollViewRef }) {
   const {
     dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
     setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef,
@@ -192,6 +195,16 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs })
     // no scrolleaba nada). activateAfterLongPress solo, sin este tope,
     // no alcanza.
     pan = pan.activateAfterLongPress(holdMs).failOffsetX([-10, 10]);
+    // simultaneousWithExternalGesture: relación EXPLÍCITA con el
+    // ScrollView que envuelve esta card (via ref, no un Gesture.Native()
+    // genérico sin nada a lo que referenciar) — deja que el ScrollView
+    // reconozca el toque en simultáneo desde el primer frame, en vez de
+    // esperar pasivamente a que este Pan falle. failOffsetX seguía sin
+    // alcanzar solo (bug real: scroll horizontal seguía sin funcionar en
+    // mobile incluso con failOffsetX + Gesture.Native() genérico) — sin
+    // una relación real hacia el ScrollView específico, gesture-handler
+    // no tenía ningún native handler concreto con el que negociar.
+    if (scrollViewRef) pan = pan.simultaneousWithExternalGesture(scrollViewRef);
   }
   pan = pan
     .onStart((e) => {
@@ -218,18 +231,8 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs })
       runOnJS(setDraggedExercise)(null);
     });
 
-  // Simultaneous(pan, Native()) solo cuando hay holdMs (tira horizontal
-  // de mobile/narrow) — mismo motivo que en ReorderableRow: sin el
-  // Native() de acompañamiento, failOffsetX solo no alcanzaba para que
-  // el ScrollView hermano recuperara el toque a tiempo (bug real: scroll
-  // horizontal seguía sin funcionar incluso con failOffsetX). El panel
-  // ancho de escritorio (sin holdMs, activación inmediata) no lo
-  // necesita — ahí no hay ScrollView compitiendo en la misma dirección
-  // del drag, y ya está confirmado funcionando sin esto.
-  const cardGesture = holdMs ? Gesture.Simultaneous(pan, Gesture.Native()) : pan;
-
   return (
-    <GestureDetector gesture={cardGesture}>
+    <GestureDetector gesture={pan}>
       <View nativeID={`draggable-exercise-card-${exercise.id}`} testID={`draggable-exercise-card-${exercise.id}`}>
         {children}
       </View>
@@ -310,7 +313,7 @@ export function ReorderDropIndicator() {
 // (dragOffsetY, compartido en el contexto porque solo una fila se
 // arrastra por vez); las demás no se reacomodan en vivo — la línea de
 // ReorderDropIndicator ya comunica el destino.
-export function ReorderableRow({ index, itemCount, onReorder, children }) {
+export function ReorderableRow({ index, itemCount, onReorder, children, scrollViewRef }) {
   const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV } = useContext(ReorderContext);
   const onReorderRef = useRef(onReorder);
 
@@ -350,7 +353,20 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
   // scroll (motivo original de subirlo a 450, ya no aplica en web al no
   // usarse ninguno de los dos acá).
   let pan = Gesture.Pan().runOnJS(true);
-  if (!isWeb) pan = pan.activateAfterLongPress(450).failOffsetY([-10, 10]);
+  if (!isWeb) {
+    pan = pan.activateAfterLongPress(450).failOffsetY([-10, 10]);
+    // simultaneousWithExternalGesture (2026-09-15): relación EXPLÍCITA
+    // con el ScrollView vertical que contiene esta fila (via ref) — el
+    // Gesture.Native() genérico que había antes acá no apuntaba a nada
+    // concreto, y de hecho el scroll seguía sin funcionar bien en mobile
+    // real pese a él (bug real reportado). Con esta relación el
+    // ScrollView reconoce el toque en simultáneo desde el primer frame
+    // en vez de esperar pasivamente a que este Pan falle. El tap en
+    // controles anidados (selector de rol, quitar) ya no depende de
+    // esto — se resolvió aparte con la capa de arrastre invisible
+    // hermana del contenido real (ver el return de este componente).
+    if (scrollViewRef) pan = pan.simultaneousWithExternalGesture(scrollViewRef);
+  }
   pan = pan
     .onStart(() => {
       activeIndexSV.value = index;
@@ -374,8 +390,6 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
       targetIndexSV.value = -1;
       dragOffsetY.value = 0;
     });
-  const rowGesture = Gesture.Simultaneous(pan, Gesture.Native());
-
   const rowStyle = useAnimatedStyle(() => {
     const isActive = activeIndexSV.value === index;
     return {
@@ -386,7 +400,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children }) {
   });
 
   return (
-    <GestureDetector gesture={rowGesture}>
+    <GestureDetector gesture={pan}>
       <Animated.View nativeID={`reorderable-exercise-row-${index}`} style={rowStyle} testID={`reorderable-exercise-row-${index}`}>
         {children}
       </Animated.View>

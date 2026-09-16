@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 // ScrollView de gesture-handler (no el de 'react-native' plano) — en
 // nativo, un ScrollView plano no negocia correctamente con un
@@ -82,6 +82,12 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
   const { exercises } = useExercises(userId);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  // Ref al propio ScrollView horizontal — pasado a cada card para
+  // simultaneousWithExternalGesture (ver DraggableExerciseCard),
+  // relación explícita que deja al ScrollView reconocer el toque en
+  // paralelo desde el primer frame en vez de esperar a que el Pan de la
+  // card falle.
+  const stripScrollRef = useRef(null);
 
   const query = search.trim().toLowerCase();
   const filtered = query ? exercises.filter((e) => e.name.toLowerCase().includes(query)) : exercises;
@@ -111,6 +117,7 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
             contentContainerClassName="gap-2 pb-1"
             horizontal
             nativeID="session-exercise-panel-list"
+            ref={stripScrollRef}
             showsHorizontalScrollIndicator={false}
             testID="session-exercise-panel-list"
           >
@@ -128,8 +135,10 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
               // Antes esto estaba fijo en 450ms para ambas plataformas —
               // en web, esa espera no hacía falta y encima competía mal
               // contra failOffsetX en scrolls lentos (bug real: solo un
-              // swipe agresivo scrolleaba).
-              <DraggableExerciseCard exercise={exercise} holdMs={isWeb ? undefined : 450} key={exercise.id} onDropped={onExerciseAdded}>
+              // swipe agresivo scrolleaba). scrollViewRef: ver
+              // DraggableExerciseCard, relación explícita con este mismo
+              // ScrollView para que reconozca el toque en simultáneo.
+              <DraggableExerciseCard exercise={exercise} holdMs={isWeb ? undefined : 450} key={exercise.id} onDropped={onExerciseAdded} scrollViewRef={stripScrollRef}>
                 <PanelExerciseCardCompact exercise={exercise} />
               </DraggableExerciseCard>
             ))}

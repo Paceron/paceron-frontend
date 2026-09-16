@@ -237,7 +237,7 @@ function SessionModalWideBody({ name, onSetName, description, onSetDescription, 
                   Todavía no agregaste ejercicios.
                 </Text>
               ) : exercises.map((entry, index) => (
-                <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
+                <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder} scrollViewRef={autoScrollRef}>
                   <SessionExerciseRow
                     catalogExercises={catalogExercises}
                     entry={entry}
