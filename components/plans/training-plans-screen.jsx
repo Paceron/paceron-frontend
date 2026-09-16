@@ -54,6 +54,7 @@ function PlanRow({ plan, onPress }) {
 
 function PlansTab() {
   const router = useRouter();
+  const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const { plans, loading } = useTrainingPlans(user?.userId);
@@ -62,14 +63,13 @@ function PlansTab() {
     <SectionCard
       headerRight={(
         <Pressable
-          className="rounded-lg px-2 py-1 hover:opacity-70 active:opacity-70"
+          accessibilityLabel="Crear plan"
+          className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
           nativeID="training-plans-create-button"
           onPress={() => router.push('/training-plans/create')}
           testID="training-plans-create-button"
         >
-          <Text className="text-sm font-semibold text-primary" nativeID="training-plans-create-button-label" testID="training-plans-create-button-label">
-            Crear plan
-          </Text>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
         </Pressable>
       )}
       icon="clipboard-text-outline"
