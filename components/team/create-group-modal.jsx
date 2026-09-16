@@ -98,7 +98,7 @@ export function CreateGroupModal({ visible, onClose, onSubmit, existingNames = [
                 placeholder={planOptions.length === 0 ? 'Sin planes disponibles todavía' : 'Sin plan asignado'}
                 value={trainingPlanId}
               />
-              <InputField className="mb-0" dense hideErrorRow label="Descripción" multiline numberOfLines={3} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
+              <InputField className="mb-0" dense hideErrorRow label="Descripción (opcional)" multiline numberOfLines={3} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
             </View>
 
             <View className="mt-3 flex-row gap-3" nativeID="create-group-modal-actions" testID="create-group-modal-actions">

@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listSessions as listSessionsService,
+  getSession as getSessionService,
   createSession as createSessionService,
   updateSession as updateSessionService,
   deleteSession as deleteSessionService,
+  cloneSession as cloneSessionService,
 } from '../services/sessions.js';
 import { toSessionModel, toCreateSessionPayload } from '../services/normalizers.js';
 
@@ -17,6 +19,24 @@ export function useSessions(ownerId) {
     enabled: Boolean(ownerId),
   });
   return { sessions: query.data ?? [], loading: query.isLoading, error: query.error };
+}
+
+export function useSession(sessionId) {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['session', sessionId],
+    queryFn: () => getSessionService(sessionId).then(toSessionModel),
+    enabled: Boolean(sessionId),
+    initialData: () => {
+      const cachedLists = queryClient.getQueriesData({ queryKey: ['sessions'] });
+      for (const [, sessions] of cachedLists) {
+        const found = sessions?.find((s) => s.id === sessionId);
+        if (found) return found;
+      }
+      return undefined;
+    },
+  });
+  return { session: query.data ?? null, loading: query.isLoading, error: query.error };
 }
 
 export function useSessionMutations() {
@@ -64,6 +84,20 @@ export function useSessionMutations() {
     },
   });
 
+  const cloneSessionMutation = useMutation({
+    mutationFn: async ({ sessionId }) => {
+      try {
+        const cloned = await cloneSessionService(sessionId);
+        return { success: true, session: toSessionModel(cloned) };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+    onSuccess: (result, variables) => {
+      if (result.success) queryClient.invalidateQueries({ queryKey: ['sessions', variables.ownerId] });
+    },
+  });
+
   return {
     createSession: createSessionMutation.mutateAsync,
     isCreating: createSessionMutation.isPending,
@@ -71,5 +105,7 @@ export function useSessionMutations() {
     isUpdating: updateSessionMutation.isPending,
     deleteSession: deleteSessionMutation.mutateAsync,
     isDeleting: deleteSessionMutation.isPending,
+    cloneSession: cloneSessionMutation.mutateAsync,
+    isCloning: cloneSessionMutation.isPending,
   };
 }

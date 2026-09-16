@@ -336,10 +336,31 @@ export function toCreateSessionPayload(form) {
   };
 }
 
+// Fusiona ejercicios nuevos (agregados al final, rol "principal" por
+// default) con los que ya tiene una sesión — usada por la acción
+// "Adjuntar a sesión existente" del catálogo de ejercicios
+// (exercises-catalog-tab.jsx). No aplica la validación de "1 ejercicio
+// por rol" del formulario de alta/edición manual (create-session-modal.jsx)
+// — acá la sesión destino ya es válida, solo se agregan filas.
+export function mergeSessionExercises(session, newExerciseIds) {
+  const existing = session.exercises.map((e) => ({
+    exerciseId: e.exerciseId,
+    role: e.role,
+    repeatCount: e.repeatCount,
+    restMinutes: e.restMinutes,
+  }));
+  const added = newExerciseIds.map((exerciseId) => ({
+    exerciseId,
+    role: 'main',
+    repeatCount: 1,
+    restMinutes: 0,
+  }));
+  return [...existing, ...added];
+}
+
 function toPlanDayModel(dto) {
   return {
     sequenceNo: dto.sequence_no,
-    dayOfWeek: dto.day_of_week,
     kind: dto.kind,
     otherName: dto.other_name ?? null,
     sessionId: dto.session_id != null ? String(dto.session_id) : null,
@@ -349,7 +370,6 @@ function toPlanDayModel(dto) {
 function toPlanDayPayload(day) {
   return {
     sequence_no: day.sequenceNo,
-    day_of_week: day.dayOfWeek,
     kind: day.kind,
     other_name: day.kind === 'other' ? day.otherName : null,
     session_id: day.kind === 'training' && day.sessionId ? Number(day.sessionId) : null,
@@ -363,7 +383,6 @@ export function toTrainingPlanModel(dto) {
     ownerId: dto.owner_id,
     name: dto.name,
     description: dto.description,
-    durationDays: dto.duration_days,
     days: (dto.days ?? []).map(toPlanDayModel),
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
@@ -375,7 +394,6 @@ export function toCreateTrainingPlanPayload(form) {
     owner_id: form.ownerId,
     name: form.name,
     description: form.description || null,
-    duration_days: form.durationDays,
     days: form.days.map(toPlanDayPayload),
   };
 }
@@ -384,7 +402,6 @@ export function toUpdateTrainingPlanPayload(form) {
   const payload = {};
   if (form.name !== undefined) payload.name = form.name;
   if (form.description !== undefined) payload.description = form.description || null;
-  if (form.durationDays !== undefined) payload.duration_days = form.durationDays;
   if (form.days !== undefined) payload.days = form.days.map(toPlanDayPayload);
   return payload;
 }

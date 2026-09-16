@@ -22,6 +22,13 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH;
 const ANIMATION_CONFIG = { duration: 280, easing: Easing.out(Easing.cubic) };
 
+// Alto real de TopAppBar (h-[60px] más abajo) — exportado para que
+// cualquier posicionamiento absoluto medido contra la ventana completa
+// (ej. DragGhost en session-drag-and-drop.jsx) pueda descontar este
+// offset: el contenido de cada pantalla arranca este tanto más abajo del
+// borde real de la ventana, sumado al inset de la safe area.
+export const MOBILE_TOPBAR_HEIGHT = 60;
+
 function TopAppBar({ onTogglePress, open }) {
   const colors = useThemeColors();
 
