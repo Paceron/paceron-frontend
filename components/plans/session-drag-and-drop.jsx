@@ -24,6 +24,13 @@ const SessionDragContext = createContext(null);
 const AUTO_SCROLL_EDGE = 56;
 const AUTO_SCROLL_STEP = 14;
 
+// Tamaño de respaldo de la capa de arrastre de DraggableExerciseCard
+// mientras onLayout todavía no midió el tamaño real (ver dragSurfaceStyle
+// más abajo) — mismo tamaño fijo que PanelExerciseCardCompact (h-20 w-28)
+// en session-exercise-panel.jsx.
+const DEFAULT_DRAG_CARD_WIDTH = 112;
+const DEFAULT_DRAG_CARD_HEIGHT = 80;
+
 export function SessionDragProvider({ children }) {
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
@@ -154,8 +161,8 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     position: 'absolute',
     top: 0,
     left: 0,
-    width: cardWidthSV.value || undefined,
-    height: cardHeightSV.value || undefined,
+    width: cardWidthSV.value || DEFAULT_DRAG_CARD_WIDTH,
+    height: cardHeightSV.value || DEFAULT_DRAG_CARD_HEIGHT,
   }));
 
   const cacheTargetMeasurements = () => {
@@ -475,12 +482,18 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
       opacity: isActive ? 0.95 : 1,
     };
   });
+  // Fallback a ESTIMATED_ROW_HEIGHT (no undefined) mientras onLayout
+  // todavía no midió el alto real (2026-09-16): sin esto, la capa
+  // colapsaba a 0px hasta el primer layout, y un toque en ese instante no
+  // llegaba a ningún GestureDetector — el arrastre no arrancaba nunca,
+  // en cualquier plataforma (bug real, confirmado sin señal visual
+  // alguna al mantener presionado).
   const dragSurfaceStyle = useAnimatedStyle(() => ({
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: rowHeightSV.value || undefined,
+    height: rowHeightSV.value || ESTIMATED_ROW_HEIGHT,
   }));
 
   // Capa de arrastre INVISIBLE, hermana del contenido real (no
