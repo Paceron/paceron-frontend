@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessions, useSessionMutations } from '../../hooks/use-sessions.js';
 import { useExercises } from '../../hooks/use-exercises.js';
@@ -124,6 +126,7 @@ export function SessionsCatalogTab() {
   useExercises(userId); // solo para precargar el cache que usa SessionExercisesPreview de cada fila
   const { plans, loading: plansLoading } = useTrainingPlans(userId);
 
+  const router = useRouter();
   const [modalSession, setModalSession] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
   const [deleteTarget, setDeleteTarget] = useState(null); // { session, usedIn }
   const [usageTarget, setUsageTarget] = useState(null); // { session, usedIn }
@@ -162,7 +165,7 @@ export function SessionsCatalogTab() {
             accessibilityLabel="Crear sesión"
             className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
             nativeID="sessions-catalog-create-button"
-            onPress={() => setModalSession(null)}
+            onPress={() => (isWeb ? setModalSession(null) : router.push('/training-plans/sessions/create'))}
             testID="sessions-catalog-create-button"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
@@ -214,7 +217,11 @@ export function SessionsCatalogTab() {
           <SessionActionsMenu
             onClone={handleCloneOne}
             onDelete={(s) => { handleCloseMenu(); setDeleteTarget({ session: s, usedIn: plansUsingSession(s.id, plans) }); }}
-            onEdit={(s) => { handleCloseMenu(); setModalSession(s); }}
+            onEdit={(s) => {
+              handleCloseMenu();
+              if (isWeb) setModalSession(s);
+              else router.push(`/training-plans/sessions/${s.id}/edit`);
+            }}
             session={openMenu.session}
           />
         )}
