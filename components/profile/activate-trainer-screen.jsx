@@ -9,6 +9,11 @@ import { isWeb } from '../../utils/platform.js';
 import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, useUserMutations } from '../../hooks/use-user.js';
+import { useMpConnectStatus } from '../../hooks/use-mp-connect.js';
+import { resolveMpConnectErrorText } from '../../utils/mp-connect-messages.js';
+// Sin extensión, a propósito: hay split de plataforma (.jsx / .web.jsx) y
+// Metro solo resuelve por plataforma cuando el specifier no la trae.
+import { MpConnectButton } from '../payments/mp-connect-button';
 import { InputField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ActivateTrainerPasswordModal } from './activate-trainer-password-modal.jsx';
@@ -27,14 +32,38 @@ export function ActivateTrainerScreen() {
   const [touched, setTouched] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const hasPreviousAlias = Boolean(user?.bankAlias);
+  const { connected: mpConnected, loading: mpLoading, refetch: refetchMpStatus } = useMpConnectStatus();
 
   const aliasError = touched ? validateTrainerAlias(trainerAlias) : null;
-  const canSubmit = !validateTrainerAlias(trainerAlias);
+  const aliasOk = !validateTrainerAlias(trainerAlias);
+  // Para activar hacen falta las dos cosas: alias válido y cuenta de Mercado
+  // Pago conectada (sin ella no se puede cobrar con split).
+  const canSubmit = aliasOk && mpConnected;
+
+  const missingHint = (() => {
+    if (canSubmit || mpLoading) return null;
+    if (!aliasOk && !mpConnected) return 'Completá tu alias de pagos y conectá tu cuenta de Mercado Pago para activar el perfil.';
+    if (!mpConnected) return 'Conectá tu cuenta de Mercado Pago para activar el perfil.';
+    return 'Completá un alias de pagos válido para activar el perfil.';
+  })();
 
   const handleSubmit = () => {
     setTouched(true);
     if (!canSubmit) return;
     setPasswordModalVisible(true);
+  };
+
+  // Las tres salidas del botón refrescan el estado contra el backend: el
+  // resultado que llega por la ventana emergente o el deep link sirve para el
+  // mensaje, pero quien decide si está conectada es /connect/status.
+  const handleMpConnected = () => {
+    refetchMpStatus();
+    Toast.show({ type: 'success', text1: 'Configuración de cobros exitosa', text2: 'Tu cuenta de Mercado Pago quedó conectada.' });
+  };
+
+  const handleMpError = (error) => {
+    refetchMpStatus();
+    Toast.show({ type: 'error', text1: 'Algo salió mal', text2: resolveMpConnectErrorText(error) });
   };
 
   const handleConfirmActivate = async (password) => {
@@ -95,6 +124,21 @@ export function ActivateTrainerScreen() {
           />
         </SectionCard>
 
+        <SectionCard icon="link-variant" title="Cobros con Mercado Pago" variant="amber">
+          <Text nativeID="activate-trainer-screen-mp-description" testID="activate-trainer-screen-mp-description" className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300">
+            Conectá tu cuenta de Mercado Pago para poder cobrar las mensualidades de tu equipo. El pago del corredor se
+            divide automáticamente entre vos y Paceron, sin que tengas que hacer nada.
+          </Text>
+
+          <MpConnectButton
+            connected={mpConnected}
+            disabled={mpLoading}
+            onCancel={refetchMpStatus}
+            onConnected={handleMpConnected}
+            onError={handleMpError}
+          />
+        </SectionCard>
+
         <Pressable
           nativeID="activate-trainer-screen-submit-button"
           testID="activate-trainer-screen-submit-button"
@@ -106,6 +150,12 @@ export function ActivateTrainerScreen() {
             Activar
           </Text>
         </Pressable>
+
+        {missingHint ? (
+          <Text nativeID="activate-trainer-screen-missing-hint" testID="activate-trainer-screen-missing-hint" className="mt-3 text-center text-xs leading-4 text-slate-500 dark:text-slate-400">
+            {missingHint}
+          </Text>
+        ) : null}
       </View>
 
       <ActivateTrainerPasswordModal
