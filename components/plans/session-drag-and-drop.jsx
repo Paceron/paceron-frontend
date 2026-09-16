@@ -3,10 +3,12 @@ import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isWeb } from '../../utils/platform.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { ESTIMATED_ROW_HEIGHT, estimateIndexFromOffset, clampIndex, reorderList } from './session-reorder-math.js';
+import { MOBILE_TOPBAR_HEIGHT } from '../shell/app-mobile-shell.jsx';
 
 export { reorderList };
 
@@ -458,8 +460,20 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
 function DragGhost() {
   const colors = useThemeColors();
   const { dragX, dragY, draggedExercise } = useContext(SessionDragContext);
+  // dragX/dragY vienen de e.absoluteX/absoluteY (coordenadas de VENTANA
+  // completa). En mobile nativo, este overlay ya no vive dentro de un
+  // Modal de pantalla completa (2026-09-16, migrado a pantalla dedicada)
+  // — ahora es descendiente de AppMobileShell, cuyo SafeAreaView + barra
+  // superior (MOBILE_TOPBAR_HEIGHT) empujan el contenido hacia abajo
+  // respecto del borde real de la ventana. Sin descontar ese offset, el
+  // fantasma aparecía notoriamente más abajo del dedo real (bug real,
+  // reportado tras la migración). En web sigue sin hacer falta: el
+  // overlay usa `position: fixed`, que ancla contra el viewport sin
+  // importar la jerarquía de ancestros.
+  const insets = useSafeAreaInsets();
+  const topOffset = isWeb ? 0 : insets.top + MOBILE_TOPBAR_HEIGHT;
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: dragX.value - 90 }, { translateY: dragY.value - 24 }],
+    transform: [{ translateX: dragX.value - 90 }, { translateY: dragY.value - 24 - topOffset }],
   }));
 
   if (!draggedExercise) return null;
