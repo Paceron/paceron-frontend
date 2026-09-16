@@ -128,7 +128,7 @@ export function SessionFormBody({ name, onSetName, description, onSetDescription
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
   return (
-    <ScrollView className="flex-1" nativeID="session-form-body-scroll" showsVerticalScrollIndicator={false} testID="session-form-body-scroll">
+    <ScrollView className="flex-1" nativeID="session-form-body-scroll" testID="session-form-body-scroll">
       <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
       <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
 

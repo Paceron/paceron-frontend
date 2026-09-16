@@ -118,7 +118,6 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
             horizontal
             nativeID="session-exercise-panel-list"
             ref={stripScrollRef}
-            showsHorizontalScrollIndicator={false}
             testID="session-exercise-panel-list"
           >
             {exercises.map((exercise) => (
