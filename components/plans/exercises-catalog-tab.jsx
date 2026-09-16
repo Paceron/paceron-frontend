@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -100,18 +100,23 @@ function ExerciseActionsMenu({ exercise, onEdit, onClone, onDelete }) {
   );
 }
 
-// Box/card en vez de fila — la cantidad de columnas surge sola del
-// flex-wrap del contenedor (exercises-catalog-list) según el ancho
-// disponible, sin breakpoints explícitos (mismo criterio de
-// responsividad "automática" que el resto del catálogo).
-function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, selectionMode, selected, onToggleSelected }) {
+// Box/card en vez de fila — en pantallas anchas la cantidad de columnas
+// surge sola del flex-wrap del contenedor (exercises-catalog-list) con
+// un ancho fijo por card (w-[210px], tantas entran como el ancho
+// disponible permita). En pantallas angostas (`narrow`, ver
+// ExercisesCatalogTab) ese ancho fijo dejaba lugar para una sola
+// columna con espacio muerto al costado sin llenar la fila (bug real
+// reportado 2026-09-15) — ahí el ancho pasa a ser un porcentaje
+// (w-[48%]) para forzar exactamente 2 columnas, la opción preferida por
+// el usuario en vez de 1 columna a ancho completo.
+function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, selectionMode, selected, onToggleSelected, narrow }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
   const idPrefix = `exercise-catalog-row-${exercise.id}`;
   const statLine = buildExerciseStatLine(exercise);
 
   return (
     <View
-      className={`w-[210px] gap-2 rounded-xl border p-3 ${selected ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`}
+      className={`${narrow ? 'w-[48%]' : 'w-[210px]'} gap-2 rounded-xl border p-3 ${selected ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`}
       nativeID={idPrefix}
       testID={idPrefix}
     >
@@ -165,6 +170,12 @@ export function ExercisesCatalogTab() {
   const { deleteExercise, cloneExercise } = useExerciseMutations();
   const { sessions } = useSessions(userId);
   const { updateSession } = useSessionMutations();
+  // Umbral propio (no BREAKPOINTS.lg — ese gobierna la elección de shell
+  // ancho/angosto, un problema distinto): a partir de acá 2 cards fijas
+  // de 210px + gap ya no entran en una fila, quedando 1 sola columna con
+  // espacio muerto al costado. Ver ExerciseRow.
+  const { width } = useWindowDimensions();
+  const isPhoneWidth = width < 600;
 
   const [search, setSearch] = useState('');
   const [modalExercise, setModalExercise] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
@@ -359,6 +370,7 @@ export function ExercisesCatalogTab() {
                       containerRef={containerRef}
                       exercise={exercise}
                       key={exercise.id}
+                      narrow={isPhoneWidth}
                       onOpenMenu={handleOpenMenu}
                       onShowUsage={(ex, u) => setUsageTarget({ exercise: ex, usedIn: u })}
                       onToggleSelected={handleToggleSelected}
