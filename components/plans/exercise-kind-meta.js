@@ -45,6 +45,11 @@ export const SESSION_ROLE_META = {
   cooldown: { label: 'Vuelta a la calma', icon: 'snowflake', iconColor: '#0891b2', bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-400' },
 };
 
+// Kinds de ejercicio válidos para un rol restringido (warmup/cooldown) —
+// warmup/main/cooldown restringen QUÉ ejercicio se puede elegir, no
+// cualquier EXERCISE_KIND_META sirve fuera del rol "main".
+export const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
+
 // Labels de grupo muscular — duplica a propósito los ids de
 // MUSCLE_GROUP_OPTIONS (store/exercise-store.js, fuente real para el
 // picker del form) en vez de importarlo: ese store arrastra la cadena
