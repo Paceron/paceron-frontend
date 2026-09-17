@@ -26,6 +26,17 @@ export function MpConnectButton({ connected, disabled, onConnected, onError, onC
       // y paceron-dev://... en la variante de desarrollo (los schemes salen de
       // app.config.js). Si se cambia uno, cambiar el otro.
       const returnUrl = Linking.createURL('/mp-connect/callback');
+
+      // En Expo Go createURL devuelve exp://<host>/--/mp-connect/callback, pero
+      // el backend redirige al scheme fijo de MP_OAUTH_APP_RETURN_URL
+      // (paceron://). El deep link nunca vuelve y la Custom Tab queda colgada
+      // hasta que el usuario sale con back — una falla muda. Se corta acá con
+      // un mensaje claro. Un dev client sí usa el scheme propio, así que este
+      // guard solo atrapa Expo Go.
+      if (!returnUrl.startsWith('paceron')) {
+        throw new Error('Conectar Mercado Pago requiere la app instalada (APK). En Expo Go el navegador no puede volver a Paceron.');
+      }
+
       const { auth_url: authUrl } = await getMpConnectAuthUrl('app');
       if (!authUrl) throw new Error('El servidor no devolvió la URL de autorización.');
 

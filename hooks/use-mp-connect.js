@@ -29,6 +29,11 @@ export function useMpConnectStatus() {
     accountStatus: query.data?.account_status ?? null,
     loading: query.isLoading,
     refetching: query.isFetching,
+    // Sin esto, un fallo de la consulta es indistinguible de "no conectaste":
+    // query.data queda undefined, connected cae a false y el gate se traba sin
+    // explicar nada. Con Render free (cold start de 20-25s) es el caso más
+    // probable de todos, así que la pantalla tiene que poder diferenciarlo.
+    failed: query.isError,
     refetch: query.refetch,
   };
 }

@@ -19,12 +19,14 @@ const MP_CONNECT_MESSAGE_SOURCE = 'paceron-mp-connect';
 
 export function MpConnectCallbackPage() {
   const router = useRouter();
-  const { status, reason } = useLocalSearchParams();
-  // useLocalSearchParams puede devolver arrays si el param viene repetido.
-  const result = resolveMpConnectMessage(
-    Array.isArray(status) ? status[0] : status,
-    Array.isArray(reason) ? reason[0] : reason
-  );
+  const params = useLocalSearchParams();
+  // useLocalSearchParams puede devolver arrays si el param viene repetido. Se
+  // normaliza UNA vez y se usa en los dos lados: el mensaje que se muestra y el
+  // que viaja por postMessage. Normalizar solo para mostrar dejaba pasar un
+  // array al padre, que terminaba mostrando "a,b" como motivo del error.
+  const status = Array.isArray(params.status) ? params.status[0] : params.status;
+  const reason = Array.isArray(params.reason) ? params.reason[0] : params.reason;
+  const result = resolveMpConnectMessage(status, reason);
   const [standalone, setStandalone] = useState(false);
 
   useEffect(() => {

@@ -32,7 +32,7 @@ export function ActivateTrainerScreen() {
   const [touched, setTouched] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const hasPreviousAlias = Boolean(user?.bankAlias);
-  const { connected: mpConnected, loading: mpLoading, refetch: refetchMpStatus } = useMpConnectStatus();
+  const { connected: mpConnected, loading: mpLoading, failed: mpFailed, refetch: refetchMpStatus } = useMpConnectStatus();
 
   const aliasError = touched ? validateTrainerAlias(trainerAlias) : null;
   const aliasOk = !validateTrainerAlias(trainerAlias);
@@ -42,6 +42,10 @@ export function ActivateTrainerScreen() {
 
   const missingHint = (() => {
     if (canSubmit || mpLoading) return null;
+    // "No pudimos consultar" va primero: decirle que conecte la cuenta cuando
+    // en realidad no sabemos si ya está conectada lo manda a repetir un paso
+    // que quizás ya hizo.
+    if (mpFailed) return 'No pudimos verificar el estado de tu cuenta de Mercado Pago. Reintentá para poder activar el perfil.';
     if (!aliasOk && !mpConnected) return 'Completá tu alias de pagos y conectá tu cuenta de Mercado Pago para activar el perfil.';
     if (!mpConnected) return 'Conectá tu cuenta de Mercado Pago para activar el perfil.';
     return 'Completá un alias de pagos válido para activar el perfil.';
@@ -129,6 +133,19 @@ export function ActivateTrainerScreen() {
             Conectá tu cuenta de Mercado Pago para poder cobrar las mensualidades de tu equipo. El pago del corredor se
             divide automáticamente entre vos y Paceron, sin que tengas que hacer nada.
           </Text>
+
+          {mpFailed ? (
+            <View nativeID="activate-trainer-screen-mp-status-error" testID="activate-trainer-screen-mp-status-error" className="mb-4 flex-row items-center justify-between gap-3 rounded-xl bg-rose-50 p-3 dark:bg-rose-900/20">
+              <Text nativeID="activate-trainer-screen-mp-status-error-text" testID="activate-trainer-screen-mp-status-error-text" className="flex-1 text-xs leading-4 text-rose-700 dark:text-rose-300">
+                No pudimos verificar si tu cuenta está conectada. Puede ser un problema momentáneo de conexión.
+              </Text>
+              <Pressable nativeID="activate-trainer-screen-mp-status-retry" testID="activate-trainer-screen-mp-status-retry" className="rounded-full bg-rose-100 px-3 py-1.5 hover:opacity-90 active:opacity-80 dark:bg-rose-900/40" onPress={() => refetchMpStatus()}>
+                <Text nativeID="activate-trainer-screen-mp-status-retry-label" testID="activate-trainer-screen-mp-status-retry-label" className="text-xs font-semibold text-rose-700 dark:text-rose-300">
+                  Reintentar
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           <MpConnectButton
             connected={mpConnected}
