@@ -253,6 +253,7 @@ Además de `docs/superpowers/{specs,plans}/`, hay documentación previa al uso d
 
 ## Quirks conocidos
 
+- **Desde `feature/location-picker` (2026-09-16), el proyecto tiene un módulo nativo real (`@maplibre/maplibre-react-native`) — Expo Go ya no sirve para correr la app.** Usar el dev client custom (`npm run android:run` para generarlo/correrlo local, ver `docs/WORKFLOW.md` sección "Dev client"). Cualquier nueva dependencia nativa futura requiere regenerar ese dev client (no por cambios de JS).
 - El wordmark de `PaceronBrand` usa `skewX` para inclinarlo (se ve bien en web); en Android ese transform no se aplica (bug conocido de RN). Ya se probaron y descartaron 2 arreglos: mantener `skewX` (Android queda recto, aceptado) y usar `fontStyle: 'italic'` (cambia la tipografía por completo, rechazado por el usuario). No reintentar ninguno de los dos sin una idea genuinamente nueva.
 - EAS (deploy mobile) usa una cuenta separada (`paceronapp`), con variantes dev/prod para Android (solo Android, iOS descartado). Sin trigger automático por push — el free tier tiene cola compartida de baja prioridad, poco predecible; se dispara a mano (`npm run eas:deploy:develop`/`:production`) cuando se decide publicar. Detalle completo en `docs/WORKFLOW.md`.
 - `typescript@5.9.3` está pinned como `devDependency` real en `package.json` (satisface la dependencia interna de `eslint-config-expo`/`typescript-eslint`). Este proyecto no usa TypeScript — el pin existe solo para la plomería de linting. Resuelve el quirk anterior de flakiness local en `npm run lint`.
