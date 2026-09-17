@@ -64,6 +64,7 @@ module.exports = {
       'expo-secure-store',
       '@react-native-community/datetimepicker',
       'expo-notifications',
+      '@maplibre/maplibre-react-native',
     ],
     extra: {
       eas: {
