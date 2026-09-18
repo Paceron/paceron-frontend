@@ -47,7 +47,11 @@ export function useLocationPicker({ value, onChange }) {
       }
       let position;
       try {
-        position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        // BestForNavigation fuerza GPS real en mobile en vez de conformarse
+        // con WiFi/celda — en desktop (sin GPS) no cambia nada, la precisión
+        // ahí depende del backend de ubicación del SO (GeoClue2 en Linux,
+        // WiFi-based, notoriamente menos preciso que Windows/macOS).
+        position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation });
       } catch {
         // getCurrentPositionAsync pide un fix en vivo — en emuladores sin
         // Google Play Services o sin GPS simulado puede fallar aunque el

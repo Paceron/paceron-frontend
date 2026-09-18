@@ -42,9 +42,33 @@ export function LocationPicker({ value, onChange }) {
       center: initialCenter,
       zoom: value ? 15 : 12,
     });
-    map.on('click', (e) => picker.selectPoint(e.lngLat.lat, e.lngLat.lng));
+    // Mantener presionado (no click simple) para marcar el pin — deja el
+    // doble-click nativo de maplibre-gl libre para hacer zoom, y evita que
+    // un click accidental (o el primer click de un doble-click) mueva el
+    // pin. Mismo umbral (450ms) que ya usa el resto de la app para
+    // "hold-and-drag" (ver session-drag-and-drop.jsx).
+    let holdTimer = null;
+    const clearHoldTimer = () => {
+      if (!holdTimer) return;
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    };
+    const handlePressStart = (e) => {
+      clearHoldTimer();
+      const { lat, lng } = e.lngLat;
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
+        picker.selectPoint(lat, lng);
+      }, 450);
+    };
+    map.on('mousedown', handlePressStart);
+    map.on('touchstart', handlePressStart);
+    map.on('mouseup', clearHoldTimer);
+    map.on('touchend', clearHoldTimer);
+    map.on('dragstart', clearHoldTimer);
     mapRef.current = map;
     return () => {
+      clearHoldTimer();
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
