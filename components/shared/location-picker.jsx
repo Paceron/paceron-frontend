@@ -135,7 +135,7 @@ export function LocationPicker({ value, onChange }) {
               </Pressable>
             </View>
 
-            <View className="flex-1" nativeID="location-picker-map-wrapper" testID="location-picker-map-wrapper">
+            <View className="flex-1 overflow-hidden" nativeID="location-picker-map-wrapper" testID="location-picker-map-wrapper">
               <Map
                 mapStyle={OPENFREEMAP_STYLE_URL}
                 nativeID="location-picker-map"

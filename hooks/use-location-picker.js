@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import * as Location from 'expo-location';
+import Toast from 'react-native-toast-message';
 import { reverseGeocode, searchAddress } from '../services/geocoding.js';
+import { notifyError } from '../utils/haptics.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 
@@ -31,16 +33,35 @@ export function useLocationPicker({ value, onChange }) {
   // mostrar errores de permiso/GPS — el usuario no pidió nada explícito
   // todavía, se queda en el centro default sin nagging.
   const locate = useCallback(async ({ silent } = {}) => {
+    const fail = (message) => {
+      if (silent) return;
+      setError(message);
+      notifyError();
+      Toast.show({ type: 'error', text1: message });
+    };
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        if (!silent) setError('Necesitamos permiso de ubicación para esto.');
+        fail('Necesitamos permiso de ubicación para esto.');
         return;
       }
-      const position = await Location.getCurrentPositionAsync({});
+      let position;
+      try {
+        position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch {
+        // getCurrentPositionAsync pide un fix en vivo — en emuladores sin
+        // Google Play Services o sin GPS simulado puede fallar aunque el
+        // permiso esté OK. getLastKnownPositionAsync devuelve la última
+        // posición cacheada, más tolerante en ese escenario.
+        position = await Location.getLastKnownPositionAsync();
+      }
+      if (!position) {
+        fail('No pudimos obtener tu ubicación actual.');
+        return;
+      }
       await selectPoint(position.coords.latitude, position.coords.longitude);
     } catch {
-      if (!silent) setError('No pudimos obtener tu ubicación actual.');
+      fail('No pudimos obtener tu ubicación actual.');
     }
   }, [selectPoint]);
 
