@@ -12,7 +12,7 @@
     "test:coverage": "jest --coverage",
     "eas:build:development": "npx eas-cli build --platform android --profile development",
     "eas:build:android:development:local": "mkdir -p builds && npx eas-cli build --platform android --profile development --local --output ./builds/paceron-development-v$npm_package_version.apk",
-    "android:run": "npx expo run:android",
+    "android:run": "APP_VARIANT=development npx expo run:android",
     "eas:build:preview": "npx eas-cli build --platform android --profile preview",
     "eas:build:android:preview:local": "mkdir -p builds && npx eas-cli build --platform android --profile preview --local --output ./builds/paceron-preview-v$npm_package_version.apk",
     "eas:build:production": "npx eas-cli build --platform android --profile production",
