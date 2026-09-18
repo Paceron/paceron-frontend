@@ -60,7 +60,7 @@ export function LocationPicker({ value, onChange }) {
     } else {
       markerRef.current.setLngLat([picker.pin.lng, picker.pin.lat]);
     }
-    map.flyTo({ center: [picker.pin.lng, picker.pin.lat] });
+    map.flyTo({ center: [picker.pin.lng, picker.pin.lat], duration: 400 });
   }, [picker.pin]);
 
   return (

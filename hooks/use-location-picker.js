@@ -13,16 +13,6 @@ export function useLocationPicker({ value, onChange }) {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
 
-  const open = useCallback(() => {
-    setPin(value ? { lat: value.lat, lng: value.lng } : null);
-    setLabel(value?.label ?? '');
-    setSearchQuery('');
-    setError(null);
-    setVisible(true);
-  }, [value]);
-
-  const close = useCallback(() => setVisible(false), []);
-
   const selectPoint = useCallback(async (lat, lng) => {
     setPin({ lat, lng });
     setError(null);
@@ -37,15 +27,39 @@ export function useLocationPicker({ value, onChange }) {
     }
   }, []);
 
-  const useMyLocation = useCallback(async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      setError('Necesitamos permiso de ubicación para esto.');
-      return;
+  // silent=true (auto-locate al abrir sin ubicación previa) no debe
+  // mostrar errores de permiso/GPS — el usuario no pidió nada explícito
+  // todavía, se queda en el centro default sin nagging.
+  const locate = useCallback(async ({ silent } = {}) => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        if (!silent) setError('Necesitamos permiso de ubicación para esto.');
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({});
+      await selectPoint(position.coords.latitude, position.coords.longitude);
+    } catch {
+      if (!silent) setError('No pudimos obtener tu ubicación actual.');
     }
-    const position = await Location.getCurrentPositionAsync({});
-    await selectPoint(position.coords.latitude, position.coords.longitude);
   }, [selectPoint]);
+
+  const useMyLocation = useCallback(() => locate({ silent: false }), [locate]);
+
+  const open = useCallback(() => {
+    const hasValue = Boolean(value);
+    setPin(hasValue ? { lat: value.lat, lng: value.lng } : null);
+    setLabel(value?.label ?? '');
+    setSearchQuery('');
+    setError(null);
+    setVisible(true);
+    // Sin ubicación previa (alta nueva, no edición) — centrar directo en
+    // el GPS del usuario si hay permiso, en vez de arrancar siempre en
+    // Buenos Aires.
+    if (!hasValue) locate({ silent: true });
+  }, [value, locate]);
+
+  const close = useCallback(() => setVisible(false), []);
 
   const runSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
