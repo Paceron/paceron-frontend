@@ -139,7 +139,7 @@ export function LocationPicker({ value, onChange }) {
               <Map
                 mapStyle={OPENFREEMAP_STYLE_URL}
                 nativeID="location-picker-map"
-                onPress={handleMapPress}
+                onLongPress={handleMapPress}
                 style={{ flex: 1 }}
                 testID="location-picker-map"
               >
