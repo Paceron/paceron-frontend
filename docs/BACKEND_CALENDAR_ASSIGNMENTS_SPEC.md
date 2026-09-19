@@ -4,6 +4,8 @@
 >
 > **Subproyecto hermano:** `docs/BACKEND_TRAINING_PLANS_SPEC.md` cubre el catálogo reusable (Exercise/Session/TrainingPlan/PlanDay) — léase primero, este documento asume ese modelo y no lo repite. Convenciones generales (formato de respuesta, auth, IDs, nombres) son las mismas que ahí — no se listan de nuevo acá.
 
+> **Actualización 2026-09-19 — cambio de schema pendiente en backend:** `presencial_time` (single) pasa a `presencial_time_from`/`presencial_time_to` — toda sesión presencial necesita horario de inicio Y fin, no un solo horario. Este documento ya refleja el modelo nuevo en todas sus secciones; el backend real (ya deployado con el campo viejo, ver `BACKEND_API_GAPS.md` Gap 6) todavía no lo implementa. Mismo cambio aplica a `PlanDay.default_time` → `default_time_from`/`default_time_to` en `BACKEND_TRAINING_PLANS_SPEC.md`.
+
 ## 1. Estado actual y por qué existe este documento
 
 No existe ningún endpoint de calendario/asignación en el backend real — es dominio 100% nuevo, sin mock previo siquiera (a diferencia del catálogo, que corría contra mocks). El diseño reemplaza por completo un mecanismo anterior (`RunnerPlanAssignment` — asignación directa a un corredor individual, `CurrentPlanMark`, `Group.training_plan_id`) que había quedado documentado en `BACKEND_TRAINING_PLANS_SPEC.md` pero **nunca se implementó** — se descarta sin haber llegado a producción, no hace falta migración.
@@ -30,7 +32,8 @@ La asignación de un plan a un grupo **no es un registro con fecha de inicio/fin
 | `session_id` | bigint FK → session | sí | obligatorio si `kind = 'training'`. Si `kind` pasa a `cancelled`, **se mantiene** (contexto de qué sesión era) |
 | `cancelled_reason` | text | sí | obligatorio *solo* si `kind = 'cancelled'` |
 | `is_presencial` | bool | no, default `false` | solo tiene sentido si `kind = 'training'` o `'cancelled'` (una sesión cancelada puede haber sido presencial) |
-| `presencial_time` | time | sí | 24h, obligatorio *solo* si `is_presencial = true` |
+| `presencial_time_from` | time | sí | 24h, obligatorio *solo* si `is_presencial = true` |
+| `presencial_time_to` | time | sí | 24h, obligatorio *solo* si `is_presencial = true`, debe ser posterior a `presencial_time_from` (`422` si no) |
 | `presencial_location` | jsonb `{lat, lng, label?}` | sí | mismo shape que `PlanDay.default_location` (ver `BACKEND_TRAINING_PLANS_SPEC.md` §3.5), obligatorio *solo* si `is_presencial = true` |
 | `source_plan_id` | bigint FK → training_plan | sí | **informativo, no vinculante** — de qué plan vino el stamp que originó (o pisó) esta fila. `ON DELETE SET NULL` si se borra el plan. Nunca se usa para bloquear ediciones ni para "romper" el vínculo con el plan — ver §2 |
 | `created_at` / `updated_at` | timestamptz | no | |
@@ -40,7 +43,7 @@ La asignación de un plan a un grupo **no es un registro con fecha de inicio/fin
 - `kind = 'training'` ⇒ `session_id` no nulo, `other_name` y `cancelled_reason` nulos.
 - `kind = 'cancelled'` ⇒ `cancelled_reason` no nulo. Solo se puede transicionar a `cancelled` **desde** `kind = 'training'` — cancelar un día de descanso o vacío no tiene sentido, `422`.
 - `kind = 'rest'` ⇒ `other_name`, `session_id`, `cancelled_reason` nulos.
-- `is_presencial = true` ⇒ `presencial_time` y `presencial_location` no nulos. `is_presencial = false` ⇒ ambos nulos (limpiar si se desmarca).
+- `is_presencial = true` ⇒ `presencial_time_from`, `presencial_time_to` y `presencial_location` no nulos, y `presencial_time_to > presencial_time_from`. `is_presencial = false` ⇒ los tres nulos (limpiar si se desmarca).
 
 ### 3.2 Shape de ubicación (`{lat, lng, label?}`)
 
@@ -57,13 +60,13 @@ Mismo shape en `PlanDay.default_location` y `GroupCalendarDay.presencial_locatio
 | Método | Path | Body | Respuesta |
 |---|---|---|---|
 | `GET` | `/groups/{id}/calendar?from={date}&to={date}` | — | `200` array de `GroupCalendarDay` en el rango (ambos límites inclusive, obligatorios — sin rango no se lista "todo" el calendario) |
-| `PUT` | `/groups/{id}/calendar/{date}` | `{kind, other_name?, session_id?, cancelled_reason?, is_presencial?, presencial_time?, presencial_location?}` | `200` `GroupCalendarDay` — upsert de un día individual, valida §3.1 |
+| `PUT` | `/groups/{id}/calendar/{date}` | `{kind, other_name?, session_id?, cancelled_reason?, is_presencial?, presencial_time_from?, presencial_time_to?, presencial_location?}` | `200` `GroupCalendarDay` — upsert de un día individual, valida §3.1 |
 | `DELETE` | `/groups/{id}/calendar/{date}` | — | `204` — vacía el día (borra la fila, no un soft-delete) |
-| `POST` | `/groups/{id}/calendar/stamp` | `{plan_id, start_date, force?}` | `201` array de `GroupCalendarDay` creados/reemplazados — copia cada `PlanDay` del plan a partir de `start_date` (día 1 del plan → `start_date`, día 2 → `start_date + 1`, etc.), incluyendo `default_presencial`/`default_time`/`default_location` si los tiene. Si algún día del rango ya tiene contenido y `force` no es `true`, responde `409` con la lista de fechas en conflicto (el frontend las muestra en el modal de confirmación) en vez de aplicar nada |
-| `POST` | `/groups/{id}/calendar/bulk` | `{dates: [...], kind, session_id?, other_name?, is_presencial?, presencial_time?, presencial_location?}` | `200` array de `GroupCalendarDay` actualizados — multi-select bulk-assign, mismo `kind`/contenido a todas las fechas listadas, misma validación de §3.1 por cada una |
+| `POST` | `/groups/{id}/calendar/stamp` | `{plan_id, start_date, force?}` | `201` array de `GroupCalendarDay` creados/reemplazados — copia cada `PlanDay` del plan a partir de `start_date` (día 1 del plan → `start_date`, día 2 → `start_date + 1`, etc.), incluyendo `default_presencial`/`default_time_from`/`default_time_to`/`default_location` si los tiene. Si algún día del rango ya tiene contenido y `force` no es `true`, responde `409` con la lista de fechas en conflicto (el frontend las muestra en el modal de confirmación) en vez de aplicar nada |
+| `POST` | `/groups/{id}/calendar/bulk` | `{dates: [...], kind, session_id?, other_name?, is_presencial?, presencial_time_from?, presencial_time_to?, presencial_location?}` | `200` array de `GroupCalendarDay` actualizados — multi-select bulk-assign, mismo `kind`/contenido a todas las fechas listadas, misma validación de §3.1 por cada una |
 | `POST` | `/groups/{id}/calendar/bulk-clear` | `{dates: [...]}` | `204` — multi-select bulk-clear, borra las filas de esas fechas |
 | `POST` | `/groups/{id}/calendar/shift` | `{from_date, days}` | `200` array de `GroupCalendarDay` con la fecha ya actualizada — todas las filas con `date >= from_date` pasan a `date + days`. `days` entero positivo, elegido por el entrenador (no fijo a 1). `409` si el corrimiento haría chocar dos fechas existentes (no debería pasar corriendo hacia adelante, pero se valida igual) |
-| `GET` | `/users/{id}/next-session` | — | `200` `{group_id, date, session_id, is_presencial, presencial_time?, presencial_location?}` \| `204` si ninguno de sus grupos tiene una próxima `GroupCalendarDay` con `kind IN ('training','cancelled')` y `date >= hoy` — la primera cronológicamente entre TODOS sus grupos. Para el banner de "próximo entrenamiento" del home del corredor |
+| `GET` | `/users/{id}/next-session` | — | `200` `{group_id, date, session_id, is_presencial, presencial_time_from?, presencial_time_to?, presencial_location?}` \| `204` si ninguno de sus grupos tiene una próxima `GroupCalendarDay` con `kind IN ('training','cancelled')` y `date >= hoy` — la primera cronológicamente entre TODOS sus grupos. Para el banner de "próximo entrenamiento" del home del corredor |
 | `GET` | `/users/{id}/calendar-summary` | — | `200` array de `{group_id, group_name}` — un ítem por cada grupo del que es miembro, para poblar "Mis asignaciones" (cada ítem abre `GET /groups/{id}/calendar` filtrado). Sin paginación ni detalle embebido — la pantalla de detalle pega el `GET` de calendario aparte |
 
 ## 5. Editar una `Session` con asignaciones activas — clonado por divergencia
@@ -110,7 +113,8 @@ erDiagram
         bigint session_id FK
         text cancelled_reason
         bool is_presencial
-        time presencial_time
+        time presencial_time_from
+        time presencial_time_to
         jsonb presencial_location
         bigint source_plan_id FK
     }
