@@ -99,8 +99,9 @@ no en el plan en sí.
 | `other_name` | varchar | sí | obligatorio *solo* si `kind = 'other'` |
 | `session_id` | bigint FK → session | sí | obligatorio *solo* si `kind = 'training'` |
 | `default_presencial` | bool | no, default `false` | ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3 — solo tiene sentido si `kind = 'training'` |
-| `default_time` | time | sí | horario default (24h) que hereda el día de calendario al estamparse este plan — solo si `default_presencial` |
-| `default_location` | jsonb `{lat, lng, label?}` | sí | ubicación default, misma lógica que `default_time` |
+| `default_time_from` | time | sí | horario default de inicio (24h) que hereda el día de calendario al estamparse este plan — solo si `default_presencial` |
+| `default_time_to` | time | sí | horario default de fin (24h), misma lógica que `default_time_from`, posterior a él |
+| `default_location` | jsonb `{lat, lng, label?}` | sí | ubicación default, misma lógica que `default_time_from`/`default_time_to` |
 
 **Los 3 campos `default_*` son puramente informativos para el momento del stamp** (ver doc de asignaciones) — no afectan nada del catálogo en sí, y cambiarlos después no toca calendarios ya estampados con el valor anterior.
 
@@ -219,7 +220,8 @@ erDiagram
         varchar other_name
         bigint session_id FK
         bool default_presencial
-        time default_time
+        time default_time_from
+        time default_time_to
         jsonb default_location
     }
 

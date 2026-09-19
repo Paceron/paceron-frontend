@@ -60,3 +60,33 @@ accedió — usa el `description` de texto libre del tier como único
 contenido de "beneficios". No bloqueante (la pantalla funciona con
 `description`), pero limita qué tan rica puede ser esa lista sin este
 endpoint.
+
+**Actualización 2026-09-19:** arrancó el frontend del calendario de
+asignaciones (sub-proyecto 2 de `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md`,
+ver también `docs/superpowers/specs/`) — se abre un gap propio detectado
+en el diseño, sobre un campo que el backend **ya tiene deployado** (no es
+un endpoint faltante, es un cambio de schema sobre algo que ya existe):
+
+## Gap 6 — `presencial_time` necesita ser rango (desde/hasta), no un horario único
+
+Toda sesión presencial necesita horario de **inicio y fin**, no un solo
+horario puntual — decisión del usuario al diseñar la pantalla de edición
+de días del calendario. Afecta dos campos ya deployados:
+
+- `GroupCalendarDay.presencial_time` → `presencial_time_from` +
+  `presencial_time_to` (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3.1,
+  ya actualizado con el modelo nuevo).
+- `PlanDay.default_time` → `default_time_from` + `default_time_to`
+  (`docs/BACKEND_TRAINING_PLANS_SPEC.md` §3.5, ídem — se copia al
+  `GroupCalendarDay` correspondiente al estampar un plan, mismo cambio
+  necesario ahí por consistencia).
+
+Validación nueva en ambos: `*_time_to` posterior a `*_time_from`,
+obligatorio *solo* si `is_presencial`/`default_presencial = true` (mismo
+criterio que ya aplicaba al campo único). El resto de `GroupCalendarDay`
+(días sin presencial, `kind`/`session_id`/`cancelled_reason`) ya funciona
+real contra el backend deployado, sin mocks — el frontend nuevo pega
+directo contra los 10 endpoints reales. Guardar específicamente un día
+**presencial** va a fallar (`422`, `presencial_time` sigue siendo el
+campo viejo del lado del backend) hasta que se aplique este cambio —
+error real y visible, no un mock que tape el gap.
