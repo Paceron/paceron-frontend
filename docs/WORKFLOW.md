@@ -236,6 +236,25 @@ build pesado). Se corren a mano, cuando se decide publicar — así la espera de
 cola no bloquea el flujo de desarrollo. Si esto se vuelve un cuello de botella
 real, evaluar plan pago de EAS (cola de prioridad).
 
+### Dev client (mapas nativos)
+
+Desde que el proyecto usa `@maplibre/maplibre-react-native` (módulo nativo
+real, no soportado por Expo Go), correr la app en dispositivo/emulador
+requiere el dev client custom en vez de Expo Go — Expo Go no puede cargar
+módulos nativos fuera de su set soportado.
+
+- **Día a día** (con Android Studio/SDK local): `npm run android:run` —
+  compila con Gradle local e instala directo, sin cola. Después de la
+  primera instalación, el loop normal (`npx expo start --dev-client`, hot
+  reload) es igual que con Expo Go.
+- **Generar el APK para el resto del equipo**: `npm run eas:build:development`
+  (cloud, misma cola gratuita que ya se usa para `preview`/`production`) o
+  `npm run eas:build:android:development:local` (mismo build corrido en tu
+  máquina, sin cola, requiere tener el toolchain de Android alineado con el
+  de EAS).
+- **Cuándo reinstalar**: solo cuando cambia la lista de dependencias nativas
+  (agregar/actualizar un módulo nativo) — no por cambios de código JS.
+
 ## Errores comunes
 
 - **Push a develop/master rechazado** (`Changes must be made through a pull

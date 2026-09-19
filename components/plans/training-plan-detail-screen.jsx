@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -7,7 +7,8 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTrainingPlanStore, getPlanStatus, dayLabel } from '../../store/training-plan-store.js';
+import { useTrainingPlanStore } from '../../store/training-plan-store.js';
+import { useTrainingPlan, useTrainingPlanMutations } from '../../hooks/use-training-plans.js';
 import { useSessions } from '../../hooks/use-sessions.js';
 import { useExercises } from '../../hooks/use-exercises.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
@@ -15,11 +16,6 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
 import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_META, buildExerciseStatLine } from './exercise-kind-meta.js';
-
-const STATUS_META = {
-  activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  vencido: { label: 'Vencido', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
-};
 
 // Fila de ejercicio individual, "al estilo gimnasio" — ícono + color por
 // tipo (EXERCISE_KIND_META), nombre, y el dato que importa (minutos,
@@ -74,7 +70,7 @@ function DayRow({ day, session, exercisesById }) {
       </View>
       <View className="flex-1" nativeID={`${idPrefix}-label-group`} testID={`${idPrefix}-label-group`}>
         <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
-          {dayLabel(day.dayOfWeek)}
+          {`Día ${day.sequenceNo}`}
         </Text>
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-subtitle`} testID={`${idPrefix}-subtitle`}>
           {day.kind === 'other' ? day.otherName : day.kind === 'training' ? (session?.name ?? 'Sesión no encontrada') : kindMeta.label}
@@ -129,35 +125,28 @@ function TrainingPlanDetailScreenContent({ planId }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const plan = useTrainingPlanStore((s) => s.plans.find((p) => p.id === planId) ?? s.myPlans.find((p) => p.id === planId));
-  const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
-  const deletePlan = useTrainingPlanStore((s) => s.deletePlan);
-  const clonePlan = useTrainingPlanStore((s) => s.clonePlan);
+  // myPlans (corredor viendo un plan asignado a su grupo/persona) sigue
+  // siendo Zustand — no es catálogo del entrenador, es la composición
+  // client-side de asignaciones (ver store). Se usa como fallback
+  // mientras el query resuelve, y como única fuente si el query devuelve
+  // vacío (ej. el corredor no es owner, cachear por owner no aplica).
+  const myPlanFallback = useTrainingPlanStore((s) => s.myPlans.find((p) => p.id === planId));
+  const { plan: queriedPlan, loading: queryLoading } = useTrainingPlan(planId);
+  const { deletePlan, clonePlan } = useTrainingPlanMutations();
+  const plan = queriedPlan ?? myPlanFallback;
   // Sesiones/ejercicios son del catálogo de QUIEN CREÓ el plan
   // (plan.ownerId) — no del usuario que está mirando la pantalla, que
   // puede ser un corredor viendo un plan que no es suyo.
   const { sessions } = useSessions(plan?.ownerId);
   const { exercises } = useExercises(plan?.ownerId);
 
-  const [loading, setLoading] = useState(!plan);
+  const loading = queryLoading && !myPlanFallback;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [cloning, setCloning] = useState(false);
 
-  useEffect(() => {
-    if (plan) {
-      setLoading(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setLoading(true);
-    fetchPlan(planId).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planId]);
-
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    fetchPlan(planId),
+    queryClient.invalidateQueries({ queryKey: ['training-plan', planId] }),
     plan?.ownerId ? Promise.all([
       queryClient.invalidateQueries({ queryKey: ['sessions', plan.ownerId] }),
       queryClient.invalidateQueries({ queryKey: ['exercises', plan.ownerId] }),
@@ -196,14 +185,12 @@ function TrainingPlanDetailScreenContent({ planId }) {
   // "administra este plan" más allá de ser el dueño y estar viendo la app
   // como entrenador ahora mismo.
   const canManage = activeRole === 'trainer' && plan.ownerId === userId;
-  const status = getPlanStatus(plan);
-  const statusMeta = STATUS_META[status];
   const exercisesById = new Map(exercises.map((e) => [e.id, e]));
 
   const handleClone = async () => {
     if (cloning) return;
     setCloning(true);
-    const result = await clonePlan(planId);
+    const result = await clonePlan({ ownerId: plan.ownerId, planId });
     setCloning(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos clonar el plan', text2: result.error });
@@ -214,7 +201,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   };
 
   const handleDelete = async () => {
-    const result = await deletePlan(planId);
+    const result = await deletePlan({ ownerId: plan.ownerId, planId });
     setDeleteModalVisible(false);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos eliminar el plan', text2: result.error });
@@ -252,14 +239,9 @@ function TrainingPlanDetailScreenContent({ planId }) {
               <Text className="text-xl text-slate-900 dark:text-white" nativeID="training-plan-detail-name" style={{ fontFamily: 'Orbitron_700Bold' }} testID="training-plan-detail-name">
                 {plan.name}
               </Text>
-              <View className={`rounded-full px-2.5 py-1 ${statusMeta.bg}`} nativeID="training-plan-detail-status-tag" testID="training-plan-detail-status-tag">
-                <Text className={`text-xs font-semibold ${statusMeta.text}`} nativeID="training-plan-detail-status-tag-label" testID="training-plan-detail-status-tag-label">
-                  {statusMeta.label}
-                </Text>
-              </View>
             </View>
             <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="training-plan-detail-duration" testID="training-plan-detail-duration">
-              Caduca a los {plan.durationDays} días
+              {plan.days.length} días
             </Text>
           </View>
         </View>
@@ -312,7 +294,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
           </Text>
         </SectionCard>
 
-        <SectionCard icon="calendar-week" title="Los 7 días de la semana">
+        <SectionCard icon="calendar-week" title="Días del plan">
           <View className="gap-2" nativeID="training-plan-detail-days-list" testID="training-plan-detail-days-list">
             {plan.days.map((day) => (
               <DayRow

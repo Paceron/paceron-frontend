@@ -1,7 +1,4 @@
-import {
-  useTrainingPlanStore, getPlanStatus, getPlanDaysRemaining, getTodayDayOfWeek,
-  buildEmptyPlanDays, dayLabel, PLAN_DURATION_OPTIONS,
-} from '../store/training-plan-store.js';
+import { useTrainingPlanStore, buildEmptyPlanDays } from '../store/training-plan-store.js';
 
 jest.mock('../services/trainingPlans.js', () => ({
   listTrainingPlans: jest.fn(),
@@ -19,12 +16,7 @@ jest.mock('../services/trainingPlans.js', () => ({
 }));
 
 import {
-  listTrainingPlans as listTrainingPlansService,
   getTrainingPlan as getTrainingPlanService,
-  createTrainingPlan as createTrainingPlanService,
-  updateTrainingPlan as updateTrainingPlanService,
-  deleteTrainingPlan as deleteTrainingPlanService,
-  cloneTrainingPlan as cloneTrainingPlanService,
   listRunnerPlanAssignments as listRunnerPlanAssignmentsService,
   assignPlanToRunner as assignPlanToRunnerService,
   listCurrentPlanMarks as listCurrentPlanMarksService,
@@ -55,15 +47,15 @@ import { listTeams as listTeamsService } from '../services/teams.js';
 import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService } from '../services/groups.js';
 
 const PLAN_DTO = {
-  id: 1, owner_id: 7, name: 'Base 5K', description: 'desc', duration_days: 7,
+  id: 1, owner_id: 7, name: 'Base 5K', description: 'desc',
   days: [
-    { sequence_no: 1, day_of_week: 'monday', kind: 'training', other_name: null, session_id: 9 },
-    { sequence_no: 2, day_of_week: 'tuesday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 3, day_of_week: 'wednesday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 4, day_of_week: 'thursday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 5, day_of_week: 'friday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 6, day_of_week: 'saturday', kind: 'rest', other_name: null, session_id: null },
-    { sequence_no: 7, day_of_week: 'sunday', kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 1, kind: 'training', other_name: null, session_id: 9 },
+    { sequence_no: 2, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 3, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 4, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 5, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 6, kind: 'rest', other_name: null, session_id: null },
+    { sequence_no: 7, kind: 'rest', other_name: null, session_id: null },
   ],
   created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
 };
@@ -76,107 +68,34 @@ beforeEach(() => {
   listCurrentPlanMarksService.mockResolvedValue([]);
 });
 
-describe('getPlanStatus', () => {
-  test('activo cuando todavía no pasó la caducidad', () => {
-    const plan = { createdAt: new Date().toISOString(), durationDays: 7 };
-    expect(getPlanStatus(plan)).toBe('activo');
-  });
-
-  test('vencido cuando ya pasó la caducidad', () => {
-    const plan = { createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), durationDays: 7 };
-    expect(getPlanStatus(plan)).toBe('vencido');
-  });
-});
-
-describe('getPlanDaysRemaining', () => {
-  test('cuenta los días enteros que quedan hasta la caducidad', () => {
-    const plan = { createdAt: new Date().toISOString(), durationDays: 7 };
-    expect(getPlanDaysRemaining(plan)).toBe(7);
-  });
-
-  test('no devuelve negativo si ya venció', () => {
-    const plan = { createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), durationDays: 7 };
-    expect(getPlanDaysRemaining(plan)).toBe(0);
-  });
-});
-
-describe('getTodayDayOfWeek', () => {
-  test('devuelve uno de los 7 dayOfWeek del dominio', () => {
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    expect(days).toContain(getTodayDayOfWeek());
-  });
-});
-
 describe('buildEmptyPlanDays', () => {
-  test('arma los 7 días en orden lunes a domingo, todos rest', () => {
-    const days = buildEmptyPlanDays();
-    expect(days).toHaveLength(7);
-    expect(days.map((d) => d.dayOfWeek)).toEqual(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
+  test('arma dayCount días numerados 1..dayCount, todos rest, sin día de la semana', () => {
+    const days = buildEmptyPlanDays(10);
+    expect(days).toHaveLength(10);
+    expect(days.map((d) => d.sequenceNo)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(days.every((d) => d.kind === 'rest')).toBe(true);
-    expect(days.map((d) => d.sequenceNo)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-  });
-});
-
-describe('dayLabel / PLAN_DURATION_OPTIONS', () => {
-  test('traduce el día de la semana al español', () => {
-    expect(dayLabel('monday')).toBe('Lunes');
-    expect(dayLabel('sunday')).toBe('Domingo');
+    expect(days.every((d) => !('dayOfWeek' in d))).toBe(true);
   });
 
-  test('soporta exactamente 7 y 14 días', () => {
-    expect(PLAN_DURATION_OPTIONS).toEqual([7, 14]);
+  test('con dayCount 2, arma exactamente 2 días', () => {
+    expect(buildEmptyPlanDays(2)).toHaveLength(2);
   });
 });
 
 describe('training plan store', () => {
-  test('fetchPlans trae y normaliza los planes del entrenador', async () => {
-    listTrainingPlansService.mockResolvedValue([PLAN_DTO]);
-    const result = await useTrainingPlanStore.getState().fetchPlans(7);
-    expect(listTrainingPlansService).toHaveBeenCalledWith({ ownerId: 7 });
-    expect(result.success).toBe(true);
-    const { plans } = useTrainingPlanStore.getState();
-    expect(plans).toHaveLength(1);
-    expect(plans[0].id).toBe('1');
-    expect(plans[0].days).toHaveLength(7);
-    expect(plans[0].days[0].sessionId).toBe('9');
-  });
-
-  test('createPlan agrega el plan creado a la lista', async () => {
-    createTrainingPlanService.mockResolvedValue(PLAN_DTO);
-    const result = await useTrainingPlanStore.getState().createPlan({
-      ownerId: 7, name: 'Base 5K', description: 'desc', durationDays: 7, days: [],
-    });
-    expect(result.success).toBe(true);
-    expect(useTrainingPlanStore.getState().plans).toContainEqual(result.plan);
-  });
-
-  test('updatePlan reemplaza el plan en la lista', async () => {
-    useTrainingPlanStore.setState({ plans: [{ id: '1', name: 'Viejo' }] });
-    updateTrainingPlanService.mockResolvedValue({ ...PLAN_DTO, name: 'Nuevo nombre' });
-    const result = await useTrainingPlanStore.getState().updatePlan('1', { name: 'Nuevo nombre' });
-    expect(result.success).toBe(true);
-    expect(useTrainingPlanStore.getState().plans[0].name).toBe('Nuevo nombre');
-  });
-
-  test('clonePlan agrega el clon a la lista', async () => {
-    cloneTrainingPlanService.mockResolvedValue({ ...PLAN_DTO, id: 2, name: 'Base 5K (copia)' });
-    const result = await useTrainingPlanStore.getState().clonePlan('1');
-    expect(result.success).toBe(true);
-    expect(result.plan.name).toBe('Base 5K (copia)');
-    expect(useTrainingPlanStore.getState().plans.map((p) => p.id)).toContain('2');
-  });
-
-  test('deletePlan saca el plan de plans/myPlans y limpia trainingPlanId de cualquier grupo que lo tuviera', async () => {
+  // list/get/create/update/delete/clone de TrainingPlan viven ahora en
+  // hooks/use-training-plans.js (TanStack Query, sin test dedicado —
+  // mismo criterio que hooks/use-exercises.js/use-sessions.js, ver
+  // CLAUDE.md). Este store solo conserva la limpieza local que dispara
+  // el onSuccess de deletePlan.
+  test('cleanupAfterPlanDeleted saca el plan de myPlans y limpia trainingPlanId de cualquier grupo que lo tuviera', () => {
     useTrainingPlanStore.setState({
-      plans: [{ id: '1' }], myPlans: [{ id: '1' }],
+      myPlans: [{ id: '1' }],
       groupTrainingPlanIds: { g1: '1', g2: '2' },
     });
-    deleteTrainingPlanService.mockResolvedValue(null);
 
-    const result = await useTrainingPlanStore.getState().deletePlan('1');
+    useTrainingPlanStore.getState().cleanupAfterPlanDeleted('1');
 
-    expect(result.success).toBe(true);
-    expect(useTrainingPlanStore.getState().plans).toEqual([]);
     expect(useTrainingPlanStore.getState().myPlans).toEqual([]);
     const { groupTrainingPlanIds } = useTrainingPlanStore.getState();
     expect(groupTrainingPlanIds.g1).toBeUndefined();

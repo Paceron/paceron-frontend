@@ -18,32 +18,31 @@ Doc de seguimiento interno — refleja únicamente los gaps de backend **actualm
 `docs/superpowers/specs/2026-08-26-training-plans-design.md`) — se abre
 como gap propio:
 
-## Gap 4 — planes de entrenamiento: sin dominio en el backend real
+**Actualización 2026-09-12: Gap 4 — RESUELTO del lado del backend.** El
+backend implementó catálogo (`Exercise`/`Session`/`TrainingPlan`, 18
+endpoints) y calendario por grupo (`GroupCalendarDay`, 10 endpoints) —
+rama `feature/planes-entrenamiento-y-calendario`, mergeada a `develop`
+del backend, desplegada en Render. Specs completas en
+`docs/BACKEND_TRAINING_PLANS_SPEC.md` y
+`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md`.
 
-No existe ningún endpoint de planes de entrenamiento en el backend real
-(ni el plan en sí, ni su asignación a un grupo o a un corredor). El
-módulo completo (`store/training-plan-store.js`,
-`services/trainingPlans.js`, y también `services/exercises.js`/
-`services/sessions.js`) corre 100% contra sus mocks — cada uno ya tiene
-las rutas REST esperadas comentadas (`/training-plans`, `/exercises`,
-`/sessions`, mismo estilo que `services/teams.js`) para cuando el
-backend las implemente. Desde 2026-09-07 esto está forzado con un
-`FORCE_MOCKS = true` local en cada archivo, **además** del flag global
-`EXPO_PUBLIC_USE_MOCKS` — antes solo dependía del flag, y en cualquier
-build real (`USE_MOCKS=false` por default) los tres módulos pegaban
-contra rutas inexistentes del backend real, causando (sospechado, no
-confirmado del lado backend) un logout espurio al entrar a
-planes/sesiones/ejercicios. Sacar los tres `FORCE_MOCKS` cuando el
-backend implemente este gap. La asignación a un **grupo** reusa el
-campo `trainingPlanId` que ya existía en `toGroupModel`
-(`store/team-store.js`) y que hasta ahora quedaba siempre `null` por
-este mismo motivo — sigue sin campo real en `group`. La asignación a un
-**corredor individual** es relación nueva, sin ningún equivalente en el
-backend hoy.
+Del lado del frontend, cableado en 2 etapas:
+- **Catálogo — hecho** (esta misma actualización): `services/exercises.js`,
+  `services/sessions.js`, `services/trainingPlans.js` (solo las 6
+  funciones de plan/día, no las de asignación) sacaron `FORCE_MOCKS` y
+  pegan contra el backend real vía `USE_MOCKS` estándar.
+- **Calendario/asignación — pendiente**, sub-proyecto propio a futuro.
+  Las funciones de asignación individual (`assignPlanToRunner`,
+  `markPlanAsCurrent`, etc. en `services/trainingPlans.js`) siguen
+  mockeadas — no es un gap de backend (esas rutas nunca se
+  implementaron, quedaron descartadas antes de llegar a producción, ver
+  `docs/BACKEND_TRAINING_PLANS_SPEC.md` §3.6), es reescritura de
+  frontend pendiente contra el calendario nuevo. El campo
+  `trainingPlanId` en `toGroupModel` (`store/team-store.js`), siempre
+  `null` hasta hoy, tampoco tiene reemplazo directo en el modelo nuevo —
+  se revisa cuando arranque esa reescritura.
 
 Sin gap abierto de foto de equipo — sigue deliberadamente excluido hasta que el usuario lo retome (ver actualización 2026-08-02 arriba).
-
-**Actualización 2026-09-06:** spec completa de implementación (entidades, tipos, endpoints, reglas de validación, diagrama ER) en `docs/BACKEND_TRAINING_PLANS_SPEC.md` — cubre además Ejercicios y Sesiones (catálogo reusable, ver `docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md`) y "plan actual" (`docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md`), que también corren 100% mockeados hoy.
 
 **Actualización 2026-09-02:** arrancó el trabajo de Fase 0 de pagos (ver
 `docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md`) —

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
-import { useTrainingPlanStore, PLAN_DURATION_OPTIONS } from '../../store/training-plan-store.js';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTrainingPlan, useTrainingPlanMutations } from '../../hooks/use-training-plans.js';
 import { useTrainingPlanForm } from '../../hooks/use-training-plan-form.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -24,21 +25,7 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 function EditTrainingPlanScreenContent({ planId }) {
   const colors = useThemeColors();
   const router = useRouter();
-  const plan = useTrainingPlanStore((s) => s.plans.find((p) => p.id === planId));
-  const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
-  const [loading, setLoading] = useState(!plan);
-
-  useEffect(() => {
-    if (plan) {
-      setLoading(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setLoading(true);
-    fetchPlan(planId).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planId]);
+  const { plan, loading } = useTrainingPlan(planId);
 
   if (loading) {
     return (
@@ -74,22 +61,22 @@ function EditTrainingPlanScreenContent({ planId }) {
 function EditTrainingPlanForm({ plan, planId }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const updatePlan = useTrainingPlanStore((s) => s.updatePlan);
-  const fetchPlan = useTrainingPlanStore((s) => s.fetchPlan);
+  const { updatePlan } = useTrainingPlanMutations();
+  const queryClient = useQueryClient();
 
   const form = useTrainingPlanForm({ initial: plan });
   const [submitting, setSubmitting] = useState(false);
 
-  const isDirty = useFormDirty({ name: form.name, description: form.description, durationDays: form.durationDays, days: form.days });
+  const isDirty = useFormDirty({ name: form.name, description: form.description, dayCount: form.days.length });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
-  const { refreshing, onRefresh } = usePullToRefresh(() => fetchPlan(planId));
+  const { refreshing, onRefresh } = usePullToRefresh(() => queryClient.invalidateQueries({ queryKey: ['training-plan', planId] }));
 
   const handleSubmit = async () => {
     if (submitting) return;
     if (!form.validate()) return;
     setSubmitting(true);
-    const result = await updatePlan(planId, form.getValues());
+    const result = await updatePlan({ ownerId: plan.ownerId, planId, form: form.getValues() });
     setSubmitting(false);
 
     if (!result.success) {
@@ -128,7 +115,7 @@ function EditTrainingPlanForm({ plan, planId }) {
             </Text>
           </View>
 
-          <TrainingPlanFormFields durationOptions={PLAN_DURATION_OPTIONS} form={form} />
+          <TrainingPlanFormFields form={form} />
 
           <Pressable
             className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
