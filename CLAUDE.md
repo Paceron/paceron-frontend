@@ -247,6 +247,39 @@ Sin enforcement automático — criterio a aplicar al revisar cualquier PR que t
 - Equipos (`services/teams.js`) pega contra el backend real desde `feature/teams-backend-integration` (Etapa 1 de 3 — ver `docs/superpowers/specs/2026-07-28-teams-backend-integration-design.md`). Grupos e invitaciones siguen local-only en el frontend (Etapa 2/3, sin arrancar), pero **el backend ya tiene los endpoints reales de ambos** (CRUD de `/groups` completo, `/teams/{id}/invitations` para listar pendientes, `/invitations/{id}/accept`/`/reject`) — confirmado re-inspeccionando el swagger el 2026-07-30, ya no son bloqueante para arrancar esas etapas. Huecos de funcionalidad que siguen abiertos (foto de equipo, plan de entrenamiento en grupo) están documentados y trackeados en `docs/BACKEND_API_GAPS.md`, que también lleva el registro de qué se fue cerrando.
 - Cambio de contraseña autenticado (`PATCH /users/{id}/password`, distinto del flujo OTP de recuperación) es un endpoint nuevo en el backend desde 2026-07-30, sin consumidor en el frontend todavía — no hay pantalla de "cambiar contraseña" dentro de Perfil hoy.
 
+## Conexión de Mercado Pago del entrenador (mp-connect)
+
+Para activar el perfil de entrenador ahora hacen falta **las dos cosas**: alias de pagos válido
+**y** cuenta de Mercado Pago conectada (`components/profile/activate-trainer-screen.jsx`,
+`canSubmit = aliasOk && mpConnected`). Esto **revierte** la decisión "conviven, no se reemplazan"
+de `docs/superpowers/specs/2026-08-12-trainer-split-payments-decisions.md` — siguen conviviendo,
+pero ahora ambos son obligatorios. El enforcement es **solo de UI**: el backend sigue aceptando
+`POST /users/{id}/trainer-role` sin conexión de MP, a propósito.
+
+- **El OAuth de Mercado Pago NO se puede hacer en un `<WebView>`.** MP
+  [lo deprecó](https://www.mercadopago.com.ar/developers/es/news/2023/11/30/WebView-integrations-have-been-deprecated)
+  (discontinuado el 10/12/2024) y recomienda Custom Tabs / Safari View Controller. Por eso el
+  patrón de `components/payments/checkout-flow.jsx` **no se reusa acá** — aquel WebView es
+  legítimo porque carga nuestra propia página del Brick, sin login de MP adentro. El flujo nativo
+  va por `expo-web-browser` + `openAuthSessionAsync`.
+- **Sumar `expo-web-browser` cambia el fingerprint de `runtimeVersion`** → hace falta un **APK
+  nuevo**, un OTA sobre el build viejo no alcanza.
+- **En web es una ventana emergente, no un redirect de página completa** — si no, se pierde el
+  alias que el usuario ya tipeó y se paga un boot completo del bundle al volver. El `window.open`
+  tiene que ser **sincrónico dentro del `onPress`**, antes de cualquier `await`: abierto después
+  del fetch, el navegador lo bloquea por pérdida del gesto del usuario.
+- **`GET /mercadopago/connect/status` es la fuente de verdad**, siempre. Lo que llega por el
+  `postMessage` o el deep link sirve para el mensaje inmediato; el botón refetchea el status en
+  sus **cuatro** salidas (éxito, error, cancelación, cierre inesperado), así un fallo del canal de
+  retorno degrada el flujo pero no lo rompe.
+- **Deep link `paceron://mp-connect/callback`** (`paceron-dev://` en la variante de desarrollo).
+  Tiene que coincidir con `MP_OAUTH_APP_RETURN_URL` del backend; su par web es
+  `MP_OAUTH_WEB_RETURN_URL`. Los dos se declaran en el `render.yaml` del backend.
+- Los `reason` de error (`invalid_state`, `expired_state`, `exchange_failed`, …) son un contrato
+  estable del backend — mapearlos con `utils/mp-connect-messages.js`, **nunca mostrar el slug**.
+
+Detalle completo: `docs/superpowers/specs/2026-09-16-mp-connect-trainer-onboarding-design.md`.
+
 ## Documentación existente en `docs/`
 
 Además de `docs/superpowers/{specs,plans}/`, hay documentación previa al uso de Claude Code en este repo: `WORKFLOW.md`, `BRANCH_POLICIES.md`, `TESTING.md`, `STYLE_CONTRACT.md`, `ARQUITECTURA.md`, `FRONTEND_DEFINITIONS.md`, `BACKEND_DEFINITIONS.md`, `EXPO_ROUTER_GUIDE.md`, `FUNCTIONAL_PROPOSE.md`. Son una buena base pero **no están 100% sincronizados con la práctica actual** (ej. `BRANCH_POLICIES.md` describe un modelo con `release/`/`hotfix/`/tickets de Jira que todavía no se usa en la práctica — hoy el flujo real es el descripto arriba). Si algo de ahí queda desactualizado al tocarlo, corregirlo ahí también, no solo acá.
