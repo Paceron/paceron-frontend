@@ -21,7 +21,7 @@ test('validate rechaza un día presencial sin horario completo', () => {
   const { result } = renderHook(() => useTrainingPlanForm({ ownerId: 1 }));
   act(() => {
     result.current.setName('Plan test');
-    result.current.updateDay(1, { kind: 'training', sessionId: '1', isPresencial: true, presencialTimeFrom: '', presencialTimeTo: '' });
+    result.current.updateDay(1, { kind: 'training', sessionId: '1', isPresencial: true, presencialTimeFrom: '', presencialTimeTo: '', presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' } });
   });
   let valid;
   act(() => { valid = result.current.validate(); });
@@ -40,11 +40,23 @@ test('validate rechaza un día presencial con hora hasta anterior o igual a hora
   expect(valid).toBe(false);
 });
 
-test('validate acepta un día presencial con horario válido', () => {
+test('validate rechaza un día presencial sin ubicación', () => {
   const { result } = renderHook(() => useTrainingPlanForm({ ownerId: 1 }));
   act(() => {
     result.current.setName('Plan test');
-    result.current.updateDay(1, { kind: 'training', sessionId: '1', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:00' });
+    result.current.updateDay(1, { kind: 'training', sessionId: '1', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:00', presencialLocation: null });
+  });
+  let valid;
+  act(() => { valid = result.current.validate(); });
+  expect(valid).toBe(false);
+  expect(result.current.errors.days).toMatch(/ubicación/i);
+});
+
+test('validate acepta un día presencial con horario y ubicación válidos', () => {
+  const { result } = renderHook(() => useTrainingPlanForm({ ownerId: 1 }));
+  act(() => {
+    result.current.setName('Plan test');
+    result.current.updateDay(1, { kind: 'training', sessionId: '1', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:00', presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' } });
   });
   let valid;
   act(() => { valid = result.current.validate(); });

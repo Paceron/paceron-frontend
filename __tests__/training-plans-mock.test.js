@@ -65,6 +65,31 @@ describe('training-plans-mock', () => {
     expect(() => validatePlanDays(otherWithName)).not.toThrow();
   });
 
+  test('validatePlanDays exige horario y ubicación completos en días con default_presencial (mismo criterio que el backend real)', () => {
+    const presencialSinNada = buildValidDays();
+    presencialSinNada[0].kind = 'training';
+    presencialSinNada[0].session_id = 1;
+    presencialSinNada[0].default_presencial = true;
+    expect(() => validatePlanDays(presencialSinNada)).toThrow('combinación de campos inválida');
+
+    const presencialSinUbicacion = buildValidDays();
+    presencialSinUbicacion[0].kind = 'training';
+    presencialSinUbicacion[0].session_id = 1;
+    presencialSinUbicacion[0].default_presencial = true;
+    presencialSinUbicacion[0].default_time_from = '08:00';
+    presencialSinUbicacion[0].default_time_to = '09:00';
+    expect(() => validatePlanDays(presencialSinUbicacion)).toThrow('combinación de campos inválida');
+
+    const presencialCompleto = buildValidDays();
+    presencialCompleto[0].kind = 'training';
+    presencialCompleto[0].session_id = 1;
+    presencialCompleto[0].default_presencial = true;
+    presencialCompleto[0].default_time_from = '08:00';
+    presencialCompleto[0].default_time_to = '09:00';
+    presencialCompleto[0].default_location = { lat: -34.6, lng: -58.4, label: 'Plaza' };
+    expect(() => validatePlanDays(presencialCompleto)).not.toThrow();
+  });
+
   test('mockCreateTrainingPlan agrega un plan nuevo con id incremental', async () => {
     const before = await mockListTrainingPlans();
     const created = await mockCreateTrainingPlan({ owner_id: 5, name: 'Plan nuevo', description: null, days: buildValidDays() });

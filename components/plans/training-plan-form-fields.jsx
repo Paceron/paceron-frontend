@@ -10,6 +10,7 @@ import { useExercises } from '../../hooks/use-exercises.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, TimeField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { LocationPicker } from '../shared/location-picker';
 import { DAY_KIND_META } from './exercise-kind-meta.js';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
 
@@ -58,10 +59,12 @@ function DaySegmentedPicker({ idPrefix, value, onChange }) {
 }
 
 // Toggle + horario "por default" del día — solo aplica a días de
-// entrenamiento. Sin ubicación acá a propósito (ver
-// docs/superpowers/specs/2026-09-21-calendar-plan-stamping-design.md §2):
-// la ubicación concreta se completa recién al estampar el plan a un
-// grupo real, nunca en el catálogo.
+// entrenamiento. Incluye ubicación — el backend real (a diferencia de la
+// decisión de diseño original, ver nota de actualización en
+// docs/superpowers/specs/2026-09-21-calendar-plan-stamping-design.md §2)
+// exige `default_location` en todo día con `default_presencial=true`, así
+// que queda como un default más del plan (se puede ajustar al estampar,
+// igual que el horario).
 function PlanDayPresencialFields({ idPrefix, day, onChangeDay }) {
   return (
     <View className="mt-2 gap-2" nativeID={`${idPrefix}-presencial-fields`} testID={`${idPrefix}-presencial-fields`}>
@@ -93,6 +96,11 @@ function PlanDayPresencialFields({ idPrefix, day, onChangeDay }) {
           <View className="flex-1" nativeID={`${idPrefix}-time-to-wrapper`} testID={`${idPrefix}-time-to-wrapper`}>
             <TimeField label="Hora hasta" onChange={(v) => onChangeDay({ presencialTimeTo: v })} value={day.presencialTimeTo} />
           </View>
+        </View>
+      )}
+      {day.isPresencial && (
+        <View nativeID={`${idPrefix}-location-wrapper`} testID={`${idPrefix}-location-wrapper`}>
+          <LocationPicker onChange={(v) => onChangeDay({ presencialLocation: v })} value={day.presencialLocation} />
         </View>
       )}
     </View>
@@ -210,9 +218,9 @@ function DayRow({ day, sessions, onChangeDay }) {
     if (kind === 'training') {
       onChangeDay({ kind, otherName: null, sessionId: day.sessionId });
     } else if (kind === 'other') {
-      onChangeDay({ kind, otherName: day.otherName ?? '', sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '' });
+      onChangeDay({ kind, otherName: day.otherName ?? '', sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '', presencialLocation: null });
     } else {
-      onChangeDay({ kind, otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '' });
+      onChangeDay({ kind, otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '', presencialLocation: null });
     }
   };
 

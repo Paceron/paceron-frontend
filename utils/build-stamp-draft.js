@@ -17,11 +17,12 @@ export function addDaysISO(isoDate, daysToAdd) {
 // Arma el preview local de "estampar un plan a partir de tal fecha" —
 // un draftDay por PlanDay del plan, con la fecha real calculada
 // (día 1 del plan → startDate, día 2 → startDate + 1, etc, ver
-// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §4). `presencialLocation`
-// arranca siempre null — el catálogo de planes no guarda ubicación (ver
-// docs/superpowers/specs/2026-09-21-calendar-plan-stamping-design.md §2),
-// se completa recién acá, por estampado. `touched` arranca en false —
-// se vuelve true cuando el entrenador edita ese día a mano en el preview
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §4). `presencialLocation` se
+// precarga desde el default del plan (el backend real exige ubicación en
+// todo PlanDay presencial, ver docs/superpowers/specs/2026-09-21-calendar-plan-stamping-design.md
+// §2, nota de actualización) — el entrenador puede ajustarla igual en el
+// preview antes de guardar. `touched` arranca en false — se vuelve true
+// cuando el entrenador edita ese día a mano en el preview
 // (stamp-plan-modal.jsx), y decide qué días llevan un PUT extra después
 // del stamp.
 export function buildStampDraft(plan, startDate) {
@@ -34,7 +35,7 @@ export function buildStampDraft(plan, startDate) {
     isPresencial: Boolean(day.isPresencial),
     presencialTimeFrom: day.presencialTimeFrom ?? null,
     presencialTimeTo: day.presencialTimeTo ?? null,
-    presencialLocation: null,
+    presencialLocation: day.presencialLocation ?? null,
     touched: false,
   }));
 }

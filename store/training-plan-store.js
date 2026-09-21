@@ -17,7 +17,7 @@ import {
 export function buildEmptyPlanDays(dayCount) {
   return Array.from({ length: dayCount }, (_, i) => ({
     sequenceNo: i + 1, kind: 'rest', otherName: null, sessionId: null,
-    isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '',
+    isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '', presencialLocation: null,
   }));
 }
 

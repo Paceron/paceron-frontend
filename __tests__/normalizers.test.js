@@ -636,17 +636,17 @@ describe('toCalendarDayPayload', () => {
 });
 
 describe('toTrainingPlanModel — PlanDay presencial', () => {
-  test('mapea default_presencial/default_time_from/default_time_to a isPresencial/presencialTimeFrom/presencialTimeTo', () => {
+  test('mapea default_presencial/default_time_from/default_time_to/default_location a isPresencial/presencialTimeFrom/presencialTimeTo/presencialLocation', () => {
     const dto = {
       id: 1, owner_id: 7, name: 'Plan', description: '', created_at: 'x', updated_at: 'x',
       days: [
-        { sequence_no: 1, kind: 'training', other_name: null, session_id: 9, default_presencial: true, default_time_from: '08:00', default_time_to: '09:30' },
-        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null, default_presencial: false, default_time_from: null, default_time_to: null },
+        { sequence_no: 1, kind: 'training', other_name: null, session_id: 9, default_presencial: true, default_time_from: '08:00', default_time_to: '09:30', default_location: { lat: -34.6, lng: -58.4, label: 'Plaza' } },
+        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null, default_presencial: false, default_time_from: null, default_time_to: null, default_location: null },
       ],
     };
     const model = toTrainingPlanModel(dto);
-    expect(model.days[0]).toMatchObject({ isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30' });
-    expect(model.days[1]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null });
+    expect(model.days[0]).toMatchObject({ isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30', presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' } });
+    expect(model.days[1]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null, presencialLocation: null });
   });
 
   test('un PlanDay sin default_presencial (planes viejos, campo nunca seteado) mapea isPresencial false', () => {
@@ -654,28 +654,29 @@ describe('toTrainingPlanModel — PlanDay presencial', () => {
       id: 1, owner_id: 7, name: 'Plan', description: '', created_at: 'x', updated_at: 'x',
       days: [{ sequence_no: 1, kind: 'rest', other_name: null, session_id: null }],
     };
-    expect(toTrainingPlanModel(dto).days[0]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null });
+    expect(toTrainingPlanModel(dto).days[0]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null, presencialLocation: null });
   });
 });
 
 describe('toCreateTrainingPlanPayload — PlanDay presencial', () => {
-  test('un día training presencial manda default_presencial true + horarios', () => {
+  test('un día training presencial manda default_presencial true + horarios + ubicación', () => {
     const form = {
       ownerId: 7, name: 'Plan', description: '',
-      days: [{ sequenceNo: 1, kind: 'training', otherName: null, sessionId: '9', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30' }],
+      days: [{ sequenceNo: 1, kind: 'training', otherName: null, sessionId: '9', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30', presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' } }],
     };
     expect(toCreateTrainingPlanPayload(form).days[0]).toMatchObject({
       default_presencial: true, default_time_from: '08:00', default_time_to: '09:30',
+      default_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
     });
   });
 
-  test('un día no presencial manda default_presencial false y horarios null', () => {
+  test('un día no presencial manda default_presencial false, horarios y ubicación null', () => {
     const form = {
       ownerId: 7, name: 'Plan', description: '',
-      days: [{ sequenceNo: 1, kind: 'rest', otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '' }],
+      days: [{ sequenceNo: 1, kind: 'rest', otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '', presencialLocation: null }],
     };
     expect(toCreateTrainingPlanPayload(form).days[0]).toMatchObject({
-      default_presencial: false, default_time_from: null, default_time_to: null,
+      default_presencial: false, default_time_from: null, default_time_to: null, default_location: null,
     });
   });
 });

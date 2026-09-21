@@ -100,7 +100,7 @@ export async function mockStampPlan(groupId, { plan_id, start_date, force }) {
       is_presencial: presencial,
       presencial_time_from: presencial ? planDay.default_time_from : null,
       presencial_time_to: presencial ? planDay.default_time_to : null,
-      presencial_location: null,
+      presencial_location: presencial ? planDay.default_location : null,
     };
     const savedDay = await mockUpsertCalendarDay(groupId, dates[i], payload);
     savedDay.source_plan_id = Number(plan_id);

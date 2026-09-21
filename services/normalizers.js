@@ -366,6 +366,9 @@ function toPlanDayModel(dto) {
     isPresencial: Boolean(dto.default_presencial),
     presencialTimeFrom: dto.default_time_from ?? null,
     presencialTimeTo: dto.default_time_to ?? null,
+    presencialLocation: dto.default_location
+      ? { lat: dto.default_location.lat, lng: dto.default_location.lng, label: dto.default_location.label ?? null }
+      : null,
   };
 }
 
@@ -379,6 +382,9 @@ function toPlanDayPayload(day) {
     default_presencial: presencial,
     default_time_from: presencial ? day.presencialTimeFrom : null,
     default_time_to: presencial ? day.presencialTimeTo : null,
+    default_location: presencial && day.presencialLocation
+      ? { lat: day.presencialLocation.lat, lng: day.presencialLocation.lng, label: day.presencialLocation.label || null }
+      : null,
   };
 }
 

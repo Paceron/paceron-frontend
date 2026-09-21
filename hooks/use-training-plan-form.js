@@ -26,7 +26,7 @@ export function useTrainingPlanForm({ initial, ownerId } = {}) {
       if (clamped < prev.length) return prev.slice(0, clamped);
       const extra = Array.from({ length: clamped - prev.length }, (_, i) => ({
         sequenceNo: prev.length + i + 1, kind: 'rest', otherName: null, sessionId: null,
-        isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '',
+        isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '', presencialLocation: null,
       }));
       return [...prev, ...extra];
     });
@@ -46,6 +46,9 @@ export function useTrainingPlanForm({ initial, ownerId } = {}) {
 
     const badPresencialTimes = days.some((d) => d.kind === 'training' && d.isPresencial && (!d.presencialTimeFrom || !d.presencialTimeTo || d.presencialTimeTo <= d.presencialTimeFrom));
     if (badPresencialTimes) next.days = 'Revisá el horario de los días presenciales: hace falta desde y hasta, y hasta debe ser posterior a desde.';
+
+    const presencialDaysWithoutLocation = days.some((d) => d.kind === 'training' && d.isPresencial && !d.presencialLocation);
+    if (presencialDaysWithoutLocation) next.days = 'Elegí la ubicación de los días marcados como presenciales.';
 
     setErrors(next);
     return Object.keys(next).length === 0;

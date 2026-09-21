@@ -94,19 +94,19 @@ describe('mockStampPlan', () => {
     expect(result.days[0].source_plan_id).toBe(plan.id);
   });
 
-  test('copia default_presencial/default_time_from/default_time_to a is_presencial/presencial_time_from/presencial_time_to', async () => {
+  test('copia default_presencial/default_time_from/default_time_to/default_location a is_presencial/presencial_time_from/presencial_time_to/presencial_location', async () => {
     const plan = await mockCreateTrainingPlan({
       owner_id: 1, name: 'Plan presencial', description: '',
       days: [
-        { sequence_no: 1, kind: 'training', other_name: null, session_id: 1, default_presencial: true, default_time_from: '08:00', default_time_to: '09:30' },
-        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null, default_presencial: false, default_time_from: null, default_time_to: null },
+        { sequence_no: 1, kind: 'training', other_name: null, session_id: 1, default_presencial: true, default_time_from: '08:00', default_time_to: '09:30', default_location: { lat: -34.6, lng: -58.4, label: 'Plaza' } },
+        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null, default_presencial: false, default_time_from: null, default_time_to: null, default_location: null },
       ],
     });
     const result = await mockStampPlan(1, { plan_id: plan.id, start_date: '2026-10-05', force: false });
     expect(result.days[0].is_presencial).toBe(true);
     expect(result.days[0].presencial_time_from).toBe('08:00');
     expect(result.days[0].presencial_time_to).toBe('09:30');
-    expect(result.days[0].presencial_location).toBeNull();
+    expect(result.days[0].presencial_location).toEqual({ lat: -34.6, lng: -58.4, label: 'Plaza' });
   });
 
   test('si algún día del rango ya tiene contenido y force no es true, devuelve conflicto sin escribir nada', async () => {

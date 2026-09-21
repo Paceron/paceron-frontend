@@ -2,9 +2,9 @@ import { addDaysISO, buildStampDraft, findClosedDraftDates } from '../utils/buil
 
 const PLAN = {
   days: [
-    { sequenceNo: 1, kind: 'training', otherName: null, sessionId: '9', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30' },
-    { sequenceNo: 2, kind: 'rest', otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null },
-    { sequenceNo: 3, kind: 'other', otherName: 'Elongación', sessionId: null, isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null },
+    { sequenceNo: 1, kind: 'training', otherName: null, sessionId: '9', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30', presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' } },
+    { sequenceNo: 2, kind: 'rest', otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null, presencialLocation: null },
+    { sequenceNo: 3, kind: 'other', otherName: 'Elongación', sessionId: null, isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null, presencialLocation: null },
   ],
 };
 
@@ -33,7 +33,7 @@ describe('buildStampDraft', () => {
     expect(draft.map((d) => d.date)).toEqual(['2026-03-10', '2026-03-11', '2026-03-12']);
   });
 
-  test('copia kind/otherName/sessionId/presencial+horario del PlanDay', () => {
+  test('copia kind/otherName/sessionId/presencial+horario+ubicación del PlanDay', () => {
     const [first] = buildStampDraft(PLAN, '2026-03-10');
     expect(first).toEqual({
       date: '2026-03-10',
@@ -44,14 +44,15 @@ describe('buildStampDraft', () => {
       isPresencial: true,
       presencialTimeFrom: '08:00',
       presencialTimeTo: '09:30',
-      presencialLocation: null,
+      presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' },
       touched: false,
     });
   });
 
-  test('presencialLocation siempre arranca null y touched siempre arranca false', () => {
+  test('un día no presencial arranca con presencialLocation null, y touched siempre arranca false', () => {
     const draft = buildStampDraft(PLAN, '2026-03-10');
-    expect(draft.every((d) => d.presencialLocation === null && d.touched === false)).toBe(true);
+    expect(draft[1].presencialLocation).toBeNull();
+    expect(draft.every((d) => d.touched === false)).toBe(true);
   });
 
   test('un plan que empieza cerca de fin de mes calcula bien el cruce', () => {

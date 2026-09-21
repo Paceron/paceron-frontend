@@ -42,14 +42,32 @@ brainstorming, no reabrir sin nueva conversación):**
   la pieza 1 sigue persistiendo al tocar Guardar en cada día individual.
   El acumulado local es específico del flujo de estampado, donde el caso
   de uso real (cargar un plan completo) lo justifica.
-- Ubicación (`default_location`) a nivel de `Session` o `PlanDay` en el
-  catálogo — ver razonamiento en §2.
+- Ubicación (`default_location`) a nivel de `Session` — sigue fuera,
+  mismo razonamiento de reutilización que en §2. (Sí terminó sumándose a
+  `PlanDay` — ver actualización en §2, no fue posible dejarla afuera del
+  catálogo por completo.)
 - `bulk`/`bulk-clear`/`shift` (multi-select manual, aplazar fechas) —
   quedan para una pieza futura si hace falta, no están bloqueando nada
   de esto.
 - Vista del corredor (pieza 3 del sub-proyecto original) — sin empezar.
 
-## 2. Dónde vive `default_presencial`/horario: `PlanDay`, no `Session`, sin ubicación
+## 2. Dónde vive `default_presencial`/horario: `PlanDay`, no `Session`
+
+> **Actualización 2026-09-21 (post-implementación):** la sub-decisión de
+> "sin ubicación en el catálogo" de este apartado **se revirtió** al
+> integrar contra el backend real. `training_plan_service.go` (código
+> real, no solo el schema) exige `default_location` no nulo en todo
+> `PlanDay` con `default_presencial=true` (`ErrPlanDayFieldMismatch`,
+> mismo criterio que ya aplica a `GroupCalendarDay` — aparente copy-paste
+> de esa validación sin ajustar para el caso de un template reusable). Se
+> le preguntó al usuario si pedía al backend relajar esa regla (mantenía
+> el diseño original) o sumaba `LocationPicker` también al catálogo de
+> planes — eligió lo segundo. `PlanDay` ahora incluye `presencialLocation`
+> (mapea a `default_location`), editable en `training-plan-form-fields.jsx`
+> junto al horario; `buildStampDraft` la precarga en el preview de
+> estampado (el entrenador la puede ajustar ahí igual, no es de solo
+> lectura). El resto de esta sección (por qué NO va en `Session`) sigue
+> vigente.
 
 Decisión explícita del usuario durante brainstorming, con la siguiente
 razón documentada para no reabrirla sin motivo nuevo:
@@ -59,17 +77,14 @@ razón documentada para no reabrirla sin motivo nuevo:
   misma sesión de pista puede hacerse en un club en un grupo y en un
   predio distinto en otro).
 - `PlanDay` también se re-estampa en distintos grupos con el tiempo —
-  la **ubicación concreta** tampoco tiene sentido fijarla ahí por el
-  mismo motivo. Lo que sí tiene sentido de base es el patrón "este día
-  es presencial, típicamente de tal a tal hora" — un hint de horario,
-  no un lugar.
-- Consecuencia: `default_location` de `PlanDay` (ya existe en el schema
-  del backend) queda sin editor en el catálogo. El preview de estampado
-  siempre arranca sin ubicación para días presenciales — el entrenador
-  la completa ahí, por estampado, nunca antes.
-- Esto no requiere ningún cambio de backend — el gap era pura UI
-  frontend faltante, el schema ya soporta estos 3 campos desde
-  `docs/BACKEND_TRAINING_PLANS_SPEC.md` §3.5.
+  la **ubicación concreta** en principio tampoco tenía sentido fijarla
+  ahí por el mismo motivo (ver actualización arriba: el backend real no
+  dejó margen para esa preferencia, `default_location` terminó siendo
+  obligatorio junto con el horario).
+- `default_location` de `PlanDay` (ya existía en el schema del backend)
+  ahora SÍ tiene editor en el catálogo (`LocationPicker`, junto al
+  horario) — el entrenador puede ajustarla igual al momento de estampar,
+  el valor del plan es solo el default inicial del preview.
 
 ## 3. Flujo
 
