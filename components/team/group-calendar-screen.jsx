@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { useGroupCalendar } from '../../hooks/use-group-calendar.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
+import { StampPlanModal } from './stamp-plan-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 const KIND_DOT_COLORS = { rest: '#94a3b8', other: '#f59e0b', training: '#22c55e', cancelled: '#ef4444' };
@@ -82,6 +83,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const today = new Date();
   const [visibleYear, setVisibleYear] = useState(today.getFullYear());
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
+  const [stampModalVisible, setStampModalVisible] = useState(false);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
@@ -138,6 +140,17 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
           {(loadingDays || isFetching) && (
             <ActivityIndicator color={colors.primary} nativeID="group-calendar-screen-fetching" size="small" testID="group-calendar-screen-fetching" />
           )}
+          <Pressable
+            className="ml-auto h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-3 hover:opacity-90 active:opacity-80"
+            nativeID="group-calendar-screen-stamp-button"
+            onPress={() => setStampModalVisible(true)}
+            testID="group-calendar-screen-stamp-button"
+          >
+            <MaterialCommunityIcons color="#111518" name="stamper" size={16} />
+            <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID="group-calendar-screen-stamp-button-label" testID="group-calendar-screen-stamp-button-label">
+              Estampar plan
+            </Text>
+          </Pressable>
         </View>
 
         <View
@@ -165,6 +178,8 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
           />
         </View>
       </View>
+
+      <StampPlanModal groupId={groupId} onClose={() => setStampModalVisible(false)} ownerId={userId} visible={stampModalVisible} />
     </View>
   );
 }
