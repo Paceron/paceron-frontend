@@ -15,7 +15,7 @@ export function useGroupCalendar(groupId, from, to) {
     queryFn: () => getGroupCalendarService(groupId, from, to).then((dtos) => dtos.map(toGroupCalendarDayModel)),
     enabled: Boolean(groupId && from && to),
   });
-  return { days: query.data ?? [], loading: query.isLoading, error: query.error };
+  return { days: query.data ?? [], loading: query.isLoading, isFetching: query.isFetching, error: query.error };
 }
 
 export function useGroupCalendarMutations(groupId) {

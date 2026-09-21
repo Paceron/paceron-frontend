@@ -7,10 +7,9 @@ import '../../config/calendarLocale.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { useGroupCalendar } from '../../hooks/use-group-calendar.js';
-import { SkeletonBlock } from '../shared/skeleton.jsx';
+import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 const KIND_DOT_COLORS = { rest: '#94a3b8', other: '#f59e0b', training: '#22c55e', cancelled: '#ef4444' };
@@ -29,6 +28,7 @@ function monthRange(year, month) {
 function CalendarDayCell({ date, state, marking, onPress }) {
   const colors = useThemeColors();
   const isOtherMonth = state === 'disabled';
+  const closed = marking ? isCalendarDayClosed(date.dateString, marking) : false;
   return (
     <Pressable
       className="h-14 w-full items-center justify-start gap-1 pt-1"
@@ -44,7 +44,12 @@ function CalendarDayCell({ date, state, marking, onPress }) {
         {date.day}
       </Text>
       {marking && (
-        <View className="flex-row items-center gap-0.5" nativeID={`group-calendar-day-${date.dateString}-marks`} testID={`group-calendar-day-${date.dateString}-marks`}>
+        <View
+          className="flex-row items-center gap-0.5"
+          nativeID={`group-calendar-day-${date.dateString}-marks`}
+          style={{ opacity: closed ? 0.45 : 1 }}
+          testID={`group-calendar-day-${date.dateString}-marks`}
+        >
           <View
             nativeID={`group-calendar-day-${date.dateString}-dot`}
             style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KIND_DOT_COLORS[marking.kind] }}
@@ -60,19 +65,22 @@ function CalendarDayCell({ date, state, marking, onPress }) {
 function GroupCalendarScreenContent({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
+  // userId sale directo del auth store (sincrónico) en vez de esperar
+  // useUser(userId) — evita una vuelta de red extra antes de poder
+  // arrancar el fetch de grupos, mismo valor (ver store/auth-store.js).
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
-  const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
+  const { groups, loading: loadingGroups } = useGroups(teamId, userId);
   const group = groups.find((g) => g.id === groupId);
 
   const today = new Date();
   const [visibleYear, setVisibleYear] = useState(today.getFullYear());
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
-  const { days, loading: loadingDays } = useGroupCalendar(groupId, from, to);
+  const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
+  const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
 
   const markingsByDate = useMemo(
-    () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial }])),
+    () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial, presencialTimeFrom: d.presencialTimeFrom }])),
     [days],
   );
 
@@ -80,15 +88,12 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     router.push(`/teams/${teamId}/groups/${groupId}/calendar/${date.dateString}`);
   };
 
-  if (loadingGroups) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="group-calendar-loading" testID="group-calendar-loading">
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
-  }
-
-  if (!group) {
+  // Nunca desmontar el <Calendar> por loading — react-native-calendars
+  // no es controlado por default, así que desmontarlo y volver a montarlo
+  // le hace perder la navegación y vuelve siempre al mes actual (bug real
+  // reportado). `current` (controlado por nuestro propio estado) blinda
+  // la posición incluso si algo lo remonta igual.
+  if (!loadingGroups && !group) {
     return (
       <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="group-calendar-not-found" testID="group-calendar-not-found">
         <Text className="mb-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="group-calendar-not-found-label" testID="group-calendar-not-found-label">
@@ -121,24 +126,37 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="group-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="group-calendar-screen-title">
-            Calendario de {group.name}
+            Calendario de {group?.name ?? '...'}
           </Text>
+          {(loadingDays || isFetching) && (
+            <ActivityIndicator color={colors.primary} nativeID="group-calendar-screen-fetching" size="small" testID="group-calendar-screen-fetching" />
+          )}
         </View>
 
-        {loadingDays ? (
-          <SkeletonBlock height={320} nativeID="group-calendar-skeleton" testID="group-calendar-skeleton" width="100%" />
-        ) : (
-          <View nativeID="group-calendar-month-view" testID="group-calendar-month-view">
-            <Calendar
-              dayComponent={({ date, state }) => (
-                <CalendarDayCell date={date} marking={markingsByDate[date.dateString]} onPress={handleDayPress} state={state} />
-              )}
-              firstDay={1}
-              onMonthChange={(month) => { setVisibleYear(month.year); setVisibleMonth(month.month); }}
-              theme={{ textMonthFontFamily: 'Orbitron_700Bold' }}
-            />
-          </View>
-        )}
+        <View
+          className="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
+          nativeID="group-calendar-month-view"
+          testID="group-calendar-month-view"
+        >
+          <Calendar
+            current={currentMonthISO}
+            dayComponent={({ date, state }) => (
+              <CalendarDayCell date={date} marking={markingsByDate[date.dateString]} onPress={handleDayPress} state={state} />
+            )}
+            firstDay={1}
+            onMonthChange={(month) => { setVisibleYear(month.year); setVisibleMonth(month.month); }}
+            theme={{
+              backgroundColor: 'transparent',
+              calendarBackground: 'transparent',
+              textSectionTitleColor: colors.onSurfaceVariant,
+              monthTextColor: colors.onSurface,
+              arrowColor: colors.primary,
+              todayTextColor: colors.primary,
+              textDisabledColor: colors.onSurfaceVariant,
+              textMonthFontFamily: 'Orbitron_700Bold',
+            }}
+          />
+        </View>
       </View>
     </View>
   );

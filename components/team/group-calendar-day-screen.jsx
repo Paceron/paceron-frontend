@@ -6,7 +6,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser } from '../../hooks/use-user.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { useSessions } from '../../hooks/use-sessions.js';
 import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
@@ -20,6 +19,7 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
 import { findMatchingCatalogSession } from '../../utils/session-instance-match.js';
+import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 
 const KIND_OPTIONS = [
   { id: 'rest', label: 'Descanso' },
@@ -83,11 +83,13 @@ function PresencialToggle({ value, onChange, colors }) {
 function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
   const router = useRouter();
   const colors = useThemeColors();
+  // userId sale directo del auth store (sincrónico), sin esperar
+  // useUser(userId) — evita una vuelta de red extra antes de poder
+  // arrancar el fetch de grupos/sesiones, mismo valor.
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
-  const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
+  const { groups, loading: loadingGroups } = useGroups(teamId, userId);
   const group = groups.find((g) => g.id === groupId);
-  const { sessions, loading: loadingSessions } = useSessions(user?.userId);
+  const { sessions, loading: loadingSessions } = useSessions(userId);
   const { days, loading: loadingDay } = useGroupCalendar(groupId, date, date);
   const { upsertDay, isUpserting, deleteDay, isDeleting } = useGroupCalendarMutations(groupId);
   const existingDay = days[0] ?? null;
@@ -205,6 +207,15 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
 
   const sessionOptions = sessions.map((s) => ({ id: s.id, name: s.name }));
   const canCancelSession = existingDay?.kind === 'training';
+  // Mismo criterio que el backend (calendar_service.go#isCalendarDayClosed,
+  // ver utils/calendar-day-closed.js) — usa el estado ACTUAL del form, no
+  // el existingDay guardado: hoy con presencial activado y horario futuro
+  // puede seguir abierto aunque el día ya tenga contenido guardado antes.
+  // Solo advisory (el backend sigue siendo la fuente real, esto evita
+  // mostrar una acción que va a terminar en 422).
+  const closed = kind === 'training' && isPresencial
+    ? isCalendarDayClosed(date, { isPresencial: true, presencialTimeFrom })
+    : isCalendarDayClosed(date, { isPresencial: false });
 
   if (loadingGroups || loadingDay) {
     return (
@@ -259,6 +270,24 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
           </View>
 
           <SectionCard icon="calendar-blank-outline" title={`Día de ${group.name}`}>
+            {closed && (
+              <View
+                className="mb-4 flex-row items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
+                nativeID="group-calendar-day-closed-banner"
+                testID="group-calendar-day-closed-banner"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="lock-outline" size={16} />
+                <Text
+                  className="flex-1 text-xs text-slate-500 dark:text-slate-400"
+                  nativeID="group-calendar-day-closed-banner-label"
+                  testID="group-calendar-day-closed-banner-label"
+                >
+                  Este día ya pasó (o ya arrancó) — queda como historial, no se puede editar ni vaciar.
+                  {canCancelSession ? ' Podés cancelar la sesión asignada si hace falta.' : ''}
+                </Text>
+              </View>
+            )}
+
             <KindSelector disabled={isUpserting} onChange={(v) => { setKind(v); clearError(); }} value={kind} />
 
             {error && (
@@ -324,8 +353,8 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
             )}
 
             <Pressable
-              className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${isUpserting ? 'opacity-60' : ''}`}
-              disabled={isUpserting}
+              className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${isUpserting || closed ? 'opacity-60' : ''}`}
+              disabled={isUpserting || closed}
               nativeID="group-calendar-day-save-button"
               onPress={handleSubmit}
               testID="group-calendar-day-save-button"
@@ -358,8 +387,8 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
 
             {existingDay && (
               <Pressable
-                className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 hover:bg-red-50 active:opacity-80 dark:border-red-800 dark:hover:bg-red-900/20 ${isDeleting ? 'opacity-60' : ''}`}
-                disabled={isDeleting}
+                className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 hover:bg-red-50 active:opacity-80 dark:border-red-800 dark:hover:bg-red-900/20 ${isDeleting || closed ? 'opacity-60' : ''}`}
+                disabled={isDeleting || closed}
                 nativeID="group-calendar-day-clear-button"
                 onPress={handleClear}
                 testID="group-calendar-day-clear-button"
