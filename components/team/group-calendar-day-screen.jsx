@@ -12,73 +12,13 @@ import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-gro
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField, TimeField } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { LocationPicker } from '../shared/location-picker';
+import { InputField } from '../forms/fields.jsx';
+import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { KEEP_CURRENT_SESSION } from '../../services/normalizers.js';
-
-const KIND_OPTIONS = [
-  { id: 'rest', label: 'Descanso' },
-  { id: 'other', label: 'Otra actividad' },
-  { id: 'training', label: 'Entrenamiento' },
-];
-
-function KindSelector({ value, onChange, disabled }) {
-  return (
-    <View className="mb-5 flex-row gap-2" nativeID="group-calendar-day-kind-selector" testID="group-calendar-day-kind-selector">
-      {KIND_OPTIONS.map((opt) => {
-        const selected = value === opt.id;
-        return (
-          <Pressable
-            className={`flex-1 items-center rounded-xl border px-2 py-2.5 ${selected ? 'border-primary bg-primary-tint dark:bg-primary/15' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'}`}
-            disabled={disabled}
-            key={opt.id}
-            nativeID={`group-calendar-day-kind-${opt.id}`}
-            onPress={() => onChange(opt.id)}
-            testID={`group-calendar-day-kind-${opt.id}`}
-          >
-            <Text
-              className={`text-xs font-semibold ${selected ? 'text-on-primary-tint dark:text-primary' : 'text-slate-600 dark:text-slate-300'}`}
-              nativeID={`group-calendar-day-kind-${opt.id}-label`}
-              testID={`group-calendar-day-kind-${opt.id}-label`}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function PresencialToggle({ value, onChange, colors }) {
-  return (
-    <Pressable
-      accessibilityLabel="¿Es presencial?"
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: value }}
-      className="mb-4 flex-row items-center gap-3 py-1"
-      nativeID="group-calendar-day-presencial-checkbox"
-      onPress={() => onChange(!value)}
-      testID="group-calendar-day-presencial-checkbox"
-    >
-      <View
-        className={`h-5 w-5 items-center justify-center rounded border ${value ? 'border-primary bg-primary' : 'border-slate-300 dark:border-slate-600'}`}
-        nativeID="group-calendar-day-presencial-checkbox-box"
-        testID="group-calendar-day-presencial-checkbox-box"
-      >
-        {value && <MaterialCommunityIcons color={colors.onPrimary} name="check-bold" size={14} />}
-      </View>
-      <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="group-calendar-day-presencial-checkbox-label" testID="group-calendar-day-presencial-checkbox-label">
-        ¿Es presencial?
-      </Text>
-    </Pressable>
-  );
-}
 
 function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
   const router = useRouter();
@@ -288,85 +228,30 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
               </View>
             )}
 
-            <KindSelector disabled={isUpserting} onChange={(v) => { setKind(v); clearError(); }} value={kind} />
-
             {error && (
               <Text className="mb-4 text-xs text-red-500 dark:text-red-400" nativeID="group-calendar-day-error" testID="group-calendar-day-error">{error}</Text>
             )}
 
-            {kind === 'other' && (
-              <InputField dense label="Nombre de la actividad" onChange={(text) => { setOtherName(text); clearError(); }} placeholder="Ej. Elongación" value={otherName} />
-            )}
-
-            {kind === 'training' && (
-              <>
-                {existingDay?.sessionInstance && (
-                  <View
-                    className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
-                    nativeID="group-calendar-day-current-session"
-                    testID="group-calendar-day-current-session"
-                  >
-                    <Text
-                      className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-                      nativeID="group-calendar-day-current-session-label"
-                      testID="group-calendar-day-current-session-label"
-                    >
-                      Sesión asignada actualmente
-                    </Text>
-                    <Text
-                      className="mt-1 text-sm font-medium text-slate-900 dark:text-white"
-                      nativeID="group-calendar-day-current-session-name"
-                      testID="group-calendar-day-current-session-name"
-                    >
-                      {existingDay.sessionInstance.name}
-                    </Text>
-                    {existingDay.sessionInstance.description && (
-                      <Text
-                        className="mt-0.5 text-xs text-slate-500 dark:text-slate-400"
-                        nativeID="group-calendar-day-current-session-description"
-                        testID="group-calendar-day-current-session-description"
-                      >
-                        {existingDay.sessionInstance.description}
-                      </Text>
-                    )}
-                  </View>
-                )}
-                {existingDay?.sessionInstance ? (
-                  <Text
-                    className="mb-2 text-xs text-slate-500 dark:text-slate-400"
-                    nativeID="group-calendar-day-session-hint"
-                    testID="group-calendar-day-session-hint"
-                  >
-                    &ldquo;Mantener sesión actual&rdquo; no toca el contenido guardado. Elegir cualquier otra sesión reemplaza la actual por una copia congelada nueva.
-                  </Text>
-                ) : (
-                  <Text
-                    className="mb-2 text-xs text-slate-500 dark:text-slate-400"
-                    nativeID="group-calendar-day-session-hint"
-                    testID="group-calendar-day-session-hint"
-                  >
-                    Guardar instancia una copia congelada de la sesión elegida — editarla después en el catálogo no la va a afectar.
-                  </Text>
-                )}
-                <ResponsiveSelectField dense label="Sesión del catálogo" onChange={(v) => { setSessionId(v); clearError(); }} options={sessionOptions} placeholder="Elegí una sesión" value={sessionId} />
-                <PresencialToggle colors={colors} onChange={setIsPresencial} value={isPresencial} />
-                {isPresencial && (
-                  <>
-                    <View className="flex-row gap-3" nativeID="group-calendar-day-time-row" testID="group-calendar-day-time-row">
-                      <View className="flex-1" nativeID="group-calendar-day-time-from-wrapper" testID="group-calendar-day-time-from-wrapper">
-                        <TimeField label="Hora desde" onChange={(v) => { setPresencialTimeFrom(v); clearError(); }} value={presencialTimeFrom} />
-                      </View>
-                      <View className="flex-1" nativeID="group-calendar-day-time-to-wrapper" testID="group-calendar-day-time-to-wrapper">
-                        <TimeField label="Hora hasta" onChange={(v) => { setPresencialTimeTo(v); clearError(); }} value={presencialTimeTo} />
-                      </View>
-                    </View>
-                    <View className="mb-5" nativeID="group-calendar-day-location-wrapper" testID="group-calendar-day-location-wrapper">
-                      <LocationPicker onChange={(v) => { setPresencialLocation(v); clearError(); }} value={presencialLocation} />
-                    </View>
-                  </>
-                )}
-              </>
-            )}
+            <CalendarDayFields
+              currentSessionInstance={existingDay?.sessionInstance ?? null}
+              disabled={isUpserting}
+              idPrefix="group-calendar-day"
+              isPresencial={isPresencial}
+              kind={kind}
+              onIsPresencialChange={setIsPresencial}
+              onKindChange={(v) => { setKind(v); clearError(); }}
+              onOtherNameChange={(text) => { setOtherName(text); clearError(); }}
+              onPresencialLocationChange={(v) => { setPresencialLocation(v); clearError(); }}
+              onPresencialTimeFromChange={(v) => { setPresencialTimeFrom(v); clearError(); }}
+              onPresencialTimeToChange={(v) => { setPresencialTimeTo(v); clearError(); }}
+              onSessionIdChange={(v) => { setSessionId(v); clearError(); }}
+              otherName={otherName}
+              presencialLocation={presencialLocation}
+              presencialTimeFrom={presencialTimeFrom}
+              presencialTimeTo={presencialTimeTo}
+              sessionId={sessionId}
+              sessionOptions={sessionOptions}
+            />
 
             <Pressable
               className={`h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${isUpserting || closed ? 'opacity-60' : ''}`}
