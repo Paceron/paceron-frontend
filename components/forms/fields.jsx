@@ -126,7 +126,7 @@ function formatDDMMYYYY(date) {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-export function DateField({ label, value, onChange, onBlur, error, touched, disabled }) {
+export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -207,7 +207,8 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
         <DateTimePicker
           accentColor="#8cc63e"
           display="default"
-          maximumDate={new Date()}
+          maximumDate={disableFutureLimit ? undefined : new Date()}
+          minimumDate={minimumDate}
           mode="date"
           onChange={handleChange}
           value={parseDDMMYYYY(value)}
@@ -237,7 +238,8 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
             >
               <DateTimePicker
                 display="inline"
-                maximumDate={new Date()}
+                maximumDate={disableFutureLimit ? undefined : new Date()}
+                minimumDate={minimumDate}
                 mode="date"
                 onChange={handleChange}
                 themeVariant={themeMode}
