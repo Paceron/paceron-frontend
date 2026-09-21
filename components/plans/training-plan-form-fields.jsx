@@ -127,7 +127,7 @@ function DayHeaderRowWide({ day, sessions, onChangeDay, onKindChange, idPrefix }
 
             if (expanded) {
               return (
-                <View className={`h-11 flex-1 flex-row items-center gap-2 rounded-full px-3.5 ${meta.bg}`} key={kind} nativeID={segId} testID={segId}>
+                <View className={`min-h-11 flex-1 flex-row items-center gap-2 rounded-full px-3.5 py-1 ${meta.bg}`} key={kind} nativeID={segId} testID={segId}>
                   <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
                   {kind === 'other' && (
                     <InputField

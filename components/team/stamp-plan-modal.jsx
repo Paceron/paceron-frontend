@@ -167,17 +167,17 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
       <Modal animationType="fade" nativeID="stamp-plan-modal" onRequestClose={handleClose} testID="stamp-plan-modal" transparent visible={visible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="stamp-plan-modal-backdrop" onPress={handleClose} testID="stamp-plan-modal-backdrop">
           <Pressable
-            className="max-h-[85%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface"
+            className="max-h-[85%] w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
             nativeID="stamp-plan-modal-card"
             onPress={() => {}}
             testID="stamp-plan-modal-card"
           >
-            <Text className="mb-4 text-lg font-bold text-slate-900 dark:text-white" nativeID="stamp-plan-modal-title" testID="stamp-plan-modal-title">
+            <Text className="mb-2 text-lg font-bold text-slate-900 dark:text-white" nativeID="stamp-plan-modal-title" testID="stamp-plan-modal-title">
               Estampar plan
             </Text>
 
             {error && (
-              <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="stamp-plan-modal-error" testID="stamp-plan-modal-error">{error}</Text>
+              <Text className="mb-2 text-xs text-red-500 dark:text-red-400" nativeID="stamp-plan-modal-error" testID="stamp-plan-modal-error">{error}</Text>
             )}
 
             {step === 'select' && (
