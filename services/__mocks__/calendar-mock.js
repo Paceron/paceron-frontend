@@ -109,6 +109,21 @@ export async function mockStampPlan(groupId, { plan_id, start_date, force }) {
   return { conflict: false, days: created };
 }
 
+export async function mockBulkAssignDays(groupId, { dates, ...payload }) {
+  const results = [];
+  for (const date of dates) {
+    results.push(await mockUpsertCalendarDay(groupId, date, payload));
+  }
+  return results;
+}
+
+export async function mockBulkClearDays(groupId, dates) {
+  for (const date of dates) {
+    await mockDeleteCalendarDay(groupId, date);
+  }
+  return null;
+}
+
 export async function mockDeleteCalendarDay(groupId, date) {
   delete mockCalendarDays[keyFor(groupId, date)];
   return null;

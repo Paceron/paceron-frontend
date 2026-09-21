@@ -1,5 +1,6 @@
 import {
-  mockGetGroupCalendar, mockUpsertCalendarDay, mockDeleteCalendarDay, mockStampPlan, __resetMockCalendar,
+  mockGetGroupCalendar, mockUpsertCalendarDay, mockDeleteCalendarDay, mockStampPlan,
+  mockBulkAssignDays, mockBulkClearDays, __resetMockCalendar,
 } from '../services/__mocks__/calendar-mock.js';
 import { __resetMockSessions } from '../services/__mocks__/sessions-mock.js';
 import { mockCreateTrainingPlan, __resetMockTrainingPlans } from '../services/__mocks__/training-plans-mock.js';
@@ -136,5 +137,28 @@ describe('mockStampPlan', () => {
     const result = await mockStampPlan(1, { plan_id: plan.id, start_date: '2026-10-05', force: true });
     expect(result.conflict).toBe(false);
     expect(result.days[1].other_name).toBe('Pisado');
+  });
+});
+
+describe('mockBulkAssignDays', () => {
+  test('aplica el mismo contenido a todas las fechas listadas', async () => {
+    const result = await mockBulkAssignDays(1, { dates: ['2026-10-05', '2026-10-06'], kind: 'rest' });
+    expect(result).toHaveLength(2);
+    expect(result.every((d) => d.kind === 'rest')).toBe(true);
+    expect(await mockGetGroupCalendar(1, '2026-10-01', '2026-10-31')).toHaveLength(2);
+  });
+
+  test('con kind=training instancia la sesión en cada fecha', async () => {
+    const result = await mockBulkAssignDays(1, { dates: ['2026-10-05', '2026-10-06'], kind: 'training', session_id: 1 });
+    expect(result.every((d) => d.session_instance?.name === 'Fondo suave')).toBe(true);
+  });
+});
+
+describe('mockBulkClearDays', () => {
+  test('borra todas las fechas listadas', async () => {
+    await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'rest' });
+    await mockUpsertCalendarDay(1, '2026-10-06', { kind: 'rest' });
+    await mockBulkClearDays(1, ['2026-10-05', '2026-10-06']);
+    expect(await mockGetGroupCalendar(1, '2026-10-01', '2026-10-31')).toEqual([]);
   });
 });

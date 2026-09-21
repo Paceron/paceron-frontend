@@ -5,6 +5,8 @@ import {
   mockUpsertCalendarDay,
   mockDeleteCalendarDay,
   mockStampPlan,
+  mockBulkAssignDays,
+  mockBulkClearDays,
 } from './__mocks__/calendar-mock.js';
 
 // Calendario de un grupo (GroupCalendarDay) — backend real desde
@@ -45,4 +47,16 @@ export async function stampPlan(groupId, payload) {
     if (error.status === 409) return { conflict: true, dates: error.data?.dates ?? [] };
     throw error;
   }
+}
+
+// POST /api/v1/groups/{id}/calendar/bulk.
+export async function bulkAssignDays(groupId, payload) {
+  if (USE_MOCKS) return await mockBulkAssignDays(groupId, payload);
+  return await api.post(`/groups/${groupId}/calendar/bulk`, payload);
+}
+
+// POST /api/v1/groups/{id}/calendar/bulk-clear.
+export async function bulkClearDays(groupId, dates) {
+  if (USE_MOCKS) return await mockBulkClearDays(groupId, dates);
+  return await api.post(`/groups/${groupId}/calendar/bulk-clear`, { dates });
 }
