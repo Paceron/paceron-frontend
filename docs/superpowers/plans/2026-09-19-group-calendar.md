@@ -13,6 +13,7 @@
 ## Global Constraints
 
 - Backend ya soporta `presencial_time_from`/`presencial_time_to` (`GroupCalendarDay`) y `default_time_from`/`default_time_to` (`PlanDay`) — Gap 6 resuelto, sin bloqueo. Guardar un día presencial funciona real de punta a punta.
+- El backend **instancia** (copia congelada) la sesión al guardar un día `training` — la respuesta embebe `session_instance` (objeto), el request sigue mandando `session_id` (id de catálogo). Cada guardado reinstancia de cero, sin excepción — no hay forma de "conservar la instancia actual" hoy (Gap 7 abierto, `docs/BACKEND_API_GAPS.md`, sin bloquear esta pieza). Ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3.1bis.
 - `react-native-calendars@1.1314.0` — 100% JS, sin módulo nativo, cero riesgo de incompatibilidad con Fabric/New Architecture.
 - Todo `View`/`Text`/`Pressable`/`TextInput`/`Modal`/`ScrollView`/etc necesita `nativeID` y `testID` únicos (ESLint `local/require-native-id`, falla el lint si falta).
 - Nunca importar `SelectField`/`PickerField` directo — siempre `ResponsiveSelectField` (ESLint `local/no-direct-select-field`).
@@ -31,7 +32,9 @@
 - Test: `__tests__/normalizers.test.js` (agregar casos, no crear archivo nuevo)
 
 **Interfaces:**
-- Produces: `toGroupCalendarDayModel(dto) -> { id, groupId, date, kind, otherName, sessionId, cancelledReason, isPresencial, presencialTimeFrom, presencialTimeTo, presencialLocation, sourcePlanId }`, `toCalendarDayPayload(day) -> object` (snake_case, solo los campos que corresponden según `day.kind`).
+- Produces: `toGroupCalendarDayModel(dto) -> { id, groupId, date, kind, otherName, sessionInstance, cancelledReason, isPresencial, presencialTimeFrom, presencialTimeTo, presencialLocation, sourcePlanId }`, `toCalendarDayPayload(day) -> object` (snake_case, solo los campos que corresponden según `day.kind`).
+
+**Nota — asimetría real, no error:** el backend instancia (copia congelada) la sesión al guardar un día `training` (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3.1bis) — la respuesta embebe `session_instance` (objeto, sin vínculo de vuelta al catálogo), pero el `PUT` sigue esperando `session_id` (id de **catálogo**, un dato completamente distinto que sale del select de la pantalla de edición, Task 7). Por eso `toGroupCalendarDayModel` produce `sessionInstance` pero `toCalendarDayPayload` sigue tomando `day.sessionId` — no son la misma cosa ni deberían tener el mismo nombre de campo.
 
 - [ ] **Step 1: Escribir los tests (van a fallar — las funciones no existen todavía)**
 
@@ -45,24 +48,36 @@ describe('toGroupCalendarDayModel', () => {
     const dto = { id: 1, group_id: 5, date: '2026-10-05', kind: 'rest', is_presencial: false };
     expect(toGroupCalendarDayModel(dto)).toEqual({
       id: '1', groupId: '5', date: '2026-10-05', kind: 'rest',
-      otherName: null, sessionId: null, cancelledReason: null,
+      otherName: null, sessionInstance: null, cancelledReason: null,
       isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null,
       presencialLocation: null, sourcePlanId: null,
     });
   });
 
-  test('mapea un día presencial con ubicación', () => {
+  test('mapea un día presencial con sesión instanciada y ubicación', () => {
     const dto = {
-      id: 2, group_id: 5, date: '2026-10-06', kind: 'training', session_id: 9,
+      id: 2, group_id: 5, date: '2026-10-06', kind: 'training',
+      session_instance: {
+        id: 123, name: 'Fartlek 5K', description: null,
+        exercises: [{ id: 456, name: 'Trote', role: 'warmup', repeat_count: 1, rest_minutes: 0 }],
+      },
       is_presencial: true, presencial_time_from: '08:00', presencial_time_to: '09:30',
       presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' }, source_plan_id: 3,
     };
     const model = toGroupCalendarDayModel(dto);
-    expect(model.sessionId).toBe('9');
+    expect(model.sessionInstance).toEqual({
+      id: '123', name: 'Fartlek 5K', description: null,
+      exercises: [{ id: '456', name: 'Trote', role: 'warmup', repeatCount: 1, restMinutes: 0 }],
+    });
     expect(model.presencialTimeFrom).toBe('08:00');
     expect(model.presencialTimeTo).toBe('09:30');
     expect(model.presencialLocation).toEqual({ lat: -34.6, lng: -58.4, label: 'Plaza' });
     expect(model.sourcePlanId).toBe('3');
+  });
+
+  test('session_instance null (día sin sesión, ej. rest/other)', () => {
+    const dto = { id: 3, group_id: 5, date: '2026-10-07', kind: 'other', other_name: 'Elongación', session_instance: null, is_presencial: false };
+    expect(toGroupCalendarDayModel(dto).sessionInstance).toBeNull();
   });
 
   test('returns null for falsy dto', () => {
@@ -125,6 +140,27 @@ Agregar al final de `services/normalizers.js` (después de `toSubscriptionModel`
 // toCalendarDayPayload los vuelve a Number() donde el backend lo espera.
 // ---------------------------------------------------------------------
 
+// SessionInstance embebida (copia congelada, sin vínculo de vuelta al
+// catálogo — ver docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §3.1bis / Gap
+// 7). NUNCA confundir con un id de catálogo — no sirve para preseleccionar
+// el select de sesión al editar (ver utils/session-instance-match.js,
+// Task 7).
+function toSessionInstanceModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    description: dto.description ?? null,
+    exercises: (dto.exercises ?? []).map((e) => ({
+      id: String(e.id),
+      name: e.name,
+      role: e.role,
+      repeatCount: e.repeat_count ?? 1,
+      restMinutes: e.rest_minutes ?? 0,
+    })),
+  };
+}
+
 export function toGroupCalendarDayModel(dto) {
   if (!dto) return null;
   return {
@@ -133,7 +169,7 @@ export function toGroupCalendarDayModel(dto) {
     date: dto.date,
     kind: dto.kind,
     otherName: dto.other_name ?? null,
-    sessionId: dto.session_id != null ? String(dto.session_id) : null,
+    sessionInstance: toSessionInstanceModel(dto.session_instance),
     cancelledReason: dto.cancelled_reason ?? null,
     isPresencial: Boolean(dto.is_presencial),
     presencialTimeFrom: dto.presencial_time_from ?? null,
@@ -204,18 +240,33 @@ git commit -m "feat(calendar): add GroupCalendarDay normalizers"
 
 - [ ] **Step 1: Escribir el mock**
 
-Crear `services/__mocks__/calendar-mock.js`:
+Crear `services/__mocks__/calendar-mock.js`. Arranca vacío (tabla dispersa del backend real: sin fila = día vacío). Para simular la instanciación real (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3.1bis) importa `mockGetSession` de `sessions-mock.js` — al guardar `kind='training'` con `session_id`, "instancia" copiando nombre/descripción de esa sesión del catálogo mock, **siempre que llega `session_id`** (nunca conserva la instancia vieja, mismo comportamiento que el backend real hoy — Gap 7 pendiente). Los ejercicios de la instancia usan un nombre sintético (`Ejercicio <id>`) en vez de resolver contra `exercises-mock.js` — simplificación aceptable para un mock, alcanza para probar la UI sin triple cross-reference:
 
 ```js
-// Mock stateful en memoria — mismo patrón que sessions-mock.js. Arranca
-// vacío (tabla dispersa del backend real: sin fila = día vacío, no hay
-// seed que tenga sentido acá).
+import { mockGetSession } from './sessions-mock.js';
 
 let mockCalendarDays = {};
 let nextId = 1;
+let nextInstanceId = 1000;
 
 function keyFor(groupId, date) {
   return `${groupId}::${date}`;
+}
+
+async function instantiateSession(sessionId) {
+  const catalogSession = await mockGetSession(sessionId);
+  return {
+    id: nextInstanceId++,
+    name: catalogSession.name,
+    description: catalogSession.description ?? null,
+    exercises: catalogSession.exercises.map((e) => ({
+      id: e.exercise_id,
+      name: `Ejercicio ${e.exercise_id}`,
+      role: e.role,
+      repeat_count: e.repeat_count ?? 1,
+      rest_minutes: e.rest_minutes ?? 0,
+    })),
+  };
 }
 
 export async function mockGetGroupCalendar(groupId, from, to) {
@@ -228,13 +279,21 @@ export async function mockUpsertCalendarDay(groupId, date, payload) {
   const key = keyFor(groupId, date);
   const now = new Date().toISOString();
   const existing = mockCalendarDays[key];
+
+  let sessionInstance = null;
+  if (payload.kind === 'training' && payload.session_id != null) {
+    sessionInstance = await instantiateSession(payload.session_id);
+  } else if (payload.kind === 'cancelled') {
+    sessionInstance = existing?.session_instance ?? null;
+  }
+
   const day = {
     id: existing?.id ?? nextId++,
     group_id: Number(groupId),
     date,
     kind: payload.kind,
     other_name: payload.other_name ?? null,
-    session_id: payload.session_id ?? existing?.session_id ?? null,
+    session_instance: sessionInstance,
     cancelled_reason: payload.cancelled_reason ?? null,
     is_presencial: payload.is_presencial ?? false,
     presencial_time_from: payload.presencial_time_from ?? null,
@@ -256,20 +315,23 @@ export async function mockDeleteCalendarDay(groupId, date) {
 export function __resetMockCalendar() {
   mockCalendarDays = {};
   nextId = 1;
+  nextInstanceId = 1000;
 }
 ```
 
 - [ ] **Step 2: Escribir los tests del mock**
 
-Crear `__tests__/calendar-mock.test.js`:
+Crear `__tests__/calendar-mock.test.js`. Usa los ids de `sessions-mock.js` ya sembrados (`1` = "Fondo suave", `2` = "Series de velocidad" — ver `services/__mocks__/sessions-mock.js`):
 
 ```js
 import {
   mockGetGroupCalendar, mockUpsertCalendarDay, mockDeleteCalendarDay, __resetMockCalendar,
 } from '../services/__mocks__/calendar-mock.js';
+import { __resetMockSessions } from '../services/__mocks__/sessions-mock.js';
 
 beforeEach(() => {
   __resetMockCalendar();
+  __resetMockSessions();
 });
 
 describe('calendar-mock', () => {
@@ -283,31 +345,39 @@ describe('calendar-mock', () => {
     expect(octoberGroup1[0].date).toBe('2026-10-05');
   });
 
-  test('mockUpsertCalendarDay crea un día nuevo con los campos del payload', async () => {
+  test('mockUpsertCalendarDay con kind=training instancia la sesión del catálogo', async () => {
     const day = await mockUpsertCalendarDay(1, '2026-10-05', {
-      kind: 'training', session_id: 3, is_presencial: true,
+      kind: 'training', session_id: 1, is_presencial: true,
       presencial_time_from: '08:00', presencial_time_to: '09:30',
       presencial_location: { lat: 1, lng: 2, label: 'Plaza' },
     });
     expect(day.kind).toBe('training');
-    expect(day.session_id).toBe(3);
+    expect(day.session_instance.name).toBe('Fondo suave');
+    expect(day.session_instance.exercises.length).toBeGreaterThan(0);
     expect(day.is_presencial).toBe(true);
     expect(day.presencial_time_from).toBe('08:00');
   });
 
-  test('mockUpsertCalendarDay sobre un día existente actualiza en el mismo lugar (mismo id)', async () => {
-    const first = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'rest' });
-    const second = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'other', other_name: 'Elongación' });
+  test('mockUpsertCalendarDay sobre un día existente actualiza en el mismo lugar (mismo id) y reinstancia', async () => {
+    const first = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', session_id: 1 });
+    const second = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', session_id: 2 });
     expect(second.id).toBe(first.id);
-    expect(second.kind).toBe('other');
+    expect(second.session_instance.id).not.toBe(first.session_instance.id);
+    expect(second.session_instance.name).toBe('Series de velocidad');
   });
 
-  test('mockUpsertCalendarDay a cancelled sin session_id en el payload preserva el session_id existente', async () => {
-    await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', session_id: 3 });
+  test('mockUpsertCalendarDay a cancelled sin session_id en el payload preserva la instancia existente', async () => {
+    await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', session_id: 1 });
     const cancelled = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'cancelled', cancelled_reason: 'Lluvia' });
     expect(cancelled.kind).toBe('cancelled');
-    expect(cancelled.session_id).toBe(3);
+    expect(cancelled.session_instance).not.toBeNull();
+    expect(cancelled.session_instance.name).toBe('Fondo suave');
     expect(cancelled.cancelled_reason).toBe('Lluvia');
+  });
+
+  test('mockUpsertCalendarDay con kind=rest no tiene session_instance', async () => {
+    const day = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'rest' });
+    expect(day.session_instance).toBeNull();
   });
 
   test('mockDeleteCalendarDay borra la fila', async () => {
@@ -886,17 +956,76 @@ git commit -m "feat(calendar): add group calendar month view"
 
 ---
 
-### Task 7: Pantalla de edición de un día
+### Task 7: Utilidad de match por nombre + pantalla de edición de un día
 
 **Files:**
+- Create: `utils/session-instance-match.js`
+- Test: `__tests__/session-instance-match.test.js`
 - Create: `components/team/group-calendar-day-screen.jsx`
 - Create: `app/(tabs)/teams/[teamId]/groups/[groupId]/calendar/[date].jsx`
 
 **Interfaces:**
-- Consumes: `useGroups`, `useSessions` (`hooks/use-sessions.js`), `useGroupCalendar`/`useGroupCalendarMutations` (Task 3), `useFormDirty`/`useUnsavedChangesGuard`, `TimeField` (Task 4), `ResponsiveSelectField`, `LocationPicker` (importado **sin extensión**), `DiscardChangesModal`.
-- Produces: `GroupCalendarDayScreen({ teamId, groupId, date })` — pantalla exportada, montada por la ruta.
+- Consumes: `useGroups`, `useSessions` (`hooks/use-sessions.js`), `useGroupCalendar`/`useGroupCalendarMutations` (Task 3), `useFormDirty`/`useUnsavedChangesGuard`, `TimeField` (Task 4), `ResponsiveSelectField`, `LocationPicker` (importado **sin extensión**), `DiscardChangesModal`, `findMatchingCatalogSession` (este mismo Task, Step 1).
+- Produces: `findMatchingCatalogSession(sessionInstance, sessions) -> session | null`, `GroupCalendarDayScreen({ teamId, groupId, date })` — pantalla exportada, montada por la ruta.
 
-- [ ] **Step 1: Implementar la pantalla**
+**Contexto — por qué existe esta utilidad:** el backend instancia (copia congelada) la sesión asignada a un día, y esa copia no tiene ninguna referencia de vuelta al catálogo (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3.1bis, Gap 7 pendiente). Al editar un día ya asignado, no hay forma exacta de saber qué sesión de catálogo preseleccionar en el select — se usa un match por nombre como mejor esfuerzo, extraído a función pura para poder testearlo sin montar el componente.
+
+- [ ] **Step 1: Escribir el test de la utilidad (va a fallar — el archivo no existe)**
+
+Crear `__tests__/session-instance-match.test.js`:
+
+```js
+import { findMatchingCatalogSession } from '../utils/session-instance-match.js';
+
+describe('findMatchingCatalogSession', () => {
+  const sessions = [
+    { id: '1', name: 'Fondo suave' },
+    { id: '2', name: 'Series de velocidad' },
+  ];
+
+  test('devuelve la sesión del catálogo cuyo nombre coincide', () => {
+    const match = findMatchingCatalogSession({ id: '99', name: 'Series de velocidad' }, sessions);
+    expect(match).toEqual({ id: '2', name: 'Series de velocidad' });
+  });
+
+  test('devuelve null si no hay coincidencia (renombrada o borrada del catálogo)', () => {
+    expect(findMatchingCatalogSession({ id: '99', name: 'Ya no existe' }, sessions)).toBeNull();
+  });
+
+  test('devuelve null si no hay instancia (día sin sesión asignada)', () => {
+    expect(findMatchingCatalogSession(null, sessions)).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 2: Correr el test, confirmar que falla**
+
+Run: `npm test -- session-instance-match.test.js`
+Expected: FAIL — el módulo `utils/session-instance-match.js` no existe.
+
+- [ ] **Step 3: Implementar la utilidad**
+
+Crear `utils/session-instance-match.js`:
+
+```js
+// Match por nombre (mejor esfuerzo) entre una SessionInstance ya congelada
+// (sin referencia de vuelta al catálogo, ver
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §3.1bis / Gap 7) y el catálogo
+// actual del entrenador — permite preseleccionar el select de sesión al
+// editar un día ya asignado, sin garantía de que sea "la misma" sesión si
+// el catálogo cambió desde la asignación.
+export function findMatchingCatalogSession(sessionInstance, sessions) {
+  if (!sessionInstance) return null;
+  return sessions.find((s) => s.name === sessionInstance.name) ?? null;
+}
+```
+
+- [ ] **Step 4: Correr el test, confirmar que pasa**
+
+Run: `npm test -- session-instance-match.test.js`
+Expected: PASS
+
+- [ ] **Step 5: Implementar la pantalla**
 
 Crear `components/team/group-calendar-day-screen.jsx`:
 
@@ -922,6 +1051,7 @@ import { LocationPicker } from '../shared/location-picker';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
+import { findMatchingCatalogSession } from '../../utils/session-instance-match.js';
 
 const KIND_OPTIONS = [
   { id: 'rest', label: 'Descanso' },
@@ -989,7 +1119,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
   const { user } = useUser(userId);
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const group = groups.find((g) => g.id === groupId);
-  const { sessions } = useSessions(user?.userId);
+  const { sessions, loading: loadingSessions } = useSessions(user?.userId);
   const { days, loading: loadingDay } = useGroupCalendar(groupId, date, date);
   const { upsertDay, isUpserting, deleteDay, isDeleting } = useGroupCalendarMutations(groupId);
   const existingDay = days[0] ?? null;
@@ -1006,23 +1136,28 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
   const [cancelPromptVisible, setCancelPromptVisible] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  // Solo semilla una vez, cuando el rango [date, date] terminó de cargar
-  // — no un useEffect que resincroniza en cada render del objeto fuente
-  // (ver CLAUDE.md, bug real ya documentado en edit-group-screen.jsx).
+  // Solo semilla una vez, cuando el rango [date, date] Y el catálogo de
+  // sesiones terminaron de cargar — no un useEffect que resincroniza en
+  // cada render del objeto fuente (ver CLAUDE.md, bug real ya documentado
+  // en edit-group-screen.jsx). Esperar también `loadingSessions`: el match
+  // por nombre (findMatchingCatalogSession) necesita el catálogo ya
+  // cargado, si sembrara antes de tiempo el select quedaría vacío para
+  // siempre aunque el catálogo llegue un instante después.
   const seededRef = useRef(false);
   useEffect(() => {
-    if (loadingDay || seededRef.current) return;
+    if (loadingDay || loadingSessions || seededRef.current) return;
     seededRef.current = true;
     if (existingDay) {
       setKind(existingDay.kind === 'cancelled' ? 'training' : existingDay.kind);
       setOtherName(existingDay.otherName ?? '');
-      setSessionId(existingDay.sessionId ?? '');
+      const matched = findMatchingCatalogSession(existingDay.sessionInstance, sessions);
+      setSessionId(matched?.id ?? '');
       setIsPresencial(existingDay.isPresencial);
       setPresencialTimeFrom(existingDay.presencialTimeFrom ?? '');
       setPresencialTimeTo(existingDay.presencialTimeTo ?? '');
       setPresencialLocation(existingDay.presencialLocation ?? null);
     }
-  }, [loadingDay, existingDay]);
+  }, [loadingDay, loadingSessions, existingDay, sessions]);
 
   const isDirty = useFormDirty({ kind, otherName, sessionId, isPresencial, presencialTimeFrom, presencialTimeTo, presencialLocation });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
@@ -1168,6 +1303,44 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
 
             {kind === 'training' && (
               <>
+                {existingDay?.sessionInstance && (
+                  <View
+                    className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
+                    nativeID="group-calendar-day-current-session"
+                    testID="group-calendar-day-current-session"
+                  >
+                    <Text
+                      className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                      nativeID="group-calendar-day-current-session-label"
+                      testID="group-calendar-day-current-session-label"
+                    >
+                      Sesión asignada actualmente
+                    </Text>
+                    <Text
+                      className="mt-1 text-sm font-medium text-slate-900 dark:text-white"
+                      nativeID="group-calendar-day-current-session-name"
+                      testID="group-calendar-day-current-session-name"
+                    >
+                      {existingDay.sessionInstance.name}
+                    </Text>
+                    {existingDay.sessionInstance.description && (
+                      <Text
+                        className="mt-0.5 text-xs text-slate-500 dark:text-slate-400"
+                        nativeID="group-calendar-day-current-session-description"
+                        testID="group-calendar-day-current-session-description"
+                      >
+                        {existingDay.sessionInstance.description}
+                      </Text>
+                    )}
+                  </View>
+                )}
+                <Text
+                  className="mb-2 text-xs text-slate-500 dark:text-slate-400"
+                  nativeID="group-calendar-day-session-hint"
+                  testID="group-calendar-day-session-hint"
+                >
+                  Guardar siempre vuelve a instanciar la sesión elegida (una copia congelada, no un vínculo vivo) — aunque sea la misma.
+                </Text>
                 <ResponsiveSelectField dense label="Sesión del catálogo" onChange={(v) => { setSessionId(v); clearError(); }} options={sessionOptions} placeholder="Elegí una sesión" value={sessionId} />
                 <PresencialToggle colors={colors} onChange={setIsPresencial} value={isPresencial} />
                 {isPresencial && (
@@ -1308,7 +1481,7 @@ export function GroupCalendarDayScreen({ teamId, groupId, date }) {
 }
 ```
 
-- [ ] **Step 2: Crear la ruta**
+- [ ] **Step 6: Crear la ruta**
 
 Crear `app/(tabs)/teams/[teamId]/groups/[groupId]/calendar/[date].jsx`:
 
@@ -1322,16 +1495,16 @@ export default function TeamGroupCalendarDay() {
 }
 ```
 
-- [ ] **Step 3: Correr el lint**
+- [ ] **Step 7: Correr toda la suite y el lint**
 
-Run: `npm run lint`
-Expected: PASS
+Run: `npm test && npm run lint`
+Expected: PASS en ambos
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add "components/team/group-calendar-day-screen.jsx" "app/(tabs)/teams/[teamId]/groups/[groupId]/calendar/[date].jsx"
-git commit -m "feat(calendar): add group calendar day edit screen"
+git add "utils/session-instance-match.js" "__tests__/session-instance-match.test.js" "components/team/group-calendar-day-screen.jsx" "app/(tabs)/teams/[teamId]/groups/[groupId]/calendar/[date].jsx"
+git commit -m "feat(calendar): add session-instance match helper + group calendar day edit screen"
 ```
 
 ---
@@ -1465,28 +1638,32 @@ No hay verificación con herramientas de preview en este plan (convención del u
 9. Ir a un día nuevo, elegir "Entrenamiento" sin elegir sesión → Guardar →
    confirmar error "Elegí una sesión del catálogo.". Elegir una sesión del
    catálogo → Guardar → confirmar éxito, punto verde en el mes.
-10. Volver a ese día, activar "¿Es presencial?" → confirmar que aparecen
+10. Volver a entrar a ese mismo día → confirmar que aparece el bloque
+    "Sesión asignada actualmente" (nombre real de la sesión) Y que el
+    select de abajo quedó preseleccionado con esa misma sesión (match por
+    nombre — ver docs/BACKEND_API_GAPS.md Gap 7 para el porqué de esta
+    limitación). Guardar sin tocar nada → confirmar que igual funciona
+    (reinstancia la misma sesión, comportamiento esperado hoy).
+11. En ese mismo día, activar "¿Es presencial?" → confirmar que aparecen
     2 campos de hora (desde/hasta) + el LocationPicker. Guardar sin cargar
     nada → confirmar error de horario. Cargar hora desde 08:00, hasta
     07:00 (invertido) → confirmar error "El horario de fin debe ser
     posterior al de inicio.". Corregir a hasta 09:30, elegir una ubicación
     con el mapa → Guardar → confirmar éxito.
-    ESTE PASO ES EL QUE DEPENDE DEL FIX DE BACKEND (Gap 6) — si tira 422,
-    es señal de que el backend real todavía no tiene el deploy con
-    presencial_time_from/to, no un bug de este código.
-11. Volver a entrar a ese día presencial → confirmar que el punto ahora
+12. Volver a entrar a ese día presencial → confirmar que el punto ahora
     tiene también el ícono de pin superpuesto, y que al editar vuelven a
-    cargar la hora/ubicación ya guardadas.
-12. En un día "Entrenamiento" ya guardado, tocar "Cancelar esta sesión" →
+    cargar la hora/ubicación ya guardadas (además del bloque de sesión
+    actual y el select preseleccionado, del paso 10).
+13. En un día "Entrenamiento" ya guardado, tocar "Cancelar esta sesión" →
     confirmar que pide un motivo obligatorio (el botón de confirmar está
     deshabilitado hasta escribir algo) → confirmar → confirmar éxito y que
     el punto pasa a rojo.
-13. Tocar "Vaciar día" en cualquier día con contenido → confirmar que
+14. Tocar "Vaciar día" en cualquier día con contenido → confirmar que
     borra y el punto desaparece del mes.
-14. Cargar cualquier campo, intentar salir (back o navegar afuera) sin
+15. Cargar cualquier campo, intentar salir (back o navegar afuera) sin
     guardar → confirmar que aparece el modal "Salir sin guardar" y que
     "Continuar" cancela la salida.
-15. Repetir los pasos 3, 5, 6, 9 y 10 en mobile (Expo dev client) — el
+16. Repetir los pasos 3, 5, 6, 9 y 11 en mobile (Expo dev client) — el
     LocationPicker y el picker nativo de hora (TimeField) solo se pueden
     verificar ahí, no en el preview web.
 ```

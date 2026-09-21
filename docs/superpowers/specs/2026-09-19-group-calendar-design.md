@@ -10,7 +10,15 @@ El backend de `GroupCalendarDay` ya está implementado y documentado en `docs/BA
 
 Esta pieza construye: el servicio/hook contra los 3 endpoints que necesita (listar rango, upsert de un día, borrar un día — no `stamp`/`bulk`/`bulk-clear`/`shift`, esos son de la pieza 2), la vista mensual del calendario de un grupo, y la pantalla de edición de un día individual (incluyendo marcar una sesión como presencial, reusando el `LocationPicker` ya construido).
 
-**Bloqueo parcial de backend (gap 6, ver `docs/BACKEND_API_GAPS.md`):** `presencial_time` pasa a `presencial_time_from`/`presencial_time_to` — cambio de schema que el backend todavía no implementó. Esta pieza se construye igual, contra el modelo nuevo — guardar un día **no presencial** funciona real de punta a punta; guardar un día **presencial** va a fallar con un error real del backend (`422`) hasta que se aplique el cambio del lado de ellos. No es mockeado ni ocultado — el usuario ve el error tal cual, sabe que es un bloqueo de backend conocido.
+**Gap 6 (`presencial_time` → rango desde/hasta) — RESUELTO.** El backend ya lo implementó y deployó, sin bloqueo. Ver `docs/BACKEND_API_GAPS.md`.
+
+**Cambio de modelo confirmado 2026-09-20 — instanciación de sesiones (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3.1bis):** asignar una sesión a un día de calendario ya no guarda una referencia viva al catálogo — el backend **instancia** (copia congelada) la sesión y sus ejercicios en el momento del `PUT`, y la respuesta embebe esa copia bajo `session_instance` (no un `session_id` crudo). El request del `PUT` sigue mandando `session_id` (id de catálogo) igual que antes — la asimetría es real: se escribe con un id de catálogo, se lee un objeto congelado sin vínculo de vuelta.
+
+Dos consecuencias que esta pieza tiene que absorber:
+- **Cada guardado de un día `training` reinstancia de cero**, incluso si no se tocó la sesión — el backend no tiene forma de "conservar la instancia actual" hoy (**Gap 7 abierto**, `docs/BACKEND_API_GAPS.md`, pendiente de implementación del lado de ellos). Mientras tanto, la pantalla de edición siempre exige re-elegir una sesión del catálogo al guardar un día `training`, incluso al editar uno ya asignado.
+- **No hay forma exacta de saber de qué sesión de catálogo salió una instancia ya creada** (sin referencia de vuelta, mismo Gap 7) — la pantalla de edición no puede preseleccionar con certeza el dropdown al editar; usa un match por nombre contra el catálogo actual como mejor esfuerzo (ver §6), y siempre muestra un bloque de solo lectura con el contenido congelado real, independiente de si el match funcionó.
+
+**Guard de "día cerrado" (`422`, confirmado en código):** el backend bloquea `PUT`/`DELETE` sobre una fecha pasada o un presencial ya empezado — única excepción, cancelar (`kind='cancelled'`). Esta pieza no agrega ninguna lógica cliente para anticipar esto — el error del backend se muestra tal cual en el toast genérico de error, igual que cualquier otro fallo de guardado. Gating proactivo (deshabilitar "Guardar" antes de intentarlo) queda como posible pulido futuro, no es parte de esta pieza.
 
 ## 2. Alcance
 
@@ -25,29 +33,38 @@ Esta pieza construye: el servicio/hook contra los 3 endpoints que necesita (list
 - Estampar un plan arrastrándolo sobre el calendario (`stamp`) — pieza 2.
 - Vista del corredor / reemplazo de `my-plans-screen.jsx` — pieza 3.
 - Multi-selección, `bulk-assign`, `bulk-clear`, `shift` de fechas — sin UI todavía, se suman cuando haya un caso de uso concreto que los pida.
-- Clonado por divergencia al editar una sesión con asignaciones activas (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §5) — toca `create-session-screen.jsx`/`edit-session-screen.jsx` del catálogo, no esta pieza.
+- Clonado por divergencia al editar una sesión con asignaciones activas — **eliminado del backend** (`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §5, marcado obsoleto 2026-09-20, ver §3.1bis del mismo doc). No aplica más, ni acá ni en ninguna otra pieza — la instanciación de sesiones lo reemplaza por completo.
 
 ## 3. Modelo de datos
 
 ```js
 // GroupCalendarDay normalizado (services/normalizers.js#toGroupCalendarDayModel)
+// sessionInstance viene de la respuesta (session_instance embebido, copia
+// congelada — ver docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §3.1bis), NO
+// es el id de catálogo. Nunca se usa para preseleccionar el select de
+// sesión — ver §6.
 {
-  id: number,
-  groupId: number,
+  id: string,
+  groupId: string,
   date: string,          // 'YYYY-MM-DD'
   kind: 'rest' | 'other' | 'training' | 'cancelled',
   otherName: string | null,
-  sessionId: number | null,
+  sessionInstance: {
+    id: string,
+    name: string,
+    description: string | null,
+    exercises: Array<{ id: string, name: string, role: string, repeatCount: number, restMinutes: number }>,
+  } | null,
   cancelledReason: string | null,
   isPresencial: boolean,
   presencialTimeFrom: string | null,   // 'HH:mm'
   presencialTimeTo: string | null,     // 'HH:mm'
   presencialLocation: { lat: number, lng: number, label: string | null } | null,
-  sourcePlanId: number | null,
+  sourcePlanId: string | null,
 }
 ```
 
-Payload de `PUT` (`toCalendarDayPayload`, dirección inversa) manda exactamente los campos que el backend espera por `kind` — no manda campos que no corresponden (ej. `session_id` en un día `rest`), mismo criterio de "no confiar en que el backend ignore basura" ya aplicado en otros normalizers del proyecto.
+Payload de `PUT` (`toCalendarDayPayload`, dirección inversa) es un objeto **distinto**, no la vuelta del modelo — sigue tomando un `sessionId` (id de **catálogo**, elegido en el select de esta sesión de edición) porque eso es lo que el `PUT` sigue esperando (`session_id`, sin cambio del lado del request). Manda exactamente los campos que el backend espera por `kind` — no manda campos que no corresponden (ej. `session_id` en un día `rest`), mismo criterio de "no confiar en que el backend ignore basura" ya aplicado en otros normalizers del proyecto.
 
 ## 4. Arquitectura de archivos
 
@@ -56,6 +73,7 @@ components/forms/fields.jsx                        # + TimeField (hermano de Dat
 services/calendar.js                              # 3 funciones (get/upsert/delete), USE_MOCKS
 services/__mocks__/calendar-mock.js                # mock stateful en memoria, mismo patrón que sessions-mock.js
 services/normalizers.js                            # + toGroupCalendarDayModel, toCalendarDayPayload
+utils/session-instance-match.js                    # findMatchingCatalogSession(sessionInstance, sessions) — match por nombre, función pura testeable
 hooks/use-group-calendar.js                        # useGroupCalendar(groupId, from, to) + useGroupCalendarMutations(groupId)
 components/team/group-calendar-screen.jsx          # vista mensual
 components/team/group-calendar-day-screen.jsx      # edición de un día
@@ -83,7 +101,7 @@ Uso concreto: componente `Calendar` (vista de un solo mes, no `CalendarList`/`Ag
 1. Selector de tipo segmentado: Descanso / Otra actividad / Entrenamiento. No incluye "Cancelado" — el backend solo permite pasar a `cancelled` desde `training` (ver §3.1 de la spec de backend), no es una opción de alta.
 2. Campos condicionales:
    - Otra actividad → `InputField` de texto libre (nombre).
-   - Entrenamiento → `ResponsiveSelectField` con las sesiones del catálogo del entrenador (mismo `useSessions(ownerId)` ya existente) + toggle "¿Es presencial?".
+   - Entrenamiento → **siempre** un `ResponsiveSelectField` con las sesiones del catálogo del entrenador (mismo `useSessions(ownerId)` ya existente) — obligatorio en cada guardado, incluso editando un día que ya tiene una sesión asignada (el backend reinstancia en cada `PUT`, no hay forma de omitirlo hoy, ver §1/Gap 7). Si el día ya tiene una instancia asignada (`existingDay.sessionInstance`), se muestra además, siempre visible arriba del select, un bloque de solo lectura "Sesión asignada actualmente" (nombre + descripción congelados, tal cual los devuelve el backend) — así el entrenador ve qué hay cargado aunque el select no logre preseleccionar nada. El select intenta preseleccionar por **mejor esfuerzo**: busca en el catálogo actual una sesión cuyo `name` coincida exactamente con `existingDay.sessionInstance.name`; si hay match, la preselecciona (aceptando que puede reinstanciar una versión editada de "la misma" sesión); si no hay match (renombrada o borrada del catálogo desde que se asignó), el select queda vacío y el entrenador elige a mano. + toggle "¿Es presencial?".
    - Si presencial: dos `TimeField` (desde/hasta) — componente nuevo en `components/forms/fields.jsx`, mismo split nativo/web que `DateField` ya existente ahí (nativo: `DateTimePicker` con `mode="time"`; web: `<input type="time">`), pero sin `maximumDate` (no aplica a una hora del día) y formateando `HH:mm` en vez de `DD/MM/AAAA`. No se reusa `DateField` tal cual porque está hardcodeado a `mode="date"` y a ese formato — se crea un componente hermano, no se lo sobrecarga con un prop de modo. + `LocationPicker` (`value`/`onChange` con el shape `{lat,lng,label}` ya compatible).
 3. Si el día editado ya es `kind: 'training'` (edición sobre un día existente, no alta): botón separado "Cancelar esta sesión" — abre un campo de motivo obligatorio, hace `PUT` con `kind: 'cancelled'` + `cancelled_reason`.
 4. Si el día ya tiene contenido (cualquier `kind` distinto de vacío): botón "Vaciar día" (`DELETE`), separado de "Guardar".
@@ -97,8 +115,9 @@ Uso concreto: componente `Calendar` (vista de un solo mes, no `CalendarList`/`Ag
 
 ## 8. Testing
 
-Sin tests de render (convención del proyecto). `services/normalizers.js#toGroupCalendarDayModel`/`toCalendarDayPayload` sí llevan test unitario en `__tests__/normalizers.test.js` (ya existe ese archivo, se agregan casos) — son mapeos con lógica condicional real (qué campos van según `kind`), no un passthrough trivial.
+Sin tests de render (convención del proyecto). `services/normalizers.js#toGroupCalendarDayModel`/`toCalendarDayPayload` sí llevan test unitario en `__tests__/normalizers.test.js` (ya existe ese archivo, se agregan casos) — son mapeos con lógica condicional real (qué campos van según `kind`), no un passthrough trivial. El match por nombre de §6 (preselección por mejor esfuerzo del select de sesión) se extrae como función pura (`findSessionByInstanceName(sessionInstance, sessions)` o similar) para poder testearla igual, en vez de dejarla enterrada como lógica inline del componente.
 
 ## 9. Fuera de alcance / diferido (resumen)
 
 - Ver §2. Adicionalmente: sin soporte de `sourcePlanId` en la UI todavía (es informativo, no se muestra "vino del plan X" en esta pieza — se suma si hace falta cuando exista la pieza 2 de estampado).
+- **Evitar la reinstanciación en guardados que no tocan la sesión** — depende de Gap 7 (`docs/BACKEND_API_GAPS.md`), sin implementación del lado del backend todavía. Cuando se resuelva, parche chico: sumar "la instancia actual" como opción del select (usando el `session_id` de origen que expondría el backend) en vez de depender del match por nombre.

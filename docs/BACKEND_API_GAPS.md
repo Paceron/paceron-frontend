@@ -67,7 +67,15 @@ ver también `docs/superpowers/specs/`) — se abre un gap propio detectado
 en el diseño, sobre un campo que el backend **ya tiene deployado** (no es
 un endpoint faltante, es un cambio de schema sobre algo que ya existe):
 
-## Gap 6 — `presencial_time` necesita ser rango (desde/hasta), no un horario único
+**Actualización 2026-09-20: Gap 6 — RESUELTO.** El backend implementó
+`presencial_time_from`/`presencial_time_to` (`GroupCalendarDay`) y
+`default_time_from`/`default_time_to` (`PlanDay`), con validación
+`*_to > *_from` y las columnas viejas ya dropeadas — confirmado en
+`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` (nota de actualización) y en
+`FRONTEND_IMPACTO_INSTANCIACION.md` del repo backend ("los horarios
+viajan HH:MM (UTC) como siempre — sin cambio"). Sin acción pendiente.
+
+## Gap 6 — `presencial_time` necesita ser rango (desde/hasta), no un horario único [RESUELTO]
 
 Toda sesión presencial necesita horario de **inicio y fin**, no un solo
 horario puntual — decisión del usuario al diseñar la pantalla de edición
@@ -90,3 +98,52 @@ directo contra los 10 endpoints reales. Guardar específicamente un día
 **presencial** va a fallar (`422`, `presencial_time` sigue siendo el
 campo viejo del lado del backend) hasta que se aplique este cambio —
 error real y visible, no un mock que tape el gap.
+
+**Actualización 2026-09-20:** el backend implementó instanciación de
+sesiones en el calendario (rama `feature/asignacion-por-instanciacion`,
+ver `FRONTEND_IMPACTO_INSTANCIACION.md` del repo backend y
+`docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §3.1bis, ya actualizado). No
+es un gap — es un cambio de contrato ya deployado que el frontend tiene
+que adaptar. En el camino se detectaron 2 mejoras deseables que sí son
+gaps propios, pedidas por el usuario al revisar el impacto:
+
+## Gap 7 — instancias de sesión sin referencia al catálogo de origen, y reinstanciación obligatoria en cada guardado
+
+Confirmado en código (`cmd/api/services/calendar_service.go`,
+`cmd/api/domains/instance/instance_response.go`, repo backend):
+
+1. **`SessionInstanceResponse`/`InstanceExerciseResponse` no tienen
+   ninguna referencia de vuelta al catálogo.** Una vez creada una
+   instancia (al asignar una sesión a un día), no hay forma de saber de
+   qué `Session`/`Exercise` de catálogo salió — ni para mostrarlo en la
+   UI, ni para preseleccionar con certeza "la sesión que ya tenía este
+   día" en un selector. Pedido: agregar `session_id` nullable a
+   `SessionInstanceResponse` y `exercise_id` nullable a
+   `InstanceExerciseResponse`, apuntando a la `Session`/`Exercise` de
+   catálogo que las originó, `ON DELETE SET NULL` — mismo patrón ya
+   usado en `GroupCalendarDay.source_plan_id`.
+
+2. **`validateDayFields` exige `session_id` en every `PUT` con
+   `kind=training`** (`calendar_service.go:191-194`), y `UpsertDay`
+   **siempre reinstancia** cuando `kind=training`
+   (`calendar_service.go:488-503`) — no hay forma de guardar un día ya
+   asignado sin volver a elegir sesión, ni siquiera para tocar solo el
+   horario presencial. Pedido: si `session_id` viene `nil` en el `PUT` y
+   el día ya tiene `SessionInstanceID` cargado, **conservar la instancia
+   actual sin reinstanciar** — mismo mecanismo que ya existe para
+   `kind=cancelled` (línea 494-496, preserva
+   `txExisting.SessionInstanceID`), extendido a `kind=training`. Solo
+   debería fallar (`ErrCalendarFieldMismatch`) si `session_id` viene
+   `nil` y no hay ninguna instancia previa que conservar (alta nueva sin
+   elegir sesión).
+
+**Impacto en frontend, bloqueado hasta que se resuelva:** el selector de
+sesión de la pantalla de edición de un día (`docs/superpowers/plans/2026-09-19-group-calendar.md`,
+Task 7) no puede sumar "la instancia actual" como opción del select para
+evitar reinstanciar sin querer — mientras tanto, se construye con el
+comportamiento actual (siempre exige re-elegir, siempre reinstancia,
+bloque de solo lectura con la instancia vigente vía match por nombre
+contra el catálogo como mejor esfuerzo). Cuando se resuelva este gap, es
+un parche chico del lado del frontend: sumar la opción "actual" al
+select usando el nuevo `session_id` embebido para saber si sigue
+existiendo en catálogo.
