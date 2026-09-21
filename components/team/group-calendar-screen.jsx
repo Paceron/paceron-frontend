@@ -98,6 +98,16 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
           {marking.isPresencial && <MaterialCommunityIcons color={colors.primary} name="map-marker" size={10} />}
         </View>
       )}
+      {closedForSelection && !isOtherMonth && (
+        <View
+          className="absolute right-1 top-1"
+          nativeID={`group-calendar-day-${date.dateString}-closed-badge`}
+          style={{ opacity: 0.55 }}
+          testID={`group-calendar-day-${date.dateString}-closed-badge`}
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="lock-outline" size={9} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -120,7 +130,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
   const { deleteDay, bulkClear, isBulkClearing } = useGroupCalendarMutations(groupId);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
-  const monthViewRef = useRef(null);
+  const screenRootRef = useRef(null);
   const [openDayMenu, setOpenDayMenu] = useState(null);
   const [selectedDates, setSelectedDates] = useState(new Set());
   const [selectionClosedClass, setSelectionClosedClass] = useState(null);
@@ -231,7 +241,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   }
 
   return (
-    <View className="flex-1 bg-paper dark:bg-ink" nativeID="group-calendar-screen-root" testID="group-calendar-screen-root">
+    <View className="relative flex-1 bg-paper dark:bg-ink" nativeID="group-calendar-screen-root" ref={screenRootRef} testID="group-calendar-screen-root">
       <View className={`w-full flex-1 self-center px-4 py-8 ${isWeb ? 'max-w-3xl' : ''}`} nativeID="group-calendar-screen-container" testID="group-calendar-screen-container">
         <View className="mb-6 flex-row items-center gap-2" nativeID="group-calendar-screen-header" testID="group-calendar-screen-header">
           <Pressable
@@ -299,16 +309,15 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         </View>
 
         <View
-          className="relative rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
+          className="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
           nativeID="group-calendar-month-view"
-          ref={monthViewRef}
           testID="group-calendar-month-view"
         >
           <Calendar
             current={currentMonthISO}
             dayComponent={({ date, state }) => (
               <CalendarDayCell
-                containerRef={monthViewRef}
+                containerRef={screenRootRef}
                 date={date}
                 isMenuOpen={openDayMenu?.date === date.dateString}
                 marking={markingsByDate[date.dateString]}
@@ -333,26 +342,26 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
               textMonthFontFamily: 'Orbitron_700Bold',
             }}
           />
-
-          <AnimatedDropdown
-            anchorStyle={openDayMenu ? { left: openDayMenu.anchor.x, top: openDayMenu.anchor.y + openDayMenu.anchor.height + 4 } : {}}
-            onClose={handleCloseDayMenu}
-            open={Boolean(openDayMenu)}
-          >
-            {openDayMenu && (
-              <CalendarDayMenu
-                closed={openClosed}
-                hasContent={Boolean(openMarking)}
-                isTraining={openMarking?.kind === 'training'}
-                onAssignOrEdit={handleAssignOrEdit}
-                onCancel={handleCancelSession}
-                onClear={handleClearDay}
-                onSelect={handleSelectDay}
-              />
-            )}
-          </AnimatedDropdown>
         </View>
       </View>
+
+      <AnimatedDropdown
+        anchorStyle={openDayMenu ? { left: openDayMenu.anchor.x, top: openDayMenu.anchor.y + openDayMenu.anchor.height + 4 } : {}}
+        onClose={handleCloseDayMenu}
+        open={Boolean(openDayMenu)}
+      >
+        {openDayMenu && (
+          <CalendarDayMenu
+            closed={openClosed}
+            hasContent={Boolean(openMarking)}
+            isTraining={openMarking?.kind === 'training'}
+            onAssignOrEdit={handleAssignOrEdit}
+            onCancel={handleCancelSession}
+            onClear={handleClearDay}
+            onSelect={handleSelectDay}
+          />
+        )}
+      </AnimatedDropdown>
 
       <StampPlanModal groupId={groupId} onClose={() => setStampModalVisible(false)} ownerId={userId} visible={stampModalVisible} />
 
