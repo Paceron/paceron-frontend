@@ -29,11 +29,18 @@ function CalendarDayCell({ date, state, marking, onPress }) {
   const colors = useThemeColors();
   const isOtherMonth = state === 'disabled';
   const closed = marking ? isCalendarDayClosed(date.dateString, marking) : false;
+  // Tinte leve de fondo por kind — ayuda a ubicar de un vistazo qué tipo
+  // de día es sin tener que fijarse en el puntito. Alpha en hex (últimos
+  // 2 dígitos) en vez de un color plano — funciona igual en claro/oscuro
+  // sin necesitar una paleta de tinte aparte por tema.
+  const tintAlpha = closed ? '14' : '26';
+  const tintColor = marking ? `${KIND_DOT_COLORS[marking.kind]}${tintAlpha}` : 'transparent';
   return (
     <Pressable
-      className="h-14 w-full items-center justify-start gap-1 pt-1"
+      className="h-14 w-full items-center justify-start gap-1 rounded-md pt-1"
       nativeID={`group-calendar-day-${date.dateString}`}
       onPress={() => onPress(date)}
+      style={{ backgroundColor: tintColor }}
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text

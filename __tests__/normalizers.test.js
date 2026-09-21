@@ -3,7 +3,7 @@ import {
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
-  toGroupCalendarDayModel, toCalendarDayPayload,
+  toGroupCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -274,7 +274,7 @@ describe('toGroupModel', () => {
       created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
     };
     expect(toGroupModel(dto)).toEqual({
-      id: '5', teamId: '1', name: 'General', description: null, isDefault: true, trainingPlanId: null,
+      id: '5', teamId: '1', name: 'General', description: null, isDefault: true,
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
     });
   });
@@ -560,13 +560,27 @@ describe('toGroupCalendarDayModel', () => {
     };
     const model = toGroupCalendarDayModel(dto);
     expect(model.sessionInstance).toEqual({
-      id: '123', name: 'Fartlek 5K', description: null,
-      exercises: [{ id: '456', name: 'Trote', role: 'warmup', repeatCount: 1, restMinutes: 0 }],
+      id: '123', name: 'Fartlek 5K', description: null, sourceSessionId: null,
+      exercises: [{ id: '456', name: 'Trote', role: 'warmup', repeatCount: 1, restMinutes: 0, sourceExerciseId: null }],
     });
     expect(model.presencialTimeFrom).toBe('08:00');
     expect(model.presencialTimeTo).toBe('09:30');
     expect(model.presencialLocation).toEqual({ lat: -34.6, lng: -58.4, label: 'Plaza' });
     expect(model.sourcePlanId).toBe('3');
+  });
+
+  test('mapea session_id/exercise_id de origen cuando el backend los trae (Gap 7)', () => {
+    const dto = {
+      id: 2, group_id: 5, date: '2026-10-06', kind: 'training',
+      session_instance: {
+        id: 123, name: 'Fartlek 5K', description: null, session_id: 9,
+        exercises: [{ id: 456, name: 'Trote', role: 'warmup', repeat_count: 1, rest_minutes: 0, exercise_id: 4 }],
+      },
+      is_presencial: false,
+    };
+    const model = toGroupCalendarDayModel(dto);
+    expect(model.sessionInstance.sourceSessionId).toBe('9');
+    expect(model.sessionInstance.exercises[0].sourceExerciseId).toBe('4');
   });
 
   test('session_instance null (día sin sesión, ej. rest/other)', () => {
@@ -606,6 +620,11 @@ describe('toCalendarDayPayload', () => {
       presencial_time_from: '08:00', presencial_time_to: '09:30',
       presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
     });
+  });
+
+  test('entrenamiento con KEEP_CURRENT_SESSION no manda session_id (Gap 7 — conserva la instancia actual)', () => {
+    const payload = toCalendarDayPayload({ kind: 'training', sessionId: KEEP_CURRENT_SESSION, isPresencial: false });
+    expect(payload).toEqual({ kind: 'training', is_presencial: false });
   });
 
   test('cancelado manda solo cancelled_reason, sin session_id (el backend lo preserva)', () => {

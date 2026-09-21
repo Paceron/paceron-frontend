@@ -168,9 +168,8 @@ export async function mockListRunnerPlanAssignments({ userId, planId } = {}) {
 }
 
 // Un corredor tiene una sola asignación individual activa a la vez —
-// asignar reemplaza la anterior (mismo criterio que group.trainingPlanId
-// del lado de grupo). findPlanOrThrow valida que el plan exista antes de
-// asignarlo.
+// asignar reemplaza la anterior. findPlanOrThrow valida que el plan
+// exista antes de asignarlo.
 export async function mockAssignPlanToRunner(planId, userId) {
   findPlanOrThrow(planId);
   mockRunnerPlanAssignments = mockRunnerPlanAssignments.filter((a) => a.user_id !== Number(userId));

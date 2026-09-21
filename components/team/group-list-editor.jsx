@@ -12,7 +12,7 @@ import { CreateGroupModal } from './create-group-modal.jsx';
 // grupo extra ya agregado, con botón de eliminar. El alta pasa por
 // CreateGroupModal (botón "+" arriba de la lista) — acá solo se agrega al
 // array local `groups`, sin pegarle a ningún servicio.
-export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
+export function GroupListEditor({ groups, onChange, onRemove }) {
   const colors = useThemeColors();
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -64,9 +64,7 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
           </View>
         </View>
 
-        {groups.map((group) => {
-          const planName = planOptions.find((p) => p.id === group.trainingPlanId)?.name;
-          return (
+        {groups.map((group) => (
             <View
               key={group.id}
               className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
@@ -88,13 +86,16 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
                 >
                   {group.name}
                 </Text>
-                <Text
-                  className="text-xs text-slate-500 dark:text-slate-400"
-                  nativeID={`group-list-editor-row-${group.id}-plan`}
-                  testID={`group-list-editor-row-${group.id}-plan`}
-                >
-                  {planName ?? 'Sin plan asignado'}
-                </Text>
+                {group.description && (
+                  <Text
+                    className="text-xs text-slate-500 dark:text-slate-400"
+                    nativeID={`group-list-editor-row-${group.id}-description`}
+                    numberOfLines={2}
+                    testID={`group-list-editor-row-${group.id}-description`}
+                  >
+                    {group.description}
+                  </Text>
+                )}
               </View>
               <Pressable
                 accessibilityLabel={`Quitar grupo ${group.name}`}
@@ -106,18 +107,16 @@ export function GroupListEditor({ groups, onChange, onRemove, planOptions }) {
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
               </Pressable>
             </View>
-          );
-        })}
+        ))}
       </View>
 
       <CreateGroupModal
         existingNames={groups.map((g) => g.name.toLowerCase())}
         onClose={() => setModalVisible(false)}
-        onSubmit={async ({ name, description, trainingPlanId }) => {
-          onChange([...groups, { id: `group-draft-${Date.now()}`, name, description, trainingPlanId }]);
+        onSubmit={async ({ name, description }) => {
+          onChange([...groups, { id: `group-draft-${Date.now()}`, name, description }]);
           return { success: true };
         }}
-        planOptions={planOptions}
         visible={modalVisible}
       />
     </View>

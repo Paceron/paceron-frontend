@@ -18,8 +18,8 @@ import { LocationPicker } from '../shared/location-picker';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
-import { findMatchingCatalogSession } from '../../utils/session-instance-match.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
+import { KEEP_CURRENT_SESSION } from '../../services/normalizers.js';
 
 const KIND_OPTIONS = [
   { id: 'rest', label: 'Descanso' },
@@ -89,7 +89,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
   const userId = useAuthStore((s) => s.userId);
   const { groups, loading: loadingGroups } = useGroups(teamId, userId);
   const group = groups.find((g) => g.id === groupId);
-  const { sessions, loading: loadingSessions } = useSessions(userId);
+  const { sessions } = useSessions(userId);
   const { days, loading: loadingDay } = useGroupCalendar(groupId, date, date);
   const { upsertDay, isUpserting, deleteDay, isDeleting } = useGroupCalendarMutations(groupId);
   const existingDay = days[0] ?? null;
@@ -106,28 +106,26 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
   const [cancelPromptVisible, setCancelPromptVisible] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  // Solo semilla una vez, cuando el rango [date, date] Y el catálogo de
-  // sesiones terminaron de cargar — no un useEffect que resincroniza en
-  // cada render del objeto fuente (ver CLAUDE.md, bug real ya documentado
-  // en edit-group-screen.jsx). Esperar también `loadingSessions`: el match
-  // por nombre (findMatchingCatalogSession) necesita el catálogo ya
-  // cargado, si sembrara antes de tiempo el select quedaría vacío para
-  // siempre aunque el catálogo llegue un instante después.
+  // Solo semilla una vez, cuando el rango [date, date] terminó de cargar
+  // — no un useEffect que resincroniza en cada render del objeto fuente
+  // (ver CLAUDE.md, bug real ya documentado en edit-group-screen.jsx). Si
+  // el día ya tiene una instancia, arranca en KEEP_CURRENT_SESSION (Gap 7
+  // resuelto — "no reasignar", el backend la conserva sin reinstanciar) en
+  // vez de intentar adivinar cuál sesión de catálogo la originó.
   const seededRef = useRef(false);
   useEffect(() => {
-    if (loadingDay || loadingSessions || seededRef.current) return;
+    if (loadingDay || seededRef.current) return;
     seededRef.current = true;
     if (existingDay) {
       setKind(existingDay.kind === 'cancelled' ? 'training' : existingDay.kind);
       setOtherName(existingDay.otherName ?? '');
-      const matched = findMatchingCatalogSession(existingDay.sessionInstance, sessions);
-      setSessionId(matched?.id ?? '');
+      setSessionId(existingDay.sessionInstance ? KEEP_CURRENT_SESSION : '');
       setIsPresencial(existingDay.isPresencial);
       setPresencialTimeFrom(existingDay.presencialTimeFrom ?? '');
       setPresencialTimeTo(existingDay.presencialTimeTo ?? '');
       setPresencialLocation(existingDay.presencialLocation ?? null);
     }
-  }, [loadingDay, loadingSessions, existingDay, sessions]);
+  }, [loadingDay, existingDay]);
 
   const isDirty = useFormDirty({ kind, otherName, sessionId, isPresencial, presencialTimeFrom, presencialTimeTo, presencialLocation });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
@@ -205,7 +203,9 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
     bypassGuard(() => router.back());
   };
 
-  const sessionOptions = sessions.map((s) => ({ id: s.id, name: s.name }));
+  const sessionOptions = existingDay?.sessionInstance
+    ? [{ id: KEEP_CURRENT_SESSION, name: 'Mantener sesión actual (sin cambios)' }, ...sessions.map((s) => ({ id: s.id, name: s.name }))]
+    : sessions.map((s) => ({ id: s.id, name: s.name }));
   const canCancelSession = existingDay?.kind === 'training';
   // Mismo criterio que el backend (calendar_service.go#isCalendarDayClosed,
   // ver utils/calendar-day-closed.js) — usa el estado ACTUAL del form, no
@@ -331,19 +331,35 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
                     )}
                   </View>
                 )}
-                <Text
-                  className="mb-2 text-xs text-slate-500 dark:text-slate-400"
-                  nativeID="group-calendar-day-session-hint"
-                  testID="group-calendar-day-session-hint"
-                >
-                  Guardar siempre vuelve a instanciar la sesión elegida (una copia congelada, no un vínculo vivo) — aunque sea la misma.
-                </Text>
+                {existingDay?.sessionInstance ? (
+                  <Text
+                    className="mb-2 text-xs text-slate-500 dark:text-slate-400"
+                    nativeID="group-calendar-day-session-hint"
+                    testID="group-calendar-day-session-hint"
+                  >
+                    &ldquo;Mantener sesión actual&rdquo; no toca el contenido guardado. Elegir cualquier otra sesión reemplaza la actual por una copia congelada nueva.
+                  </Text>
+                ) : (
+                  <Text
+                    className="mb-2 text-xs text-slate-500 dark:text-slate-400"
+                    nativeID="group-calendar-day-session-hint"
+                    testID="group-calendar-day-session-hint"
+                  >
+                    Guardar instancia una copia congelada de la sesión elegida — editarla después en el catálogo no la va a afectar.
+                  </Text>
+                )}
                 <ResponsiveSelectField dense label="Sesión del catálogo" onChange={(v) => { setSessionId(v); clearError(); }} options={sessionOptions} placeholder="Elegí una sesión" value={sessionId} />
                 <PresencialToggle colors={colors} onChange={setIsPresencial} value={isPresencial} />
                 {isPresencial && (
                   <>
-                    <TimeField label="Hora desde" onChange={(v) => { setPresencialTimeFrom(v); clearError(); }} value={presencialTimeFrom} />
-                    <TimeField label="Hora hasta" onChange={(v) => { setPresencialTimeTo(v); clearError(); }} value={presencialTimeTo} />
+                    <View className="flex-row gap-3" nativeID="group-calendar-day-time-row" testID="group-calendar-day-time-row">
+                      <View className="flex-1" nativeID="group-calendar-day-time-from-wrapper" testID="group-calendar-day-time-from-wrapper">
+                        <TimeField label="Hora desde" onChange={(v) => { setPresencialTimeFrom(v); clearError(); }} value={presencialTimeFrom} />
+                      </View>
+                      <View className="flex-1" nativeID="group-calendar-day-time-to-wrapper" testID="group-calendar-day-time-to-wrapper">
+                        <TimeField label="Hora hasta" onChange={(v) => { setPresencialTimeTo(v); clearError(); }} value={presencialTimeTo} />
+                      </View>
+                    </View>
                     <View className="mb-5" nativeID="group-calendar-day-location-wrapper" testID="group-calendar-day-location-wrapper">
                       <LocationPicker onChange={(v) => { setPresencialLocation(v); clearError(); }} value={presencialLocation} />
                     </View>

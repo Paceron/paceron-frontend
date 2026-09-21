@@ -8,7 +8,7 @@
 >
 > **Actualización 2026-09-20 — cambio de modelo confirmado en código (rama `feature/asignacion-por-instanciacion` del backend), rompe contrato, no es aditivo:** asignar una sesión a un día de calendario ya no guarda una referencia viva al catálogo (`session_id` como FK persistida) — el backend **instancia** (copia congelada) la sesión y sus ejercicios en tablas propias (`SessionInstance`/`ExerciseInstance`) en el momento del `PUT`, y la respuesta embebe esa copia bajo `session_instance` en vez de devolver un `session_id` crudo. Ver §3.1bis (nuevo) para el detalle completo. Consecuencias directas:
 > - El **request** del `PUT` no cambia — sigue mandando `session_id` (id de catálogo) para indicar qué instanciar.
-> - **Cada `PUT` con `kind=training` reinstancia de cero**, incluso si no cambiaste la sesión — el backend no tiene forma de "mantener la instancia actual" hoy. Se abrió **Gap 7** en `BACKEND_API_GAPS.md` pidiendo que esto se pueda evitar — pendiente de implementación, esta pieza del frontend se construye contra el comportamiento actual (siempre reinstancia).
+> - **Cada `PUT` con `kind=training` reinstancia de cero salvo que se omita `session_id`** — Gap 7 (`BACKEND_API_GAPS.md`) resuelto 2026-09-21: si el día ya tiene instancia y `session_id` viene `nil`, se conserva sin reinstanciar. `session_instance.session_id`/`exercises[].exercise_id` (origen de catálogo, informativo) también ya vienen poblados. `stamp` no cambia, ahí sigue siendo requerido.
 > - El §5 de este documento (clonado por divergencia) queda **obsoleto** — el mecanismo que describía ya no existe, ver nota en esa sección.
 > - Nuevo guard de "día cerrado": bloquea `PUT`/`DELETE`/`stamp`/`bulk`/`bulk-clear`/`shift` con `422` sobre fechas pasadas o presenciales ya empezadas — únic­a excepción, la transición a `kind=cancelled`. Ver §4.
 
@@ -55,7 +55,7 @@ La asignación de un plan a un grupo **no es un registro con fecha de inicio/fin
 
 Al hacer `PUT` con `kind='training'`, el backend copia el contenido completo de la `Session` de catálogo (nombre, descripción) y de cada `Exercise` referenciado (todos sus campos) a tablas propias — `SessionInstance`/`ExerciseInstance` — y vincula la fila de calendario a esa copia (`session_instance_id`, no `session_id`). Esa copia queda **congelada**: editar o borrar la `Session`/`Exercise` de catálogo después nunca la vuelve a tocar. Consecuencia directa: **la UI de "mostrá qué grupos tienen esta sesión asignada antes de editar" (§5, ver nota de obsolescencia) perdió su razón de ser** — editar el catálogo ya no puede afectar ninguna asignación existente.
 
-Shape de la respuesta (`session_instance`, `null` si `kind` no es `training`/`cancelled`):
+Shape de la respuesta (`session_instance`, `null` si `kind` no es `training`/`cancelled`) — **actualizado 2026-09-21, Gap 7 resuelto:** `session_id`/`exercise_id` (origen de catálogo) ya vienen poblados en instancias nuevas, `null` en instancias creadas antes de este cambio (sin backfill):
 
 ```json
 {
@@ -63,12 +63,13 @@ Shape de la respuesta (`session_instance`, `null` si `kind` no es `training`/`ca
     "id": 123,
     "name": "Fartlek 5K",
     "description": null,
+    "session_id": 42,
     "created_at": "2026-09-20T10:00:00Z",
     "exercises": [
       {
         "id": 456, "name": "Trote", "kind": "jogging", "description": null,
         "intensity": null, "minutes": 10, "distance_m": null, "speed_kph": null,
-        "muscle_group": null, "video_url": null,
+        "muscle_group": null, "video_url": null, "exercise_id": 7,
         "role": "warmup", "repeat_count": 1, "rest_minutes": 0
       }
     ]
@@ -76,12 +77,11 @@ Shape de la respuesta (`session_instance`, `null` si `kind` no es `training`/`ca
 }
 ```
 
-`exercises` es siempre array (vacío posible, nunca `null`). Cada elemento combina el detalle congelado del ejercicio con `role`/`repeat_count`/`rest_minutes` del vínculo.
+`exercises` es siempre array (vacío posible, nunca `null`). Cada elemento combina el detalle congelado del ejercicio con `role`/`repeat_count`/`rest_minutes` del vínculo. `session_id`/`exercise_id` son **informativos, no una FK garantizada** (el origen puede estar soft-deleted) — mismo criterio que `source_plan_id` en `GroupCalendarDay`.
 
 **Reglas confirmadas:**
-- **Cada `PUT` con `kind='training'` reinstancia de cero**, sin excepción — no hay forma de "guardar sin re-elegir sesión", ni para tocar solo el horario presencial de un día ya asignado. La instancia vieja se borra al reemplazarse (salvo que ya tenga feedback enganchado, se conserva huérfana).
-- **`kind='cancelled'` (solo alcanzable desde `training`) conserva la instancia** — `session_instance` sigue embebido, no se manda `session_id` en ese `PUT` (ver `toCalendarDayPayload` del frontend).
-- **`SessionInstance`/`ExerciseInstance` no tienen referencia de vuelta al catálogo** — no hay forma de saber de qué `Session`/`Exercise` salió una instancia ya creada. Esto abre **Gap 7** (`BACKEND_API_GAPS.md`) pidiendo agregar esa referencia (`session_id`/`exercise_id` nullable, `ON DELETE SET NULL`, mismo patrón que `source_plan_id`) más la posibilidad de omitir `session_id` en el `PUT` para conservar la instancia actual sin reinstanciar — pendiente de implementación en el backend.
+- **`PUT`/`bulk` con `kind='training'` reinstancian solo si llega `session_id`** — si el día ya tiene instancia y se omite, se conserva tal cual (sin reinstanciar, sin borrar la vieja). Si no hay instancia previa y se omite, `422` (`ErrCalendarFieldMismatch`). En `bulk`, si alguna fecha del lote no tiene instancia y se omite `session_id`, se rechaza el lote completo listando esas fechas. **`stamp` no cambia** — ahí `session_id` sigue siendo requerido siempre. Reinstanciar (cuando sí llega `session_id`) borra la instancia vieja al reemplazarse, salvo que ya tenga feedback enganchado (se conserva huérfana).
+- **`kind='cancelled'` (solo alcanzable desde `training`) conserva la instancia** — `session_instance` sigue embebido, no se manda `session_id` en ese `PUT` (ver `toCalendarDayPayload` del frontend, `KEEP_CURRENT_SESSION`).
 
 ### 3.2 Shape de ubicación (`{lat, lng, label?}`)
 
@@ -181,8 +181,8 @@ erDiagram
     }
 
     GROUP ||--o{ GROUP_CALENDAR_DAY : "tiene calendario"
-    GROUP_CALENDAR_DAY ||--o| SESSION_INSTANCE : "asignada en (kind=training/cancelled) — copia congelada, sin FK de vuelta al catálogo hasta Gap 7"
+    GROUP_CALENDAR_DAY ||--o| SESSION_INSTANCE : "asignada en (kind=training/cancelled) — copia congelada, session_id/exercise_id informativos hacia SESSION/EXERCISE (Gap 7)"
     TRAINING_PLAN ||--o{ GROUP_CALENDAR_DAY : "estampó (informativo, source_plan_id)"
 ```
 
-`GROUP` y `TRAINING_PLAN` están definidos en `BACKEND_TRAINING_PLANS_SPEC.md` (y `GROUP` en el dominio de equipos, ya real) — no se repiten acá. `SESSION_INSTANCE` (y `EXERCISE_INSTANCE`, no diagramada por brevedad) son tablas internas del backend, propias de la instanciación (§3.1bis) — ya no hay relación directa con `SESSION` de catálogo salvo que se implemente Gap 7.
+`GROUP` y `TRAINING_PLAN` están definidos en `BACKEND_TRAINING_PLANS_SPEC.md` (y `GROUP` en el dominio de equipos, ya real) — no se repiten acá. `SESSION_INSTANCE` (y `EXERCISE_INSTANCE`, no diagramada por brevedad) son tablas internas del backend, propias de la instanciación (§3.1bis) — la relación con `SESSION`/`EXERCISE` de catálogo es informativa (`session_id`/`exercise_id`, Gap 7 resuelto), nunca vinculante.

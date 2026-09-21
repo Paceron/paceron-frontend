@@ -3,10 +3,9 @@ import { listGroups as listGroupsService, createGroup as createGroupService, upd
 import { toGroupModel, toCreateGroupPayload, toUpdateGroupPayload } from '../services/normalizers.js';
 
 // Estado de servidor del dominio de grupos — TanStack Query, no Zustand
-// (ver CLAUDE.md). trainingPlanId sigue siendo local-only (sin campo en
-// el backend, ver docs/BACKEND_API_GAPS.md gap 4) — este hook no lo toca,
-// solo lo devuelve tal cual viene del catálogo mock ahora en
-// store/team-store.js#TRAINING_PLAN_OPTIONS (fuera de esta migración).
+// (ver CLAUDE.md). Asignar un plan a un grupo se maneja por el calendario
+// (docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md) — este hook no tiene nada
+// que ver con eso.
 export function useGroups(teamId, userId) {
   const query = useQuery({
     queryKey: ['groups', teamId],

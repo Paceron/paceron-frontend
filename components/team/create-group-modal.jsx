@@ -4,7 +4,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { InputField } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
@@ -16,12 +15,11 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 // no sabe cuál de los dos es — solo llama a `onSubmit` y cierra si
 // devuelve success. Feedback de éxito (toast) queda a cargo del caller,
 // no del modal — el modo staged no quiere toast, el modo real sí.
-export function CreateGroupModal({ visible, onClose, onSubmit, existingNames = [], planOptions }) {
+export function CreateGroupModal({ visible, onClose, onSubmit, existingNames = [] }) {
   const colors = useThemeColors();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [trainingPlanId, setTrainingPlanId] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,13 +34,12 @@ export function CreateGroupModal({ visible, onClose, onSubmit, existingNames = [
     prevResetKeyRef.current = resetKey;
     setName('');
     setDescription('');
-    setTrainingPlanId('');
     setError(null);
   } else if (!visible) {
     prevResetKeyRef.current = null;
   }
 
-  const dirtyValues = isResetting ? { name: '', description: '', trainingPlanId: '' } : { name, description, trainingPlanId };
+  const dirtyValues = isResetting ? { name: '', description: '' } : { name, description };
   const formDirty = useFormDirty(dirtyValues, 'new');
   const isDirty = visible && formDirty;
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
@@ -64,7 +61,7 @@ export function CreateGroupModal({ visible, onClose, onSubmit, existingNames = [
       return;
     }
     setSubmitting(true);
-    const result = await onSubmit({ name: trimmed, description: description.trim() || null, trainingPlanId: trainingPlanId || null });
+    const result = await onSubmit({ name: trimmed, description: description.trim() || null });
     setSubmitting(false);
 
     if (!result.success) {
@@ -88,16 +85,6 @@ export function CreateGroupModal({ visible, onClose, onSubmit, existingNames = [
 
             <View className="gap-3" nativeID="create-group-modal-fields" testID="create-group-modal-fields">
               <InputField autoFocus={!isWeb && visible} className="mb-0" dense error={error} label="Nombre del grupo" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Grupo avanzado" value={name} />
-              <ResponsiveSelectField
-                className="mb-0"
-                dense
-                hideErrorRow
-                label="Plan de entrenamiento"
-                onChange={setTrainingPlanId}
-                options={planOptions}
-                placeholder={planOptions.length === 0 ? 'Sin planes disponibles todavía' : 'Sin plan asignado'}
-                value={trainingPlanId}
-              />
               <InputField className="mb-0" dense hideErrorRow label="Descripción (opcional)" multiline numberOfLines={3} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
             </View>
 

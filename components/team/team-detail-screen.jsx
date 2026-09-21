@@ -9,7 +9,6 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions } from '../../hooks/use-user.js';
-import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
 import { useInvitationMutations } from '../../hooks/use-invitations.js';
@@ -398,7 +397,7 @@ function GroupMemberRow({ member, colors }) {
 // la lista de miembros va siempre visible. En mobile es una card
 // expandible, mismo patrón que RunnerRow — colapsada por default, tocarla
 // muestra los corredores del grupo.
-function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete, deleting, onViewCalendar, canManageTeam }) {
+function GroupRow({ group, members, colors, onEdit, canEdit, onDelete, deleting, onViewCalendar, canManageTeam }) {
   const [expanded, setExpanded] = useState(false);
   const memberCount = members.length;
 
@@ -412,7 +411,7 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
           {group.name}
         </Text>
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`team-detail-group-${group.id}-meta`} testID={`team-detail-group-${group.id}-meta`}>
-          {memberCount} {memberCount === 1 ? 'corredor' : 'corredores'} · {planName ?? 'Sin plan asignado'}
+          {memberCount} {memberCount === 1 ? 'corredor' : 'corredores'}
         </Text>
         {group.description && (
           <Text
@@ -959,7 +958,6 @@ function TeamDetailScreenContent({ teamId }) {
             onDelete={() => setGroupPendingDelete(group)}
             onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
             onViewCalendar={() => router.push(`/teams/${team.id}/groups/${group.id}/calendar`)}
-            planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
           />
         ))}
       </View>
@@ -1094,12 +1092,11 @@ function TeamDetailScreenContent({ teamId }) {
         <CreateGroupModal
           existingNames={groups.map((g) => g.name.toLowerCase())}
           onClose={() => setCreateGroupModalVisible(false)}
-          onSubmit={async ({ name, description, trainingPlanId }) => {
-            const result = await createGroupInTeam({ name, description, trainingPlanId });
+          onSubmit={async ({ name, description }) => {
+            const result = await createGroupInTeam({ name, description });
             if (result.success) Toast.show({ type: 'success', text1: 'Grupo creado' });
             return result;
           }}
-          planOptions={TRAINING_PLAN_OPTIONS}
           visible={createGroupModalVisible}
         />
       )}

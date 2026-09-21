@@ -215,7 +215,6 @@ export function toGroupModel(dto) {
     name: dto.name,
     description: dto.description,
     isDefault: dto.is_main ?? false,
-    trainingPlanId: null,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };
@@ -533,22 +532,27 @@ export function toSubscriptionModel(dto) {
 // toCalendarDayPayload los vuelve a Number() donde el backend lo espera.
 // ---------------------------------------------------------------------
 
-// SessionInstance embebida (copia congelada, sin vínculo de vuelta al
-// catálogo — ver docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §3.1bis / Gap
-// 7). NUNCA confundir con un id de catálogo — no sirve para preseleccionar
-// el select de sesión al editar (ver utils/session-instance-match.js).
+// SessionInstance embebida (copia congelada — ver
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §3.1bis). `sourceSessionId`/
+// `sourceExerciseId` (Gap 7, resuelto 2026-09-21) son el id de catálogo
+// que originó la instancia — informativos, pueden venir `null` en
+// instancias creadas antes de este cambio (sin backfill) o si el origen
+// se borró. NUNCA usar `id` (el de la instancia) para preseleccionar el
+// select de sesión al editar — no es un id de catálogo.
 function toSessionInstanceModel(dto) {
   if (!dto) return null;
   return {
     id: String(dto.id),
     name: dto.name,
     description: dto.description ?? null,
+    sourceSessionId: dto.session_id != null ? String(dto.session_id) : null,
     exercises: (dto.exercises ?? []).map((e) => ({
       id: String(e.id),
       name: e.name,
       role: e.role,
       repeatCount: e.repeat_count ?? 1,
       restMinutes: e.rest_minutes ?? 0,
+      sourceExerciseId: e.exercise_id != null ? String(e.exercise_id) : null,
     })),
   };
 }
@@ -573,11 +577,17 @@ export function toGroupCalendarDayModel(dto) {
   };
 }
 
+// Sentinel de "mantener la instancia actual, no reasignar" — Gap 7
+// resuelto 2026-09-21: el backend ahora permite omitir `session_id` en un
+// día `training` que ya tiene instancia, y la conserva sin reinstanciar.
+export const KEEP_CURRENT_SESSION = '__keep__';
+
 // Manda solo los campos que corresponden según `kind` — mismo criterio
 // que toPlanDayPayload, el servidor valida igual pero no hay que mandarle
 // basura. `session_id` de un día cancelado NO se manda — el backend lo
 // preserva del lado suyo (ver §3.1 de la spec: "si kind pasa a cancelled,
-// se mantiene").
+// se mantiene"). Tampoco se manda si `day.sessionId === KEEP_CURRENT_SESSION`
+// — mismo criterio, ahora también disponible para `training` (Gap 7).
 export function toCalendarDayPayload(day) {
   const payload = { kind: day.kind };
 
@@ -586,7 +596,9 @@ export function toCalendarDayPayload(day) {
   }
 
   if (day.kind === 'training') {
-    payload.session_id = Number(day.sessionId);
+    if (day.sessionId !== KEEP_CURRENT_SESSION) {
+      payload.session_id = Number(day.sessionId);
+    }
     payload.is_presencial = Boolean(day.isPresencial);
     if (day.isPresencial) {
       payload.presencial_time_from = day.presencialTimeFrom;

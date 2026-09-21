@@ -3,11 +3,13 @@
 // simular la instanciación real (docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md
 // §3.1bis) importa mockGetSession de sessions-mock.js — al guardar
 // kind='training' con session_id, "instancia" copiando nombre/descripción
-// de esa sesión del catálogo mock, siempre que llega session_id (nunca
-// conserva la instancia vieja, mismo comportamiento que el backend real
-// hoy — Gap 7 pendiente). Los ejercicios de la instancia usan un nombre
-// sintético (Ejercicio <id>) en vez de resolver contra exercises-mock.js
-// — simplificación aceptable para un mock.
+// de esa sesión del catálogo mock. Si session_id viene omitido (Gap 7,
+// resuelto) y ya hay una instancia, se conserva tal cual, sin reinstanciar
+// — mismo criterio que ya aplicaba a kind='cancelled'. Los ejercicios de
+// la instancia usan un nombre sintético (Ejercicio <id>) en vez de
+// resolver contra exercises-mock.js — simplificación aceptable para un
+// mock. session_id/exercise_id (origen de catálogo, Gap 7) sí se guardan
+// reales, para poder probar sourceSessionId/sourceExerciseId localmente.
 import { mockGetSession } from './sessions-mock.js';
 
 let mockCalendarDays = {};
@@ -24,12 +26,14 @@ async function instantiateSession(sessionId) {
     id: nextInstanceId++,
     name: catalogSession.name,
     description: catalogSession.description ?? null,
+    session_id: catalogSession.id,
     exercises: catalogSession.exercises.map((e) => ({
       id: e.exercise_id,
       name: `Ejercicio ${e.exercise_id}`,
       role: e.role,
       repeat_count: e.repeat_count ?? 1,
       rest_minutes: e.rest_minutes ?? 0,
+      exercise_id: e.exercise_id,
     })),
   };
 }
@@ -46,8 +50,10 @@ export async function mockUpsertCalendarDay(groupId, date, payload) {
   const existing = mockCalendarDays[key];
 
   let sessionInstance = null;
-  if (payload.kind === 'training' && payload.session_id != null) {
-    sessionInstance = await instantiateSession(payload.session_id);
+  if (payload.kind === 'training') {
+    sessionInstance = payload.session_id != null
+      ? await instantiateSession(payload.session_id)
+      : (existing?.session_instance ?? null);
   } else if (payload.kind === 'cancelled') {
     sessionInstance = existing?.session_instance ?? null;
   }

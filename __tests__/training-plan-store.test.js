@@ -18,33 +18,10 @@ jest.mock('../services/trainingPlans.js', () => ({
 import {
   getTrainingPlan as getTrainingPlanService,
   listRunnerPlanAssignments as listRunnerPlanAssignmentsService,
-  assignPlanToRunner as assignPlanToRunnerService,
   listCurrentPlanMarks as listCurrentPlanMarksService,
   markPlanAsCurrent as markPlanAsCurrentService,
   unmarkPlanAsCurrent as unmarkPlanAsCurrentService,
 } from '../services/trainingPlans.js';
-
-jest.mock('../services/teams.js', () => ({
-  createTeam: jest.fn(),
-  getTeam: jest.fn(),
-  listTeams: jest.fn(),
-  updateTeam: jest.fn(),
-  updateTeamAddress: jest.fn(),
-  deleteTeam: jest.fn(),
-}));
-
-jest.mock('../services/groups.js', () => ({
-  listGroups: jest.fn(),
-  createGroup: jest.fn(),
-  updateGroup: jest.fn(),
-  deleteGroup: jest.fn(),
-  getGroupUsers: jest.fn(),
-  addGroupUser: jest.fn(),
-  removeGroupUser: jest.fn(),
-}));
-
-import { listTeams as listTeamsService } from '../services/teams.js';
-import { listGroups as listGroupsService, getGroupUsers as getGroupUsersService } from '../services/groups.js';
 
 const PLAN_DTO = {
   id: 1, owner_id: 7, name: 'Base 5K', description: 'desc',
@@ -62,9 +39,7 @@ const PLAN_DTO = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  useTrainingPlanStore.setState({ plans: [], myPlans: [], myCurrentPlanIds: [], groupTrainingPlanIds: {} });
-  listTeamsService.mockResolvedValue([]);
-  listGroupsService.mockResolvedValue([]);
+  useTrainingPlanStore.setState({ plans: [], myPlans: [], myCurrentPlanIds: [] });
   listCurrentPlanMarksService.mockResolvedValue([]);
 });
 
@@ -87,54 +62,31 @@ describe('training plan store', () => {
   // hooks/use-training-plans.js (TanStack Query, sin test dedicado —
   // mismo criterio que hooks/use-exercises.js/use-sessions.js, ver
   // CLAUDE.md). Este store solo conserva la limpieza local que dispara
-  // el onSuccess de deletePlan.
-  test('cleanupAfterPlanDeleted saca el plan de myPlans y limpia trainingPlanId de cualquier grupo que lo tuviera', () => {
-    useTrainingPlanStore.setState({
-      myPlans: [{ id: '1' }],
-      groupTrainingPlanIds: { g1: '1', g2: '2' },
-    });
+  // el onSuccess de deletePlan, y la asignación individual al corredor
+  // (la asignación a grupo se retiró 2026-09-21 — ver store/training-plan-store.js).
+  test('cleanupAfterPlanDeleted saca el plan de myPlans', () => {
+    useTrainingPlanStore.setState({ myPlans: [{ id: '1' }, { id: '2' }] });
 
     useTrainingPlanStore.getState().cleanupAfterPlanDeleted('1');
 
-    expect(useTrainingPlanStore.getState().myPlans).toEqual([]);
-    const { groupTrainingPlanIds } = useTrainingPlanStore.getState();
-    expect(groupTrainingPlanIds.g1).toBeUndefined();
-    expect(groupTrainingPlanIds.g2).toBe('2'); // no relacionado, no se toca
+    expect(useTrainingPlanStore.getState().myPlans).toEqual([{ id: '2' }]);
   });
 
-  test('assignToGroup setea trainingPlanId en groupTrainingPlanIds', () => {
-    const result = useTrainingPlanStore.getState().assignToGroup('t1', 'g1', '5');
-    expect(result.success).toBe(true);
-    expect(useTrainingPlanStore.getState().groupTrainingPlanIds.g1).toBe('5');
-  });
-
-  test('assignToRunner llama al servicio con planId y userId', async () => {
-    assignPlanToRunnerService.mockResolvedValue({});
-    const result = await useTrainingPlanStore.getState().assignToRunner('1', 42);
-    expect(assignPlanToRunnerService).toHaveBeenCalledWith('1', 42);
-    expect(result.success).toBe(true);
-  });
-
-  test('fetchMyPlans junta la asignación individual con el plan del grupo del que es miembro, sin duplicar', async () => {
-    listTeamsService.mockResolvedValue([{ id: 5, name: 'Equipo', owner_id: 99, status: 'activo' }]);
-    listGroupsService.mockResolvedValue([{ id: 50, team_id: 5, name: 'General', is_main: true, created_at: '', updated_at: '' }]);
-    getGroupUsersService.mockResolvedValue([{ user_id: 42 }]);
-    listRunnerPlanAssignmentsService.mockResolvedValue([{ id: 1, plan_id: 9, user_id: 42, assigned_at: '' }]);
+  test('fetchMyPlans junta la asignación individual, sin duplicar', async () => {
+    listRunnerPlanAssignmentsService.mockResolvedValue([
+      { id: 1, plan_id: 9, user_id: 42, assigned_at: '' },
+      { id: 2, plan_id: 9, user_id: 42, assigned_at: '' },
+    ]);
     getTrainingPlanService.mockImplementation(async (planId) => ({ ...PLAN_DTO, id: Number(planId) }));
-
-    // El grupo ya tiene un plan asignado localmente (assignToGroup — ver
-    // test de arriba) antes de que fetchMyPlans lo lea.
-    useTrainingPlanStore.setState({ groupTrainingPlanIds: { 50: '7' } });
 
     const result = await useTrainingPlanStore.getState().fetchMyPlans(42);
 
     expect(result.success).toBe(true);
-    const ids = useTrainingPlanStore.getState().myPlans.map((p) => p.id).sort();
-    expect(ids).toEqual(['7', '9']);
+    const ids = useTrainingPlanStore.getState().myPlans.map((p) => p.id);
+    expect(ids).toEqual(['9']);
   });
 
   test('fetchMyPlans trae los marcados como actuales, filtrados contra los planes realmente asignados', async () => {
-    listTeamsService.mockResolvedValue([]);
     listRunnerPlanAssignmentsService.mockResolvedValue([{ id: 1, plan_id: 9, user_id: 42, assigned_at: '' }]);
     getTrainingPlanService.mockImplementation(async (planId) => ({ ...PLAN_DTO, id: Number(planId) }));
     // '8' no está en la lista de asignados — no debería colarse en myCurrentPlanIds.

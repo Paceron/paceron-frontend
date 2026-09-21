@@ -40,6 +40,20 @@ describe('calendar-mock', () => {
     expect(second.session_instance.name).toBe('Series de velocidad');
   });
 
+  test('mockUpsertCalendarDay con kind=training y session_id omitido conserva la instancia actual (Gap 7)', async () => {
+    const first = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', session_id: 1 });
+    const second = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', is_presencial: true, presencial_time_from: '08:00', presencial_time_to: '09:00', presencial_location: { lat: 1, lng: 2 } });
+    expect(second.session_instance.id).toBe(first.session_instance.id);
+    expect(second.session_instance.name).toBe('Fondo suave');
+    expect(second.is_presencial).toBe(true);
+  });
+
+  test('instantiateSession vía mockUpsertCalendarDay guarda session_id/exercise_id de origen (Gap 7)', async () => {
+    const day = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', session_id: 1 });
+    expect(day.session_instance.session_id).toBe(1);
+    expect(day.session_instance.exercises[0].exercise_id).toEqual(expect.any(Number));
+  });
+
   test('mockUpsertCalendarDay a cancelled sin session_id en el payload preserva la instancia existente', async () => {
     await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'training', session_id: 1 });
     const cancelled = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'cancelled', cancelled_reason: 'Lluvia' });

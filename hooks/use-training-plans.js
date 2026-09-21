@@ -15,10 +15,11 @@ import { useTrainingPlanStore } from '../store/training-plan-store.js';
 // migrados) en pasar a Query, ahora que el diseño de TrainingPlan quedó
 // estable (duración variable, sin caducidad) y el backend real está
 // cableado (ver docs/BACKEND_API_GAPS.md gap 4). `store/training-plan-store.js`
-// sigue existiendo para lo que NO es catálogo puro: `groupTrainingPlanIds`
-// (100% local) y la asignación individual vieja (`assignToRunner`/
-// `fetchMyPlans`/etc., mockeada, sin reemplazo real todavía — ver la
-// nota de obsolescencia en docs/BACKEND_TRAINING_PLANS_SPEC.md §3.6).
+// sigue existiendo para lo que NO es catálogo puro: `myPlans`/`fetchMyPlans`
+// (asignación individual al corredor, vieja y mockeada, ver la nota de
+// obsolescencia en docs/BACKEND_TRAINING_PLANS_SPEC.md §3.6) y "plan
+// actual". La asignación a un grupo se retiró 2026-09-21 — el mecanismo
+// real es el calendario de grupo.
 
 export function useTrainingPlans(ownerId) {
   const query = useQuery({

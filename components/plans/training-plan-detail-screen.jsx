@@ -258,15 +258,6 @@ function TrainingPlanDetailScreenContent({ planId }) {
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="training-plan-detail-edit-button-label" testID="training-plan-detail-edit-button-label">Editar</Text>
             </Pressable>
             <Pressable
-              className="flex-row items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
-              nativeID="training-plan-detail-assign-button"
-              onPress={() => router.push(`/training-plans/${planId}/assign`)}
-              testID="training-plan-detail-assign-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-arrow-right-outline" size={16} />
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="training-plan-detail-assign-button-label" testID="training-plan-detail-assign-button-label">Asignar</Text>
-            </Pressable>
-            <Pressable
               className="flex-row items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800 disabled:opacity-60"
               disabled={cloning}
               nativeID="training-plan-detail-clone-button"

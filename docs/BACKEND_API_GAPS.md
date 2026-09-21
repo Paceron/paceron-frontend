@@ -107,7 +107,21 @@ es un gap — es un cambio de contrato ya deployado que el frontend tiene
 que adaptar. En el camino se detectaron 2 mejoras deseables que sí son
 gaps propios, pedidas por el usuario al revisar el impacto:
 
-## Gap 7 — instancias de sesión sin referencia al catálogo de origen, y reinstanciación obligatoria en cada guardado
+## Gap 7 — instancias de sesión sin referencia al catálogo de origen, y reinstanciación obligatoria en cada guardado [RESUELTO]
+
+**Actualización 2026-09-21: RESUELTO.** El backend cerró los dos puntos,
+ambos aditivos: (1) `session_instance.session_id`/`exercises[].exercise_id`
+ya vienen en la respuesta (`null` en instancias creadas antes del cambio,
+sin backfill — poblado siempre en instancias nuevas); (2) `PUT`/`bulk` con
+`kind=training` ya no requieren `session_id` si el día ya tiene instancia
+— omitirlo la conserva sin reinstanciar. `stamp` no cambia, ahí sigue
+siendo requerido. Frontend adaptado: `services/normalizers.js` exporta
+`KEEP_CURRENT_SESSION` (sentinel `'__keep__'`), el select de sesión de
+`group-calendar-day-screen.jsx` lo ofrece como opción por default cuando
+el día ya tiene una instancia — reemplaza por completo el match-por-nombre
+que se había armado como mejor esfuerzo mientras esto no existía
+(`utils/session-instance-match.js`, ya eliminado). Detalle original del
+pedido, dejado como referencia histórica abajo.
 
 Confirmado en código (`cmd/api/services/calendar_service.go`,
 `cmd/api/domains/instance/instance_response.go`, repo backend):
@@ -137,13 +151,8 @@ Confirmado en código (`cmd/api/services/calendar_service.go`,
    `nil` y no hay ninguna instancia previa que conservar (alta nueva sin
    elegir sesión).
 
-**Impacto en frontend, bloqueado hasta que se resuelva:** el selector de
-sesión de la pantalla de edición de un día (`docs/superpowers/plans/2026-09-19-group-calendar.md`,
-Task 7) no puede sumar "la instancia actual" como opción del select para
-evitar reinstanciar sin querer — mientras tanto, se construye con el
-comportamiento actual (siempre exige re-elegir, siempre reinstancia,
-bloque de solo lectura con la instancia vigente vía match por nombre
-contra el catálogo como mejor esfuerzo). Cuando se resuelva este gap, es
-un parche chico del lado del frontend: sumar la opción "actual" al
-select usando el nuevo `session_id` embebido para saber si sigue
-existiendo en catálogo.
+**Impacto en frontend (histórico, ya no vigente):** mientras este gap
+estuvo abierto, el selector de sesión de la pantalla de edición de un día
+no podía sumar "la instancia actual" como opción — se construyó con
+match-por-nombre como mejor esfuerzo. Ver actualización 2026-09-21 arriba
+para el estado real ya resuelto.
