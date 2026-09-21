@@ -26,6 +26,7 @@ export function useTrainingPlanForm({ initial, ownerId } = {}) {
       if (clamped < prev.length) return prev.slice(0, clamped);
       const extra = Array.from({ length: clamped - prev.length }, (_, i) => ({
         sequenceNo: prev.length + i + 1, kind: 'rest', otherName: null, sessionId: null,
+        isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '',
       }));
       return [...prev, ...extra];
     });
@@ -42,6 +43,9 @@ export function useTrainingPlanForm({ initial, ownerId } = {}) {
 
     const otherDaysWithoutName = days.some((d) => d.kind === 'other' && !d.otherName?.trim());
     if (otherDaysWithoutName) next.days = 'Ingresá el nombre de la actividad en los días marcados como "Otra actividad".';
+
+    const badPresencialTimes = days.some((d) => d.kind === 'training' && d.isPresencial && (!d.presencialTimeFrom || !d.presencialTimeTo || d.presencialTimeTo <= d.presencialTimeFrom));
+    if (badPresencialTimes) next.days = 'Revisá el horario de los días presenciales: hace falta desde y hasta, y hasta debe ser posterior a desde.';
 
     setErrors(next);
     return Object.keys(next).length === 0;

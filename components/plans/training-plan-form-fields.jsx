@@ -8,7 +8,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useSessions } from '../../hooks/use-sessions.js';
 import { useExercises } from '../../hooks/use-exercises.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { InputField } from '../forms/fields.jsx';
+import { InputField, TimeField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { DAY_KIND_META } from './exercise-kind-meta.js';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
@@ -53,6 +53,48 @@ function DaySegmentedPicker({ idPrefix, value, onChange }) {
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+// Toggle + horario "por default" del día — solo aplica a días de
+// entrenamiento. Sin ubicación acá a propósito (ver
+// docs/superpowers/specs/2026-09-21-calendar-plan-stamping-design.md §2):
+// la ubicación concreta se completa recién al estampar el plan a un
+// grupo real, nunca en el catálogo.
+function PlanDayPresencialFields({ idPrefix, day, onChangeDay }) {
+  return (
+    <View className="mt-2 gap-2" nativeID={`${idPrefix}-presencial-fields`} testID={`${idPrefix}-presencial-fields`}>
+      <Pressable
+        accessibilityLabel="¿Presencial por default?"
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: day.isPresencial }}
+        className="flex-row items-center gap-2 py-1"
+        nativeID={`${idPrefix}-presencial-checkbox`}
+        onPress={() => onChangeDay({ isPresencial: !day.isPresencial })}
+        testID={`${idPrefix}-presencial-checkbox`}
+      >
+        <View
+          className={`h-4 w-4 items-center justify-center rounded border ${day.isPresencial ? 'border-primary bg-primary' : 'border-slate-300 dark:border-slate-600'}`}
+          nativeID={`${idPrefix}-presencial-checkbox-box`}
+          testID={`${idPrefix}-presencial-checkbox-box`}
+        >
+          {day.isPresencial && <MaterialCommunityIcons color="#111518" name="check-bold" size={10} />}
+        </View>
+        <Text className="text-xs font-medium text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-presencial-checkbox-label`} testID={`${idPrefix}-presencial-checkbox-label`}>
+          Presencial por default (se puede ajustar al estampar)
+        </Text>
+      </Pressable>
+      {day.isPresencial && (
+        <View className="flex-row gap-3" nativeID={`${idPrefix}-time-row`} testID={`${idPrefix}-time-row`}>
+          <View className="flex-1" nativeID={`${idPrefix}-time-from-wrapper`} testID={`${idPrefix}-time-from-wrapper`}>
+            <TimeField label="Hora desde" onChange={(v) => onChangeDay({ presencialTimeFrom: v })} value={day.presencialTimeFrom} />
+          </View>
+          <View className="flex-1" nativeID={`${idPrefix}-time-to-wrapper`} testID={`${idPrefix}-time-to-wrapper`}>
+            <TimeField label="Hora hasta" onChange={(v) => onChangeDay({ presencialTimeTo: v })} value={day.presencialTimeTo} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -138,9 +180,10 @@ function DayHeaderRowWide({ day, sessions, onChangeDay, onKindChange, idPrefix }
           })}
         </View>
       </View>
-      {day.kind === 'training' && selectedSession && (
+      {day.kind === 'training' && (
         <View className="pl-24 pt-2" nativeID={`${idPrefix}-session-preview`} testID={`${idPrefix}-session-preview`}>
-          <SessionExercisesPreview session={selectedSession} />
+          {selectedSession && <SessionExercisesPreview session={selectedSession} />}
+          <PlanDayPresencialFields day={day} idPrefix={idPrefix} onChangeDay={onChangeDay} />
         </View>
       )}
     </>
@@ -167,9 +210,9 @@ function DayRow({ day, sessions, onChangeDay }) {
     if (kind === 'training') {
       onChangeDay({ kind, otherName: null, sessionId: day.sessionId });
     } else if (kind === 'other') {
-      onChangeDay({ kind, otherName: day.otherName ?? '', sessionId: null });
+      onChangeDay({ kind, otherName: day.otherName ?? '', sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '' });
     } else {
-      onChangeDay({ kind, otherName: null, sessionId: null });
+      onChangeDay({ kind, otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '' });
     }
   };
 
@@ -214,6 +257,7 @@ function DayRow({ day, sessions, onChangeDay }) {
             value={day.sessionId ?? ''}
           />
           <SessionExercisesPreview session={selectedSession} />
+          <PlanDayPresencialFields day={day} idPrefix={idPrefix} onChangeDay={onChangeDay} />
         </View>
       )}
     </>
