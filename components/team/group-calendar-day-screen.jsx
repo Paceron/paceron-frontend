@@ -20,7 +20,7 @@ import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.j
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { KEEP_CURRENT_SESSION } from '../../services/normalizers.js';
 
-function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
+function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
   const router = useRouter();
   const colors = useThemeColors();
   // userId sale directo del auth store (sincrónico), sin esperar
@@ -64,8 +64,11 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
       setPresencialTimeFrom(existingDay.presencialTimeFrom ?? '');
       setPresencialTimeTo(existingDay.presencialTimeTo ?? '');
       setPresencialLocation(existingDay.presencialLocation ?? null);
+      if (action === 'cancel' && existingDay.kind === 'training') {
+        setCancelPromptVisible(true);
+      }
     }
-  }, [loadingDay, existingDay]);
+  }, [loadingDay, existingDay, action]);
 
   const isDirty = useFormDirty({ kind, otherName, sessionId, isPresencial, presencialTimeFrom, presencialTimeTo, presencialLocation });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
@@ -370,10 +373,10 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date }) {
   );
 }
 
-export function GroupCalendarDayScreen({ teamId, groupId, date }) {
+export function GroupCalendarDayScreen({ teamId, groupId, date, action }) {
   return (
     <RequireAuth>
-      <GroupCalendarDayScreenContent date={date} groupId={groupId} teamId={teamId} />
+      <GroupCalendarDayScreenContent action={action} date={date} groupId={groupId} teamId={teamId} />
     </RequireAuth>
   );
 }
