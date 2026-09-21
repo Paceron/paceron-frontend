@@ -265,6 +265,157 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   );
 }
 
+// HH:mm <-> Date. Hermano de DateField (no una variante con prop de modo)
+// — formato y validación de tiempo son distintos de fecha, y DateField ya
+// está hardcodeado a mode="date"/DD-MM-AAAA.
+function parseHHmm(value) {
+  const m = /^(\d{2}):(\d{2})$/.exec(value || '');
+  const date = new Date();
+  if (!m) {
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+  date.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  return date;
+}
+
+function formatHHmm(date) {
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+export function TimeField({ label, value, onChange, onBlur, error, touched, disabled }) {
+  const colors = useThemeColors();
+  const { themeMode } = useThemeMode();
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const slug = slugify(label);
+
+  const borderClass = error
+    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
+    : touched
+    ? 'border-primary bg-white dark:bg-slate-900'
+    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
+
+  if (isWeb) {
+    return (
+      <View className="mb-5" nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
+        <Text className={FIELD_LABEL} nativeID={`time-field-${slug}-label`} testID={`time-field-${slug}-label`}>{label}</Text>
+        <View className="flex-row items-center gap-2" nativeID={`time-field-${slug}-row`} testID={`time-field-${slug}-row`}>
+          <View className="flex-1 relative" nativeID={`time-field-${slug}-input-wrapper`} testID={`time-field-${slug}-input-wrapper`}>
+            <input
+              type="time"
+              className={`${DATE_BASE} ${borderClass}`}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onBlur={onBlur}
+              disabled={disabled}
+            />
+          </View>
+        </View>
+        <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+        </View>
+      </View>
+    );
+  }
+
+  const handleChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setPickerVisible(false);
+      onBlur?.();
+    }
+    if (selectedDate) onChange(formatHHmm(selectedDate));
+  };
+
+  const handleClose = () => {
+    setPickerVisible(false);
+    onBlur?.();
+  };
+
+  return (
+    <View className="mb-5" nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`time-field-${slug}-label`} testID={`time-field-${slug}-label`}>{label}</Text>
+      <Pressable
+        className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
+        disabled={disabled}
+        onPress={() => setPickerVisible(true)}
+        nativeID={`time-field-${slug}-trigger`}
+        testID={`time-field-${slug}-trigger`}
+      >
+        <Text
+          className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          nativeID={`time-field-${slug}-value`}
+          testID={`time-field-${slug}-value`}
+        >
+          {value || 'HH:mm'}
+        </Text>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clock-outline" size={20} />
+      </Pressable>
+      <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
+        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+      </View>
+
+      {pickerVisible && Platform.OS === 'android' && (
+        <DateTimePicker
+          accentColor="#8cc63e"
+          display="default"
+          mode="time"
+          onChange={handleChange}
+          value={parseHHmm(value)}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <Modal
+          animationType="fade"
+          onRequestClose={handleClose}
+          transparent
+          visible={pickerVisible}
+          nativeID={`time-field-${slug}-modal`}
+          testID={`time-field-${slug}-modal`}
+        >
+          <Pressable
+            className="flex-1 justify-end bg-black/50"
+            onPress={handleClose}
+            nativeID={`time-field-${slug}-modal-backdrop`}
+            testID={`time-field-${slug}-modal-backdrop`}
+          >
+            <Pressable
+              className="rounded-t-2xl bg-white p-4 dark:bg-surface-2"
+              onPress={() => {}}
+              nativeID={`time-field-${slug}-modal-content`}
+              testID={`time-field-${slug}-modal-content`}
+            >
+              <DateTimePicker
+                display="inline"
+                mode="time"
+                onChange={handleChange}
+                themeVariant={themeMode}
+                value={parseHHmm(value)}
+              />
+              <Pressable
+                className="mt-2 h-11 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
+                onPress={handleClose}
+                nativeID={`time-field-${slug}-modal-done-button`}
+                testID={`time-field-${slug}-modal-done-button`}
+              >
+                <Text
+                  className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
+                  nativeID={`time-field-${slug}-modal-done-label`}
+                  testID={`time-field-${slug}-modal-done-label`}
+                >
+                  Listo
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+    </View>
+  );
+}
+
 export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel }) {
   const colors = useThemeColors();
   const slug = slugify(label);
