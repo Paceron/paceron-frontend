@@ -4,8 +4,10 @@ import {
   upsertCalendarDay as upsertCalendarDayService,
   deleteCalendarDay as deleteCalendarDayService,
   stampPlan as stampPlanService,
+  bulkAssignDays as bulkAssignDaysService,
+  bulkClearDays as bulkClearDaysService,
 } from '../services/calendar.js';
-import { toGroupCalendarDayModel, toCalendarDayPayload, toStampPayload } from '../services/normalizers.js';
+import { toGroupCalendarDayModel, toCalendarDayPayload, toStampPayload, toBulkAssignPayload } from '../services/normalizers.js';
 
 // Calendario de un grupo — TanStack Query, mismo criterio que
 // hooks/use-sessions.js. Se pide por rango (mes visible) — GroupCalendarDay
@@ -63,6 +65,30 @@ export function useGroupCalendarMutations(groupId) {
     onSuccess: (result) => { if (result.success) invalidate(); },
   });
 
+  const bulkAssignMutation = useMutation({
+    mutationFn: async ({ dates, day }) => {
+      try {
+        const updated = await bulkAssignDaysService(groupId, toBulkAssignPayload({ dates, day }));
+        return { success: true, days: updated.map(toGroupCalendarDayModel) };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+    onSuccess: (result) => { if (result.success) invalidate(); },
+  });
+
+  const bulkClearMutation = useMutation({
+    mutationFn: async ({ dates }) => {
+      try {
+        await bulkClearDaysService(groupId, dates);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+    onSuccess: (result) => { if (result.success) invalidate(); },
+  });
+
   return {
     upsertDay: upsertDayMutation.mutateAsync,
     isUpserting: upsertDayMutation.isPending,
@@ -70,5 +96,9 @@ export function useGroupCalendarMutations(groupId) {
     isDeleting: deleteDayMutation.isPending,
     stampPlan: stampPlanMutation.mutateAsync,
     isStamping: stampPlanMutation.isPending,
+    bulkAssign: bulkAssignMutation.mutateAsync,
+    isBulkAssigning: bulkAssignMutation.isPending,
+    bulkClear: bulkClearMutation.mutateAsync,
+    isBulkClearing: bulkClearMutation.isPending,
   };
 }
