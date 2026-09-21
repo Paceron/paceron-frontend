@@ -3,8 +3,9 @@ import {
   getGroupCalendar as getGroupCalendarService,
   upsertCalendarDay as upsertCalendarDayService,
   deleteCalendarDay as deleteCalendarDayService,
+  stampPlan as stampPlanService,
 } from '../services/calendar.js';
-import { toGroupCalendarDayModel, toCalendarDayPayload } from '../services/normalizers.js';
+import { toGroupCalendarDayModel, toCalendarDayPayload, toStampPayload } from '../services/normalizers.js';
 
 // Calendario de un grupo — TanStack Query, mismo criterio que
 // hooks/use-sessions.js. Se pide por rango (mes visible) — GroupCalendarDay
@@ -49,10 +50,25 @@ export function useGroupCalendarMutations(groupId) {
     onSuccess: (result) => { if (result.success) invalidate(); },
   });
 
+  const stampPlanMutation = useMutation({
+    mutationFn: async ({ planId, startDate, force }) => {
+      try {
+        const result = await stampPlanService(groupId, toStampPayload({ planId, startDate, force }));
+        if (result.conflict) return { success: false, conflict: true, dates: result.dates };
+        return { success: true, days: result.days.map(toGroupCalendarDayModel) };
+      } catch (error) {
+        return { success: false, conflict: false, error: error.message };
+      }
+    },
+    onSuccess: (result) => { if (result.success) invalidate(); },
+  });
+
   return {
     upsertDay: upsertDayMutation.mutateAsync,
     isUpserting: upsertDayMutation.isPending,
     deleteDay: deleteDayMutation.mutateAsync,
     isDeleting: deleteDayMutation.isPending,
+    stampPlan: stampPlanMutation.mutateAsync,
+    isStamping: stampPlanMutation.isPending,
   };
 }
