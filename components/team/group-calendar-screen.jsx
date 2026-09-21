@@ -1,16 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import '../../config/calendarLocale.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
-import { useGroupCalendar } from '../../hooks/use-group-calendar.js';
+import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { StampPlanModal } from './stamp-plan-modal.jsx';
+import { CalendarDayMenu } from './calendar-day-menu.jsx';
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 const KIND_DOT_COLORS = { rest: '#94a3b8', other: '#f59e0b', training: '#22c55e', cancelled: '#ef4444' };
@@ -26,8 +30,9 @@ function monthRange(year, month) {
   return { from, to };
 }
 
-function CalendarDayCell({ date, state, marking, onPress }) {
+function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu }) {
   const colors = useThemeColors();
+  const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
   const closed = marking ? isCalendarDayClosed(date.dateString, marking) : false;
   // Tinte leve de fondo por kind — ayuda a ubicar de un vistazo qué tipo
@@ -36,11 +41,22 @@ function CalendarDayCell({ date, state, marking, onPress }) {
   // sin necesitar una paleta de tinte aparte por tema.
   const tintAlpha = closed ? '14' : '26';
   const tintColor = marking ? `${KIND_DOT_COLORS[marking.kind]}${tintAlpha}` : 'transparent';
+
+  const handlePress = () => {
+    if (!containerRef.current || !cellRef.current) return;
+    containerRef.current.measureInWindow((containerX, containerY) => {
+      cellRef.current?.measureInWindow((x, y, width, height) => {
+        onOpenMenu(date.dateString, { x: x - containerX, y: y - containerY, width, height });
+      });
+    });
+  };
+
   return (
     <Pressable
+      ref={cellRef}
       className="h-14 w-full items-center justify-start gap-1 rounded-md pt-1"
       nativeID={`group-calendar-day-${date.dateString}`}
-      onPress={() => onPress(date)}
+      onPress={handlePress}
       style={{ backgroundColor: tintColor }}
       testID={`group-calendar-day-${date.dateString}`}
     >
@@ -86,16 +102,49 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const [stampModalVisible, setStampModalVisible] = useState(false);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
+  const { deleteDay } = useGroupCalendarMutations(groupId);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
+  const monthViewRef = useRef(null);
+  const [openDayMenu, setOpenDayMenu] = useState(null);
 
   const markingsByDate = useMemo(
     () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial, presencialTimeFrom: d.presencialTimeFrom }])),
     [days],
   );
 
-  const handleDayPress = (date) => {
-    router.push(`/teams/${teamId}/groups/${groupId}/calendar/${date.dateString}`);
+  const handleOpenDayMenu = (dateString, anchor) => {
+    setOpenDayMenu({ date: dateString, anchor });
   };
+
+  const handleCloseDayMenu = () => setOpenDayMenu(null);
+
+  const handleAssignOrEdit = () => {
+    const date = openDayMenu.date;
+    handleCloseDayMenu();
+    router.push(`/teams/${teamId}/groups/${groupId}/calendar/${date}`);
+  };
+
+  const handleClearDay = async () => {
+    const date = openDayMenu.date;
+    handleCloseDayMenu();
+    const result = await deleteDay({ date });
+    if (!result.success) {
+      notifyError();
+      Toast.show({ type: 'error', text1: 'No pudimos vaciar el día', text2: result.error });
+      return;
+    }
+    notifySuccess();
+    Toast.show({ type: 'success', text1: 'Día vaciado' });
+  };
+
+  const handleCancelSession = () => {
+    const date = openDayMenu.date;
+    handleCloseDayMenu();
+    router.push(`/teams/${teamId}/groups/${groupId}/calendar/${date}?action=cancel`);
+  };
+
+  const openMarking = openDayMenu ? markingsByDate[openDayMenu.date] : null;
+  const openClosed = openDayMenu && openMarking ? isCalendarDayClosed(openDayMenu.date, openMarking) : false;
 
   // Nunca desmontar el <Calendar> por loading — react-native-calendars
   // no es controlado por default, así que desmontarlo y volver a montarlo
@@ -154,14 +203,15 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         </View>
 
         <View
-          className="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
+          className="relative rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
           nativeID="group-calendar-month-view"
+          ref={monthViewRef}
           testID="group-calendar-month-view"
         >
           <Calendar
             current={currentMonthISO}
             dayComponent={({ date, state }) => (
-              <CalendarDayCell date={date} marking={markingsByDate[date.dateString]} onPress={handleDayPress} state={state} />
+              <CalendarDayCell containerRef={monthViewRef} date={date} marking={markingsByDate[date.dateString]} onOpenMenu={handleOpenDayMenu} state={state} />
             )}
             firstDay={1}
             onMonthChange={(month) => { setVisibleYear(month.year); setVisibleMonth(month.month); }}
@@ -180,6 +230,23 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
       </View>
 
       <StampPlanModal groupId={groupId} onClose={() => setStampModalVisible(false)} ownerId={userId} visible={stampModalVisible} />
+
+      <AnimatedDropdown
+        anchorStyle={openDayMenu ? { left: openDayMenu.anchor.x, top: openDayMenu.anchor.y + openDayMenu.anchor.height + 4 } : {}}
+        onClose={handleCloseDayMenu}
+        open={Boolean(openDayMenu)}
+      >
+        {openDayMenu && (
+          <CalendarDayMenu
+            closed={openClosed}
+            hasContent={Boolean(openMarking)}
+            isTraining={openMarking?.kind === 'training'}
+            onAssignOrEdit={handleAssignOrEdit}
+            onCancel={handleCancelSession}
+            onClear={handleClearDay}
+          />
+        )}
+      </AnimatedDropdown>
     </View>
   );
 }
