@@ -104,6 +104,15 @@ function DayRow({ day, session, exercisesById }) {
 
       {expanded && (
         <View className="gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-700" nativeID={`${idPrefix}-exercises`} testID={`${idPrefix}-exercises`}>
+          {day.isPresencial && (
+            <View className="mb-1 flex-row items-center gap-1.5" nativeID={`${idPrefix}-presencial-summary`} testID={`${idPrefix}-presencial-summary`}>
+              <MaterialCommunityIcons color="#94a3b8" name="map-marker-outline" size={14} />
+              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-presencial-summary-label`} testID={`${idPrefix}-presencial-summary-label`}>
+                Presencial · {day.presencialTimeFrom}–{day.presencialTimeTo}
+                {day.presencialLocation?.label ? ` · ${day.presencialLocation.label}` : ''}
+              </Text>
+            </View>
+          )}
           {orderedEntries.map((entry) => (
             <ExerciseRow
               exercise={exercisesById.get(entry.exerciseId)}

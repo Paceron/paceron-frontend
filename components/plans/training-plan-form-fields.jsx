@@ -91,10 +91,10 @@ function PlanDayPresencialFields({ idPrefix, day, onChangeDay }) {
       {day.isPresencial && (
         <View className="flex-row gap-3" nativeID={`${idPrefix}-time-row`} testID={`${idPrefix}-time-row`}>
           <View className="flex-1" nativeID={`${idPrefix}-time-from-wrapper`} testID={`${idPrefix}-time-from-wrapper`}>
-            <TimeField label="Hora desde" onChange={(v) => onChangeDay({ presencialTimeFrom: v })} value={day.presencialTimeFrom} />
+            <TimeField className="mb-2" hideErrorRow label="Hora desde" onChange={(v) => onChangeDay({ presencialTimeFrom: v })} value={day.presencialTimeFrom} />
           </View>
           <View className="flex-1" nativeID={`${idPrefix}-time-to-wrapper`} testID={`${idPrefix}-time-to-wrapper`}>
-            <TimeField label="Hora hasta" onChange={(v) => onChangeDay({ presencialTimeTo: v })} value={day.presencialTimeTo} />
+            <TimeField className="mb-2" hideErrorRow label="Hora hasta" onChange={(v) => onChangeDay({ presencialTimeTo: v })} value={day.presencialTimeTo} />
           </View>
         </View>
       )}

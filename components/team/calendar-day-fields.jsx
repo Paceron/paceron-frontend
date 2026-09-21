@@ -139,10 +139,10 @@ export function CalendarDayFields({
             <>
               <View className="flex-row gap-3" nativeID={`${idPrefix}-time-row`} testID={`${idPrefix}-time-row`}>
                 <View className="flex-1" nativeID={`${idPrefix}-time-from-wrapper`} testID={`${idPrefix}-time-from-wrapper`}>
-                  <TimeField label="Hora desde" onChange={onPresencialTimeFromChange} value={presencialTimeFrom} />
+                  <TimeField className="mb-2" hideErrorRow label="Hora desde" onChange={onPresencialTimeFromChange} value={presencialTimeFrom} />
                 </View>
                 <View className="flex-1" nativeID={`${idPrefix}-time-to-wrapper`} testID={`${idPrefix}-time-to-wrapper`}>
-                  <TimeField label="Hora hasta" onChange={onPresencialTimeToChange} value={presencialTimeTo} />
+                  <TimeField className="mb-2" hideErrorRow label="Hora hasta" onChange={onPresencialTimeToChange} value={presencialTimeTo} />
                 </View>
               </View>
               <View className="mb-5" nativeID={`${idPrefix}-location-wrapper`} testID={`${idPrefix}-location-wrapper`}>

@@ -287,7 +287,7 @@ function formatHHmm(date) {
   return `${hh}:${mm}`;
 }
 
-export function TimeField({ label, value, onChange, onBlur, error, touched, disabled }) {
+export function TimeField({ label, value, onChange, onBlur, error, touched, disabled, hideErrorRow, className }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -301,7 +301,7 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
 
   if (isWeb) {
     return (
-      <View className="mb-5" nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
+      <View className={className ?? 'mb-5'} nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
         <Text className={FIELD_LABEL} nativeID={`time-field-${slug}-label`} testID={`time-field-${slug}-label`}>{label}</Text>
         <View className="flex-row items-center gap-2" nativeID={`time-field-${slug}-row`} testID={`time-field-${slug}-row`}>
           <View className="flex-1 relative" nativeID={`time-field-${slug}-input-wrapper`} testID={`time-field-${slug}-input-wrapper`}>
@@ -315,9 +315,11 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
             />
           </View>
         </View>
-        <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
-          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
-        </View>
+        {!hideErrorRow && (
+          <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
+            {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+          </View>
+        )}
       </View>
     );
   }
@@ -336,7 +338,7 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
   };
 
   return (
-    <View className="mb-5" nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
+    <View className={className ?? 'mb-5'} nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
       <Text className={FIELD_LABEL} nativeID={`time-field-${slug}-label`} testID={`time-field-${slug}-label`}>{label}</Text>
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
@@ -354,9 +356,11 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
         </Text>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clock-outline" size={20} />
       </Pressable>
-      <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
-        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
-      </View>
+      {!hideErrorRow && (
+        <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+        </View>
+      )}
 
       {pickerVisible && Platform.OS === 'android' && (
         <DateTimePicker
