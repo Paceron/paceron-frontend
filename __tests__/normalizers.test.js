@@ -684,13 +684,19 @@ describe('toCreateTrainingPlanPayload — PlanDay presencial', () => {
 describe('toStampPayload', () => {
   test('arma el body de POST stamp', () => {
     expect(toStampPayload({ planId: '5', startDate: '2026-03-10', force: false })).toEqual({
-      plan_id: 5, start_date: '2026-03-10', force: false,
+      plan_id: 5, start_date: '2026-03-10', force: false, exclude_dates: [],
     });
   });
 
   test('force default a false si no se pasa', () => {
     expect(toStampPayload({ planId: '5', startDate: '2026-03-10' })).toEqual({
-      plan_id: 5, start_date: '2026-03-10', force: false,
+      plan_id: 5, start_date: '2026-03-10', force: false, exclude_dates: [],
+    });
+  });
+
+  test('incluye exclude_dates cuando se pasa (Gap 8)', () => {
+    expect(toStampPayload({ planId: '5', startDate: '2026-03-10', force: true, excludeDates: ['2026-03-12'] })).toEqual({
+      plan_id: 5, start_date: '2026-03-10', force: true, exclude_dates: ['2026-03-12'],
     });
   });
 });

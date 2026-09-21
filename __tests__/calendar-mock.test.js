@@ -138,6 +138,23 @@ describe('mockStampPlan', () => {
     expect(result.conflict).toBe(false);
     expect(result.days[1].other_name).toBe('Pisado');
   });
+
+  test('exclude_dates (Gap 8) salta esas fechas por completo, sin contarlas para el conflicto', async () => {
+    await mockUpsertCalendarDay(1, '2026-10-06', { kind: 'other', other_name: 'Original' });
+    const plan = await mockCreateTrainingPlan({
+      owner_id: 1, name: 'Plan test', description: '',
+      days: [
+        { sequence_no: 1, kind: 'rest', other_name: null, session_id: null },
+        { sequence_no: 2, kind: 'other', other_name: 'Nuevo', session_id: null },
+      ],
+    });
+    const result = await mockStampPlan(1, { plan_id: plan.id, start_date: '2026-10-05', force: false, exclude_dates: ['2026-10-06'] });
+    expect(result.conflict).toBe(false);
+    expect(result.days).toHaveLength(1);
+    expect(result.days[0].date).toBe('2026-10-05');
+    const untouched = await mockGetGroupCalendar(1, '2026-10-06', '2026-10-06');
+    expect(untouched[0].other_name).toBe('Original');
+  });
 });
 
 describe('mockBulkAssignDays', () => {

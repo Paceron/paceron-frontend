@@ -53,9 +53,9 @@ export function useGroupCalendarMutations(groupId) {
   });
 
   const stampPlanMutation = useMutation({
-    mutationFn: async ({ planId, startDate, force }) => {
+    mutationFn: async ({ planId, startDate, force, excludeDates }) => {
       try {
-        const result = await stampPlanService(groupId, toStampPayload({ planId, startDate, force }));
+        const result = await stampPlanService(groupId, toStampPayload({ planId, startDate, force, excludeDates }));
         if (result.conflict) return { success: false, conflict: true, dates: result.dates };
         return { success: true, days: result.days.map(toGroupCalendarDayModel) };
       } catch (error) {

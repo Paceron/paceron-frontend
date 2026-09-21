@@ -630,9 +630,11 @@ export function toCalendarDayPayload(day) {
 }
 
 // Body de POST /groups/{id}/calendar/stamp — ver
-// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §4.
-export function toStampPayload({ planId, startDate, force }) {
-  return { plan_id: Number(planId), start_date: startDate, force: Boolean(force) };
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §4. `exclude_dates` (Gap 8,
+// resuelto) es opcional — fechas del rango que se saltan por completo,
+// sin importar conflicto ni `force`.
+export function toStampPayload({ planId, startDate, force, excludeDates }) {
+  return { plan_id: Number(planId), start_date: startDate, force: Boolean(force), exclude_dates: excludeDates ?? [] };
 }
 
 // Body de POST /groups/{id}/calendar/bulk — mismo shape por-día que

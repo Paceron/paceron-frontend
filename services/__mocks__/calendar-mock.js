@@ -80,17 +80,19 @@ export async function mockUpsertCalendarDay(groupId, date, payload) {
   return day;
 }
 
-export async function mockStampPlan(groupId, { plan_id, start_date, force }) {
+export async function mockStampPlan(groupId, { plan_id, start_date, force, exclude_dates }) {
   const plan = await mockGetTrainingPlan(plan_id);
   const dates = plan.days.map((_, i) => addDaysISO(start_date, i));
+  const excluded = new Set(exclude_dates ?? []);
 
-  const conflicts = dates.filter((date) => Boolean(mockCalendarDays[keyFor(groupId, date)]));
+  const conflicts = dates.filter((date) => !excluded.has(date) && Boolean(mockCalendarDays[keyFor(groupId, date)]));
   if (conflicts.length > 0 && !force) {
     return { conflict: true, dates: conflicts };
   }
 
   const created = [];
   for (let i = 0; i < plan.days.length; i++) {
+    if (excluded.has(dates[i])) continue;
     const planDay = plan.days[i];
     const presencial = planDay.kind === 'training' && Boolean(planDay.default_presencial);
     const payload = {

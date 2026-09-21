@@ -16,37 +16,51 @@ import { toISODate } from '../../utils/date-field-format.js';
 import { buildStampDraft, addDaysISO, findClosedDraftDates } from '../../utils/build-stamp-draft.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
-function StampPreviewRow({ day, onToggleExpand, expanded, sessionOptions, onChangeDay, existingDay }) {
+function StampPreviewRow({ day, onToggleExpand, expanded, sessionOptions, onChangeDay, existingDay, onToggleExclude }) {
   const colors = useThemeColors();
   const idPrefix = `stamp-plan-day-${day.sequenceNo}`;
   const kindLabel = day.kind === 'rest' ? 'Descanso' : day.kind === 'other' ? (day.otherName || 'Otra actividad') : 'Entrenamiento';
+  const excluded = Boolean(day.excluded);
 
   return (
     <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <Pressable
-        accessibilityRole="button"
-        className="flex-row items-center gap-2 active:opacity-80"
-        nativeID={`${idPrefix}-toggle`}
-        onPress={onToggleExpand}
-        testID={`${idPrefix}-toggle`}
-      >
-        <Text className="w-24 shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
-          {day.date}
-        </Text>
-        <Text className="flex-1 text-sm text-slate-900 dark:text-white" nativeID={`${idPrefix}-summary`} testID={`${idPrefix}-summary`}>
-          {kindLabel}
-        </Text>
+      <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-row`} testID={`${idPrefix}-row`}>
+        <Pressable
+          accessibilityRole="button"
+          className="flex-1 flex-row items-center gap-2 active:opacity-80"
+          disabled={excluded}
+          nativeID={`${idPrefix}-toggle`}
+          onPress={onToggleExpand}
+          testID={`${idPrefix}-toggle`}
+        >
+          <Text className="w-24 shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
+            {day.date}
+          </Text>
+          <Text className="flex-1 text-sm text-slate-900 dark:text-white" nativeID={`${idPrefix}-summary`} testID={`${idPrefix}-summary`}>
+            {kindLabel}
+          </Text>
+          {!excluded && <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />}
+        </Pressable>
         {existingDay && (
-          <View className="rounded-full bg-amber-100 px-2 py-0.5 dark:bg-amber-900/30" nativeID={`${idPrefix}-conflict-badge`} testID={`${idPrefix}-conflict-badge`}>
-            <Text className="text-[10px] font-semibold text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-conflict-badge-label`} testID={`${idPrefix}-conflict-badge-label`}>
-              Se pisa
+          <Pressable
+            accessibilityLabel={excluded ? 'Conservar el contenido actual' : 'Se va a pisar — tocar para conservar'}
+            className={`rounded-full px-2 py-0.5 ${excluded ? 'bg-slate-200 dark:bg-slate-700' : 'bg-amber-100 dark:bg-amber-900/30'}`}
+            nativeID={`${idPrefix}-conflict-badge`}
+            onPress={() => onToggleExclude(day.sequenceNo)}
+            testID={`${idPrefix}-conflict-badge`}
+          >
+            <Text
+              className={`text-[10px] font-semibold ${excluded ? 'text-slate-600 dark:text-slate-300' : 'text-amber-700 dark:text-amber-400'}`}
+              nativeID={`${idPrefix}-conflict-badge-label`}
+              testID={`${idPrefix}-conflict-badge-label`}
+            >
+              {excluded ? 'Se conserva' : 'Se pisa'}
             </Text>
-          </View>
+          </Pressable>
         )}
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
-      </Pressable>
+      </View>
 
-      {expanded && (
+      {expanded && !excluded && (
         <View className="mt-2" nativeID={`${idPrefix}-expanded`} testID={`${idPrefix}-expanded`}>
           <CalendarDayFields
             currentSessionInstance={null}
@@ -132,10 +146,16 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
     setDraftDays((prev) => prev.map((d) => (d.sequenceNo === sequenceNo ? { ...d, ...updates } : d)));
   };
 
+  const handleToggleExclude = (sequenceNo) => {
+    setDraftDays((prev) => prev.map((d) => (d.sequenceNo === sequenceNo ? { ...d, excluded: !d.excluded } : d)));
+    setExpandedSeq((prev) => (prev === sequenceNo ? null : prev));
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    const hasConflicts = draftDays.some((d) => Boolean(existingByDate[d.date]));
-    const stampResult = await stampPlan({ planId, startDate, force: hasConflicts });
+    const excludeDates = draftDays.filter((d) => d.excluded).map((d) => d.date);
+    const hasConflicts = draftDays.some((d) => !d.excluded && Boolean(existingByDate[d.date]));
+    const stampResult = await stampPlan({ planId, startDate, force: hasConflicts, excludeDates });
     if (!stampResult.success) {
       setSaving(false);
       notifyError();
@@ -147,7 +167,7 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
       return;
     }
 
-    const touchedDays = draftDays.filter((d) => d.touched);
+    const touchedDays = draftDays.filter((d) => d.touched && !d.excluded);
     for (const day of touchedDays) {
       const result = await upsertDay({ date: day.date, day });
       if (!result.success) {
@@ -221,6 +241,7 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
                         expanded={expandedSeq === day.sequenceNo}
                         key={day.sequenceNo}
                         onChangeDay={(updates) => handleChangeDraftDay(day.sequenceNo, updates)}
+                        onToggleExclude={handleToggleExclude}
                         onToggleExpand={() => setExpandedSeq((prev) => (prev === day.sequenceNo ? null : day.sequenceNo))}
                         sessionOptions={sessionOptions}
                       />
