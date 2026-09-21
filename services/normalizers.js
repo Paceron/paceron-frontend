@@ -634,3 +634,10 @@ export function toCalendarDayPayload(day) {
 export function toStampPayload({ planId, startDate, force }) {
   return { plan_id: Number(planId), start_date: startDate, force: Boolean(force) };
 }
+
+// Body de POST /groups/{id}/calendar/bulk — mismo shape por-día que
+// toCalendarDayPayload, con `dates` agregado (el backend aplica el mismo
+// contenido a todas las fechas listadas).
+export function toBulkAssignPayload({ dates, day }) {
+  return { dates, ...toCalendarDayPayload(day) };
+}

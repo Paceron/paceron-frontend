@@ -4,7 +4,7 @@ import {
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
   toGroupCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
-  toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload,
+  toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload, toBulkAssignPayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -691,6 +691,32 @@ describe('toStampPayload', () => {
   test('force default a false si no se pasa', () => {
     expect(toStampPayload({ planId: '5', startDate: '2026-03-10' })).toEqual({
       plan_id: 5, start_date: '2026-03-10', force: false,
+    });
+  });
+});
+
+describe('toBulkAssignPayload', () => {
+  test('arma el body de bulk-assign: dates + el mismo shape que toCalendarDayPayload', () => {
+    const payload = toBulkAssignPayload({
+      dates: ['2026-10-05', '2026-10-06'],
+      day: { kind: 'rest' },
+    });
+    expect(payload).toEqual({ dates: ['2026-10-05', '2026-10-06'], kind: 'rest' });
+  });
+
+  test('con un día de entrenamiento presencial, incluye horario y ubicación', () => {
+    const payload = toBulkAssignPayload({
+      dates: ['2026-10-05'],
+      day: {
+        kind: 'training', sessionId: '9', isPresencial: true,
+        presencialTimeFrom: '08:00', presencialTimeTo: '09:30',
+        presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+      },
+    });
+    expect(payload).toEqual({
+      dates: ['2026-10-05'], kind: 'training', session_id: 9, is_presencial: true,
+      presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
     });
   });
 });
