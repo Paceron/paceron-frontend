@@ -11,6 +11,8 @@
 // mock. session_id/exercise_id (origen de catálogo, Gap 7) sí se guardan
 // reales, para poder probar sourceSessionId/sourceExerciseId localmente.
 import { mockGetSession } from './sessions-mock.js';
+import { mockGetTrainingPlan } from './training-plans-mock.js';
+import { addDaysISO } from '../../utils/build-stamp-draft.js';
 
 let mockCalendarDays = {};
 let nextId = 1;
@@ -76,6 +78,35 @@ export async function mockUpsertCalendarDay(groupId, date, payload) {
   };
   mockCalendarDays[key] = day;
   return day;
+}
+
+export async function mockStampPlan(groupId, { plan_id, start_date, force }) {
+  const plan = await mockGetTrainingPlan(plan_id);
+  const dates = plan.days.map((_, i) => addDaysISO(start_date, i));
+
+  const conflicts = dates.filter((date) => Boolean(mockCalendarDays[keyFor(groupId, date)]));
+  if (conflicts.length > 0 && !force) {
+    return { conflict: true, dates: conflicts };
+  }
+
+  const created = [];
+  for (let i = 0; i < plan.days.length; i++) {
+    const planDay = plan.days[i];
+    const presencial = planDay.kind === 'training' && Boolean(planDay.default_presencial);
+    const payload = {
+      kind: planDay.kind,
+      other_name: planDay.other_name,
+      session_id: planDay.kind === 'training' ? planDay.session_id : undefined,
+      is_presencial: presencial,
+      presencial_time_from: presencial ? planDay.default_time_from : null,
+      presencial_time_to: presencial ? planDay.default_time_to : null,
+      presencial_location: null,
+    };
+    const savedDay = await mockUpsertCalendarDay(groupId, dates[i], payload);
+    savedDay.source_plan_id = Number(plan_id);
+    created.push(savedDay);
+  }
+  return { conflict: false, days: created };
 }
 
 export async function mockDeleteCalendarDay(groupId, date) {

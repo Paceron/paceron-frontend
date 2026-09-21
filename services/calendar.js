@@ -4,6 +4,7 @@ import {
   mockGetGroupCalendar,
   mockUpsertCalendarDay,
   mockDeleteCalendarDay,
+  mockStampPlan,
 } from './__mocks__/calendar-mock.js';
 
 // Calendario de un grupo (GroupCalendarDay) — backend real desde
@@ -28,4 +29,20 @@ export async function upsertCalendarDay(groupId, date, payload) {
 export async function deleteCalendarDay(groupId, date) {
   if (USE_MOCKS) return await mockDeleteCalendarDay(groupId, date);
   return await api.delete(`/groups/${groupId}/calendar/${date}`);
+}
+
+// POST /api/v1/groups/{id}/calendar/stamp. 409 con { dates: [...] } si
+// hay conflictos y no se pasó force — se devuelve como { conflict: true,
+// dates } en vez de lanzar, porque es un resultado esperado del flujo
+// (el modal lo muestra, no es un error real). Cualquier otro status sigue
+// lanzando normal.
+export async function stampPlan(groupId, payload) {
+  if (USE_MOCKS) return await mockStampPlan(groupId, payload);
+  try {
+    const days = await api.post(`/groups/${groupId}/calendar/stamp`, payload);
+    return { conflict: false, days };
+  } catch (error) {
+    if (error.status === 409) return { conflict: true, dates: error.data?.dates ?? [] };
+    throw error;
+  }
 }
