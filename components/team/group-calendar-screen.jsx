@@ -11,8 +11,10 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
+import { canAddToSelection } from '../../utils/calendar-selection.js';
 import { StampPlanModal } from './stamp-plan-modal.jsx';
 import { CalendarDayMenu } from './calendar-day-menu.jsx';
+import { BulkEditDaysModal } from './bulk-edit-days-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -30,11 +32,18 @@ function monthRange(year, month) {
   return { from, to };
 }
 
-function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen }) {
+function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect }) {
   const colors = useThemeColors();
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
   const closed = marking ? isCalendarDayClosed(date.dateString, marking) : false;
+  // Estado de "cerrado" para la REGLA DE SELECCIÓN — a diferencia de
+  // `closed` de arriba (que solo importa para el tinte y siempre da
+  // false en un día vacío), acá sí necesitamos el valor real incluso sin
+  // contenido: un día vacío del mes pasado igual cuenta como "cerrado" a
+  // los fines de no mezclarlo con una selección de días futuros.
+  const closedForSelection = isCalendarDayClosed(date.dateString, marking ?? {});
+  const canSelect = !selectionActive || selected || canAddToSelection(selectionClosedClass, closedForSelection);
   // Tinte leve de fondo por kind — ayuda a ubicar de un vistazo qué tipo
   // de día es sin tener que fijarse en el puntito. Alpha en hex (últimos
   // 2 dígitos) en vez de un color plano — funciona igual en claro/oscuro
@@ -43,6 +52,11 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
   const tintColor = marking ? `${KIND_DOT_COLORS[marking.kind]}${tintAlpha}` : 'transparent';
 
   const handlePress = () => {
+    if (selectionActive) {
+      if (!canSelect) return;
+      onToggleSelect(date.dateString);
+      return;
+    }
     if (!containerRef.current || !cellRef.current) return;
     containerRef.current.measureInWindow((containerX, containerY) => {
       cellRef.current?.measureInWindow((x, y, width, height) => {
@@ -51,13 +65,15 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
     });
   };
 
+  const borderClass = selected ? 'border-2 border-primary' : isMenuOpen ? 'border border-primary' : 'border border-transparent';
+
   return (
     <Pressable
       ref={cellRef}
-      className={`h-14 w-full items-center justify-start gap-1 rounded-md border pt-1 ${isMenuOpen ? 'border-primary' : 'border-transparent'}`}
+      className={`h-14 w-full items-center justify-start gap-1 rounded-md pt-1 ${borderClass}`}
       nativeID={`group-calendar-day-${date.dateString}`}
       onPress={handlePress}
-      style={{ backgroundColor: tintColor }}
+      style={{ backgroundColor: tintColor, opacity: selectionActive && !canSelect ? 0.35 : 1 }}
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
@@ -102,10 +118,14 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const [stampModalVisible, setStampModalVisible] = useState(false);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
-  const { deleteDay } = useGroupCalendarMutations(groupId);
+  const { deleteDay, bulkClear, isBulkClearing } = useGroupCalendarMutations(groupId);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
   const monthViewRef = useRef(null);
   const [openDayMenu, setOpenDayMenu] = useState(null);
+  const [selectedDates, setSelectedDates] = useState(new Set());
+  const [selectionClosedClass, setSelectionClosedClass] = useState(null);
+  const [bulkEditModalVisible, setBulkEditModalVisible] = useState(false);
+  const selectionActive = selectedDates.size > 0;
 
   const markingsByDate = useMemo(
     () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial, presencialTimeFrom: d.presencialTimeFrom }])),
@@ -141,6 +161,45 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     const date = openDayMenu.date;
     handleCloseDayMenu();
     router.push(`/teams/${teamId}/groups/${groupId}/calendar/${date}?action=cancel`);
+  };
+
+  const handleSelectDay = () => {
+    const date = openDayMenu.date;
+    const marking = markingsByDate[date];
+    handleCloseDayMenu();
+    setSelectedDates(new Set([date]));
+    setSelectionClosedClass(isCalendarDayClosed(date, marking ?? {}));
+  };
+
+  const handleToggleDaySelection = (date) => {
+    setSelectedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      if (next.size === 0) setSelectionClosedClass(null);
+      return next;
+    });
+  };
+
+  const handleExitSelection = () => {
+    setSelectedDates(new Set());
+    setSelectionClosedClass(null);
+  };
+
+  const handleBulkClear = async () => {
+    const dates = Array.from(selectedDates);
+    handleExitSelection();
+    const result = await bulkClear({ dates });
+    if (!result.success) {
+      notifyError();
+      Toast.show({ type: 'error', text1: 'No pudimos vaciar los días', text2: result.error });
+      return;
+    }
+    notifySuccess();
+    Toast.show({ type: 'success', text1: `${dates.length} día${dates.length === 1 ? '' : 's'} vaciados` });
   };
 
   const openMarking = openDayMenu ? markingsByDate[openDayMenu.date] : null;
@@ -189,17 +248,54 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
           {(loadingDays || isFetching) && (
             <ActivityIndicator color={colors.primary} nativeID="group-calendar-screen-fetching" size="small" testID="group-calendar-screen-fetching" />
           )}
-          <Pressable
-            className="ml-auto h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-3 hover:opacity-90 active:opacity-80"
-            nativeID="group-calendar-screen-stamp-button"
-            onPress={() => setStampModalVisible(true)}
-            testID="group-calendar-screen-stamp-button"
-          >
-            <MaterialCommunityIcons color="#111518" name="stamper" size={16} />
-            <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID="group-calendar-screen-stamp-button-label" testID="group-calendar-screen-stamp-button-label">
-              Estampar plan
-            </Text>
-          </Pressable>
+          {selectionActive ? (
+            <View className="ml-auto flex-row items-center gap-2" nativeID="group-calendar-screen-selection-bar" testID="group-calendar-screen-selection-bar">
+              <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="group-calendar-screen-selection-count" testID="group-calendar-screen-selection-count">
+                {selectedDates.size} seleccionado{selectedDates.size === 1 ? '' : 's'}
+              </Text>
+              <Pressable
+                accessibilityLabel="Vaciar en lote"
+                className={`h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 ${selectionClosedClass === true ? 'opacity-40' : ''}`}
+                disabled={selectionClosedClass === true || isBulkClearing}
+                nativeID="group-calendar-screen-bulk-clear-button"
+                onPress={handleBulkClear}
+                testID="group-calendar-screen-bulk-clear-button"
+              >
+                <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Editar en lote"
+                className={`h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 ${selectionClosedClass === true ? 'opacity-40' : ''}`}
+                disabled={selectionClosedClass === true}
+                nativeID="group-calendar-screen-bulk-edit-button"
+                onPress={() => setBulkEditModalVisible(true)}
+                testID="group-calendar-screen-bulk-edit-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Salir de selección"
+                className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                nativeID="group-calendar-screen-selection-exit-button"
+                onPress={handleExitSelection}
+                testID="group-calendar-screen-selection-exit-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              className="ml-auto h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-3 hover:opacity-90 active:opacity-80"
+              nativeID="group-calendar-screen-stamp-button"
+              onPress={() => setStampModalVisible(true)}
+              testID="group-calendar-screen-stamp-button"
+            >
+              <MaterialCommunityIcons color="#111518" name="stamper" size={16} />
+              <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID="group-calendar-screen-stamp-button-label" testID="group-calendar-screen-stamp-button-label">
+                Estampar plan
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         <View
@@ -217,6 +313,10 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                 isMenuOpen={openDayMenu?.date === date.dateString}
                 marking={markingsByDate[date.dateString]}
                 onOpenMenu={handleOpenDayMenu}
+                onToggleSelect={handleToggleDaySelection}
+                selected={selectedDates.has(date.dateString)}
+                selectionActive={selectionActive}
+                selectionClosedClass={selectionClosedClass}
                 state={state}
               />
             )}
@@ -247,6 +347,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                 onAssignOrEdit={handleAssignOrEdit}
                 onCancel={handleCancelSession}
                 onClear={handleClearDay}
+                onSelect={handleSelectDay}
               />
             )}
           </AnimatedDropdown>
@@ -254,6 +355,15 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
       </View>
 
       <StampPlanModal groupId={groupId} onClose={() => setStampModalVisible(false)} ownerId={userId} visible={stampModalVisible} />
+
+      <BulkEditDaysModal
+        dates={Array.from(selectedDates)}
+        groupId={groupId}
+        onClose={() => setBulkEditModalVisible(false)}
+        onSuccess={handleExitSelection}
+        ownerId={userId}
+        visible={bulkEditModalVisible}
+      />
     </View>
   );
 }
