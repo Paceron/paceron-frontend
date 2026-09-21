@@ -363,15 +363,22 @@ function toPlanDayModel(dto) {
     kind: dto.kind,
     otherName: dto.other_name ?? null,
     sessionId: dto.session_id != null ? String(dto.session_id) : null,
+    isPresencial: Boolean(dto.default_presencial),
+    presencialTimeFrom: dto.default_time_from ?? null,
+    presencialTimeTo: dto.default_time_to ?? null,
   };
 }
 
 function toPlanDayPayload(day) {
+  const presencial = day.kind === 'training' && Boolean(day.isPresencial);
   return {
     sequence_no: day.sequenceNo,
     kind: day.kind,
     other_name: day.kind === 'other' ? day.otherName : null,
     session_id: day.kind === 'training' && day.sessionId ? Number(day.sessionId) : null,
+    default_presencial: presencial,
+    default_time_from: presencial ? day.presencialTimeFrom : null,
+    default_time_to: presencial ? day.presencialTimeTo : null,
   };
 }
 
@@ -614,4 +621,10 @@ export function toCalendarDayPayload(day) {
   }
 
   return payload;
+}
+
+// Body de POST /groups/{id}/calendar/stamp — ver
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §4.
+export function toStampPayload({ planId, startDate, force }) {
+  return { plan_id: Number(planId), start_date: startDate, force: Boolean(force) };
 }

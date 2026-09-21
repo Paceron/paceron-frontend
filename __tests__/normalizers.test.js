@@ -4,6 +4,7 @@ import {
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
   toGroupCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
+  toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -630,6 +631,65 @@ describe('toCalendarDayPayload', () => {
   test('cancelado manda solo cancelled_reason, sin session_id (el backend lo preserva)', () => {
     expect(toCalendarDayPayload({ kind: 'cancelled', cancelledReason: 'Lluvia' })).toEqual({
       kind: 'cancelled', cancelled_reason: 'Lluvia',
+    });
+  });
+});
+
+describe('toTrainingPlanModel — PlanDay presencial', () => {
+  test('mapea default_presencial/default_time_from/default_time_to a isPresencial/presencialTimeFrom/presencialTimeTo', () => {
+    const dto = {
+      id: 1, owner_id: 7, name: 'Plan', description: '', created_at: 'x', updated_at: 'x',
+      days: [
+        { sequence_no: 1, kind: 'training', other_name: null, session_id: 9, default_presencial: true, default_time_from: '08:00', default_time_to: '09:30' },
+        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null, default_presencial: false, default_time_from: null, default_time_to: null },
+      ],
+    };
+    const model = toTrainingPlanModel(dto);
+    expect(model.days[0]).toMatchObject({ isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30' });
+    expect(model.days[1]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null });
+  });
+
+  test('un PlanDay sin default_presencial (planes viejos, campo nunca seteado) mapea isPresencial false', () => {
+    const dto = {
+      id: 1, owner_id: 7, name: 'Plan', description: '', created_at: 'x', updated_at: 'x',
+      days: [{ sequence_no: 1, kind: 'rest', other_name: null, session_id: null }],
+    };
+    expect(toTrainingPlanModel(dto).days[0]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null });
+  });
+});
+
+describe('toCreateTrainingPlanPayload — PlanDay presencial', () => {
+  test('un día training presencial manda default_presencial true + horarios', () => {
+    const form = {
+      ownerId: 7, name: 'Plan', description: '',
+      days: [{ sequenceNo: 1, kind: 'training', otherName: null, sessionId: '9', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30' }],
+    };
+    expect(toCreateTrainingPlanPayload(form).days[0]).toMatchObject({
+      default_presencial: true, default_time_from: '08:00', default_time_to: '09:30',
+    });
+  });
+
+  test('un día no presencial manda default_presencial false y horarios null', () => {
+    const form = {
+      ownerId: 7, name: 'Plan', description: '',
+      days: [{ sequenceNo: 1, kind: 'rest', otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '' }],
+    };
+    expect(toCreateTrainingPlanPayload(form).days[0]).toMatchObject({
+      default_presencial: false, default_time_from: null, default_time_to: null,
+    });
+  });
+});
+
+describe('toStampPayload', () => {
+  test('arma el body de POST stamp', () => {
+    expect(toStampPayload({ planId: '5', startDate: '2026-03-10', force: false })).toEqual({
+      plan_id: 5, start_date: '2026-03-10', force: false,
+    });
+  });
+
+  test('force default a false si no se pasa', () => {
+    expect(toStampPayload({ planId: '5', startDate: '2026-03-10' })).toEqual({
+      plan_id: 5, start_date: '2026-03-10', force: false,
     });
   });
 });
