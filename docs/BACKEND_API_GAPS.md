@@ -156,3 +156,53 @@ estuvo abierto, el selector de sesión de la pantalla de edición de un día
 no podía sumar "la instancia actual" como opción — se construyó con
 match-por-nombre como mejor esfuerzo. Ver actualización 2026-09-21 arriba
 para el estado real ya resuelto.
+
+**Actualización 2026-09-21:** al encarar "evitar pisar selectivo" dentro
+del flujo de estampado (sub-pieza 3 de la serie de gestión avanzada del
+calendario — menú de día y selección múltiple ya implementados y
+probados), se abre un gap propio:
+
+## Gap 8 — `stamp` no permite excluir fechas puntuales del rango
+
+Hoy `POST /groups/{id}/calendar/stamp {plan_id, start_date, force}` es
+atómico y todo-o-nada sobre el rango completo del plan: si `force` es
+`true`, pisa TODOS los días del rango que ya tengan contenido: no hay
+forma de decirle "estampá este rango, pero dejá estos días puntuales tal
+como están".
+
+Caso de uso real: el entrenador arma el preview de estampado (ya
+implementado en el frontend, `stamp-plan-modal.jsx`), ve que algunos días
+del rango ya tienen contenido, y quiere estampar el resto del plan igual
+pero conservando esos días puntuales sin tocar — hoy la única opción es
+pisar todo el rango o no estampar nada.
+
+**Pedido:** sumar un campo opcional `exclude_dates` (array de fechas
+`YYYY-MM-DD`) al body de `POST /groups/{id}/calendar/stamp`:
+
+```json
+{ "plan_id": 5, "start_date": "2026-10-05", "force": true, "exclude_dates": ["2026-10-07", "2026-10-09"] }
+```
+
+Semántica propuesta:
+- Toda fecha en `exclude_dates` se salta por completo — no se crea, no
+  se modifica, sin importar si tenía contenido previo o no. Si esa fecha
+  ya tenía una fila, queda exactamente como estaba.
+- `force` sigue aplicando igual que hoy para el resto del rango (las
+  fechas NO excluidas) — si alguna de esas tiene conflicto y `force` no
+  es `true`, sigue rechazando con `409` y la lista de conflictos, mismo
+  comportamiento actual.
+- Una fecha en `exclude_dates` no debería contarse ni para el `409` de
+  conflictos ni para el guard de día cerrado (`422`) — se ignora por
+  completo, es exactamente "no tocar este día".
+- La respuesta (`201`, array de `GroupCalendarDay`) simplemente no
+  incluye las fechas excluidas (no se tocaron, no hay nada nuevo que
+  devolver de ellas).
+- Campo opcional, aditivo — omitirlo mantiene el comportamiento actual
+  exacto (compatible con lo que ya usa el frontend hoy).
+
+**Impacto en frontend:** hasta que este campo exista, el frontend no
+puede implementar "evitar pisar selectivo" sin recurrir a un rodeo (2
+escrituras: `force=true` + restaurar después con `PUT` individual los
+días excluidos) — descartado como solución definitiva a pedido del
+usuario, se prefiere esperar este campo. Sin acción de frontend
+pendiente mientras este gap sigue abierto.
