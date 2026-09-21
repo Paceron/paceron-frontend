@@ -524,3 +524,82 @@ export function toSubscriptionModel(dto) {
     mercadopago: dto.mercadopago ? { publicKey: dto.mercadopago.public_key } : null,
   };
 }
+
+// ---------------------------------------------------------------------
+// Calendario de grupo (GroupCalendarDay) — ver
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md. IDs como string (mismo
+// criterio que toSessionModel/toGroupModel) para evitar el bug de tipo
+// ya documentado en CLAUDE.md ("IDs numéricos en bodies de request") —
+// toCalendarDayPayload los vuelve a Number() donde el backend lo espera.
+// ---------------------------------------------------------------------
+
+// SessionInstance embebida (copia congelada, sin vínculo de vuelta al
+// catálogo — ver docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §3.1bis / Gap
+// 7). NUNCA confundir con un id de catálogo — no sirve para preseleccionar
+// el select de sesión al editar (ver utils/session-instance-match.js).
+function toSessionInstanceModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    description: dto.description ?? null,
+    exercises: (dto.exercises ?? []).map((e) => ({
+      id: String(e.id),
+      name: e.name,
+      role: e.role,
+      repeatCount: e.repeat_count ?? 1,
+      restMinutes: e.rest_minutes ?? 0,
+    })),
+  };
+}
+
+export function toGroupCalendarDayModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    groupId: String(dto.group_id),
+    date: dto.date,
+    kind: dto.kind,
+    otherName: dto.other_name ?? null,
+    sessionInstance: toSessionInstanceModel(dto.session_instance),
+    cancelledReason: dto.cancelled_reason ?? null,
+    isPresencial: Boolean(dto.is_presencial),
+    presencialTimeFrom: dto.presencial_time_from ?? null,
+    presencialTimeTo: dto.presencial_time_to ?? null,
+    presencialLocation: dto.presencial_location
+      ? { lat: dto.presencial_location.lat, lng: dto.presencial_location.lng, label: dto.presencial_location.label ?? null }
+      : null,
+    sourcePlanId: dto.source_plan_id != null ? String(dto.source_plan_id) : null,
+  };
+}
+
+// Manda solo los campos que corresponden según `kind` — mismo criterio
+// que toPlanDayPayload, el servidor valida igual pero no hay que mandarle
+// basura. `session_id` de un día cancelado NO se manda — el backend lo
+// preserva del lado suyo (ver §3.1 de la spec: "si kind pasa a cancelled,
+// se mantiene").
+export function toCalendarDayPayload(day) {
+  const payload = { kind: day.kind };
+
+  if (day.kind === 'other') {
+    payload.other_name = day.otherName;
+  }
+
+  if (day.kind === 'training') {
+    payload.session_id = Number(day.sessionId);
+    payload.is_presencial = Boolean(day.isPresencial);
+    if (day.isPresencial) {
+      payload.presencial_time_from = day.presencialTimeFrom;
+      payload.presencial_time_to = day.presencialTimeTo;
+      payload.presencial_location = day.presencialLocation
+        ? { lat: day.presencialLocation.lat, lng: day.presencialLocation.lng, label: day.presencialLocation.label || null }
+        : null;
+    }
+  }
+
+  if (day.kind === 'cancelled') {
+    payload.cancelled_reason = day.cancelledReason;
+  }
+
+  return payload;
+}

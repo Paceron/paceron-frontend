@@ -3,6 +3,7 @@ import {
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
+  toGroupCalendarDayModel, toCalendarDayPayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -533,5 +534,83 @@ describe('mergeSessionExercises', () => {
 
   test('con lista vacía de ids nuevos, devuelve los existentes sin cambios', () => {
     expect(mergeSessionExercises(session, [])).toEqual(session.exercises);
+  });
+});
+
+describe('toGroupCalendarDayModel', () => {
+  test('mapea un día de descanso', () => {
+    const dto = { id: 1, group_id: 5, date: '2026-10-05', kind: 'rest', is_presencial: false };
+    expect(toGroupCalendarDayModel(dto)).toEqual({
+      id: '1', groupId: '5', date: '2026-10-05', kind: 'rest',
+      otherName: null, sessionInstance: null, cancelledReason: null,
+      isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null,
+      presencialLocation: null, sourcePlanId: null,
+    });
+  });
+
+  test('mapea un día presencial con sesión instanciada y ubicación', () => {
+    const dto = {
+      id: 2, group_id: 5, date: '2026-10-06', kind: 'training',
+      session_instance: {
+        id: 123, name: 'Fartlek 5K', description: null,
+        exercises: [{ id: 456, name: 'Trote', role: 'warmup', repeat_count: 1, rest_minutes: 0 }],
+      },
+      is_presencial: true, presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' }, source_plan_id: 3,
+    };
+    const model = toGroupCalendarDayModel(dto);
+    expect(model.sessionInstance).toEqual({
+      id: '123', name: 'Fartlek 5K', description: null,
+      exercises: [{ id: '456', name: 'Trote', role: 'warmup', repeatCount: 1, restMinutes: 0 }],
+    });
+    expect(model.presencialTimeFrom).toBe('08:00');
+    expect(model.presencialTimeTo).toBe('09:30');
+    expect(model.presencialLocation).toEqual({ lat: -34.6, lng: -58.4, label: 'Plaza' });
+    expect(model.sourcePlanId).toBe('3');
+  });
+
+  test('session_instance null (día sin sesión, ej. rest/other)', () => {
+    const dto = { id: 3, group_id: 5, date: '2026-10-07', kind: 'other', other_name: 'Elongación', session_instance: null, is_presencial: false };
+    expect(toGroupCalendarDayModel(dto).sessionInstance).toBeNull();
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toGroupCalendarDayModel(null)).toBeNull();
+  });
+});
+
+describe('toCalendarDayPayload', () => {
+  test('día de descanso solo manda kind', () => {
+    expect(toCalendarDayPayload({ kind: 'rest' })).toEqual({ kind: 'rest' });
+  });
+
+  test('otra actividad manda other_name', () => {
+    expect(toCalendarDayPayload({ kind: 'other', otherName: 'Elongación' })).toEqual({
+      kind: 'other', other_name: 'Elongación',
+    });
+  });
+
+  test('entrenamiento no presencial manda session_id e is_presencial false, sin horarios/ubicación', () => {
+    const payload = toCalendarDayPayload({ kind: 'training', sessionId: '9', isPresencial: false });
+    expect(payload).toEqual({ kind: 'training', session_id: 9, is_presencial: false });
+  });
+
+  test('entrenamiento presencial manda horarios y ubicación', () => {
+    const payload = toCalendarDayPayload({
+      kind: 'training', sessionId: '9', isPresencial: true,
+      presencialTimeFrom: '08:00', presencialTimeTo: '09:30',
+      presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+    });
+    expect(payload).toEqual({
+      kind: 'training', session_id: 9, is_presencial: true,
+      presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+    });
+  });
+
+  test('cancelado manda solo cancelled_reason, sin session_id (el backend lo preserva)', () => {
+    expect(toCalendarDayPayload({ kind: 'cancelled', cancelledReason: 'Lluvia' })).toEqual({
+      kind: 'cancelled', cancelled_reason: 'Lluvia',
+    });
   });
 });
