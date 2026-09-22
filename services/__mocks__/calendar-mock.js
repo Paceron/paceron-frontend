@@ -126,6 +126,29 @@ export async function mockBulkClearDays(groupId, dates) {
   return null;
 }
 
+export async function mockShiftCalendar(groupId, { from_date, days }) {
+  // Corrimiento hacia adelante de TODO lo que sigue desde from_date — no
+  // puede chocar contra ningún día existente (todo lo que hay >= from_date
+  // se mueve junto, en el mismo orden relativo), mismo motivo por el que
+  // el backend documenta el 409 como defensivo ("no debería pasar corriendo
+  // hacia adelante, pero se valida igual"). El mock no simula ese caso
+  // imposible — siempre resuelve el corrimiento.
+  const affected = Object.values(mockCalendarDays)
+    .filter((d) => String(d.group_id) === String(groupId) && d.date >= from_date)
+    .sort((a, b) => (a.date < b.date ? 1 : -1)); // desc — mover de atrás hacia adelante evita pisarse a sí mismo
+
+  const shifted = [];
+  for (const day of affected) {
+    const oldKey = keyFor(groupId, day.date);
+    const newDate = addDaysISO(day.date, days);
+    delete mockCalendarDays[oldKey];
+    const moved = { ...day, date: newDate, updated_at: new Date().toISOString() };
+    mockCalendarDays[keyFor(groupId, newDate)] = moved;
+    shifted.push(moved);
+  }
+  return { conflict: false, days: shifted };
+}
+
 export async function mockDeleteCalendarDay(groupId, date) {
   delete mockCalendarDays[keyFor(groupId, date)];
   return null;

@@ -6,6 +6,7 @@ import {
   stampPlan as stampPlanService,
   bulkAssignDays as bulkAssignDaysService,
   bulkClearDays as bulkClearDaysService,
+  shiftCalendar as shiftCalendarService,
 } from '../services/calendar.js';
 import { toGroupCalendarDayModel, toCalendarDayPayload, toStampPayload, toBulkAssignPayload } from '../services/normalizers.js';
 
@@ -89,6 +90,19 @@ export function useGroupCalendarMutations(groupId) {
     onSuccess: (result) => { if (result.success) invalidate(); },
   });
 
+  const shiftCalendarMutation = useMutation({
+    mutationFn: async ({ fromDate, days }) => {
+      try {
+        const result = await shiftCalendarService(groupId, { from_date: fromDate, days });
+        if (result.conflict) return { success: false, conflict: true };
+        return { success: true, days: result.days.map(toGroupCalendarDayModel) };
+      } catch (error) {
+        return { success: false, conflict: false, error: error.message };
+      }
+    },
+    onSuccess: (result) => { if (result.success) invalidate(); },
+  });
+
   return {
     upsertDay: upsertDayMutation.mutateAsync,
     isUpserting: upsertDayMutation.isPending,
@@ -100,5 +114,7 @@ export function useGroupCalendarMutations(groupId) {
     isBulkAssigning: bulkAssignMutation.isPending,
     bulkClear: bulkClearMutation.mutateAsync,
     isBulkClearing: bulkClearMutation.isPending,
+    shiftCalendar: shiftCalendarMutation.mutateAsync,
+    isShifting: shiftCalendarMutation.isPending,
   };
 }

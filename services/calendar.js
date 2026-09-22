@@ -7,6 +7,7 @@ import {
   mockStampPlan,
   mockBulkAssignDays,
   mockBulkClearDays,
+  mockShiftCalendar,
 } from './__mocks__/calendar-mock.js';
 
 // Calendario de un grupo (GroupCalendarDay) — backend real desde
@@ -59,4 +60,18 @@ export async function bulkAssignDays(groupId, payload) {
 export async function bulkClearDays(groupId, dates) {
   if (USE_MOCKS) return await mockBulkClearDays(groupId, dates);
   return await api.post(`/groups/${groupId}/calendar/bulk-clear`, { dates });
+}
+
+// POST /api/v1/groups/{id}/calendar/shift. 409 si el corrimiento choca
+// contra una fecha ya ocupada — mismo criterio que stamp, se devuelve
+// como { conflict: true } en vez de lanzar (resultado esperado del flujo).
+export async function shiftCalendar(groupId, payload) {
+  if (USE_MOCKS) return await mockShiftCalendar(groupId, payload);
+  try {
+    const days = await api.post(`/groups/${groupId}/calendar/shift`, payload);
+    return { conflict: false, days };
+  } catch (error) {
+    if (error.status === 409) return { conflict: true };
+    throw error;
+  }
 }

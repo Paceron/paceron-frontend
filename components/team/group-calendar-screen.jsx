@@ -13,6 +13,7 @@ import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-gro
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
 import { StampPlanModal } from './stamp-plan-modal.jsx';
+import { ShiftDayModal } from './shift-day-modal.jsx';
 import { CalendarDayMenu } from './calendar-day-menu.jsx';
 import { BulkEditDaysModal } from './bulk-edit-days-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
@@ -125,7 +126,8 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const today = new Date();
   const [visibleYear, setVisibleYear] = useState(today.getFullYear());
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
-  const [stampModalVisible, setStampModalVisible] = useState(false);
+  const [stampTargetDate, setStampTargetDate] = useState(null);
+  const [shiftTargetDate, setShiftTargetDate] = useState(null);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
   const { deleteDay, bulkClear, isBulkClearing } = useGroupCalendarMutations(groupId);
@@ -179,6 +181,18 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     handleCloseDayMenu();
     setSelectedDates(new Set([date]));
     setSelectionClosedClass(isCalendarDayClosed(date, marking ?? {}));
+  };
+
+  const handleStampFromDay = () => {
+    const date = openDayMenu.date;
+    handleCloseDayMenu();
+    setStampTargetDate(date);
+  };
+
+  const handleShiftFromDay = () => {
+    const date = openDayMenu.date;
+    handleCloseDayMenu();
+    setShiftTargetDate(date);
   };
 
   const handleToggleDaySelection = (date) => {
@@ -293,19 +307,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
               </Pressable>
             </View>
-          ) : (
-            <Pressable
-              className="ml-auto h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-3 hover:opacity-90 active:opacity-80"
-              nativeID="group-calendar-screen-stamp-button"
-              onPress={() => setStampModalVisible(true)}
-              testID="group-calendar-screen-stamp-button"
-            >
-              <MaterialCommunityIcons color="#111518" name="stamper" size={16} />
-              <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID="group-calendar-screen-stamp-button-label" testID="group-calendar-screen-stamp-button-label">
-                Estampar plan
-              </Text>
-            </Pressable>
-          )}
+          ) : null}
         </View>
 
         <View
@@ -359,11 +361,26 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
             onCancel={handleCancelSession}
             onClear={handleClearDay}
             onSelect={handleSelectDay}
+            onShift={handleShiftFromDay}
+            onStamp={handleStampFromDay}
           />
         )}
       </AnimatedDropdown>
 
-      <StampPlanModal groupId={groupId} onClose={() => setStampModalVisible(false)} ownerId={userId} visible={stampModalVisible} />
+      <StampPlanModal
+        groupId={groupId}
+        onClose={() => setStampTargetDate(null)}
+        ownerId={userId}
+        startDate={stampTargetDate}
+        visible={Boolean(stampTargetDate)}
+      />
+
+      <ShiftDayModal
+        fromDate={shiftTargetDate}
+        groupId={groupId}
+        onClose={() => setShiftTargetDate(null)}
+        visible={Boolean(shiftTargetDate)}
+      />
 
       <BulkEditDaysModal
         dates={Array.from(selectedDates)}

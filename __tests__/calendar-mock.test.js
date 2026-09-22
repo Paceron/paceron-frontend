@@ -1,6 +1,6 @@
 import {
   mockGetGroupCalendar, mockUpsertCalendarDay, mockDeleteCalendarDay, mockStampPlan,
-  mockBulkAssignDays, mockBulkClearDays, __resetMockCalendar,
+  mockBulkAssignDays, mockBulkClearDays, mockShiftCalendar, __resetMockCalendar,
 } from '../services/__mocks__/calendar-mock.js';
 import { __resetMockSessions } from '../services/__mocks__/sessions-mock.js';
 import { mockCreateTrainingPlan, __resetMockTrainingPlans } from '../services/__mocks__/training-plans-mock.js';
@@ -177,5 +177,32 @@ describe('mockBulkClearDays', () => {
     await mockUpsertCalendarDay(1, '2026-10-06', { kind: 'rest' });
     await mockBulkClearDays(1, ['2026-10-05', '2026-10-06']);
     expect(await mockGetGroupCalendar(1, '2026-10-01', '2026-10-31')).toEqual([]);
+  });
+});
+
+describe('mockShiftCalendar', () => {
+  test('corre todas las filas con date >= from_date la cantidad de días indicada', async () => {
+    await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'rest' });
+    await mockUpsertCalendarDay(1, '2026-10-06', { kind: 'other', other_name: 'Fartlek' });
+    const result = await mockShiftCalendar(1, { from_date: '2026-10-05', days: 2 });
+    expect(result.conflict).toBe(false);
+    expect(result.days.map((d) => d.date).sort()).toEqual(['2026-10-07', '2026-10-08']);
+    expect(await mockGetGroupCalendar(1, '2026-10-05', '2026-10-06')).toEqual([]);
+    const shifted = await mockGetGroupCalendar(1, '2026-10-07', '2026-10-08');
+    expect(shifted.find((d) => d.date === '2026-10-08').other_name).toBe('Fartlek');
+  });
+
+  test('no toca las filas anteriores a from_date', async () => {
+    await mockUpsertCalendarDay(1, '2026-10-04', { kind: 'rest' });
+    await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'rest' });
+    await mockShiftCalendar(1, { from_date: '2026-10-05', days: 3 });
+    const untouched = await mockGetGroupCalendar(1, '2026-10-04', '2026-10-04');
+    expect(untouched).toHaveLength(1);
+  });
+
+  test('conserva id y source_plan_id de cada fila movida', async () => {
+    const before = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'rest' });
+    const result = await mockShiftCalendar(1, { from_date: '2026-10-05', days: 1 });
+    expect(result.days[0].id).toBe(before.id);
   });
 });

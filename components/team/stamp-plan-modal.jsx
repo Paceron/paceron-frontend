@@ -9,11 +9,9 @@ import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-gro
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
-import { DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
-import { toISODate } from '../../utils/date-field-format.js';
-import { buildStampDraft, addDaysISO, findClosedDraftDates } from '../../utils/build-stamp-draft.js';
+import { buildStampDraft, addDaysISO } from '../../utils/build-stamp-draft.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 function StampPreviewRow({ day, onToggleExpand, expanded, sessionOptions, onChangeDay, existingDay, onToggleExclude }) {
@@ -88,15 +86,19 @@ function StampPreviewRow({ day, onToggleExpand, expanded, sessionOptions, onChan
   );
 }
 
-export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
+// `startDate` es fijo — siempre viene del día clickeado en el menú del
+// calendario (CalendarDayMenu → "Estampar plan"), no hay selector de
+// fecha propio: si el entrenador se equivocó de día, cierra y vuelve a
+// abrir desde el día correcto. Al elegir un plan se arma el preview de
+// una — no hay paso "Continuar" separado, el selector de plan queda fijo
+// arriba y el preview aparece scrolleable debajo apenas hay un plan.
+export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }) {
   const colors = useThemeColors();
   const { plans } = useTrainingPlans(ownerId);
   const { sessions } = useSessions(ownerId);
   const { upsertDay, stampPlan, isStamping } = useGroupCalendarMutations(groupId);
 
-  const [step, setStep] = useState('select');
   const [planId, setPlanId] = useState('');
-  const [startDate, setStartDate] = useState('');
   const [draftDays, setDraftDays] = useState([]);
   const [expandedSeq, setExpandedSeq] = useState(null);
   const [error, setError] = useState(null);
@@ -107,17 +109,23 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
   const { days: existingDays } = useGroupCalendar(groupId, startDate || null, rangeEnd);
   const existingByDate = useMemo(() => Object.fromEntries(existingDays.map((d) => [d.date, d])), [existingDays]);
 
-  const isDirty = useFormDirty({ planId, startDate, draftDays }, visible);
+  const isDirty = useFormDirty({ planId, draftDays }, visible);
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   const resetKey = visible;
   const prevResetKeyRef = useRef(resetKey);
   if (resetKey !== prevResetKeyRef.current) {
     prevResetKeyRef.current = resetKey;
-    setStep('select');
     setPlanId('');
-    setStartDate('');
     setDraftDays([]);
+    setExpandedSeq(null);
+    setError(null);
+  }
+
+  const prevPlanIdRef = useRef(planId);
+  if (planId !== prevPlanIdRef.current) {
+    prevPlanIdRef.current = planId;
+    setDraftDays(plan ? buildStampDraft(plan, startDate) : []);
     setExpandedSeq(null);
     setError(null);
   }
@@ -125,22 +133,6 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
   const sessionOptions = sessions.map((s) => ({ id: s.id, name: s.name }));
 
   const handleClose = () => guardedClose(onClose);
-
-  const handleContinue = () => {
-    if (!plan || !startDate) {
-      setError('Elegí un plan y una fecha de inicio.');
-      return;
-    }
-    const draft = buildStampDraft(plan, startDate);
-    const closedDates = findClosedDraftDates(draft);
-    if (closedDates.length > 0) {
-      setError(`El plan cubre ${closedDates.length} día(s) ya cerrado(s) (empezando ${closedDates[0]}). Elegí otra fecha de inicio.`);
-      return;
-    }
-    setError(null);
-    setDraftDays(draft);
-    setStep('preview');
-  };
 
   const handleChangeDraftDay = (sequenceNo, updates) => {
     setDraftDays((prev) => prev.map((d) => (d.sequenceNo === sequenceNo ? { ...d, ...updates } : d)));
@@ -193,46 +185,25 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
             testID="stamp-plan-modal-card"
           >
             <Text className="mb-2 text-lg font-bold text-slate-900 dark:text-white" nativeID="stamp-plan-modal-title" testID="stamp-plan-modal-title">
-              Estampar plan
+              Estampar plan desde {startDate}
             </Text>
 
             {error && (
               <Text className="mb-2 text-xs text-red-500 dark:text-red-400" nativeID="stamp-plan-modal-error" testID="stamp-plan-modal-error">{error}</Text>
             )}
 
-            {step === 'select' && (
-              <>
-                <ResponsiveSelectField
-                  dense
-                  label="Plan"
-                  onChange={setPlanId}
-                  options={plans.map((p) => ({ id: p.id, name: p.name }))}
-                  placeholder="Elegí un plan"
-                  value={planId}
-                />
-                <DateField
-                  disableFutureLimit
-                  label="Fecha de inicio"
-                  minimumDate={new Date()}
-                  onChange={(v) => setStartDate(toISODate(v))}
-                  value={startDate}
-                />
-                <Pressable
-                  className="mt-2 h-11 flex-row items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
-                  nativeID="stamp-plan-modal-continue-button"
-                  onPress={handleContinue}
-                  testID="stamp-plan-modal-continue-button"
-                >
-                  <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="stamp-plan-modal-continue-button-label" testID="stamp-plan-modal-continue-button-label">
-                    Continuar
-                  </Text>
-                </Pressable>
-              </>
-            )}
+            <ResponsiveSelectField
+              dense
+              label="Plan"
+              onChange={setPlanId}
+              options={plans.map((p) => ({ id: p.id, name: p.name }))}
+              placeholder="Elegí un plan"
+              value={planId}
+            />
 
-            {step === 'preview' && (
+            {plan ? (
               <>
-                <ScrollView className="max-h-96" nativeID="stamp-plan-modal-preview-scroll" testID="stamp-plan-modal-preview-scroll">
+                <ScrollView className="mt-3 max-h-96" nativeID="stamp-plan-modal-preview-scroll" testID="stamp-plan-modal-preview-scroll">
                   <View className="gap-2" nativeID="stamp-plan-modal-preview-list" testID="stamp-plan-modal-preview-list">
                     {draftDays.map((day) => (
                       <StampPreviewRow
@@ -251,12 +222,12 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
                 <View className="mt-4 flex-row gap-3" nativeID="stamp-plan-modal-preview-actions" testID="stamp-plan-modal-preview-actions">
                   <Pressable
                     className="h-11 flex-1 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
-                    nativeID="stamp-plan-modal-back-button"
-                    onPress={() => setStep('select')}
-                    testID="stamp-plan-modal-back-button"
+                    nativeID="stamp-plan-modal-cancel-button"
+                    onPress={handleClose}
+                    testID="stamp-plan-modal-cancel-button"
                   >
-                    <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="stamp-plan-modal-back-button-label" testID="stamp-plan-modal-back-button-label">
-                      Atrás
+                    <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="stamp-plan-modal-cancel-button-label" testID="stamp-plan-modal-cancel-button-label">
+                      Cancelar
                     </Text>
                   </Pressable>
                   <Pressable
@@ -276,6 +247,10 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId }) {
                   </Pressable>
                 </View>
               </>
+            ) : (
+              <Text className="mt-4 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="stamp-plan-modal-empty-hint" testID="stamp-plan-modal-empty-hint">
+                Elegí un plan para ver el preview de los días.
+              </Text>
             )}
           </Pressable>
         </Pressable>
