@@ -69,14 +69,9 @@ function AssignmentRow({ assignment, variant }) {
       )}
       {variant === 'administered' && (
         <Pressable
-          className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full border"
+          className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
           nativeID={`${idPrefix}-go-to-group-button`}
           onPress={handleGoToGroup}
-          style={({ hovered, pressed }) => ({
-            borderColor: kindColor,
-            backgroundColor: hovered ? `${kindColor}4d` : `${kindColor}33`,
-            opacity: pressed ? 0.7 : 1,
-          })}
           testID={`${idPrefix}-go-to-group-button`}
         >
           <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-group-button-label`} testID={`${idPrefix}-go-to-group-button-label`}>
