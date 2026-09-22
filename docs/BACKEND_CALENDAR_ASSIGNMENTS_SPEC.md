@@ -93,7 +93,7 @@ Mismo shape en `PlanDay.default_location` y `GroupCalendarDay.presencial_locatio
 - `GET /groups/{id}/calendar` — el entrenador dueño del grupo, o cualquier corredor miembro (lectura). `403` para cualquier otro usuario autenticado.
 - `PUT`/`DELETE`/`stamp`/`bulk`/`bulk-clear`/`shift` (todo lo que escribe) — **solo** el entrenador dueño del grupo. `403` para corredores, incluso miembros.
 - `stamp` además valida que el `plan_id` sea del mismo `owner_id` que administra el grupo — `403` si el entrenador intenta estampar un plan que no es suyo.
-- `/users/{id}/next-session`, `/users/{id}/next-presencial-session` y `/users/{id}/calendar-summary` — `{id}` debe ser el propio usuario autenticado (del token), `403` si no coincide. Son endpoints de "mis datos", no una consulta abierta sobre cualquier `user_id`.
+- `/users/{id}/next-session`, `/users/{id}/next-presencial-session`, `/users/{id}/calendar-summary`, `/users/{id}/member-calendar` y `/users/{id}/administered-calendar` — `{id}` debe ser el propio usuario autenticado (del token), `403` si no coincide. Son endpoints de "mis datos", no una consulta abierta sobre cualquier `user_id`.
 
 | Método | Path | Body | Respuesta |
 |---|---|---|---|
