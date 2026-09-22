@@ -259,3 +259,85 @@ abierto — es la base necesaria antes de integrar cualquier manejo de
 este `409`/`same_team_warnings` en los flujos de escritura existentes
 (`group-calendar-day-screen.jsx`, `stamp-plan-modal.jsx`,
 `bulk-edit-days-modal.jsx`, `shift-day-modal.jsx`).
+
+## Gap 10 — endpoints livianos de "próximo entrenamiento" para los banners del home (corredor y entrenador)
+
+Sub-proyecto de vista agregada de calendario (pieza 3, banners del
+home): tanto el corredor como el entrenador necesitan un endpoint
+liviano que resuma su "próximo compromiso" sin traer el detalle
+completo (ejercicios, etc.) — el banner solo necesita lo justo para
+mostrarse y linkear a la vista de detalle (que sí trae todo, vía
+`GET /groups/{id}/calendar`). `next-session`/`calendar-summary` ya
+estaban documentados en `BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` §4 pero
+nunca implementados — este gap termina de cerrar su shape antes de
+pedir la implementación.
+
+**Corredor — `GET /users/{id}/next-session`, shape final:**
+
+Un corredor puede pertenecer a varios grupos/equipos, y a diferencia
+del entrenador, una colisión de horario en su calendario NO es un
+problema a resolver por el backend — es su decisión a cuál sesión
+asistir. Por eso este endpoint no valida nada, solo informa.
+
+```json
+200
+{
+  "next_cancelled": {
+    "group_id": 4, "group_name": "Elite AM", "date": "2026-10-06",
+    "session_name": "Fondo suave"
+  },
+  "next_training": {
+    "group_id": 7, "group_name": "Trote libre", "date": "2026-10-09",
+    "session_name": "Series de velocidad", "is_presencial": true,
+    "presencial_time_from": "08:00", "presencial_time_to": "09:30",
+    "presencial_location": { "lat": -34.6, "lng": -58.4, "label": "Plaza" }
+  }
+}
+```
+
+- `next_cancelled` y `next_training` son **independientes** — cada uno
+  es el más próximo cronológicamente de su propio `kind` (`cancelled`/
+  `training`) entre TODOS los grupos de los que el usuario es miembro,
+  o `null` si no hay ninguno. No hace falta que uno exista para que el
+  otro aparezca — pueden venir los dos, uno solo, o ninguno (los dos en
+  `null`, siempre `200`, nunca `204`, para no tener que distinguir "no
+  hay nada" de "hay uno de los dos" con dos códigos de status distintos).
+  Motivo: un corredor puede tener su próxima sesión cancelada Y, aparte,
+  una sesión real más adelante — el home debería poder mostrar ambas
+  cosas (un aviso chico de "cancelado" + el banner principal del
+  próximo entrenamiento real), no una sola.
+- `date >= hoy`, mismo criterio de "día cerrado" ya usado en el resto
+  del calendario: si `date` es hoy y es presencial, solo cuenta si
+  `presencial_time_from` todavía no pasó.
+- `is_presencial`/`presencial_time_from`/`presencial_time_to`/
+  `presencial_location` solo aplican a `next_training` (un `training`
+  asincrónico los omite/null). `next_cancelled` no los necesita — es
+  solo el aviso de que había algo y se canceló.
+- `session_name` en ambos, para mostrar el banner sin una segunda
+  consulta.
+
+**Entrenador — `GET /users/{id}/next-presencial-session`, endpoint nuevo:**
+
+A diferencia del corredor, el entrenador es quien decide cancelar — no
+necesita que el banner le recuerde sus propias cancelaciones. Un solo
+campo alcanza: la próxima sesión presencial activa entre TODOS los
+grupos que administra (`owner_id`), sin importar de qué equipo.
+
+```json
+200
+{
+  "group_id": 7, "group_name": "Elite AM", "team_id": 3, "team_name": "Runners Norte",
+  "date": "2026-10-05", "session_name": "Fondo suave",
+  "presencial_time_from": "08:00", "presencial_time_to": "09:30",
+  "presencial_location": { "lat": -34.6, "lng": -58.4, "label": "Plaza" }
+}
+```
+`204` si no hay ninguna (`kind='training'`, `is_presencial=true`,
+`date >= hoy` con el mismo criterio de día cerrado de arriba) entre los
+grupos que administra. `team_id`/`team_name` para poder mostrar con qué
+equipo es el compromiso, dado que el entrenador puede tener varios.
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue
+abierto — bloquea el armado de los banners del home de ambos roles
+(pieza 3 del sub-proyecto de calendario agregado, todavía sin
+implementar).
