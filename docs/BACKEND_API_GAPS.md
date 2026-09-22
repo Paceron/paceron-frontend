@@ -206,3 +206,56 @@ escrituras: `force=true` + restaurar después con `PUT` individual los
 días excluidos) — descartado como solución definitiva a pedido del
 usuario, se prefiere esperar este campo. Sin acción de frontend
 pendiente mientras este gap sigue abierto.
+
+## Gap 9 — sin validación de colisión presencial entre grupos/equipos de un mismo entrenador
+
+Un entrenador puede administrar varios equipos, cada uno con varios
+grupos. Hoy nada impide cargar dos días presenciales en la misma fecha
+con horario superpuesto en dos grupos distintos — ni `PUT`/`stamp`/
+`bulk`/`shift` lo detectan. Si son grupos de equipos DISTINTOS, el
+entrenador termina con dos compromisos físicos simultáneos que no puede
+cumplir — un problema real, no solo de datos.
+
+**Pedido:** antes de confirmar una escritura que deja un día con
+`is_presencial=true` (en cualquiera de los 4 endpoints de escritura:
+`PUT /groups/{id}/calendar/{date}`, `POST /groups/{id}/calendar/stamp`,
+`POST /groups/{id}/calendar/bulk`, `POST /groups/{id}/calendar/shift`),
+el backend busca, entre TODOS los grupos que administra el mismo
+`owner_id` (no solo el grupo de este request), si existe otro día
+presencial en la misma fecha con rango horario superpuesto
+(`presencial_time_from`/`presencial_time_to` cruzados).
+
+Semántica según a quién pertenece el grupo colisionante:
+
+- **Equipo distinto al del grupo que se está escribiendo:** rechazar
+  con `409`, sin ningún `force` que lo salve (a diferencia del conflicto
+  de `stamp`, acá no existe forma de forzar el guardado) —
+  ```json
+  HTTP 409
+  {
+    "message": "colisión presencial con otro equipo",
+    "conflicts": [
+      { "group_id": 7, "group_name": "Elite AM", "team_id": 3, "team_name": "Runners Norte",
+        "date": "2026-10-05", "presencial_time_from": "08:00", "presencial_time_to": "09:30" }
+    ]
+  }
+  ```
+- **Mismo equipo que el grupo que se está escribiendo:** la escritura
+  se guarda igual (no bloquea — puede ser intencional, el entrenador
+  reparte su tiempo entre grupos del mismo cliente), pero la respuesta
+  exitosa suma un campo opcional `same_team_warnings` con la misma forma
+  que `conflicts` de arriba, para que el frontend muestre un aviso no
+  bloqueante. Campo ausente u array vacío si no hay superposición.
+- Aplica únicamente cuando el día escrito (o movido, en el caso de
+  `shift`) queda con `is_presencial=true` — un día no presencial nunca
+  puede colisionar en este sentido.
+- `bulk`/`shift` corren la validación por cada fecha afectada, todo-o-
+  nada igual que el guard de día cerrado existente: si CUALQUIER fecha
+  del lote colisiona con un equipo distinto, se rechaza el lote entero
+  con `409` listando todas las fechas conflictivas (no solo la primera).
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue
+abierto — es la base necesaria antes de integrar cualquier manejo de
+este `409`/`same_team_warnings` en los flujos de escritura existentes
+(`group-calendar-day-screen.jsx`, `stamp-plan-modal.jsx`,
+`bulk-edit-days-modal.jsx`, `shift-day-modal.jsx`).

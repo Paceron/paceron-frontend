@@ -116,6 +116,8 @@ HTTP 422
 
 En `bulk`/`bulk-clear`/`shift` es **todo-o-nada** — se validan todas las fechas antes de escribir y si alguna está cerrada se rechaza el lote completo, listando todas las fechas conflictivas (no solo la primera). **Única excepción: la transición a `kind=cancelled`** (desde `training`) — permitida incluso sobre un día cerrado, no repuntea nada, solo marca `cancelled_reason` y conserva la instancia.
 
+**Colisión presencial cross-grupo (Gap 9, `BACKEND_API_GAPS.md`, sin resolver):** hoy nada valida que un mismo entrenador no termine con dos días presenciales superpuestos en horario en grupos distintos — ni siquiera entre equipos distintos, donde es un problema real (dos compromisos físicos simultáneos, no solo de datos). Pedido: `PUT`/`stamp`/`bulk`/`shift` deberían rechazar con `409` sin `force` posible cuando la colisión es contra un grupo de OTRO equipo, y devolver un aviso no bloqueante (`same_team_warnings`) cuando es contra un grupo del MISMO equipo. Detalle completo del contrato propuesto en el gap.
+
 ## 5. [OBSOLETO] Editar una `Session` con asignaciones activas — clonado por divergencia
 
 > **Eliminado del backend, confirmado en código (rama `feature/asignacion-por-instanciacion`, 2026-09-20).** Esta sección describía un mecanismo que ya no existe — dejaba de tener sentido apenas se implementó la instanciación (§3.1bis): una sesión asignada al calendario ya no mantiene ninguna referencia viva al catálogo, así que editar la sesión de origen no puede "repuntear" nada que ya esté asignado. Consecuencias concretas para el frontend:
