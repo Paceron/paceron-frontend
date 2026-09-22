@@ -52,7 +52,15 @@ export const myCalendarRoute = {
   role: 'runner',
 };
 
-export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, myCalendarRoute];
+export const administeredCalendarRoute = {
+  name: 'administered-calendar',
+  label: 'Calendario',
+  href: '/administered-calendar',
+  icon: 'calendar-month-outline',
+  role: 'trainer',
+};
+
+export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, myCalendarRoute, administeredCalendarRoute];
 
 // `role` es el activeRole actual ('runner'/'trainer'/null) — no el rol
 // asignado, el que se está viendo ahora mismo (ver store/auth-store.js,
