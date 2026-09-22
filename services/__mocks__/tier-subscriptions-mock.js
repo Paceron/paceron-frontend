@@ -61,6 +61,30 @@ export async function mockGetCurrentSubscription(userId, roleId) {
   return { tier: { id: null, name: 'base', hierarchy: 1, payment_required: false }, role: { id: roleId, name: null } };
 }
 
+// Periodo `next`: solo la sub en first_payment_pending. Espeja el
+// backend real: si no hay pendiente, responde vacío ({}), no la sub
+// activa — el banner "completar pago" debe mirar acá, no a current.
+export async function mockGetNextSubscription(userId, roleId) {
+  const k = key(userId, roleId);
+  const sub = mockSubscriptions[k];
+  if (sub?.subscription_status === 'first_payment_pending') return sub;
+  return {};
+}
+
+// Cancela el pendiente: libera el slot (mockSubscriptions[k] = undefined)
+// como el backend que marca la sub `canceled` + cuotas canceladas.
+export async function mockCancelPendingSubscription(userId, roleId) {
+  const k = key(userId, roleId);
+  const sub = mockSubscriptions[k];
+  if (!sub) {
+    const error = new Error('suscripción no encontrada');
+    error.status = 404;
+    throw error;
+  }
+  delete mockSubscriptions[k];
+  return { subscription_id: sub.subscription_id, subscription_status: 'canceled' };
+}
+
 // Helper de testing manual (no lo llama la UI) — simula la activación
 // que en el backend real dispara el webhook de Mercado Pago.
 export function __mockActivateSubscription(userId, roleId) {

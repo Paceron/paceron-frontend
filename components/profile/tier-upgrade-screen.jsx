@@ -14,7 +14,9 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { listTiers } from '../../services/tiers.js';
 import { createPreference } from '../../services/payments.js';
 import { toTierModel, toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
+import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-modal.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por
 // plataforma (.web.jsx antes que .jsx) cuando el specifier no trae
 // extensión — ver quirk en CLAUDE.md.
@@ -96,34 +98,56 @@ function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade }) {
   );
 }
 
-// Banner de pago pendiente — aparece si ya existe una suscripción
-// first_payment_pending (el usuario cambió de tier antes pero nunca
-// completó/confirmó el pago). Lleva directo al checkout reusando la
-// cuota existente, sin volver a llamar changeTier.
-function PendingPaymentBanner({ subscription, onResume, loading }) {
+// Banner de pago pendiente — aparece cuando existe una suscripción
+// first_payment_pending (el usuario cambió de tier hacia un tier pago
+// pero nunca completó/confirmó el pago). Se alimenta de
+// subscriptions/next (no de current, que solo devuelve subs `active`),
+// por eso sigue apareciendo tras re-login. Lleva directo al checkout
+// reusando la cuota existente (Completar pago) o cancela el pendiente
+// para poder elegir otro tier (Cancelar).
+function PendingPaymentBanner({ subscription, onResume, onCancel, loading, cancelling }) {
+  const tierName = formatTierDisplayName(subscription.tier?.name);
   return (
     <View className="mb-4 flex-row items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20" nativeID="tier-upgrade-pending-banner" testID="tier-upgrade-pending-banner">
       <View className="flex-1" nativeID="tier-upgrade-pending-banner-text" testID="tier-upgrade-pending-banner-text">
         <Text className="text-sm font-semibold text-amber-800 dark:text-amber-300" nativeID="tier-upgrade-pending-banner-title" testID="tier-upgrade-pending-banner-title">
           Tenés un pago pendiente
         </Text>
+        <Text className="mt-1 text-sm font-bold capitalize text-amber-800 dark:text-amber-200" nativeID="tier-upgrade-pending-banner-tier" testID="tier-upgrade-pending-banner-tier">
+          Se va a activar {tierName}
+        </Text>
         <Text className="mt-0.5 text-xs text-amber-700 dark:text-amber-400" nativeID="tier-upgrade-pending-banner-subtitle" testID="tier-upgrade-pending-banner-subtitle">
-          {formatTierPrice(subscription.installmentAmount, true)} para activar {formatTierDisplayName(subscription.tier?.name)}
+          {formatTierPrice(subscription.installmentAmount, true)} por mes
         </Text>
       </View>
-      <Pressable
-        className={`h-9 flex-row items-center justify-center rounded-full bg-amber-600 px-4 ${loading ? 'opacity-60' : ''}`}
-        disabled={loading}
-        nativeID="tier-upgrade-pending-banner-button"
-        onPress={onResume}
-        testID="tier-upgrade-pending-banner-button"
-      >
-        {loading ? <ActivityIndicator color="#fff" size="small" /> : (
-          <Text className="text-xs font-semibold uppercase tracking-wide text-white" nativeID="tier-upgrade-pending-banner-button-label" testID="tier-upgrade-pending-banner-button-label">
-            Completar pago
-          </Text>
-        )}
-      </Pressable>
+      <View className="flex-col gap-2" nativeID="tier-upgrade-pending-banner-actions" testID="tier-upgrade-pending-banner-actions">
+        <Pressable
+          className={`h-9 flex-row items-center justify-center rounded-full bg-amber-600 px-4 ${loading ? 'opacity-60' : ''}`}
+          disabled={loading}
+          nativeID="tier-upgrade-pending-banner-button"
+          onPress={onResume}
+          testID="tier-upgrade-pending-banner-button"
+        >
+          {loading ? <ActivityIndicator color="#fff" size="small" /> : (
+            <Text className="text-xs font-semibold uppercase tracking-wide text-white" nativeID="tier-upgrade-pending-banner-button-label" testID="tier-upgrade-pending-banner-button-label">
+              Completar pago
+            </Text>
+          )}
+        </Pressable>
+        <Pressable
+          className={`h-9 flex-row items-center justify-center rounded-full border border-amber-600/60 px-4 ${cancelling ? 'opacity-60' : ''}`}
+          disabled={cancelling}
+          nativeID="tier-upgrade-pending-banner-cancel-button"
+          onPress={onCancel}
+          testID="tier-upgrade-pending-banner-cancel-button"
+        >
+          {cancelling ? <ActivityIndicator color="#b45309" size="small" /> : (
+            <Text className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300" nativeID="tier-upgrade-pending-banner-cancel-label" testID="tier-upgrade-pending-banner-cancel-label">
+              Cancelar
+            </Text>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -150,13 +174,14 @@ export function TierUpgradeScreen() {
   });
   const tiers = (tierDtos ?? []).map(toTierModel);
 
-  const { subscription, refetchSubscription, changeTier, isChangingTier } = useTierSubscription(user?.userId, currentRoleId);
+  const { subscription, refetchSubscription, changeTier, isChangingTier, nextSubscription, refetchNextSubscription, cancelPending, isCancellingPending } = useTierSubscription(user?.userId, currentRoleId);
 
-  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([refetchTiers(), refetchSubscription()]));
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([refetchTiers(), refetchSubscription(), refetchNextSubscription()]));
 
   const [processingTierId, setProcessingTierId] = useState(null);
   const [checkoutData, setCheckoutData] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  const [cancellingConfirm, setCancellingConfirm] = useState(false);
 
   // Filtrado por rol ahora lo hace el backend (GET /tiers?role_id=), ver
   // services/tiers.js — solo queda ordenar por precio.
@@ -191,9 +216,31 @@ export function TierUpgradeScreen() {
     }
   };
 
+  // Pago pendiente que bloquea el cambio de tier: la sub que viene en
+  // subscriptions/next (first_payment_pending). Tras un re-login, current
+  // solo vuelve `active` y el pendiente solo asoma acá — de eso depende
+  // que el banner siga apareciendo después de recargar la app.
+  const pendingSubscription = nextSubscription?.subscriptionStatus === 'first_payment_pending'
+    ? nextSubscription
+    : (subscription?.subscriptionStatus === 'first_payment_pending' ? subscription : null);
+
   const handleResumePending = () => {
-    if (!subscription) return;
-    startCheckout({ installmentId: subscription.installmentId, amount: subscription.installmentAmount, tierId: subscription.tier.id });
+    if (!pendingSubscription) return;
+    startCheckout({ installmentId: pendingSubscription.installmentId, amount: pendingSubscription.installmentAmount, tierId: pendingSubscription.tier.id });
+  };
+
+  const handleCancelPending = async () => {
+    if (!pendingSubscription) return;
+    try {
+      await cancelPending(pendingSubscription.tier.id);
+      setCancellingConfirm(false);
+      notifySuccess();
+      Toast.show({ type: 'success', text1: 'Cambio de tier cancelado', text2: 'Ya podés elegir otro tier.' });
+      await Promise.all([refetchNextSubscription(), refetchSubscription(), fetchPermissions()]);
+    } catch (error) {
+      notifyError();
+      Toast.show({ type: 'error', text1: 'No pudimos cancelar el cambio de tier', text2: error.message });
+    }
   };
 
   const handleApproved = async () => {
@@ -202,12 +249,22 @@ export function TierUpgradeScreen() {
     setConfirming(true);
     await new Promise((resolve) => setTimeout(resolve, 5000));
     try {
-      const { data } = await refetchSubscription();
+      const [{ data }] = await Promise.all([refetchSubscription(), refetchNextSubscription()]);
       if (data?.subscriptionStatus === 'active' && data?.tier?.id === expectedTierId) {
         Toast.show({ type: 'success', text1: 'Tier actualizado', text2: `Ahora tenés ${formatTierDisplayName(data.tier.name)}.` });
         await fetchPermissions();
       } else {
+        // Pago recibido pero todavía no reflejado: mientras confirming sigue
+        // true el banner de pendiente queda oculto ("Tu pago fue recibido").
+        // Re-consultamos una vez más a los 5s y recién ahí dejamos redibujar
+        // el banner — que reaparece solo si el pendiente sigue existiendo.
         Toast.show({ type: 'info', text1: 'Tu pago fue recibido', text2: 'Puede tardar unos minutos en reflejarse.' });
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const verificado = (await Promise.all([refetchSubscription(), refetchNextSubscription()]))[0].data;
+        if (verificado?.subscriptionStatus === 'active' && verificado?.tier?.id === expectedTierId) {
+          Toast.show({ type: 'success', text1: 'Tier actualizado', text2: `Ahora tenés ${formatTierDisplayName(verificado.tier.name)}.` });
+          await fetchPermissions();
+        }
       }
     } finally {
       setConfirming(false);
@@ -224,7 +281,11 @@ export function TierUpgradeScreen() {
   };
 
   const loading = loadingTiers;
-  const showPendingBanner = subscription?.subscriptionStatus === 'first_payment_pending';
+  // Mientras está el estado "Confirmando pago…" (post-aprobación, ~5s) no se
+  // dibuja el banner de pendiente — `handleApproved` refetchea next al
+  // terminar la espera, así que si el pago no quedó `active` el banner se
+  // redibuja solo con el pendiente real (si sigue existiendo).
+  const showPendingBanner = Boolean(pendingSubscription) && !confirming;
 
   return (
     <ScrollView
@@ -253,7 +314,13 @@ export function TierUpgradeScreen() {
         </View>
 
         {showPendingBanner && (
-          <PendingPaymentBanner loading={processingTierId !== null} onResume={handleResumePending} subscription={subscription} />
+          <PendingPaymentBanner
+            cancelling={isCancellingPending}
+            loading={processingTierId !== null || isCancellingPending}
+            onCancel={() => setCancellingConfirm(true)}
+            onResume={handleResumePending}
+            subscription={pendingSubscription}
+          />
         )}
 
         {confirming && (
@@ -302,6 +369,13 @@ export function TierUpgradeScreen() {
             publicKey={checkoutData.publicKey}
           />
         )}
+
+        <CancelPendingPaymentModal
+          onCancel={() => setCancellingConfirm(false)}
+          onConfirm={handleCancelPending}
+          tierName={formatTierDisplayName(pendingSubscription?.tier?.name)}
+          visible={cancellingConfirm}
+        />
       </View>
     </ScrollView>
   );
