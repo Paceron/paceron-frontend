@@ -2,6 +2,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
 
 function kindLabel(assignment) {
   if (assignment.kind === 'rest') return 'Descanso';
@@ -19,8 +20,15 @@ function AssignmentRow({ assignment, variant }) {
     router.push(`/teams/${assignment.teamId}/groups/${assignment.groupId}/calendar/${assignment.date}`);
   };
 
+  const kindColor = KIND_DOT_COLORS[assignment.kind];
+
   return (
-    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+    <View
+      className="rounded-xl border px-3 py-2"
+      nativeID={idPrefix}
+      style={{ backgroundColor: `${kindColor}26`, borderColor: kindColor }}
+      testID={idPrefix}
+    >
       <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
         {assignment.groupName} · {assignment.teamName}
       </Text>
@@ -61,9 +69,14 @@ function AssignmentRow({ assignment, variant }) {
       )}
       {variant === 'administered' && (
         <Pressable
-          className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
+          className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full border"
           nativeID={`${idPrefix}-go-to-group-button`}
           onPress={handleGoToGroup}
+          style={({ hovered, pressed }) => ({
+            borderColor: kindColor,
+            backgroundColor: hovered ? `${kindColor}4d` : `${kindColor}33`,
+            opacity: pressed ? 0.7 : 1,
+          })}
           testID={`${idPrefix}-go-to-group-button`}
         >
           <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-group-button-label`} testID={`${idPrefix}-go-to-group-button-label`}>

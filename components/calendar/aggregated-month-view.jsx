@@ -27,10 +27,11 @@ function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }
   const severity = showCollisions ? collisionSeverity(assignments) : null;
   const visibleDots = assignments.slice(0, MAX_DOTS);
   const overflowCount = assignments.length - MAX_DOTS;
+  const borderClass = state === 'today' ? 'border-2 border-dashed border-primary' : 'border border-transparent';
 
   return (
     <Pressable
-      className="h-14 w-full items-center justify-start gap-1 rounded-md pt-1"
+      className={`h-14 w-full items-center justify-start gap-1 rounded-md pt-1 ${borderClass}`}
       nativeID={`aggregated-calendar-day-${date.dateString}`}
       onPress={() => onPress(date.dateString)}
       style={{ opacity: closed ? 0.7 : 1 }}

@@ -58,7 +58,13 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
     });
   };
 
-  const borderClass = selected ? 'border-2 border-primary' : isMenuOpen ? 'border border-primary' : 'border border-transparent';
+  const borderClass = selected
+    ? 'border-2 border-primary'
+    : isMenuOpen
+      ? 'border border-primary'
+      : state === 'today'
+        ? 'border-2 border-dashed border-primary'
+        : 'border border-transparent';
 
   return (
     <Pressable
