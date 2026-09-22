@@ -130,6 +130,8 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
     setError(null);
   }
 
+  if (!startDate) return null;
+
   const sessionOptions = sessions.map((s) => ({ id: s.id, name: s.name }));
 
   const handleClose = () => guardedClose(onClose);

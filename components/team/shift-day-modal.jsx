@@ -25,6 +25,8 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
     setDays(1);
   }
 
+  if (!fromDate) return null;
+
   const handleSubmit = async () => {
     const result = await shiftCalendar({ fromDate, days });
     if (!result.success) {
