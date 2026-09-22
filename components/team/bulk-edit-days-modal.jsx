@@ -84,6 +84,9 @@ export function BulkEditDaysModal({ visible, onClose, onSuccess, groupId, ownerI
     }
     notifySuccess();
     Toast.show({ type: 'success', text1: `${dates.length} día${dates.length === 1 ? '' : 's'} actualizados` });
+    if (result.sameTeamWarnings?.length > 0) {
+      Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+    }
     onSuccess();
     onClose();
   };

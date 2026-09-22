@@ -32,7 +32,7 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
     if (!result.success) {
       notifyError();
       if (result.conflict) {
-        Toast.show({ type: 'error', text1: 'No pudimos desplazar', text2: 'El corrimiento chocaría con una fecha existente.' });
+        Toast.show({ type: 'error', text1: 'No pudimos desplazar', text2: result.message ?? 'El corrimiento chocaría con una fecha existente.' });
       } else {
         Toast.show({ type: 'error', text1: 'No pudimos desplazar el calendario', text2: result.error });
       }
@@ -40,6 +40,9 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
     }
     notifySuccess();
     Toast.show({ type: 'success', text1: `Calendario desplazado ${days} día${days === 1 ? '' : 's'}` });
+    if (result.sameTeamWarnings?.length > 0) {
+      Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+    }
     onClose();
   };
 

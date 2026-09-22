@@ -33,7 +33,7 @@ export function useGroupCalendarMutations(groupId) {
     mutationFn: async ({ date, day }) => {
       try {
         const updated = await upsertCalendarDayService(groupId, date, toCalendarDayPayload(day));
-        return { success: true, day: toGroupCalendarDayModel(updated) };
+        return { success: true, day: toGroupCalendarDayModel(updated), sameTeamWarnings: updated.same_team_warnings ?? [] };
       } catch (error) {
         return { success: false, error: error.message };
       }
@@ -57,8 +57,10 @@ export function useGroupCalendarMutations(groupId) {
     mutationFn: async ({ planId, startDate, force, excludeDates }) => {
       try {
         const result = await stampPlanService(groupId, toStampPayload({ planId, startDate, force, excludeDates }));
-        if (result.conflict) return { success: false, conflict: true, dates: result.dates };
-        return { success: true, days: result.days.map(toGroupCalendarDayModel) };
+        if (result.conflict) {
+          return { success: false, conflict: true, presencialCollision: result.presencialCollision, message: result.message, dates: result.dates, conflicts: result.conflicts };
+        }
+        return { success: true, days: result.days.map(toGroupCalendarDayModel), sameTeamWarnings: result.sameTeamWarnings };
       } catch (error) {
         return { success: false, conflict: false, error: error.message };
       }
@@ -69,8 +71,8 @@ export function useGroupCalendarMutations(groupId) {
   const bulkAssignMutation = useMutation({
     mutationFn: async ({ dates, day }) => {
       try {
-        const updated = await bulkAssignDaysService(groupId, toBulkAssignPayload({ dates, day }));
-        return { success: true, days: updated.map(toGroupCalendarDayModel) };
+        const result = await bulkAssignDaysService(groupId, toBulkAssignPayload({ dates, day }));
+        return { success: true, days: result.days.map(toGroupCalendarDayModel), sameTeamWarnings: result.sameTeamWarnings };
       } catch (error) {
         return { success: false, error: error.message };
       }
@@ -94,8 +96,8 @@ export function useGroupCalendarMutations(groupId) {
     mutationFn: async ({ fromDate, days }) => {
       try {
         const result = await shiftCalendarService(groupId, { from_date: fromDate, days });
-        if (result.conflict) return { success: false, conflict: true };
-        return { success: true, days: result.days.map(toGroupCalendarDayModel) };
+        if (result.conflict) return { success: false, conflict: true, message: result.message };
+        return { success: true, days: result.days.map(toGroupCalendarDayModel), sameTeamWarnings: result.sameTeamWarnings };
       } catch (error) {
         return { success: false, conflict: false, error: error.message };
       }

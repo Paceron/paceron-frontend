@@ -34,26 +34,37 @@ export async function deleteCalendarDay(groupId, date) {
   return await api.delete(`/groups/${groupId}/calendar/${date}`);
 }
 
-// POST /api/v1/groups/{id}/calendar/stamp. 409 con { dates: [...] } si
-// hay conflictos y no se pasó force — se devuelve como { conflict: true,
-// dates } en vez de lanzar, porque es un resultado esperado del flujo
-// (el modal lo muestra, no es un error real). Cualquier otro status sigue
-// lanzando normal.
+// POST /api/v1/groups/{id}/calendar/stamp. Responde { days, same_team_warnings }
+// (Gap 9) en vez del array crudo. Dos causas distintas de 409, distinguidas
+// por el shape del body: { dates: [...] } es el conflicto de contenido
+// existente de siempre (se devuelve como { conflict: true, dates } — un
+// resultado esperado del flujo, el modal lo muestra); { conflicts: [...] }
+// es la colisión presencial cross-equipo de Gap 9, sin force que la salve
+// (se devuelve como { conflict: true, presencialCollision: true, message,
+// conflicts }). Cualquier otro status sigue lanzando normal.
 export async function stampPlan(groupId, payload) {
   if (USE_MOCKS) return await mockStampPlan(groupId, payload);
   try {
-    const days = await api.post(`/groups/${groupId}/calendar/stamp`, payload);
-    return { conflict: false, days };
+    const response = await api.post(`/groups/${groupId}/calendar/stamp`, payload);
+    return { conflict: false, days: response.days, sameTeamWarnings: response.same_team_warnings ?? [] };
   } catch (error) {
-    if (error.status === 409) return { conflict: true, dates: error.data?.dates ?? [] };
+    if (error.status === 409 && error.data?.dates) return { conflict: true, dates: error.data.dates };
+    if (error.status === 409 && error.data?.conflicts) {
+      return { conflict: true, presencialCollision: true, message: error.data.message, conflicts: error.data.conflicts };
+    }
     throw error;
   }
 }
 
-// POST /api/v1/groups/{id}/calendar/bulk.
+// POST /api/v1/groups/{id}/calendar/bulk. Responde { days, same_team_warnings }
+// (Gap 9) en vez del array crudo. Sin conflicto de contenido existente
+// (bulk siempre pisa) — el único 409 posible es la colisión presencial
+// cross-equipo de Gap 9, que se deja lanzar (el mensaje del backend ya es
+// legible, el caller lo muestra genérico).
 export async function bulkAssignDays(groupId, payload) {
   if (USE_MOCKS) return await mockBulkAssignDays(groupId, payload);
-  return await api.post(`/groups/${groupId}/calendar/bulk`, payload);
+  const response = await api.post(`/groups/${groupId}/calendar/bulk`, payload);
+  return { days: response.days, sameTeamWarnings: response.same_team_warnings ?? [] };
 }
 
 // POST /api/v1/groups/{id}/calendar/bulk-clear.
@@ -62,16 +73,21 @@ export async function bulkClearDays(groupId, dates) {
   return await api.post(`/groups/${groupId}/calendar/bulk-clear`, { dates });
 }
 
-// POST /api/v1/groups/{id}/calendar/shift. 409 si el corrimiento choca
-// contra una fecha ya ocupada — mismo criterio que stamp, se devuelve
-// como { conflict: true } en vez de lanzar (resultado esperado del flujo).
+// POST /api/v1/groups/{id}/calendar/shift. Responde { days, same_team_warnings }
+// (Gap 9) en vez del array crudo. Dos causas distintas de 409, ambas sin
+// `conflicts` estructurado salvo la de colisión presencial — se devuelve
+// siempre { conflict: true, message } con el texto real del backend
+// (distingue "corrimiento choca fechas existentes" de "colisión presencial
+// con otro equipo" sin necesidad de un texto hardcodeado por el caller).
 export async function shiftCalendar(groupId, payload) {
   if (USE_MOCKS) return await mockShiftCalendar(groupId, payload);
   try {
-    const days = await api.post(`/groups/${groupId}/calendar/shift`, payload);
-    return { conflict: false, days };
+    const response = await api.post(`/groups/${groupId}/calendar/shift`, payload);
+    return { conflict: false, days: response.days, sameTeamWarnings: response.same_team_warnings ?? [] };
   } catch (error) {
-    if (error.status === 409) return { conflict: true };
+    if (error.status === 409) {
+      return { conflict: true, presencialCollision: Boolean(error.data?.conflicts), message: error.data?.message };
+    }
     throw error;
   }
 }

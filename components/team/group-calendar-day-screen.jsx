@@ -110,6 +110,9 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
     }
     notifySuccess();
     Toast.show({ type: 'success', text1: 'Día guardado' });
+    if (result.sameTeamWarnings?.length > 0) {
+      Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+    }
     bypassGuard(() => router.back());
   };
 

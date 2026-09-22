@@ -108,15 +108,18 @@ export async function mockStampPlan(groupId, { plan_id, start_date, force, exclu
     savedDay.source_plan_id = Number(plan_id);
     created.push(savedDay);
   }
-  return { conflict: false, days: created };
+  return { conflict: false, days: created, sameTeamWarnings: [] };
 }
 
+// Mock no simula colisión presencial cross-grupo (Gap 9) — requeriría
+// modelar equipos/owner_id acá, sin valor real para un mock local.
+// sameTeamWarnings queda siempre vacío, mismo shape que el service real.
 export async function mockBulkAssignDays(groupId, { dates, ...payload }) {
   const results = [];
   for (const date of dates) {
     results.push(await mockUpsertCalendarDay(groupId, date, payload));
   }
-  return results;
+  return { days: results, sameTeamWarnings: [] };
 }
 
 export async function mockBulkClearDays(groupId, dates) {
@@ -146,7 +149,7 @@ export async function mockShiftCalendar(groupId, { from_date, days }) {
     mockCalendarDays[keyFor(groupId, newDate)] = moved;
     shifted.push(moved);
   }
-  return { conflict: false, days: shifted };
+  return { conflict: false, days: shifted, sameTeamWarnings: [] };
 }
 
 export async function mockDeleteCalendarDay(groupId, date) {

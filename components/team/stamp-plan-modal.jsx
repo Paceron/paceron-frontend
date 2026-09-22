@@ -153,7 +153,9 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
     if (!stampResult.success) {
       setSaving(false);
       notifyError();
-      if (stampResult.conflict) {
+      if (stampResult.presencialCollision) {
+        Toast.show({ type: 'error', text1: 'Colisión presencial', text2: stampResult.message ?? 'Choca con un grupo de otro equipo.' });
+      } else if (stampResult.conflict) {
         Toast.show({ type: 'error', text1: 'El calendario cambió', text2: 'Volvé a revisar el preview antes de guardar.' });
       } else {
         Toast.show({ type: 'error', text1: 'No pudimos estampar el plan', text2: stampResult.error });
@@ -173,6 +175,9 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
     setSaving(false);
     notifySuccess();
     Toast.show({ type: 'success', text1: 'Plan estampado' });
+    if (stampResult.sameTeamWarnings?.length > 0) {
+      Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+    }
     bypassGuard(onClose);
   };
 

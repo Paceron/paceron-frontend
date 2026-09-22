@@ -160,14 +160,15 @@ describe('mockStampPlan', () => {
 describe('mockBulkAssignDays', () => {
   test('aplica el mismo contenido a todas las fechas listadas', async () => {
     const result = await mockBulkAssignDays(1, { dates: ['2026-10-05', '2026-10-06'], kind: 'rest' });
-    expect(result).toHaveLength(2);
-    expect(result.every((d) => d.kind === 'rest')).toBe(true);
+    expect(result.days).toHaveLength(2);
+    expect(result.days.every((d) => d.kind === 'rest')).toBe(true);
+    expect(result.sameTeamWarnings).toEqual([]);
     expect(await mockGetGroupCalendar(1, '2026-10-01', '2026-10-31')).toHaveLength(2);
   });
 
   test('con kind=training instancia la sesión en cada fecha', async () => {
     const result = await mockBulkAssignDays(1, { dates: ['2026-10-05', '2026-10-06'], kind: 'training', session_id: 1 });
-    expect(result.every((d) => d.session_instance?.name === 'Fondo suave')).toBe(true);
+    expect(result.days.every((d) => d.session_instance?.name === 'Fondo suave')).toBe(true);
   });
 });
 
