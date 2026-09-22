@@ -207,7 +207,23 @@ días excluidos) — descartado como solución definitiva a pedido del
 usuario, se prefiere esperar este campo. Sin acción de frontend
 pendiente mientras este gap sigue abierto.
 
-## Gap 9 — sin validación de colisión presencial entre grupos/equipos de un mismo entrenador
+## Gap 9 — sin validación de colisión presencial entre grupos/equipos de un mismo entrenador [RESUELTO]
+
+> **Actualización 2026-09-22 — RESUELTO, confirmado en código real del
+> backend (`cmd/api/services/calendar_service.go`,
+> `cmd/api/domains/calendar/presencial_{conflict,collision}.go`,
+> `cmd/api/controllers/calendar_controller.go`).** Implementado tal cual
+> se pidió: `409 {message, conflicts: [...]}` sin `force` posible para
+> colisión cross-equipo; `same_team_warnings` (mismo shape) no bloqueante
+> para colisión dentro del mismo equipo. Overlap medio-abierto (bordes que
+> se tocan no colisionan) y `cancelled` excluido de la detección en ambos
+> lados, ninguno de los dos pedido explícitamente pero consistente con el
+> resto del guard. **Breaking real para el frontend:** `stamp`/`bulk`/
+> `shift` ahora devuelven `{days: [...], same_team_warnings: [...]}` en
+> vez del array crudo (`PUT` individual se mantuvo plano, con
+> `same_team_warnings` opcional agregado) — pendiente de adaptar
+> `services/calendar.js`/`hooks/use-group-calendar.js`/
+> `stamp-plan-modal.jsx`/`bulk-edit-days-modal.jsx`/`shift-day-modal.jsx`.
 
 Un entrenador puede administrar varios equipos, cada uno con varios
 grupos. Hoy nada impide cargar dos días presenciales en la misma fecha
@@ -260,7 +276,21 @@ este `409`/`same_team_warnings` en los flujos de escritura existentes
 (`group-calendar-day-screen.jsx`, `stamp-plan-modal.jsx`,
 `bulk-edit-days-modal.jsx`, `shift-day-modal.jsx`).
 
-## Gap 10 — endpoints livianos de "próximo entrenamiento" para los banners del home (corredor y entrenador)
+## Gap 10 — endpoints livianos de "próximo entrenamiento" para los banners del home (corredor y entrenador) [RESUELTO]
+
+> **Actualización 2026-09-22 — RESUELTO, confirmado en código real
+> (`cmd/api/domains/calendar/next_session_response.go`,
+> `cmd/api/services/calendar_service.go`).** Implementado tal cual el
+> shape pedido: `GET /users/{id}/next-session` siempre `200`, ambos
+> campos (`next_cancelled`/`next_training`) nullable de forma
+> independiente; `GET /users/{id}/next-presencial-session` nuevo, `200`
+> con el shape pedido o `204` si no hay ninguna. Único detalle: el
+> ejemplo JSON que relayó el backend para `presencial_location` usaba
+> `latitud`/`longitud`/`texto` — typo del mensaje, el campo real (y el
+> que ya usa el frontend) sigue siendo `{lat, lng, label}`
+> (`trainingplan.Location`, sin cambios). Sin acción de frontend
+> pendiente más allá de consumir estos dos endpoints cuando se implemente
+> la pieza 3 (banners del home).
 
 Sub-proyecto de vista agregada de calendario (pieza 3, banners del
 home): tanto el corredor como el entrenador necesitan un endpoint
@@ -342,7 +372,21 @@ abierto — bloquea el armado de los banners del home de ambos roles
 (pieza 3 del sub-proyecto de calendario agregado, todavía sin
 implementar).
 
-## Gap 11 — endpoints agregados de calendario cross-grupo (pieza 2, vista mensual de corredor/entrenador)
+## Gap 11 — endpoints agregados de calendario cross-grupo (pieza 2, vista mensual de corredor/entrenador) [RESUELTO]
+
+> **Actualización 2026-09-22 — RESUELTO, confirmado en código real
+> (`cmd/api/domains/calendar/aggregate_calendar_day_response.go`,
+> `cmd/api/controllers/calendar_controller.go`).** `GET
+> /users/{id}/member-calendar`/`administered-calendar` implementados tal
+> cual pedido — `AggregateCalendarDayResponse` embebe `CalendarDayResponse`
+> completo más `group_id`/`group_name`/`team_id`/`team_name` planos.
+> `administered-calendar` suma `presencial_collision` (`type`
+> `same_team`/`cross_team`, `cross_team` gana si hay de ambos tipos;
+> incluye colisiones viejas de antes del guard) — ausente si el día no
+> colisiona. `from`/`to` obligatorios, `400` si faltan/formato
+> inválido/`from > to`, `403` si `{id}` no es el propio usuario. Sin
+> acción de frontend pendiente más allá de consumir estos dos endpoints
+> cuando se implemente la pieza 2 (vista agregada + detalle de día).
 
 Sub-proyecto de vista agregada de calendario (pieza 2, sección nueva
 "Calendario" en el header + modal de detalle de día). Un corredor
