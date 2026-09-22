@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import '../../config/calendarLocale.js';
 import { useThemeColors } from '../../theme/colors.js';
+import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
@@ -116,6 +117,7 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
 function GroupCalendarScreenContent({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const { colorScheme } = useThemeMode();
   // userId sale directo del auth store (sincrónico) en vez de esperar
   // useUser(userId) — evita una vuelta de red extra antes de poder
   // arrancar el fetch de grupos, mismo valor (ver store/auth-store.js).
@@ -317,6 +319,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         >
           <Calendar
             current={currentMonthISO}
+            key={colorScheme}
             dayComponent={({ date, state }) => (
               <CalendarDayCell
                 containerRef={screenRootRef}
