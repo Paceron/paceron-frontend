@@ -7,8 +7,16 @@ import { usePermissions } from '../../hooks/use-user.js';
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
 
-function tierLabel(tier) {
-  return tier === 'premium' ? 'Premium' : 'Base';
+// Etiqueta corta del tier para el segmento del switch. `roles[].tier` trae
+// el nombre resuelto del tier (ej. "premium_entrenador", "base_entrenador",
+// "base") — se toma la parte antes del sufijo de rol y se capitaliza. Antes
+// se comparaba `tier === 'premium'` contra el nombre completo y nunca
+// matcheaba, así que siempre daba "BASE" aunque se hubiera pagado.
+// null cuando no hay dato = no dibuja la línea de tier en el segmento.
+function tierLabel(tierName) {
+  if (!tierName) return null;
+  const base = String(tierName).split('_')[0];
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : null;
 }
 
 // El texto ya no indica el rol — la pantalla de destino muestra los
