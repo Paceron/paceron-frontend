@@ -341,3 +341,54 @@ equipo es el compromiso, dado que el entrenador puede tener varios.
 abierto — bloquea el armado de los banners del home de ambos roles
 (pieza 3 del sub-proyecto de calendario agregado, todavía sin
 implementar).
+
+## Gap 11 — endpoints agregados de calendario cross-grupo (pieza 2, vista mensual de corredor/entrenador)
+
+Sub-proyecto de vista agregada de calendario (pieza 2, sección nueva
+"Calendario" en el header + modal de detalle de día). Un corredor
+puede ser miembro de varios grupos/equipos, y un entrenador puede
+administrar varios — armar una vista mensual con TODOS sus días,
+sin este endpoint, implicaría 1 `GET /groups/{id}/calendar` por cada
+grupo (N+1) y mergear client-side. Se pide un endpoint agregado por
+rol que devuelva todo en una sola consulta.
+
+**Corredor — `GET /users/{id}/member-calendar?from={date}&to={date}`:**
+array de `GroupCalendarDay` (mismo shape que el endpoint por grupo) de
+TODOS los grupos de los que es miembro en el rango, cada item con
+`group_id`/`group_name`/`team_id`/`team_name` sumados (el endpoint por
+grupo no los necesita porque el caller ya sabe de qué grupo pide, este
+sí — es la fuente de la vista agregada y del modal de detalle de día,
+que puede tener que mostrar más de una asignación el mismo día si dos
+grupos coinciden en fecha).
+
+**Entrenador — `GET /users/{id}/administered-calendar?from={date}&to={date}`:**
+mismo shape, pero de TODOS los grupos que administra (`owner_id`,
+sin importar de qué equipo). Además, cada día con `is_presencial=true`
+viene marcado si colisiona en horario con otro día presencial de otro
+grupo administrado en la misma fecha — no solo las que el guard de
+Gap 9 bloquearía (cross-equipo), sino también las de mismo equipo
+(permitidas por el guard) y cualquier colisión vieja guardada antes de
+que el guard existiera:
+
+```json
+{
+  ...campos normales de GroupCalendarDay...,
+  "group_id": 7, "group_name": "Elite AM", "team_id": 3, "team_name": "Runners Norte",
+  "presencial_collision": {
+    "type": "same_team",
+    "conflicts": [
+      { "group_id": 9, "group_name": "Elite PM", "team_id": 3, "team_name": "Runners Norte",
+        "presencial_time_from": "08:30", "presencial_time_to": "10:00" }
+    ]
+  }
+}
+```
+`presencial_collision` ausente/`null` si no colisiona con nada. `type`
+es `"same_team"` o `"cross_team"` (este último no debería aparecer en
+datos nuevos gracias al guard de Gap 9, pero sí puede aparecer en datos
+viejos ya guardados antes de que el guard existiera — la vista agregada
+es también la forma de detectar y limpiar esos casos).
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue
+abierto — bloquea la vista agregada de calendario (pieza 2) para ambos
+roles, todavía sin implementar.
