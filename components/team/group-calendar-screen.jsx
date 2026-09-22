@@ -10,6 +10,7 @@ import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
+import { usePermissions } from '../../hooks/use-user.js';
 import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
@@ -23,7 +24,7 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
-function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect }) {
+function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
@@ -43,6 +44,7 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
   const tintColor = marking ? `${KIND_DOT_COLORS[marking.kind]}${tintAlpha}` : 'transparent';
 
   const handlePress = () => {
+    if (!canManage) return;
     if (selectionActive) {
       if (!canSelect) return;
       onToggleSelect(date.dateString);
@@ -111,6 +113,17 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   // useUser(userId) — evita una vuelta de red extra antes de poder
   // arrancar el fetch de grupos, mismo valor (ver store/auth-store.js).
   const userId = useAuthStore((s) => s.userId);
+  const activeRole = useAuthStore((s) => s.activeRole);
+  const { roles } = usePermissions(userId);
+  // Mismo criterio que canManageTeam en team-detail-screen.jsx — no hay
+  // modelo de dueño de equipo a nivel de UI todavía, cualquier usuario
+  // viendo la app como entrenador activo puede administrar. No se
+  // restringe más (a "administra ESTE grupo puntual") porque eso
+  // requeriría resolver team.ownerId contra este grupo, dato no
+  // disponible hoy sin una consulta extra — replica el criterio ya
+  // vigente en el resto de la app en vez de inventar uno más estricto.
+  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
+  const canManage = hasTrainerRole && activeRole === 'trainer';
   const { groups, loading: loadingGroups } = useGroups(teamId, userId);
   const group = groups.find((g) => g.id === groupId);
 
@@ -311,6 +324,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
             key={colorScheme}
             dayComponent={({ date, state }) => (
               <CalendarDayCell
+                canManage={canManage}
                 containerRef={screenRootRef}
                 date={date}
                 isMenuOpen={openDayMenu?.date === date.dateString}
