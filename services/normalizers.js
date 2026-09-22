@@ -590,6 +590,23 @@ export function toGroupCalendarDayModel(dto) {
   };
 }
 
+// Día de la vista agregada (member-calendar/administered-calendar, Gap
+// 11) — todo lo de toGroupCalendarDayModel más group/team resueltos
+// server-side y, solo en administered-calendar, presencial_collision.
+export function toAggregatedCalendarDayModel(dto) {
+  const base = toGroupCalendarDayModel(dto);
+  if (!base) return null;
+  return {
+    ...base,
+    groupName: dto.group_name,
+    teamId: String(dto.team_id),
+    teamName: dto.team_name,
+    presencialCollision: dto.presencial_collision
+      ? { type: dto.presencial_collision.type, conflicts: dto.presencial_collision.conflicts }
+      : null,
+  };
+}
+
 // Sentinel de "mantener la instancia actual, no reasignar" — Gap 7
 // resuelto 2026-09-21: el backend ahora permite omitir `session_id` en un
 // día `training` que ya tiene instancia, y la conserva sin reinstanciar.

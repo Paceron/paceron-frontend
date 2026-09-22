@@ -3,7 +3,7 @@ import {
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
-  toGroupCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
+  toGroupCalendarDayModel, toAggregatedCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
   toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload, toBulkAssignPayload,
 } from '../services/normalizers.js';
 
@@ -591,6 +591,43 @@ describe('toGroupCalendarDayModel', () => {
 
   test('returns null for falsy dto', () => {
     expect(toGroupCalendarDayModel(null)).toBeNull();
+  });
+});
+
+describe('toAggregatedCalendarDayModel', () => {
+  test('suma group_name/team_id/team_name y mapea presencial_collision', () => {
+    const dto = {
+      id: 5, group_id: 7, date: '2026-10-05', kind: 'training', other_name: null,
+      session_instance: null, cancelled_reason: null, is_presencial: true,
+      presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+      source_plan_id: null,
+      group_name: 'Elite AM', team_id: 3, team_name: 'Runners Norte',
+      presencial_collision: {
+        type: 'same_team',
+        conflicts: [{ group_id: 9, group_name: 'Elite PM', team_id: 3, team_name: 'Runners Norte', date: '2026-10-05', presencial_time_from: '08:30', presencial_time_to: '10:00' }],
+      },
+    };
+    const model = toAggregatedCalendarDayModel(dto);
+    expect(model.groupId).toBe('7');
+    expect(model.groupName).toBe('Elite AM');
+    expect(model.teamId).toBe('3');
+    expect(model.teamName).toBe('Runners Norte');
+    expect(model.presencialCollision).toEqual({
+      type: 'same_team',
+      conflicts: [{ group_id: 9, group_name: 'Elite PM', team_id: 3, team_name: 'Runners Norte', date: '2026-10-05', presencial_time_from: '08:30', presencial_time_to: '10:00' }],
+    });
+  });
+
+  test('presencialCollision es null si el día no colisiona', () => {
+    const dto = {
+      id: 5, group_id: 7, date: '2026-10-05', kind: 'rest', other_name: null,
+      session_instance: null, cancelled_reason: null, is_presencial: false,
+      presencial_time_from: null, presencial_time_to: null, presencial_location: null,
+      source_plan_id: null, group_name: 'Elite AM', team_id: 3, team_name: 'Runners Norte',
+    };
+    const model = toAggregatedCalendarDayModel(dto);
+    expect(model.presencialCollision).toBeNull();
   });
 });
 
