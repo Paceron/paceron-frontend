@@ -13,6 +13,8 @@ import { useGroups } from '../../hooks/use-groups.js';
 import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
+import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
+import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
 import { StampPlanModal } from './stamp-plan-modal.jsx';
 import { ShiftDayModal } from './shift-day-modal.jsx';
 import { CalendarDayMenu } from './calendar-day-menu.jsx';
@@ -20,19 +22,6 @@ import { BulkEditDaysModal } from './bulk-edit-days-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
-
-const KIND_DOT_COLORS = { rest: '#94a3b8', other: '#f59e0b', training: '#22c55e', cancelled: '#ef4444' };
-
-function pad2(n) {
-  return String(n).padStart(2, '0');
-}
-
-function monthRange(year, month) {
-  const from = `${year}-${pad2(month)}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
-  const to = `${year}-${pad2(month)}-${pad2(lastDay)}`;
-  return { from, to };
-}
 
 function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect }) {
   const colors = useThemeColors();
