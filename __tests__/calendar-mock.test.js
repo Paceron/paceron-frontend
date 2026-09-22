@@ -1,9 +1,12 @@
 import {
   mockGetGroupCalendar, mockUpsertCalendarDay, mockDeleteCalendarDay, mockStampPlan,
-  mockBulkAssignDays, mockBulkClearDays, mockShiftCalendar, __resetMockCalendar,
+  mockBulkAssignDays, mockBulkClearDays, mockShiftCalendar,
+  mockGetAdministeredCalendar, mockGetMemberCalendar, mockGetCalendarSummary,
+  __resetMockCalendar,
 } from '../services/__mocks__/calendar-mock.js';
 import { __resetMockSessions } from '../services/__mocks__/sessions-mock.js';
 import { mockCreateTrainingPlan, __resetMockTrainingPlans } from '../services/__mocks__/training-plans-mock.js';
+import { mockListGroups, mockGetGroupUsers } from '../services/__mocks__/groups-mock.js';
 
 beforeEach(() => {
   __resetMockCalendar();
@@ -205,5 +208,63 @@ describe('mockShiftCalendar', () => {
     const before = await mockUpsertCalendarDay(1, '2026-10-05', { kind: 'rest' });
     const result = await mockShiftCalendar(1, { from_date: '2026-10-05', days: 1 });
     expect(result.days[0].id).toBe(before.id);
+  });
+});
+
+describe('mockGetAdministeredCalendar', () => {
+  test('trae los días de todos los grupos que administra el owner_id, taggeados con group/team', async () => {
+    // owner_id 1 administra los teams 1 y 4 (services/__mocks__/teams-mock.js).
+    // El team 1 tiene un único grupo default ("General").
+    const groups = await mockListGroups(1);
+    const generalGroupId = groups[0].id;
+    await mockUpsertCalendarDay(generalGroupId, '2026-10-05', { kind: 'rest' });
+
+    const result = await mockGetAdministeredCalendar(1, '2026-10-01', '2026-10-31');
+    expect(result).toHaveLength(1);
+    expect(result[0].group_name).toBe('General');
+    expect(result[0].team_id).toBe(1);
+    expect(result[0].team_name).toBe('Corredores del Sur');
+    expect(result[0].presencial_collision).toBeUndefined();
+  });
+
+  test('no trae días de un equipo que no administra', async () => {
+    // owner_id 99 administra los teams 2 y 3, no el 1 — el día cargado acá
+    // no debe aparecer en la respuesta de 99, aunque exista.
+    const groups = await mockListGroups(1);
+    await mockUpsertCalendarDay(groups[0].id, '2026-10-05', { kind: 'rest' });
+    const result = await mockGetAdministeredCalendar(99, '2026-10-01', '2026-10-31');
+    expect(result.find((d) => d.date === '2026-10-05' && d.team_id === 1)).toBeUndefined();
+  });
+});
+
+describe('mockGetMemberCalendar', () => {
+  test('trae los días de los grupos de los que el usuario es miembro', async () => {
+    // "Runners Mendoza" (team 4) siembra FICTITIOUS_RUNNER_IDS como
+    // miembros de su grupo "General" (services/__mocks__/teams-mock.js).
+    const groups = await mockListGroups(4);
+    const generalGroup = groups.find((g) => g.name === 'General');
+    const members = await mockGetGroupUsers(generalGroup.id);
+    const memberUserId = members[0].user_id;
+    await mockUpsertCalendarDay(generalGroup.id, '2026-10-05', { kind: 'rest' });
+
+    const result = await mockGetMemberCalendar(memberUserId, '2026-10-01', '2026-10-31');
+    expect(result.some((d) => d.date === '2026-10-05' && d.group_name === 'General' && d.team_name === 'Runners Mendoza')).toBe(true);
+  });
+
+  test('usuario sin membresías no trae nada', async () => {
+    const result = await mockGetMemberCalendar(999999, '2026-10-01', '2026-10-31');
+    expect(result).toEqual([]);
+  });
+});
+
+describe('mockGetCalendarSummary', () => {
+  test('lista los grupos de los que el usuario es miembro', async () => {
+    const groups = await mockListGroups(4);
+    const generalGroup = groups.find((g) => g.name === 'General');
+    const members = await mockGetGroupUsers(generalGroup.id);
+    const memberUserId = members[0].user_id;
+
+    const result = await mockGetCalendarSummary(memberUserId);
+    expect(result).toEqual(expect.arrayContaining([{ group_id: generalGroup.id, group_name: 'General' }]));
   });
 });

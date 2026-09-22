@@ -13,6 +13,8 @@
 import { mockGetSession } from './sessions-mock.js';
 import { mockGetTrainingPlan } from './training-plans-mock.js';
 import { addDaysISO } from '../../utils/build-stamp-draft.js';
+import { __getAllMockTeams } from './teams-mock.js';
+import { mockListGroups, mockGetGroupUsers } from './groups-mock.js';
 
 let mockCalendarDays = {};
 let nextId = 1;
@@ -155,6 +157,57 @@ export async function mockShiftCalendar(groupId, { from_date, days }) {
 export async function mockDeleteCalendarDay(groupId, date) {
   delete mockCalendarDays[keyFor(groupId, date)];
   return null;
+}
+
+async function groupsAdministeredBy(userId) {
+  const teams = __getAllMockTeams().filter((t) => String(t.owner_id) === String(userId));
+  const result = [];
+  for (const team of teams) {
+    const groups = await mockListGroups(team.id);
+    for (const group of groups) result.push({ group, team });
+  }
+  return result;
+}
+
+async function groupsWhereMember(userId) {
+  const teams = __getAllMockTeams();
+  const result = [];
+  for (const team of teams) {
+    const groups = await mockListGroups(team.id);
+    for (const group of groups) {
+      const members = await mockGetGroupUsers(group.id);
+      if (members.some((m) => String(m.user_id) === String(userId))) result.push({ group, team });
+    }
+  }
+  return result;
+}
+
+// administered-calendar (Gap 11) — no simula presencial_collision (mismo
+// criterio que same_team_warnings en los mocks de escritura: requeriría
+// modelar el algoritmo de colisión acá, sin valor real para un mock local).
+export async function mockGetAdministeredCalendar(userId, from, to) {
+  const administered = await groupsAdministeredBy(userId);
+  const results = [];
+  for (const { group, team } of administered) {
+    const days = await mockGetGroupCalendar(group.id, from, to);
+    for (const day of days) results.push({ ...day, group_name: group.name, team_id: team.id, team_name: team.name });
+  }
+  return results;
+}
+
+export async function mockGetMemberCalendar(userId, from, to) {
+  const memberships = await groupsWhereMember(userId);
+  const results = [];
+  for (const { group, team } of memberships) {
+    const days = await mockGetGroupCalendar(group.id, from, to);
+    for (const day of days) results.push({ ...day, group_name: group.name, team_id: team.id, team_name: team.name });
+  }
+  return results;
+}
+
+export async function mockGetCalendarSummary(userId) {
+  const memberships = await groupsWhereMember(userId);
+  return memberships.map(({ group }) => ({ group_id: group.id, group_name: group.name }));
 }
 
 export function __resetMockCalendar() {
