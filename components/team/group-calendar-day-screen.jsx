@@ -19,6 +19,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { StartSessionButton } from '../calendar/start-session-button.jsx';
 import { KEEP_CURRENT_SESSION } from '../../services/normalizers.js';
 
 function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
@@ -215,6 +216,8 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
               {formatWeekdayLabel(date)}, {formatDisplayDate(date)}
             </Text>
           </View>
+
+          {existingDay && <StartSessionButton assignment={existingDay} role="trainer" />}
 
           <SectionCard icon="calendar-blank-outline" title={`Día de ${group.name}`}>
             {closed && (
