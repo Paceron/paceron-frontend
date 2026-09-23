@@ -172,3 +172,19 @@ real — no hay preview posible para esto (Platform-gated a nativo).
 Cronómetro, GPS, pausas/skip con hold-to-confirm, notificación persistente, pantalla de resumen,
 guardado, historial, asistencia/QR, monitoreo en tiempo real, banner del home. Todo esto lo retoma
 el compañero (o una spec futura) sobre estos cimientos.
+
+## Actualización 2026-09-23 — ajustes tras probar en dispositivo real
+
+- **Web no queda mudo:** en vez de ocultar el botón sin más, `StartSessionButton` muestra un aviso
+  informativo (tono verde, `cellphone-check`) explicando que el inicio/registro solo está
+  disponible en la app nativa. Mismo gating que el botón (`canStartAsyncSession`/
+  `canStartPresencialSession`) — el aviso aparece exactamente cuando el botón habría aparecido.
+- **Pre-start screen, ronda de pulido visual:** `SafeAreaView` (estaba pegada a la statusbar),
+  bloque de fecha + nombre de sesión centrado y separado del botón de volver (antes iban en la
+  misma fila), equipo/grupo debajo si `pendingSession` los trae, ejercicios dentro de un
+  contenedor con label ("Ejercicios de la sesión"), cada fila desplegable a una fila por serie
+  cuando `repeatCount > 1`, botón Play más grande (`h-24 w-24`, ícono 44). Texto de fecha/nombre/
+  equipo/grupo subido de tamaño en una segunda pasada.
+- **Fuera de esta spec, anotado como backlog aparte:** las animaciones de apertura/cierre de
+  `Modal` son inconsistentes en toda la app (no solo acá) — auditoría transversal, no se aborda en
+  esta rama.
