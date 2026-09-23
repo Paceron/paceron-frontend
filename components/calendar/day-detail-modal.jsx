@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
+import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 
 function kindLabel(assignment) {
   if (assignment.kind === 'rest') return 'Descanso';
@@ -16,7 +17,7 @@ function AssignmentRow({ assignment, variant }) {
   const router = useRouter();
   const idPrefix = `day-detail-assignment-${assignment.id}`;
 
-  const handleGoToGroup = () => {
+  const handleGoToDay = () => {
     router.push(`/teams/${assignment.teamId}/groups/${assignment.groupId}/calendar/${assignment.date}`);
   };
 
@@ -29,9 +30,20 @@ function AssignmentRow({ assignment, variant }) {
       style={{ backgroundColor: `${kindColor}26`, borderColor: kindColor }}
       testID={idPrefix}
     >
-      <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
-        {assignment.groupName} · {assignment.teamName}
-      </Text>
+      <View className="mb-1 flex-row flex-wrap items-center gap-x-3 gap-y-0.5" nativeID={`${idPrefix}-scope`} testID={`${idPrefix}-scope`}>
+        <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-team`} testID={`${idPrefix}-team`}>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={12} />
+          <Text className="text-xs font-bold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-team-label`} testID={`${idPrefix}-team-label`}>
+            {assignment.teamName}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={12} />
+          <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-group-label`} testID={`${idPrefix}-group-label`}>
+            {assignment.groupName}
+          </Text>
+        </View>
+      </View>
       <Text className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-kind`} testID={`${idPrefix}-kind`}>
         {kindLabel(assignment)}
       </Text>
@@ -70,12 +82,12 @@ function AssignmentRow({ assignment, variant }) {
       {variant === 'administered' && (
         <Pressable
           className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
-          nativeID={`${idPrefix}-go-to-group-button`}
-          onPress={handleGoToGroup}
-          testID={`${idPrefix}-go-to-group-button`}
+          nativeID={`${idPrefix}-go-to-day-button`}
+          onPress={handleGoToDay}
+          testID={`${idPrefix}-go-to-day-button`}
         >
-          <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-group-button-label`} testID={`${idPrefix}-go-to-group-button-label`}>
-            Ir a este grupo
+          <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-day-button-label`} testID={`${idPrefix}-go-to-day-button-label`}>
+            Ir a este día
           </Text>
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-right" size={14} />
         </Pressable>
@@ -95,7 +107,7 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant })
           testID="day-detail-modal-card"
         >
           <Text className="mb-3 text-lg font-bold text-slate-900 dark:text-white" nativeID="day-detail-modal-title" testID="day-detail-modal-title">
-            {date}
+            {formatWeekdayLabel(date)}, {formatDisplayDate(date)}
           </Text>
           <ScrollView nativeID="day-detail-modal-scroll" testID="day-detail-modal-scroll">
             <View className="gap-2" nativeID="day-detail-modal-list" testID="day-detail-modal-list">
