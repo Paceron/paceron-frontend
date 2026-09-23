@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useMemberCalendar, useCalendarSummary } from '../../hooks/use-aggregated-calendar.js';
+import { useMemberCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -14,22 +18,39 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 function MyCalendarScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
+  const queryClient = useQueryClient();
+  const isNarrowWeb = useIsNarrowWeb();
+  const stackFilter = !isWeb || isNarrowWeb;
   const userId = useAuthStore((s) => s.userId);
 
   const today = new Date();
   const [visibleYear, setVisibleYear] = useState(today.getFullYear());
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
-  const [filterGroupId, setFilterGroupId] = useState(null);
+  const [filterTeamId, setFilterTeamId] = useState('');
   const [openDate, setOpenDate] = useState(null);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading, isFetching } = useMemberCalendar(userId, from, to);
-  const { groups } = useCalendarSummary(userId);
+  usePrefetchAdjacentCalendars('member', userId, visibleYear, visibleMonth);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
 
+  // Un usuario está en un único grupo por equipo a la vez — el primer día
+  // visto de cada equipo alcanza para resolver su grupo correspondiente.
+  // Se deriva del mes visible (no de calendar-summary, que no trae
+  // team_id/team_name) — un equipo sin ningún día asignado este mes no
+  // aparece en el filtro hasta que tenga contenido en algún mes.
+  const teamOptions = useMemo(() => {
+    const map = new Map();
+    for (const day of days) {
+      if (!map.has(day.teamId)) map.set(day.teamId, { teamId: day.teamId, teamName: day.teamName, groupName: day.groupName });
+    }
+    return Array.from(map.values());
+  }, [days]);
+  const selectedTeam = teamOptions.find((t) => t.teamId === filterTeamId) ?? null;
+
   const filteredDays = useMemo(
-    () => (filterGroupId ? days.filter((d) => d.groupId === filterGroupId) : days),
-    [days, filterGroupId],
+    () => (filterTeamId ? days.filter((d) => d.teamId === filterTeamId) : days),
+    [days, filterTeamId],
   );
 
   const daysByDate = useMemo(() => {
@@ -42,10 +63,22 @@ function MyCalendarScreenContent() {
 
   const openAssignments = openDate ? daysByDate[openDate] ?? [] : [];
 
+  const { refreshing, onRefresh } = usePullToRefresh(() => (
+    queryClient.invalidateQueries({ queryKey: ['member-calendar', userId] })
+  ));
+
   return (
-    <View className="flex-1 bg-paper dark:bg-ink" nativeID="my-calendar-screen-root" testID="my-calendar-screen-root">
-      <View className={`w-full flex-1 self-center px-4 py-8 ${isWeb ? 'max-w-3xl' : ''}`} nativeID="my-calendar-screen-container" testID="my-calendar-screen-container">
-        <View className="mb-6 flex-row items-center gap-2" nativeID="my-calendar-screen-header" testID="my-calendar-screen-header">
+    <View className="flex-1" nativeID="my-calendar-screen-root" testID="my-calendar-screen-root">
+      <ScrollView
+        className="flex-1 bg-paper dark:bg-ink"
+        contentContainerClassName="px-4 py-8"
+        nativeID="my-calendar-screen-scroll"
+        refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
+        showsVerticalScrollIndicator={false}
+        testID="my-calendar-screen-scroll"
+      >
+      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="my-calendar-screen-container" testID="my-calendar-screen-container">
+        <View className="mb-6 flex-row flex-wrap items-center gap-2" nativeID="my-calendar-screen-header" testID="my-calendar-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="my-calendar-screen-back-button"
@@ -62,48 +95,44 @@ function MyCalendarScreenContent() {
           )}
         </View>
 
-        {groups.length > 0 && (
-          <ScrollView horizontal className="mb-4" nativeID="my-calendar-screen-filter-scroll" showsHorizontalScrollIndicator={false} testID="my-calendar-screen-filter-scroll">
-            <View className="flex-row gap-2" nativeID="my-calendar-screen-filter-chips" testID="my-calendar-screen-filter-chips">
-              <Pressable
-                className={`h-8 items-center justify-center rounded-full px-3 ${filterGroupId === null ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'}`}
-                nativeID="my-calendar-screen-filter-all"
-                onPress={() => setFilterGroupId(null)}
-                testID="my-calendar-screen-filter-all"
-              >
-                <Text className={`text-xs font-semibold ${filterGroupId === null ? 'text-[#111518]' : 'text-slate-600 dark:text-slate-300'}`} nativeID="my-calendar-screen-filter-all-label" testID="my-calendar-screen-filter-all-label">
-                  Todos
-                </Text>
-              </Pressable>
-              {groups.map((group) => (
-                <Pressable
-                  className={`h-8 items-center justify-center rounded-full px-3 ${filterGroupId === group.id ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'}`}
-                  key={group.id}
-                  nativeID={`my-calendar-screen-filter-${group.id}`}
-                  onPress={() => setFilterGroupId(group.id)}
-                  testID={`my-calendar-screen-filter-${group.id}`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${filterGroupId === group.id ? 'text-[#111518]' : 'text-slate-600 dark:text-slate-300'}`}
-                    nativeID={`my-calendar-screen-filter-${group.id}-label`}
-                    testID={`my-calendar-screen-filter-${group.id}-label`}
-                  >
-                    {group.name}
-                  </Text>
-                </Pressable>
-              ))}
+        {teamOptions.length > 0 && (
+          <View className={`mb-4 gap-2 ${stackFilter ? '' : 'flex-row items-end'}`} nativeID="my-calendar-screen-filter" testID="my-calendar-screen-filter">
+            <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="my-calendar-screen-filter-team-wrapper" testID="my-calendar-screen-filter-team-wrapper">
+              <ResponsiveSelectField
+                dense
+                hideErrorRow
+                label="Equipo"
+                onChange={setFilterTeamId}
+                options={teamOptions.map((t) => ({ id: t.teamId, name: t.teamName }))}
+                placeholder="Todos los equipos"
+                value={filterTeamId}
+              />
             </View>
-          </ScrollView>
+            {selectedTeam && (
+              <Text
+                className={stackFilter
+                  ? 'text-sm font-semibold text-slate-700 dark:text-slate-200'
+                  : 'mb-3 text-xs text-slate-500 dark:text-slate-400'}
+                nativeID="my-calendar-screen-filter-group-label"
+                testID="my-calendar-screen-filter-group-label"
+              >
+                Grupo: {selectedTeam.groupName}
+              </Text>
+            )}
+          </View>
         )}
 
         <AggregatedMonthView
           currentMonthISO={currentMonthISO}
           daysByDate={daysByDate}
+          month={visibleMonth}
           onDayPress={setOpenDate}
           onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
           showCollisions={false}
+          year={visibleYear}
         />
       </View>
+      </ScrollView>
 
       <DayDetailModal assignments={openAssignments} date={openDate ?? ''} onClose={() => setOpenDate(null)} variant="member" visible={Boolean(openDate)} />
     </View>

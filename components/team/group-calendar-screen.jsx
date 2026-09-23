@@ -1,17 +1,19 @@
 import { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import '../../config/calendarLocale.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { usePermissions } from '../../hooks/use-user.js';
-import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
+import { useGroupCalendar, useGroupCalendarMutations, usePrefetchAdjacentGroupCalendar } from '../../hooks/use-group-calendar.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
@@ -21,6 +23,8 @@ import { ShiftDayModal } from './shift-day-modal.jsx';
 import { CalendarDayMenu } from './calendar-day-menu.jsx';
 import { BulkEditDaysModal } from './bulk-edit-days-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { CalendarMonthYearHeader } from '../calendar/calendar-month-year-header.jsx';
+import { CalendarFadeIn } from '../calendar/calendar-fade-in.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
@@ -44,7 +48,7 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
   const tintColor = marking ? `${KIND_DOT_COLORS[marking.kind]}${tintAlpha}` : 'transparent';
 
   const handlePress = () => {
-    if (!canManage) return;
+    if (!canManage || isOtherMonth) return;
     if (selectionActive) {
       if (!canSelect) return;
       onToggleSelect(date.dateString);
@@ -58,13 +62,15 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
     });
   };
 
-  const borderClass = selected
-    ? 'border-2 border-primary'
-    : isMenuOpen
-      ? 'border border-primary'
-      : state === 'today'
-        ? 'border-2 border-dashed border-primary'
-        : 'border border-transparent';
+  const borderClass = isOtherMonth
+    ? 'border border-transparent'
+    : selected
+      ? 'border-2 border-primary'
+      : isMenuOpen
+        ? 'border border-primary'
+        : state === 'today'
+          ? 'border-2 border-dashed border-primary'
+          : 'border border-slate-200 dark:border-slate-700/40';
 
   return (
     <Pressable
@@ -89,12 +95,15 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
           style={{ opacity: closed ? 0.45 : 1 }}
           testID={`group-calendar-day-${date.dateString}-marks`}
         >
-          <View
-            nativeID={`group-calendar-day-${date.dateString}-dot`}
-            style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KIND_DOT_COLORS[marking.kind] }}
-            testID={`group-calendar-day-${date.dateString}-dot`}
-          />
-          {marking.isPresencial && <MaterialCommunityIcons color={colors.primary} name="map-marker" size={10} />}
+          {marking.isPresencial ? (
+            <MaterialCommunityIcons color={colors.primary} name="map-marker" size={10} />
+          ) : (
+            <View
+              nativeID={`group-calendar-day-${date.dateString}-dot`}
+              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KIND_DOT_COLORS[marking.kind] }}
+              testID={`group-calendar-day-${date.dateString}-dot`}
+            />
+          )}
         </View>
       )}
       {closedForSelection && !isOtherMonth && (
@@ -114,6 +123,7 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
 function GroupCalendarScreenContent({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const queryClient = useQueryClient();
   const { colorScheme } = useThemeMode();
   // userId sale directo del auth store (sincrónico) en vez de esperar
   // useUser(userId) — evita una vuelta de red extra antes de poder
@@ -140,6 +150,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const [shiftTargetDate, setShiftTargetDate] = useState(null);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
+  usePrefetchAdjacentGroupCalendar(groupId, visibleYear, visibleMonth);
   const { deleteDay, bulkClear, isBulkClearing } = useGroupCalendarMutations(groupId);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
   const screenRootRef = useRef(null);
@@ -239,6 +250,10 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const openMarking = openDayMenu ? markingsByDate[openDayMenu.date] : null;
   const openClosed = openDayMenu && openMarking ? isCalendarDayClosed(openDayMenu.date, openMarking) : false;
 
+  const { refreshing, onRefresh } = usePullToRefresh(() => (
+    queryClient.invalidateQueries({ queryKey: ['group-calendar', groupId] })
+  ));
+
   // Nunca desmontar el <Calendar> por loading — react-native-calendars
   // no es controlado por default, así que desmontarlo y volver a montarlo
   // le hace perder la navegación y vuelve siempre al mes actual (bug real
@@ -265,9 +280,17 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   }
 
   return (
-    <View className="relative flex-1 bg-paper dark:bg-ink" nativeID="group-calendar-screen-root" ref={screenRootRef} testID="group-calendar-screen-root">
-      <View className={`w-full flex-1 self-center px-4 py-8 ${isWeb ? 'max-w-3xl' : ''}`} nativeID="group-calendar-screen-container" testID="group-calendar-screen-container">
-        <View className="mb-6 flex-row items-center gap-2" nativeID="group-calendar-screen-header" testID="group-calendar-screen-header">
+    <View className="relative flex-1" nativeID="group-calendar-screen-root" ref={screenRootRef} testID="group-calendar-screen-root">
+      <ScrollView
+        className="flex-1 bg-paper dark:bg-ink"
+        contentContainerClassName="px-4 py-8"
+        nativeID="group-calendar-screen-scroll"
+        refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
+        showsVerticalScrollIndicator={false}
+        testID="group-calendar-screen-scroll"
+      >
+      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="group-calendar-screen-container" testID="group-calendar-screen-container">
+        <View className="mb-6 flex-row flex-wrap items-center gap-2" nativeID="group-calendar-screen-header" testID="group-calendar-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="group-calendar-screen-back-button"
@@ -325,39 +348,49 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
           nativeID="group-calendar-month-view"
           testID="group-calendar-month-view"
         >
-          <Calendar
-            current={currentMonthISO}
-            key={colorScheme}
-            dayComponent={({ date, state }) => (
-              <CalendarDayCell
-                canManage={canManage}
-                containerRef={screenRootRef}
-                date={date}
-                isMenuOpen={openDayMenu?.date === date.dateString}
-                marking={markingsByDate[date.dateString]}
-                onOpenMenu={handleOpenDayMenu}
-                onToggleSelect={handleToggleDaySelection}
-                selected={selectedDates.has(date.dateString)}
-                selectionActive={selectionActive}
-                selectionClosedClass={selectionClosedClass}
-                state={state}
-              />
-            )}
-            firstDay={1}
-            onMonthChange={(month) => { setVisibleYear(month.year); setVisibleMonth(month.month); }}
-            theme={{
-              backgroundColor: 'transparent',
-              calendarBackground: 'transparent',
-              textSectionTitleColor: colors.onSurfaceVariant,
-              monthTextColor: colors.onSurface,
-              arrowColor: colors.primary,
-              todayTextColor: colors.primary,
-              textDisabledColor: colors.onSurfaceVariant,
-              textMonthFontFamily: 'Orbitron_700Bold',
-            }}
-          />
+          <CalendarFadeIn key={`${visibleYear}-${visibleMonth}-${colorScheme}`} nativeID="group-calendar-month-view-fade" testID="group-calendar-month-view-fade">
+            <Calendar
+              current={currentMonthISO}
+              customHeaderTitle={
+                <CalendarMonthYearHeader
+                  idPrefix="group-calendar"
+                  month={visibleMonth}
+                  onChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
+                  year={visibleYear}
+                />
+              }
+              dayComponent={({ date, state }) => (
+                <CalendarDayCell
+                  canManage={canManage}
+                  containerRef={screenRootRef}
+                  date={date}
+                  isMenuOpen={openDayMenu?.date === date.dateString}
+                  marking={markingsByDate[date.dateString]}
+                  onOpenMenu={handleOpenDayMenu}
+                  onToggleSelect={handleToggleDaySelection}
+                  selected={selectedDates.has(date.dateString)}
+                  selectionActive={selectionActive}
+                  selectionClosedClass={selectionClosedClass}
+                  state={state}
+                />
+              )}
+              firstDay={1}
+              onMonthChange={(month) => { setVisibleYear(month.year); setVisibleMonth(month.month); }}
+              theme={{
+                backgroundColor: 'transparent',
+                calendarBackground: 'transparent',
+                textSectionTitleColor: colors.onSurfaceVariant,
+                monthTextColor: colors.onSurface,
+                arrowColor: colors.primary,
+                todayTextColor: colors.primary,
+                textDisabledColor: colors.onSurfaceVariant,
+                textMonthFontFamily: 'Orbitron_700Bold',
+              }}
+            />
+          </CalendarFadeIn>
         </View>
       </View>
+      </ScrollView>
 
       <AnimatedDropdown
         anchorStyle={openDayMenu ? { left: openDayMenu.anchor.x, top: openDayMenu.anchor.y + openDayMenu.anchor.height + 4 } : {}}
