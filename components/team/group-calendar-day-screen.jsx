@@ -18,6 +18,7 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
+import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { KEEP_CURRENT_SESSION } from '../../services/normalizers.js';
 
 function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
@@ -211,7 +212,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
             </Pressable>
             <Text className="text-xl text-slate-900 dark:text-white" nativeID="group-calendar-day-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="group-calendar-day-screen-title">
-              {date}
+              {formatWeekdayLabel(date)}, {formatDisplayDate(date)}
             </Text>
           </View>
 

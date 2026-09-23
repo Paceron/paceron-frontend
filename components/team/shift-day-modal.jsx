@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { addDaysISO } from '../../utils/build-stamp-draft.js';
+import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 // Desplaza TODO lo que sigue desde `fromDate` (inclusive) N días adelante
@@ -56,7 +57,7 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
           testID="shift-day-modal-card"
         >
           <Text className="mb-2 text-lg font-bold text-slate-900 dark:text-white" nativeID="shift-day-modal-title" testID="shift-day-modal-title">
-            Desplazar desde {fromDate}
+            Desplazar desde {formatDisplayDate(fromDate)}
           </Text>
           <Text className="mb-4 text-xs text-slate-500 dark:text-slate-400" nativeID="shift-day-modal-hint" testID="shift-day-modal-hint">
             Corre este día y todos los que siguen la cantidad de días elegida.
@@ -88,7 +89,7 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
           </View>
 
           <Text className="mb-4 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="shift-day-modal-preview" testID="shift-day-modal-preview">
-            {fromDate} pasa a ser {addDaysISO(fromDate, days)}
+            {formatDisplayDate(fromDate)} pasa a ser {formatDisplayDate(addDaysISO(fromDate, days))}
           </Text>
 
           <View className="flex-row gap-3" nativeID="shift-day-modal-actions" testID="shift-day-modal-actions">

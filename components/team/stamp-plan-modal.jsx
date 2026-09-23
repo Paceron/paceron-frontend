@@ -12,6 +12,7 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { buildStampDraft, addDaysISO } from '../../utils/build-stamp-draft.js';
+import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 function StampPreviewRow({ day, onToggleExpand, expanded, sessionOptions, onChangeDay, existingDay, onToggleExclude }) {
@@ -31,8 +32,8 @@ function StampPreviewRow({ day, onToggleExpand, expanded, sessionOptions, onChan
           onPress={onToggleExpand}
           testID={`${idPrefix}-toggle`}
         >
-          <Text className="w-24 shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
-            {day.date}
+          <Text className="w-28 shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
+            {formatWeekdayLabel(day.date, { short: true })} {formatDisplayDate(day.date)}
           </Text>
           <Text className="flex-1 text-sm text-slate-900 dark:text-white" nativeID={`${idPrefix}-summary`} testID={`${idPrefix}-summary`}>
             {kindLabel}
@@ -192,7 +193,7 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
             testID="stamp-plan-modal-card"
           >
             <Text className="mb-2 text-lg font-bold text-slate-900 dark:text-white" nativeID="stamp-plan-modal-title" testID="stamp-plan-modal-title">
-              Estampar plan desde {startDate}
+              Estampar plan desde {formatDisplayDate(startDate)}
             </Text>
 
             {error && (
