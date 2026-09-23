@@ -18,6 +18,10 @@ export const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:tex
 // respeta. Detectado 2026-09-05 al notar el botón "+" de
 // SelectWithCreateField más alto que el select de al lado.
 export const SELECT_CLASS = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
+// Variante sin caja para selects incrustados en contextos que ya tienen
+// su propio fondo/borde (ej. el header de mes/año del calendario) — solo
+// texto + la flechita propia que se agrega al lado, sin duplicar chrome.
+const SELECT_CLASS_PLAIN = 'bg-transparent border-0 pl-0 pr-4 py-1 text-sm font-semibold text-slate-900 dark:text-white outline-none appearance-none cursor-pointer';
 const DATE_BASE = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 
 // Slugifica un label para usarlo como parte de un id estable y legible.
@@ -60,7 +64,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -77,9 +81,9 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
         nativeID={`select-field-${slug}-row`}
         testID={`select-field-${slug}-row`}
       >
-        <View className="flex-1 relative" nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
+        <View className={plain ? 'relative' : 'flex-1 relative'} nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
-            className={SELECT_CLASS}
+            className={plain ? SELECT_CLASS_PLAIN : SELECT_CLASS}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
@@ -91,7 +95,12 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
               </option>
             ))}
           </select>
-          {!disabled && !required && Boolean(value) && (
+          {plain && (
+            <View className="absolute right-0 top-1/2 -translate-y-1/2" nativeID={`select-field-${slug}-chevron`} pointerEvents="none" testID={`select-field-${slug}-chevron`}>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
+            </View>
+          )}
+          {!plain && !disabled && !required && Boolean(value) && (
             <Pressable
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full hover:opacity-70"
               onPress={() => onChange('')}
@@ -496,7 +505,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -512,6 +521,9 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     : disabled
     ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
+  const triggerClass = plain
+    ? 'h-8 flex-row items-center gap-1'
+    : `h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`;
 
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
@@ -519,19 +531,21 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
       )}
       <Pressable
-        className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
+        className={triggerClass}
         onPress={disabled ? undefined : () => setVisible(true)}
         nativeID={`picker-field-${slug}-trigger`}
         testID={`picker-field-${slug}-trigger`}
       >
         <Text
-          className={`flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          className={plain
+            ? 'text-sm font-semibold text-slate-900 dark:text-white'
+            : `flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
           nativeID={`picker-field-${slug}-value`}
           testID={`picker-field-${slug}-value`}
         >
           {selected ? selected.name : placeholder}
         </Text>
-        {!disabled && !required && Boolean(value) && (
+        {!plain && !disabled && !required && Boolean(value) && (
           <Pressable
             className="rounded-full hover:opacity-70"
             onPress={() => { onChange(''); setVisible(false); }}
@@ -542,7 +556,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
           </Pressable>
         )}
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={20} />
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={plain ? 16 : 20} />
       </Pressable>
       {!hideErrorRow && (
         <View className="h-5" nativeID={`picker-field-${slug}-error-row`} testID={`picker-field-${slug}-error-row`}>

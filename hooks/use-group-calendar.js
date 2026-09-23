@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getGroupCalendar as getGroupCalendarService,
@@ -9,6 +10,7 @@ import {
   shiftCalendar as shiftCalendarService,
 } from '../services/calendar.js';
 import { toGroupCalendarDayModel, toCalendarDayPayload, toStampPayload, toBulkAssignPayload } from '../services/normalizers.js';
+import { adjacentMonths, monthRange } from '../utils/calendar-month-range.js';
 
 // Calendario de un grupo — TanStack Query, mismo criterio que
 // hooks/use-sessions.js. Se pide por rango (mes visible) — GroupCalendarDay
@@ -20,6 +22,23 @@ export function useGroupCalendar(groupId, from, to) {
     enabled: Boolean(groupId && from && to),
   });
   return { days: query.data ?? [], loading: query.isLoading, isFetching: query.isFetching, error: query.error };
+}
+
+// Mismo criterio que usePrefetchAdjacentCalendars (hooks/use-aggregated-calendar.js)
+// pero para el calendario de un único grupo.
+export function usePrefetchAdjacentGroupCalendar(groupId, year, month) {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!groupId || !year || !month) return;
+    const { prev, next } = adjacentMonths(year, month);
+    for (const target of [prev, next]) {
+      const { from, to } = monthRange(target.year, target.month);
+      queryClient.prefetchQuery({
+        queryKey: ['group-calendar', groupId, from, to],
+        queryFn: () => getGroupCalendarService(groupId, from, to).then((dtos) => dtos.map(toGroupCalendarDayModel)),
+      });
+    }
+  }, [groupId, year, month, queryClient]);
 }
 
 export function useGroupCalendarMutations(groupId) {
