@@ -102,11 +102,7 @@ export function useTeamMutations() {
         }
 
         const groupDtos = await listGroupsService(teamId, team.ownerId ?? payload.ownerId);
-        const groups = groupDtos.map((dto) => {
-          const model = toGroupModel(dto);
-          const draft = draftGroups.find((d) => d.name === model.name);
-          return draft ? { ...model, trainingPlanId: draft.trainingPlanId ?? null } : model;
-        });
+        const groups = groupDtos.map((dto) => toGroupModel(dto));
 
         return { success: true, team: { ...team, groups }, ...(addressWarning ? { addressWarning } : {}), ...(groupsWarning ? { groupsWarning } : {}) };
       } catch (error) {

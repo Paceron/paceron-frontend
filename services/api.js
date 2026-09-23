@@ -76,6 +76,7 @@ async function request(path, { _isRetry, skipAuthRefresh, ...fetchOptions } = {}
     }
     const error = new Error(mapHttpErrorMessage(response.status, body?.message));
     error.status = response.status;
+    error.data = body;
     throw error;
   }
   if (response.status === 204) {

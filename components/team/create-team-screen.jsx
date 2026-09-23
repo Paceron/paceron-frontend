@@ -7,7 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions } from '../../hooks/use-user.js';
-import { getTeamMemberLimit, TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
+import { getTeamMemberLimit } from '../../store/team-store.js';
 import { useTeamMutations } from '../../hooks/use-teams.js';
 import { useInvitationMutations } from '../../hooks/use-invitations.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -221,7 +221,7 @@ function CreateTeamScreenContent() {
               Opcional — podés omitir este paso y crear grupos más adelante.
             </Text>
 
-            <GroupListEditor groups={groups} onChange={setGroups} onRemove={handleRemoveGroup} planOptions={TRAINING_PLAN_OPTIONS} />
+            <GroupListEditor groups={groups} onChange={setGroups} onRemove={handleRemoveGroup} />
 
             <StepNav nextLabel="Siguiente" onBack={() => setStep(1)} onNext={() => setStep(3)} />
           </SectionCard>

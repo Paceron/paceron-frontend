@@ -82,8 +82,8 @@ export async function listRunnerPlanAssignments({ userId, planId } = {}) {
 
 // POST /api/v1/training-plans/{id}/assignments — asigna a un corredor
 // individual (reemplaza cualquier asignación individual previa de ese
-// corredor). La asignación a un grupo NO pasa por acá — reusa
-// group.trainingPlanId, ver store/team-store.js#setGroupTrainingPlan.
+// corredor). La asignación a un grupo se maneja por el calendario
+// (docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md), no pasa por acá.
 export async function assignPlanToRunner(planId, userId) {
   if (USE_MOCKS || FORCE_MOCKS_OLD_ASSIGNMENT_MODEL) return await mockAssignPlanToRunner(planId, userId);
   return await api.post(`/training-plans/${planId}/assignments`, { user_id: userId });

@@ -104,6 +104,15 @@ function DayRow({ day, session, exercisesById }) {
 
       {expanded && (
         <View className="gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-700" nativeID={`${idPrefix}-exercises`} testID={`${idPrefix}-exercises`}>
+          {day.isPresencial && (
+            <View className="mb-1 flex-row items-center gap-1.5" nativeID={`${idPrefix}-presencial-summary`} testID={`${idPrefix}-presencial-summary`}>
+              <MaterialCommunityIcons color="#94a3b8" name="map-marker-outline" size={14} />
+              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-presencial-summary-label`} testID={`${idPrefix}-presencial-summary-label`}>
+                Presencial · {day.presencialTimeFrom}–{day.presencialTimeTo}
+                {day.presencialLocation?.label ? ` · ${day.presencialLocation.label}` : ''}
+              </Text>
+            </View>
+          )}
           {orderedEntries.map((entry) => (
             <ExerciseRow
               exercise={exercisesById.get(entry.exerciseId)}
@@ -256,15 +265,6 @@ function TrainingPlanDetailScreenContent({ planId }) {
             >
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={16} />
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="training-plan-detail-edit-button-label" testID="training-plan-detail-edit-button-label">Editar</Text>
-            </Pressable>
-            <Pressable
-              className="flex-row items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
-              nativeID="training-plan-detail-assign-button"
-              onPress={() => router.push(`/training-plans/${planId}/assign`)}
-              testID="training-plan-detail-assign-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-arrow-right-outline" size={16} />
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="training-plan-detail-assign-button-label" testID="training-plan-detail-assign-button-label">Asignar</Text>
             </Pressable>
             <Pressable
               className="flex-row items-center gap-1.5 rounded-full border border-slate-200 px-4 py-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800 disabled:opacity-60"

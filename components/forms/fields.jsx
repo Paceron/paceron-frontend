@@ -18,6 +18,10 @@ export const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:tex
 // respeta. Detectado 2026-09-05 al notar el botón "+" de
 // SelectWithCreateField más alto que el select de al lado.
 export const SELECT_CLASS = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
+// Variante sin caja para selects incrustados en contextos que ya tienen
+// su propio fondo/borde (ej. el header de mes/año del calendario) — solo
+// texto + la flechita propia que se agrega al lado, sin duplicar chrome.
+const SELECT_CLASS_PLAIN = 'bg-transparent border-0 pl-0 pr-4 py-1 text-sm font-semibold text-slate-900 dark:text-white outline-none appearance-none cursor-pointer';
 const DATE_BASE = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 
 // Slugifica un label para usarlo como parte de un id estable y legible.
@@ -60,7 +64,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -77,9 +81,9 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
         nativeID={`select-field-${slug}-row`}
         testID={`select-field-${slug}-row`}
       >
-        <View className="flex-1 relative" nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
+        <View className={plain ? 'relative' : 'flex-1 relative'} nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
-            className={SELECT_CLASS}
+            className={plain ? SELECT_CLASS_PLAIN : SELECT_CLASS}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
@@ -91,7 +95,12 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
               </option>
             ))}
           </select>
-          {!disabled && !required && Boolean(value) && (
+          {plain && (
+            <View className="absolute right-0 top-1/2 -translate-y-1/2" nativeID={`select-field-${slug}-chevron`} pointerEvents="none" testID={`select-field-${slug}-chevron`}>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
+            </View>
+          )}
+          {!plain && !disabled && !required && Boolean(value) && (
             <Pressable
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full hover:opacity-70"
               onPress={() => onChange('')}
@@ -126,7 +135,7 @@ function formatDDMMYYYY(date) {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-export function DateField({ label, value, onChange, onBlur, error, touched, disabled }) {
+export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -207,7 +216,8 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
         <DateTimePicker
           accentColor="#8cc63e"
           display="default"
-          maximumDate={new Date()}
+          maximumDate={disableFutureLimit ? undefined : new Date()}
+          minimumDate={minimumDate}
           mode="date"
           onChange={handleChange}
           value={parseDDMMYYYY(value)}
@@ -237,7 +247,8 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
             >
               <DateTimePicker
                 display="inline"
-                maximumDate={new Date()}
+                maximumDate={disableFutureLimit ? undefined : new Date()}
+                minimumDate={minimumDate}
                 mode="date"
                 onChange={handleChange}
                 themeVariant={themeMode}
@@ -253,6 +264,161 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
                   className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
                   nativeID={`date-field-${slug}-modal-done-label`}
                   testID={`date-field-${slug}-modal-done-label`}
+                >
+                  Listo
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+    </View>
+  );
+}
+
+// HH:mm <-> Date. Hermano de DateField (no una variante con prop de modo)
+// — formato y validación de tiempo son distintos de fecha, y DateField ya
+// está hardcodeado a mode="date"/DD-MM-AAAA.
+function parseHHmm(value) {
+  const m = /^(\d{2}):(\d{2})$/.exec(value || '');
+  const date = new Date();
+  if (!m) {
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+  date.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  return date;
+}
+
+function formatHHmm(date) {
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+export function TimeField({ label, value, onChange, onBlur, error, touched, disabled, hideErrorRow, className }) {
+  const colors = useThemeColors();
+  const { themeMode } = useThemeMode();
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const slug = slugify(label);
+
+  const borderClass = error
+    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
+    : touched
+    ? 'border-primary bg-white dark:bg-slate-900'
+    : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
+
+  if (isWeb) {
+    return (
+      <View className={className ?? 'mb-5'} nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
+        <Text className={FIELD_LABEL} nativeID={`time-field-${slug}-label`} testID={`time-field-${slug}-label`}>{label}</Text>
+        <View className="flex-row items-center gap-2" nativeID={`time-field-${slug}-row`} testID={`time-field-${slug}-row`}>
+          <View className="flex-1 relative" nativeID={`time-field-${slug}-input-wrapper`} testID={`time-field-${slug}-input-wrapper`}>
+            <input
+              type="time"
+              className={`${DATE_BASE} ${borderClass}`}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onBlur={onBlur}
+              disabled={disabled}
+            />
+          </View>
+        </View>
+        {!hideErrorRow && (
+          <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
+            {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  const handleChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setPickerVisible(false);
+      onBlur?.();
+    }
+    if (selectedDate) onChange(formatHHmm(selectedDate));
+  };
+
+  const handleClose = () => {
+    setPickerVisible(false);
+    onBlur?.();
+  };
+
+  return (
+    <View className={className ?? 'mb-5'} nativeID={`time-field-${slug}`} testID={`time-field-${slug}`}>
+      <Text className={FIELD_LABEL} nativeID={`time-field-${slug}-label`} testID={`time-field-${slug}-label`}>{label}</Text>
+      <Pressable
+        className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
+        disabled={disabled}
+        onPress={() => setPickerVisible(true)}
+        nativeID={`time-field-${slug}-trigger`}
+        testID={`time-field-${slug}-trigger`}
+      >
+        <Text
+          className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          nativeID={`time-field-${slug}-value`}
+          testID={`time-field-${slug}-value`}
+        >
+          {value || 'HH:mm'}
+        </Text>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clock-outline" size={20} />
+      </Pressable>
+      {!hideErrorRow && (
+        <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+        </View>
+      )}
+
+      {pickerVisible && Platform.OS === 'android' && (
+        <DateTimePicker
+          accentColor="#8cc63e"
+          display="default"
+          mode="time"
+          onChange={handleChange}
+          value={parseHHmm(value)}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <Modal
+          animationType="fade"
+          onRequestClose={handleClose}
+          transparent
+          visible={pickerVisible}
+          nativeID={`time-field-${slug}-modal`}
+          testID={`time-field-${slug}-modal`}
+        >
+          <Pressable
+            className="flex-1 justify-end bg-black/50"
+            onPress={handleClose}
+            nativeID={`time-field-${slug}-modal-backdrop`}
+            testID={`time-field-${slug}-modal-backdrop`}
+          >
+            <Pressable
+              className="rounded-t-2xl bg-white p-4 dark:bg-surface-2"
+              onPress={() => {}}
+              nativeID={`time-field-${slug}-modal-content`}
+              testID={`time-field-${slug}-modal-content`}
+            >
+              <DateTimePicker
+                display="inline"
+                mode="time"
+                onChange={handleChange}
+                themeVariant={themeMode}
+                value={parseHHmm(value)}
+              />
+              <Pressable
+                className="mt-2 h-11 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
+                onPress={handleClose}
+                nativeID={`time-field-${slug}-modal-done-button`}
+                testID={`time-field-${slug}-modal-done-button`}
+              >
+                <Text
+                  className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
+                  nativeID={`time-field-${slug}-modal-done-label`}
+                  testID={`time-field-${slug}-modal-done-label`}
                 >
                   Listo
                 </Text>
@@ -339,7 +505,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -355,6 +521,9 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     : disabled
     ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
+  const triggerClass = plain
+    ? 'h-8 flex-row items-center gap-1'
+    : `h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`;
 
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
@@ -362,19 +531,21 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
       )}
       <Pressable
-        className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
+        className={triggerClass}
         onPress={disabled ? undefined : () => setVisible(true)}
         nativeID={`picker-field-${slug}-trigger`}
         testID={`picker-field-${slug}-trigger`}
       >
         <Text
-          className={`flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          className={plain
+            ? 'text-sm font-semibold text-slate-900 dark:text-white'
+            : `flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
           nativeID={`picker-field-${slug}-value`}
           testID={`picker-field-${slug}-value`}
         >
           {selected ? selected.name : placeholder}
         </Text>
-        {!disabled && !required && Boolean(value) && (
+        {!plain && !disabled && !required && Boolean(value) && (
           <Pressable
             className="rounded-full hover:opacity-70"
             onPress={() => { onChange(''); setVisible(false); }}
@@ -385,7 +556,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={20} />
           </Pressable>
         )}
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={20} />
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={plain ? 16 : 20} />
       </Pressable>
       {!hideErrorRow && (
         <View className="h-5" nativeID={`picker-field-${slug}-error-row`} testID={`picker-field-${slug}-error-row`}>

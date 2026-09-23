@@ -12,11 +12,12 @@ import {
 // Backend real desde 2026-09-12 (ver docs/BACKEND_API_GAPS.md, gap 4
 // resuelto) — mismo patrón USE_MOCKS que el resto de dominios reales
 // (services/teams.js, etc.), sin flag de forzado propio. El `PUT` de
-// abajo no manda todavía `exclude_group_ids`/`clone_name`/
-// `clone_description` (clonado por divergencia al editar una sesión
-// asignada, ver docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §5) — son
-// opcionales del lado del backend y esa UI todavía no existe en el
-// frontend, se suma cuando se cablee el calendario.
+// abajo NUNCA va a mandar `exclude_group_ids`/`clone_name`/
+// `clone_description` — el mecanismo de clonado por divergencia que los
+// necesitaba fue eliminado del backend (instanciación de sesiones en el
+// calendario, 2026-09-20, ver docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md
+// §5, obsoleto). Editar una sesión de catálogo ya no puede afectar
+// ninguna asignación existente — no hace falta esta UI.
 
 // GET /api/v1/sessions?owner_id=.
 export async function listSessions({ ownerId } = {}) {

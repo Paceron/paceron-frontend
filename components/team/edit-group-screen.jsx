@@ -7,26 +7,24 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
-import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
-// Formulario chico: nombre + descripción + plan de entrenamiento — mismos
-// campos que ya usa GroupListEditor para agregar un grupo nuevo (la
-// descripción se sumó acá y ahí a la vez, no existía en ningún lado antes).
-// No permite editar membresía (mover corredores de grupo es otro flujo, no
-// implementado todavía) ni el grupo default "Sin grupo" (no tiene sentido
-// renombrar el bucket al que cae todo corredor sin grupo elegido) — la
-// pantalla de detalle no ofrece el lápiz de edición para ese grupo en
-// particular.
+// Formulario chico: nombre + descripción — mismos campos que ya usa
+// GroupListEditor para agregar un grupo nuevo. Asignar un plan a este
+// grupo se maneja por el calendario (docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md),
+// no acá. No permite editar membresía (mover corredores de grupo es otro
+// flujo, no implementado todavía) ni el grupo default "Sin grupo" (no
+// tiene sentido renombrar el bucket al que cae todo corredor sin grupo
+// elegido) — la pantalla de detalle no ofrece el lápiz de edición para
+// ese grupo en particular.
 function EditGroupScreenContent({ teamId, groupId }) {
   const router = useRouter();
   const colors = useThemeColors();
@@ -39,11 +37,10 @@ function EditGroupScreenContent({ teamId, groupId }) {
 
   const [name, setName] = useState(group?.name ?? '');
   const [description, setDescription] = useState(group?.description ?? '');
-  const [trainingPlanId, setTrainingPlanId] = useState(group?.trainingPlanId ?? '');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const isDirty = useFormDirty({ name, description, trainingPlanId });
+  const isDirty = useFormDirty({ name, description });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
   const seededRef = useRef(false);
@@ -52,7 +49,6 @@ function EditGroupScreenContent({ teamId, groupId }) {
       seededRef.current = true;
       setName(group.name);
       setDescription(group.description ?? '');
-      setTrainingPlanId(group.trainingPlanId ?? '');
     }
   }, [group]);
 
@@ -136,7 +132,6 @@ function EditGroupScreenContent({ teamId, groupId }) {
         <SectionCard icon="account-multiple" title={`Datos de "${group.name}"`}>
           <InputField dense error={error} label="Nombre del grupo" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Grupo avanzado" value={name} />
           <InputField dense label="Descripción del grupo (opcional)" multiline numberOfLines={2} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
-          <ResponsiveSelectField dense label="Plan de entrenamiento" onChange={setTrainingPlanId} options={TRAINING_PLAN_OPTIONS} placeholder="Sin plan asignado" value={trainingPlanId} />
 
           <Pressable
             className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"

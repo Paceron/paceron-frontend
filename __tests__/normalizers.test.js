@@ -3,6 +3,8 @@ import {
   toGroupModel, toCreateGroupPayload, toUpdateGroupPayload, toInvitationModel, toInvitePayload, toTierModel,
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
+  toGroupCalendarDayModel, toAggregatedCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
+  toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload, toBulkAssignPayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -273,7 +275,7 @@ describe('toGroupModel', () => {
       created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
     };
     expect(toGroupModel(dto)).toEqual({
-      id: '5', teamId: '1', name: 'General', description: null, isDefault: true, trainingPlanId: null,
+      id: '5', teamId: '1', name: 'General', description: null, isDefault: true,
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
     });
   });
@@ -533,5 +535,231 @@ describe('mergeSessionExercises', () => {
 
   test('con lista vacía de ids nuevos, devuelve los existentes sin cambios', () => {
     expect(mergeSessionExercises(session, [])).toEqual(session.exercises);
+  });
+});
+
+describe('toGroupCalendarDayModel', () => {
+  test('mapea un día de descanso', () => {
+    const dto = { id: 1, group_id: 5, date: '2026-10-05', kind: 'rest', is_presencial: false };
+    expect(toGroupCalendarDayModel(dto)).toEqual({
+      id: '1', groupId: '5', date: '2026-10-05', kind: 'rest',
+      otherName: null, sessionInstance: null, cancelledReason: null,
+      isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null,
+      presencialLocation: null, sourcePlanId: null,
+    });
+  });
+
+  test('mapea un día presencial con sesión instanciada y ubicación', () => {
+    const dto = {
+      id: 2, group_id: 5, date: '2026-10-06', kind: 'training',
+      session_instance: {
+        id: 123, name: 'Fartlek 5K', description: null,
+        exercises: [{ id: 456, name: 'Trote', role: 'warmup', repeat_count: 1, rest_minutes: 0 }],
+      },
+      is_presencial: true, presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' }, source_plan_id: 3,
+    };
+    const model = toGroupCalendarDayModel(dto);
+    expect(model.sessionInstance).toEqual({
+      id: '123', name: 'Fartlek 5K', description: null, sourceSessionId: null,
+      exercises: [{ id: '456', name: 'Trote', role: 'warmup', repeatCount: 1, restMinutes: 0, sourceExerciseId: null }],
+    });
+    expect(model.presencialTimeFrom).toBe('08:00');
+    expect(model.presencialTimeTo).toBe('09:30');
+    expect(model.presencialLocation).toEqual({ lat: -34.6, lng: -58.4, label: 'Plaza' });
+    expect(model.sourcePlanId).toBe('3');
+  });
+
+  test('mapea session_id/exercise_id de origen cuando el backend los trae (Gap 7)', () => {
+    const dto = {
+      id: 2, group_id: 5, date: '2026-10-06', kind: 'training',
+      session_instance: {
+        id: 123, name: 'Fartlek 5K', description: null, session_id: 9,
+        exercises: [{ id: 456, name: 'Trote', role: 'warmup', repeat_count: 1, rest_minutes: 0, exercise_id: 4 }],
+      },
+      is_presencial: false,
+    };
+    const model = toGroupCalendarDayModel(dto);
+    expect(model.sessionInstance.sourceSessionId).toBe('9');
+    expect(model.sessionInstance.exercises[0].sourceExerciseId).toBe('4');
+  });
+
+  test('session_instance null (día sin sesión, ej. rest/other)', () => {
+    const dto = { id: 3, group_id: 5, date: '2026-10-07', kind: 'other', other_name: 'Elongación', session_instance: null, is_presencial: false };
+    expect(toGroupCalendarDayModel(dto).sessionInstance).toBeNull();
+  });
+
+  test('returns null for falsy dto', () => {
+    expect(toGroupCalendarDayModel(null)).toBeNull();
+  });
+});
+
+describe('toAggregatedCalendarDayModel', () => {
+  test('suma group_name/team_id/team_name y mapea presencial_collision', () => {
+    const dto = {
+      id: 5, group_id: 7, date: '2026-10-05', kind: 'training', other_name: null,
+      session_instance: null, cancelled_reason: null, is_presencial: true,
+      presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+      source_plan_id: null,
+      group_name: 'Elite AM', team_id: 3, team_name: 'Runners Norte',
+      presencial_collision: {
+        type: 'same_team',
+        conflicts: [{ group_id: 9, group_name: 'Elite PM', team_id: 3, team_name: 'Runners Norte', date: '2026-10-05', presencial_time_from: '08:30', presencial_time_to: '10:00' }],
+      },
+    };
+    const model = toAggregatedCalendarDayModel(dto);
+    expect(model.groupId).toBe('7');
+    expect(model.groupName).toBe('Elite AM');
+    expect(model.teamId).toBe('3');
+    expect(model.teamName).toBe('Runners Norte');
+    expect(model.presencialCollision).toEqual({
+      type: 'same_team',
+      conflicts: [{ group_id: 9, group_name: 'Elite PM', team_id: 3, team_name: 'Runners Norte', date: '2026-10-05', presencial_time_from: '08:30', presencial_time_to: '10:00' }],
+    });
+  });
+
+  test('presencialCollision es null si el día no colisiona', () => {
+    const dto = {
+      id: 5, group_id: 7, date: '2026-10-05', kind: 'rest', other_name: null,
+      session_instance: null, cancelled_reason: null, is_presencial: false,
+      presencial_time_from: null, presencial_time_to: null, presencial_location: null,
+      source_plan_id: null, group_name: 'Elite AM', team_id: 3, team_name: 'Runners Norte',
+    };
+    const model = toAggregatedCalendarDayModel(dto);
+    expect(model.presencialCollision).toBeNull();
+  });
+});
+
+describe('toCalendarDayPayload', () => {
+  test('día de descanso solo manda kind', () => {
+    expect(toCalendarDayPayload({ kind: 'rest' })).toEqual({ kind: 'rest' });
+  });
+
+  test('otra actividad manda other_name', () => {
+    expect(toCalendarDayPayload({ kind: 'other', otherName: 'Elongación' })).toEqual({
+      kind: 'other', other_name: 'Elongación',
+    });
+  });
+
+  test('entrenamiento no presencial manda session_id e is_presencial false, sin horarios/ubicación', () => {
+    const payload = toCalendarDayPayload({ kind: 'training', sessionId: '9', isPresencial: false });
+    expect(payload).toEqual({ kind: 'training', session_id: 9, is_presencial: false });
+  });
+
+  test('entrenamiento presencial manda horarios y ubicación', () => {
+    const payload = toCalendarDayPayload({
+      kind: 'training', sessionId: '9', isPresencial: true,
+      presencialTimeFrom: '08:00', presencialTimeTo: '09:30',
+      presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+    });
+    expect(payload).toEqual({
+      kind: 'training', session_id: 9, is_presencial: true,
+      presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+    });
+  });
+
+  test('entrenamiento con KEEP_CURRENT_SESSION no manda session_id (Gap 7 — conserva la instancia actual)', () => {
+    const payload = toCalendarDayPayload({ kind: 'training', sessionId: KEEP_CURRENT_SESSION, isPresencial: false });
+    expect(payload).toEqual({ kind: 'training', is_presencial: false });
+  });
+
+  test('cancelado manda solo cancelled_reason, sin session_id (el backend lo preserva)', () => {
+    expect(toCalendarDayPayload({ kind: 'cancelled', cancelledReason: 'Lluvia' })).toEqual({
+      kind: 'cancelled', cancelled_reason: 'Lluvia',
+    });
+  });
+});
+
+describe('toTrainingPlanModel — PlanDay presencial', () => {
+  test('mapea default_presencial/default_time_from/default_time_to/default_location a isPresencial/presencialTimeFrom/presencialTimeTo/presencialLocation', () => {
+    const dto = {
+      id: 1, owner_id: 7, name: 'Plan', description: '', created_at: 'x', updated_at: 'x',
+      days: [
+        { sequence_no: 1, kind: 'training', other_name: null, session_id: 9, default_presencial: true, default_time_from: '08:00', default_time_to: '09:30', default_location: { lat: -34.6, lng: -58.4, label: 'Plaza' } },
+        { sequence_no: 2, kind: 'rest', other_name: null, session_id: null, default_presencial: false, default_time_from: null, default_time_to: null, default_location: null },
+      ],
+    };
+    const model = toTrainingPlanModel(dto);
+    expect(model.days[0]).toMatchObject({ isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30', presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' } });
+    expect(model.days[1]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null, presencialLocation: null });
+  });
+
+  test('un PlanDay sin default_presencial (planes viejos, campo nunca seteado) mapea isPresencial false', () => {
+    const dto = {
+      id: 1, owner_id: 7, name: 'Plan', description: '', created_at: 'x', updated_at: 'x',
+      days: [{ sequence_no: 1, kind: 'rest', other_name: null, session_id: null }],
+    };
+    expect(toTrainingPlanModel(dto).days[0]).toMatchObject({ isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null, presencialLocation: null });
+  });
+});
+
+describe('toCreateTrainingPlanPayload — PlanDay presencial', () => {
+  test('un día training presencial manda default_presencial true + horarios + ubicación', () => {
+    const form = {
+      ownerId: 7, name: 'Plan', description: '',
+      days: [{ sequenceNo: 1, kind: 'training', otherName: null, sessionId: '9', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:30', presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' } }],
+    };
+    expect(toCreateTrainingPlanPayload(form).days[0]).toMatchObject({
+      default_presencial: true, default_time_from: '08:00', default_time_to: '09:30',
+      default_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+    });
+  });
+
+  test('un día no presencial manda default_presencial false, horarios y ubicación null', () => {
+    const form = {
+      ownerId: 7, name: 'Plan', description: '',
+      days: [{ sequenceNo: 1, kind: 'rest', otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: '', presencialTimeTo: '', presencialLocation: null }],
+    };
+    expect(toCreateTrainingPlanPayload(form).days[0]).toMatchObject({
+      default_presencial: false, default_time_from: null, default_time_to: null, default_location: null,
+    });
+  });
+});
+
+describe('toStampPayload', () => {
+  test('arma el body de POST stamp', () => {
+    expect(toStampPayload({ planId: '5', startDate: '2026-03-10', force: false })).toEqual({
+      plan_id: 5, start_date: '2026-03-10', force: false, exclude_dates: [],
+    });
+  });
+
+  test('force default a false si no se pasa', () => {
+    expect(toStampPayload({ planId: '5', startDate: '2026-03-10' })).toEqual({
+      plan_id: 5, start_date: '2026-03-10', force: false, exclude_dates: [],
+    });
+  });
+
+  test('incluye exclude_dates cuando se pasa (Gap 8)', () => {
+    expect(toStampPayload({ planId: '5', startDate: '2026-03-10', force: true, excludeDates: ['2026-03-12'] })).toEqual({
+      plan_id: 5, start_date: '2026-03-10', force: true, exclude_dates: ['2026-03-12'],
+    });
+  });
+});
+
+describe('toBulkAssignPayload', () => {
+  test('arma el body de bulk-assign: dates + el mismo shape que toCalendarDayPayload', () => {
+    const payload = toBulkAssignPayload({
+      dates: ['2026-10-05', '2026-10-06'],
+      day: { kind: 'rest' },
+    });
+    expect(payload).toEqual({ dates: ['2026-10-05', '2026-10-06'], kind: 'rest' });
+  });
+
+  test('con un día de entrenamiento presencial, incluye horario y ubicación', () => {
+    const payload = toBulkAssignPayload({
+      dates: ['2026-10-05'],
+      day: {
+        kind: 'training', sessionId: '9', isPresencial: true,
+        presencialTimeFrom: '08:00', presencialTimeTo: '09:30',
+        presencialLocation: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+      },
+    });
+    expect(payload).toEqual({
+      dates: ['2026-10-05'], kind: 'training', session_id: 9, is_presencial: true,
+      presencial_time_from: '08:00', presencial_time_to: '09:30',
+      presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
+    });
   });
 });

@@ -9,7 +9,6 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions } from '../../hooks/use-user.js';
-import { TRAINING_PLAN_OPTIONS } from '../../store/team-store.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
 import { useInvitationMutations } from '../../hooks/use-invitations.js';
@@ -398,7 +397,7 @@ function GroupMemberRow({ member, colors }) {
 // la lista de miembros va siempre visible. En mobile es una card
 // expandible, mismo patrón que RunnerRow — colapsada por default, tocarla
 // muestra los corredores del grupo.
-function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete, deleting }) {
+function GroupRow({ group, members, colors, onEdit, canEdit, onDelete, deleting, onViewCalendar, canManageTeam }) {
   const [expanded, setExpanded] = useState(false);
   const memberCount = members.length;
 
@@ -412,7 +411,7 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
           {group.name}
         </Text>
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`team-detail-group-${group.id}-meta`} testID={`team-detail-group-${group.id}-meta`}>
-          {memberCount} {memberCount === 1 ? 'corredor' : 'corredores'} · {planName ?? 'Sin plan asignado'}
+          {memberCount} {memberCount === 1 ? 'corredor' : 'corredores'}
         </Text>
         {group.description && (
           <Text
@@ -428,27 +427,40 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
     </>
   );
 
-  const editButton = canEdit && (
+  const actions = canManageTeam && (
     <View className="flex-row items-center gap-1" nativeID={`team-detail-group-${group.id}-actions`} testID={`team-detail-group-${group.id}-actions`}>
       <Pressable
-        accessibilityLabel={`Editar grupo ${group.name}`}
+        accessibilityLabel={`Ver calendario de ${group.name}`}
         className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-        nativeID={`team-detail-group-${group.id}-edit-button`}
-        onPress={onEdit}
-        testID={`team-detail-group-${group.id}-edit-button`}
+        nativeID={`team-detail-group-${group.id}-calendar-button`}
+        onPress={onViewCalendar}
+        testID={`team-detail-group-${group.id}-calendar-button`}
       >
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-month-outline" size={18} />
       </Pressable>
-      <Pressable
-        accessibilityLabel={`Eliminar grupo ${group.name}`}
-        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-        disabled={deleting}
-        nativeID={`team-detail-group-${group.id}-delete-button`}
-        onPress={onDelete}
-        testID={`team-detail-group-${group.id}-delete-button`}
-      >
-        {deleting ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />}
-      </Pressable>
+      {canEdit && (
+        <Pressable
+          accessibilityLabel={`Editar grupo ${group.name}`}
+          className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+          nativeID={`team-detail-group-${group.id}-edit-button`}
+          onPress={onEdit}
+          testID={`team-detail-group-${group.id}-edit-button`}
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+        </Pressable>
+      )}
+      {canEdit && (
+        <Pressable
+          accessibilityLabel={`Eliminar grupo ${group.name}`}
+          className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+          disabled={deleting}
+          nativeID={`team-detail-group-${group.id}-delete-button`}
+          onPress={onDelete}
+          testID={`team-detail-group-${group.id}-delete-button`}
+        >
+          {deleting ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />}
+        </Pressable>
+      )}
     </View>
   );
 
@@ -482,7 +494,7 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
             {header}
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
           </Pressable>
-          {editButton}
+          {actions}
         </View>
         {expanded && memberList}
       </View>
@@ -506,7 +518,7 @@ function GroupRow({ group, members, planName, colors, onEdit, canEdit, onDelete,
           {header}
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
         </Pressable>
-        {editButton}
+        {actions}
       </View>
       {expanded && memberList}
     </View>
@@ -937,6 +949,7 @@ function TeamDetailScreenContent({ teamId }) {
         {[...groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
           <GroupRow
             canEdit={canManageTeam && !group.isDefault}
+            canManageTeam={canManageTeam}
             colors={colors}
             deleting={deletingGroupId === group.id}
             group={group}
@@ -944,7 +957,7 @@ function TeamDetailScreenContent({ teamId }) {
             members={members.filter((m) => m.groupId === group.id)}
             onDelete={() => setGroupPendingDelete(group)}
             onEdit={() => router.push(`/teams/${team.id}/groups/${group.id}/edit`)}
-            planName={TRAINING_PLAN_OPTIONS.find((p) => p.id === group.trainingPlanId)?.name}
+            onViewCalendar={() => router.push(`/teams/${team.id}/groups/${group.id}/calendar`)}
           />
         ))}
       </View>
@@ -1079,12 +1092,11 @@ function TeamDetailScreenContent({ teamId }) {
         <CreateGroupModal
           existingNames={groups.map((g) => g.name.toLowerCase())}
           onClose={() => setCreateGroupModalVisible(false)}
-          onSubmit={async ({ name, description, trainingPlanId }) => {
-            const result = await createGroupInTeam({ name, description, trainingPlanId });
+          onSubmit={async ({ name, description }) => {
+            const result = await createGroupInTeam({ name, description });
             if (result.success) Toast.show({ type: 'success', text1: 'Grupo creado' });
             return result;
           }}
-          planOptions={TRAINING_PLAN_OPTIONS}
           visible={createGroupModalVisible}
         />
       )}

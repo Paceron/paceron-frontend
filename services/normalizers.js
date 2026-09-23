@@ -215,7 +215,6 @@ export function toGroupModel(dto) {
     name: dto.name,
     description: dto.description,
     isDefault: dto.is_main ?? false,
-    trainingPlanId: null,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };
@@ -364,15 +363,28 @@ function toPlanDayModel(dto) {
     kind: dto.kind,
     otherName: dto.other_name ?? null,
     sessionId: dto.session_id != null ? String(dto.session_id) : null,
+    isPresencial: Boolean(dto.default_presencial),
+    presencialTimeFrom: dto.default_time_from ?? null,
+    presencialTimeTo: dto.default_time_to ?? null,
+    presencialLocation: dto.default_location
+      ? { lat: dto.default_location.lat, lng: dto.default_location.lng, label: dto.default_location.label ?? null }
+      : null,
   };
 }
 
 function toPlanDayPayload(day) {
+  const presencial = day.kind === 'training' && Boolean(day.isPresencial);
   return {
     sequence_no: day.sequenceNo,
     kind: day.kind,
     other_name: day.kind === 'other' ? day.otherName : null,
     session_id: day.kind === 'training' && day.sessionId ? Number(day.sessionId) : null,
+    default_presencial: presencial,
+    default_time_from: presencial ? day.presencialTimeFrom : null,
+    default_time_to: presencial ? day.presencialTimeTo : null,
+    default_location: presencial && day.presencialLocation
+      ? { lat: day.presencialLocation.lat, lng: day.presencialLocation.lng, label: day.presencialLocation.label || null }
+      : null,
   };
 }
 
@@ -523,4 +535,128 @@ export function toSubscriptionModel(dto) {
     role: dto.role ? { id: dto.role.id, name: dto.role.name } : null,
     mercadopago: dto.mercadopago ? { publicKey: dto.mercadopago.public_key } : null,
   };
+}
+
+// ---------------------------------------------------------------------
+// Calendario de grupo (GroupCalendarDay) — ver
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md. IDs como string (mismo
+// criterio que toSessionModel/toGroupModel) para evitar el bug de tipo
+// ya documentado en CLAUDE.md ("IDs numéricos en bodies de request") —
+// toCalendarDayPayload los vuelve a Number() donde el backend lo espera.
+// ---------------------------------------------------------------------
+
+// SessionInstance embebida (copia congelada — ver
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §3.1bis). `sourceSessionId`/
+// `sourceExerciseId` (Gap 7, resuelto 2026-09-21) son el id de catálogo
+// que originó la instancia — informativos, pueden venir `null` en
+// instancias creadas antes de este cambio (sin backfill) o si el origen
+// se borró. NUNCA usar `id` (el de la instancia) para preseleccionar el
+// select de sesión al editar — no es un id de catálogo.
+function toSessionInstanceModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    description: dto.description ?? null,
+    sourceSessionId: dto.session_id != null ? String(dto.session_id) : null,
+    exercises: (dto.exercises ?? []).map((e) => ({
+      id: String(e.id),
+      name: e.name,
+      role: e.role,
+      repeatCount: e.repeat_count ?? 1,
+      restMinutes: e.rest_minutes ?? 0,
+      sourceExerciseId: e.exercise_id != null ? String(e.exercise_id) : null,
+    })),
+  };
+}
+
+export function toGroupCalendarDayModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    groupId: String(dto.group_id),
+    date: dto.date,
+    kind: dto.kind,
+    otherName: dto.other_name ?? null,
+    sessionInstance: toSessionInstanceModel(dto.session_instance),
+    cancelledReason: dto.cancelled_reason ?? null,
+    isPresencial: Boolean(dto.is_presencial),
+    presencialTimeFrom: dto.presencial_time_from ?? null,
+    presencialTimeTo: dto.presencial_time_to ?? null,
+    presencialLocation: dto.presencial_location
+      ? { lat: dto.presencial_location.lat, lng: dto.presencial_location.lng, label: dto.presencial_location.label ?? null }
+      : null,
+    sourcePlanId: dto.source_plan_id != null ? String(dto.source_plan_id) : null,
+  };
+}
+
+// Día de la vista agregada (member-calendar/administered-calendar, Gap
+// 11) — todo lo de toGroupCalendarDayModel más group/team resueltos
+// server-side y, solo en administered-calendar, presencial_collision.
+export function toAggregatedCalendarDayModel(dto) {
+  const base = toGroupCalendarDayModel(dto);
+  if (!base) return null;
+  return {
+    ...base,
+    groupName: dto.group_name,
+    teamId: String(dto.team_id),
+    teamName: dto.team_name,
+    presencialCollision: dto.presencial_collision
+      ? { type: dto.presencial_collision.type, conflicts: dto.presencial_collision.conflicts }
+      : null,
+  };
+}
+
+// Sentinel de "mantener la instancia actual, no reasignar" — Gap 7
+// resuelto 2026-09-21: el backend ahora permite omitir `session_id` en un
+// día `training` que ya tiene instancia, y la conserva sin reinstanciar.
+export const KEEP_CURRENT_SESSION = '__keep__';
+
+// Manda solo los campos que corresponden según `kind` — mismo criterio
+// que toPlanDayPayload, el servidor valida igual pero no hay que mandarle
+// basura. `session_id` de un día cancelado NO se manda — el backend lo
+// preserva del lado suyo (ver §3.1 de la spec: "si kind pasa a cancelled,
+// se mantiene"). Tampoco se manda si `day.sessionId === KEEP_CURRENT_SESSION`
+// — mismo criterio, ahora también disponible para `training` (Gap 7).
+export function toCalendarDayPayload(day) {
+  const payload = { kind: day.kind };
+
+  if (day.kind === 'other') {
+    payload.other_name = day.otherName;
+  }
+
+  if (day.kind === 'training') {
+    if (day.sessionId !== KEEP_CURRENT_SESSION) {
+      payload.session_id = Number(day.sessionId);
+    }
+    payload.is_presencial = Boolean(day.isPresencial);
+    if (day.isPresencial) {
+      payload.presencial_time_from = day.presencialTimeFrom;
+      payload.presencial_time_to = day.presencialTimeTo;
+      payload.presencial_location = day.presencialLocation
+        ? { lat: day.presencialLocation.lat, lng: day.presencialLocation.lng, label: day.presencialLocation.label || null }
+        : null;
+    }
+  }
+
+  if (day.kind === 'cancelled') {
+    payload.cancelled_reason = day.cancelledReason;
+  }
+
+  return payload;
+}
+
+// Body de POST /groups/{id}/calendar/stamp — ver
+// docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §4. `exclude_dates` (Gap 8,
+// resuelto) es opcional — fechas del rango que se saltan por completo,
+// sin importar conflicto ni `force`.
+export function toStampPayload({ planId, startDate, force, excludeDates }) {
+  return { plan_id: Number(planId), start_date: startDate, force: Boolean(force), exclude_dates: excludeDates ?? [] };
+}
+
+// Body de POST /groups/{id}/calendar/bulk — mismo shape por-día que
+// toCalendarDayPayload, con `dates` agregado (el backend aplica el mismo
+// contenido a todas las fechas listadas).
+export function toBulkAssignPayload({ dates, day }) {
+  return { dates, ...toCalendarDayPayload(day) };
 }
