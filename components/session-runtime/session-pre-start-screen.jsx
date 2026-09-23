@@ -73,26 +73,26 @@ function SessionPreStartScreenContent() {
         </Pressable>
 
         <View className="mb-6 mt-4 items-center" nativeID="session-pre-start-screen-title-block" testID="session-pre-start-screen-title-block">
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-date" testID="session-pre-start-screen-date">
+          <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-date" testID="session-pre-start-screen-date">
             {formatWeekdayLabel(pendingSession.date)}, {formatDisplayDate(pendingSession.date)}
           </Text>
-          <Text className="mt-1 text-center text-2xl text-slate-900 dark:text-white" nativeID="session-pre-start-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="session-pre-start-screen-title">
+          <Text className="mt-1 text-center text-3xl text-slate-900 dark:text-white" nativeID="session-pre-start-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="session-pre-start-screen-title">
             {pendingSession.sessionInstance?.name ?? 'Entrenamiento'}
           </Text>
           {(pendingSession.teamName || pendingSession.groupName) && (
-            <View className="mt-2 flex-row items-center gap-3" nativeID="session-pre-start-screen-scope" testID="session-pre-start-screen-scope">
+            <View className="mt-2 flex-row items-center gap-4" nativeID="session-pre-start-screen-scope" testID="session-pre-start-screen-scope">
               {pendingSession.teamName && (
                 <View className="flex-row items-center gap-1" nativeID="session-pre-start-screen-team" testID="session-pre-start-screen-team">
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={13} />
-                  <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-team-label" testID="session-pre-start-screen-team-label">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={16} />
+                  <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-team-label" testID="session-pre-start-screen-team-label">
                     {pendingSession.teamName}
                   </Text>
                 </View>
               )}
               {pendingSession.groupName && (
                 <View className="flex-row items-center gap-1" nativeID="session-pre-start-screen-group" testID="session-pre-start-screen-group">
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={13} />
-                  <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-group-label" testID="session-pre-start-screen-group-label">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={16} />
+                  <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-group-label" testID="session-pre-start-screen-group-label">
                     {pendingSession.groupName}
                   </Text>
                 </View>
