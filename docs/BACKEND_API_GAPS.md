@@ -436,3 +436,22 @@ es también la forma de detectar y limpiar esos casos).
 **Impacto en frontend:** sin acción pendiente mientras este gap sigue
 abierto — bloquea la vista agregada de calendario (pieza 2) para ambos
 roles, todavía sin implementar.
+
+## Gap 12 — persistencia de la actividad realizada + historial (registro en vivo)
+
+Sin resolver, sin endpoints todavía. El nuevo módulo de registro de actividad en vivo (ver
+`docs/superpowers/specs/2026-09-23-live-session-base-design.md`) va a necesitar, cuando se
+construya la interfaz real (fuera del alcance de esa spec, que solo cubre la navegación hasta la
+pantalla previa al inicio):
+
+- Un endpoint para persistir la actividad finalizada de un `GroupCalendarDay`: por ejercicio y por
+  serie, estado (`completado`/`skippeado`/`terminado`), tiempos, y puntos GPS tomados en background
+  (para reconstruir el recorrido). El registro se arma primero en almacenamiento local nativo
+  durante la sesión (para no depender de conectividad mientras corre) y se sube recién al
+  finalizar.
+- Endpoints de historial multiplataforma: listar actividades finalizadas, ver el detalle de una,
+  editar valores puntuales (tiempos, distancias), eliminar una actividad.
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea el guardado
+real y el historial del módulo de registro en vivo, todavía sin implementar (la base de navegación
+sí está resuelta, ver spec citada arriba).
