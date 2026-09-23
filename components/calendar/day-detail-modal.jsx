@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { StartSessionButton } from './start-session-button.jsx';
 
 function kindLabel(assignment) {
   if (assignment.kind === 'rest') return 'Descanso';
@@ -64,6 +65,7 @@ function AssignmentRow({ assignment, variant }) {
             : ''}
         </Text>
       )}
+      <StartSessionButton assignment={assignment} role={variant === 'member' ? 'runner' : 'trainer'} />
       {variant === 'administered' && assignment.presencialCollision && (
         <View
           className={`mt-2 rounded-lg px-2 py-1.5 ${assignment.presencialCollision.type === 'cross_team' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}
