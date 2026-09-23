@@ -205,11 +205,6 @@ export async function mockGetMemberCalendar(userId, from, to) {
   return results;
 }
 
-export async function mockGetCalendarSummary(userId) {
-  const memberships = await groupsWhereMember(userId);
-  return memberships.map(({ group }) => ({ group_id: group.id, group_name: group.name }));
-}
-
 export function __resetMockCalendar() {
   mockCalendarDays = {};
   nextId = 1;

@@ -10,7 +10,6 @@ import {
   mockShiftCalendar,
   mockGetAdministeredCalendar,
   mockGetMemberCalendar,
-  mockGetCalendarSummary,
 } from './__mocks__/calendar-mock.js';
 
 // Calendario de un grupo (GroupCalendarDay) — backend real desde
@@ -111,12 +110,4 @@ export async function getAdministeredCalendar(userId, from, to) {
   if (USE_MOCKS) return await mockGetAdministeredCalendar(userId, from, to);
   const params = new URLSearchParams({ from, to });
   return await api.get(`/users/${userId}/administered-calendar?${params.toString()}`);
-}
-
-// GET /api/v1/users/{id}/calendar-summary — {group_id, group_name} de
-// cada grupo del que el usuario es miembro, sin rango de fechas. Se usa
-// para poblar el filtro por grupo de la vista agregada del corredor.
-export async function getCalendarSummary(userId) {
-  if (USE_MOCKS) return await mockGetCalendarSummary(userId);
-  return await api.get(`/users/${userId}/calendar-summary`);
 }

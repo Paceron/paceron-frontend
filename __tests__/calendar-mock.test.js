@@ -1,7 +1,7 @@
 import {
   mockGetGroupCalendar, mockUpsertCalendarDay, mockDeleteCalendarDay, mockStampPlan,
   mockBulkAssignDays, mockBulkClearDays, mockShiftCalendar,
-  mockGetAdministeredCalendar, mockGetMemberCalendar, mockGetCalendarSummary,
+  mockGetAdministeredCalendar, mockGetMemberCalendar,
   __resetMockCalendar,
 } from '../services/__mocks__/calendar-mock.js';
 import { __resetMockSessions } from '../services/__mocks__/sessions-mock.js';
@@ -257,14 +257,3 @@ describe('mockGetMemberCalendar', () => {
   });
 });
 
-describe('mockGetCalendarSummary', () => {
-  test('lista los grupos de los que el usuario es miembro', async () => {
-    const groups = await mockListGroups(4);
-    const generalGroup = groups.find((g) => g.name === 'General');
-    const members = await mockGetGroupUsers(generalGroup.id);
-    const memberUserId = members[0].user_id;
-
-    const result = await mockGetCalendarSummary(memberUserId);
-    expect(result).toEqual(expect.arrayContaining([{ group_id: generalGroup.id, group_name: 'General' }]));
-  });
-});
