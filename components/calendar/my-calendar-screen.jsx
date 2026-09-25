@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -37,7 +37,7 @@ function MyCalendarScreenContent() {
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
 
   const { from: upcomingFrom, to: upcomingTo } = useMemo(() => upcomingTrainingsRange(), []);
-  const { days: upcomingDaysRaw } = useMemberCalendar(userId, upcomingFrom, upcomingTo);
+  const { days: upcomingDaysRaw, loading: upcomingLoading, isFetching: upcomingIsFetching } = useMemberCalendar(userId, upcomingFrom, upcomingTo);
   const upcomingTrainings = useMemo(() => selectUpcomingTrainings(upcomingDaysRaw), [upcomingDaysRaw]);
 
   // Un usuario está en un único grupo por equipo a la vez — el primer día
@@ -101,13 +101,10 @@ function MyCalendarScreenContent() {
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="my-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="my-calendar-screen-title">
             Mi calendario
           </Text>
-          {(loading || isFetching) && (
-            <ActivityIndicator color={colors.primary} nativeID="my-calendar-screen-fetching" size="small" testID="my-calendar-screen-fetching" />
-          )}
         </View>
 
         {teamOptions.length > 0 && (
-          <View className={`mb-4 gap-2 ${stackFilter ? '' : 'flex-row items-end'}`} nativeID="my-calendar-screen-filter" testID="my-calendar-screen-filter">
+          <View className={`mb-4 gap-2 ${stackFilter ? '' : 'flex-row items-center'}`} nativeID="my-calendar-screen-filter" testID="my-calendar-screen-filter">
             <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="my-calendar-screen-filter-team-wrapper" testID="my-calendar-screen-filter-team-wrapper">
               <ResponsiveSelectField
                 dense
@@ -120,15 +117,16 @@ function MyCalendarScreenContent() {
               />
             </View>
             {selectedTeam && (
-              <Text
-                className={stackFilter
-                  ? 'text-sm font-semibold text-slate-700 dark:text-slate-200'
-                  : 'mb-3 text-xs text-slate-500 dark:text-slate-400'}
-                nativeID="my-calendar-screen-filter-group-label"
-                testID="my-calendar-screen-filter-group-label"
-              >
-                Grupo: {selectedTeam.groupName}
-              </Text>
+              <View className="flex-row items-center gap-1" nativeID="my-calendar-screen-filter-group-label-wrapper" testID="my-calendar-screen-filter-group-label-wrapper">
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={16} />
+                <Text
+                  className="text-sm font-semibold text-slate-700 dark:text-slate-200"
+                  nativeID="my-calendar-screen-filter-group-label"
+                  testID="my-calendar-screen-filter-group-label"
+                >
+                  Grupo: {selectedTeam.groupName}
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -136,6 +134,7 @@ function MyCalendarScreenContent() {
         <AggregatedMonthView
           currentMonthISO={currentMonthISO}
           daysByDate={daysByDate}
+          loading={loading || isFetching}
           month={visibleMonth}
           onDayPress={setOpenDate}
           onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
@@ -143,7 +142,7 @@ function MyCalendarScreenContent() {
           year={visibleYear}
         />
 
-        <UpcomingTrainingsGrid trainings={filteredUpcomingTrainings} variant="member" />
+        <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="member" />
       </View>
       </ScrollView>
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -38,7 +38,7 @@ function AdministeredCalendarScreenContent() {
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
 
   const { from: upcomingFrom, to: upcomingTo } = useMemo(() => upcomingTrainingsRange(), []);
-  const { days: upcomingDaysRaw } = useAdministeredCalendar(userId, upcomingFrom, upcomingTo);
+  const { days: upcomingDaysRaw, loading: upcomingLoading, isFetching: upcomingIsFetching } = useAdministeredCalendar(userId, upcomingFrom, upcomingTo);
   const upcomingTrainings = useMemo(() => selectUpcomingTrainings(upcomingDaysRaw), [upcomingDaysRaw]);
 
   // A diferencia del corredor, un entrenador puede administrar más de un
@@ -118,9 +118,6 @@ function AdministeredCalendarScreenContent() {
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="administered-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="administered-calendar-screen-title">
             Calendario
           </Text>
-          {(loading || isFetching) && (
-            <ActivityIndicator color={colors.primary} nativeID="administered-calendar-screen-fetching" size="small" testID="administered-calendar-screen-fetching" />
-          )}
         </View>
 
         {teamOptions.length > 0 && (
@@ -155,6 +152,7 @@ function AdministeredCalendarScreenContent() {
         <AggregatedMonthView
           currentMonthISO={currentMonthISO}
           daysByDate={daysByDate}
+          loading={loading || isFetching}
           month={visibleMonth}
           onDayPress={setOpenDate}
           onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
@@ -162,7 +160,7 @@ function AdministeredCalendarScreenContent() {
           year={visibleYear}
         />
 
-        <UpcomingTrainingsGrid trainings={filteredUpcomingTrainings} variant="administered" />
+        <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="administered" />
       </View>
       </ScrollView>
 
