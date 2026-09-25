@@ -57,6 +57,12 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching 
   const colors = useThemeColors();
   const [seeAllVisible, setSeeAllVisible] = useState(false);
   const [openTraining, setOpenTraining] = useState(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+
+  const openTrainingDetail = (training) => {
+    setOpenTraining(training);
+    setDetailVisible(true);
+  };
 
   const previewTrainings = trainings.slice(0, PREVIEW_COUNT);
   const hasMore = trainings.length > PREVIEW_COUNT;
@@ -80,7 +86,7 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching 
 
       <View className="gap-2" nativeID="upcoming-trainings-grid-list" testID="upcoming-trainings-grid-list">
         {previewTrainings.map((training) => (
-          <UpcomingTrainingCard key={training.id} onPress={() => setOpenTraining(training)} training={training} variant={variant} />
+          <UpcomingTrainingCard key={training.id} onPress={() => openTrainingDetail(training)} training={training} variant={variant} />
         ))}
       </View>
 
@@ -124,7 +130,7 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching 
             <ScrollView nativeID="upcoming-trainings-grid-see-all-modal-scroll" testID="upcoming-trainings-grid-see-all-modal-scroll">
               <View className="gap-2" nativeID="upcoming-trainings-grid-see-all-modal-list" testID="upcoming-trainings-grid-see-all-modal-list">
                 {trainings.map((training) => (
-                  <UpcomingTrainingCard key={training.id} onPress={() => setOpenTraining(training)} training={training} variant={variant} />
+                  <UpcomingTrainingCard key={training.id} onPress={() => openTrainingDetail(training)} training={training} variant={variant} />
                 ))}
               </View>
             </ScrollView>
@@ -135,9 +141,9 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching 
       <DayDetailModal
         assignments={openTraining ? [openTraining] : []}
         date={openTraining?.date ?? ''}
-        onClose={() => setOpenTraining(null)}
+        onClose={() => setDetailVisible(false)}
         variant={variant}
-        visible={Boolean(openTraining)}
+        visible={detailVisible}
       />
     </View>
   );

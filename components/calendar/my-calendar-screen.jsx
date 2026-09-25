@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -19,6 +19,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 
 function MyCalendarScreenContent() {
   const router = useRouter();
+  const { date: deepLinkDate } = useLocalSearchParams();
   const colors = useThemeColors();
   const queryClient = useQueryClient();
   const isNarrowWeb = useIsNarrowWeb();
@@ -30,6 +31,22 @@ function MyCalendarScreenContent() {
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
   const [filterTeamId, setFilterTeamId] = useState('');
   const [openDate, setOpenDate] = useState(null);
+  const [dayModalVisible, setDayModalVisible] = useState(false);
+  const appliedDeepLinkRef = useRef(false);
+
+  const openDayModal = (date) => {
+    setOpenDate(date);
+    setDayModalVisible(true);
+  };
+
+  useEffect(() => {
+    if (!deepLinkDate || appliedDeepLinkRef.current) return;
+    appliedDeepLinkRef.current = true;
+    const [year, month] = deepLinkDate.split('-').map(Number);
+    setVisibleYear(year);
+    setVisibleMonth(month);
+    openDayModal(deepLinkDate);
+  }, [deepLinkDate]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading, isFetching } = useMemberCalendar(userId, from, to);
@@ -136,7 +153,7 @@ function MyCalendarScreenContent() {
           daysByDate={daysByDate}
           loading={loading || isFetching}
           month={visibleMonth}
-          onDayPress={setOpenDate}
+          onDayPress={openDayModal}
           onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
           showCollisions={false}
           year={visibleYear}
@@ -146,7 +163,7 @@ function MyCalendarScreenContent() {
       </View>
       </ScrollView>
 
-      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} onClose={() => setOpenDate(null)} variant="member" visible={Boolean(openDate)} />
+      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="member" visible={dayModalVisible} />
     </View>
   );
 }
