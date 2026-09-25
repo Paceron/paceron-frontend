@@ -10,9 +10,11 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useMemberCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
+import { upcomingTrainingsRange, selectUpcomingTrainings } from '../../utils/upcoming-trainings.js';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
+import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 function MyCalendarScreenContent() {
@@ -34,6 +36,10 @@ function MyCalendarScreenContent() {
   usePrefetchAdjacentCalendars('member', userId, visibleYear, visibleMonth);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
 
+  const { from: upcomingFrom, to: upcomingTo } = useMemo(() => upcomingTrainingsRange(), []);
+  const { days: upcomingDaysRaw } = useMemberCalendar(userId, upcomingFrom, upcomingTo);
+  const upcomingTrainings = useMemo(() => selectUpcomingTrainings(upcomingDaysRaw), [upcomingDaysRaw]);
+
   // Un usuario está en un único grupo por equipo a la vez — el primer día
   // visto de cada equipo alcanza para resolver su grupo correspondiente.
   // Se deriva del mes visible (no de calendar-summary, que no trae
@@ -51,6 +57,11 @@ function MyCalendarScreenContent() {
   const filteredDays = useMemo(
     () => (filterTeamId ? days.filter((d) => d.teamId === filterTeamId) : days),
     [days, filterTeamId],
+  );
+
+  const filteredUpcomingTrainings = useMemo(
+    () => (filterTeamId ? upcomingTrainings.filter((t) => t.teamId === filterTeamId) : upcomingTrainings),
+    [upcomingTrainings, filterTeamId],
   );
 
   const daysByDate = useMemo(() => {
@@ -131,6 +142,8 @@ function MyCalendarScreenContent() {
           showCollisions={false}
           year={visibleYear}
         />
+
+        <UpcomingTrainingsGrid trainings={filteredUpcomingTrainings} variant="member" />
       </View>
       </ScrollView>
 

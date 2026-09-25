@@ -10,9 +10,11 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useAdministeredCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
+import { upcomingTrainingsRange, selectUpcomingTrainings } from '../../utils/upcoming-trainings.js';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
+import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 function AdministeredCalendarScreenContent() {
@@ -34,6 +36,10 @@ function AdministeredCalendarScreenContent() {
   const { days, loading, isFetching } = useAdministeredCalendar(userId, from, to);
   usePrefetchAdjacentCalendars('administered', userId, visibleYear, visibleMonth);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
+
+  const { from: upcomingFrom, to: upcomingTo } = useMemo(() => upcomingTrainingsRange(), []);
+  const { days: upcomingDaysRaw } = useAdministeredCalendar(userId, upcomingFrom, upcomingTo);
+  const upcomingTrainings = useMemo(() => selectUpcomingTrainings(upcomingDaysRaw), [upcomingDaysRaw]);
 
   // A diferencia del corredor, un entrenador puede administrar más de un
   // grupo por equipo — el select de grupo queda anidado al de equipo,
@@ -67,6 +73,13 @@ function AdministeredCalendarScreenContent() {
     if (filterGroupId) result = result.filter((d) => d.groupId === filterGroupId);
     return result;
   }, [days, filterTeamId, filterGroupId]);
+
+  const filteredUpcomingTrainings = useMemo(() => {
+    let result = upcomingTrainings;
+    if (filterTeamId) result = result.filter((t) => t.teamId === filterTeamId);
+    if (filterGroupId) result = result.filter((t) => t.groupId === filterGroupId);
+    return result;
+  }, [upcomingTrainings, filterTeamId, filterGroupId]);
 
   const daysByDate = useMemo(() => {
     const map = {};
@@ -148,6 +161,8 @@ function AdministeredCalendarScreenContent() {
           showCollisions
           year={visibleYear}
         />
+
+        <UpcomingTrainingsGrid trainings={filteredUpcomingTrainings} variant="administered" />
       </View>
       </ScrollView>
 
