@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -19,6 +19,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 
 function AdministeredCalendarScreenContent() {
   const router = useRouter();
+  const { date: deepLinkDate } = useLocalSearchParams();
   const colors = useThemeColors();
   const queryClient = useQueryClient();
   const isNarrowWeb = useIsNarrowWeb();
@@ -31,6 +32,16 @@ function AdministeredCalendarScreenContent() {
   const [filterTeamId, setFilterTeamId] = useState('');
   const [filterGroupId, setFilterGroupId] = useState('');
   const [openDate, setOpenDate] = useState(null);
+  const appliedDeepLinkRef = useRef(false);
+
+  useEffect(() => {
+    if (!deepLinkDate || appliedDeepLinkRef.current) return;
+    appliedDeepLinkRef.current = true;
+    const [year, month] = deepLinkDate.split('-').map(Number);
+    setVisibleYear(year);
+    setVisibleMonth(month);
+    setOpenDate(deepLinkDate);
+  }, [deepLinkDate]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading, isFetching } = useAdministeredCalendar(userId, from, to);
