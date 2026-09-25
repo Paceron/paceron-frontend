@@ -14,7 +14,7 @@ function CancelledCard({ session, onPress }) {
 
   return (
     <Pressable
-      className="relative flex-row items-center overflow-hidden rounded-2xl bg-red-600 p-4 active:opacity-90 dark:bg-red-800"
+      className="relative flex-row items-center overflow-hidden rounded-2xl bg-red-600 p-4 hover:opacity-90 active:opacity-90 dark:bg-red-800"
       nativeID={idPrefix}
       onPress={onPress}
       testID={idPrefix}
@@ -108,7 +108,7 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
       ))}
 
       <Pressable
-        className="relative overflow-hidden rounded-2xl bg-primary p-5 active:opacity-90"
+        className="relative overflow-hidden rounded-2xl bg-primary p-5 hover:opacity-90 active:opacity-90"
         nativeID="next-training-banner-hero"
         onPress={onHeroPress}
         testID="next-training-banner-hero"
@@ -117,7 +117,7 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
           <MaterialCommunityIcons color="#111518" name={heroIcon} size={130} style={{ opacity: 0.12 }} />
         </View>
 
-        <View className="flex-row items-start" nativeID="next-training-banner-hero-content" testID="next-training-banner-hero-content">
+        <View className="flex-row items-center" nativeID="next-training-banner-hero-content" testID="next-training-banner-hero-content">
           <View className="flex-1 pr-3" nativeID="next-training-banner-hero-text" testID="next-training-banner-hero-text">
             <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]/70" nativeID="next-training-banner-hero-date" testID="next-training-banner-hero-date">
               {formatWeekdayLabel(nextTraining.date, { short: true })}, {formatDisplayDate(nextTraining.date)}

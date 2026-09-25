@@ -31,7 +31,13 @@ function MyCalendarScreenContent() {
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
   const [filterTeamId, setFilterTeamId] = useState('');
   const [openDate, setOpenDate] = useState(null);
+  const [dayModalVisible, setDayModalVisible] = useState(false);
   const appliedDeepLinkRef = useRef(false);
+
+  const openDayModal = (date) => {
+    setOpenDate(date);
+    setDayModalVisible(true);
+  };
 
   useEffect(() => {
     if (!deepLinkDate || appliedDeepLinkRef.current) return;
@@ -39,7 +45,7 @@ function MyCalendarScreenContent() {
     const [year, month] = deepLinkDate.split('-').map(Number);
     setVisibleYear(year);
     setVisibleMonth(month);
-    setOpenDate(deepLinkDate);
+    openDayModal(deepLinkDate);
   }, [deepLinkDate]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
@@ -147,7 +153,7 @@ function MyCalendarScreenContent() {
           daysByDate={daysByDate}
           loading={loading || isFetching}
           month={visibleMonth}
-          onDayPress={setOpenDate}
+          onDayPress={openDayModal}
           onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
           showCollisions={false}
           year={visibleYear}
@@ -157,7 +163,7 @@ function MyCalendarScreenContent() {
       </View>
       </ScrollView>
 
-      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setOpenDate(null)} variant="member" visible={Boolean(openDate)} />
+      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="member" visible={dayModalVisible} />
     </View>
   );
 }
