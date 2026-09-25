@@ -37,6 +37,27 @@ describe('selectNextTraining', () => {
   it('returns null when no candidates', () => {
     expect(selectNextTraining([], {}, now)).toBeNull();
   });
+
+  it('excludes a presencial training today whose presencial_time_to already passed', () => {
+    const nowEvening = new Date(2026, 8, 25, 20, 0); // Fri 2026-09-25, 20:00
+    const days = [
+      { id: '1', date: '2026-09-25', kind: 'training', isPresencial: true, presencialTimeFrom: '12:00', presencialTimeTo: '14:00' },
+      { id: '2', date: '2026-09-27', kind: 'training', isPresencial: true, presencialTimeFrom: '10:00', presencialTimeTo: '11:00' },
+    ];
+    expect(selectNextTraining(days, {}, nowEvening)?.id).toBe('2');
+  });
+
+  it('includes a presencial training today whose presencial_time_to has not passed yet', () => {
+    const nowMorning = new Date(2026, 8, 25, 10, 0);
+    const days = [{ id: '1', date: '2026-09-25', kind: 'training', isPresencial: true, presencialTimeFrom: '12:00', presencialTimeTo: '14:00' }];
+    expect(selectNextTraining(days, {}, nowMorning)?.id).toBe('1');
+  });
+
+  it('does not time-gate a non-presencial training today', () => {
+    const nowNight = new Date(2026, 8, 25, 23, 0);
+    const days = [{ id: '1', date: '2026-09-25', kind: 'training', isPresencial: false }];
+    expect(selectNextTraining(days, {}, nowNight)?.id).toBe('1');
+  });
 });
 
 describe('selectCancelledBefore', () => {

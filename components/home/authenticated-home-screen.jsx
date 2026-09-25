@@ -1,6 +1,7 @@
-import { ScrollView, Text } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
+import { isWeb } from '../../utils/platform.js';
 import { NextTrainingBanner } from './next-training-banner.jsx';
 
 export function AuthenticatedHomeScreen() {
@@ -15,15 +16,17 @@ export function AuthenticatedHomeScreen() {
       nativeID="authenticated-home-screen-root"
       testID="authenticated-home-screen-root"
     >
-      <Text
-        className="mb-6 text-2xl text-slate-900 dark:text-white"
-        nativeID="authenticated-home-screen-greeting"
-        style={{ fontFamily: 'Orbitron_700Bold' }}
-        testID="authenticated-home-screen-greeting"
-      >
-        {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
-      </Text>
-      <NextTrainingBanner />
+      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="authenticated-home-screen-container" testID="authenticated-home-screen-container">
+        <Text
+          className="mb-6 text-2xl text-slate-900 dark:text-white"
+          nativeID="authenticated-home-screen-greeting"
+          style={{ fontFamily: 'Orbitron_700Bold' }}
+          testID="authenticated-home-screen-greeting"
+        >
+          {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
+        </Text>
+        <NextTrainingBanner />
+      </View>
     </ScrollView>
   );
 }

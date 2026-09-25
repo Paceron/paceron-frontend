@@ -1,4 +1,4 @@
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -98,7 +98,9 @@ function AssignmentRow({ assignment, variant }) {
   );
 }
 
-export function DayDetailModal({ visible, onClose, date, assignments, variant }) {
+export function DayDetailModal({ visible, onClose, date, assignments, variant, loading }) {
+  const colors = useThemeColors();
+
   return (
     <Modal animationType="fade" nativeID="day-detail-modal" onRequestClose={onClose} testID="day-detail-modal" transparent visible={visible}>
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="day-detail-modal-backdrop" onPress={onClose} testID="day-detail-modal-backdrop">
@@ -111,18 +113,24 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant })
           <Text className="mb-3 text-lg font-bold text-slate-900 dark:text-white" nativeID="day-detail-modal-title" testID="day-detail-modal-title">
             {formatWeekdayLabel(date)}, {formatDisplayDate(date)}
           </Text>
-          <ScrollView nativeID="day-detail-modal-scroll" testID="day-detail-modal-scroll">
-            <View className="gap-2" nativeID="day-detail-modal-list" testID="day-detail-modal-list">
-              {assignments.map((assignment) => (
-                <AssignmentRow assignment={assignment} key={assignment.id} variant={variant} />
-              ))}
-              {assignments.length === 0 && (
-                <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID="day-detail-modal-empty" testID="day-detail-modal-empty">
-                  Sin asignaciones este día.
-                </Text>
-              )}
+          {loading ? (
+            <View className="items-center justify-center py-6" nativeID="day-detail-modal-loading" testID="day-detail-modal-loading">
+              <ActivityIndicator color={colors.primary} nativeID="day-detail-modal-loading-indicator" testID="day-detail-modal-loading-indicator" />
             </View>
-          </ScrollView>
+          ) : (
+            <ScrollView nativeID="day-detail-modal-scroll" testID="day-detail-modal-scroll">
+              <View className="gap-2" nativeID="day-detail-modal-list" testID="day-detail-modal-list">
+                {assignments.map((assignment) => (
+                  <AssignmentRow assignment={assignment} key={assignment.id} variant={variant} />
+                ))}
+                {assignments.length === 0 && (
+                  <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID="day-detail-modal-empty" testID="day-detail-modal-empty">
+                    Sin asignaciones este día.
+                  </Text>
+                )}
+              </View>
+            </ScrollView>
+          )}
         </Pressable>
       </Pressable>
     </Modal>

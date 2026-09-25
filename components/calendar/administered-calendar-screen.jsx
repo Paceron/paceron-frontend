@@ -175,7 +175,7 @@ function AdministeredCalendarScreenContent() {
       </View>
       </ScrollView>
 
-      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} onClose={() => setOpenDate(null)} variant="administered" visible={Boolean(openDate)} />
+      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setOpenDate(null)} variant="administered" visible={Boolean(openDate)} />
     </View>
   );
 }

@@ -157,7 +157,7 @@ function MyCalendarScreenContent() {
       </View>
       </ScrollView>
 
-      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} onClose={() => setOpenDate(null)} variant="member" visible={Boolean(openDate)} />
+      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setOpenDate(null)} variant="member" visible={Boolean(openDate)} />
     </View>
   );
 }

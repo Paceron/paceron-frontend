@@ -43,17 +43,20 @@ export function NextTrainingBanner() {
     router.push({ pathname: calendarHref, params: { date } });
   };
 
+  if (loading) {
+    return (
+      <View className="mb-6 items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-surface" nativeID="next-training-banner-loading" testID="next-training-banner-loading">
+        <ActivityIndicator color={colors.primary} nativeID="next-training-banner-loading-indicator" testID="next-training-banner-loading-indicator" />
+      </View>
+    );
+  }
+
   if (!nextTraining) {
     return (
-      <View className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="next-training-banner-empty" testID="next-training-banner-empty">
-        <View className="flex-row items-center gap-2" nativeID="next-training-banner-empty-header" testID="next-training-banner-empty-header">
-          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="next-training-banner-empty-label" testID="next-training-banner-empty-label">
-            No tenés entrenamientos programados.
-          </Text>
-          {(loading || isFetching) && (
-            <ActivityIndicator color={colors.primary} nativeID="next-training-banner-empty-loading" size="small" testID="next-training-banner-empty-loading" />
-          )}
-        </View>
+      <View className="mb-6 items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="next-training-banner-empty" testID="next-training-banner-empty">
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="next-training-banner-empty-label" testID="next-training-banner-empty-label">
+          No tenés entrenamientos programados.
+        </Text>
       </View>
     );
   }
@@ -80,7 +83,7 @@ export function NextTrainingBanner() {
       )}
 
       <Pressable
-        className="rounded-2xl bg-primary p-5 active:opacity-90"
+        className="relative rounded-2xl bg-primary p-5 active:opacity-90"
         nativeID="next-training-banner-hero"
         onPress={handlePress}
         testID="next-training-banner-hero"
@@ -89,7 +92,6 @@ export function NextTrainingBanner() {
           <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]/70" nativeID="next-training-banner-hero-date" testID="next-training-banner-hero-date">
             {formatWeekdayLabel(nextTraining.date, { short: true })}, {formatDisplayDate(nextTraining.date)}
           </Text>
-          {(loading || isFetching) && <ActivityIndicator color="#111518" nativeID="next-training-banner-hero-loading" size="small" testID="next-training-banner-hero-loading" />}
         </View>
 
         <Text className="mt-1 text-xl font-bold text-[#111518]" nativeID="next-training-banner-hero-title" testID="next-training-banner-hero-title">
@@ -127,6 +129,12 @@ export function NextTrainingBanner() {
             {eligible && !isWeb ? 'Iniciar entrenamiento' : 'Ver en el calendario'}
           </Text>
         </View>
+
+        {isFetching && (
+          <View className="absolute inset-0 items-center justify-center rounded-2xl bg-primary/70" nativeID="next-training-banner-hero-fetching-overlay" testID="next-training-banner-hero-fetching-overlay">
+            <ActivityIndicator color="#111518" nativeID="next-training-banner-hero-fetching-indicator" testID="next-training-banner-hero-fetching-indicator" />
+          </View>
+        )}
       </Pressable>
     </View>
   );
