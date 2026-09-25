@@ -137,13 +137,13 @@ export async function createRun({ sessionInstanceId, sessionName, sessionDate, t
 
 // Reanudar una sesión a medio andar (re-entrada a la pantalla en la misma
 // sesión de app): mismo (session_instance_id, session_date) in_progress.
-export async function getActiveRun(sessionInstanceId, sessionDate) {
+export async function getActiveRun(sessionInstanceId, sessionDate, athleteUserId) {
   const db = await getDb();
   const rows = await db.getAllAsync(
     `SELECT * FROM session_runs
-     WHERE session_instance_id = ? AND session_date = ? AND status = ?
+     WHERE session_instance_id = ? AND session_date = ? AND athlete_user_id = ? AND status = ?
      ORDER BY id DESC LIMIT 1`,
-    [toNumberOrNull(sessionInstanceId), sessionDate, RUN_STATUS.IN_PROGRESS]
+    [toNumberOrNull(sessionInstanceId), sessionDate, toNumberOrNull(athleteUserId), RUN_STATUS.IN_PROGRESS]
   );
   return rows[0] ?? null;
 }

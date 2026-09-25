@@ -22,7 +22,7 @@ Repo backend: `paceron-backend` (change OpenSpec aparte, ver tasks finales).
 
 - [ ] `services/session-db.js` — init (`PRAGMA journal_mode=WAL` + `CREATE TABLE IF NOT EXISTS`),
       DAO completo de la spec (run + sets + gps_points; createRun siembra todas las series;
-      getActiveRun por `(session_instance_id, session_date)` para reanudar).
+      getActiveRun por `(session_instance_id, session_date, athlete_user_id)` para reanudar).
 - [ ] `store/live-session-store.js` — `runId`, `gpsEnabled`, clear.
 
 ## Fase 3 — Hooks de runtime

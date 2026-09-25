@@ -29,7 +29,8 @@ export async function mockCreateWorkoutFeedback(payload) {
     (f) =>
       f.assigned_session_id === payload.assigned_session_id &&
       f.assigned_exercise_id === payload.assigned_exercise_id &&
-      f.set_number === payload.set_number,
+      f.set_number === payload.set_number &&
+      f.athlete_user_id === payload.athlete_user_id,
   );
   if (duplicated) {
     const error = new Error('El set ya fue registrado');

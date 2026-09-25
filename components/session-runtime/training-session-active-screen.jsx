@@ -999,8 +999,16 @@ function TrainingSessionActiveScreenContent() {
       const sessionInstance = pendingSession.sessionInstance;
       const sessionDate = pendingSession.date;
       let runRow = storeRunId ? await getRun(storeRunId) : null;
-      if (runRow) logDebug(`bootstrap: reuso run por storeRunId=${storeRunId}`);
-      if (!runRow) runRow = await getActiveRun(sessionInstance.id, sessionDate);
+      if (runRow) {
+        // Evita reusar un run de otro usuario (store in-memory persiste entre logins).
+        if (runRow.athlete_user_id != null && Number(runRow.athlete_user_id) !== Number(userId)) {
+          logDebug(`bootstrap: runId=${storeRunId} pertenece a otro atleta (${runRow.athlete_user_id} vs ${userId}), descartado`);
+          runRow = null;
+        } else {
+          logDebug(`bootstrap: reuso run por storeRunId=${storeRunId}`);
+        }
+      }
+      if (!runRow) runRow = await getActiveRun(sessionInstance.id, sessionDate, userId);
       if (runRow && !storeRunId) logDebug('bootstrap: reuso run por getActiveRun');
       if (!runRow) {
         const createdId = await createRun({
