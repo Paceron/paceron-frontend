@@ -13,7 +13,7 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatStopwatch, toIsoUtc } from '../../utils/time.js';
-import { haversineMeters } from '../../utils/distance.js';
+import { haversineMeters, formatMeters } from '../../utils/distance.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import {
   cancelRun,
@@ -56,12 +56,6 @@ const PHASE_META = {
   paused: { label: 'En pausa', color: 'text-amber-600 dark:text-amber-400' },
   finishing: { label: 'Finalizando', color: 'text-slate-500 dark:text-slate-400' },
 };
-
-function formatMeters(meters) {
-  if (meters == null) return '—';
-  if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(2)} km`;
-}
 
 function SetStatusChip({ set, idPrefix }) {
   const meta = STATUS_META[set.status] ?? STATUS_META.pending;

@@ -5,6 +5,8 @@ import {
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
   toGroupCalendarDayModel, toAggregatedCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
   toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload, toBulkAssignPayload,
+  toRunnerSessionModel, toSessionFeedbackModel, toSessionFeedbackListModel, buildSessionReviewModel,
+  toRunnerSessionStartPayload, toFeedbackEditPayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -761,5 +763,145 @@ describe('toBulkAssignPayload', () => {
       presencial_time_from: '08:00', presencial_time_to: '09:30',
       presencial_location: { lat: -34.6, lng: -58.4, label: 'Plaza' },
     });
+  });
+});
+
+describe('toRunnerSessionModel', () => {
+  test('mapea snake_case a camelCase', () => {
+    const dto = {
+      id: 8, session_instance_id: 101, athlete_user_id: 3, status: 'wip',
+      start_date: '2026-09-24T10:00:00Z', end_date: null,
+    };
+    expect(toRunnerSessionModel(dto)).toEqual({
+      id: '8', sessionInstanceId: '101', athleteUserId: '3', status: 'wip',
+      startDate: '2026-09-24T10:00:00Z', endDate: null,
+    });
+  });
+
+  test('null para dto ausente', () => {
+    expect(toRunnerSessionModel(null)).toBeNull();
+    expect(toRunnerSessionModel(undefined)).toBeNull();
+  });
+});
+
+describe('toSessionFeedbackModel', () => {
+  test('mapea los campos del workout_feedback', () => {
+    const dto = {
+      id: 12, assigned_session_id: 101, assigned_exercise_id: 501, athlete_user_id: 3,
+      team_id: null, exercise_name: 'Sentadilla', set_number: 2, completion_status: 'completed',
+      started_at: 'a', ended_at: 'b', duration_ms: 210000, active_duration_ms: 200000,
+      distance_meters: 1200.5, report_source: 'gps', points_count: 4,
+    };
+    expect(toSessionFeedbackModel(dto)).toMatchObject({
+      id: '12', assignedSessionId: '101', assignedExerciseId: '501', athleteUserId: '3',
+      teamId: null, exerciseName: 'Sentadilla', setNumber: 2, completionStatus: 'completed',
+      durationMs: 210000, activeDurationMs: 200000, distanceMeters: 1200.5,
+      reportSource: 'gps', pointsCount: 4,
+    });
+  });
+
+  test('null para dto ausente', () => {
+    expect(toSessionFeedbackModel(null)).toBeNull();
+  });
+});
+
+describe('toSessionFeedbackListModel', () => {
+  test('agrupa por ejercicio y ordena por set', () => {
+    const dtos = [
+      { id: 1, assigned_session_id: 101, assigned_exercise_id: 501, set_number: 2, completion_status: 'completed' },
+      { id: 2, assigned_session_id: 101, assigned_exercise_id: 500, set_number: 1, completion_status: 'skipped' },
+      { id: 3, assigned_session_id: 101, assigned_exercise_id: 501, set_number: 1, completion_status: 'completed' },
+    ];
+    const groups = toSessionFeedbackListModel(dtos);
+    expect(groups).toHaveLength(2);
+    const ej500 = groups.find((g) => g.exerciseId === '500');
+    const ej501 = groups.find((g) => g.exerciseId === '501');
+    expect(ej500.sets.map((s) => s.setNumber)).toEqual([1]);
+    expect(ej501.sets.map((s) => s.setNumber)).toEqual([1, 2]);
+  });
+
+  test('ignora dtos nulos', () => {
+    expect(toSessionFeedbackListModel([{ assigned_session_id: 101, assigned_exercise_id: 1, set_number: 1 }, null])).toHaveLength(1);
+  });
+
+  test('vacío → []', () => {
+    expect(toSessionFeedbackListModel()).toEqual([]);
+  });
+});
+
+describe('buildSessionReviewModel', () => {
+  const sessionInstance = {
+    id: 101,
+    exercises: [
+      { id: 501, name: 'Sentadilla', repeatCount: 2, restMinutes: 2 },
+      { id: 502, name: 'Trotar', repeatCount: 1, restMinutes: 1 },
+    ],
+  };
+
+  test('serie sin feedback → unregistered', () => {
+    const model = buildSessionReviewModel(sessionInstance, []);
+    expect(model[0].rows).toEqual([
+      { setNumber: 1, status: 'unregistered', feedback: null },
+      { setNumber: 2, status: 'unregistered', feedback: null },
+    ]);
+  });
+
+  test('mergea el feedback agrupado: completed/skipped según completion_status', () => {
+    const groups = [
+      {
+        exerciseId: '501',
+        sets: [
+          { setNumber: 1, completionStatus: 'completed', id: '10' },
+          { setNumber: 2, completionStatus: 'skipped', id: '11' },
+        ],
+      },
+    ];
+    const model = buildSessionReviewModel(sessionInstance, groups);
+    expect(model[0].rows[0]).toMatchObject({ setNumber: 1, status: 'completed', feedback: { id: '10' } });
+    expect(model[0].rows[1]).toMatchObject({ setNumber: 2, status: 'skipped', feedback: { id: '11' } });
+    expect(model[1].rows[0].status).toBe('unregistered'); // ejercicio sin feedback
+  });
+
+  test('repeatCount ausente → al menos una fila', () => {
+    const model = buildSessionReviewModel({ exercises: [{ id: 1, name: 'X' }] }, []);
+    expect(model[0].rows).toHaveLength(1);
+  });
+
+  test('sin exercises → []', () => {
+    expect(buildSessionReviewModel({}, [])).toEqual([]);
+  });
+});
+
+describe('toRunnerSessionStartPayload', () => {
+  test('solo start_date sin atleta (auto)', () => {
+    expect(toRunnerSessionStartPayload({ startDate: '2026-09-24T10:00:00.000Z', athleteUserId: null })).toEqual({
+      start_date: '2026-09-24T10:00:00.000Z',
+    });
+  });
+
+  test('con atleta, athlete_user_id a Number', () => {
+    expect(toRunnerSessionStartPayload({ startDate: 'd', athleteUserId: '7' })).toEqual({
+      start_date: 'd',
+      athlete_user_id: 7,
+    });
+  });
+});
+
+describe('toFeedbackEditPayload', () => {
+  test('solo manda los campos editados, omite nulls', () => {
+    expect(toFeedbackEditPayload({ durationMs: 210000, activeDurationMs: null, distanceMeters: undefined })).toEqual({
+      duration_ms: 210000,
+    });
+  });
+
+  test('redondea ms y deja la distancia numérica', () => {
+    expect(toFeedbackEditPayload({ durationMs: 210.6, distanceMeters: '12.5' })).toEqual({
+      duration_ms: 211,
+      distance_meters: 12.5,
+    });
+  });
+
+  test('vacío → {} (PATCH sin cambios)', () => {
+    expect(toFeedbackEditPayload({})).toEqual({});
   });
 });

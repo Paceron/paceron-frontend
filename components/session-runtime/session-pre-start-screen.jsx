@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
+import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
+import { useRunnerSession } from '../../hooks/use-runner-session.js';
+import { createRunnerSession } from '../../services/runnerSession.js';
+import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 
 const PREVIEW_EXERCISE_COUNT = 3;
@@ -54,8 +60,27 @@ function SessionPreStartScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
+  const userId = useAuthStore((s) => s.userId);
   const [listVisible, setListVisible] = useState(false);
+
+  const sessionInstanceId = pendingSession?.sessionInstance?.id;
+  const { runnerSession, refetch } = useRunnerSession(sessionInstanceId, userId);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  // Registro de Sesión vs. Play (spec 2026-09-24): toda fecha pasada entra al
+  // registro — completa (runner_session finished) → badge verde + modo
+  // revisión; sin completar → sin badge + ingreso manual. Solo la de hoy en
+  // ventana conserva el Play.
+  const past = isPastSessionDate(pendingSession ?? { date: '' });
+  const finished = past && runnerSession?.status === 'finished';
+  const mode = finished ? 'review' : 'manual';
 
   if (!pendingSession) return <Redirect href="/" />;
 
@@ -67,6 +92,10 @@ function SessionPreStartScreenContent() {
   // usuario lo niega o el build no tiene el módulo, la sesión arranca igual
   // pero sin distancias — gpsEnabled queda en falso para toda la sesión.
   const handlePlay = async () => {
+    // Fire-and-forget del estado runner_session (wip, idempotente): si el Play
+    // arranca offline, el pipeline de sync reintenta el mismo upsert antes del
+    // primer POST feedback. No se espera acá porque no bloquea la navegación.
+    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString() }).catch(() => {});
     let gpsEnabled = false;
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
@@ -81,6 +110,24 @@ function SessionPreStartScreenContent() {
     setGpsEnabled(gpsEnabled);
     router.push('/training-session-active');
   };
+
+  const handleOpenReview = () => {
+    setReviewSlot({
+      sessionInstance: pendingSession.sessionInstance,
+      sessionInstanceId: pendingSession.sessionInstance?.id,
+      date: pendingSession.date,
+      sessionName: pendingSession.sessionInstance?.name,
+      role: 'runner',
+      athleteUserId: userId,
+      mode,
+      teamId: pendingSession.teamId ?? null,
+      teamName: pendingSession.teamName ?? null,
+      groupName: pendingSession.groupName ?? null,
+    });
+    router.push('/training-session-review');
+  };
+
+  const reviewButtonId = 'session-pre-start-screen-review-button';
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
@@ -121,6 +168,14 @@ function SessionPreStartScreenContent() {
               )}
             </View>
           )}
+          {past && finished && (
+            <View className="mt-3 flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-completed-badge" testID="session-pre-start-screen-completed-badge">
+              <MaterialCommunityIcons color="#16a34a" name="check-decagram" size={16} />
+              <Text className="text-sm font-semibold text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-completed-badge-label" testID="session-pre-start-screen-completed-badge-label">
+                Sesión completada
+              </Text>
+            </View>
+          )}
         </View>
 
         <View className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40" nativeID="session-pre-start-screen-exercise-container" testID="session-pre-start-screen-exercise-container">
@@ -150,14 +205,33 @@ function SessionPreStartScreenContent() {
 
         <View className="flex-1" nativeID="session-pre-start-screen-spacer" testID="session-pre-start-screen-spacer" />
 
-        <Pressable
-          className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
-          nativeID="session-pre-start-screen-play-button"
-          onPress={handlePlay}
-          testID="session-pre-start-screen-play-button"
-        >
-          <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />
-        </Pressable>
+        {past ? (
+          <View className="items-center" nativeID="session-pre-start-screen-review-container" testID="session-pre-start-screen-review-container">
+            <Pressable
+              className="h-14 w-56 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80"
+              nativeID={reviewButtonId}
+              onPress={handleOpenReview}
+              testID={reviewButtonId}
+            >
+              <MaterialCommunityIcons color={colors.onPrimary} name="clipboard-text-outline" size={20} />
+              <Text className="text-sm font-bold uppercase tracking-wide text-[#111518]" nativeID={`${reviewButtonId}-label`} testID={`${reviewButtonId}-label`}>
+                Registro de Sesión
+              </Text>
+            </Pressable>
+            <Text className="mt-2 px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID={`${reviewButtonId}-hint`} testID={`${reviewButtonId}-hint`}>
+              {finished ? 'Revisá y editá lo registrado en la sesión.' : 'Ingresá manualmente los datos de la sesión.'}
+            </Text>
+          </View>
+        ) : (
+          <Pressable
+            className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
+            nativeID="session-pre-start-screen-play-button"
+            onPress={handlePlay}
+            testID="session-pre-start-screen-play-button"
+          >
+            <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />
+          </Pressable>
+        )}
       </ScrollView>
 
       <Modal

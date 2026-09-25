@@ -15,3 +15,13 @@ export function haversineMeters(lat1, lng1, lat2, lng2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return EARTH_RADIUS_METERS * c;
 }
+
+// Formato "X m" / "X.XX km" para distancias — usado por la toma en vivo y por
+// la pantalla de revisión (spec session-registration-review: reusar, no
+// duplicar). Extraído 2026-09-24 desde training-session-active-screen.jsx.
+export function formatMeters(value) {
+  const meters = Number(value);
+  if (value == null || !Number.isFinite(meters) || meters < 0) return '—';
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(2)} km`;
+}

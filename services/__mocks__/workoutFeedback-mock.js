@@ -13,6 +13,17 @@ export function __resetWorkoutFeedbackMock() {
   nextFeedbackId = 1;
 }
 
+// Accesores compartidos con runner-session-mock: GET feedback por sesión y
+// GET points leen de la MISMA lista que crea el sync/los POSTs manuales,
+// para que en modo mocks la pantalla de revisión muestre lo que se guardó.
+export function __getMockFeedbacks() {
+  return feedbacks;
+}
+
+export function __getMockPoints(feedbackId) {
+  return pointsByFeedback.get(Number(feedbackId)) ?? [];
+}
+
 export async function mockCreateWorkoutFeedback(payload) {
   const duplicated = feedbacks.some(
     (f) =>

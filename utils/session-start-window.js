@@ -21,3 +21,13 @@ export function canStartPresencialSession(day, now = new Date()) {
   const diffMinutes = (now.getTime() - scheduledStart.getTime()) / 60000;
   return diffMinutes >= -PRESENCIAL_WINDOW_MINUTES && diffMinutes <= PRESENCIAL_WINDOW_MINUTES;
 }
+
+// Fecha ya pasada (cualquier kind que tenga `date`): toda sesión vencida
+// entra al "Registro de Sesión" en vez del Play — ver
+// docs/superpowers/specs/2026-09-24-session-registration-review-design.md.
+export function isPastSessionDate(day, now = new Date()) {
+  const [year, month, dayOfMonth] = day.date.split('-').map(Number);
+  const target = new Date(year, month - 1, dayOfMonth);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return target.getTime() < today.getTime();
+}

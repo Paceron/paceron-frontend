@@ -41,21 +41,31 @@ const toNumberOrNull = (value) => (value == null ? null : Number(value));
 
 const CREATE_SESSION_RUNS = `
   CREATE TABLE IF NOT EXISTS session_runs (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_instance_id INTEGER NOT NULL,
-    session_name        TEXT NOT NULL,
-    session_date        TEXT NOT NULL,
-    team_id             INTEGER,
-    athlete_user_id     INTEGER,
-    report_source       TEXT NOT NULL DEFAULT 'corredor',
-    gps_enabled         INTEGER NOT NULL DEFAULT 0,
-    started_at          TEXT,
-    ended_at            TEXT,
-    status              TEXT NOT NULL DEFAULT 'in_progress',
-    synced              INTEGER NOT NULL DEFAULT 0,
-    created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_instance_id      INTEGER NOT NULL,
+    session_name             TEXT NOT NULL,
+    session_date             TEXT NOT NULL,
+    team_id                  INTEGER,
+    athlete_user_id          INTEGER,
+    report_source            TEXT NOT NULL DEFAULT 'corredor',
+    gps_enabled              INTEGER NOT NULL DEFAULT 0,
+    started_at               TEXT,
+    ended_at                 TEXT,
+    status                   TEXT NOT NULL DEFAULT 'in_progress',
+    synced                   INTEGER NOT NULL DEFAULT 0,
+    runner_session_created   INTEGER NOT NULL DEFAULT 0,
+    runner_session_finished  INTEGER NOT NULL DEFAULT 0,
+    created_at               TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 `;
+
+// Migración liviana para bases existentes (CREATE TABLE IF NOT EXISTS no agrega
+// columnas). Los ALTER se corren en try/catch: si la columna ya existe, SQLite
+// tira "duplicate column name" y se ignora.
+const RUNNER_SESSION_COLUMN_MIGRATIONS = [
+  'ALTER TABLE session_runs ADD COLUMN runner_session_created INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE session_runs ADD COLUMN runner_session_finished INTEGER NOT NULL DEFAULT 0',
+];
 
 const CREATE_EXERCISE_SETS = `
   CREATE TABLE IF NOT EXISTS exercise_sets (
@@ -91,6 +101,13 @@ const CREATE_GPS_POINTS = `
 export async function initSessionDb() {
   const db = await getDb();
   await db.execAsync(`PRAGMA journal_mode = WAL;${CREATE_SESSION_RUNS}${CREATE_EXERCISE_SETS}${CREATE_GPS_POINTS}`);
+  for (const statement of RUNNER_SESSION_COLUMN_MIGRATIONS) {
+    try {
+      await db.execAsync(statement);
+    } catch {
+      // columna ya existente — ok
+    }
+  }
 }
 
 // Crea el run y siembra TODAS las series de la sesión como `pending` (los ids
@@ -235,6 +252,19 @@ export async function cancelRun(runId) {
 export async function markRunSynced(runId) {
   const db = await getDb();
   await db.runAsync('UPDATE session_runs SET synced = 1 WHERE id = ?', [runId]);
+}
+
+// Flags del estado runner_session en el backend (ver spec de
+// session-registration-review): el create idempotente y el PATCH finished se
+// reintentan desde el pipeline de sync hasta quedar persistidos acá.
+export async function markRunnerSessionCreated(runId) {
+  const db = await getDb();
+  await db.runAsync('UPDATE session_runs SET runner_session_created = 1 WHERE id = ?', [runId]);
+}
+
+export async function markRunnerSessionFinished(runId) {
+  const db = await getDb();
+  await db.runAsync('UPDATE session_runs SET runner_session_finished = 1 WHERE id = ?', [runId]);
 }
 
 // Los sets que hay que popular al backend al finalizar (finished/skipped,
