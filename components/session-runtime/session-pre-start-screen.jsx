@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
+import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 
 const PREVIEW_EXERCISE_COUNT = 3;
@@ -52,6 +54,7 @@ function SessionPreStartScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const [listVisible, setListVisible] = useState(false);
 
   if (!pendingSession) return <Redirect href="/" />;
@@ -59,6 +62,25 @@ function SessionPreStartScreenContent() {
   const exercises = pendingSession.sessionInstance?.exercises ?? [];
   const previewExercises = exercises.slice(0, PREVIEW_EXERCISE_COUNT);
   const hasMore = exercises.length > PREVIEW_EXERCISE_COUNT;
+
+  // Permiso GPS una sola vez por sesión (se pide acá, al darle Play). Si el
+  // usuario lo niega o el build no tiene el módulo, la sesión arranca igual
+  // pero sin distancias — gpsEnabled queda en falso para toda la sesión.
+  const handlePlay = async () => {
+    let gpsEnabled = false;
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      gpsEnabled = Boolean(permission.granted);
+      if (gpsEnabled) {
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced, timeout: 5000 });
+        gpsEnabled = Boolean(position?.coords);
+      }
+    } catch {
+      gpsEnabled = false;
+    }
+    setGpsEnabled(gpsEnabled);
+    router.push('/training-session-active');
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
@@ -131,7 +153,7 @@ function SessionPreStartScreenContent() {
         <Pressable
           className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
           nativeID="session-pre-start-screen-play-button"
-          onPress={() => router.push('/training-session-active')}
+          onPress={handlePlay}
           testID="session-pre-start-screen-play-button"
         >
           <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />

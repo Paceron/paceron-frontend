@@ -65,6 +65,7 @@ module.exports = {
       '@react-native-community/datetimepicker',
       'expo-notifications',
       '@maplibre/maplibre-react-native',
+      'expo-sqlite',
     ],
     extra: {
       eas: {
