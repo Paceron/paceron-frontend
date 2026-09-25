@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,9 +10,11 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useMemberCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
+import { upcomingTrainingsRange, selectUpcomingTrainings } from '../../utils/upcoming-trainings.js';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
+import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 function MyCalendarScreenContent() {
@@ -34,6 +36,10 @@ function MyCalendarScreenContent() {
   usePrefetchAdjacentCalendars('member', userId, visibleYear, visibleMonth);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
 
+  const { from: upcomingFrom, to: upcomingTo } = useMemo(() => upcomingTrainingsRange(), []);
+  const { days: upcomingDaysRaw, loading: upcomingLoading, isFetching: upcomingIsFetching } = useMemberCalendar(userId, upcomingFrom, upcomingTo);
+  const upcomingTrainings = useMemo(() => selectUpcomingTrainings(upcomingDaysRaw), [upcomingDaysRaw]);
+
   // Un usuario está en un único grupo por equipo a la vez — el primer día
   // visto de cada equipo alcanza para resolver su grupo correspondiente.
   // Se deriva del mes visible (no de calendar-summary, que no trae
@@ -51,6 +57,11 @@ function MyCalendarScreenContent() {
   const filteredDays = useMemo(
     () => (filterTeamId ? days.filter((d) => d.teamId === filterTeamId) : days),
     [days, filterTeamId],
+  );
+
+  const filteredUpcomingTrainings = useMemo(
+    () => (filterTeamId ? upcomingTrainings.filter((t) => t.teamId === filterTeamId) : upcomingTrainings),
+    [upcomingTrainings, filterTeamId],
   );
 
   const daysByDate = useMemo(() => {
@@ -90,13 +101,10 @@ function MyCalendarScreenContent() {
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="my-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="my-calendar-screen-title">
             Mi calendario
           </Text>
-          {(loading || isFetching) && (
-            <ActivityIndicator color={colors.primary} nativeID="my-calendar-screen-fetching" size="small" testID="my-calendar-screen-fetching" />
-          )}
         </View>
 
         {teamOptions.length > 0 && (
-          <View className={`mb-4 gap-2 ${stackFilter ? '' : 'flex-row items-end'}`} nativeID="my-calendar-screen-filter" testID="my-calendar-screen-filter">
+          <View className={`mb-4 gap-2 ${stackFilter ? '' : 'flex-row items-center'}`} nativeID="my-calendar-screen-filter" testID="my-calendar-screen-filter">
             <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="my-calendar-screen-filter-team-wrapper" testID="my-calendar-screen-filter-team-wrapper">
               <ResponsiveSelectField
                 dense
@@ -109,15 +117,16 @@ function MyCalendarScreenContent() {
               />
             </View>
             {selectedTeam && (
-              <Text
-                className={stackFilter
-                  ? 'text-sm font-semibold text-slate-700 dark:text-slate-200'
-                  : 'mb-3 text-xs text-slate-500 dark:text-slate-400'}
-                nativeID="my-calendar-screen-filter-group-label"
-                testID="my-calendar-screen-filter-group-label"
-              >
-                Grupo: {selectedTeam.groupName}
-              </Text>
+              <View className="flex-row items-center gap-1" nativeID="my-calendar-screen-filter-group-label-wrapper" testID="my-calendar-screen-filter-group-label-wrapper">
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={16} />
+                <Text
+                  className="text-sm font-semibold text-slate-700 dark:text-slate-200"
+                  nativeID="my-calendar-screen-filter-group-label"
+                  testID="my-calendar-screen-filter-group-label"
+                >
+                  Grupo: {selectedTeam.groupName}
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -125,12 +134,15 @@ function MyCalendarScreenContent() {
         <AggregatedMonthView
           currentMonthISO={currentMonthISO}
           daysByDate={daysByDate}
+          loading={loading || isFetching}
           month={visibleMonth}
           onDayPress={setOpenDate}
           onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
           showCollisions={false}
           year={visibleYear}
         />
+
+        <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="member" />
       </View>
       </ScrollView>
 

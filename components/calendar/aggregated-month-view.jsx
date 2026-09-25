@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import '../../config/calendarLocale.js';
@@ -97,13 +97,13 @@ function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }
   );
 }
 
-export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, onMonthChange, onDayPress, showCollisions }) {
+export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, onMonthChange, onDayPress, showCollisions, loading }) {
   const colors = useThemeColors();
   const { colorScheme } = useThemeMode();
 
   return (
     <View
-      className="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
+      className="relative rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
       nativeID="aggregated-month-view"
       testID="aggregated-month-view"
     >
@@ -134,6 +134,15 @@ export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, 
           }}
         />
       </CalendarFadeIn>
+      {loading && (
+        <View
+          className="absolute inset-0 items-center justify-center rounded-2xl bg-white/70 dark:bg-surface/70"
+          nativeID="aggregated-month-view-loading-overlay"
+          testID="aggregated-month-view-loading-overlay"
+        >
+          <ActivityIndicator color={colors.primary} nativeID="aggregated-month-view-loading-indicator" testID="aggregated-month-view-loading-indicator" />
+        </View>
+      )}
     </View>
   );
 }
