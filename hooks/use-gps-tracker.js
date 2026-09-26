@@ -45,7 +45,18 @@ export function useGpsTracker(enabled) {
       try {
         const subscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced,
+            // High es el punto medio Deliberado. Antes Balanced (Android
+            // estrangula a ~1/seg con radio ~100m → distancia "pegada") y en
+            // un intento se probó BestForNavigation con intervalos en 0 (más
+            // fresco pero JItter de GPS accumulating: el contador subía solo
+            // estando quieto, por eso ahora acceptGpsLeg descarta por accuracy
+            // y velocidad). High = alta precisión sin pedir la tasa máxima del
+            // hardware, que es la que dispara el ruido.
+            accuracy: Location.Accuracy.High,
+            // 1s / 1m: no tiene sentido pedir más puntos que los que el
+            // movimiento real genera — corriendo a ~3 m/s eso da ~3 pts/s, de
+            // sobra. Los filtros de acceptGpsLeg son la segunda barrera para
+            // el ruido.
             timeInterval: 1000,
             distanceInterval: 1,
           },
@@ -54,6 +65,9 @@ export function useGpsTracker(enabled) {
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
               timestamp: position.timestamp,
+              // Necesario para el filtro de calidad: sin esto no se puede
+              // distinguir "punto preciso" de "punto con radio de 100m".
+              accuracy: position.coords.accuracy,
             });
           },
         );

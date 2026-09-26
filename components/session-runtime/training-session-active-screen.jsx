@@ -13,7 +13,7 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatStopwatch, toIsoUtc } from '../../utils/time.js';
-import { haversineMeters, formatMeters } from '../../utils/distance.js';
+import { acceptGpsLeg, formatMeters } from '../../utils/distance.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import {
   cancelRun,
@@ -132,19 +132,29 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
 }
 
 const DRAG_VARIANTS = {
+  // Finalizar = verde (acción de confirmar, no de destructivo). El "danger"
+  // rojo queda disponible por si algún otro call site lo necesita, pero los
+  // dos controles del reloj usan finish (verde) y neutral (gris claro).
+  finish: {
+    trackBorder: 'border-emerald-300 dark:border-emerald-800/70',
+    fill: 'bg-emerald-500/20',
+    thumb: 'bg-emerald-500/70 border border-emerald-600/60',
+    iconColor: '#ffffff',
+    label: 'text-emerald-700 dark:text-emerald-300',
+  },
+  neutral: {
+    trackBorder: 'border-slate-200 dark:border-slate-700/60',
+    fill: 'bg-slate-300/25',
+    thumb: 'bg-slate-300/80 border border-slate-400/60',
+    iconColor: '#ffffff',
+    label: 'text-slate-500 dark:text-slate-400',
+  },
   danger: {
     trackBorder: 'border-red-300 dark:border-red-900/60',
     fill: 'bg-red-600/25',
     thumb: 'bg-red-600',
     iconColor: '#ffffff',
     label: 'text-red-600 dark:text-red-400',
-  },
-  neutral: {
-    trackBorder: 'border-slate-300 dark:border-slate-700',
-    fill: 'bg-slate-400/25',
-    thumb: 'bg-slate-500 dark:bg-slate-400',
-    iconColor: '#ffffff',
-    label: 'text-slate-600 dark:text-slate-300',
   },
 };
 
@@ -155,7 +165,7 @@ function DragToFinishButton({
   idPrefix,
   label = 'Deslizá para finalizar',
   icon = 'flag-checkered',
-  variant = 'danger',
+  variant = 'finish',
 }) {
   const THUMB_SIZE = 64;
   // Mismo motor que el drag-and-drop del catálogo (GestureDetector +
@@ -234,11 +244,6 @@ function DragToFinishButton({
           style={fillStyle}
           testID={`${idPrefix}-drag-fill`}
         />
-        <View className="flex-1 items-center justify-center" nativeID={`${idPrefix}-drag-content`} testID={`${idPrefix}-drag-content`}>
-          <Text className={`text-center text-base font-bold uppercase tracking-wide ${colors.label}`} nativeID={`${idPrefix}-drag-label`} testID={`${idPrefix}-drag-label`}>
-            {label}
-          </Text>
-        </View>
         <Animated.View
           className={`absolute left-0.5 top-4 h-16 w-16 items-center justify-center rounded-full ${colors.thumb}`}
           nativeID={`${idPrefix}-drag-thumb`}
@@ -247,6 +252,26 @@ function DragToFinishButton({
         >
           <MaterialCommunityIcons color={colors.iconColor} name={icon} size={26} />
         </Animated.View>
+        {/* El label va DESPUÉS del thumb a propósito: en RN los hermanos
+            absolutos se pintan en orden, así que el texto queda por encima del
+            deslizador y se lee durante todo el recorrido (antes el thumb
+            opaco lo tapaba al pasar por el medio). Por eso también es
+            absolute — un hijo normal quedaría siempre debajo. */}
+        <View
+          className="absolute inset-0 items-center justify-center px-20"
+          nativeID={`${idPrefix}-drag-content`}
+          pointerEvents="none"
+          testID={`${idPrefix}-drag-content`}
+        >
+          <Text
+            className={`text-center text-base font-bold uppercase tracking-wide ${colors.label}`}
+            nativeID={`${idPrefix}-drag-label`}
+            numberOfLines={1}
+            testID={`${idPrefix}-drag-label`}
+          >
+            {label}
+          </Text>
+        </View>
       </View>
     </GestureDetector>
   );
@@ -255,7 +280,7 @@ function DragToFinishButton({
 function CountdownOverlay({ value, onCancelCountdown }) {
   return (
     <View className="absolute inset-0 z-20 items-center justify-center rounded-3xl bg-black/70" nativeID="countdown-overlay" testID="countdown-overlay">
-      <Text className="text-base font-semibold uppercase tracking-wide text-white/80" nativeID="countdown-overlay-label" testID="countdown-overlay-label">Arrancando en</Text>
+      <Text className="text-base font-semibold uppercase tracking-wide text-white/80" nativeID="countdown-overlay-label" testID="countdown-overlay-label">Empezamos en</Text>
       <Text className="mt-2 text-8xl text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID="countdown-overlay-value" testID="countdown-overlay-value">{value}</Text>
       <Pressable className="mt-6 h-9 items-center justify-center rounded-full border border-white/30 px-4" nativeID="countdown-overlay-cancel" onPress={onCancelCountdown} testID="countdown-overlay-cancel">
         <Text className="text-xs font-semibold text-white" nativeID="countdown-overlay-cancel-label" testID="countdown-overlay-cancel-label">Cancelar inicio</Text>
@@ -336,22 +361,22 @@ function SkipMenuModal({ visible, onCancel, onSkipSeries, onSkipExercise, busy }
           </Text>
           <View className="mt-4 gap-3" nativeID="skip-set-modal-options" testID="skip-set-modal-options">
             <Pressable
-              className="h-11 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
+              className="h-11 flex-row items-center justify-center rounded-full border border-slate-200 px-4 active:opacity-70 dark:border-slate-700"
               disabled={busy}
               nativeID="skip-set-modal-series-button"
               onPress={onSkipSeries}
               testID="skip-set-modal-series-button"
             >
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="skip-set-modal-series-label" testID="skip-set-modal-series-label">Saltar esta serie</Text>
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="skip-set-modal-series-label" numberOfLines={1} testID="skip-set-modal-series-label">Saltar esta serie</Text>
             </Pressable>
             <Pressable
-              className="h-11 items-center justify-center rounded-full bg-amber-500 hover:opacity-90 active:opacity-80"
+              className="h-11 flex-row items-center justify-center rounded-full bg-amber-500 px-4 hover:opacity-90 active:opacity-80"
               disabled={busy}
               nativeID="skip-set-modal-exercise-button"
               onPress={onSkipExercise}
               testID="skip-set-modal-exercise-button"
             >
-              <Text className="text-sm font-semibold uppercase tracking-wide text-amber-950" nativeID="skip-set-modal-exercise-label" testID="skip-set-modal-exercise-label">Saltar todo el ejercicio</Text>
+              <Text className="text-sm font-semibold uppercase tracking-wide text-amber-950" nativeID="skip-set-modal-exercise-label" numberOfLines={1} testID="skip-set-modal-exercise-label">Saltar todo el ejercicio</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -387,12 +412,12 @@ function FinishSummaryModal({ summary, onClose, visible }) {
             )}
           </View>
           <Pressable
-            className="mt-5 h-12 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
+            className="mt-5 h-12 flex-row items-center justify-center gap-2 self-stretch rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
             nativeID="finish-set-modal-next-button"
             onPress={onClose}
             testID="finish-set-modal-next-button"
           >
-            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="finish-set-modal-next-label" testID="finish-set-modal-next-label">Siguiente</Text>
+            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="finish-set-modal-next-label" numberOfLines={1} testID="finish-set-modal-next-label">Siguiente</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -482,7 +507,8 @@ function SessionCompleteModal({ visible, runId, counts, onClose }) {
               </Pressable>
             )}
             <Pressable
-              className="h-12 flex-1 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
+              className="h-12 flex-1 items-center justify-center rounded-full bg-primary disabled:opacity-40 hover:opacity-90 active:opacity-80"
+              disabled={syncing}
               nativeID="session-complete-modal-close-button"
               onPress={onClose}
               testID="session-complete-modal-close-button"
@@ -635,9 +661,9 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
     setCountdown(value);
   };
 
-  const handleGpsPoint = async ({ latitude, longitude, timestamp }) => {
+  const handleGpsPoint = async ({ latitude, longitude, timestamp, accuracy }) => {
     if (!gpsActiveRef.current) return;
-    const point = { latitude, longitude, timestamp };
+    const point = { latitude, longitude, timestamp, accuracy };
     if (!lastPointRef.current) {
       lastPointRef.current = point;
       pointOrderRef.current = 0;
@@ -649,8 +675,16 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
       await updateSetDistance(set.id, 0);
       return;
     }
-    const leg = haversineMeters(lastPointRef.current.latitude, lastPointRef.current.longitude, latitude, longitude);
-    lastPointRef.current = { latitude, longitude, timestamp };
+    // Filtro de calidad: si el punto se descarta (accuracy muy pobre o salto
+    // que implicaría una velocidad imposible), NO se suma distancia ni se
+    // persiste — pero tampoco se descarta como "último punto válido", para que
+    // el siguiente tramo se mida contra una referencia real y no contra ruido.
+    const leg = acceptGpsLeg({ from: lastPointRef.current, to: point });
+    if (leg == null) {
+      logDebug(`gps punto descartado acc=${accuracy} (ruido o salto)`);
+      return;
+    }
+    lastPointRef.current = point;
     pointOrderRef.current += 1;
     await insertGpsPoint(set.id, pointOrderRef.current, latitude, longitude, timestamp ?? Date.now());
     if (leg > 0) {
@@ -885,10 +919,10 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
 
         <View className="flex-1 items-center justify-center" nativeID={`${idPrefix}-timer-area`} testID={`${idPrefix}-timer-area`}>
           {distance != null && (
-            <View className="mb-4 flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-1.5 dark:bg-emerald-900/20" nativeID={`${idPrefix}-gps-pill`} testID={`${idPrefix}-gps-pill`}>
-              <MaterialCommunityIcons color="#16a34a" name="crosshairs-gps" size={14} />
-              <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-400" nativeID={`${idPrefix}-gps-label`} testID={`${idPrefix}-gps-label`}>
-                GPS · {formatMeters(distance)}
+            <View className="mb-4 flex-row items-center gap-2 rounded-full bg-emerald-50 px-5 py-2 dark:bg-emerald-900/20" nativeID={`${idPrefix}-gps-pill`} testID={`${idPrefix}-gps-pill`}>
+              <MaterialCommunityIcons color="#16a34a" name="crosshairs-gps" size={24} />
+              <Text className="text-4xl font-bold text-emerald-700 dark:text-emerald-400" nativeID={`${idPrefix}-gps-label`} testID={`${idPrefix}-gps-label`}>
+                {formatMeters(distance)}
               </Text>
             </View>
           )}
@@ -917,26 +951,26 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
         <View className="gap-3" nativeID={`${idPrefix}-controls`} testID={`${idPrefix}-controls`}>
           {phase === 'ready' && (
             <Pressable
-              className="h-16 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+              className="h-16 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
               nativeID={`${idPrefix}-play-button`}
               onPress={handlePlay}
               testID={`${idPrefix}-play-button`}
             >
               <MaterialCommunityIcons color={colors.onPrimary} name="play" size={28} />
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-play-label`} testID={`${idPrefix}-play-label`}>Iniciar serie</Text>
+              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-play-label`} numberOfLines={1} testID={`${idPrefix}-play-label`}>Iniciar serie</Text>
             </Pressable>
           )}
 
           {phase === 'paused' && (
             <>
               <Pressable
-                className="h-16 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+                className="h-16 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
                 nativeID={`${idPrefix}-resume-button`}
                 onPress={handlePlay}
                 testID={`${idPrefix}-resume-button`}
               >
                 <MaterialCommunityIcons color={colors.onPrimary} name="play" size={28} />
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-resume-label`} testID={`${idPrefix}-resume-label`}>Reanudar</Text>
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-resume-label`} numberOfLines={1} testID={`${idPrefix}-resume-label`}>Reanudar</Text>
               </Pressable>
               <View className="flex-row gap-3" nativeID={`${idPrefix}-secondary-controls`} testID={`${idPrefix}-secondary-controls`}>
                 <Pressable className="h-12 flex-1 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
