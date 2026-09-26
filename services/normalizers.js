@@ -660,3 +660,105 @@ export function toStampPayload({ planId, startDate, force, excludeDates }) {
 export function toBulkAssignPayload({ dates, day }) {
   return { dates, ...toCalendarDayPayload(day) };
 }
+
+// --- Registro de Sesión / revisión (spec 2026-09-24-session-registration-review) ---
+
+// Estado de la sesión del corredor desde el backend (runner_session). La
+// ausencia de fila (404) NO es un modelo — el caller la interpreta como
+// "sin estado" (modo manual).
+export function toRunnerSessionModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    sessionInstanceId: String(dto.session_instance_id),
+    athleteUserId: String(dto.athlete_user_id),
+    status: dto.status,
+    startDate: dto.start_date ?? null,
+    endDate: dto.end_date ?? null,
+  };
+}
+
+// Un workout_feedback de una sesión (una fila por set registrado).
+export function toSessionFeedbackModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    assignedSessionId: String(dto.assigned_session_id),
+    assignedExerciseId: String(dto.assigned_exercise_id),
+    athleteUserId: String(dto.athlete_user_id),
+    teamId: dto.team_id != null ? String(dto.team_id) : null,
+    exerciseName: dto.exercise_name ?? null,
+    setNumber: dto.set_number,
+    completionStatus: dto.completion_status,
+    startedAt: dto.started_at ?? null,
+    endedAt: dto.ended_at ?? null,
+    durationMs: dto.duration_ms ?? null,
+    activeDurationMs: dto.active_duration_ms ?? null,
+    distanceMeters: dto.distance_meters ?? null,
+    reportSource: dto.report_source ?? null,
+    pointsCount: dto.points_count ?? 0,
+    annotations: dto.annotations ?? null,
+    createdAt: dto.created_at ?? null,
+    updatedAt: dto.updated_at ?? null,
+  };
+}
+
+// Feedbacks de una sesión agrupados por ejercicio y ordenados por set — el
+// shape que consume la vista A de la pantalla de revisión.
+export function toSessionFeedbackListModel(dtos = []) {
+  const byExercise = new Map();
+  for (const dto of dtos) {
+    const feedback = toSessionFeedbackModel(dto);
+    if (!feedback) continue;
+    if (!byExercise.has(feedback.assignedExerciseId)) byExercise.set(feedback.assignedExerciseId, []);
+    byExercise.get(feedback.assignedExerciseId).push(feedback);
+  }
+  return Array.from(byExercise.entries()).map(([exerciseId, sets]) => ({
+    exerciseId,
+    sets: sets.sort((a, b) => a.setNumber - b.setNumber),
+  }));
+}
+
+// Arma las filas por serie de la vista A: contra el shape del
+// session_instance (que lista los ejercicios y cuántas series tienen) se
+// mergea el feedback de cada serie (output ya agrupado de
+// toSessionFeedbackListModel). Serie sin feedback → "sin registro"; feedback
+// skipped → "Saltada"; el resto "Completada" con sus valores.
+export function buildSessionReviewModel(sessionInstance, feedbackGroups = []) {
+  const exercises = sessionInstance?.exercises ?? [];
+  const feedbackByExercise = new Map(feedbackGroups.map((group) => [String(group.exerciseId), group.sets]));
+
+  return exercises.map((exercise) => {
+    const setsForExercise = feedbackByExercise.get(String(exercise.id)) ?? [];
+    const rows = Array.from({ length: Math.max(1, exercise.repeatCount ?? 1) }, (_, i) => {
+      const setNumber = i + 1;
+      const feedback = setsForExercise.find((f) => f.setNumber === setNumber) ?? null;
+      const status = feedback ? feedback.completionStatus : 'unregistered';
+      return { setNumber, status, feedback };
+    });
+    return { exerciseId: exercise.id, exerciseName: exercise.name, restMinutes: exercise.restMinutes ?? 0, rows };
+  });
+}
+
+// Body de POST /api/v1/session-instances/:id/runner — start_date siempre
+// presente (yo entro cuando toca Play/primer ingreso manual), ids a Number.
+export function toRunnerSessionStartPayload({ startDate, athleteUserId }) {
+  const payload = { start_date: startDate };
+  if (athleteUserId != null) payload.athlete_user_id = Number(athleteUserId);
+  return payload;
+}
+
+// PATCH de un workout_feedback — mandamos solo lo que se editó (el backend
+// valida >= 0; null se omite para no pisar). Aplica solo a rows 'completed'.
+// started_at/ended_at viajan como ISO (el backend los parsea a TIMESTAMPTZ);
+// contra el backend SIEMPRE en ms, la vista decide si muestra seg o ms.
+export function toFeedbackEditPayload({ startedAt, endedAt, durationMs, activeDurationMs, distanceMeters, annotations }) {
+  const payload = {};
+  if (startedAt != null) payload.started_at = startedAt;
+  if (endedAt != null) payload.ended_at = endedAt;
+  if (durationMs != null) payload.duration_ms = Math.round(Number(durationMs));
+  if (activeDurationMs != null) payload.active_duration_ms = Math.round(Number(activeDurationMs));
+  if (distanceMeters != null) payload.distance_meters = Number(distanceMeters);
+  if (annotations !== undefined) payload.annotations = annotations;
+  return payload;
+}

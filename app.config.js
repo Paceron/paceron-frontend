@@ -65,6 +65,14 @@ module.exports = {
       '@react-native-community/datetimepicker',
       'expo-notifications',
       '@maplibre/maplibre-react-native',
+      'expo-sqlite',
+      [
+        'expo-speech-recognition',
+        {
+          speechRecognitionPlugin: 'Allow Paceron to listen to you so you can dictate a series note.',
+          microphonePermission: 'Allow Paceron to use the microphone to dictate a series note.',
+        },
+      ],
     ],
     extra: {
       eas: {

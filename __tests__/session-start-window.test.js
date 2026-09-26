@@ -1,4 +1,4 @@
-import { canStartAsyncSession, canStartPresencialSession } from '../utils/session-start-window.js';
+import { canStartAsyncSession, canStartPresencialSession, isPastSessionDate } from '../utils/session-start-window.js';
 
 const NOW = new Date(2026, 9, 15, 10, 0, 0); // 2026-10-15 10:00 local
 
@@ -50,5 +50,24 @@ describe('canStartPresencialSession', () => {
 
   test('no presencial, deshabilitado', () => {
     expect(canStartPresencialSession({ ...base, isPresencial: false, presencialTimeFrom: '10:00' }, NOW)).toBe(false);
+  });
+});
+
+describe('isPastSessionDate', () => {
+  test('fecha anterior a hoy → true', () => {
+    expect(isPastSessionDate({ date: '2026-10-14' }, NOW)).toBe(true);
+  });
+
+  test('hoy → false', () => {
+    expect(isPastSessionDate({ date: '2026-10-15' }, NOW)).toBe(false);
+  });
+
+  test('fecha futura → false', () => {
+    expect(isPastSessionDate({ date: '2026-10-16' }, NOW)).toBe(false);
+  });
+
+  test('independiente del kind: cualquier día vencido entra al registro', () => {
+    expect(isPastSessionDate({ kind: 'rest', date: '2026-10-01' }, NOW)).toBe(true);
+    expect(isPastSessionDate({ kind: 'cancelled', date: '2026-10-01' }, NOW)).toBe(true);
   });
 });
