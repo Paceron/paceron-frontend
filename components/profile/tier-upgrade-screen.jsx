@@ -15,6 +15,7 @@ import { listTiers } from '../../services/tiers.js';
 import { createPreference } from '../../services/payments.js';
 import { toTierModel, toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { formatARS } from '../../utils/currency.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-modal.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por
@@ -26,7 +27,7 @@ const ROLE_LABEL = { runner: 'Corredor', trainer: 'Entrenador' };
 
 function formatTierPrice(tierAmount, paymentRequired) {
   if (!paymentRequired || !tierAmount) return 'Gratis';
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(tierAmount);
+  return formatARS(tierAmount);
 }
 
 // El backend real devuelve el nombre del tier con el rol pegado como
