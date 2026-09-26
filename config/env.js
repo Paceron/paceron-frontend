@@ -1,4 +1,4 @@
-const REMOTE_URL = 'http://192.168.100.66:8080/api/v1';
+const REMOTE_URL = 'https://paceron-backend-as9c.onrender.com/api/v1';
 const REMOTE_WEB_ORIGIN = 'https://paceron-frontend.vercel.app';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || REMOTE_URL;
