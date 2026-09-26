@@ -697,6 +697,7 @@ export function toSessionFeedbackModel(dto) {
     distanceMeters: dto.distance_meters ?? null,
     reportSource: dto.report_source ?? null,
     pointsCount: dto.points_count ?? 0,
+    annotations: dto.annotations ?? null,
     createdAt: dto.created_at ?? null,
     updatedAt: dto.updated_at ?? null,
   };
@@ -749,10 +750,15 @@ export function toRunnerSessionStartPayload({ startDate, athleteUserId }) {
 
 // PATCH de un workout_feedback — mandamos solo lo que se editó (el backend
 // valida >= 0; null se omite para no pisar). Aplica solo a rows 'completed'.
-export function toFeedbackEditPayload({ durationMs, activeDurationMs, distanceMeters }) {
+// started_at/ended_at viajan como ISO (el backend los parsea a TIMESTAMPTZ);
+// contra el backend SIEMPRE en ms, la vista decide si muestra seg o ms.
+export function toFeedbackEditPayload({ startedAt, endedAt, durationMs, activeDurationMs, distanceMeters, annotations }) {
   const payload = {};
+  if (startedAt != null) payload.started_at = startedAt;
+  if (endedAt != null) payload.ended_at = endedAt;
   if (durationMs != null) payload.duration_ms = Math.round(Number(durationMs));
   if (activeDurationMs != null) payload.active_duration_ms = Math.round(Number(activeDurationMs));
   if (distanceMeters != null) payload.distance_meters = Number(distanceMeters);
+  if (annotations !== undefined) payload.annotations = annotations;
   return payload;
 }

@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
+import { formatDurationInput } from '../../utils/time.js';
 import { BREAKPOINTS } from '../../theme/tokens.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
@@ -426,6 +427,57 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
             </Pressable>
           </Pressable>
         </Modal>
+      )}
+    </View>
+  );
+}
+
+// Duración (mm:ss o h:mm:ss) — el usuario tipea SOLO dígitos y los ':' se
+// insertan solos: "330" → 3:30, "0330" → 03:30, "13045" → 1:30:45. A diferencia
+// de TimeField (que es una hora de reloj y va 00:00–23:59), acá el rango es
+// duración: los minutos pasan de 60 sin problema, que es el caso normal de una
+// serie larga. El valor sigue siendo un string formateado; el guardado lo
+// convierte a ms (el backend siempre recibe ms).
+export function DurationField({ label, value, onChange, error, touched, disabled, dense, className, hideErrorRow, hideLabel, placeholder = 'mm:ss' }) {
+  const colors = useThemeColors();
+  const slug = slugify(label);
+
+  const borderColor = disabled
+    ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
+    : error
+    ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
+    : touched && !error
+    ? 'border-primary bg-white dark:bg-slate-900'
+    : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
+
+  // Solo dígitos, máximo 6 (HH:MM:SS). Cada tecla re-formatea el string completo
+  // desde los dígitos underlying, así el cursor no salta: el usuario nunca
+  // escribe un ':' (por eso los ':' "se escriben solos").
+  const handleChange = (text) => {
+    const digits = String(text ?? '').replace(/\D/g, '').slice(0, 6);
+    onChange(formatDurationInput(digits));
+  };
+
+  return (
+    <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`duration-field-${slug}`} testID={`duration-field-${slug}`}>
+      {!hideLabel && <Text className={FIELD_LABEL} nativeID={`duration-field-${slug}-label`} testID={`duration-field-${slug}-label`}>{label}</Text>}
+      <View className={`min-h-12 flex-row items-center rounded-xl border px-4 ${borderColor}`} nativeID={`duration-field-${slug}-box`} testID={`duration-field-${slug}-box`}>
+        <TextInput
+          className={INPUT_CLASS}
+          editable={!disabled}
+          keyboardType="number-pad"
+          nativeID={`duration-field-${slug}-input`}
+          onChangeText={handleChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.onSurfaceVariant}
+          testID={`duration-field-${slug}-input`}
+          value={value ?? ''}
+        />
+      </View>
+      {!hideErrorRow && (
+        <View className="h-5" nativeID={`duration-field-${slug}-error-row`} testID={`duration-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`duration-field-${slug}-error`} testID={`duration-field-${slug}-error`}>{error}</Text>}
+        </View>
       )}
     </View>
   );

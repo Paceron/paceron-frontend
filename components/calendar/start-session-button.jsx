@@ -124,8 +124,17 @@ export function StartSessionButton({ assignment, role, teamId }) {
   const hasSession = Boolean(assignment.sessionInstance);
   const idPrefix = `start-session-button-${assignment.id}`;
 
-  // Día pasado con instancia de sesión → Registro de Sesión / Ver registros.
-  if (past && hasSession) {
+  // El estado runner_session del CORREDOR manda por encima de la fecha, igual
+  // que en el pre-start: una sesión de HOY que ya terminó tiene que mostrar
+  // "Registro de Sesión", no el Play — si no, el calendario sigue ofreciendo
+  // arrancar una sesión ya corrida. Para el entrenador no se consulta (el
+  // estado depende del atleta, que se elige después en el selector) y corre
+  // solo la regla de fecha pasada.
+  const { runnerSession } = useRunnerSession(role === 'runner' ? assignment?.sessionInstance?.id : null, userId);
+  const finished = runnerSession?.status === 'finished';
+  const showReview = (past || finished) && hasSession;
+
+  if (showReview) {
     if (role === 'trainer') {
       if (!isWeb) return null;
       return <TrainerReviewButton assignment={assignment} teamId={teamId} />;

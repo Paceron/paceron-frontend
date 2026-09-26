@@ -37,6 +37,21 @@ export function parseClockToMs(text) {
   return null;
 }
 
+// Dígitos → duración formateada con los ':' puestos solos, para el input de
+// duración del formulario de revisión. El usuario tipea solo números: "330" →
+// "3:30", "0330" → "03:30", "13045" → "1:30:45". Se reformatea desde los
+// dígitos cada tecla, así el cursor nunca salta. Distinto de formatClock (que
+// formatea un número ya conocido) y de TimeField (que es una hora de reloj).
+export function formatDurationInput(digits) {
+  const d = String(digits ?? '').replace(/\D/g, '').slice(0, 6);
+  if (d.length === 0) return '';
+  if (d.length <= 2) return d;
+  if (d.length === 3) return `${d[0]}:${d.slice(1)}`;
+  if (d.length === 4) return `${d.slice(0, 2)}:${d.slice(2)}`;
+  if (d.length === 5) return `${d[0]}:${d.slice(1, 3)}:${d.slice(3)}`;
+  return `${d.slice(0, 2)}:${d.slice(2, 4)}:${d.slice(4)}`;
+}
+
 // Milisegundos → "MM:SS" (o "H:MM:SS" si pasan 59 minutos) para precargar el
 // campo de edición manual. Es formatoStopwatch sin las centésimas — el editor
 // no edita sub-segundos (se conservan del valor persistido, no reescritos).

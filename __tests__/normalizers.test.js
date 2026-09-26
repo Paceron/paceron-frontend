@@ -904,4 +904,21 @@ describe('toFeedbackEditPayload', () => {
   test('vacío → {} (PATCH sin cambios)', () => {
     expect(toFeedbackEditPayload({})).toEqual({});
   });
+
+  test('incluye annotations y started/ended cuando se editan', () => {
+    expect(toFeedbackEditPayload({
+      annotations: 'Muy dura la última',
+      startedAt: '2026-09-24T18:00:00.000Z',
+      endedAt: '2026-09-24T18:03:30.000Z',
+    })).toEqual({
+      started_at: '2026-09-24T18:00:00.000Z',
+      ended_at: '2026-09-24T18:03:30.000Z',
+      annotations: 'Muy dura la última',
+    });
+  });
+
+  test('annotations vacío (string) se manda para borrar la nota; undefined se omite', () => {
+    expect(toFeedbackEditPayload({ annotations: '' })).toEqual({ annotations: '' });
+    expect(toFeedbackEditPayload({ annotations: undefined })).toEqual({});
+  });
 });

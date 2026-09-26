@@ -1,4 +1,4 @@
-import { formatClock, formatStopwatch, pad2, parseClockToMs, toIsoUtc } from '../utils/time.js';
+import { formatClock, formatDurationInput, formatStopwatch, pad2, parseClockToMs, toIsoUtc } from '../utils/time.js';
 
 describe('pad2', () => {
   test('agrega cero a un dígito', () => {
@@ -87,5 +87,54 @@ describe('formatClock', () => {
 
   test('redondea milésimas hacia abajo (sin centésimas que el editor no edita)', () => {
     expect(formatClock(210999)).toBe('03:30');
+  });
+});
+describe('formatDurationInput', () => {
+  test('sin dígitos → string vacío', () => {
+    expect(formatDurationInput('')).toBe('');
+    expect(formatDurationInput(null)).toBe('');
+    expect(formatDurationInput(undefined)).toBe('');
+  });
+
+  test('1-2 dígitos todavía sin separador', () => {
+    expect(formatDurationInput('3')).toBe('3');
+    expect(formatDurationInput('33')).toBe('33');
+  });
+
+  test('3 dígitos → M:SS', () => {
+    expect(formatDurationInput('330')).toBe('3:30');
+  });
+
+  test('4 dígitos → MM:SS', () => {
+    expect(formatDurationInput('0330')).toBe('03:30');
+    expect(formatDurationInput('1230')).toBe('12:30');
+  });
+
+  test('5 dígitos → H:MM:SS (minutos > 59)', () => {
+    expect(formatDurationInput('13045')).toBe('1:30:45');
+  });
+
+  test('6 dígitos → HH:MM:SS', () => {
+    expect(formatDurationInput('013045')).toBe('01:30:45');
+  });
+
+  test('ignora los no dígitos que llegan del input y reformatea', () => {
+    expect(formatDurationInput('12a30b')).toBe('12:30');
+  });
+
+  test('idempotente: reprocesar el valor ya formateado no lo cambia', () => {
+    // El campo re-formatea en cada tecla, así que el string que vuelve a
+    // entrar ya trae ':' — tiene que devolver exactamente lo mismo.
+    expect(formatDurationInput(formatDurationInput('330'))).toBe('3:30');
+    expect(formatDurationInput(formatDurationInput('13045'))).toBe('1:30:45');
+  });
+
+  test('corta a 6 dígitos (HH:MM:SS es el máximo)', () => {
+    expect(formatDurationInput('1234567')).toBe('12:34:56');
+  });
+
+  test('ida y vuelta con formatClock: lo que muestra, lo que se guarda', () => {
+    expect(parseClockToMs(formatDurationInput('0330'))).toBe(210000);
+    expect(parseClockToMs(formatDurationInput('13045'))).toBe(5445000);
   });
 });

@@ -44,12 +44,13 @@ export function buildManualSetPayload({ slot, exerciseId, setNumber, values }) {
     report_source: slot.role === 'trainer' ? 'entrenador' : 'corredor',
     session_date: slot.date,
     completion_status: 'completed',
-    started_at: null,
-    ended_at: null,
+    started_at: values.startedAt ?? null,
+    ended_at: values.endedAt ?? null,
     set_number: setNumber,
     duration_ms: values.durationMs != null ? Math.round(Number(values.durationMs)) : null,
     active_duration_ms: values.activeDurationMs != null ? Math.round(Number(values.activeDurationMs)) : null,
     distance_meters: values.distanceMeters != null ? Number(values.distanceMeters) : null,
+    annotations: values.annotations ?? null,
   };
 }
 
@@ -89,5 +90,30 @@ export function useFinishRunnerMutation({ sessionInstanceId, athleteUserId }) {
   return useMutation({
     mutationFn: () => finishRunnerSession(sessionInstanceId, { athleteUserId }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: runnerSessionQueryKey(sessionInstanceId, athleteUserId) }),
+  });
+}
+
+// Guardado "por ejercicio": una misma tanda de valores aplicada a varias series
+// de un ejercicio. Las series que ya tienen feedback van por PATCH; las que no,
+// por POST (con el 409→PATCH de	useSaveSetMutation). Se procesan SECUENCIALMENTE
+// (una request atrás de otra, no Promise.all) para que el 409→PATCH de una serie
+// no compita con el POST de la siguiente por el índice único, y para poder
+// informar cuántas quedaron guardadas si una falla a mitad.
+export function useSaveExerciseMutation({ sessionInstanceId, athleteUserId }) {
+  const queryClient = useQueryClient();
+  const saveSet = useSaveSetMutation({ sessionInstanceId, athleteUserId }).mutateAsync;
+
+  return useMutation({
+    mutationFn: async ({ slot, exerciseId, targets, values }) => {
+      const saved = [];
+      for (const target of targets) {
+        const editValues = values;
+        const createPayload = buildManualSetPayload({ slot, exerciseId, setNumber: target.setNumber, values: editValues });
+        const res = await saveSet({ feedback: target.feedback, editValues, createPayload });
+        saved.push(res);
+      }
+      return saved;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: sessionFeedbackQueryKey(sessionInstanceId, athleteUserId) }),
   });
 }
