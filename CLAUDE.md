@@ -280,6 +280,35 @@ pero ahora ambos son obligatorios. El enforcement es **solo de UI**: el backend 
 
 Detalle completo: `docs/superpowers/specs/2026-09-16-mp-connect-trainer-onboarding-design.md`.
 
+## Pagos y cobros del entrenador
+
+Sección en Mi perfil (tarjeta `components/profile/payments-summary-card.jsx`) y
+detalle en `/profile/payments`, visibles solo con `hasTrainerRole && activeRole === 'trainer'`.
+Consume `GET /payments/received`, `/payments/received/summary` y `/payments/mine`
+(change de OpenSpec `historial-pagos-cobros-entrenador` del backend).
+
+- **Nunca mostrar comisión ni estimar el neto.** La `marketplace_fee` del backend es
+  ficticia mientras el split no mande `application_fee`. El neto se muestra solo si
+  Mercado Pago lo informó (`net_amount` puede ser `null`); si no, "Neto no disponible"
+  o "Neto parcial … (x de y)" con `utils/payments-summary.js#formatNetLabel`.
+- **Primer `useInfiniteQuery` del repo** (`hooks/use-payment-history.js`). Se eligió
+  en vez de la acumulación manual de `use-team-search.js` porque hay pull-to-refresh:
+  el `refetch` de un infinite query vuelve a pedir todas las páginas cargadas. Para
+  listados paginados nuevos con refresh, preferir este patrón.
+- **Los tiles cuentan cuotas; la lista muestra intentos.** "Cuotas pendientes/rechazadas"
+  del resumen miran el último intento de cada cuota, y una cuota rechazada que después
+  se pagó no cuenta. Por eso pueden no coincidir con las filas de la lista filtrada, y
+  la pantalla lo aclara.
+- **Reutilizables nuevos:** `components/shared/stat-tile.jsx` (extraído de
+  `team-detail-screen.jsx`) y `utils/currency.js` (`formatARS`, `formatARSCompact`),
+  que reemplaza al formateador suelto de `tier-upgrade-screen.jsx`. Para montos en
+  pesos, usar estos en vez de otro `Intl.NumberFormat` inline.
+- El gráfico mensual es SVG a mano con `react-native-svg` (`payments-monthly-chart.jsx`),
+  con la geometría en `utils/payments-chart.js` para poder testearla. No hay librería
+  de gráficos en el repo.
+
+Detalle completo: `docs/superpowers/specs/2026-09-26-trainer-payments-dashboard-design.md`.
+
 ## Documentación existente en `docs/`
 
 Además de `docs/superpowers/{specs,plans}/`, hay documentación previa al uso de Claude Code en este repo: `WORKFLOW.md`, `BRANCH_POLICIES.md`, `TESTING.md`, `STYLE_CONTRACT.md`, `ARQUITECTURA.md`, `FRONTEND_DEFINITIONS.md`, `BACKEND_DEFINITIONS.md`, `EXPO_ROUTER_GUIDE.md`, `FUNCTIONAL_PROPOSE.md`. Son una buena base pero **no están 100% sincronizados con la práctica actual** (ej. `BRANCH_POLICIES.md` describe un modelo con `release/`/`hotfix/`/tickets de Jira que todavía no se usa en la práctica — hoy el flujo real es el descripto arriba). Si algo de ahí queda desactualizado al tocarlo, corregirlo ahí también, no solo acá.
