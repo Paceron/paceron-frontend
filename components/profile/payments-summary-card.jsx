@@ -88,7 +88,7 @@ export function PaymentsSummaryCard() {
         <StatTile
           icon="alert-circle-outline"
           idPrefix="profile-payments-stat"
-          label="Pendientes · Rechazados"
+          label="Cuotas pendientes · rechazadas"
           value={`${summary.pendingCount} · ${summary.rejectedCount}`}
         />
       </View>

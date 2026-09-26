@@ -40,9 +40,9 @@ export function paymentStatusMeta(status, statusGroup) {
   return PAYMENT_STATUS_META[status] ?? GROUP_FALLBACK[statusGroup] ?? GROUP_FALLBACK.other;
 }
 
-// Opciones del filtro de estado de la lista de cobros. '' = todos.
+// Opciones del filtro de estado de la lista de cobros. "Todos" es el
+// placeholder del select (valor ''), no una opción más.
 export const STATUS_FILTER_OPTIONS = [
-  { id: '', name: 'Todos los estados' },
   { id: 'approved', name: 'Aprobados' },
   { id: 'pending', name: 'Pendientes' },
   { id: 'rejected', name: 'Rechazados' },
