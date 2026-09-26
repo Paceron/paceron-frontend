@@ -18,6 +18,7 @@ import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js
 import { GroupListEditor } from './group-list-editor.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
+import { useTeamConfiguration } from '../../hooks/use-team-configuration.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 
@@ -80,6 +81,10 @@ function CreateTeamScreenContent() {
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
+  // El piso de la cuota lo resuelve el backend según el tier (el tope de
+  // integrantes sigue saliendo de la tabla client-side de team-store.js —
+  // reconciliar ambas fuentes es un trabajo aparte, ver la spec).
+  const { minimumFee } = useTeamConfiguration(userId);
 
   const [step, setStep] = useState(1);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
@@ -92,6 +97,7 @@ function CreateTeamScreenContent() {
   const generalForm = useTeamGeneralInfoForm({
     initial: { country: user?.country, province: user?.province, city: user?.city },
     maxAllowed,
+    minimumFee,
   });
 
   // Un equipo puede tener varios grupos (GroupListEditor). El grupo default
@@ -209,7 +215,7 @@ function CreateTeamScreenContent() {
 
         {step === 1 && (
           <SectionCard icon="account-group" title="Datos del equipo">
-            <TeamGeneralInfoFields autoFocusName={!isWeb} form={generalForm} idPrefix="create-team" maxAllowed={maxAllowed} />
+            <TeamGeneralInfoFields autoFocusName={!isWeb} form={generalForm} idPrefix="create-team" maxAllowed={maxAllowed} minimumFee={minimumFee} />
 
             <StepNav nextLabel="Siguiente" onNext={handleContinueStep1} />
           </SectionCard>

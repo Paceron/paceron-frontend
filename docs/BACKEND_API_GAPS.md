@@ -455,3 +455,50 @@ pantalla previa al inicio):
 **Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea el guardado
 real y el historial del módulo de registro en vivo, todavía sin implementar (la base de navegación
 sí está resuelta, ver spec citada arriba).
+
+## Gap 13 — `membership_fee` no viene en el listado de búsqueda ni en las invitaciones
+
+Detectado al cablear el pago de membresía de equipo
+(`docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md`). El requisito de
+producto es que el corredor vea la cuota **justo donde decide unirse**: en la tarjeta de la búsqueda
+pública, al lado del botón de unirse, y en la invitación dentro de la app. Pero:
+
+- `TeamSearchResult` (`GET /teams/search`) devuelve `level`/`location`/`member_count`/`max_members`/
+  `owner_name`/`icon_url`/`is_public` — **sin `membership_fee`**.
+- `InvitationResponse` (`GET /invitations`) devuelve `team_id`/`team_name` — **sin `membership_fee`**
+  (mismo tipo de hueco que el `group_name` del Gap 9).
+
+`GET /teams/{id}` sí lo devuelve y lo puede leer cualquier autenticado, así que el frontend resuelve
+el precio con un fetch por equipo (`hooks/use-team-fees.js`, `useQueries` sobre la key `['team', id]`
+que ya usa `useTeam`, así el fetch se comparte y se cachea). Funciona, pero son hasta 20 requests
+extra por página de búsqueda.
+
+**Pedido:** agregar `membership_fee` a los dos DTOs. **Impacto en frontend cuando exista:** se borra
+`hooks/use-team-fees.js` y el precio sale del listado directo, sin fan-out.
+
+## Gap 14 — `POST /payments/preference` colapsa todos sus errores a 500
+
+`payment_controller.go` responde `500 "Error al crear la preferencia"` para **cualquier** fallo del
+service. En particular, cuando el entrenador del equipo no conectó su cuenta de Mercado Pago, el
+service devuelve `SELLER_NOT_CONNECTED` (`"el entrenador debe conectar su cuenta de Mercado Pago"`)
+y su propia documentación (`docs/CU/02-pago-participacion-equipo.md`) promete un **409** — pero el
+409 nunca llega al cliente. Confirmado en la práctica contra el backend local el 2026-09-26: con un
+entrenador sin MP conectado, `POST /payments/preference` responde 500 con el mensaje genérico.
+
+**Impacto en frontend:** no se puede decirle al corredor por qué falló. La pantalla de pago muestra
+un mensaje deliberadamente vago ("puede que el equipo todavía no esté listo para cobrar") en vez de
+afirmar una causa que no podemos verificar. **Pedido:** propagar el código/status real.
+
+## Gap 15 — no hay forma de saber si un entrenador *ajeno* tiene Mercado Pago conectado
+
+`GET /mercadopago/connect/status` es self-only: saca el usuario del JWT y no acepta `user_id` ni
+`team_id`. `TeamResponse`/`TeamSearchResult` tampoco exponen nada sobre la conexión del dueño.
+
+Así que un corredor no puede saber, antes de intentar pagar, si el equipo al que se unió puede
+cobrarle — se entera cuando falla la creación de la preferencia (y encima sin poder distinguir la
+causa, ver Gap 14). Agrava que el requisito de MP conectado para activar el rol entrenador es
+**enforcement solo de UI**: un cliente viejo o una llamada directa a la API pueden dejar un
+entrenador activo sin MP, así que el caso es real, no teórico.
+
+**Pedido:** un flag de "puede recibir pagos" en el payload del equipo (o en el de búsqueda), para
+poder avisar antes de que el corredor se una a un equipo que no va a poder cobrarle.

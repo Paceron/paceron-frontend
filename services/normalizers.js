@@ -102,6 +102,7 @@ export function toTeamModel(dto) {
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
     iconUrl: dto.icon_url ?? null,
+    membershipFee: dto.membership_fee ?? 0,
   };
 }
 
@@ -121,6 +122,14 @@ export function toCreateTeamPayload(form) {
 
   for (const [key, value] of Object.entries(optional)) {
     if (value && String(value).trim()) payload[key] = value;
+  }
+
+  // membership_fee va fuera del whitelist de `optional` porque 0 es un valor
+  // válido y significativo (equipo gratis), y el chequeo `String(value).trim()`
+  // de arriba lo descartaría por falsy — mismo motivo que los boolean en
+  // toUpdateTeamPayload.
+  if (form.membershipFee !== undefined && form.membershipFee !== null && form.membershipFee !== '') {
+    payload.membership_fee = Number(form.membershipFee);
   }
 
   return payload;
@@ -150,6 +159,11 @@ export function toUpdateTeamPayload(form) {
   if (form.showGroupsToRunners !== undefined) payload.show_groups_to_runners = form.showGroupsToRunners;
   if (form.visible !== undefined) payload.visible = form.visible;
   if (form.isPublic !== undefined) payload.is_public = form.isPublic;
+  // Ver la nota de toCreateTeamPayload: 0 (equipo gratis) no puede caer en el
+  // whitelist de `optional`, que lo filtraría por falsy.
+  if (form.membershipFee !== undefined && form.membershipFee !== null && form.membershipFee !== '') {
+    payload.membership_fee = Number(form.membershipFee);
+  }
 
   return payload;
 }
@@ -487,6 +501,14 @@ export function toProcessPaymentPayload(form) {
   };
   if (form.preferenceId) payload.preference_id = form.preferenceId;
   if (form.installmentId) payload.installment_id = form.installmentId;
+  // `concept` es OBLIGATORIO en el pago de cuota de equipo: el backend lo usa
+  // para disparar resolveTeamSplitConfig, que resuelve el access token de
+  // Mercado Pago del entrenador. Sin él el pago se cobra con el token de
+  // Paceron y el dinero NO le llega al entrenador — el monto es correcto y el
+  // pago se aprueba igual, así que el bug solo se ve mirando en qué cuenta de
+  // MP entró la plata (nunca contra mocks). Ver
+  // docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md.
+  if (form.concept) payload.concept = form.concept;
   return payload;
 }
 
@@ -534,6 +556,61 @@ export function toSubscriptionModel(dto) {
     } : null,
     role: dto.role ? { id: dto.role.id, name: dto.role.name } : null,
     mercadopago: dto.mercadopago ? { publicKey: dto.mercadopago.public_key } : null,
+  };
+}
+
+// ---------------------------------------------------------------------
+// Suscripción a un equipo — el corredor le paga la mensualidad al
+// ENTRENADOR (split), distinto de toSubscriptionModel (tier, el usuario
+// le paga a Paceron). GET /api/v1/users/{id}/teams/{team_id}/subscription.
+// Ver docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md.
+// ---------------------------------------------------------------------
+
+export function toTeamSubscriptionModel(dto) {
+  if (!dto) return null;
+  return {
+    team: dto.team ? {
+      id: String(dto.team.id),
+      name: dto.team.name,
+      membershipFee: dto.team.membership_fee ?? 0,
+    } : null,
+    membership: dto.membership ? {
+      // first_payment_pending | active (el enum del backend suma ended/canceled).
+      // NO son los valores de SUBSCRIPTION_STATUSES de store/team-store.js.
+      subscriptionStatus: dto.membership.subscription_status ?? null,
+      initAmount: dto.membership.init_amount ?? 0,
+      paidInstallments: dto.membership.paid_installments ?? 0,
+      startDate: dto.membership.start_date ?? null,
+    } : null,
+    // Ausente cuando el equipo es gratis o no hay nada por pagar.
+    nextInstallment: dto.next_installment ? {
+      installmentId: dto.next_installment.installment_id,
+      installmentNumber: dto.next_installment.installment_number,
+      installmentAmount: dto.next_installment.installment_amount,
+      nextDueDate: dto.next_installment.next_due_date ?? null,
+      blockedDate: dto.next_installment.blocked_date ?? null,
+    } : null,
+    hasDebt: Boolean(dto.has_debt),
+    // OJO: `publicKey` acá es la key de INTEGRADOR de Paceron, no la del
+    // vendedor — no sirve para el brick (mezclarla con el access token del
+    // entrenador da el error 2034 "Invalid users involved" de MP). La key del
+    // brick sale de POST /payments/preference. De acá se usan solo `concept` y
+    // `marketplace`, como señal de que el equipo cobra.
+    mercadopago: dto.mercadopago ? {
+      publicKey: dto.mercadopago.public_key,
+      concept: dto.mercadopago.concept,
+      marketplace: Boolean(dto.mercadopago.marketplace),
+    } : null,
+  };
+}
+
+// GET /api/v1/team-configuration — topes de creación/edición de equipo
+// derivados del tier del ENTRENADOR autenticado (no del equipo).
+export function toTeamConfigurationModel(dto) {
+  if (!dto) return null;
+  return {
+    maxMembers: dto.max_members ?? null,
+    minimumFee: dto.minimum_fee ?? 0,
   };
 }
 

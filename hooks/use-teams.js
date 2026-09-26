@@ -53,14 +53,24 @@ export function useMyMemberTeams(userId) {
   return { teams: query.data ?? [], loading: query.isLoading, error: query.error };
 }
 
-// Trae un equipo puntual (GET /teams/{id}) — para deep-link directo a
-// detalle/edición de un equipo.
-export function useTeam(teamId) {
-  const query = useQuery({
+// Opciones de la query de un equipo puntual, compartidas por useTeam y por
+// useTeamFees (hooks/use-team-fees.js, que pide varios equipos con useQueries
+// para leer su membership_fee). Viven acá para que ambos usen exactamente la
+// misma key Y el mismo queryFn: si uno de los dos escribiera el cache de
+// ['team', id] con un shape distinto (sin pasar por decorateTeam, por ejemplo),
+// el otro leería un objeto incompleto según quién resolvió primero.
+export function teamQueryOptions(teamId) {
+  return {
     queryKey: ['team', teamId],
     queryFn: () => getTeamService(teamId).then((dto) => decorateTeam(toTeamModel(dto))),
     enabled: Boolean(teamId),
-  });
+  };
+}
+
+// Trae un equipo puntual (GET /teams/{id}) — para deep-link directo a
+// detalle/edición de un equipo.
+export function useTeam(teamId) {
+  const query = useQuery(teamQueryOptions(teamId));
   return { team: query.data ?? null, loading: query.isLoading, error: query.error };
 }
 

@@ -17,14 +17,21 @@ import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { useTeamFees } from '../../hooks/use-team-fees.js';
+import { formatMonthlyFee } from '../../utils/currency.js';
 
 // Sin nombre de grupo: InvitationResponse trae group_id pero no
 // group_name — mismo criterio ya documentado en el
 // received-invitations-screen.jsx original (ver docs/BACKEND_API_GAPS.md
 // gap 9). Este componente es ese mismo row, relocado acá sin cambios.
-function ReceivedInvitationRow({ invite, onAccept, onReject, responding }) {
+// `membershipFee` sale de un fetch por equipo (useTeamFees — InvitationResponse
+// no trae la cuota) y puede estar undefined mientras carga: en ese caso no se
+// muestra precio, porque mostrar "Gratis" sin saberlo sería mostrar un precio
+// equivocado justo donde el corredor decide aceptar.
+function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, responding }) {
   const colors = useThemeColors();
   const slug = invite.id;
+  const isPaid = membershipFee > 0;
 
   return (
     <View
@@ -35,10 +42,22 @@ function ReceivedInvitationRow({ invite, onAccept, onReject, responding }) {
       <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`received-invitation-${slug}-team`} testID={`received-invitation-${slug}-team`}>
         {invite.teamName ?? 'Equipo'}
       </Text>
-      <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID={`received-invitation-${slug}-meta`} testID={`received-invitation-${slug}-meta`}>
+      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`received-invitation-${slug}-meta`} testID={`received-invitation-${slug}-meta`}>
         {invite.inviterName ? `Invitado por ${invite.inviterName} · ` : 'Invitado '}
         {formatRelativeTime(invite.createdAt).toLowerCase()}
       </Text>
+      {isPaid ? (
+        <View className="mb-2 mt-1 flex-row items-baseline gap-1" nativeID={`received-invitation-${slug}-fee-row`} testID={`received-invitation-${slug}-fee-row`}>
+          <Text className="text-xs font-bold text-primary" nativeID={`received-invitation-${slug}-fee`} testID={`received-invitation-${slug}-fee`}>
+            {formatMonthlyFee(membershipFee)}
+          </Text>
+          <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`received-invitation-${slug}-fee-period`} testID={`received-invitation-${slug}-fee-period`}>
+            /mes · se paga al aceptar
+          </Text>
+        </View>
+      ) : (
+        <View className="mb-2" nativeID={`received-invitation-${slug}-fee-spacer`} testID={`received-invitation-${slug}-fee-spacer`} />
+      )}
       <View className="flex-row gap-2" nativeID={`received-invitation-${slug}-actions`} testID={`received-invitation-${slug}-actions`}>
         <Pressable
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
@@ -218,6 +237,10 @@ function NotificationsScreenContent() {
   const [respondingId, setRespondingId] = useState(null);
   const [invitationsCollapsed, setInvitationsCollapsed] = useState(false);
 
+  // La cuota del equipo no viene en InvitationResponse — se resuelve por equipo,
+  // ver hooks/use-team-fees.js.
+  const { getFee } = useTeamFees(myInvitations.map((i) => i.teamId));
+
   const handleAccept = async (invitationId) => {
     const invitation = myInvitations.find((i) => i.id === invitationId);
     setRespondingId(invitationId);
@@ -228,6 +251,17 @@ function NotificationsScreenContent() {
     setRespondingId(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos aceptar la invitación', text2: result.error });
+      return;
+    }
+    // Equipo con cuota: el backend ya creó la membresía en
+    // first_payment_pending + la cuota #1, así que el corredor puede pagar
+    // ahora mismo — se lo lleva derecho al checkout en vez de dejarlo
+    // descubrir el banner por su cuenta. Equipo gratis: se queda acá, igual
+    // que antes de esta rama.
+    const fee = getFee(invitation?.teamId);
+    if (fee > 0 && invitation?.teamId) {
+      Toast.show({ type: 'success', text1: 'Te uniste al equipo', text2: 'Completá el primer pago para activar tu membresía.' });
+      router.push(`/teams/${invitation.teamId}/subscription`);
       return;
     }
     Toast.show({ type: 'success', text1: 'Te uniste al equipo' });
@@ -290,6 +324,7 @@ function NotificationsScreenContent() {
                 <ReceivedInvitationRow
                   invite={invite}
                   key={invite.id}
+                  membershipFee={getFee(invite.teamId)}
                   onAccept={() => handleAccept(invite.id)}
                   onReject={() => handleReject(invite.id)}
                   responding={respondingId === invite.id}
