@@ -455,3 +455,91 @@ pantalla previa al inicio):
 **Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea el guardado
 real y el historial del módulo de registro en vivo, todavía sin implementar (la base de navegación
 sí está resuelta, ver spec citada arriba).
+
+> **Actualización 2026-09-27 — primer bullet RESUELTO, distinto de lo previsto.** El compañero que
+> encaró el registro de actividad en vivo implementó la persistencia con un modelo normalizado
+> (`workout_feedback` — una fila por serie/set, no un blob por actividad como se había anotado
+> arriba): `POST /workout-feedback` (crear), `PUT /workout-feedback/:id` (editar tiempos/distancia),
+> `POST /workout-feedback/:id/points` + `GET /workout-feedback/:id/points` (puntos GPS de una
+> serie), `GET /session-instances/:id/feedback?athlete_user_id=` (feedback de una sesión puntual).
+> Ver `services/workoutFeedback.js`, `services/runnerSession.js`,
+> `services/normalizers.js#toSessionFeedbackModel` para el shape exacto ya consumido por el
+> frontend. El segundo bullet (historial multiplataforma: listar/filtrar/paginar) sigue sin
+> resolver — el endpoint de sesión puntual de arriba no alcanza para eso (no cruza equipos/grupos,
+> no filtra por rango de fechas ni por corredor/ejercicio, no pagina). Se abre como Gap 13 propio,
+> con el contrato concreto que hace falta.
+
+## Gap 13 — endpoints de historial de entrenamientos realizados (piezas 2/3 del sub-proyecto de calendario)
+
+Sin resolver. Backend real de `workout_feedback` ya existe (Gap 12, resuelto) pero solo permite
+consultar **una sesión puntual a la vez** (`GET /session-instances/:id/feedback`). El historial
+(corredor y entrenador, ver `docs/superpowers/specs/2026-09-26-trainings-tabs-shell-design.md` y
+la pestaña "Historial" que quedó en stub) necesita una consulta **cruzada** (todas las
+sesiones/equipos/grupos en un rango) con filtros, orden y paginación — mismo tipo de brecha que
+ya resolvió Gap 11 para el calendario agregado (`member-calendar`/`administered-calendar`), acá
+aplicado a `workout_feedback` en vez de `GroupCalendarDay`.
+
+**Decisión ya tomada con el usuario:** sin sumarización server-side por ahora (ni client-side
+real tampoco) — se anota como mejora futura, no bloquea esta pieza. El frontend puede como mucho
+agrupar visualmente filas ya traídas (por ejercicio o por corredor) sin calcular agregados
+(promedios/sumas), pero eso no requiere nada del backend.
+
+**Corredor — `GET /users/{id}/workout-feedback-history`**, `{id}` = propio usuario autenticado
+(403 si no coincide, mismo criterio que `member-calendar`).
+
+Query params:
+- `team_id`, `group_id` (opcionales, `group_id` requiere `team_id`).
+- `date_from`, `date_to` (opcionales, iguales = un solo día).
+- `exercise_id`, `set_number` (opcionales — segundo nivel de filtro).
+- `sort` (`feedback_date` | `set_number` | `exercise_name`, default `feedback_date`), `order`
+  (`asc`|`desc`, default `desc` — más recientes primero).
+- `page` (default 1), `page_size` (default 20, tope sugerido 100).
+
+Sin filtros: los N más recientes del corredor en TODOS sus equipos/grupos (mismo criterio que
+"fetchear N datos más recientes" del pedido original).
+
+**Entrenador — `GET /users/{id}/administered-workout-feedback-history`**, `{id}` = propio usuario
+autenticado, **`team_id` obligatorio** (403 si el `id` no administra ese equipo) — sin team_id,
+`400`.
+
+Query params: mismos que arriba (`group_id`, `date_from`/`date_to`, `exercise_id`/`set_number`,
+`sort`/`order`, `page`/`page_size`) más `athlete_user_id` (segundo nivel de filtro, opcional).
+
+**Response, ambos endpoints:**
+
+```json
+200
+{
+  "items": [
+    {
+      "id": 501, "athlete_user_id": 12, "athlete_name": "Juan Pérez",
+      "team_id": 3, "team_name": "Runners Norte", "group_id": 7, "group_name": "Elite AM",
+      "date": "2026-09-25", "session_name": "Series de velocidad",
+      "exercise_id": 44, "exercise_name": "Series 400m", "set_number": 2,
+      "completion_status": "completed", "duration_ms": 95000, "active_duration_ms": 90000,
+      "distance_meters": 412.5, "started_at": "2026-09-25T08:15:00Z", "ended_at": "2026-09-25T08:16:35Z"
+    }
+  ],
+  "total": 137,
+  "page": 1,
+  "page_size": 20,
+  "available_athletes": [{ "id": 12, "name": "Juan Pérez" }],
+  "available_exercises": [{ "id": 44, "name": "Series 400m" }]
+}
+```
+
+- `athlete_name`/`athlete_user_id` en la respuesta del corredor son redundantes (siempre el mismo
+  usuario) pero se devuelven igual — mismo shape para las dos vistas, sin ternarios de campos
+  opcionales en el frontend.
+- `available_athletes`/`available_exercises`: **distinct** de TODO el resultado que matchea los
+  filtros de primer nivel (equipo/grupo/rango de fechas), **sin** aplicar todavía el filtro de
+  segundo nivel (corredor/ejercicio) ni la paginación — así el dropdown de segundo nivel no pierde
+  opciones a medida que el usuario lo va usando. Esto es lo que resuelve "pool de corredores/
+  ejercicios según los resultados a priori" del pedido original sin depender de qué página esté
+  cargada en el cliente.
+- `400` si falta `date_from`/`date_to` cuando se manda solo uno de los dos, o si `date_from >
+  date_to`. `group_id` sin `team_id` → `400` (aplica a ambos endpoints, aunque en el de entrenador
+  `team_id` ya es obligatorio de por sí).
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea el
+contenido real de la pestaña "Historial" en ambos roles (hoy stub, `trainings-history-tab.jsx`).
