@@ -1,6 +1,15 @@
-# Pagos y cobros del entrenador
+# Historial de pagos y cobros
 
 ## Contexto
+
+**HU "Historial de pagos y facturación":** como usuario quiero acceder a mi
+historial de pagos y facturación para tener trazabilidad de mis suscripciones y
+pagos a entrenadores. Criterios: listado con fecha, monto, método, tipo
+(suscripción / pago a entrenador) y estado; descarga de comprobantes en PDF; web y
+mobile.
+
+La HU cubre a **cualquier usuario**. Además, el entrenador con el rol activo
+conserva lo que se construyó primero para él: sus cobros y un dashboard.
 
 Un entrenador no tiene forma de ver su dinero en la app: ni lo que le paga a
 Paceron por su suscripción de tier, ni lo que le pagaron los corredores por
@@ -17,14 +26,18 @@ este frontend lo consume.
 ## Alcance
 
 **Sí:**
-- Tarjeta "Pagos y cobros" en Mi perfil, visible solo con el rol entrenador
-  **activo**: cobrado este mes con el neto, variación contra el mes anterior,
-  pendientes y rechazados, y un botón **Ver todo**.
+- **Historial de pagos para cualquier usuario** en `/profile/payments`: fecha,
+  tipo, detalle, método, estado, monto y comprobante en PDF de los pagos
+  aprobados. Filtros por tipo y por estado.
+- En Mi perfil, una tarjeta "Historial de pagos" que lleva a esa pantalla.
+- Con el rol entrenador **activo**, la tarjeta pasa a ser "Pagos y cobros":
+  cobrado este mes con el neto, variación contra el mes anterior, pendientes y
+  rechazados, y un botón **Ver todo**.
 - Pantalla nueva `/profile/payments` con:
   - dashboard: cobrado este mes, evolución de los últimos 6 meses (barras),
     cobros por equipo, pendientes y rechazados;
   - pestaña **Cobros**: listado paginado con filtros por equipo y estado;
-  - pestaña **Mis pagos**: pagos de suscripción de tier propios.
+  - pestaña **Mis pagos**: el mismo historial que ve cualquier usuario.
 - Montos: el bruto siempre, y el neto solo cuando Mercado Pago lo informó.
 
 **No** (fuera de esta spec):
@@ -43,7 +56,7 @@ Los tres requieren token; el usuario sale del token, no hay `:id` en el path.
 |---|---|
 | `GET /api/v1/payments/received?page&team_id&status` | Listado de cobros. `status` es un grupo: `approved`, `pending`, `rejected`, `refunded`. 20 por página, `has_more`. |
 | `GET /api/v1/payments/received/summary?months=6` | Dashboard y tarjeta del perfil. `monthly` trae 6 meses seguidos y el último es el actual. |
-| `GET /api/v1/payments/mine?page&role=entrenador` | Mis pagos de tier. |
+| `GET /api/v1/payments/history?page&type&status` | Historial propio. `type` es `subscription` o `trainer_payment`; según el tipo viene `tier`, o `team` + `trainer`. |
 
 Reglas que el frontend respeta sin recalcular:
 - `net_amount` puede ser `null`. Nunca se inventa: se muestra "Neto no
@@ -60,6 +73,20 @@ La tarjeta y la pantalla dependen de `hasTrainerRole && activeRole === 'trainer'
 pantalla va dentro de `RequireAuth`; si el rol activo no es entrenador
 redirige a `/profile`. No redirige mientras `usePermissions` carga, para evitar
 el redirect espurio que ya documenta `profile-screen.jsx`.
+
+### Comprobante en PDF
+
+Solo de pagos aprobados. El HTML lo arma `utils/receipt-html.js` (lógica pura,
+testeada) y lo imprime `services/receipt.js` / `receipt.web.js`:
+
+- **Nativo:** `expo-print` (`printToFileAsync`) genera un PDF real y
+  `expo-sharing` abre la hoja de compartir del sistema.
+- **Web:** `expo-print` en web ignora el HTML e imprime la ventana entera (su
+  implementación web es solo `window.print()`). Por eso el comprobante se carga
+  en un `iframe` oculto y se imprime ese documento; el diálogo del navegador
+  ofrece "Guardar como PDF". No abre ventanas emergentes.
+
+El comprobante dice explícitamente que no es una factura fiscal.
 
 ### Estado de servidor
 

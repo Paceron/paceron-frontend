@@ -280,12 +280,15 @@ pero ahora ambos son obligatorios. El enforcement es **solo de UI**: el backend 
 
 Detalle completo: `docs/superpowers/specs/2026-09-16-mp-connect-trainer-onboarding-design.md`.
 
-## Pagos y cobros del entrenador
+## Historial de pagos y cobros
 
-Sección en Mi perfil (tarjeta `components/profile/payments-summary-card.jsx`) y
-detalle en `/profile/payments`, visibles solo con `hasTrainerRole && activeRole === 'trainer'`.
-Consume `GET /payments/received`, `/payments/received/summary` y `/payments/mine`
-(change de OpenSpec `historial-pagos-cobros-entrenador` del backend).
+`/profile/payments` muestra el **historial de pagos de cualquier usuario** (HU
+"Historial de pagos y facturación": suscripciones y pagos a entrenadores, con
+comprobante en PDF). Con el rol entrenador activo suma sus cobros y un dashboard.
+En Mi perfil se llega por `payments-history-card.jsx` o, con el rol entrenador
+activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
+`/payments/received` y `/payments/received/summary` (change de OpenSpec
+`historial-pagos-cobros-entrenador` del backend).
 
 - **Nunca mostrar comisión ni estimar el neto.** La `marketplace_fee` del backend es
   ficticia mientras el split no mande `application_fee`. El neto se muestra solo si
@@ -303,6 +306,12 @@ Consume `GET /payments/received`, `/payments/received/summary` y `/payments/mine
   `team-detail-screen.jsx`) y `utils/currency.js` (`formatARS`, `formatARSCompact`),
   que reemplaza al formateador suelto de `tier-upgrade-screen.jsx`. Para montos en
   pesos, usar estos en vez de otro `Intl.NumberFormat` inline.
+- **Comprobantes en PDF con `expo-print` + `expo-sharing`, dos módulos nativos** sumados
+  en esta feature: hay que **regenerar el dev client** (`npm run android:run`), un OTA no
+  alcanza. **En web `expo-print` no sirve**: su implementación web es solo `window.print()`
+  e ignora el HTML, así que imprime la app entera. `services/receipt.web.js` carga el
+  comprobante en un `iframe` oculto y lo imprime; el import va sin extensión
+  (`from '../../services/receipt'`), mismo quirk del split `.web.js`.
 - El gráfico mensual es SVG a mano con `react-native-svg` (`payments-monthly-chart.jsx`),
   con la geometría en `utils/payments-chart.js` para poder testearla. No hay librería
   de gráficos en el repo.
