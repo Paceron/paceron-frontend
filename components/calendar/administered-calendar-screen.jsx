@@ -46,6 +46,11 @@ function AdministeredCalendarScreenContent() {
     setDayModalVisible(true);
   };
 
+  const handleViewRecords = () => {
+    setDayModalVisible(false);
+    setActiveTab('historial');
+  };
+
   useEffect(() => {
     if (!deepLinkDate || appliedDeepLinkRef.current) return;
     appliedDeepLinkRef.current = true;
@@ -175,6 +180,10 @@ function AdministeredCalendarScreenContent() {
               </View>
             </FilterPanel>
 
+            <Text className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="administered-calendar-screen-calendar-section-title" testID="administered-calendar-screen-calendar-section-title">
+              Calendario
+            </Text>
+
             <AggregatedMonthView
               currentMonthISO={currentMonthISO}
               daysByDate={daysByDate}
@@ -186,7 +195,7 @@ function AdministeredCalendarScreenContent() {
               year={visibleYear}
             />
 
-            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="administered" />
+            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} onViewRecords={handleViewRecords} trainings={filteredUpcomingTrainings} variant="administered" />
           </>
         )}
 
@@ -194,7 +203,7 @@ function AdministeredCalendarScreenContent() {
       </View>
       </ScrollView>
 
-      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="administered" visible={dayModalVisible} />
+      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} onViewRecords={handleViewRecords} variant="administered" visible={dayModalVisible} />
     </View>
   );
 }

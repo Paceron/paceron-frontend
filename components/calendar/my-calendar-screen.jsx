@@ -46,6 +46,11 @@ function MyCalendarScreenContent() {
     setDayModalVisible(true);
   };
 
+  const handleViewRecords = () => {
+    setDayModalVisible(false);
+    setActiveTab('historial');
+  };
+
   useEffect(() => {
     if (!deepLinkDate || appliedDeepLinkRef.current) return;
     appliedDeepLinkRef.current = true;
@@ -167,6 +172,10 @@ function MyCalendarScreenContent() {
               </View>
             </FilterPanel>
 
+            <Text className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="my-calendar-screen-calendar-section-title" testID="my-calendar-screen-calendar-section-title">
+              Calendario
+            </Text>
+
             <AggregatedMonthView
               currentMonthISO={currentMonthISO}
               daysByDate={daysByDate}
@@ -178,7 +187,7 @@ function MyCalendarScreenContent() {
               year={visibleYear}
             />
 
-            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="member" />
+            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} onViewRecords={handleViewRecords} trainings={filteredUpcomingTrainings} variant="member" />
           </>
         )}
 
@@ -186,7 +195,7 @@ function MyCalendarScreenContent() {
       </View>
       </ScrollView>
 
-      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="member" visible={dayModalVisible} />
+      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} onViewRecords={handleViewRecords} variant="member" visible={dayModalVisible} />
     </View>
   );
 }
