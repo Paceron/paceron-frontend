@@ -206,7 +206,7 @@ export function TrainingsHistoryTab({ role }) {
                 hideErrorRow
                 keyboardType="numeric"
                 label="Serie"
-                onChange={setFilterSetNumber}
+                onChange={(value) => setFilterSetNumber(value.replace(/\D/g, ''))}
                 placeholder="Todas"
                 value={filterSetNumber}
               />
@@ -306,7 +306,7 @@ export function TrainingsHistoryTab({ role }) {
         </View>
       )}
 
-      <AnimatedDropdown anchorStyle={rowMenu?.anchor} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
+      <AnimatedDropdown anchorStyle={rowMenu ? { left: rowMenu.anchor.x, top: rowMenu.anchor.y + rowMenu.anchor.height + 4, width: 208 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
         {rowMenu && <TrainingsHistoryRowMenu onSelect={handleSelectFromMenu} onViewReview={handleViewReview} />}
       </AnimatedDropdown>
 

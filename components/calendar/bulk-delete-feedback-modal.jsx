@@ -9,6 +9,9 @@ export function BulkDeleteFeedbackModal({ visible, count, onCancel, onConfirm })
     if (loading) return;
     setLoading(true);
     await onConfirm();
+    // setLoading(false) after onConfirm resolves is a no-op once the parent has already hidden
+    // the modal (visible=false), but is kept for symmetry/safety in case a future caller keeps
+    // the modal open on partial failure.
     setLoading(false);
   };
 

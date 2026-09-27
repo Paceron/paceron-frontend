@@ -8,15 +8,15 @@ import { formatMeters } from '../../utils/distance.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 
 const STATUS_META = {
-  completed: { label: 'Completada', color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle' },
-  skipped: { label: 'Saltada', color: 'text-slate-500 dark:text-slate-400', icon: 'skip-next-circle-outline' },
+  completed: { label: 'Completada', color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle', iconColor: '#047857' },
+  skipped: { label: 'Saltada', color: 'text-slate-500 dark:text-slate-400', icon: 'skip-next-circle-outline', iconColor: '#64748b' },
 };
 
 function StatusBadge({ status, idPrefix }) {
-  const meta = STATUS_META[status] ?? { label: status ?? 'Sin estado', color: 'text-slate-400 dark:text-slate-500', icon: 'circle-outline' };
+  const meta = STATUS_META[status] ?? { label: status ?? 'Sin estado', color: 'text-slate-400 dark:text-slate-500', icon: 'circle-outline', iconColor: '#94a3b8' };
   return (
     <View className="flex-row items-center gap-1" nativeID={idPrefix} testID={idPrefix}>
-      <MaterialCommunityIcons color="currentColor" name={meta.icon} size={13} style={{ color: 'inherit' }} />
+      <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={13} />
       <Text className={`text-xs font-medium ${meta.color}`} nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>{meta.label}</Text>
     </View>
   );
