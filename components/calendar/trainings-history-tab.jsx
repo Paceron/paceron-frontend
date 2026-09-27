@@ -169,23 +169,14 @@ export function TrainingsHistoryTab({ role }) {
             />
           </View>
         )}
-        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-date-from-wrapper" testID="trainings-history-tab-filter-date-from-wrapper">
-          <DateField label="Desde" onChange={setDateFromInput} value={dateFromInput} />
+        <View className="min-w-[280px] flex-1 flex-row gap-2" nativeID="trainings-history-tab-filter-date-range-wrapper" testID="trainings-history-tab-filter-date-range-wrapper">
+          <View className="flex-1" nativeID="trainings-history-tab-filter-date-from-wrapper" testID="trainings-history-tab-filter-date-from-wrapper">
+            <DateField label="Desde" onChange={setDateFromInput} value={dateFromInput} />
+          </View>
+          <View className="flex-1" nativeID="trainings-history-tab-filter-date-to-wrapper" testID="trainings-history-tab-filter-date-to-wrapper">
+            <DateField label="Hasta" onChange={setDateToInput} value={dateToInput} />
+          </View>
         </View>
-        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-date-to-wrapper" testID="trainings-history-tab-filter-date-to-wrapper">
-          <DateField label="Hasta" onChange={setDateToInput} value={dateToInput} />
-        </View>
-        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-sort-wrapper" testID="trainings-history-tab-filter-sort-wrapper">
-          <ResponsiveSelectField dense hideErrorRow label="Ordenar por" onChange={setSort} options={SORT_OPTIONS} value={sort} />
-        </View>
-        <Pressable
-          className="mt-6 h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-          nativeID="trainings-history-tab-order-toggle"
-          onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
-          testID="trainings-history-tab-order-toggle"
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
-        </Pressable>
         {items.length > 0 && (
           <>
             <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-exercise-wrapper" testID="trainings-history-tab-filter-exercise-wrapper">
@@ -227,6 +218,20 @@ export function TrainingsHistoryTab({ role }) {
           </>
         )}
       </FilterPanel>
+
+      <View className="mb-4 flex-row items-center gap-2" nativeID="trainings-history-tab-sort-row" testID="trainings-history-tab-sort-row">
+        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-sort-wrapper" testID="trainings-history-tab-sort-wrapper">
+          <ResponsiveSelectField dense hideErrorRow label="Ordenar por" onChange={setSort} options={SORT_OPTIONS} value={sort} />
+        </View>
+        <Pressable
+          className="mt-6 h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          nativeID="trainings-history-tab-order-toggle"
+          onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+          testID="trainings-history-tab-order-toggle"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
+        </Pressable>
+      </View>
 
       {dateRangeError && (
         <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="trainings-history-tab-date-range-error" testID="trainings-history-tab-date-range-error">
