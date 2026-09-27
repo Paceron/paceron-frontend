@@ -46,7 +46,7 @@ export const trainingPlansRoute = {
 
 export const myCalendarRoute = {
   name: 'calendar',
-  label: 'Mi calendario',
+  label: 'Entrenamientos',
   href: '/calendar',
   icon: 'calendar-month-outline',
   role: 'runner',
@@ -54,7 +54,7 @@ export const myCalendarRoute = {
 
 export const administeredCalendarRoute = {
   name: 'administered-calendar',
-  label: 'Calendario',
+  label: 'Entrenamientos',
   href: '/administered-calendar',
   icon: 'calendar-month-outline',
   role: 'trainer',

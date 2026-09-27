@@ -65,7 +65,7 @@ function AssignmentRow({ assignment, variant }) {
             : ''}
         </Text>
       )}
-      <StartSessionButton assignment={assignment} role={variant === 'member' ? 'runner' : 'trainer'} />
+      {variant === 'member' && <StartSessionButton assignment={assignment} role="runner" />}
       {variant === 'administered' && assignment.presencialCollision && (
         <View
           className={`mt-2 rounded-lg px-2 py-1.5 ${assignment.presencialCollision.type === 'cross_team' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}
@@ -82,17 +82,20 @@ function AssignmentRow({ assignment, variant }) {
         </View>
       )}
       {variant === 'administered' && (
-        <Pressable
-          className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
-          nativeID={`${idPrefix}-go-to-day-button`}
-          onPress={handleGoToDay}
-          testID={`${idPrefix}-go-to-day-button`}
-        >
-          <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-day-button-label`} testID={`${idPrefix}-go-to-day-button-label`}>
-            Ir a este día
-          </Text>
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-right" size={14} />
-        </Pressable>
+        <View className="mt-2 flex-row gap-2" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+          <StartSessionButton assignment={assignment} fill role="trainer" />
+          <Pressable
+            className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+            nativeID={`${idPrefix}-go-to-day-button`}
+            onPress={handleGoToDay}
+            testID={`${idPrefix}-go-to-day-button`}
+          >
+            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-day-button-label`} testID={`${idPrefix}-go-to-day-button-label`}>
+              Ir a este día
+            </Text>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-right" size={14} />
+          </Pressable>
+        </View>
       )}
     </View>
   );
