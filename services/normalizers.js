@@ -552,7 +552,7 @@ export function toSubscriptionModel(dto) {
 // instancias creadas antes de este cambio (sin backfill) o si el origen
 // se borró. NUNCA usar `id` (el de la instancia) para preseleccionar el
 // select de sesión al editar — no es un id de catálogo.
-function toSessionInstanceModel(dto) {
+export function toSessionInstanceModel(dto) {
   if (!dto) return null;
   return {
     id: String(dto.id),
