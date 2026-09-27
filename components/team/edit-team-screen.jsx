@@ -15,6 +15,7 @@ import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.js';
+import { useTeamConfiguration } from '../../hooks/use-team-configuration.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -80,8 +81,9 @@ function EditTeamForm({ team, teamId }) {
 
   const trainerTier = roles.find((r) => r.name === 'entrenador')?.tier;
   const maxAllowed = getTeamMemberLimit(trainerTier);
+  const { minimumFee } = useTeamConfiguration(userId);
 
-  const generalForm = useTeamGeneralInfoForm({ initial: team, maxAllowed });
+  const generalForm = useTeamGeneralInfoForm({ initial: team, maxAllowed, minimumFee });
   const [showGroupsToRunners, setShowGroupsToRunners] = useState(team.showGroupsToRunners ?? false);
   const [visible, setVisible] = useState(team.visible ?? true);
   const [isPublic, setIsPublic] = useState(team.isPublic ?? true);
@@ -138,7 +140,7 @@ function EditTeamForm({ team, teamId }) {
           </View>
 
           <SectionCard icon="account-group" title="Datos del equipo">
-            <TeamGeneralInfoFields form={generalForm} idPrefix="edit-team" maxAllowed={maxAllowed} />
+            <TeamGeneralInfoFields form={generalForm} idPrefix="edit-team" maxAllowed={maxAllowed} minimumFee={minimumFee} />
           </SectionCard>
 
           <SectionCard icon="shield-account-outline" title="Privacidad">

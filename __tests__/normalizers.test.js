@@ -7,6 +7,7 @@ import {
   toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload, toBulkAssignPayload,
   toRunnerSessionModel, toSessionFeedbackModel, toSessionFeedbackListModel, buildSessionReviewModel,
   toRunnerSessionStartPayload, toFeedbackEditPayload,
+  toTeamSubscriptionModel, toTeamConfigurationModel,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -115,7 +116,7 @@ describe('toTeamModel', () => {
       id: 1, name: 'Corredores del Sur', description: 'desc', level: 'amateur',
       max_members: 20, owner_id: 7, requirements: 'req', status: 'activo',
       country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
-      show_groups_to_runners: true,
+      show_groups_to_runners: true, membership_fee: 25000,
       created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-02T00:00:00.000Z',
     };
     expect(toTeamModel(dto)).toEqual({
@@ -124,13 +125,20 @@ describe('toTeamModel', () => {
       country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
       showGroupsToRunners: true, visible: true, isPublic: true,
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z',
-      iconUrl: null,
+      iconUrl: null, membershipFee: 25000,
     });
   });
 
   test('defaults showGroupsToRunners to false when the backend omits it', () => {
     const dto = { id: 1, name: 'X', max_members: 10, owner_id: 7 };
     expect(toTeamModel(dto).showGroupsToRunners).toBe(false);
+  });
+
+  // Un equipo sin cuota tiene que quedar en 0 y no en undefined: la UI decide
+  // "gratis vs. pago" con `membershipFee > 0`, y undefined significa otra cosa
+  // en el fan-out de precios (ver hooks/use-team-fees.js: "todavía no sé").
+  test('membershipFee cae a 0 cuando el backend lo omite', () => {
+    expect(toTeamModel({ id: 1, name: 'X', max_members: 10, owner_id: 7 }).membershipFee).toBe(0);
   });
 
   test('returns null for falsy dto', () => {
@@ -159,9 +167,36 @@ describe('toCreateTeamPayload', () => {
     expect(out).not.toHaveProperty('level');
     expect(out).not.toHaveProperty('requirements');
   });
+
+  // El 0 es el caso delicado: el whitelist genérico de campos opcionales
+  // descarta lo falsy, y un 0 descartado convertiría "equipo gratis" en
+  // "no mandes el campo" — que al editar significa "dejalo como estaba".
+  test('manda membership_fee 0 (equipo gratis), no lo descarta por falsy', () => {
+    const out = toCreateTeamPayload({ name: 'X', maxMembers: 10, ownerId: 7, membershipFee: 0 });
+    expect(out.membership_fee).toBe(0);
+  });
+
+  test('manda membership_fee cuando hay monto, coaccionado a número', () => {
+    const out = toCreateTeamPayload({ name: 'X', maxMembers: 10, ownerId: 7, membershipFee: '25000' });
+    expect(out.membership_fee).toBe(25000);
+  });
+
+  test('omite membership_fee cuando no viene o viene vacío', () => {
+    expect(toCreateTeamPayload({ name: 'X', maxMembers: 10, ownerId: 7 })).not.toHaveProperty('membership_fee');
+    expect(toCreateTeamPayload({ name: 'X', maxMembers: 10, ownerId: 7, membershipFee: '' })).not.toHaveProperty('membership_fee');
+  });
 });
 
 describe('toUpdateTeamPayload', () => {
+  test('manda membership_fee 0 al editar (pasar un equipo pago a gratis)', () => {
+    expect(toUpdateTeamPayload({ name: 'X', membershipFee: 0 }).membership_fee).toBe(0);
+  });
+
+  test('omite membership_fee cuando el form lo deja vacío (no toca el valor actual)', () => {
+    expect(toUpdateTeamPayload({ name: 'X', membershipFee: '' })).not.toHaveProperty('membership_fee');
+    expect(toUpdateTeamPayload({ name: 'X' })).not.toHaveProperty('membership_fee');
+  });
+
   test('includes only non-empty fields known to the backend', () => {
     const out = toUpdateTeamPayload({ name: 'Nuevo nombre', description: 'Nueva descripción', maxMembers: 15 });
     expect(out).toEqual({ name: 'Nuevo nombre', description: 'Nueva descripción', max_members: 15 });
@@ -446,6 +481,89 @@ describe('toProcessPaymentPayload', () => {
   test('omite installment_id si no viene', () => {
     const form = { token: 'tok', transactionAmount: 1000, paymentMethodId: 'visa', installments: 1, payerEmail: 'a@b.com' };
     expect(toProcessPaymentPayload(form).installment_id).toBeUndefined();
+  });
+
+  // Sin `concept`, el backend cobra la cuota de equipo con el access token de
+  // Paceron en vez del del entrenador y la plata NO le llega — el pago se
+  // aprueba igual, así que no hay ningún síntoma visible. Este test es el que
+  // protege esa regresión.
+  test('incluye concept cuando viene (team_subscription: dispara el split)', () => {
+    const form = {
+      token: 'tok', transactionAmount: 25000, paymentMethodId: 'master', installments: 1,
+      payerEmail: 'a@b.com', installmentId: 901, concept: 'team_subscription',
+    };
+    expect(toProcessPaymentPayload(form).concept).toBe('team_subscription');
+  });
+
+  test('omite concept si no viene (callers de tier/testbed, sin split)', () => {
+    const form = { token: 'tok', transactionAmount: 1000, paymentMethodId: 'visa', installments: 1, payerEmail: 'a@b.com' };
+    expect(toProcessPaymentPayload(form).concept).toBeUndefined();
+  });
+});
+
+describe('toTeamSubscriptionModel', () => {
+  const dto = {
+    team: { id: 7, name: 'Team Demo', membership_fee: 25000 },
+    membership: {
+      subscription_status: 'first_payment_pending', init_amount: 25000,
+      paid_installments: 0, start_date: '2026-09-01T00:00:00Z',
+    },
+    next_installment: {
+      installment_id: 901, installment_number: 1, installment_amount: 25000,
+      next_due_date: null, blocked_date: null,
+    },
+    has_debt: false,
+    mercadopago: { public_key: 'APP_USR-x', concept: 'team_subscription', marketplace: true },
+  };
+
+  test('mapea los 5 bloques a camelCase y coacciona el id del equipo a string', () => {
+    expect(toTeamSubscriptionModel(dto)).toEqual({
+      team: { id: '7', name: 'Team Demo', membershipFee: 25000 },
+      membership: {
+        subscriptionStatus: 'first_payment_pending', initAmount: 25000,
+        paidInstallments: 0, startDate: '2026-09-01T00:00:00Z',
+      },
+      nextInstallment: {
+        installmentId: 901, installmentNumber: 1, installmentAmount: 25000,
+        nextDueDate: null, blockedDate: null,
+      },
+      hasDebt: false,
+      mercadopago: { publicKey: 'APP_USR-x', concept: 'team_subscription', marketplace: true },
+    });
+  });
+
+  // Equipo gratis: el backend corta antes y no manda next_installment ni
+  // mercadopago. La UI usa `nextInstallment` para decidir si hay algo que
+  // pagar, así que tiene que quedar null, no un objeto a medias.
+  test('nextInstallment y mercadopago quedan null cuando el backend los omite', () => {
+    const free = {
+      team: { id: 1, name: 'Gratis', membership_fee: 0 },
+      membership: { subscription_status: 'active', init_amount: 0, paid_installments: 0, start_date: null },
+      has_debt: false,
+    };
+    const model = toTeamSubscriptionModel(free);
+    expect(model.nextInstallment).toBeNull();
+    expect(model.mercadopago).toBeNull();
+    expect(model.membership.subscriptionStatus).toBe('active');
+  });
+
+  test('has_debt se normaliza a boolean', () => {
+    expect(toTeamSubscriptionModel({ ...dto, has_debt: undefined }).hasDebt).toBe(false);
+    expect(toTeamSubscriptionModel({ ...dto, has_debt: true }).hasDebt).toBe(true);
+  });
+
+  test('devuelve null para dto falsy', () => {
+    expect(toTeamSubscriptionModel(null)).toBeNull();
+  });
+});
+
+describe('toTeamConfigurationModel', () => {
+  test('mapea max_members y minimum_fee', () => {
+    expect(toTeamConfigurationModel({ max_members: 25, minimum_fee: 20000 })).toEqual({ maxMembers: 25, minimumFee: 20000 });
+  });
+
+  test('devuelve null para dto falsy', () => {
+    expect(toTeamConfigurationModel(null)).toBeNull();
   });
 });
 

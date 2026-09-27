@@ -39,12 +39,14 @@ function buildSeedTeams() {
     {
       id: 2, name: 'Running Cordoba Norte', description: 'Grupo competitivo orientado a carreras de calle de 10K y 21K.',
       level: 'semi-profesional', max_members: 20, owner_id: 99, requirements: 'Experiencia previa en carreras de calle.',
+      membership_fee: 25000,
       status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'CD', city: 'Córdoba Capital', street: null, number: null,
       created_at: now, updated_at: now,
     },
     {
       id: 3, name: 'Maraton Runners', description: 'Preparación específica para maratón y ultramaratón.',
       level: 'profesional', max_members: 20, owner_id: 99, requirements: 'Base aeróbica mínima de 60km semanales.',
+      membership_fee: 40000,
       status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'SF', city: 'Rosario', street: null, number: null,
       created_at: now, updated_at: now,
     },
@@ -100,6 +102,8 @@ export async function mockCreateTeam(payload) {
     max_members: payload.max_members,
     owner_id: payload.owner_id,
     requirements: payload.requirements ?? null,
+    // 0 = equipo gratis (mismo default que teams.membership_fee en el backend).
+    membership_fee: payload.membership_fee ?? 0,
     status: 'activo',
     country: null,
     province: null,
@@ -176,6 +180,12 @@ export function __getMockTeamName(teamId) {
 
 export function __getMockTeamOwnerId(teamId) {
   return mockTeams.find((t) => String(t.id) === String(teamId))?.owner_id ?? null;
+}
+
+// Usado por team-subscriptions-mock.js para resolver la cuota del equipo sin
+// duplicar el seed, mismo criterio que __getAllMockTeams.
+export function __getMockTeamMembershipFee(teamId) {
+  return mockTeams.find((t) => String(t.id) === String(teamId))?.membership_fee ?? 0;
 }
 
 // Getter de solo lectura sobre el array completo — usado por
