@@ -3,7 +3,7 @@ import { USE_MOCKS } from '../config/env.js';
 import {
   mockGetReceivedPayments,
   mockGetReceivedPaymentsSummary,
-  mockGetMyTierPayments,
+  mockGetPaymentHistory,
 } from './__mocks__/payment-history-mock.js';
 
 // Historial de pagos y cobros del entrenador. Contrato del change de OpenSpec
@@ -34,9 +34,10 @@ export async function getReceivedPaymentsSummary({ months = 6 } = {}) {
   return await api.get(`/payments/received/summary${toQueryString({ months })}`);
 }
 
-// GET /api/v1/payments/mine?page&role — payment.TierPaymentsResponse
-// {payments, has_more}: pagos de suscripción de tier propios.
-export async function getMyTierPayments({ page = 1, role = 'entrenador' } = {}) {
-  if (USE_MOCKS) return await mockGetMyTierPayments({ page, role });
-  return await api.get(`/payments/mine${toQueryString({ page, role })}`);
+// GET /api/v1/payments/history?page&type&status — payment.HistoryPaymentsResponse
+// {payments, has_more}: los pagos que hizo el usuario. `type` es
+// subscription (tier) o trainer_payment (membresía de un equipo).
+export async function getPaymentHistory({ page = 1, type, status } = {}) {
+  if (USE_MOCKS) return await mockGetPaymentHistory({ page, type, status });
+  return await api.get(`/payments/history${toQueryString({ page, type, status })}`);
 }

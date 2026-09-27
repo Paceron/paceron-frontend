@@ -534,11 +534,15 @@ export function toReceivedPaymentModel(dto) {
   };
 }
 
-export function toTierPaymentModel(dto) {
+// Pago del historial del usuario (GET /payments/history). Según `type` viene
+// `tier`, o `team` + `trainer`; el otro par queda en null.
+export function toHistoryPaymentModel(dto) {
   if (!dto) return null;
+  const trainerName = [dto.trainer?.name, dto.trainer?.surname].filter(Boolean).join(' ');
   return {
     id: String(dto.id),
     mpPaymentId: dto.mp_payment_id,
+    type: dto.type,
     status: dto.status,
     statusGroup: dto.status_group,
     statusDetail: dto.status_detail,
@@ -549,8 +553,9 @@ export function toTierPaymentModel(dto) {
     installmentId: dto.installment_id,
     installmentNumber: dto.installment_number,
     dueDate: dto.due_date ?? null,
-    subscriptionId: dto.subscription_id,
     tier: dto.tier ? { id: String(dto.tier.id), name: dto.tier.name, roleName: dto.tier.role_name } : null,
+    team: dto.team ? { id: String(dto.team.id), name: dto.team.name } : null,
+    trainer: dto.trainer ? { id: String(dto.trainer.id), fullName: trainerName } : null,
   };
 }
 

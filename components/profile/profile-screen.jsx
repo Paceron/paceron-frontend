@@ -19,6 +19,7 @@ import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
 import { RoleSwitchToggle } from './role-switch-toggle.jsx';
 import { PaymentsSummaryCard } from './payments-summary-card.jsx';
+import { PaymentsHistoryCard } from './payments-history-card.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 
 const DASH = '—';
@@ -220,8 +221,8 @@ export function ProfileScreen() {
   const { deactivateAccount, deactivateTrainerRole, uploadPhoto, deletePhoto } = useUserMutations();
   const { roles } = usePermissions(userId);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
-  // Pagos y cobros depende del rol ACTIVO, no solo de tenerlo: como corredor
-  // no se ve aunque el usuario también sea entrenador.
+  // El resumen de cobros depende del rol ACTIVO, no solo de tenerlo: como
+  // corredor se ve la tarjeta del historial de pagos, igual que cualquier usuario.
   const showPayments = hasTrainerRole && activeRole === 'trainer';
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTrainerOpen, setConfirmTrainerOpen] = useState(false);
@@ -330,7 +331,7 @@ export function ProfileScreen() {
 
         {hasTrainerRole && <TrainerDataSection bankAlias={user.bankAlias} />}
 
-        {showPayments && <PaymentsSummaryCard />}
+        {showPayments ? <PaymentsSummaryCard /> : <PaymentsHistoryCard />}
 
         <Card title="Datos personales" icon="account-details">
           <Field label="Nombre" value={display(user.name)} />

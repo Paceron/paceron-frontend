@@ -125,39 +125,66 @@ function buildReceived() {
   return rows.sort((a, b) => (b.created_at === a.created_at ? b.id - a.id : b.created_at.localeCompare(a.created_at)));
 }
 
-function buildMine() {
+// Historial del usuario logueado: sus suscripciones de tier y lo que le pagó a
+// entrenadores por pertenecer a sus equipos.
+function buildHistory() {
   const rows = [];
   let id = 700;
   const tiers = {
     premium: { id: 4, name: 'Premium_entrenador', role_name: 'entrenador', amount: 9999 },
     medium: { id: 3, name: 'Medium_entrenador', role_name: 'entrenador', amount: 4999 },
   };
-  const push = (tier, number, monthsAgo, status, hourOffset = 0) => {
+  const base = (status, monthsAgo, day, hourOffset, method) => ({
+    id: id++,
+    mp_payment_id: String(1318880000 + id),
+    status,
+    status_group: statusGroupOf(status),
+    status_detail: status === 'approved' ? 'accredited' : 'cc_rejected_other_reason',
+    currency_id: 'ARS',
+    payment_method_id: method,
+    created_at: artNoon(monthsAgo, day, hourOffset),
+  });
+  const subscription = (tier, number, monthsAgo, status, hourOffset = 0) => {
     rows.push({
-      id: id++,
-      mp_payment_id: String(1318880000 + id),
-      status,
-      status_group: statusGroupOf(status),
-      status_detail: status === 'approved' ? 'accredited' : 'cc_rejected_other_reason',
+      ...base(status, monthsAgo, 2, hourOffset, 'master'),
+      type: 'subscription',
       amount: tier.amount,
-      currency_id: 'ARS',
-      payment_method_id: 'master',
-      created_at: artNoon(monthsAgo, 2, hourOffset),
       installment_id: 2000 + number,
       installment_number: number,
       due_date: number === 1 ? null : artNoon(monthsAgo, 5),
-      subscription_id: tier === tiers.medium ? 54 : 55,
       tier: { id: tier.id, name: tier.name, role_name: tier.role_name },
+      team: null,
+      trainer: null,
     });
   };
-  push(tiers.medium, 1, 5, 'approved');
-  push(tiers.premium, 1, 4, 'approved');
-  push(tiers.premium, 2, 3, 'approved');
+  const trainerPayment = (number, monthsAgo, status, method, hourOffset = 0) => {
+    rows.push({
+      ...base(status, monthsAgo, 8, hourOffset, method),
+      type: 'trainer_payment',
+      amount: 18000,
+      installment_id: 2500 + number,
+      installment_number: number,
+      due_date: number === 1 ? null : artNoon(monthsAgo, 10),
+      tier: null,
+      team: { id: 33, name: 'Club de Corredores Palermo' },
+      trainer: { id: 51, name: 'Mariana', surname: 'Ibarra' },
+    });
+  };
+
+  subscription(tiers.medium, 1, 5, 'approved');
+  subscription(tiers.premium, 1, 4, 'approved');
+  subscription(tiers.premium, 2, 3, 'approved');
   // Tarjeta rechazada y reintento aprobado en la misma cuota.
-  push(tiers.premium, 3, 2, 'rejected');
-  push(tiers.premium, 3, 2, 'approved', 3);
-  push(tiers.premium, 4, 1, 'approved');
-  push(tiers.premium, 5, 0, 'approved');
+  subscription(tiers.premium, 3, 2, 'rejected');
+  subscription(tiers.premium, 3, 2, 'approved', 3);
+  subscription(tiers.premium, 4, 1, 'approved');
+  subscription(tiers.premium, 5, 0, 'approved');
+
+  trainerPayment(1, 3, 'approved', 'visa');
+  trainerPayment(2, 2, 'approved', 'account_money');
+  trainerPayment(3, 1, 'approved', 'debvisa');
+  trainerPayment(4, 0, 'in_process', 'visa');
+
   return rows.sort((a, b) => (b.created_at === a.created_at ? b.id - a.id : b.created_at.localeCompare(a.created_at)));
 }
 
@@ -180,9 +207,14 @@ export async function mockGetReceivedPayments({ page = 1, teamId, status } = {})
   return paginate(items, page);
 }
 
-// GET /api/v1/payments/mine
-export async function mockGetMyTierPayments({ page = 1, role } = {}) {
-  const items = buildMine().filter((p) => !role || p.tier?.role_name === role);
+// GET /api/v1/payments/history
+export async function mockGetPaymentHistory({ page = 1, type, status } = {}) {
+  let items = buildHistory();
+  if (type) items = items.filter((p) => p.type === type);
+  if (status) {
+    const statuses = STATUS_GROUP_STATUSES[status] ?? [];
+    items = items.filter((p) => statuses.includes(p.status));
+  }
   return paginate(items, page);
 }
 

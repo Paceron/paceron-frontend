@@ -1,13 +1,13 @@
 import {
   mockGetReceivedPayments,
   mockGetReceivedPaymentsSummary,
-  mockGetMyTierPayments,
+  mockGetPaymentHistory,
   __setMockPaymentHistoryNow,
   __resetMockPaymentHistory,
 } from '../services/__mocks__/payment-history-mock.js';
 import {
   toReceivedPaymentModel,
-  toTierPaymentModel,
+  toHistoryPaymentModel,
   toPaymentsPageModel,
   toReceivedSummaryModel,
 } from '../services/normalizers.js';
@@ -112,19 +112,41 @@ describe('payment-history mock — resumen', () => {
   });
 });
 
-describe('payment-history mock — mis pagos', () => {
-  test('lista los pagos de tier con la primera cuota sin vencimiento', async () => {
-    const res = await mockGetMyTierPayments({ page: 1, role: 'entrenador' });
+describe('payment-history mock — historial', () => {
+  test('trae suscripciones y pagos a entrenadores, del más reciente al más antiguo', async () => {
+    const res = await mockGetPaymentHistory({ page: 1 });
     expect(res.has_more).toBe(false);
-    expect(res.payments.length).toBe(7);
-    const first = res.payments.find((p) => p.installment_number === 1 && p.tier.name === 'Medium_entrenador');
-    expect(first.due_date).toBeNull();
-    expect(res.payments.some((p) => p.status === 'rejected')).toBe(true);
+    expect(res.payments.length).toBe(11);
+    expect(new Set(res.payments.map((p) => p.type))).toEqual(new Set(['subscription', 'trainer_payment']));
+    const dates = res.payments.map((p) => p.created_at);
+    expect([...dates].sort().reverse()).toEqual(dates);
   });
 
-  test('filtra por rol', async () => {
-    const res = await mockGetMyTierPayments({ page: 1, role: 'corredor' });
-    expect(res.payments).toHaveLength(0);
+  test('cada tipo trae su referencia y el otro par en null', async () => {
+    const { payments } = await mockGetPaymentHistory({ page: 1 });
+    payments.filter((p) => p.type === 'subscription').forEach((p) => {
+      expect(p.tier).not.toBeNull();
+      expect(p.team).toBeNull();
+      expect(p.trainer).toBeNull();
+    });
+    payments.filter((p) => p.type === 'trainer_payment').forEach((p) => {
+      expect(p.tier).toBeNull();
+      expect(p.team.name).toBeTruthy();
+      expect(p.trainer.surname).toBeTruthy();
+    });
+  });
+
+  test('filtra por tipo y por estado', async () => {
+    const subs = await mockGetPaymentHistory({ page: 1, type: 'subscription' });
+    expect(subs.payments.length).toBe(7);
+    const trainer = await mockGetPaymentHistory({ page: 1, type: 'trainer_payment', status: 'pending' });
+    expect(trainer.payments).toHaveLength(1);
+    expect(trainer.payments[0].status).toBe('in_process');
+  });
+
+  test('la primera cuota no tiene vencimiento', async () => {
+    const { payments } = await mockGetPaymentHistory({ page: 1 });
+    payments.filter((p) => p.installment_number === 1).forEach((p) => expect(p.due_date).toBeNull());
   });
 });
 
@@ -148,10 +170,12 @@ describe('normalizers de historial de pagos', () => {
     expect(model.payer.fullName).toBe('');
   });
 
-  test('toTierPaymentModel', () => {
-    const model = toTierPaymentModel({ id: 790, amount: 9999, installment_number: 2, due_date: null, subscription_id: 55, tier: { id: 4, name: 'Premium_entrenador', role_name: 'entrenador' } });
-    expect(model).toEqual(expect.objectContaining({ id: '790', amount: 9999, dueDate: null, tier: { id: '4', name: 'Premium_entrenador', roleName: 'entrenador' } }));
-    expect(toTierPaymentModel({ id: 1, tier: null }).tier).toBeNull();
+  test('toHistoryPaymentModel', () => {
+    const tier = toHistoryPaymentModel({ id: 790, type: 'subscription', amount: 9999, installment_number: 2, due_date: null, tier: { id: 4, name: 'Premium_entrenador', role_name: 'entrenador' }, team: null, trainer: null });
+    expect(tier).toEqual(expect.objectContaining({ id: '790', type: 'subscription', dueDate: null, tier: { id: '4', name: 'Premium_entrenador', roleName: 'entrenador' }, team: null, trainer: null }));
+    const trainer = toHistoryPaymentModel({ id: 812, type: 'trainer_payment', tier: null, team: { id: 12, name: 'Runners' }, trainer: { id: 3, name: 'Pepa', surname: 'Lota' } });
+    expect(trainer).toEqual(expect.objectContaining({ tier: null, team: { id: '12', name: 'Runners' }, trainer: { id: '3', fullName: 'Pepa Lota' } }));
+    expect(toHistoryPaymentModel(null)).toBeNull();
   });
 
   test('toPaymentsPageModel', () => {

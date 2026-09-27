@@ -1,14 +1,15 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth-store.js';
-import { getMyTierPayments, getReceivedPayments, getReceivedPaymentsSummary } from '../services/payment-history.js';
+import { getPaymentHistory, getReceivedPayments, getReceivedPaymentsSummary } from '../services/payment-history.js';
 import {
   toPaymentsPageModel,
   toReceivedPaymentModel,
   toReceivedSummaryModel,
-  toTierPaymentModel,
+  toHistoryPaymentModel,
 } from '../services/normalizers.js';
 
-// Estado de servidor del historial de pagos del entrenador. Ver
+// Estado de servidor del historial de pagos (de cualquier usuario) y de los
+// cobros del entrenador. Ver
 // docs/superpowers/specs/2026-09-26-trainer-payments-dashboard-design.md.
 //
 // Los listados usan useInfiniteQuery, el primero del repo. use-team-search.js
@@ -19,7 +20,7 @@ import {
 export const PAYMENT_HISTORY_KEYS = {
   summary: (userId) => ['payments-received-summary', userId],
   received: (userId) => ['payments-received', userId],
-  mine: (userId) => ['payments-mine', userId],
+  history: (userId) => ['payments-history', userId],
 };
 
 export function useReceivedPaymentsSummary({ enabled = true, months = 6 } = {}) {
@@ -72,13 +73,14 @@ export function useReceivedPayments({ teamId = '', status = '', enabled = true }
   });
 }
 
-// Pagos de suscripción de tier propios, solo del rol entrenador.
-export function useMyTierPayments({ enabled = true } = {}) {
+// Historial de pagos propios: suscripciones de tier y pagos a entrenadores.
+// type y status ('' = todos) son parte de la key.
+export function usePaymentHistory({ type = '', status = '', enabled = true } = {}) {
   const userId = useAuthStore((s) => s.userId);
   return usePaymentsInfiniteList({
-    queryKey: [...PAYMENT_HISTORY_KEYS.mine(userId), 'entrenador'],
-    fetchPage: (page) => getMyTierPayments({ page, role: 'entrenador' }),
-    mapItem: toTierPaymentModel,
+    queryKey: [...PAYMENT_HISTORY_KEYS.history(userId), { type, status }],
+    fetchPage: (page) => getPaymentHistory({ page, type, status }),
+    mapItem: toHistoryPaymentModel,
     enabled: enabled && Boolean(userId),
   });
 }

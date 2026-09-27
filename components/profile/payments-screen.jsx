@@ -1,23 +1,28 @@
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { isMobile, isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { usePermissions } from '../../hooks/use-user.js';
+import { usePermissions, useUser } from '../../hooks/use-user.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
-import { useMyTierPayments, useReceivedPayments, useReceivedPaymentsSummary } from '../../hooks/use-payment-history.js';
+import { usePaymentHistory, useReceivedPayments, useReceivedPaymentsSummary } from '../../hooks/use-payment-history.js';
+import { buildReceiptHtml, receiptFileName } from '../../utils/receipt-html.js';
+// Sin extensión a propósito: hay split .js / .web.js y Metro solo resuelve por
+// plataforma cuando el specifier no la trae (quirk en CLAUDE.md).
+import { shareReceiptPdf } from '../../services/receipt';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { PaymentsDashboard } from './payments-dashboard.jsx';
-import { PaymentsFilters } from './payments-filters.jsx';
+import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
 
-const TABS = [
+const TRAINER_TABS = [
   { id: 'received', label: 'Cobros', icon: 'cash-plus' },
-  { id: 'mine', label: 'Mis pagos', icon: 'cash-minus' },
+  { id: 'history', label: 'Mis pagos', icon: 'receipt-text-outline' },
 ];
 
 function PaymentsScreenContent() {
@@ -27,29 +32,44 @@ function PaymentsScreenContent() {
   const isWide = isWeb && !isNarrowWeb;
   const userId = useAuthStore((s) => s.userId);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const { roles, loading: rolesLoading } = usePermissions(userId);
-  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
-  const isTrainer = activeRole === 'trainer';
+  const { user } = useUser(userId);
+  const { roles } = usePermissions(userId);
+  // El entrenador activo suma sus cobros y el dashboard; cualquier otro usuario
+  // ve solo su historial de pagos.
+  const isTrainer = activeRole === 'trainer' && roles.some((r) => r.name === 'entrenador');
 
   const [tab, setTab] = useState('received');
+  const activeTab = isTrainer ? tab : 'history';
   const [teamId, setTeamId] = useState('');
-  const [status, setStatus] = useState('');
+  const [receivedStatus, setReceivedStatus] = useState('');
+  const [historyType, setHistoryType] = useState('');
+  const [historyStatus, setHistoryStatus] = useState('');
+  const [receiptBusyId, setReceiptBusyId] = useState(null);
 
   const summary = useReceivedPaymentsSummary({ enabled: isTrainer });
-  const received = useReceivedPayments({ teamId, status, enabled: isTrainer && tab === 'received' });
-  const mine = useMyTierPayments({ enabled: isTrainer && tab === 'mine' });
-  const activeList = tab === 'received' ? received : mine;
+  const received = useReceivedPayments({ teamId, status: receivedStatus, enabled: isTrainer && activeTab === 'received' });
+  const history = usePaymentHistory({ type: historyType, status: historyStatus, enabled: activeTab === 'history' });
+  const activeList = activeTab === 'received' ? received : history;
 
-  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([summary.refetch(), activeList.refetch()]));
-
-  // El rol activo se lee sincrónico del store (useRoleReconciliation lo baja a
-  // runner si el rol real no existe). No se redirige por hasTrainerRole
-  // mientras los permisos cargan, para evitar un redirect espurio.
-  if (!isTrainer) return <Redirect href="/profile" />;
+  const { refreshing, onRefresh } = usePullToRefresh(() =>
+    Promise.all([isTrainer ? summary.refetch() : null, activeList.refetch()])
+  );
 
   const selectStatus = (group) => {
     setTab('received');
-    setStatus(group);
+    setReceivedStatus(group);
+  };
+
+  const handleReceipt = async (payment) => {
+    setReceiptBusyId(payment.id);
+    try {
+      const payer = { fullName: [user?.name, user?.surname].filter(Boolean).join(' '), email: user?.email };
+      await shareReceiptPdf({ html: buildReceiptHtml({ payment, payer }), fileName: receiptFileName(payment) });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'No pudimos generar el comprobante', text2: error?.message });
+    } finally {
+      setReceiptBusyId(null);
+    }
   };
 
   return (
@@ -74,23 +94,14 @@ function PaymentsScreenContent() {
           </Pressable>
           <Text className="text-sm text-slate-400 dark:text-slate-600" nativeID="payments-screen-breadcrumb-separator" testID="payments-screen-breadcrumb-separator">/</Text>
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="payments-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="payments-screen-title">
-            Pagos y cobros
+            {isTrainer ? 'Pagos y cobros' : 'Historial de pagos'}
           </Text>
         </View>
 
-        {!rolesLoading && !hasTrainerRole ? (
-          <View className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-surface" nativeID="payments-screen-not-trainer" testID="payments-screen-not-trainer">
-            <Text className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="payments-screen-not-trainer-text" testID="payments-screen-not-trainer-text">
-              Esta sección es para entrenadores. Activá tu perfil de entrenador para cobrar las mensualidades de tus equipos.
-            </Text>
-            <Pressable className="self-start rounded-full bg-primary px-5 py-2.5 hover:opacity-90 active:opacity-80" nativeID="payments-screen-not-trainer-back" onPress={() => router.replace('/profile')} testID="payments-screen-not-trainer-back">
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="payments-screen-not-trainer-back-label" testID="payments-screen-not-trainer-back-label">Volver a Mi perfil</Text>
-            </Pressable>
-          </View>
-        ) : (
+        {isTrainer ? (
           <>
             <PaymentsDashboard
-              activeStatus={status}
+              activeStatus={receivedStatus}
               failed={summary.failed}
               isWide={isWide}
               loading={summary.loading}
@@ -98,47 +109,56 @@ function PaymentsScreenContent() {
               onSelectStatus={selectStatus}
               summary={summary.summary}
             />
+            <TabBar active={activeTab} onChange={setTab} scope="payments-screen-tabs" tabs={TRAINER_TABS} />
+          </>
+        ) : null}
 
-            <TabBar active={tab} onChange={setTab} scope="payments-screen-tabs" tabs={TABS} />
-
-            {tab === 'received' ? (
-              <PaymentsFilters
-                isWide={isWide}
-                onChangeStatus={setStatus}
-                onChangeTeam={setTeamId}
-                status={status}
-                teamId={teamId}
-                teams={summary.summary?.byTeam ?? []}
-              />
-            ) : null}
-
-            {tab === 'received' && (status === 'pending' || status === 'rejected') ? (
+        {activeTab === 'received' ? (
+          <>
+            <PaymentsFilters
+              isWide={isWide}
+              onChangeStatus={setReceivedStatus}
+              onChangeTeam={setTeamId}
+              status={receivedStatus}
+              teamId={teamId}
+              teams={summary.summary?.byTeam ?? []}
+            />
+            {receivedStatus === 'pending' || receivedStatus === 'rejected' ? (
               <Text className="mb-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-screen-attempts-note" testID="payments-screen-attempts-note">
                 Se listan todos los intentos de pago. El resumen cuenta cuotas: una cuota que se rechazó y después se pagó no figura como rechazada.
               </Text>
             ) : null}
-
-            <PaymentsList
-              failed={activeList.failed}
-              hasMore={activeList.hasMore}
-              isWide={isWide}
-              items={activeList.items}
-              loadMore={activeList.loadMore}
-              loading={activeList.loading}
-              loadingMore={activeList.loadingMore}
-              onRetry={() => activeList.refetch()}
-              variant={tab}
-            />
+          </>
+        ) : (
+          <>
+            <Text className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="payments-screen-history-intro" testID="payments-screen-history-intro">
+              Tus pagos de suscripción y lo que les pagaste a tus entrenadores. De los pagos aprobados podés descargar el comprobante en PDF.
+            </Text>
+            <PaymentsHistoryFilters isWide={isWide} onChangeStatus={setHistoryStatus} onChangeType={setHistoryType} status={historyStatus} type={historyType} />
           </>
         )}
+
+        <PaymentsList
+          failed={activeList.failed}
+          hasMore={activeList.hasMore}
+          isWide={isWide}
+          items={activeList.items}
+          loadMore={activeList.loadMore}
+          loading={activeList.loading}
+          loadingMore={activeList.loadingMore}
+          onReceipt={handleReceipt}
+          onRetry={() => activeList.refetch()}
+          receiptBusyId={receiptBusyId}
+          variant={activeTab}
+        />
       </View>
     </ScrollView>
   );
 }
 
-// Detalle de pagos y cobros del entrenador, al que se llega desde la tarjeta
-// "Pagos y cobros" de Mi perfil. Ver
-// docs/superpowers/specs/2026-09-26-trainer-payments-dashboard-design.md.
+// Historial de pagos de cualquier usuario y, con el rol entrenador activo,
+// también sus cobros y el dashboard. Se llega desde la tarjeta de Mi perfil.
+// Ver docs/superpowers/specs/2026-09-26-trainer-payments-dashboard-design.md.
 export function PaymentsScreen() {
   return (
     <RequireAuth>

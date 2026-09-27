@@ -1,16 +1,16 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../../theme/colors.js';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
-import { MINE_COLUMNS, PaymentRow, RECEIVED_COLUMNS } from './payment-row.jsx';
+import { HISTORY_COLUMNS, PaymentRow, RECEIVED_COLUMNS } from './payment-row.jsx';
 
 const EMPTY_TEXT = {
   received: 'No hay cobros para mostrar con estos filtros.',
-  mine: 'Todavía no hiciste pagos de suscripción.',
+  history: 'Todavía no hay pagos para mostrar.',
 };
 
 // Lista paginada de pagos. En web ancha es una tabla con encabezado; en web
 // angosta y nativo, una fila de dos líneas por pago.
-export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadingMore, failed, onRetry, isWide }) {
+export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadingMore, failed, onRetry, isWide, onReceipt, receiptBusyId }) {
   const colors = useThemeColors();
   const scope = `payments-list-${variant}`;
 
@@ -45,7 +45,7 @@ export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadi
     );
   }
 
-  const columns = variant === 'received' ? RECEIVED_COLUMNS : MINE_COLUMNS;
+  const columns = variant === 'received' ? RECEIVED_COLUMNS : HISTORY_COLUMNS;
 
   return (
     <View nativeID={scope} testID={scope}>
@@ -62,7 +62,7 @@ export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadi
           </View>
         ) : null}
         {items.map((payment) => (
-          <PaymentRow key={payment.id} isWide={isWide} payment={payment} variant={variant} />
+          <PaymentRow key={payment.id} isWide={isWide} onReceipt={onReceipt} payment={payment} receiptBusy={receiptBusyId === payment.id} variant={variant} />
         ))}
       </View>
 
