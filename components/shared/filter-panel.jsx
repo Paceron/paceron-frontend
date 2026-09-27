@@ -45,7 +45,7 @@ export function FilterPanel({ hasActiveFilters, loading, onClear, children, idPr
       </View>
 
       {open && (
-        <View className="mt-3 flex-row gap-2" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
+        <View className="mt-3 flex-row flex-wrap gap-2" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
           {children}
         </View>
       )}

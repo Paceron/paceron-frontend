@@ -8,7 +8,12 @@ import { toSessionInstanceModel } from '../services/normalizers.js';
 export function useSessionInstance(sessionInstanceId, enabled) {
   const query = useQuery({
     queryKey: ['session-instance', String(sessionInstanceId)],
-    queryFn: () => getSessionInstance(sessionInstanceId).then((res) => toSessionInstanceModel(res?.data ?? null)),
+    // api.get() devuelve el body crudo (sin envolver en `{data}` — a
+    // diferencia de otros endpoints hermanos bajo /session-instances/:id/*
+    // (runner, feedback) cuyo backend sí envuelve su respuesta así). Este
+    // endpoint (Gap 14) devuelve el objeto plano; se tolera igual el caso
+    // envuelto por si el backend cambia de convención más adelante.
+    queryFn: () => getSessionInstance(sessionInstanceId).then((res) => toSessionInstanceModel(res?.data ?? res ?? null)),
     enabled: Boolean(sessionInstanceId) && enabled,
   });
   return { sessionInstance: query.data ?? null, loading: query.isLoading };

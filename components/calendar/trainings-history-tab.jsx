@@ -143,7 +143,7 @@ export function TrainingsHistoryTab({ role }) {
   return (
     <View className="relative flex-1" nativeID="trainings-history-tab-root" ref={containerRef} testID="trainings-history-tab-root">
       <FilterPanel hasActiveFilters={hasActiveFilters} idPrefix="trainings-history-tab-filter" loading={loading} onClear={handleClearFilters}>
-        <View className="flex-1" nativeID="trainings-history-tab-filter-team-wrapper" testID="trainings-history-tab-filter-team-wrapper">
+        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-team-wrapper" testID="trainings-history-tab-filter-team-wrapper">
           <ResponsiveSelectField
             dense
             disabled={teamOptions.length === 0}
@@ -156,7 +156,7 @@ export function TrainingsHistoryTab({ role }) {
           />
         </View>
         {role === 'trainer' && (
-          <View className="flex-1" nativeID="trainings-history-tab-filter-group-wrapper" testID="trainings-history-tab-filter-group-wrapper">
+          <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-group-wrapper" testID="trainings-history-tab-filter-group-wrapper">
             <ResponsiveSelectField
               dense
               disabled={!filterTeamId || groupOptions.length === 0}
@@ -169,13 +169,13 @@ export function TrainingsHistoryTab({ role }) {
             />
           </View>
         )}
-        <View className="flex-1" nativeID="trainings-history-tab-filter-date-from-wrapper" testID="trainings-history-tab-filter-date-from-wrapper">
+        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-date-from-wrapper" testID="trainings-history-tab-filter-date-from-wrapper">
           <DateField label="Desde" onChange={setDateFromInput} value={dateFromInput} />
         </View>
-        <View className="flex-1" nativeID="trainings-history-tab-filter-date-to-wrapper" testID="trainings-history-tab-filter-date-to-wrapper">
+        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-date-to-wrapper" testID="trainings-history-tab-filter-date-to-wrapper">
           <DateField label="Hasta" onChange={setDateToInput} value={dateToInput} />
         </View>
-        <View className="flex-1" nativeID="trainings-history-tab-filter-sort-wrapper" testID="trainings-history-tab-filter-sort-wrapper">
+        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-sort-wrapper" testID="trainings-history-tab-filter-sort-wrapper">
           <ResponsiveSelectField dense hideErrorRow label="Ordenar por" onChange={setSort} options={SORT_OPTIONS} value={sort} />
         </View>
         <Pressable
@@ -188,7 +188,7 @@ export function TrainingsHistoryTab({ role }) {
         </Pressable>
         {items.length > 0 && (
           <>
-            <View className="flex-1" nativeID="trainings-history-tab-filter-exercise-wrapper" testID="trainings-history-tab-filter-exercise-wrapper">
+            <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-exercise-wrapper" testID="trainings-history-tab-filter-exercise-wrapper">
               <ResponsiveSelectField
                 dense
                 hideErrorRow
@@ -199,7 +199,7 @@ export function TrainingsHistoryTab({ role }) {
                 value={filterExerciseId}
               />
             </View>
-            <View className="flex-1" nativeID="trainings-history-tab-filter-set-wrapper" testID="trainings-history-tab-filter-set-wrapper">
+            <View className="min-w-[90px] flex-1" nativeID="trainings-history-tab-filter-set-wrapper" testID="trainings-history-tab-filter-set-wrapper">
               <InputField
                 dense
                 disabled={!filterExerciseId}
@@ -212,7 +212,7 @@ export function TrainingsHistoryTab({ role }) {
               />
             </View>
             {role === 'trainer' && (
-              <View className="flex-1" nativeID="trainings-history-tab-filter-athlete-wrapper" testID="trainings-history-tab-filter-athlete-wrapper">
+              <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-athlete-wrapper" testID="trainings-history-tab-filter-athlete-wrapper">
                 <ResponsiveSelectField
                   dense
                   hideErrorRow
@@ -306,7 +306,7 @@ export function TrainingsHistoryTab({ role }) {
         </View>
       )}
 
-      <AnimatedDropdown anchorStyle={rowMenu ? { left: rowMenu.anchor.x, top: rowMenu.anchor.y + rowMenu.anchor.height + 4, width: 208 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
+      <AnimatedDropdown anchorStyle={rowMenu ? { left: Math.max(8, rowMenu.anchor.x + rowMenu.anchor.width - 208), top: rowMenu.anchor.y + rowMenu.anchor.height + 4, width: 208 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
         {rowMenu && <TrainingsHistoryRowMenu onSelect={handleSelectFromMenu} onViewReview={handleViewReview} />}
       </AnimatedDropdown>
 
