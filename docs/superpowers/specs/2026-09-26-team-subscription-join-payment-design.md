@@ -229,12 +229,33 @@ helper manual — mismo criterio, y por la misma razón, que
    cuota, invitar a un segundo usuario, aceptar, y confirmar que
    `GET /users/{id}/teams/{team_id}/subscription` devuelve `first_payment_pending`
    con la cuota #1. Valida todo el flujo **menos el cobro**.
-4. **El cobro real no se puede verificar todavía.** Necesita credenciales de
-   sandbox de Mercado Pago (`MERCADOPAGO_ACCESS_TOKEN`/`PUBLIC_KEY`), una app de
-   OAuth (`MP_OAUTH_CLIENT_ID`/`SECRET`), una URL pública tipo ngrok para el
-   redirect y el webhook, y un entrenador de prueba con su cuenta MP conectada.
-   Hasta entonces la pantalla se prueba hasta el punto en que el brick pide la
-   tarjeta.
+4. **Cobro real (2026-09-27, contra `paceron-backend-as9c.onrender.com`, `develop`, con
+   credenciales reales de sandbox provistas por el equipo):**
+   - OAuth mp-connect real, de punta a punta: `GET /mercadopago/connect` → login+consentimiento
+     en el navegador con un test user vendedor (creado vía la API de test users de MP,
+     `POST https://api.mercadopago.com/users/test_user`, sin necesitar el panel) →
+     `GET /mercadopago/connect/status` → `connected: true`. Confirmó además que el `state`
+     CSRF vence rápido y que hay que completar el consentimiento sin demora.
+   - Equipo con cuota → invitación → aceptar → `GET .../subscription` devuelve
+     `first_payment_pending` + cuota #1, igual que documentado.
+   - `POST /payments/preference` con `concept: "team_subscription"` devuelve la **public key
+     del vendedor** (`TEST-82b19115-...`), distinta de la del integrador
+     (`TEST-9a1e5d38-...`) — confirma que el fix de `plan_fix_pagos.md` (tokenizar con la PK
+     del vendedor en split) **ya está aplicado** en `develop`.
+   - **Pago sin split: `approved` de punta a punta**, con tarjeta de sandbox real. Requiere
+     `payer_email` **arbitrario** (no `@testuser.com`) — con un email de test user real da
+     `400 Invalid users involved (2034)`.
+   - **Pago con split: bloqueado por una limitación de cuentas de sandbox de MP, no por
+     código.** `payer_email` arbitrario da `400 Invalid test user email (2198)` (el vendedor
+     sandbox exige un comprador real); un comprador test user real da `2034 Invalid users
+     involved` — porque el comprador y el vendedor son test users creados bajo la misma
+     app/cuenta de desarrollador (`client_id 2636114621042686`), y MP los trata como el mismo
+     árbol de identidad. Mismo límite que ya había hecho tropezar al equipo de backend
+     (`plan_fix_pagos.md` menciona haber tenido que descartar un vendedor y usar un comprador
+     de otra app para esquivarlo). **No es un bug de esta rama** — el contrato
+     frontend↔backend (payload, `concept`, fuente de la `public_key`, `marketplace`) quedó
+     validado con datos reales; falta únicamente separar el comprador y el vendedor de sandbox
+     en apps de MP distintas para probar el cobro efectivo.
 
 ## Nota para el equipo de backend (no es trabajo de esta rama)
 
@@ -246,3 +267,22 @@ dinero queda en la cuenta del entrenador y Paceron no retiene nada**. Ya está
 anotado como gap conocido en su propio `docs/CU/02-pago-participacion-equipo.md`
 y su `design.md` D9 lo especifica como pendiente. Vale avisarlo explícitamente
 antes de cualquier uso con dinero real.
+
+**Actualización sobre `plan_fix_pagos.md` (2026-09-27):** el fix descripto ahí
+(tokenizar el card token con la public key del **vendedor**, no la del
+integrador, cuando el pago es `team_subscription`) **ya está aplicado** —
+confirmado empíricamente: `POST /payments/preference` con split devuelve
+`TEST-82b19115-...` (la del vendedor conectado), distinta de la del integrador.
+Ese documento puede marcarse resuelto en ese punto puntual.
+
+Lo que **sigue bloqueando el pago con split en sandbox** es otra cosa, no
+cubierta por ese fix: el comprador y el vendedor de prueba usados (ambos
+creados vía la API de test users de MP con las credenciales de la app
+`paceron`, `client_id 2636114621042686`) son tratados por MP como la misma
+identidad — `400 Invalid users involved (2034)`. Un `payer_email` arbitrario
+tampoco sirve (`400 Invalid test user email`, código 2198 — el vendedor
+sandbox exige un comprador test user real). El propio `plan_fix_pagos.md` ya
+había topado con esto antes (mencionan haber descartado un vendedor y usado un
+comprador de "otra app" para esquivarlo) — para retomarlo, el comprador de
+prueba tiene que salir de una app de Mercado Pago **distinta** a la del
+vendedor conectado.
