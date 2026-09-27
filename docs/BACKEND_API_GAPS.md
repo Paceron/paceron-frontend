@@ -471,7 +471,56 @@ sí está resuelta, ver spec citada arriba).
 
 ## Gap 13 — endpoints de historial de entrenamientos realizados (piezas 2/3 del sub-proyecto de calendario)
 
-Sin resolver. Backend real de `workout_feedback` ya existe (Gap 12, resuelto) pero solo permite
+**[RESUELTO 2026-09-27, PR #84 del backend hacia `develop`].** Contrato final, confirmado contra
+el swagger real (`docs/FRONTEND_IMPACTO_INSTANCIACION.md` §9 del repo backend) — reemplaza el
+borrador de abajo en los puntos donde difiere:
+
+- **`exercise_id` (filtro) y `available_exercises` matchean por FAMILIA de catálogo, no por
+  instancia** — este es el único punto donde el contrato final difiere del borrador original (se
+  pidió el ajuste tras revisar que, sin esto, la misma "Trote" hecha en sesiones distintas
+  aparecía duplicada N veces en el dropdown de segundo nivel). `available_exercises[].id` =
+  `catalog_exercise_id` (fallback al id de instancia solo para instancias legado sin origen de
+  catálogo). Al filtrar con ese `id`, el backend matchea TODAS las instancias de ese ejercicio de
+  catálogo — sigue siendo grid granular (una fila por serie), sin sumarizar nada; el filtro
+  simplemente amplía el `WHERE`. Cada ítem de `items` sigue trayendo `exercise_id` (id de
+  instancia, por fila) y además `catalog_exercise_id` (nullable, para agrupar client-side si hace
+  falta).
+- Huérfanos (día de calendario borrado, instancia sin equipo, sesión/ejercicio ya no existente):
+  se conservan las filas con `group_id`/`team_id`/`session_name`/`exercise_name`/
+  `catalog_exercise_id` en `null`, nunca se excluyen.
+- Todos los campos de cada ítem del contrato de abajo se devuelven siempre (nunca omitidos,
+  nullable cuando corresponde) — sin cambios respecto al borrador en esto.
+- Validaciones de error (`400`/`403`/`404`) confirmadas tal cual el borrador de abajo las pedía.
+- `GET /workout-feedback/search` (endpoint de una sesión puntual, Gap 12) sigue vivo sin cambios —
+  no hace falta migrarlo.
+- Sumarización sigue sin existir del lado del servidor (decisión ya tomada, ver abajo) — queda
+  100% client-side sobre `items`, sin agregados reales por ahora.
+
+Resto del contrato (query params, shape de response, semántica de `available_athletes`/
+`available_exercises` sobre filtros de primer nivel únicamente) queda tal cual el borrador
+original documentado abajo.
+
+**Adenda 2026-09-27 — acción de fila (menú de 3 puntitos, eliminar + ir a revisión):** al diseñar
+esta parte surgieron dos necesidades más, no cubiertas por el contrato de arriba:
+
+1. **`session_instance_id` por ítem — RESUELTO 2026-09-27.** Presente en ambos endpoints (int64,
+   siempre >0). Para la pantalla de revisión: `GET /session-instances/{session_instance_id}/feedback`
+   con el `athlete_user_id` del ítem. Si la instancia fue borrada físicamente (día reasignado
+   después), el id sigue viniendo pero esa request da `404` — esperado, el feedback se conserva
+   por diseño aunque la instancia no.
+2. **`DELETE /workout-feedback/{id}` — YA EXISTÍA, confirmado 2026-09-27.** Ruta real
+   `DELETE /api/v1/workout-feedback/:id` (`url_mappings.go:209`), autorización en `SoftDelete`
+   (atleta dueño, o reportante, o owner del team del feedback → exactamente el criterio que pide
+   el frontend), 403/404 correctos, baja lógica (no física). Sin acción pendiente acá.
+
+**Adenda 2026-09-27 (2) — rango de fechas abierto, EN CURSO del lado backend.** El contrato
+original rechaza (`400`) mandar solo `date_from` o solo `date_to`. Pedido: aceptar cualquiera de
+los dos solo — `date_from` solo = "desde esa fecha en adelante", `date_to` solo = "hasta esa
+fecha", ambos con la misma fecha = un día puntual, ambos con `date_from <= date_to` = rango (ya
+validado hoy). Si el backend no puede sumar esto ahora, el frontend sigue con el contrato actual
+(ambos campos obligatorios en conjunto) — no bloquea el resto de la pieza.
+
+Backend real de `workout_feedback` ya existe (Gap 12, resuelto) pero solo permite
 consultar **una sesión puntual a la vez** (`GET /session-instances/:id/feedback`). El historial
 (corredor y entrenador, ver `docs/superpowers/specs/2026-09-26-trainings-tabs-shell-design.md` y
 la pestaña "Historial" que quedó en stub) necesita una consulta **cruzada** (todas las
