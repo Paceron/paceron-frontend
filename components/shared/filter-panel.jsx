@@ -8,43 +8,44 @@ export function FilterPanel({ hasActiveFilters, loading, onClear, children, idPr
   const [open, setOpen] = useState(false);
 
   return (
-    <View className="mb-4" nativeID={`${idPrefix}-root`} testID={`${idPrefix}-root`}>
-      <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-        <Pressable
-          className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 active:opacity-70 ${
-            open ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'border-slate-200 dark:border-slate-700'
-          }`}
-          nativeID={`${idPrefix}-toggle`}
-          onPress={() => setOpen((v) => !v)}
-          testID={`${idPrefix}-toggle`}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.onSurfaceVariant} nativeID={`${idPrefix}-toggle-loading`} size="small" testID={`${idPrefix}-toggle-loading`} />
-          ) : (
-            <MaterialCommunityIcons color={open ? colors.primary : colors.onSurfaceVariant} name="filter-variant" size={16} />
-          )}
-          <Text className={`text-xs font-semibold ${open ? 'text-primary' : 'text-slate-700 dark:text-slate-200'}`} nativeID={`${idPrefix}-toggle-label`} testID={`${idPrefix}-toggle-label`}>
-            Filtros
-          </Text>
-        </Pressable>
+    <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-root`} testID={`${idPrefix}-root`}>
+      <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
+          Filtros
+        </Text>
 
-        {hasActiveFilters && (
+        <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header-actions`} testID={`${idPrefix}-header-actions`}>
+          {hasActiveFilters && (
+            <Pressable
+              className="flex-row items-center gap-1 rounded-full px-2 py-1 active:opacity-70"
+              nativeID={`${idPrefix}-clear`}
+              onPress={onClear}
+              testID={`${idPrefix}-clear`}
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle-outline" size={14} />
+              <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-clear-label`} testID={`${idPrefix}-clear-label`}>
+                Limpiar
+              </Text>
+            </Pressable>
+          )}
+
           <Pressable
-            className="flex-row items-center gap-1 rounded-full px-2 py-1.5 active:opacity-70"
-            nativeID={`${idPrefix}-clear`}
-            onPress={onClear}
-            testID={`${idPrefix}-clear`}
+            className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+            nativeID={`${idPrefix}-toggle`}
+            onPress={() => setOpen((v) => !v)}
+            testID={`${idPrefix}-toggle`}
           >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle-outline" size={14} />
-            <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-clear-label`} testID={`${idPrefix}-clear-label`}>
-              Limpiar filtros
-            </Text>
+            {loading ? (
+              <ActivityIndicator color={colors.onSurfaceVariant} nativeID={`${idPrefix}-toggle-loading`} size="small" testID={`${idPrefix}-toggle-loading`} />
+            ) : (
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'chevron-up' : 'chevron-down'} size={20} />
+            )}
           </Pressable>
-        )}
+        </View>
       </View>
 
       {open && (
-        <View className="mt-3 gap-2" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
+        <View className="mt-3 flex-row gap-2" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
           {children}
         </View>
       )}

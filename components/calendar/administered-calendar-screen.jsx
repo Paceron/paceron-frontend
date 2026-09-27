@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
-import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useAdministeredCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
@@ -30,8 +29,6 @@ function AdministeredCalendarScreenContent() {
   const { date: deepLinkDate } = useLocalSearchParams();
   const colors = useThemeColors();
   const queryClient = useQueryClient();
-  const isNarrowWeb = useIsNarrowWeb();
-  const stackFilter = !isWeb || isNarrowWeb;
   const userId = useAuthStore((s) => s.userId);
 
   const today = new Date();
@@ -151,34 +148,32 @@ function AdministeredCalendarScreenContent() {
 
         {activeTab === 'calendario' && (
           <>
-            {teamOptions.length > 0 && (
-              <FilterPanel hasActiveFilters={Boolean(filterTeamId || filterGroupId)} idPrefix="administered-calendar-screen-filter" loading={loading} onClear={() => { setFilterTeamId(''); setFilterGroupId(''); }}>
-                <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="administered-calendar-screen-filter-team-wrapper" testID="administered-calendar-screen-filter-team-wrapper">
-                  <ResponsiveSelectField
-                    dense
-                    hideErrorRow
-                    label="Equipo"
-                    onChange={handleTeamChange}
-                    options={teamOptions.map((t) => ({ id: t.teamId, name: t.teamName }))}
-                    placeholder="Todos los equipos"
-                    value={filterTeamId}
-                  />
-                </View>
-                {filterTeamId && (
-                  <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="administered-calendar-screen-filter-group-wrapper" testID="administered-calendar-screen-filter-group-wrapper">
-                    <ResponsiveSelectField
-                      dense
-                      hideErrorRow
-                      label="Grupo"
-                      onChange={setFilterGroupId}
-                      options={groupOptions.map((g) => ({ id: g.groupId, name: g.groupName }))}
-                      placeholder="Todos los grupos"
-                      value={filterGroupId}
-                    />
-                  </View>
-                )}
-              </FilterPanel>
-            )}
+            <FilterPanel hasActiveFilters={Boolean(filterTeamId || filterGroupId)} idPrefix="administered-calendar-screen-filter" loading={loading} onClear={() => { setFilterTeamId(''); setFilterGroupId(''); }}>
+              <View className="flex-1" nativeID="administered-calendar-screen-filter-team-wrapper" testID="administered-calendar-screen-filter-team-wrapper">
+                <ResponsiveSelectField
+                  dense
+                  disabled={teamOptions.length === 0}
+                  hideErrorRow
+                  label="Equipo"
+                  onChange={handleTeamChange}
+                  options={teamOptions.map((t) => ({ id: t.teamId, name: t.teamName }))}
+                  placeholder="Todos los equipos"
+                  value={filterTeamId}
+                />
+              </View>
+              <View className="flex-1" nativeID="administered-calendar-screen-filter-group-wrapper" testID="administered-calendar-screen-filter-group-wrapper">
+                <ResponsiveSelectField
+                  dense
+                  disabled={!filterTeamId || groupOptions.length === 0}
+                  hideErrorRow
+                  label="Grupo"
+                  onChange={setFilterGroupId}
+                  options={groupOptions.map((g) => ({ id: g.groupId, name: g.groupName }))}
+                  placeholder="Todos los grupos"
+                  value={filterGroupId}
+                />
+              </View>
+            </FilterPanel>
 
             <AggregatedMonthView
               currentMonthISO={currentMonthISO}

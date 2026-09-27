@@ -5,12 +5,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
-import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useMemberCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
 import { upcomingTrainingsRange, selectUpcomingTrainings } from '../../utils/upcoming-trainings.js';
+import { FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionTabBar } from '../shared/section-tab-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
@@ -30,8 +30,6 @@ function MyCalendarScreenContent() {
   const { date: deepLinkDate } = useLocalSearchParams();
   const colors = useThemeColors();
   const queryClient = useQueryClient();
-  const isNarrowWeb = useIsNarrowWeb();
-  const stackFilter = !isWeb || isNarrowWeb;
   const userId = useAuthStore((s) => s.userId);
 
   const today = new Date();
@@ -134,33 +132,40 @@ function MyCalendarScreenContent() {
 
         {activeTab === 'calendario' && (
           <>
-            {teamOptions.length > 0 && (
-              <FilterPanel hasActiveFilters={Boolean(filterTeamId)} idPrefix="my-calendar-screen-filter" loading={loading} onClear={() => setFilterTeamId('')}>
-                <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="my-calendar-screen-filter-team-wrapper" testID="my-calendar-screen-filter-team-wrapper">
-                  <ResponsiveSelectField
-                    dense
-                    hideErrorRow
-                    label="Equipo"
-                    onChange={setFilterTeamId}
-                    options={teamOptions.map((t) => ({ id: t.teamId, name: t.teamName }))}
-                    placeholder="Todos los equipos"
-                    value={filterTeamId}
-                  />
+            <FilterPanel hasActiveFilters={Boolean(filterTeamId)} idPrefix="my-calendar-screen-filter" loading={loading} onClear={() => setFilterTeamId('')}>
+              <View className="flex-1" nativeID="my-calendar-screen-filter-team-wrapper" testID="my-calendar-screen-filter-team-wrapper">
+                <ResponsiveSelectField
+                  dense
+                  disabled={teamOptions.length === 0}
+                  hideErrorRow
+                  label="Equipo"
+                  onChange={setFilterTeamId}
+                  options={teamOptions.map((t) => ({ id: t.teamId, name: t.teamName }))}
+                  placeholder="Todos los equipos"
+                  value={filterTeamId}
+                />
+              </View>
+              <View className="flex-1" nativeID="my-calendar-screen-filter-group-wrapper" testID="my-calendar-screen-filter-group-wrapper">
+                <Text className={FIELD_LABEL} nativeID="my-calendar-screen-filter-group-field-label" testID="my-calendar-screen-filter-group-field-label">
+                  Grupo
+                </Text>
+                <View
+                  className={`min-h-12 justify-center rounded-xl border px-4 py-2 ${
+                    selectedTeam ? 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900' : 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40'
+                  }`}
+                  nativeID="my-calendar-screen-filter-group-value"
+                  testID="my-calendar-screen-filter-group-value"
+                >
+                  <Text
+                    className={`text-sm ${selectedTeam ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-600'}`}
+                    nativeID="my-calendar-screen-filter-group-value-label"
+                    testID="my-calendar-screen-filter-group-value-label"
+                  >
+                    {selectedTeam ? selectedTeam.groupName : 'Elegí un equipo'}
+                  </Text>
                 </View>
-                {selectedTeam && (
-                  <View className="flex-row items-center gap-1" nativeID="my-calendar-screen-filter-group-label-wrapper" testID="my-calendar-screen-filter-group-label-wrapper">
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={16} />
-                    <Text
-                      className="text-sm font-semibold text-slate-700 dark:text-slate-200"
-                      nativeID="my-calendar-screen-filter-group-label"
-                      testID="my-calendar-screen-filter-group-label"
-                    >
-                      Grupo: {selectedTeam.groupName}
-                    </Text>
-                  </View>
-                )}
-              </FilterPanel>
-            )}
+              </View>
+            </FilterPanel>
 
             <AggregatedMonthView
               currentMonthISO={currentMonthISO}
