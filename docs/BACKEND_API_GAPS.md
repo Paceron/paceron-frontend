@@ -592,3 +592,21 @@ Query params: mismos que arriba (`group_id`, `date_from`/`date_to`, `exercise_id
 
 **Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea el
 contenido real de la pestaña "Historial" en ambos roles (hoy stub, `trainings-history-tab.jsx`).
+
+## Gap 14 — GET /session-instances/{id} standalone (hand-off historial → pantalla de revisión)
+
+**[RESUELTO 2026-09-27].** Surgió al construir el menú "Ver/editar registro" del historial (Gap
+13): la pantalla de revisión existente (`session-review-screen.jsx`) necesita el objeto completo
+de la instancia de sesión (`sessionInstance.exercises`) para renderizar, pero una fila del
+historial solo trae `session_instance_id` — los demás puntos de entrada a esa pantalla (calendario,
+pre-start) ya traían el objeto completo en memoria desde los datos del día.
+
+`GET /api/v1/session-instances/{id}` — mismo shape que ya embebe el calendario (Gap 9/11):
+`{ id, session_id, name, description, created_at, exercises: [{ id, name, role, repeat_count,
+rest_minutes, exercise_id }] }`. Autorización dual: miembro activo del grupo del día con esa
+instancia u owner del equipo, O feedback activo sobre la instancia como atleta/reportante/owner
+del equipo. `403` en otro caso, `404` si la instancia fue borrada físicamente.
+
+Frontend: `services/sessionInstances.js#getSessionInstance`, `hooks/use-session-instance.js`,
+consumido por `session-review-screen.jsx#ReviewFlow` (fetch solo si `slot.sessionInstance` no vino
+ya en memoria — el resto de los flujos existentes no cambia).
