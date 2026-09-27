@@ -12,10 +12,18 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
 import { upcomingTrainingsRange, selectUpcomingTrainings } from '../../utils/upcoming-trainings.js';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { SectionTabBar } from '../shared/section-tab-bar.jsx';
+import { FilterPanel } from '../shared/filter-panel.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
 import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
+import { TrainingsHistoryTab } from './trainings-history-tab.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+
+const TRAININGS_TABS = [
+  { id: 'calendario', label: 'Calendario', icon: 'calendar-month-outline' },
+  { id: 'historial', label: 'Historial', icon: 'history' },
+];
 
 function AdministeredCalendarScreenContent() {
   const router = useRouter();
@@ -33,6 +41,7 @@ function AdministeredCalendarScreenContent() {
   const [filterGroupId, setFilterGroupId] = useState('');
   const [openDate, setOpenDate] = useState(null);
   const [dayModalVisible, setDayModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState('calendario');
   const appliedDeepLinkRef = useRef(false);
 
   const openDayModal = (date) => {
@@ -46,6 +55,7 @@ function AdministeredCalendarScreenContent() {
     const [year, month] = deepLinkDate.split('-').map(Number);
     setVisibleYear(year);
     setVisibleMonth(month);
+    setActiveTab('calendario');
     openDayModal(deepLinkDate);
   }, [deepLinkDate]);
 
@@ -133,51 +143,59 @@ function AdministeredCalendarScreenContent() {
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="administered-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="administered-calendar-screen-title">
-            Calendario
+            Entrenamientos
           </Text>
         </View>
 
-        {teamOptions.length > 0 && (
-          <View className={`mb-4 gap-2 ${stackFilter ? '' : 'flex-row'}`} nativeID="administered-calendar-screen-filter" testID="administered-calendar-screen-filter">
-            <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="administered-calendar-screen-filter-team-wrapper" testID="administered-calendar-screen-filter-team-wrapper">
-              <ResponsiveSelectField
-                dense
-                hideErrorRow
-                label="Equipo"
-                onChange={handleTeamChange}
-                options={teamOptions.map((t) => ({ id: t.teamId, name: t.teamName }))}
-                placeholder="Todos los equipos"
-                value={filterTeamId}
-              />
-            </View>
-            {filterTeamId && (
-              <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="administered-calendar-screen-filter-group-wrapper" testID="administered-calendar-screen-filter-group-wrapper">
-                <ResponsiveSelectField
-                  dense
-                  hideErrorRow
-                  label="Grupo"
-                  onChange={setFilterGroupId}
-                  options={groupOptions.map((g) => ({ id: g.groupId, name: g.groupName }))}
-                  placeholder="Todos los grupos"
-                  value={filterGroupId}
-                />
-              </View>
+        <SectionTabBar active={activeTab} idPrefix="administered-calendar-screen" onChange={setActiveTab} tabs={TRAININGS_TABS} />
+
+        {activeTab === 'calendario' && (
+          <>
+            {teamOptions.length > 0 && (
+              <FilterPanel hasActiveFilters={Boolean(filterTeamId || filterGroupId)} idPrefix="administered-calendar-screen-filter" loading={loading} onClear={() => { setFilterTeamId(''); setFilterGroupId(''); }}>
+                <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="administered-calendar-screen-filter-team-wrapper" testID="administered-calendar-screen-filter-team-wrapper">
+                  <ResponsiveSelectField
+                    dense
+                    hideErrorRow
+                    label="Equipo"
+                    onChange={handleTeamChange}
+                    options={teamOptions.map((t) => ({ id: t.teamId, name: t.teamName }))}
+                    placeholder="Todos los equipos"
+                    value={filterTeamId}
+                  />
+                </View>
+                {filterTeamId && (
+                  <View className={stackFilter ? 'w-full' : 'w-full max-w-xs'} nativeID="administered-calendar-screen-filter-group-wrapper" testID="administered-calendar-screen-filter-group-wrapper">
+                    <ResponsiveSelectField
+                      dense
+                      hideErrorRow
+                      label="Grupo"
+                      onChange={setFilterGroupId}
+                      options={groupOptions.map((g) => ({ id: g.groupId, name: g.groupName }))}
+                      placeholder="Todos los grupos"
+                      value={filterGroupId}
+                    />
+                  </View>
+                )}
+              </FilterPanel>
             )}
-          </View>
+
+            <AggregatedMonthView
+              currentMonthISO={currentMonthISO}
+              daysByDate={daysByDate}
+              loading={loading || isFetching}
+              month={visibleMonth}
+              onDayPress={openDayModal}
+              onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
+              showCollisions
+              year={visibleYear}
+            />
+
+            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="administered" />
+          </>
         )}
 
-        <AggregatedMonthView
-          currentMonthISO={currentMonthISO}
-          daysByDate={daysByDate}
-          loading={loading || isFetching}
-          month={visibleMonth}
-          onDayPress={openDayModal}
-          onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
-          showCollisions
-          year={visibleYear}
-        />
-
-        <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="administered" />
+        {activeTab === 'historial' && <TrainingsHistoryTab />}
       </View>
       </ScrollView>
 
