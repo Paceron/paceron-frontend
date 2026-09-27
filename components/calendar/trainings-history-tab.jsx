@@ -12,7 +12,7 @@ import { selectAdministeredTeams } from '../../store/team-store.js';
 import { useTrainingsHistory, useDeleteWorkoutFeedbackMutation } from '../../hooks/use-trainings-history.js';
 import { buildDateRangeFilters } from '../../utils/trainings-history-filters.js';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { DateField, InputField } from '../forms/fields.jsx';
+import { DateField, FIELD_LABEL, InputField } from '../forms/fields.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { TrainingsHistoryRow } from './trainings-history-row.jsx';
@@ -217,21 +217,25 @@ export function TrainingsHistoryTab({ role }) {
             )}
           </>
         )}
-      </FilterPanel>
-
-      <View className="mb-4 flex-row items-center gap-2" nativeID="trainings-history-tab-sort-row" testID="trainings-history-tab-sort-row">
-        <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-sort-wrapper" testID="trainings-history-tab-sort-wrapper">
-          <ResponsiveSelectField dense hideErrorRow label="Ordenar por" onChange={setSort} options={SORT_OPTIONS} value={sort} />
+        <View className="w-full" nativeID="trainings-history-tab-sort-section" testID="trainings-history-tab-sort-section">
+          <Text className={FIELD_LABEL} nativeID="trainings-history-tab-sort-label" testID="trainings-history-tab-sort-label">
+            Ordenar por
+          </Text>
+          <View className="flex-row items-center gap-2" nativeID="trainings-history-tab-sort-row" testID="trainings-history-tab-sort-row">
+            <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-sort-wrapper" testID="trainings-history-tab-sort-wrapper">
+              <ResponsiveSelectField dense hideErrorRow hideLabel label="Ordenar por" onChange={setSort} options={SORT_OPTIONS} value={sort} />
+            </View>
+            <Pressable
+              className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+              nativeID="trainings-history-tab-order-toggle"
+              onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+              testID="trainings-history-tab-order-toggle"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
+            </Pressable>
+          </View>
         </View>
-        <Pressable
-          className="mt-6 h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-          nativeID="trainings-history-tab-order-toggle"
-          onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
-          testID="trainings-history-tab-order-toggle"
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
-        </Pressable>
-      </View>
+      </FilterPanel>
 
       {dateRangeError && (
         <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="trainings-history-tab-date-range-error" testID="trainings-history-tab-date-range-error">
