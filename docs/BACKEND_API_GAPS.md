@@ -513,12 +513,12 @@ esta parte surgieron dos necesidades más, no cubiertas por el contrato de arrib
    (atleta dueño, o reportante, o owner del team del feedback → exactamente el criterio que pide
    el frontend), 403/404 correctos, baja lógica (no física). Sin acción pendiente acá.
 
-**Adenda 2026-09-27 (2) — rango de fechas abierto, EN CURSO del lado backend.** El contrato
-original rechaza (`400`) mandar solo `date_from` o solo `date_to`. Pedido: aceptar cualquiera de
-los dos solo — `date_from` solo = "desde esa fecha en adelante", `date_to` solo = "hasta esa
-fecha", ambos con la misma fecha = un día puntual, ambos con `date_from <= date_to` = rango (ya
-validado hoy). Si el backend no puede sumar esto ahora, el frontend sigue con el contrato actual
-(ambos campos obligatorios en conjunto) — no bloquea el resto de la pieza.
+**Adenda 2026-09-27 (2) — rango de fechas abierto: DESCARTADO por ahora, mejora futura.** Se
+había pedido aceptar `date_from`/`date_to` de forma independiente (uno solo = rango abierto).
+Decisión del usuario: mantener el comportamiento actual (ambos campos de a par, `400` si viene
+uno solo) — mantener simple, backend ya estable con Gap 13. Sin acción pendiente sobre el
+backend. Queda anotado junto a otras mejoras futuras del historial (sumarización, agrupación
+visual) para una eventual ronda conjunta más adelante.
 
 Backend real de `workout_feedback` ya existe (Gap 12, resuelto) pero solo permite
 consultar **una sesión puntual a la vez** (`GET /session-instances/:id/feedback`). El historial

@@ -160,14 +160,12 @@ Reusan `components/shared/filter-panel.jsx` ya existente (mismo show/hide, "Limp
   — sin equipo elegido, no se dispara ningún fetch, mismo criterio que el `enabled` del hook
   de arriba) + Grupo opcional dependiente (`useGroups(filterTeamId, userId)`, default "todos
   los grupos", disabled hasta elegir equipo — mismo patrón ya usado en el filtro de Calendario).
-- **Rango de fechas:** dos `DateField` (`components/forms/fields.jsx`), independientes.
-  - Si el backend ya resolvió la adenda de fechas abiertas (Gap 13, EN CURSO al escribir esto):
-    cualquiera de los dos solo, o ambos, se manda tal cual — sin restricción del lado frontend.
-  - Si NO la resolvió: el frontend solo envía `date_from`/`date_to` cuando **ambos** están
-    completos (mismo criterio que ya evita pisar el 400 actual) — un campo cargado solo se
-    guarda en estado pero no viaja en la query hasta completar el par. Cuál de los dos casos
-    aplica se resuelve en el plan de implementación, contra el estado real del backend en ese
-    momento (revisar `docs/BACKEND_API_GAPS.md` Gap 13 antes de escribir esta parte).
+- **Rango de fechas:** dos `DateField` (`components/forms/fields.jsx`), **de a par** — decisión
+  ya tomada, se descarta la idea de fecha abierta (un solo extremo) para esta pieza, anotada
+  como mejora futura (ver `docs/BACKEND_API_GAPS.md` Gap 13, adenda revertida a "mejora
+  futura" en vez de pedido activo). El frontend solo envía `date_from`/`date_to` cuando
+  **ambos** están completos (mismo criterio que evita pisar el 400 actual) — un campo cargado
+  solo se guarda en estado pero no viaja en la query hasta completar el par.
   - Validación simple client-side: si ambos están cargados y `dateFrom > dateTo`, no se
     dispara el fetch y se muestra un error inline en vez de dejar que el backend devuelva 400.
 - **Orden:** un `ResponsiveSelectField` chico (Fecha / Serie / Ejercicio, mapea a
