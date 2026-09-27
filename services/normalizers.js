@@ -552,7 +552,7 @@ export function toSubscriptionModel(dto) {
 // instancias creadas antes de este cambio (sin backfill) o si el origen
 // se borró. NUNCA usar `id` (el de la instancia) para preseleccionar el
 // select de sesión al editar — no es un id de catálogo.
-function toSessionInstanceModel(dto) {
+export function toSessionInstanceModel(dto) {
   if (!dto) return null;
   return {
     id: String(dto.id),
@@ -761,4 +761,42 @@ export function toFeedbackEditPayload({ startedAt, endedAt, durationMs, activeDu
   if (distanceMeters != null) payload.distance_meters = Number(distanceMeters);
   if (annotations !== undefined) payload.annotations = annotations;
   return payload;
+}
+
+// Historial de entrenamientos realizados (Gap 13) — una fila por
+// serie/set de workout_feedback, cruzando sesiones/equipos/grupos.
+export function toWorkoutFeedbackHistoryItemModel(dto) {
+  return {
+    id: String(dto.id),
+    athleteUserId: String(dto.athlete_user_id),
+    athleteName: dto.athlete_name,
+    teamId: dto.team_id != null ? String(dto.team_id) : null,
+    teamName: dto.team_name,
+    groupId: dto.group_id != null ? String(dto.group_id) : null,
+    groupName: dto.group_name,
+    sessionInstanceId: String(dto.session_instance_id),
+    date: dto.date,
+    sessionName: dto.session_name,
+    exerciseId: String(dto.exercise_id),
+    exerciseName: dto.exercise_name,
+    catalogExerciseId: dto.catalog_exercise_id != null ? String(dto.catalog_exercise_id) : null,
+    setNumber: dto.set_number,
+    completionStatus: dto.completion_status,
+    durationMs: dto.duration_ms,
+    activeDurationMs: dto.active_duration_ms,
+    distanceMeters: dto.distance_meters,
+    startedAt: dto.started_at,
+    endedAt: dto.ended_at,
+  };
+}
+
+export function toWorkoutFeedbackHistoryResponseModel(dto) {
+  return {
+    items: (dto.items ?? []).map(toWorkoutFeedbackHistoryItemModel),
+    total: dto.total,
+    page: dto.page,
+    pageSize: dto.page_size,
+    availableAthletes: (dto.available_athletes ?? []).map((a) => ({ id: String(a.id), name: a.name })),
+    availableExercises: (dto.available_exercises ?? []).map((e) => ({ id: String(e.id), name: e.name })),
+  };
 }

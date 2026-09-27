@@ -455,3 +455,158 @@ pantalla previa al inicio):
 **Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea el guardado
 real y el historial del módulo de registro en vivo, todavía sin implementar (la base de navegación
 sí está resuelta, ver spec citada arriba).
+
+> **Actualización 2026-09-27 — primer bullet RESUELTO, distinto de lo previsto.** El compañero que
+> encaró el registro de actividad en vivo implementó la persistencia con un modelo normalizado
+> (`workout_feedback` — una fila por serie/set, no un blob por actividad como se había anotado
+> arriba): `POST /workout-feedback` (crear), `PUT /workout-feedback/:id` (editar tiempos/distancia),
+> `POST /workout-feedback/:id/points` + `GET /workout-feedback/:id/points` (puntos GPS de una
+> serie), `GET /session-instances/:id/feedback?athlete_user_id=` (feedback de una sesión puntual).
+> Ver `services/workoutFeedback.js`, `services/runnerSession.js`,
+> `services/normalizers.js#toSessionFeedbackModel` para el shape exacto ya consumido por el
+> frontend. El segundo bullet (historial multiplataforma: listar/filtrar/paginar) sigue sin
+> resolver — el endpoint de sesión puntual de arriba no alcanza para eso (no cruza equipos/grupos,
+> no filtra por rango de fechas ni por corredor/ejercicio, no pagina). Se abre como Gap 13 propio,
+> con el contrato concreto que hace falta.
+
+## Gap 13 — endpoints de historial de entrenamientos realizados (piezas 2/3 del sub-proyecto de calendario)
+
+**[RESUELTO 2026-09-27, PR #84 del backend hacia `develop`].** Contrato final, confirmado contra
+el swagger real (`docs/FRONTEND_IMPACTO_INSTANCIACION.md` §9 del repo backend) — reemplaza el
+borrador de abajo en los puntos donde difiere:
+
+- **`exercise_id` (filtro) y `available_exercises` matchean por FAMILIA de catálogo, no por
+  instancia** — este es el único punto donde el contrato final difiere del borrador original (se
+  pidió el ajuste tras revisar que, sin esto, la misma "Trote" hecha en sesiones distintas
+  aparecía duplicada N veces en el dropdown de segundo nivel). `available_exercises[].id` =
+  `catalog_exercise_id` (fallback al id de instancia solo para instancias legado sin origen de
+  catálogo). Al filtrar con ese `id`, el backend matchea TODAS las instancias de ese ejercicio de
+  catálogo — sigue siendo grid granular (una fila por serie), sin sumarizar nada; el filtro
+  simplemente amplía el `WHERE`. Cada ítem de `items` sigue trayendo `exercise_id` (id de
+  instancia, por fila) y además `catalog_exercise_id` (nullable, para agrupar client-side si hace
+  falta).
+- Huérfanos (día de calendario borrado, instancia sin equipo, sesión/ejercicio ya no existente):
+  se conservan las filas con `group_id`/`team_id`/`session_name`/`exercise_name`/
+  `catalog_exercise_id` en `null`, nunca se excluyen.
+- Todos los campos de cada ítem del contrato de abajo se devuelven siempre (nunca omitidos,
+  nullable cuando corresponde) — sin cambios respecto al borrador en esto.
+- Validaciones de error (`400`/`403`/`404`) confirmadas tal cual el borrador de abajo las pedía.
+- `GET /workout-feedback/search` (endpoint de una sesión puntual, Gap 12) sigue vivo sin cambios —
+  no hace falta migrarlo.
+- Sumarización sigue sin existir del lado del servidor (decisión ya tomada, ver abajo) — queda
+  100% client-side sobre `items`, sin agregados reales por ahora.
+
+Resto del contrato (query params, shape de response, semántica de `available_athletes`/
+`available_exercises` sobre filtros de primer nivel únicamente) queda tal cual el borrador
+original documentado abajo.
+
+**Adenda 2026-09-27 — acción de fila (menú de 3 puntitos, eliminar + ir a revisión):** al diseñar
+esta parte surgieron dos necesidades más, no cubiertas por el contrato de arriba:
+
+1. **`session_instance_id` por ítem — RESUELTO 2026-09-27.** Presente en ambos endpoints (int64,
+   siempre >0). Para la pantalla de revisión: `GET /session-instances/{session_instance_id}/feedback`
+   con el `athlete_user_id` del ítem. Si la instancia fue borrada físicamente (día reasignado
+   después), el id sigue viniendo pero esa request da `404` — esperado, el feedback se conserva
+   por diseño aunque la instancia no.
+2. **`DELETE /workout-feedback/{id}` — YA EXISTÍA, confirmado 2026-09-27.** Ruta real
+   `DELETE /api/v1/workout-feedback/:id` (`url_mappings.go:209`), autorización en `SoftDelete`
+   (atleta dueño, o reportante, o owner del team del feedback → exactamente el criterio que pide
+   el frontend), 403/404 correctos, baja lógica (no física). Sin acción pendiente acá.
+
+**Adenda 2026-09-27 (2) — rango de fechas abierto: DESCARTADO por ahora, mejora futura.** Se
+había pedido aceptar `date_from`/`date_to` de forma independiente (uno solo = rango abierto).
+Decisión del usuario: mantener el comportamiento actual (ambos campos de a par, `400` si viene
+uno solo) — mantener simple, backend ya estable con Gap 13. Sin acción pendiente sobre el
+backend. Queda anotado junto a otras mejoras futuras del historial (sumarización, agrupación
+visual) para una eventual ronda conjunta más adelante.
+
+Backend real de `workout_feedback` ya existe (Gap 12, resuelto) pero solo permite
+consultar **una sesión puntual a la vez** (`GET /session-instances/:id/feedback`). El historial
+(corredor y entrenador, ver `docs/superpowers/specs/2026-09-26-trainings-tabs-shell-design.md` y
+la pestaña "Historial" que quedó en stub) necesita una consulta **cruzada** (todas las
+sesiones/equipos/grupos en un rango) con filtros, orden y paginación — mismo tipo de brecha que
+ya resolvió Gap 11 para el calendario agregado (`member-calendar`/`administered-calendar`), acá
+aplicado a `workout_feedback` en vez de `GroupCalendarDay`.
+
+**Decisión ya tomada con el usuario:** sin sumarización server-side por ahora (ni client-side
+real tampoco) — se anota como mejora futura, no bloquea esta pieza. El frontend puede como mucho
+agrupar visualmente filas ya traídas (por ejercicio o por corredor) sin calcular agregados
+(promedios/sumas), pero eso no requiere nada del backend.
+
+**Corredor — `GET /users/{id}/workout-feedback-history`**, `{id}` = propio usuario autenticado
+(403 si no coincide, mismo criterio que `member-calendar`).
+
+Query params:
+- `team_id`, `group_id` (opcionales, `group_id` requiere `team_id`).
+- `date_from`, `date_to` (opcionales, iguales = un solo día).
+- `exercise_id`, `set_number` (opcionales — segundo nivel de filtro).
+- `sort` (`feedback_date` | `set_number` | `exercise_name`, default `feedback_date`), `order`
+  (`asc`|`desc`, default `desc` — más recientes primero).
+- `page` (default 1), `page_size` (default 20, tope sugerido 100).
+
+Sin filtros: los N más recientes del corredor en TODOS sus equipos/grupos (mismo criterio que
+"fetchear N datos más recientes" del pedido original).
+
+**Entrenador — `GET /users/{id}/administered-workout-feedback-history`**, `{id}` = propio usuario
+autenticado, **`team_id` obligatorio** (403 si el `id` no administra ese equipo) — sin team_id,
+`400`.
+
+Query params: mismos que arriba (`group_id`, `date_from`/`date_to`, `exercise_id`/`set_number`,
+`sort`/`order`, `page`/`page_size`) más `athlete_user_id` (segundo nivel de filtro, opcional).
+
+**Response, ambos endpoints:**
+
+```json
+200
+{
+  "items": [
+    {
+      "id": 501, "athlete_user_id": 12, "athlete_name": "Juan Pérez",
+      "team_id": 3, "team_name": "Runners Norte", "group_id": 7, "group_name": "Elite AM",
+      "date": "2026-09-25", "session_name": "Series de velocidad",
+      "exercise_id": 44, "exercise_name": "Series 400m", "set_number": 2,
+      "completion_status": "completed", "duration_ms": 95000, "active_duration_ms": 90000,
+      "distance_meters": 412.5, "started_at": "2026-09-25T08:15:00Z", "ended_at": "2026-09-25T08:16:35Z"
+    }
+  ],
+  "total": 137,
+  "page": 1,
+  "page_size": 20,
+  "available_athletes": [{ "id": 12, "name": "Juan Pérez" }],
+  "available_exercises": [{ "id": 44, "name": "Series 400m" }]
+}
+```
+
+- `athlete_name`/`athlete_user_id` en la respuesta del corredor son redundantes (siempre el mismo
+  usuario) pero se devuelven igual — mismo shape para las dos vistas, sin ternarios de campos
+  opcionales en el frontend.
+- `available_athletes`/`available_exercises`: **distinct** de TODO el resultado que matchea los
+  filtros de primer nivel (equipo/grupo/rango de fechas), **sin** aplicar todavía el filtro de
+  segundo nivel (corredor/ejercicio) ni la paginación — así el dropdown de segundo nivel no pierde
+  opciones a medida que el usuario lo va usando. Esto es lo que resuelve "pool de corredores/
+  ejercicios según los resultados a priori" del pedido original sin depender de qué página esté
+  cargada en el cliente.
+- `400` si falta `date_from`/`date_to` cuando se manda solo uno de los dos, o si `date_from >
+  date_to`. `group_id` sin `team_id` → `400` (aplica a ambos endpoints, aunque en el de entrenador
+  `team_id` ya es obligatorio de por sí).
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea el
+contenido real de la pestaña "Historial" en ambos roles (hoy stub, `trainings-history-tab.jsx`).
+
+## Gap 14 — GET /session-instances/{id} standalone (hand-off historial → pantalla de revisión)
+
+**[RESUELTO 2026-09-27].** Surgió al construir el menú "Ver/editar registro" del historial (Gap
+13): la pantalla de revisión existente (`session-review-screen.jsx`) necesita el objeto completo
+de la instancia de sesión (`sessionInstance.exercises`) para renderizar, pero una fila del
+historial solo trae `session_instance_id` — los demás puntos de entrada a esa pantalla (calendario,
+pre-start) ya traían el objeto completo en memoria desde los datos del día.
+
+`GET /api/v1/session-instances/{id}` — mismo shape que ya embebe el calendario (Gap 9/11):
+`{ id, session_id, name, description, created_at, exercises: [{ id, name, role, repeat_count,
+rest_minutes, exercise_id }] }`. Autorización dual: miembro activo del grupo del día con esa
+instancia u owner del equipo, O feedback activo sobre la instancia como atleta/reportante/owner
+del equipo. `403` en otro caso, `404` si la instancia fue borrada físicamente.
+
+Frontend: `services/sessionInstances.js#getSessionInstance`, `hooks/use-session-instance.js`,
+consumido por `session-review-screen.jsx#ReviewFlow` (fetch solo si `slot.sessionInstance` no vino
+ya en memoria — el resto de los flujos existentes no cambia).

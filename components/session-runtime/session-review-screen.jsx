@@ -8,6 +8,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
+import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { buildSessionReviewModel } from '../../services/normalizers.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -715,10 +716,13 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
 
 function ReviewFlow({ slot }) {
   const router = useRouter();
+  const colors = useThemeColors();
   const [selected, setSelected] = useState(null);
   const [completedNow, setCompletedNow] = useState(false);
 
   const sessionInstanceId = slot.sessionInstanceId ?? slot.sessionInstance?.id;
+  const { sessionInstance: fetchedSessionInstance, loading: instanceLoading } = useSessionInstance(sessionInstanceId, !slot.sessionInstance);
+  const sessionInstance = slot.sessionInstance ?? fetchedSessionInstance;
   const { groups, loading } = useSessionFeedback(sessionInstanceId, slot.athleteUserId);
 
   // Primer ingreso al modo manual → upsert idempotente de runner_session
@@ -740,19 +744,27 @@ function ReviewFlow({ slot }) {
   const finishedRef = useRef(false);
   useEffect(() => {
     if (slot.mode !== 'manual' || saveCountRef.current === 0 || finishedRef.current) return;
-    const all = buildSessionReviewModel(slot.sessionInstance ?? {}, groups);
+    const all = buildSessionReviewModel(sessionInstance ?? {}, groups);
     const total = all.reduce((acc, exercise) => acc + exercise.rows.length, 0);
     const registered = all.reduce((acc, exercise) => acc + exercise.rows.filter((r) => r.status === 'completed').length, 0);
     if (registered === total && total > 0) {
       finishedRef.current = true;
       finishRunner(undefined, { onSuccess: () => setCompletedNow(true) });
     }
-  }, [groups, slot.mode, slot.sessionInstance, finishRunner]);
+  }, [groups, slot.mode, sessionInstance, finishRunner]);
 
-  const reviewModel = useMemo(() => buildSessionReviewModel(slot.sessionInstance ?? {}, groups), [slot.sessionInstance, groups]);
-  const sessionName = slot.sessionName ?? slot.sessionInstance?.name;
+  const reviewModel = useMemo(() => buildSessionReviewModel(sessionInstance ?? {}, groups), [sessionInstance, groups]);
+  const sessionName = slot.sessionName ?? sessionInstance?.name;
 
-  if (!slot.sessionInstance?.exercises?.length) {
+  if (instanceLoading && !sessionInstance) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-loading-root" testID="session-review-loading-root">
+        <ActivityIndicator color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!sessionInstance?.exercises?.length) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-empty-root" testID="session-review-empty-root">
         <Text className="mb-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="session-review-empty-label" testID="session-review-empty-label">
@@ -776,7 +788,7 @@ function ReviewFlow({ slot }) {
           saveCountRef.current += 1;
         }}
         row={selected.row}
-        slot={{ ...slot, sessionName }}
+        slot={{ ...slot, sessionName, sessionInstance }}
       />
     );
   }
@@ -787,7 +799,7 @@ function ReviewFlow({ slot }) {
       loading={loading}
       onOpenRow={(payload) => setSelected(payload)}
       reviewModel={reviewModel}
-      slot={{ ...slot, sessionName, mode: completedNow ? 'review' : slot.mode }}
+      slot={{ ...slot, sessionName, sessionInstance, mode: completedNow ? 'review' : slot.mode }}
     />
   );
 }
