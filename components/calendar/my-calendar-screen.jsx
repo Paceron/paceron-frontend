@@ -46,11 +46,6 @@ function MyCalendarScreenContent() {
     setDayModalVisible(true);
   };
 
-  const handleViewRecords = () => {
-    setDayModalVisible(false);
-    setActiveTab('historial');
-  };
-
   useEffect(() => {
     if (!deepLinkDate || appliedDeepLinkRef.current) return;
     appliedDeepLinkRef.current = true;
@@ -187,7 +182,7 @@ function MyCalendarScreenContent() {
               year={visibleYear}
             />
 
-            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} onViewRecords={handleViewRecords} trainings={filteredUpcomingTrainings} variant="member" />
+            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="member" />
           </>
         )}
 
@@ -195,7 +190,7 @@ function MyCalendarScreenContent() {
       </View>
       </ScrollView>
 
-      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} onViewRecords={handleViewRecords} variant="member" visible={dayModalVisible} />
+      <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="member" visible={dayModalVisible} />
     </View>
   );
 }

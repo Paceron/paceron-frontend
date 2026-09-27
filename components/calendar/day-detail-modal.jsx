@@ -13,7 +13,7 @@ function kindLabel(assignment) {
   return 'Entrenamiento';
 }
 
-function AssignmentRow({ assignment, variant, onViewRecords }) {
+function AssignmentRow({ assignment, variant }) {
   const colors = useThemeColors();
   const router = useRouter();
   const idPrefix = `day-detail-assignment-${assignment.id}`;
@@ -65,7 +65,7 @@ function AssignmentRow({ assignment, variant, onViewRecords }) {
             : ''}
         </Text>
       )}
-      <StartSessionButton assignment={assignment} role={variant === 'member' ? 'runner' : 'trainer'} />
+      {variant === 'member' && <StartSessionButton assignment={assignment} role="runner" />}
       {variant === 'administered' && assignment.presencialCollision && (
         <View
           className={`mt-2 rounded-lg px-2 py-1.5 ${assignment.presencialCollision.type === 'cross_team' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}
@@ -81,41 +81,27 @@ function AssignmentRow({ assignment, variant, onViewRecords }) {
           </Text>
         </View>
       )}
-      {(variant === 'administered' || onViewRecords) && (
+      {variant === 'administered' && (
         <View className="mt-2 flex-row gap-2" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
-          {variant === 'administered' && (
-            <Pressable
-              className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
-              nativeID={`${idPrefix}-go-to-day-button`}
-              onPress={handleGoToDay}
-              testID={`${idPrefix}-go-to-day-button`}
-            >
-              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-day-button-label`} testID={`${idPrefix}-go-to-day-button-label`}>
-                Ir a este día
-              </Text>
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-right" size={14} />
-            </Pressable>
-          )}
-          {onViewRecords && (
-            <Pressable
-              className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
-              nativeID={`${idPrefix}-view-records-button`}
-              onPress={() => onViewRecords(assignment.date)}
-              testID={`${idPrefix}-view-records-button`}
-            >
-              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-view-records-button-label`} testID={`${idPrefix}-view-records-button-label`}>
-                Ver registros
-              </Text>
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clipboard-text-clock-outline" size={14} />
-            </Pressable>
-          )}
+          <StartSessionButton assignment={assignment} fill role="trainer" />
+          <Pressable
+            className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+            nativeID={`${idPrefix}-go-to-day-button`}
+            onPress={handleGoToDay}
+            testID={`${idPrefix}-go-to-day-button`}
+          >
+            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-go-to-day-button-label`} testID={`${idPrefix}-go-to-day-button-label`}>
+              Ir a este día
+            </Text>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-right" size={14} />
+          </Pressable>
         </View>
       )}
     </View>
   );
 }
 
-export function DayDetailModal({ visible, onClose, date, assignments, variant, loading, onViewRecords }) {
+export function DayDetailModal({ visible, onClose, date, assignments, variant, loading }) {
   const colors = useThemeColors();
 
   return (
@@ -138,7 +124,7 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
             <ScrollView nativeID="day-detail-modal-scroll" testID="day-detail-modal-scroll">
               <View className="gap-2" nativeID="day-detail-modal-list" testID="day-detail-modal-list">
                 {assignments.map((assignment) => (
-                  <AssignmentRow assignment={assignment} key={assignment.id} onViewRecords={onViewRecords} variant={variant} />
+                  <AssignmentRow assignment={assignment} key={assignment.id} variant={variant} />
                 ))}
                 {assignments.length === 0 && (
                   <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID="day-detail-modal-empty" testID="day-detail-modal-empty">

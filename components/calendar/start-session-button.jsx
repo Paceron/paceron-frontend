@@ -18,7 +18,7 @@ import { AthletePickerModal } from '../team/athlete-picker-modal.jsx';
 //   corredor mobile entra al pre-start (que ramifica según estado runner_session);
 //   corredor web entra directo a la revisión (el modo se decide por estado);
 //   entrenador (web) abre el selector de corredor antes de entrar.
-function RunnerReviewWebButton({ assignment, userId }) {
+function RunnerReviewWebButton({ assignment, userId, fill }) {
   const router = useRouter();
   const colors = useThemeColors();
   const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
@@ -42,7 +42,7 @@ function RunnerReviewWebButton({ assignment, userId }) {
   };
 
   return (
-    <Pressable className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80" nativeID={`start-session-button-${assignment.id}-registro`} onPress={loading ? undefined : handlePress} testID={`start-session-button-${assignment.id}-registro`}>
+    <Pressable className={`${fill ? 'flex-1' : 'mt-2'} h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80`} nativeID={`start-session-button-${assignment.id}-registro`} onPress={loading ? undefined : handlePress} testID={`start-session-button-${assignment.id}-registro`}>
       {loading ? (
         <ActivityIndicator color={colors.onPrimary} size="small" />
       ) : (
@@ -57,7 +57,7 @@ function RunnerReviewWebButton({ assignment, userId }) {
   );
 }
 
-function TrainerReviewButton({ assignment, teamId }) {
+function TrainerReviewButton({ assignment, teamId, fill }) {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
@@ -91,7 +91,7 @@ function TrainerReviewButton({ assignment, teamId }) {
   return (
     <>
       <Pressable
-        className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80"
+        className={`${fill ? 'flex-1' : 'mt-2'} h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80`}
         nativeID={`start-session-button-${assignment.id}-ver-registros`}
         onPress={() => setPickerVisible(true)}
         testID={`start-session-button-${assignment.id}-ver-registros`}
@@ -113,7 +113,7 @@ function TrainerReviewButton({ assignment, teamId }) {
   );
 }
 
-export function StartSessionButton({ assignment, role, teamId }) {
+export function StartSessionButton({ assignment, role, teamId, fill }) {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
@@ -137,9 +137,9 @@ export function StartSessionButton({ assignment, role, teamId }) {
   if (showReview) {
     if (role === 'trainer') {
       if (!isWeb) return null;
-      return <TrainerReviewButton assignment={assignment} teamId={teamId} />;
+      return <TrainerReviewButton assignment={assignment} fill={fill} teamId={teamId} />;
     }
-    if (isWeb) return <RunnerReviewWebButton assignment={assignment} userId={userId} />;
+    if (isWeb) return <RunnerReviewWebButton assignment={assignment} fill={fill} userId={userId} />;
     // Corredor mobile: entra al pre-start, que ramifica Play vs Registro según
     // el estado runner_session (ver session-pre-start-screen.jsx).
     const handleReviewFromNative = () => {
@@ -148,7 +148,7 @@ export function StartSessionButton({ assignment, role, teamId }) {
     };
     return (
       <Pressable
-        className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80"
+        className={`${fill ? 'flex-1' : 'mt-2'} h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80`}
         nativeID={`${idPrefix}-registro`}
         onPress={handleReviewFromNative}
         testID={`${idPrefix}-registro`}
@@ -165,7 +165,7 @@ export function StartSessionButton({ assignment, role, teamId }) {
 
   if (isWeb) {
     return (
-      <View className="mt-2 flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID={`${idPrefix}-web-notice`} testID={`${idPrefix}-web-notice`}>
+      <View className={`${fill ? 'flex-1' : 'mt-2'} flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20`} nativeID={`${idPrefix}-web-notice`} testID={`${idPrefix}-web-notice`}>
         <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
         <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID={`${idPrefix}-web-notice-label`} testID={`${idPrefix}-web-notice-label`}>
           El inicio y registro del entrenamiento solo está disponible en la app nativa
@@ -181,7 +181,7 @@ export function StartSessionButton({ assignment, role, teamId }) {
 
   return (
     <Pressable
-      className="mt-2 h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80"
+      className={`${fill ? 'flex-1' : 'mt-2'} h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80`}
       nativeID={idPrefix}
       onPress={handlePress}
       testID={idPrefix}

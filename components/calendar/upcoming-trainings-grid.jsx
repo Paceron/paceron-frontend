@@ -53,7 +53,7 @@ function UpcomingTrainingCard({ training, variant, onPress }) {
   );
 }
 
-export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching, onViewRecords }) {
+export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching }) {
   const colors = useThemeColors();
   const [seeAllVisible, setSeeAllVisible] = useState(false);
   const [openTraining, setOpenTraining] = useState(null);
@@ -142,7 +142,6 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching,
         assignments={openTraining ? [openTraining] : []}
         date={openTraining?.date ?? ''}
         onClose={() => setDetailVisible(false)}
-        onViewRecords={onViewRecords}
         variant={variant}
         visible={detailVisible}
       />
