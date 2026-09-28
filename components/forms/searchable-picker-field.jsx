@@ -115,6 +115,13 @@ export function SearchablePickerField({
   // necesita el nodo ya montado del trigger, que existe siempre, pero recién
   // después del render que cierra el modal.
   useEffect(() => {
+    // Solo nativo, y no por gusto: `findNodeHandle` **tira** en
+    // react-native-web ("findNodeHandle is not supported on web"), así que
+    // llamarlo sin este early return rompe la pantalla en web. Y en web el
+    // problema que arregla este efecto ni existe — el `ModalFocusTrap` de
+    // react-native-web ya devuelve el foco al elemento previo al cerrar, que
+    // era el motivo por el que se añadió.
+    if (isWeb) return;
     if (open || !triggerRef.current) return;
     AccessibilityInfo.setAccessibilityFocus(findNodeHandle(triggerRef.current));
   }, [open]);

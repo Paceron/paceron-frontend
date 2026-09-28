@@ -1,16 +1,19 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { filterAndSortRows } from '../../utils/attendance-rows.js';
 import { AttendanceMetricCards } from './attendance-metric-cards.jsx';
 import { AttendanceRow } from './attendance-row.jsx';
 
-// Grilla de asistencia de la sesión elegida: las tres tarjetas de métricas, la
-// barra de guardado masivo y las filas.
+// Grilla de asistencia de la sesión elegida: las tres tarjetas de métricas, el
+// buscador, el orden, la barra de guardado masivo y las filas.
 //
-// Es presentacional a propósito — no pide nada, no muta nada. Todo el estado
-// (las marcas, la mutación, el guard) vive en la pantalla; este componente solo
-// decide qué se pinta según lo que le llega. Eso es lo que permite que la
-// pantalla pueda testear la lógica de la cascada sin montar la grilla.
+// Es presentacional a propósito — no pide nada, no muta nada del servidor. Las
+// marcas y las mutaciones viven en la pantalla; este componente solo decide qué
+// se pinta. El filtro y el orden SÍ son estado local, y a propósito: son una
+// vista del mismo conjunto, no un recorte de los datos — las marcas viven en un
+// `Set` de user_id, así que filtrar la lista no puede perder una marca (D5).
 export function AttendanceGrid({
   rows,
   summary,
@@ -26,6 +29,11 @@ export function AttendanceGrid({
   idPrefix,
 }) {
   const colors = useThemeColors();
+  const [query, setQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
+
+  const visibleRows = useMemo(() => filterAndSortRows(rows, query, sortOrder), [rows, query, sortOrder]);
+  const isFiltering = query.trim() !== '';
 
   // `isLoading` es el primer fetch de la grilla: NO hay nada que mostrar, así que
   // spinner. Distinto de un grupo sin corredores, que sí es un estado vacío con
@@ -121,18 +129,73 @@ export function AttendanceGrid({
         </View>
       ) : null}
 
-      <View className="mt-3 gap-2" nativeID={`${idPrefix}-rows`} testID={`${idPrefix}-rows`}>
-        {rows.map((row) => (
-          <AttendanceRow
-            idPrefix={`${idPrefix}-row`}
-            key={row.user_id}
-            onRequestDelete={() => onRequestDelete(row)}
-            onToggle={() => onToggle(row.user_id)}
-            row={row}
-            selected={selectedIds.has(String(row.user_id))}
+      {/* Buscador y orden. El contador "N de M" va siempre visible (no solo
+          mientras se escribe) porque es el que dice si el filtro está ocultando
+          corredores marcados — sin eso, un filtro con 3 de 8 de los cuales 2 marcados
+          deja al entrenador guardando sobre una lista que no ve completa. */}
+      <View className="mt-3 flex-row items-center gap-2" nativeID={`${idPrefix}-controls`} testID={`${idPrefix}-controls`}>
+        <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-white" nativeID={`${idPrefix}-search-box`} testID={`${idPrefix}-search-box`}>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
+          <TextInput
+            accessibilityLabel={`Filtrar corredores por nombre. Se muestran ${visibleRows.length} de ${rows.length}`}
+            autoCapitalize="none"
+            autoCorrect={false}
+            className="flex-1 text-sm text-slate-900 outline-none dark:text-slate-900"
+            nativeID={`${idPrefix}-search-input`}
+            onChangeText={setQuery}
+            placeholder="Filtrar por nombre"
+            placeholderTextColor={colors.onSurfaceVariant}
+            returnKeyType="search"
+            testID={`${idPrefix}-search-input`}
+            value={query}
           />
-        ))}
+          {isFiltering ? (
+            <Pressable
+              accessibilityLabel="Limpiar el filtro"
+              nativeID={`${idPrefix}-search-clear`}
+              onPress={() => setQuery('')}
+              testID={`${idPrefix}-search-clear`}
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={16} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        <Pressable
+          accessibilityLabel={sortOrder === 'asc' ? 'Ordenados de la A a la Z. Tocar para ordenar al revés' : 'Ordenados de la Z a la A. Tocar para ordenar de la A a la Z'}
+          className="h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:bg-white dark:hover:bg-slate-800"
+          nativeID={`${idPrefix}-sort-toggle`}
+          onPress={() => setSortOrder((current) => (current === 'asc' ? 'desc' : 'asc'))}
+          testID={`${idPrefix}-sort-toggle`}
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="sort-alpha-ascending" size={20} />
+        </Pressable>
       </View>
+
+      <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-rows-count`} testID={`${idPrefix}-rows-count`}>
+        {isFiltering
+          ? `${visibleRows.length} de ${rows.length} ${rows.length === 1 ? 'corredor' : 'corredores'}`
+          : `${rows.length} ${rows.length === 1 ? 'corredor' : 'corredores'}`}
+      </Text>
+
+      {visibleRows.length === 0 ? (
+        <Text className="py-8 text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-no-matches`} testID={`${idPrefix}-no-matches`}>
+          Ningún corredor coincide con «{query.trim()}».
+        </Text>
+      ) : (
+        <View className="mt-3 gap-2" nativeID={`${idPrefix}-rows`} testID={`${idPrefix}-rows`}>
+          {visibleRows.map((row) => (
+            <AttendanceRow
+              idPrefix={`${idPrefix}-row`}
+              key={row.user_id}
+              onRequestDelete={() => onRequestDelete(row)}
+              onToggle={() => onToggle(row.user_id)}
+              row={row}
+              selected={selectedIds.has(String(row.user_id))}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }

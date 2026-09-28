@@ -134,6 +134,21 @@ Vercel sin que nadie lo note hasta que un usuario reporte la pantalla en blanco.
 > instalan las deps) y de nuevo acá al cierre, cuando ya está todo el código de
 > la feature.
 
+## Agregado durante la verificación en web (2026-09-28)
+
+Pedido en review, fuera del spec original. No cambia el contrato con el backend:
+es una vista del mismo conjunto, no un recorte de datos.
+
+- [x] **A.1** `utils/attendance-rows.js` + test: `filterAndSortRows(rows, query, order)`. Filtra por el campo `name` con `filterByName` (acentos y mayúsculas) y ordena con `localeCompare(…, 'es', { sensitivity: 'base' })`.
+- [x] **A.2** `attendance-grid.jsx`: buscador + toggle de orden asc/desc + contador "N de M".
+
+**Sobre "nombre / apellido":** el backend no separa nombre de apellido. `SessionAttendanceRow` es `{ user_id, name, email, attendance_id, status, source, registered_at }` — un solo `name` con el nombre completo. Por eso el filtro por cualquiera de los dos sale con un substring sobre el nombre completo, y `filterByName` ya hace que `núñez`, `Nunez` y `nuñez` sean lo mismo.
+
+**Dos decisiones que no son obvias:**
+
+- El `locale: 'es'` con `sensitivity: 'base'` es lo que evita que los nombres con **Ñ** queden al final de la lista (en el orden de puntos de código `Ñ` > `Z`) y que las tildes empujen nombres al final. Sin eso, ordenar alfabéticamente una lista de nombres en español queda mal.
+- El filtro y el orden son estado **local de la grilla**, no de la pantalla: las marcas viven en un `Set` de `user_id`, así que filtrar la lista no puede perder una marca (D5). El contador "N de M" va siempre visible, no solo mientras se escribe, porque es lo que avisa que el filtro está ocultando corredores marcados.
+
 ## Estado de verificación al cierre (2026-09-28)
 
 **Verificado por ejecución (el agente lo corrió):**
