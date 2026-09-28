@@ -40,7 +40,9 @@ export function computeMonthOverMonth(current, previous) {
 }
 
 export function formatMonthOverMonth({ pct, direction }) {
-  if (direction === 'none') return 'Sin comparación';
+  // Un guion y no un texto: en el tile de 2x2 de mobile un texto largo parte
+  // en dos renglones con el tamaño del número. La aclaración va en el hint.
+  if (direction === 'none') return '—';
   if (direction === 'flat') return 'Igual';
   return `${pct > 0 ? '+' : ''}${pct}%`;
 }

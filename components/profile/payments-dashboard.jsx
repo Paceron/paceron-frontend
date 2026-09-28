@@ -60,6 +60,7 @@ export function PaymentsDashboard({ summary, loading, failed, onRetry, isWide, a
           <StatTile
             icon={mom.direction === 'down' ? 'trending-down' : mom.direction === 'up' ? 'trending-up' : 'trending-neutral'}
             idPrefix="payments-kpi"
+            hint={mom.direction === 'none' ? 'Sin cobros para comparar' : undefined}
             label={`vs ${formatMonthLong(previous?.month)}`}
             value={formatMonthOverMonth(mom)}
           />

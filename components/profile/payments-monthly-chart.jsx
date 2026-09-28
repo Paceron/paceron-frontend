@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Svg, { G, Rect, Text as SvgText } from 'react-native-svg';
 import { useThemeColors } from '../../theme/colors.js';
 import { buildMonthlyBars } from '../../utils/payments-chart.js';
@@ -16,6 +16,7 @@ export function PaymentsMonthlyChart({ monthly }) {
   const colors = useThemeColors();
   const [width, setWidth] = useState(0);
   const bars = buildMonthlyBars(monthly, { width, height: CHART_HEIGHT });
+  const isEmpty = !monthly?.some((m) => m.grossAmount > 0);
 
   return (
     <View
@@ -61,6 +62,14 @@ export function PaymentsMonthlyChart({ monthly }) {
             </G>
           ))}
         </Svg>
+      ) : null}
+      {isEmpty ? (
+        // Sin cobros el gráfico queda sin barras: se avisa en vez de dejarlo en blanco.
+        <View className="absolute inset-x-0 top-0 items-center justify-center" nativeID="payments-monthly-chart-empty" pointerEvents="none" style={{ bottom: 28 }} testID="payments-monthly-chart-empty">
+          <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID="payments-monthly-chart-empty-text" testID="payments-monthly-chart-empty-text">
+            Sin cobros en estos meses
+          </Text>
+        </View>
       ) : null}
     </View>
   );

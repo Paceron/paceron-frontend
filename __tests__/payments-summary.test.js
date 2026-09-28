@@ -51,7 +51,7 @@ describe('computeMonthOverMonth', () => {
     expect(formatMonthOverMonth({ pct: 20, direction: 'up' })).toBe('+20%');
     expect(formatMonthOverMonth({ pct: -25, direction: 'down' })).toBe('-25%');
     expect(formatMonthOverMonth({ pct: 0, direction: 'flat' })).toBe('Igual');
-    expect(formatMonthOverMonth({ pct: null, direction: 'none' })).toBe('Sin comparación');
+    expect(formatMonthOverMonth({ pct: null, direction: 'none' })).toBe('—');
   });
 });
 
