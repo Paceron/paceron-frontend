@@ -20,7 +20,12 @@ const RING_STROKE = 6;
 // no duplicar pares claro/oscuro aplica dentro de este archivo (dos usos, el
 // placeholder de carga y la tarjeta del anillo) y no entre archivos — el
 // StatTile compartido no se toca.
-const CARD_SHELL = 'flex-1 items-center justify-center rounded-2xl border border-slate-200 px-1.5 py-4 dark:border-slate-700';
+// SIN `justify-center`, a propósito: `flex-row` estira las tres tarjetas a la
+// altura de la más alta, y el StatTile compartido tampoco centra su contenido
+// (lo tiene arriba). Si esta lo centrara y los otros dos no, el ícono de los
+// StatTile dejaría de alinearse con el anillo. El placeholder de carga sí lo
+// necesita, y lo pone explícito.
+const CARD_SHELL = 'flex-1 items-center rounded-2xl border border-slate-200 px-1.5 py-4 dark:border-slate-700';
 
 // El acento del gradiente se queda solo en la tarjeta del %: es la que D6
 // quiere como elemento protagonista de la fila, y las otras dos son
@@ -30,7 +35,11 @@ const RING_GRADIENT = {
   dark: ['rgba(140, 198, 62, 0.18)', '#111518'],
 };
 
-const RATE_LABEL = 'Asistencias confirmadas';
+// "Asistencias" y no "Asistencias confirmadas": la versión larga son 23
+// caracteres y en un tile de un tercio de ancho envuelve a 2-3 líneas, lo que
+// dejaba la tarjeta del % ~25px más alta que los dos StatTile y las etiquetas
+// desalineadas entre las tres. Se acortó por altura, no por estilo.
+const RATE_LABEL = 'Asistencias';
 
 // Un decimal, como el spec ("50.0 % de asistencias confirmadas"), en formato
 // local. Mismo criterio que utils/currency.js: la instancia de Intl se crea una
@@ -68,7 +77,7 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
   if (isLoading) {
     return (
       <View className="flex-row gap-2" nativeID={`${idPrefix}-loading`} testID={`${idPrefix}-loading`}>
-        <View className={`${CARD_SHELL} min-h-[72px]`} nativeID={`${idPrefix}-loading-card`} testID={`${idPrefix}-loading-card`}>
+        <View className={`${CARD_SHELL} min-h-[72px] justify-center`} nativeID={`${idPrefix}-loading-card`} testID={`${idPrefix}-loading-card`}>
           <ActivityIndicator color={colors.primary} size="small" />
         </View>
       </View>
@@ -117,9 +126,17 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
           testID={`${idPrefix}-rate-accent`}
         />
 
+        {/* La caja reserva el tamaño del anillo. Sin esto el `Svg` va en
+            `position: 'absolute'`, así que NO aporta altura: la caja colapsaba
+            a la altura del número (~20px) y el anillo de 56px se desbordaba 18px
+            arriba y abajo — la etiqueta arrancaba 6px después del fondo de la
+            caja, o sea 12px adentro de la mitad inferior del círculo. Con el
+            alto explícito, el número se centra en el hueco y la etiqueta queda
+            6px debajo del anillo. */}
         <View
           className="items-center justify-center"
           nativeID={`${idPrefix}-rate-figure`}
+          style={{ height: RING_SIZE, width: RING_SIZE }}
           testID={`${idPrefix}-rate-figure`}
         >
           <Svg
