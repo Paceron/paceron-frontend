@@ -43,7 +43,17 @@ export function useAttendanceSessions(groupId, teamId) {
     enabled: Boolean(groupId && teamId),
   });
 
-  return { sessions: query.data ?? [], isLoading: query.isLoading, error: query.error };
+  // `refetch`/`isRefetching` se exponen para el pull-to-refresh, que tiene que
+  // refrescar el listado y la grilla juntos: los `attended_count` del selector de
+  // sesión se desactualizan con cada carga masiva o borrado. Mismo contrato que
+  // `useSessionAttendance`.
+  return {
+    sessions: query.data ?? [],
+    isLoading: query.isLoading,
+    isRefetching: query.isRefetching,
+    error: query.error,
+    refetch: query.refetch,
+  };
 }
 
 // La grilla de una sesión: roster de la sesión cruzado con el estado de cada

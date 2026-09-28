@@ -79,24 +79,24 @@ Contexto de ejecución:
 
 ## Etapa 5 — Pantalla: métricas y grilla
 
-- [ ] **5.1** `components/attendance/attendance-metric-cards.jsx`: 3 tarjetas (asistentes / sin confirmar / %) usando el `StatTile` compartido (1.1) + `expo-linear-gradient` para el acento + **anillo de progreso en `react-native-svg`** para el % (D6). `0 %` cuando `roster_size === 0`.
-- [ ] **5.2** `components/attendance/attendance-row.jsx`: nombre, email, estado (`asistió` / `no confirmó`), procedencia (`source`: "por QR" / "cargada por el entrenador"), check de selección y acción de eliminar (solo si tiene asistencia). Estilo de fila seleccionada siguiendo `exercises-catalog-tab.jsx:119` (borde + bg primitivos).
-- [ ] **5.3** La grilla **no** usa `use-team-roster.js` — usa `useSessionAttendance` (D3). No "unificar" con el roster (D6/R6): el endpoint de grilla trae `source` y el roster no.
-- [ ] **5.4** Botón "Guardar cambios" en el header de la sección, con el contador de marcadas (patrón `exercises-catalog-tab.jsx:291`). `disabled` si `selectedIds.size === 0` (spec scenario "No hay nada marcado").
-- [ ] **5.5** Al guardar con éxito: limpiar `selectedIds`, invalidar el grid + sessions (los conteos del selector se desactualizan), `notifySuccess()` **antes** del `toast.success` (convención `CLAUDE.md`).
-- [ ] **5.6** Al fallar: **no** limpiar `selectedIds`, `notifyError()` + `toast.error` con `error.message` real del backend (patrón C, D4). Distinguir 403 ("no sos entrenador") de 422 ("la sesión ya no es presencial") por `error.status`.
-- [ ] **5.7** Estados: `isLoading` → spinner (no empty state), sin sesión → mensaje de elegir los 3, grupo vacío → mensaje de "el grupo no tiene corredores", error → mensaje + acción de reintentar.
-- [ ] **5.8** `usePullToRefresh` (D11) con el ternario `isMobile ? <RefreshControl .../> : undefined`. El refetch **no** debe pisar `selectedIds`.
-- [ ] **5.9** `useFormDirty(selectedIds.size > 0)` + `useUnsavedChangesGuard` + `DiscardChangesModal` (D10). Cambiar equipo/grupo/sesión con checks marcados también pasa por `guardedClose`/confirmación.
-- [ ] **5.10** `npm run lint` + `npm test` en verde.
+- [x] **5.1** `components/attendance/attendance-metric-cards.jsx`: 3 tarjetas (asistentes / sin confirmar / %) usando el `StatTile` compartido (1.1) + `expo-linear-gradient` para el acento + **anillo de progreso en `react-native-svg`** para el % (D6). `0 %` cuando `roster_size === 0`.
+- [x] **5.2** `components/attendance/attendance-row.jsx`: nombre, email, estado (`asistió` / `no confirmó`), procedencia (`source`: "por QR" / "cargada por el entrenador"), check de selección y acción de eliminar (solo si tiene asistencia). Estilo de fila seleccionada siguiendo `exercises-catalog-tab.jsx:119` (borde + bg primitivos).
+- [x] **5.3** La grilla **no** usa `use-team-roster.js` — usa `useSessionAttendance` (D3). No "unificar" con el roster (D6/R6): el endpoint de grilla trae `source` y el roster no.
+- [x] **5.4** Botón "Guardar cambios" en el header de la sección, con el contador de marcadas (patrón `exercises-catalog-tab.jsx:291`). `disabled` si `selectedIds.size === 0` (spec scenario "No hay nada marcado").
+- [x] **5.5** Al guardar con éxito: limpiar `selectedIds`, invalidar el grid + sessions (los conteos del selector se desactualizan), `notifySuccess()` **antes** del `toast.success` (convención `CLAUDE.md`).
+- [x] **5.6** Al fallar: **no** limpiar `selectedIds`, `notifyError()` + `toast.error` con `error.message` real del backend (patrón C, D4). Distinguir 403 ("no sos entrenador") de 422 ("la sesión ya no es presencial") por `error.status`.
+- [x] **5.7** Estados: `isLoading` → spinner (no empty state), sin sesión → mensaje de elegir los 3, grupo vacío → mensaje de "el grupo no tiene corredores", error → mensaje + acción de reintentar.
+- [x] **5.8** `usePullToRefresh` (D11) con el ternario `isMobile ? <RefreshControl .../> : undefined`. El refetch **no** debe pisar `selectedIds`.
+- [x] **5.9** `useFormDirty(selectedIds.size > 0)` + `useUnsavedChangesGuard` + `DiscardChangesModal` (D10). Cambiar equipo/grupo/sesión con checks marcados también pasa por `guardedClose`/confirmación.
+- [x] **5.10** `npm run lint` + `npm test` en verde.
 
 ## Etapa 6 — Borrado individual
 
-- [ ] **6.1** Estado `pendingDelete` (fila a confirmar) en la pantalla.
-- [ ] **6.2** `ConfirmDestructiveModal` compartido (1.3) con `description` que nombre **corredor y fecha de la sesión** (spec scenario "El modal identifica corredor y sesión"). `notifyWarning()` en el `useEffect` de apertura, en el caller.
-- [ ] **6.3** Confirmar → `useDeleteAttendance`; éxito → invalidar, `notifySuccess()` + toast; fallo → `notifyError()` + mensaje, la fila **no** cambia y las métricas no se tocan.
-- [ ] **6.4** Cancelar → cerrar sin request. Borrar con checks marcados en otras filas → los checks **se conservan** (spec scenario "Borrar mientras hay checks marcados").
-- [ ] **6.5** Verificar que **no** exista ninguna acción de borrado masivo (es un requisito explícito del spec).
+- [x] **6.1** Estado `pendingDelete` (fila a confirmar) en la pantalla.
+- [x] **6.2** `ConfirmDestructiveModal` compartido (1.3) con `description` que nombre **corredor y fecha de la sesión** (spec scenario "El modal identifica corredor y sesión"). `notifyWarning()` en el `useEffect` de apertura, en el caller.
+- [x] **6.3** Confirmar → `useDeleteAttendance`; éxito → invalidar, `notifySuccess()` + toast; fallo → `notifyError()` + mensaje, la fila **no** cambia y las métricas no se tocan.
+- [x] **6.4** Cancelar → cerrar sin request. Borrar con checks marcados en otras filas → los checks **se conservan** (spec scenario "Borrar mientras hay checks marcados").
+- [x] **6.5** Verificar que **no** exista ninguna acción de borrado masivo (es un requisito explícito del spec).
 
 ## Etapa 7 — QR, PDF y compartir
 

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueries } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { isWeb } from '../../utils/platform.js';
+import { isMobile, isWeb } from '../../utils/platform.js';
 import { isSameId } from '../../utils/id-match.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -11,9 +12,17 @@ import { selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeams } from '../../hooks/use-teams.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { usePermissions } from '../../hooks/use-user.js';
-import { useAttendanceSessions, attendanceSessionsQueryKey, useSessionAttendance } from '../../hooks/use-attendance.js';
+import { useAttendanceSessions, attendanceSessionsQueryKey, useSaveAttendance, useDeleteAttendance, useSessionAttendance } from '../../hooks/use-attendance.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { useFormDirty } from '../../hooks/use-form-dirty.js';
+import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { listAttendanceSessions } from '../../services/attendance.js';
+import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
+import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
+import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { AttendanceGrid } from './attendance-grid.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+
 import { AttendanceSelectionPanel, formatSessionDate } from './attendance-selection-panel.jsx';
 
 const ID_PREFIX = 'attendance-screen';
@@ -65,6 +74,7 @@ function AttendanceScreenContent() {
 // requests de por medio es peor que una lista vacía. Un componente que no se
 // monta no pide nada.
 function AttendanceCascade() {
+  const colors = useThemeColors();
   const params = useLocalSearchParams();
   const userId = useAuthStore((s) => s.userId);
 
@@ -106,7 +116,13 @@ function AttendanceCascade() {
   const { groups, loading: loadingGroups, error: groupsError } = useGroups(teamId, userId);
   const groupOptions = useMemo(() => groups.map((group) => ({ id: group.id, name: group.name })), [groups]);
 
-  const { sessions, isLoading: loadingSessions, error: sessionsError } = useAttendanceSessions(groupId, teamId);
+  const {
+    sessions,
+    isLoading: loadingSessions,
+    isRefetching: sessionsRefetching,
+    refetch: refetchSessions,
+    error: sessionsError,
+  } = useAttendanceSessions(groupId, teamId);
   const sessionOptions = useMemo(
     () => sessions.map((session) => ({
       id: session.session_instance_id,
@@ -254,7 +270,14 @@ function AttendanceCascade() {
   // equipo; el resto (422 por no presencial / cancelada / de otro grupo) es la
   // sesión no disponible. El mensaje del backend no se muestra: el front tiene
   // su propia redacción para no filtrar nada de la sesión.
-  const { error: gridError } = useSessionAttendance(sessionInstanceId, teamId, groupId);
+  const {
+    rows,
+    summary,
+    isLoading: gridLoading,
+    isRefetching: gridRefetching,
+    error: gridError,
+    refetch: refetchGrid,
+  } = useSessionAttendance(sessionInstanceId, teamId, groupId);
 
   useEffect(() => {
     if (!gridError) return;
@@ -276,6 +299,59 @@ function AttendanceCascade() {
     setSelectedIds((current) => (current.size === 0 ? current : new Set()));
   }, []);
 
+  // ── Guard de cambios sin guardar (tarea 5.9) ────────────────────────────
+  //
+  // El guard tiene DOS gatillos y por eso el estado vive acá y no en el hook:
+  //
+  // 1. La salida de la pantalla (back nativo, gesto, botón de header), que lo
+  //    intercepta `usePreventRemove` por su cuenta.
+  // 2. Cambiar equipo/grupo/sesión **con marcas sin guardar**. Eso NO es una
+  //    navegación: la pantalla sigue montada. Y acá está el motivo de no usar
+  //    `guardedClose` del hook para ese caso — su flag interno `bypassing` se
+  //    pone en `true` al confirmar y **nunca vuelve a `false`** (miralo: solo
+  //    `confirmDiscard` y `bypassGuard` lo setean, los dos a `true`). Para una
+  //    navegación da igual porque la pantalla se desmonta; para un cambio de
+  //    cascada dejaría el guard apagado para siempre, y la segunda confirmación
+  //    no aparecería nunca. O sea: usarlo acá sería un bug silencioso que
+  //    degrada a "nunca más preguntamos" sin error visible.
+  //
+  // Por eso el descarte de la cascada es un estado local (`pendingCascadeChange`)
+  // con su propio handler, y el modal de abajo es UNO solo que atiende las dos
+  // fuentes. `isDirty` sale de `useFormDirty(selectedIds.size > 0)`: el baseline
+  // se toma en el primer render, cuando no hay nada marcado, así que guardar bien
+  // (que vacía el Set) devuelve el valor al baseline y el guard se limpia solo —
+  // no hace falta `bypassGuard` (D10).
+  const isDirty = useFormDirty(selectedIds.size > 0);
+  const { confirmVisible, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+  const [pendingCascadeChange, setPendingCascadeChange] = useState(null);
+
+  const discardVisible = confirmVisible || pendingCascadeChange !== null;
+
+  const handleDiscardConfirm = () => {
+    if (pendingCascadeChange) {
+      const action = pendingCascadeChange;
+      setPendingCascadeChange(null);
+      action();
+      return;
+    }
+    confirmDiscard();
+  };
+
+  const handleDiscardCancel = () => {
+    setPendingCascadeChange(null);
+    cancelDiscard();
+  };
+
+  // Todo cambio de cascada pasa por acá: si hay marcas sin guardar, se pregunta
+  // antes; si no, se aplica directo.
+  const runCascadeChange = useCallback((action) => {
+    if (selectedIds.size > 0) {
+      setPendingCascadeChange(action);
+      return;
+    }
+    action();
+  }, [selectedIds.size]);
+
   // El usuario tomó el control de la cascada. Además de limpiar lo que quedó
   // del link, cancela la resolución del grupo: el fan-out puede seguir en
   // vuelo, pero `queries` pasa a `[]` y su resultado se ignora. Sin esto, elegir
@@ -293,10 +369,12 @@ function AttendanceCascade() {
   // sería pedir la grilla de una sesión con un grupo que no es de ese equipo.
   const handleSelectTeam = (nextTeamId) => {
     if (isSameId(nextTeamId, teamId)) return;
-    takeOverCascade();
-    setTeamId(nextTeamId);
-    setGroupId(null);
-    setSessionInstanceId(null);
+    runCascadeChange(() => {
+      takeOverCascade();
+      setTeamId(nextTeamId);
+      setGroupId(null);
+      setSessionInstanceId(null);
+    });
   };
 
   // Cambiar grupo limpia la sesión. No vuelve a preseleccionar nada: el grupo
@@ -304,21 +382,127 @@ function AttendanceCascade() {
   // está vacío.
   const handleSelectGroup = (nextGroupId) => {
     if (isSameId(nextGroupId, groupId)) return;
-    takeOverCascade();
-    setGroupId(nextGroupId);
-    setSessionInstanceId(null);
+    runCascadeChange(() => {
+      takeOverCascade();
+      setGroupId(nextGroupId);
+      setSessionInstanceId(null);
+    });
   };
 
   const handleSelectSession = (nextSessionInstanceId) => {
     if (isSameId(nextSessionInstanceId, sessionInstanceId)) return;
-    takeOverCascade();
-    setSessionInstanceId(nextSessionInstanceId);
+    runCascadeChange(() => {
+      takeOverCascade();
+      setSessionInstanceId(nextSessionInstanceId);
+    });
   };
 
-  // Preselección del primer grupo (spec: "sin esperar a que el entrenador toque
-  // el selector"). Vive en un efecto y no en el handler del equipo a propósito:
-  // en el momento de elegir el equipo los grupos del equipo nuevo todavía no
-  // llegaron, así que no hay un "primer grupo" al que elegirle.
+  // ── Marcas y guardado masivo (tareas 5.4-5.6) ───────────────────────────
+  //
+  // El Set guarda el `user_id` **stringificado**: las filas llegan del backend
+  // con `user_id` numérico, pero el deep link y el `?team_id` trayacen strings, y
+  // un Set con `42` y `'42'` dos entradas contaría dos marcas para el mismo
+  // corredor. Stringificar al insertar y al leer lo hace consistente.
+  const toggleRow = useCallback((userId) => {
+    const key = String(userId);
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const { saveAttendance, isSaving } = useSaveAttendance(teamId);
+
+  // Patrón C (D4): la mutación deja propagar el error y el try/catch vive acá, en
+  // el caller. Por eso el mensaje puede ser el `error.message` real del backend y
+  // por eso se puede distinguir un 403 de un 422 mirando `error.status`
+  // (services/api.js lo deja en el error).
+  const handleSave = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const result = await saveAttendance({
+        teamId,
+        trainingSessionId: sessionInstanceId,
+        userIds: [...selectedIds],
+      });
+      // Solo se limpian las marcas si el guardado fue exitoso (tarea 5.6). Si
+      // falla, el Set intacto es lo que permite reintentar sin volver a marcar.
+      clearSelection();
+      notifySuccess();
+      Toast.show({
+        type: 'success',
+        text1: `Asistencia guardada`,
+        text2: `${result?.created ?? 0} nueva${(result?.created ?? 0) === 1 ? '' : 's'}, ${result?.updated ?? 0} actualizada${(result?.updated ?? 0) === 1 ? '' : 's'}`,
+      });
+    } catch (error) {
+      notifyError();
+      // 403 = no administrás el equipo; 422 = la sesión ya no es presencial (o
+      // alguno de los corredores no era miembro en la fecha). Son dos causas que
+      // el entrenador puede resolver distinto, así que no se genéralizan. Cualquier
+      // otro status cae al mensaje del backend.
+      if (error.status === 403) {
+        Toast.show({ type: 'error', text1: 'No administrás ese equipo', text2: 'Pedile a otro entrenador del equipo que cargue la asistencia.' });
+      } else if (error.status === 422) {
+        Toast.show({ type: 'error', text1: 'No se pudo guardar', text2: 'La sesión dejó de ser presencial o algún corredor no era del grupo en esa fecha.' });
+      } else {
+        Toast.show({ type: 'error', text1: 'No se pudo guardar la asistencia', text2: error.message });
+      }
+    }
+  };
+
+  // Pull-to-refresh (D11). Refresca la grilla y el listado de sesiones (los
+  // contadores del selector se desactualizan con cada carga). NO toca
+  // `selectedIds`: las marcas son del entrenador, no del servidor, y un refetch
+  // no puede borrarle lo que llevaba marcado (tarea 5.8).
+  const { refreshing, onRefresh } = usePullToRefresh(useCallback(async () => {
+    await Promise.all([refetchGrid(), refetchSessions()]);
+  }, [refetchGrid, refetchSessions]));
+
+  // ── Borrado individual (tareas 6.1-6.4) ──────────────────────────────────
+  //
+  // Vive acá y no en la fila porque el `ConfirmDestructiveModal` compartido no
+  // dispara el haptics por sí mismo (D12): el `notifyWarning` lo hace el caller
+  // en su propio `useEffect` de apertura, así que el shell no decide cuándo
+  // vibrar. Y la fila no puede, porque no sabe si el modal se está abriendo o
+  // relanzándose.
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const { deleteAttendance, isDeleting } = useDeleteAttendance(teamId);
+
+  useEffect(() => {
+    if (pendingDelete) notifyWarning();
+  }, [pendingDelete]);
+
+  const handleRequestDelete = useCallback((row) => {
+    setPendingDelete(row);
+  }, []);
+
+  const handleCancelDelete = useCallback(() => {
+    if (isDeleting) return;
+    setPendingDelete(null);
+  }, [isDeleting]);
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete || isDeleting) return;
+    try {
+      await deleteAttendance(pendingDelete.attendance_id);
+      setPendingDelete(null);
+      notifySuccess();
+      Toast.show({ type: 'success', text1: 'Asistencia eliminada' });
+    } catch (error) {
+      notifyError();
+      // La fila NO cambia y las métricas no se tocan: la invalidación solo corre
+      // en el `onSuccess` del hook, así que un fallo deja la grilla como estaba
+      // (tarea 6.3). Las marcas de otras filas tampoco se tocan (6.4).
+      Toast.show({ type: 'error', text1: 'No se pudo eliminar', text2: error.message });
+    }
+  };
+
+
   //
   // Se saltea mientras `resolvingLink`: si no, preseleccionaría el primer grupo
   // apenas cargaran los grupos y la resolución del link tendría que pelear con
@@ -341,6 +525,16 @@ function AttendanceCascade() {
         className="flex-1 bg-paper dark:bg-ink"
         contentContainerClassName="px-4 py-8"
         nativeID={`${ID_PREFIX}-scroll`}
+        // Pull-to-refresh solo en nativo (tarea 5.8, D11): el mismo ternario
+        // textual que usa el resto de pantallas. En web el gesture no existe y
+        // un `RefreshControl` de RNW no aporta nada.
+        refreshControl={isMobile ? (
+          <RefreshControl
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+            tintColor={colors.primary}
+          />
+        ) : undefined}
         showsVerticalScrollIndicator={false}
         testID={`${ID_PREFIX}-scroll`}
       >
@@ -395,9 +589,47 @@ function AttendanceCascade() {
             </View>
           )}
 
-          {/* Etapa 5: `useSessionAttendance` ya se pide más arriba (es lo que
-              valida el link), así que la grilla solo tiene que consumir
-              `rows`/`summary` del mismo hook y el `setSelectedIds` de D5. */}
+          {/* La grilla solo existe con los tres ids resueltos. El `isLoading` de
+              la grilla se distingue del "sin sesión": sin sesión no hay nada que
+              pedir todavía, así que el mensaje de arriba va solo. */}
+          {selectedSession ? (
+            <AttendanceGrid
+              error={gridError}
+              idPrefix={`${ID_PREFIX}-grid`}
+              isLoading={gridLoading}
+              isRefetching={gridRefetching || sessionsRefetching}
+              isSaving={isSaving}
+              onRequestDelete={handleRequestDelete}
+              onRetry={refetchGrid}
+              onSave={handleSave}
+              onToggle={toggleRow}
+              rows={rows}
+              selectedIds={selectedIds}
+              summary={summary}
+            />
+          ) : null}
+
+          <DiscardChangesModal
+            onCancel={handleDiscardCancel}
+            onConfirm={handleDiscardConfirm}
+            visible={discardVisible}
+          />
+
+          {/* La descripción NOMBRA corredor y fecha (tarea 6.2): "eliminar la
+              asistencia" sin decir de quién es deja al entrenador adivinando en
+              una grilla de ocho filas. */}
+          <ConfirmDestructiveModal
+            confirmLabel="Eliminar"
+            description={pendingDelete
+              ? `Vas a eliminar la asistencia de ${pendingDelete.name} a la sesión del ${formatSessionDate(selectedSession?.date)}. Esta acción no se puede deshacer.`
+              : ''}
+            idPrefix={`${ID_PREFIX}-delete-attendance`}
+            loading={isDeleting}
+            onCancel={handleCancelDelete}
+            onConfirm={handleConfirmDelete}
+            title="Eliminar asistencia"
+            visible={Boolean(pendingDelete)}
+          />
         </View>
       </ScrollView>
     </View>
