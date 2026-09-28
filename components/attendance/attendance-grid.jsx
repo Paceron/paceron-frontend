@@ -100,7 +100,7 @@ export function AttendanceGrid({
         <View className="mt-3 flex-row items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-save-bar`} testID={`${idPrefix}-save-bar`}>
           <View className="flex-1" nativeID={`${idPrefix}-save-bar-text-wrapper`} testID={`${idPrefix}-save-bar-text-wrapper`}>
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-save-bar-count`} testID={`${idPrefix}-save-bar-count`}>
-              {markedCount} {markedCount === 1 ? 'corredor marcado' : 'corredores marcados'}
+              Confirmar Asistencia de {markedCount} {markedCount === 1 ? 'corredor' : 'corredores'}
             </Text>
           </View>
           <Pressable
