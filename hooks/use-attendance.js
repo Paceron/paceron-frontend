@@ -21,6 +21,15 @@ import {
 // sola invalidación alcance a las dos. Es el mismo criterio que
 // `['group-calendar', groupId, from, to]` con `['group-calendar', groupId]` en
 // use-group-calendar.js.
+//
+// Exportada porque la pantalla la necesita escrita a mano para el fan-out con
+// que resuelve el deep link (un `useQueries` de cantidad variable, que un hook no
+// puede resolver). Tener la key en un solo lugar evita el peor outcome posible:
+// que el hook cambie su key y el fan-out se quede pegado a la vieja, escribiendo
+// en un cache que nadie lee.
+export function attendanceSessionsQueryKey(teamId, groupId) {
+  return ['attendance', teamId, 'sessions', groupId];
+}
 
 // Lista de las sesiones presenciales ya ocurridas del grupo, con cuántas
 // asistencias lleva cada una. Es el selector de sesión de la pantalla.
@@ -29,7 +38,7 @@ import {
 // grupo no hay sesiones (el endpoint cuelga del grupo).
 export function useAttendanceSessions(groupId, teamId) {
   const query = useQuery({
-    queryKey: ['attendance', teamId, 'sessions', groupId],
+    queryKey: attendanceSessionsQueryKey(teamId, groupId),
     queryFn: () => listAttendanceSessionsService(groupId, teamId).then((dto) => dto.sessions ?? []),
     enabled: Boolean(groupId && teamId),
   });

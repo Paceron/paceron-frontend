@@ -66,16 +66,16 @@ Contexto de ejecución:
 
 ## Etapa 4 — Pantalla: cascada de selección
 
-- [ ] **4.1** `app/(tabs)/attendance.jsx` — wrapper mínimo, auto-descubierto por Expo Router, hereda el shell de `app/(tabs)/_layout.jsx` sin `.web.jsx` (D2).
-- [ ] **4.2** `components/attendance/attendance-screen.jsx`: parsear los query params opcionales `team_id` / `session_instance_id` con `useLocalSearchParams`.
-- [ ] **4.3** Estado de la cascada: `teamId`, `groupId`, `sessionInstanceId` + `selectedIds: Set<string>` (D5). Cambiar equipo → limpiar grupo y sesión y **preseleccionar el primer grupo**; cambiar grupo → limpiar sesión.
-- [ ] **4.4** Datos de los selectores: equipos desde `use-teams.js` (`listTeams({ ownerId })` / `selectAdministeredTeams`), grupos desde `use-groups.js` (`useGroups(teamId, userId)`), sesiones desde `useAttendanceSessions` (2.5).
-- [ ] **4.5** Los tres `SearchablePickerField` en un `components/shared/filter-panel.jsx`, con la forma del cascada de `administered-calendar-screen.jsx:151-176` pero **sin** el sentinela `"Todos los equipos"` (esta pantalla es de una selección concreta, no de filtro).
-- [ ] **4.6** Empty/disabled: equipo sin grupos → selector de grupo deshabilitado + mensaje; grupo sin sesiones → selector de sesión deshabilitado con el mensaje del spec. No mostrar un select vacío sin explicación.
-- [ ] **4.7** Deep link: si vienen `team_id` y `session_instance_id` válidos → arrancar con la sesión cargada. Si la sesión no existe → mensaje + selector disponible. Si no es del equipo → mensaje de permisos **sin revelar datos** de la sesión.
-- [ ] **4.8** Deep link de rol: si `activeRole` no es `trainer`, mostrar el aviso de "exclusivo del entrenador" (spec requirement 1), sin grilla ni botón de QR.
-- [ ] **4.9** Guard de rol: `components/guards/require-auth.jsx` envolviendo la pantalla, como en `administered-calendar-screen.jsx:206-212`.
-- [ ] **4.10** `npm run lint` + `npm test` en verde.
+- [x] **4.1** `app/(tabs)/attendance.jsx` — wrapper mínimo, auto-descubierto por Expo Router, hereda el shell de `app/(tabs)/_layout.jsx` sin `.web.jsx` (D2).
+- [x] **4.2** `components/attendance/attendance-screen.jsx`: parsear los query params opcionales `team_id` / `session_instance_id` con `useLocalSearchParams`.
+- [x] **4.3** Estado de la cascada: `teamId`, `groupId`, `sessionInstanceId` + `selectedIds: Set<string>` (D5). Cambiar equipo → limpiar grupo y sesión y **preseleccionar el primer grupo**; cambiar grupo → limpiar sesión.
+- [x] **4.4** Datos de los selectores: equipos desde `use-teams.js` (`listTeams({ ownerId })` / `selectAdministeredTeams`), grupos desde `use-groups.js` (`useGroups(teamId, userId)`), sesiones desde `useAttendanceSessions` (2.5).
+- [x] **4.5** Los tres `SearchablePickerField` en un `components/shared/filter-panel.jsx`, con la forma del cascada de `administered-calendar-screen.jsx:151-176` pero **sin** el sentinela `"Todos los equipos"` (esta pantalla es de una selección concreta, no de filtro).
+- [x] **4.6** Empty/disabled: equipo sin grupos → selector de grupo deshabilitado + mensaje; grupo sin sesiones → selector de sesión deshabilitado con el mensaje del spec. No mostrar un select vacío sin explicación.
+- [x] **4.7** Deep link: si vienen `team_id` y `session_instance_id` válidos → arrancar con la sesión cargada. Si la sesión no existe → mensaje + selector disponible. Si no es del equipo → mensaje de permisos **sin revelar datos** de la sesión.
+- [x] **4.8** Deep link de rol: si `activeRole` no es `trainer`, mostrar el aviso de "exclusivo del entrenador" (spec requirement 1), sin grilla ni botón de QR.
+- [x] **4.9** Guard de rol: `components/guards/require-auth.jsx` envolviendo la pantalla, como en `administered-calendar-screen.jsx:206-212`.
+- [x] **4.10** `npm run lint` + `npm test` en verde.
 
 ## Etapa 5 — Pantalla: métricas y grilla
 
