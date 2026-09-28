@@ -129,6 +129,21 @@ El porcentaje SHALL ser el cociente entre asistentes y corredores del grupo,
 expresado entre 0 y 100 con un decimal. Cuando el grupo no tenga corredores, el
 porcentaje SHALL mostrarse como 0 y no SHALL producir un error.
 
+> Nota de implementación (verificada contra `buildAttendanceSummary` en
+> `paceron-backend/cmd/api/services/attendance_service.go`): el 0 con roster
+> vacío es un valor **real**, no un dato sin resolver — el backend inicializa
+> `rate := 0.0` y solo recalcula si `RosterSize > 0`. O sea que el "sin dato"
+> (que se representa como `null`, no como 0) es otro caso: que no venga el
+> summary, o que `roster_size` sea null. `toAttendanceRate` (`utils/attendance-payload.js`)
+> distingue los dos.
+>
+> El mismo backend puede devolver **más de 100**: `attended` es el total de
+> asistencias de la sesión sin filtrar por roster, así que si alguien que ya no
+> está en el roster tiene asistencia cargada el cociente se pasa (por eso
+> `not_confirmed` se clampea con `max(0, …)` del lado del servidor). El clamp al
+> 100 es de la capa de presentación —el anillo SVG—, no del util, que no inventa
+> datos.
+
 Las tres tarjetas SHALL recalcularse en el momento en que se registre o se borre
 una asistencia, sin que el entrenador tenga que recargar la pantalla.
 

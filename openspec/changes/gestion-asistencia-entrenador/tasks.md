@@ -37,21 +37,21 @@ Contexto de ejecución:
 
 ## Etapa 2 — Capa de datos
 
-- [ ] **2.1** `services/attendance.js` — 5 funciones con la forma de `services/workoutFeedback.js` (comentario `// GET /api/v1/...` arriba, guarda `USE_MOCKS` primero):
+- [x] **2.1** `services/attendance.js` — 5 funciones con la forma de `services/workoutFeedback.js` (comentario `// GET /api/v1/...` arriba, guarda `USE_MOCKS` primero):
   - `listAttendanceSessions(groupId, teamId)`
   - `getSessionAttendance(sessionInstanceId, teamId, groupId)`
   - `bulkSaveAttendance({ teamId, trainingSessionId, userIds })` — **`userIds` en el body va con `Number()`** (regla del `CLAUDE.md`: los ids del roster normalizado son string y el backend rechaza `user_id` no numérico)
   - `getAttendanceQr(teamId, trainingSessionId)`
   - `deleteAttendance(attendanceId, teamId)` — el `api.delete` **no** acepta body, así que el `team_id` va en el query string inline
-- [ ] **2.2** `services/__mocks__/attendance-mock.js` con las 5 (convención `USE_MOCKS`).
-- [ ] **2.3** `utils/attendance-filter.js`: `normalizeForSearch(text)` (NFD + strip de diacríticos + minúsculas) y `filterByName(options, query, nameKey)`. Función pura → **test en `__tests__/attendance-filter.test.js`** (acentos, mayúsculas, query vacío, coincidencia parcial).
-- [ ] **2.4** `utils/attendance-payload.js`: `toBulkAttendancePayload({ teamId, trainingSessionId, userIds })` y `toAttendanceRate(summary)`. Puros → test.
-- [ ] **2.5** `hooks/use-attendance.js` — **patrón C** (D4: las mutaciones propagan el error, sin `{success, error}`):
+- [x] **2.2** `services/__mocks__/attendance-mock.js` con las 5 (convención `USE_MOCKS`).
+- [x] **2.3** `utils/attendance-filter.js`: `normalizeForSearch(text)` (NFD + strip de diacríticos + minúsculas) y `filterByName(options, query, nameKey)`. Función pura → **test en `__tests__/attendance-filter.test.js`** (acentos, mayúsculas, query vacío, coincidencia parcial).
+- [x] **2.4** `utils/attendance-payload.js`: `toBulkAttendancePayload({ teamId, trainingSessionId, userIds })` y `toAttendanceRate(summary)`. Puros → test.
+- [x] **2.5** `hooks/use-attendance.js` — **patrón C** (D4: las mutaciones propagan el error, sin `{success, error}`):
   - `useAttendanceSessions(groupId, teamId)` — `enabled: Boolean(groupId && teamId)`, key `['attendance','sessions',teamId,groupId]`, retorna `{ sessions, isLoading, error }`
   - `useSessionAttendance(sessionInstanceId, teamId, groupId)` — key `['attendance','grid',teamId,groupId,sessionInstanceId]`, retorna `{ rows, summary, isLoading, error, refetch, isRefetching }`
   - `useSaveAttendance(...)` — `onSuccess` invalida **por prefijo** `['attendance', teamId]`
   - `useDeleteAttendance(...)` — ídem
-- [ ] **2.6** `npm test` + `npm run lint` en verde. Confirmar que los `Number()` del punto 2.1 están (es el bug ya documentado de `addGroupUser`).
+- [x] **2.6** `npm test` + `npm run lint` en verde. Confirmar que los `Number()` del punto 2.1 están (es el bug ya documentado de `addGroupUser`).
 
 ## Etapa 3 — `SearchablePickerField` (componente compartido)
 
