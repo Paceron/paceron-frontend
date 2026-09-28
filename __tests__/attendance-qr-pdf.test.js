@@ -188,4 +188,47 @@ describe('buildAttendanceQrHtml', () => {
     expect(html).not.toContain('null');
     expect(html).not.toContain('<div class="header-date">');
   });
+
+  // Estos dos tests existen por un bug real: el modal preformateaba la fecha a
+  // DD-MM-AAAA antes de pasarla, y `formatAttendanceDate` la formatea OTRA vez
+  // esperando un ISO. El regex no matcheaba, devolvía null, y el guard "si no
+  // parece una fecha, no imprimir" se tragaba el fallo en silencio: el PDF salía
+  // sin fecha y sin error. Los tests previos pasaban igual porque llamaban al
+  // util con el ISO crudo — el input que el util espera, pero NO el que le daba
+  // el caller real.
+  test('la fecha de la sesión va junto al nombre, como "Sesión del DD-MM-AAAA"', () => {
+    const html = buildAttendanceQrHtml({ session: FULL_SESSION, qrDataUri: QR_DATA_URI });
+
+    // FULL_SESSION tiene date 2026-09-27. Se asserta sobre el ELEMENTO, no sobre
+    // la cadena "Sesión del": esa frase estaba también en un comentario del CSS
+    // y hacía que un test de "no debe aparecer" pasara en falso.
+    expect(html).toContain('27-09-2026');
+    expect(html).toMatch(/<p class="session-date">Sesión del 27-09-2026<\/p>/);
+  });
+
+  test('sin fecha no se imprime el renglón, y no queda un "del" colgado', () => {
+    const html = buildAttendanceQrHtml({
+      session: { ...FULL_SESSION, date: null },
+      qrDataUri: QR_DATA_URI,
+    });
+
+    expect(html).not.toContain('class="session-date"');
+    expect(html).not.toMatch(/<p class="session-date">/);
+  });
+
+  // Contrato con el caller: el modal tiene que pasar el ISO CRUDO. Este test es
+  // el que habría atrapado el bug de producción — el modal preformateaba a
+  // DD-MM-AAAA, `formatAttendanceDate` lo formateaba OTRA vez, el regex no
+  // matcheaba, y el guard "si no parece fecha, no imprimir" se tragaba el
+  // fallo en silencio (PDF sin fecha, sin error). El test anterior con
+  // FULL_SESSION pasaba igual porque el ISO crudo SÍ es lo que el util espera.
+  test('una fecha YA formateada no se imprime: el doble formateo queda expuesto', () => {
+    const html = buildAttendanceQrHtml({
+      session: { ...FULL_SESSION, date: '27-09-2026' },
+      qrDataUri: QR_DATA_URI,
+    });
+
+    expect(html).not.toMatch(/<p class="session-date">/);
+    expect(html).not.toContain('27-09-2026');
+  });
 });

@@ -219,6 +219,19 @@ export function buildAttendanceQrHtml({ team, session, qrDataUri, logoDataUri } 
     margin: 12mm 0 0;
   }
 
+  /* La fecha va DEBAJO del nombre, no solo en el header: el header es chico y se
+     lee de reojo, y la fecha de la sesión es justo lo que el entrenador necesita
+     para colgar el cartel del día correcto (un cartel con la fecha corrida no se
+     corrige después de impreso). Se rotula con la palabra "del" para que se lea
+     sola en vez de una fecha suelta colgando del nombre. */
+  .session-date {
+    font-size: 12pt;
+    color: #40484c;
+    line-height: 1.35;
+    text-align: center;
+    margin: 1.5mm 0 0;
+  }
+
   /* El QR es el elemento dominante: 108mm de los 174mm de ancho útil, sobre una
      tarjeta blanca con borde y zona de silencio propia (padding), para que los
      módulos del código no queden pegados al marco. El QR del backend es de
@@ -281,6 +294,7 @@ export function buildAttendanceQrHtml({ team, session, qrDataUri, logoDataUri } 
       </div>
     </header>
     ${sessionName ? `<h1 class="session-name">${escapeHtml(sessionName)}</h1>` : ''}
+    ${date ? `<p class="session-date">Sesión del ${escapeHtml(date)}</p>` : ''}
     <div class="qr-card">
       <img class="qr" src="${escapeHtml(qrDataUri)}" alt="Código QR de asistencia" />
     </div>

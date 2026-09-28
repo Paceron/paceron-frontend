@@ -65,11 +65,16 @@ export function AttendanceQrModal({ visible, onClose, teamName, session, teamId,
   // El logo y el HTML se arman recién al descargar o compartir, no al abrir: son
   // trabajo de plataforma (leer el asset, cachear base64) que no vale la pena
   // pagar si el entrenador solo va a mirar el QR.
+  //
+  // OJO con `date`: se pasa el ISO CRUDO, sin formatear. `buildAttendanceQrHtml`
+  // lo formatea él (a DD-MM-AAAA) porque su parseo está pensado para no correr el
+  // día por un offset de zona horaria en un documento impreso. Preformatear acá
+  // hacía que el regex no matcheara y la fecha NO se imprimiera, sin error.
   const buildHtml = async () => {
     const logoDataUri = await resolveLogoDataUri();
     return buildAttendanceQrHtml({
       team: { name: teamName },
-      session: { ...session, date: formatDate(session?.date) },
+      session,
       qrDataUri,
       logoDataUri,
     });
