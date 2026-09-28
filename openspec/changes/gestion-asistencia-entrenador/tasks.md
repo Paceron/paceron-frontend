@@ -55,14 +55,14 @@ Contexto de ejecución:
 
 ## Etapa 3 — `SearchablePickerField` (componente compartido)
 
-- [ ] **3.1** `components/forms/searchable-picker-field.jsx` (D1): trigger + `Modal` con `TextInput` de filtro + lista filtrada, siguiendo la forma de `components/team/athlete-picker-modal.jsx:11-29`.
-- [ ] **3.2** Props: `label`, `value`, `options` (`{ id, name }`), `onChange`, `placeholder`, `disabled`, `loading`, `emptyMessage`, `renderOptionMeta?` (para el caso de sesión: fecha + conteo), `idPrefix`. **NativeWind inline con `dark:`** para claro/oscuro (patrón del `CLAUDE.md`).
-- [ ] **3.3** Filtro con `filterByName` (2.3). Normaliza acentos y mayúsculas.
-- [ ] **3.4** Reglas de modal: backdrop `Pressable` con `onPress` → cerrar, card `Pressable` con `onPress={() => {}}`, `onRequestClose` → cerrar. Cumple `local/require-modal-backdrop-close`.
-- [ ] **3.5** `nativeID` + `testID` en **cada** `View`/`Text`/`TextInput`/`Pressable`/`Modal`, todos con prefijo `idPrefix` (regla `local/require-native-id`).
-- [ ] **3.6** Web y mobile: mismo componente, sin `.web.jsx`. Verificar que el modal y el `TextInput` funcionan en ambos.
-- [ ] **3.7** Accesibilidad: `accessibilityState={{ selected }}` en cada opción, `accessibilityLabel` en el trigger.
-- [ ] **3.8** `npm run lint` en verde.
+- [x] **3.1** `components/forms/searchable-picker-field.jsx` (D1): trigger + `Modal` con `TextInput` de filtro + lista filtrada, siguiendo la forma de `components/team/athlete-picker-modal.jsx:11-29`.
+- [x] **3.2** Props: `label`, `value`, `options` (`{ id, name }`), `onChange`, `placeholder`, `disabled`, `loading`, `emptyMessage`, `renderOptionMeta?` (para el caso de sesión: fecha + conteo), `idPrefix`. **NativeWind inline con `dark:`** para claro/oscuro (patrón del `CLAUDE.md`).
+- [x] **3.3** Filtro con `filterByName` (2.3). Normaliza acentos y mayúsculas.
+- [x] **3.4** Reglas de modal: backdrop `Pressable` con `onPress` → cerrar, card `Pressable` con `onPress={() => {}}`, `onRequestClose` → cerrar. Cumple `local/require-modal-backdrop-close`.
+- [x] **3.5** `nativeID` + `testID` en **cada** `View`/`Text`/`TextInput`/`Pressable`/`Modal`, todos con prefijo `idPrefix` (regla `local/require-native-id`).
+- [x] **3.6** Web y mobile: mismo componente, sin `.web.jsx`. Verificar que el modal y el `TextInput` funcionan en ambos.
+- [x] **3.7** Accesibilidad: `accessibilityState={{ selected }}` en cada opción, `accessibilityLabel` en el trigger.
+- [x] **3.8** `npm run lint` en verde.
 
 ## Etapa 4 — Pantalla: cascada de selección
 
