@@ -1,4 +1,4 @@
-import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute } from '../routes/catalog.js';
+import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, attendanceRoute } from '../routes/catalog.js';
 
 describe('routes catalog', () => {
   test('exposes the home route as the first navigation route', () => {
@@ -73,5 +73,23 @@ describe('trainingPlansRoute', () => {
     expect(trainingPlansRoute.name).toBe('training-plans');
     expect(trainingPlansRoute.href).toBe('/training-plans');
     expect(trainingPlansRoute.role).toBe('trainer');
+  });
+});
+
+describe('attendanceRoute', () => {
+  test('is scoped to the trainer role', () => {
+    expect(attendanceRoute.name).toBe('attendance');
+    expect(attendanceRoute.href).toBe('/attendance');
+    expect(attendanceRoute.icon).toBe('clipboard-check-outline');
+    expect(attendanceRoute.role).toBe('trainer');
+  });
+
+  test('shows for trainer, not for runner', () => {
+    expect(getRoutesByRole('trainer')).toContainEqual(attendanceRoute);
+    expect(getRoutesByRole('runner')).not.toContainEqual(attendanceRoute);
+  });
+
+  test('is excluded when there is no active role', () => {
+    expect(getRoutesByRole(null)).not.toContainEqual(attendanceRoute);
   });
 });
