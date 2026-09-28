@@ -29,11 +29,11 @@ Contexto de ejecución:
 
 ## Etapa 1 — Extracciones (desacopladas, se pueden hacer primero)
 
-- [ ] **1.1** `components/shared/stat-tile.jsx`: extraer de `components/team/team-detail-screen.jsx:94-110`. Prop `idPrefix` **requerido** (sacar el hardcodeo `team-detail-` de los `nativeID`/`testID`). Mantener el aspecto visual actual.
-- [ ] **1.2** `team-detail-screen.jsx`: importar el `StatTile` compartido y borrar el local. Verificar que los ids sigan siendo los mismos para no romper nada que los apunte.
-- [ ] **1.3** `components/shared/confirm-destructive-modal.jsx`: extraer de `components/team/delete-team-modal.jsx`, con props `{ visible, title, description, confirmLabel, loading, onCancel, onConfirm }`. **El `notifyWarning()` lo dispara el caller** vía `useEffect`, no el componente (D12). Backdrop `Pressable` → `onCancel`; card `Pressable` con `onPress={() => {}}` (regla `local/require-modal-backdrop-close`).
-- [ ] **1.4** `delete-team-modal.jsx`: pasar a usar el compartido, con su `useEffect` de `notifyWarning` explícito. `npm run lint` en verde.
-- [ ] **1.5** **No** migrar los otros 3 modales destructivos del repo (D12).
+- [x] **1.1** `components/shared/stat-tile.jsx`: extraer de `components/team/team-detail-screen.jsx:94-110`. Prop `idPrefix` **requerido** (sacar el hardcodeo `team-detail-` de los `nativeID`/`testID`). Mantener el aspecto visual actual.
+- [x] **1.2** `team-detail-screen.jsx`: importar el `StatTile` compartido y borrar el local. Verificar que los ids sigan siendo los mismos para no romper nada que los apunte.
+- [x] **1.3** `components/shared/confirm-destructive-modal.jsx`: extraer de `components/team/delete-team-modal.jsx`, con props `{ visible, title, description, confirmLabel, loading, onCancel, onConfirm }`. **El `notifyWarning()` lo dispara el caller** vía `useEffect`, no el componente (D12). Backdrop `Pressable` → `onCancel`; card `Pressable` con `onPress={() => {}}` (regla `local/require-modal-backdrop-close`).
+- [x] **1.4** `delete-team-modal.jsx`: pasar a usar el compartido, con su `useEffect` de `notifyWarning` explícito. `npm run lint` en verde.
+- [x] **1.5** **No** migrar los otros 3 modales destructivos del repo (D12).
 
 ## Etapa 2 — Capa de datos
 
