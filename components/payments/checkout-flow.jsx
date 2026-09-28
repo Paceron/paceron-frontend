@@ -14,7 +14,7 @@ import { WEB_ORIGIN } from '../../config/env.js';
 // (ambas son modal + onCancel) — ver
 // docs/superpowers/specs/2026-09-03-payments-checkout-webview-design.md y
 // docs/superpowers/specs/2026-09-04-checkout-modal-unification-design.md.
-export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError, onCancel }) {
+export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, concept, onApproved, onError, onCancel }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const webViewRef = useRef(null);
@@ -55,6 +55,9 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, m
     amount: String(amount),
     ...(installmentId ? { installmentId: String(installmentId) } : {}),
     ...(marketplace ? { marketplace: 'true' } : {}),
+    // Sin `concept`, el pago de una cuota de equipo se cobraría con el token de
+    // Paceron en vez del del entrenador — ver checkout-brick.web.jsx.
+    ...(concept ? { concept } : {}),
   });
   const checkoutUrl = `${WEB_ORIGIN}/checkout?${queryParams.toString()}`;
 

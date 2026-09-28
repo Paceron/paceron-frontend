@@ -15,7 +15,7 @@ import { CheckoutBrick } from './checkout-brick.web.jsx';
 // sin riesgo de perder datos cargados). Firma idéntica a checkout-flow.jsx
 // (nativo) — ambas variantes de plataforma aceptan las mismas props. Ver
 // docs/superpowers/specs/2026-09-04-checkout-modal-unification-design.md.
-export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError, onCancel }) {
+export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, marketplace, concept, onApproved, onError, onCancel }) {
   const colors = useThemeColors();
 
   return (
@@ -39,6 +39,7 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, m
           <ScrollView nativeID="checkout-flow-modal-scroll" showsVerticalScrollIndicator={false} testID="checkout-flow-modal-scroll">
             <CheckoutBrick
               amount={amount}
+              concept={concept}
               installmentId={installmentId}
               marketplace={marketplace}
               onApproved={onApproved}

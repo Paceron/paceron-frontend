@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { formatARS } from '../../utils/currency.js';
+import { formatArs } from '../../utils/currency.js';
 import { formatDMY } from '../../utils/datetime-parts.js';
 import { paymentStatusMeta } from '../../utils/payment-status.js';
 import { paymentMethodLabel, paymentTypeLabel } from '../../utils/payment-method.js';
@@ -105,10 +105,10 @@ function ReceivedRow({ payment, isWide, id, date }) {
           payer: <CellText id={`${id}-payer-text`} strong>{payment.payer?.fullName || 'Corredor'}</CellText>,
           team: <CellText id={`${id}-team-text`}>{payment.team?.name || 'Equipo eliminado'}</CellText>,
           status: <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />,
-          gross: <CellText id={`${id}-gross-text`} strong>{formatARS(payment.grossAmount)}</CellText>,
+          gross: <CellText id={`${id}-gross-text`} strong>{formatArs(payment.grossAmount)}</CellText>,
           net: payment.netAmount === null
             ? <CellText id={`${id}-net-text`} muted>—</CellText>
-            : <CellText id={`${id}-net-text`}>{formatARS(payment.netAmount, { decimals: 2 })}</CellText>,
+            : <CellText id={`${id}-net-text`}>{formatArs(payment.netAmount, { decimals: 2 })}</CellText>,
         }}
         id={id}
       />
@@ -118,7 +118,7 @@ function ReceivedRow({ payment, isWide, id, date }) {
     <View className="gap-1.5 border-b border-slate-100 px-4 py-3 dark:border-slate-800" nativeID={id} testID={id}>
       <View className="flex-row items-baseline justify-between gap-3" nativeID={`${id}-top`} testID={`${id}-top`}>
         <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={1} testID={`${id}-title`}>{payment.payer?.fullName || 'Corredor'}</Text>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>{formatARS(payment.grossAmount)}</Text>
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>{formatArs(payment.grossAmount)}</Text>
       </View>
       <View className="flex-row items-center justify-between gap-3" nativeID={`${id}-bottom`} testID={`${id}-bottom`}>
         <Text className="flex-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>{`${payment.team?.name || 'Equipo eliminado'} · ${date}`}</Text>
@@ -126,7 +126,7 @@ function ReceivedRow({ payment, isWide, id, date }) {
       </View>
       {payment.netAmount !== null ? (
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-net`} style={TABULAR} testID={`${id}-net`}>
-          {`Neto ${formatARS(payment.netAmount, { decimals: 2 })}`}
+          {`Neto ${formatArs(payment.netAmount, { decimals: 2 })}`}
         </Text>
       ) : null}
     </View>
@@ -146,7 +146,7 @@ function HistoryRow({ payment, isWide, id, date, onReceipt, busy }) {
           detail: <CellText id={`${id}-detail-text`} strong>{detail}</CellText>,
           method: <CellText id={`${id}-method-text`}>{method}</CellText>,
           status: <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />,
-          amount: <CellText id={`${id}-amount-text`} strong>{formatARS(payment.amount)}</CellText>,
+          amount: <CellText id={`${id}-amount-text`} strong>{formatArs(payment.amount)}</CellText>,
           receipt: <ReceiptButton busy={busy} id={id} onReceipt={onReceipt} payment={payment} />,
         }}
         id={id}
@@ -157,7 +157,7 @@ function HistoryRow({ payment, isWide, id, date, onReceipt, busy }) {
     <View className="gap-1.5 border-b border-slate-100 px-4 py-3 dark:border-slate-800" nativeID={id} testID={id}>
       <View className="flex-row items-baseline justify-between gap-3" nativeID={`${id}-top`} testID={`${id}-top`}>
         <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={2} testID={`${id}-title`}>{detail}</Text>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>{formatARS(payment.amount)}</Text>
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>{formatArs(payment.amount)}</Text>
       </View>
       <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
         {`${paymentTypeLabel(payment.type)} · ${method} · ${date}`}

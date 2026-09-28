@@ -1,4 +1,4 @@
-import { formatARS } from './currency.js';
+import { formatArs } from './currency.js';
 import { paymentMethodLabel, paymentTypeLabel } from './payment-method.js';
 import { paymentStatusMeta } from './payment-status.js';
 
@@ -90,7 +90,7 @@ export function buildReceiptHtml({ payment, payer, issuedAt = new Date().toISOSt
   <div class="muted">${escapeHtml(payerLine)}</div>
   <div class="amount">
     <div class="label">Monto pagado</div>
-    <div class="value">${escapeHtml(formatARS(payment.amount, { decimals: 2 }))}</div>
+    <div class="value">${escapeHtml(formatArs(payment.amount, { decimals: 2 }))}</div>
   </div>
   <table>
     ${rows.map(([k, v]) => `<tr><td class="k">${escapeHtml(k)}</td><td class="v">${escapeHtml(v)}</td></tr>`).join('\n    ')}

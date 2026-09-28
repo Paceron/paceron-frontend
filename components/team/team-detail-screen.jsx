@@ -36,6 +36,8 @@ import { MoveRunnerModal } from './move-runner-modal.jsx';
 import { LeaveGroupModal } from './leave-group-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TeamRequestsTab } from './team-requests-tab.jsx';
+import { TeamSubscriptionPendingBanner } from './team-subscription-pending-banner.jsx';
+import { useTeamSubscription } from '../../hooks/use-team-subscription.js';
 
 // Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
 // alinear el borde derecho del panel con el del botón de 3 puntitos que lo
@@ -708,6 +710,18 @@ function TeamDetailScreenContent({ teamId }) {
   const defaultGroup = groups.find((g) => g.isDefault);
   const canLeaveGroup = Boolean(myMembership && myGroup && !myGroup.isDefault && defaultGroup);
 
+  // Cuota del equipo: solo le interesa al corredor que lo integra, y solo si el
+  // equipo cobra — por eso la query queda apagada en la vista de entrenador y en
+  // equipos gratis (donde el backend devuelve `active` sin cuotas de todas
+  // formas, pero sería una request al vacío).
+  const teamCharges = (team?.membershipFee ?? 0) > 0;
+  const { isPendingFirstPayment, hasDebt, nextInstallment } = useTeamSubscription(user?.userId, team?.id, {
+    enabled: teamCharges && !isTrainerView && Boolean(myMembership),
+  });
+  // No bloquea nada, solo avisa — el backend tampoco bloquea por falta de pago
+  // (ver la spec de esta feature).
+  const showSubscriptionBanner = teamCharges && !isTrainerView && (isPendingFirstPayment || hasDebt);
+
   const handleConfirmLeaveGroup = async () => {
     try {
       await removeGroupUser(myMembership.groupId, myMembership.userId);
@@ -1025,6 +1039,15 @@ function TeamDetailScreenContent({ teamId }) {
             </Pressable>
           )}
         </View>
+
+        {showSubscriptionBanner && (
+          <TeamSubscriptionPendingBanner
+            amount={nextInstallment?.installmentAmount ?? team.membershipFee}
+            hasDebt={hasDebt}
+            installmentNumber={nextInstallment?.installmentNumber}
+            onPay={() => router.push(`/teams/${team.id}/subscription`)}
+          />
+        )}
 
         {isWeb ? (
           <>

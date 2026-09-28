@@ -12,7 +12,12 @@ import { toProcessPaymentPayload, toPaymentModel } from '../../services/normaliz
 // El wrapper de React del SDK desmonta el brick solo al desmontar este
 // componente — no hace falta llamar unmount() a mano (eso es necesario
 // con el SDK vanilla JS, no con este wrapper).
-export function CheckoutBrick({ preferenceId, publicKey, amount, installmentId, marketplace, onApproved, onError }) {
+// `concept` es opcional y solo lo pasa el pago de cuota de equipo
+// ("team_subscription"): el backend lo necesita para resolver el access token
+// de Mercado Pago del ENTRENADOR y cobrar con split. Sin él el pago se cobra
+// con el token de Paceron y la plata no le llega al entrenador, sin ningún
+// error visible. Los callers de tier/testbed no lo pasan y siguen igual.
+export function CheckoutBrick({ preferenceId, publicKey, amount, installmentId, marketplace, concept, onApproved, onError }) {
   const [approvedPaymentId, setApprovedPaymentId] = useState(null);
 
   useEffect(() => {
@@ -30,6 +35,7 @@ export function CheckoutBrick({ preferenceId, publicKey, amount, installmentId, 
     payerEmail: formData.payer.email,
     preferenceId,
     installmentId,
+    concept,
   }))
     .then((dto) => {
       const payment = toPaymentModel(dto);

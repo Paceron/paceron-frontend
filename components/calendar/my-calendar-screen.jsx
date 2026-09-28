@@ -186,7 +186,7 @@ function MyCalendarScreenContent() {
           </>
         )}
 
-        {activeTab === 'historial' && <TrainingsHistoryTab />}
+        {activeTab === 'historial' && <TrainingsHistoryTab role="runner" />}
       </View>
       </ScrollView>
 

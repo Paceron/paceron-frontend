@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { formatARS } from '../../utils/currency.js';
+import { formatArs } from '../../utils/currency.js';
 import {
   computeMonthOverMonth,
   formatMonthLong,
@@ -54,7 +54,7 @@ export function PaymentsDashboard({ summary, loading, failed, onRetry, isWide, a
     <View className="mb-2" nativeID="payments-dashboard" testID="payments-dashboard">
       <View className="mb-5 flex-row flex-wrap gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
         <View nativeID="payments-dashboard-kpi-month" style={kpiBox} testID="payments-dashboard-kpi-month">
-          <StatTile hint={formatNetLabel(current ?? {})} icon="cash-plus" idPrefix="payments-kpi" label={`Cobrado en ${formatMonthLong(current?.month)}`} value={formatARS(current?.grossAmount ?? 0)} />
+          <StatTile hint={formatNetLabel(current ?? {})} icon="cash-plus" idPrefix="payments-kpi" label={`Cobrado en ${formatMonthLong(current?.month)}`} value={formatArs(current?.grossAmount ?? 0)} />
         </View>
         <View nativeID="payments-dashboard-kpi-mom" style={kpiBox} testID="payments-dashboard-kpi-mom">
           <StatTile
@@ -100,7 +100,7 @@ export function PaymentsDashboard({ summary, loading, failed, onRetry, isWide, a
                         {team.teamName || 'Equipo eliminado'}
                       </Text>
                       <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`payments-dashboard-team-${team.teamId}-gross`} style={{ fontVariant: ['tabular-nums'] }} testID={`payments-dashboard-team-${team.teamId}-gross`}>
-                        {formatARS(team.grossAmount)}
+                        {formatArs(team.grossAmount)}
                       </Text>
                     </View>
                     <View className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" nativeID={`payments-dashboard-team-${team.teamId}-track`} testID={`payments-dashboard-team-${team.teamId}-track`}>

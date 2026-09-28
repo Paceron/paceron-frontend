@@ -22,6 +22,9 @@ import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { LEVEL_OPTIONS } from './team-general-info-fields.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { useTeamFees } from '../../hooks/use-team-fees.js';
+import { formatMonthlyFee } from '../../utils/currency.js';
+import { JoinTeamConfirmModal } from './join-team-confirm-modal.jsx';
 
 function buttonState(team, myPendingTeamIds) {
   if (myPendingTeamIds.has(team.id)) return { disabled: true, label: 'Solicitud enviada' };
@@ -30,10 +33,15 @@ function buttonState(team, myPendingTeamIds) {
   return { disabled: false, label: 'Solicitar unirse' };
 }
 
-function TeamSearchResultCard({ team, onRequest, requesting }) {
+// `membershipFee` puede venir undefined: sale de un fetch aparte por equipo
+// (useTeamFees — el DTO de búsqueda no trae la cuota), así que mientras no
+// resolvió NO se muestra precio. Mostrar "Gratis" mientras carga sería mostrar
+// un precio equivocado.
+function TeamSearchResultCard({ team, membershipFee, onRequest, requesting }) {
   const colors = useThemeColors();
   const idPrefix = `team-search-result-${team.id}`;
   const locationLine = [team.city, team.province ? getProvinceName(team.country, team.province) : null, team.country ? getCountryName(team.country) : null].filter(Boolean).join(', ');
+  const feeKnown = membershipFee !== undefined;
 
   return (
     <View className="w-full gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:w-[calc(50%-6px)] xl:w-[calc(33.333%-8px)] dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
@@ -50,6 +58,22 @@ function TeamSearchResultCard({ team, onRequest, requesting }) {
             <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-owner`} testID={`${idPrefix}-owner`}>
               Entrenador: {team.ownerName}
             </Text>
+          )}
+          {feeKnown && (
+            <View className="mt-1 flex-row items-baseline gap-1" nativeID={`${idPrefix}-fee-row`} testID={`${idPrefix}-fee-row`}>
+              <Text
+                className={`text-xs font-bold ${membershipFee > 0 ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}
+                nativeID={`${idPrefix}-fee`}
+                testID={`${idPrefix}-fee`}
+              >
+                {formatMonthlyFee(membershipFee)}
+              </Text>
+              {membershipFee > 0 && (
+                <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-fee-period`} testID={`${idPrefix}-fee-period`}>
+                  /mes
+                </Text>
+              )}
+            </View>
           )}
         </View>
       </View>
@@ -88,6 +112,7 @@ function TeamSearchScreenContent() {
   const { createJoinRequest, isCreating } = useJoinRequestMutations();
   const [requestingTeamId, setRequestingTeamId] = useState(null);
   const [searched, setSearched] = useState(false);
+  const [confirmingTeam, setConfirmingTeam] = useState(null);
 
   // Un equipo que el usuario ya administra o integra nunca debería
   // aparecer como resultado de búsqueda — el backend ya excluye "donde el
@@ -106,6 +131,10 @@ function TeamSearchScreenContent() {
 
   const myPendingTeamIds = new Set(myRequests.filter((r) => r.status === 'pending').map((r) => r.teamId));
 
+  // La cuota no viene en el DTO de búsqueda — se resuelve por equipo, ver
+  // hooks/use-team-fees.js.
+  const { getFee } = useTeamFees(visibleResults.map((t) => t.id));
+
   const handleSearch = () => {
     setSearched(true);
     search({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined });
@@ -118,7 +147,7 @@ function TeamSearchScreenContent() {
     queryClient.invalidateQueries({ queryKey: ['join-requests-mine'] }),
   ]));
 
-  const handleRequest = async (teamId) => {
+  const submitJoinRequest = async (teamId) => {
     setRequestingTeamId(teamId);
     try {
       await createJoinRequest(teamId);
@@ -127,6 +156,26 @@ function TeamSearchScreenContent() {
       Toast.show({ type: 'error', text1: 'No pudimos enviar la solicitud', text2: error.message });
     }
     setRequestingTeamId(null);
+  };
+
+  // Un equipo que cobra pide confirmación explícita antes de la solicitud: el
+  // corredor tiene que ver a qué se compromete antes de pedir, no enterarse del
+  // precio recién cuando lo aceptan. Equipos gratis (fee 0) y equipos cuya cuota
+  // todavía no resolvió van directo, igual que antes de esta rama — un fetch
+  // lento no puede trabar el flujo de unirse.
+  const handleRequest = async (teamId) => {
+    const fee = getFee(teamId);
+    if (fee > 0) {
+      setConfirmingTeam({ id: teamId, name: visibleResults.find((t) => t.id === teamId)?.name, fee });
+      return;
+    }
+    await submitJoinRequest(teamId);
+  };
+
+  const handleConfirmJoin = async () => {
+    const teamId = confirmingTeam?.id;
+    setConfirmingTeam(null);
+    if (teamId) await submitJoinRequest(teamId);
   };
 
   return (
@@ -220,6 +269,7 @@ function TeamSearchScreenContent() {
                 {visibleResults.map((team) => (
                   <TeamSearchResultCard
                     key={team.id}
+                    membershipFee={getFee(team.id)}
                     onRequest={{ handle: handleRequest, myPendingTeamIds }}
                     requesting={isCreating && requestingTeamId === team.id}
                     team={team}
@@ -244,6 +294,14 @@ function TeamSearchScreenContent() {
             </>
           )
         )}
+
+        <JoinTeamConfirmModal
+          membershipFee={confirmingTeam?.fee}
+          onCancel={() => setConfirmingTeam(null)}
+          onConfirm={handleConfirmJoin}
+          teamName={confirmingTeam?.name}
+          visible={Boolean(confirmingTeam)}
+        />
       </View>
     </ScrollView>
   );

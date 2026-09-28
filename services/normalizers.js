@@ -102,6 +102,7 @@ export function toTeamModel(dto) {
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
     iconUrl: dto.icon_url ?? null,
+    membershipFee: dto.membership_fee ?? 0,
   };
 }
 
@@ -121,6 +122,14 @@ export function toCreateTeamPayload(form) {
 
   for (const [key, value] of Object.entries(optional)) {
     if (value && String(value).trim()) payload[key] = value;
+  }
+
+  // membership_fee va fuera del whitelist de `optional` porque 0 es un valor
+  // válido y significativo (equipo gratis), y el chequeo `String(value).trim()`
+  // de arriba lo descartaría por falsy — mismo motivo que los boolean en
+  // toUpdateTeamPayload.
+  if (form.membershipFee !== undefined && form.membershipFee !== null && form.membershipFee !== '') {
+    payload.membership_fee = Number(form.membershipFee);
   }
 
   return payload;
@@ -150,6 +159,11 @@ export function toUpdateTeamPayload(form) {
   if (form.showGroupsToRunners !== undefined) payload.show_groups_to_runners = form.showGroupsToRunners;
   if (form.visible !== undefined) payload.visible = form.visible;
   if (form.isPublic !== undefined) payload.is_public = form.isPublic;
+  // Ver la nota de toCreateTeamPayload: 0 (equipo gratis) no puede caer en el
+  // whitelist de `optional`, que lo filtraría por falsy.
+  if (form.membershipFee !== undefined && form.membershipFee !== null && form.membershipFee !== '') {
+    payload.membership_fee = Number(form.membershipFee);
+  }
 
   return payload;
 }
@@ -487,6 +501,14 @@ export function toProcessPaymentPayload(form) {
   };
   if (form.preferenceId) payload.preference_id = form.preferenceId;
   if (form.installmentId) payload.installment_id = form.installmentId;
+  // `concept` es OBLIGATORIO en el pago de cuota de equipo: el backend lo usa
+  // para disparar resolveTeamSplitConfig, que resuelve el access token de
+  // Mercado Pago del entrenador. Sin él el pago se cobra con el token de
+  // Paceron y el dinero NO le llega al entrenador — el monto es correcto y el
+  // pago se aprueba igual, así que el bug solo se ve mirando en qué cuenta de
+  // MP entró la plata (nunca contra mocks). Ver
+  // docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md.
+  if (form.concept) payload.concept = form.concept;
   return payload;
 }
 
@@ -625,6 +647,61 @@ export function toSubscriptionModel(dto) {
 }
 
 // ---------------------------------------------------------------------
+// Suscripción a un equipo — el corredor le paga la mensualidad al
+// ENTRENADOR (split), distinto de toSubscriptionModel (tier, el usuario
+// le paga a Paceron). GET /api/v1/users/{id}/teams/{team_id}/subscription.
+// Ver docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md.
+// ---------------------------------------------------------------------
+
+export function toTeamSubscriptionModel(dto) {
+  if (!dto) return null;
+  return {
+    team: dto.team ? {
+      id: String(dto.team.id),
+      name: dto.team.name,
+      membershipFee: dto.team.membership_fee ?? 0,
+    } : null,
+    membership: dto.membership ? {
+      // first_payment_pending | active (el enum del backend suma ended/canceled).
+      // NO son los valores de SUBSCRIPTION_STATUSES de store/team-store.js.
+      subscriptionStatus: dto.membership.subscription_status ?? null,
+      initAmount: dto.membership.init_amount ?? 0,
+      paidInstallments: dto.membership.paid_installments ?? 0,
+      startDate: dto.membership.start_date ?? null,
+    } : null,
+    // Ausente cuando el equipo es gratis o no hay nada por pagar.
+    nextInstallment: dto.next_installment ? {
+      installmentId: dto.next_installment.installment_id,
+      installmentNumber: dto.next_installment.installment_number,
+      installmentAmount: dto.next_installment.installment_amount,
+      nextDueDate: dto.next_installment.next_due_date ?? null,
+      blockedDate: dto.next_installment.blocked_date ?? null,
+    } : null,
+    hasDebt: Boolean(dto.has_debt),
+    // OJO: `publicKey` acá es la key de INTEGRADOR de Paceron, no la del
+    // vendedor — no sirve para el brick (mezclarla con el access token del
+    // entrenador da el error 2034 "Invalid users involved" de MP). La key del
+    // brick sale de POST /payments/preference. De acá se usan solo `concept` y
+    // `marketplace`, como señal de que el equipo cobra.
+    mercadopago: dto.mercadopago ? {
+      publicKey: dto.mercadopago.public_key,
+      concept: dto.mercadopago.concept,
+      marketplace: Boolean(dto.mercadopago.marketplace),
+    } : null,
+  };
+}
+
+// GET /api/v1/team-configuration — topes de creación/edición de equipo
+// derivados del tier del ENTRENADOR autenticado (no del equipo).
+export function toTeamConfigurationModel(dto) {
+  if (!dto) return null;
+  return {
+    maxMembers: dto.max_members ?? null,
+    minimumFee: dto.minimum_fee ?? 0,
+  };
+}
+
+// ---------------------------------------------------------------------
 // Calendario de grupo (GroupCalendarDay) — ver
 // docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md. IDs como string (mismo
 // criterio que toSessionModel/toGroupModel) para evitar el bug de tipo
@@ -639,7 +716,7 @@ export function toSubscriptionModel(dto) {
 // instancias creadas antes de este cambio (sin backfill) o si el origen
 // se borró. NUNCA usar `id` (el de la instancia) para preseleccionar el
 // select de sesión al editar — no es un id de catálogo.
-function toSessionInstanceModel(dto) {
+export function toSessionInstanceModel(dto) {
   if (!dto) return null;
   return {
     id: String(dto.id),
@@ -848,4 +925,42 @@ export function toFeedbackEditPayload({ startedAt, endedAt, durationMs, activeDu
   if (distanceMeters != null) payload.distance_meters = Number(distanceMeters);
   if (annotations !== undefined) payload.annotations = annotations;
   return payload;
+}
+
+// Historial de entrenamientos realizados (Gap 13) — una fila por
+// serie/set de workout_feedback, cruzando sesiones/equipos/grupos.
+export function toWorkoutFeedbackHistoryItemModel(dto) {
+  return {
+    id: String(dto.id),
+    athleteUserId: String(dto.athlete_user_id),
+    athleteName: dto.athlete_name,
+    teamId: dto.team_id != null ? String(dto.team_id) : null,
+    teamName: dto.team_name,
+    groupId: dto.group_id != null ? String(dto.group_id) : null,
+    groupName: dto.group_name,
+    sessionInstanceId: String(dto.session_instance_id),
+    date: dto.date,
+    sessionName: dto.session_name,
+    exerciseId: String(dto.exercise_id),
+    exerciseName: dto.exercise_name,
+    catalogExerciseId: dto.catalog_exercise_id != null ? String(dto.catalog_exercise_id) : null,
+    setNumber: dto.set_number,
+    completionStatus: dto.completion_status,
+    durationMs: dto.duration_ms,
+    activeDurationMs: dto.active_duration_ms,
+    distanceMeters: dto.distance_meters,
+    startedAt: dto.started_at,
+    endedAt: dto.ended_at,
+  };
+}
+
+export function toWorkoutFeedbackHistoryResponseModel(dto) {
+  return {
+    items: (dto.items ?? []).map(toWorkoutFeedbackHistoryItemModel),
+    total: dto.total,
+    page: dto.page,
+    pageSize: dto.page_size,
+    availableAthletes: (dto.available_athletes ?? []).map((a) => ({ id: String(a.id), name: a.name })),
+    availableExercises: (dto.available_exercises ?? []).map((e) => ({ id: String(e.id), name: e.name })),
+  };
 }

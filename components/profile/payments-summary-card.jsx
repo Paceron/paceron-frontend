@@ -5,7 +5,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useReceivedPaymentsSummary } from '../../hooks/use-payment-history.js';
-import { formatARS } from '../../utils/currency.js';
+import { formatArs } from '../../utils/currency.js';
 import {
   computeMonthOverMonth,
   formatMonthLong,
@@ -77,7 +77,7 @@ export function PaymentsSummaryCard() {
           icon="cash-plus"
           idPrefix="profile-payments-stat"
           label={`Cobrado en ${formatMonthLong(current?.month)}`}
-          value={formatARS(current?.grossAmount ?? 0)}
+          value={formatArs(current?.grossAmount ?? 0)}
         />
         <StatTile
           icon={mom.direction === 'down' ? 'trending-down' : mom.direction === 'up' ? 'trending-up' : 'trending-neutral'}

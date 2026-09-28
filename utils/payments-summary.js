@@ -1,4 +1,4 @@
-import { formatARS } from './currency.js';
+import { formatArs } from './currency.js';
 
 // Lógica pura del resumen de cobros (tarjeta del perfil y dashboard). Los meses
 // llegan como 'YYYY-MM' ya cortados en hora argentina por el backend.
@@ -51,7 +51,7 @@ export function formatMonthOverMonth({ pct, direction }) {
 export function formatNetLabel({ netAmount, netKnownCount, approvedCount }) {
   if (!approvedCount) return '';
   if (!netKnownCount || netAmount === null || netAmount === undefined) return 'Neto no disponible';
-  const net = formatARS(netAmount);
+  const net = formatArs(netAmount);
   if (netKnownCount < approvedCount) return `Neto parcial ${net} (${netKnownCount} de ${approvedCount})`;
   return `Neto ${net}`;
 }

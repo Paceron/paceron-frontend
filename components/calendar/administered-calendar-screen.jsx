@@ -194,7 +194,7 @@ function AdministeredCalendarScreenContent() {
           </>
         )}
 
-        {activeTab === 'historial' && <TrainingsHistoryTab />}
+        {activeTab === 'historial' && <TrainingsHistoryTab role="trainer" />}
       </View>
       </ScrollView>
 
