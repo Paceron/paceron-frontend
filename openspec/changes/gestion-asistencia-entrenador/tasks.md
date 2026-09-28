@@ -117,9 +117,9 @@ Contexto de ejecución:
 - [ ] **8.3** **Permisos**: con rol `runner` la entrada no aparece en la nav y la URL directa muestra el aviso de entrenador.
 - [ ] **8.4** **Guard**: marcar checks → intentar salir → confirmar/cancelar; cambiar de sesión con checks → confirmar/cancelar; guardar y salir → sin aviso.
 - [ ] **8.5** `npm run android:run` para regenerar el dev client con las 4 deps nuevas + `expo-asset` explícita (R1). Recién acá probar QR/PDF/Compartir en device real.
-- [ ] **8.6** `CLAUDE.md`: nota con (a) que `SearchablePickerField` es el patrón para selects con búsqueda y cuándo `ResponsiveSelectField` alcanza, (b) la decisión de PDF/share en cliente y por qué WhatsApp es deep link, (c) que la grilla de asistencia **no** usa `use-team-roster.js` a propósito (R6), (d) que las deps nuevas obligan a regenerar el dev client.
-- [ ] **8.7** `npm test` completo + `npm run lint` en verde.
-- [ ] **8.8** Commit por etapa, subject en inglés y cuerpo en español si el "por qué" no es obvio del diff. **Sin push/merge.**
+- [x] **8.6** `CLAUDE.md`: nota con (a) que `SearchablePickerField` es el patrón para selects con búsqueda y cuándo `ResponsiveSelectField` alcanza, (b) la decisión de PDF/share en cliente y por qué WhatsApp es deep link, (c) que la grilla de asistencia **no** usa `use-team-roster.js` a propósito (R6), (d) que las deps nuevas obligan a regenerar el dev client.
+- [x] **8.7** `npm test` completo + `npm run lint` en verde.
+- [x] **8.8** Commit por etapa, subject en inglés y cuerpo en español si el "por qué" no es obvio del diff. **Sin push/merge.**
 
 ## Etapa 9 — Smoke de arranque: el front levanta en web y en mobile
 
@@ -134,9 +134,47 @@ Vercel sin que nadie lo note hasta que un usuario reporte la pantalla en blanco.
 > instalan las deps) y de nuevo acá al cierre, cuando ya está todo el código de
 > la feature.
 
+## Estado de verificación al cierre (2026-09-28)
+
+**Verificado por ejecución (el agente lo corrió):**
+
+| Gate | Resultado |
+|---|---|
+| `npm test` | **693 tests, 63 suites, 0 fallos** |
+| `npm run lint` | **0 errores** (3 warnings preexistentes de `exhaustive-deps` en `training-session-active-screen.jsx`, no de este change) |
+| `npx expo export -p web` (0.3 y 9.1) | **0 errores**, bundle generado. Es el mismo build de Vercel |
+| Cross-check estático de contrato | Todos los campos que lee el front existen en los DTOs del backend. Se comparó el set de `json:"…"` de `cmd/api/domains/attendance/*.go` contra lo que el front accede |
+| Reglas locales de lint | Las 3 activas y tirando: `require-native-id`, `require-modal-backdrop-close`, `no-direct-select-field` |
+
+**NO verificado — necesita browser o device (queda para el humano):**
+
+Todo lo de las etapas 8 y 9 salvo lo de la tabla anterior. En concreto:
+
+- **8.1-8.4** — recorrido en el preview web, responsive a <1024px y >1024px,
+  permisos con rol `runner`, y el comportamiento del guard (marcar → salir →
+  confirmar/cancelar; cambiar de sesión con checks).
+- **8.5 / 9.6-9.11** — `npm run android:run`. **Sin el dev client regenerado, las
+  tres acciones que solo existen en nativo fallan en runtime**: descargar el PDF,
+  la hoja de compartir y el deep link de WhatsApp. `File#base64()` sobre un
+  `file://` real tampoco se probó — se verificó la API leyendo los types de
+  `expo-file-system@19.0.24`, no ejecutándola.
+- **9.12** — la cascada, el listado de sesiones y la grilla contra el backend
+  **corriendo**. El cross-check estático dice que los nombres de campo coinciden,
+  pero eso no reemplaza ver que la pantalla trae datos.
+- **9.2-9.5** — que el shell levante, que `/attendance` sea alcanzable por URL
+  directa, y que ninguna pantalla se haya roto por el `StatTile` extraído (1.2
+  toca `team-detail-screen.jsx`).
+
+**El punto que más conviene mirar primero:** el **fan-out del deep link**
+(tarea 4.7). Es el camino más speculative del change y nunca se ejecutó — pide
+el listado de sesiones de *cada* grupo del equipo en paralelo y tiene tres
+condiciones de carrera propias (`isFetched` vs `isLoading`, `[].every()`, y el
+`takeOverCascade` cancelando un fan-out en vuelo). Probarlo con un equipo de
+**más de un grupo**.
+
 ### Web
 
-- [ ] **9.1** 🚦 `npx expo export -p web` termina **sin errores** y genera el bundle. Es el mismo build command que usa Vercel (`vercel.json`), o sea que si esto pasa, el deploy de `develop`/`master` no se rompe. Es el gate más valioso de la etapa: el preview web (`expo start`) es más permisivo que el export de producción.
+- [x] **9.1** 🚦 `npx expo export -p web` termina **sin errores** y genera el bundle. Es el mismo build command que usa Vercel (`vercel.json`), o sea que si esto pasa, el deploy de `develop`/`master` no se rompe. Es el gate más valioso de la etapa: el preview web (`expo start`) es más permisivo que el export de producción.
 - [ ] **9.2** `npm run web` levanta y la home carga sin pantalla en blanco. Con una sesión de entrenador iniciada, la entrada "Asistencia" aparece en el shell ancho y en el angosto.
 - [ ] **9.3** `/attendance` reachable por URL directa (deep link) sin romper el router — el archivo nuevo en `app/(tabs)/` lo auto-descubre Expo Router, pero conviene confirmarlo y no asumirlo.
 - [ ] **9.4** Recorrer el shell completo en web: home, equipos, calendario, entrenamiento, perfil. Que ninguna pantalla haya quedado rota por el `StatTile` extraído (tarea 1.2 lo toca).
@@ -154,7 +192,7 @@ Vercel sin que nadie lo note hasta que un usuario reporte la pantalla en blanco.
 ### Cross-check de contrato
 
 - [ ] **9.12** 🚦 Con el backend mergeado y desplegado, la pantalla real (no mocks) trae datos: la cascada de grupos y el listado de sesiones presenciales cargan, y la grilla muestra corredores. Si la pantalla levanta pero queda vacía, el problema **no** es de arranque — es de contrato: revisar contra `paceron-backend/openspec/changes/gestion-asistencia-entrenador/specs/attendance-management/spec.md` que el shape de la respuesta y los nombres de los campos coinciden.
-- [ ] **9.13** `npm test` + `npm run lint` en verde, una última vez, con todo el árbol de la feature ya presente.
+- [x] **9.13** `npm test` + `npm run lint` en verde, una última vez, con todo el árbol de la feature ya presente.
 
 ### Dependencia de orden entre etapas
 
