@@ -586,17 +586,34 @@ function AttendanceCascade() {
                     escenario del spec es "el QR sigue disponible con cambios sin
                     guardar", así que el botón no se deshabilita nunca por tener
                     marcas, ni por no haber asistencias todavía — el QR es de la
-                    sesión, no de las asistencias. */}
+                    sesión, no de las asistencias.
+
+                    Verde `primary` (#8cc63e) a propósito: es el mismo que pintan
+                    los íconos de las dos tarjetas de arriba (`StatTile` usa
+                    `colors.primary`), así que el botón se lee como parte de las
+                    métricas y no como algo ajeno pegado en la card. El verde
+                    profundo `on-primary-tint` (#3c6b12) se probó y quedaba
+                    demasiado al lado de los íconos claros.
+
+                    Sin borde ni fondo de superficie por lo mismo: un botón
+                   Outline sobre blanco se lee como deshabilitado, que es
+                    justamente lo que este botón nunca está. "Código QR" entero
+                    y no la sigla "QR", que sola no decía qué botón era.
+
+                    Texto casi negro (`#111518`, el `onPrimary` del repo) sobre el
+                    verde, e ícono BLANCO: el ícono claro sobre fondo claro es el
+                    único elemento que destaca del botón y marca dónde está la
+                    acción. */}
                 <Pressable
-                  accessibilityLabel={`Generar el QR de la sesión ${selectedSession.name}`}
-                  className="h-10 flex-row items-center gap-1.5 rounded-full border border-slate-200 px-3 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                  accessibilityLabel={`Generar el código QR de la sesión ${selectedSession.name}`}
+                  className="h-10 flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-4 active:opacity-80"
                   nativeID={`${ID_PREFIX}-qr-button`}
                   onPress={() => setQrModalVisible(true)}
                   testID={`${ID_PREFIX}-qr-button`}
                 >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode" size={18} />
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`${ID_PREFIX}-qr-button-label`} testID={`${ID_PREFIX}-qr-button-label`}>
-                    QR
+                  <MaterialCommunityIcons color="#ffffff" name="qrcode" size={16} />
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${ID_PREFIX}-qr-button-label`} testID={`${ID_PREFIX}-qr-button-label`}>
+                    Código QR
                   </Text>
                 </Pressable>
               </View>
