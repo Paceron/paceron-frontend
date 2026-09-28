@@ -134,6 +134,9 @@ export function AttendanceGrid({
           corredores marcados — sin eso, un filtro con 3 de 8 de los cuales 2 marcados
           deja al entrenador guardando sobre una lista que no ve completa. */}
       <View className="mt-3 flex-row items-center gap-2" nativeID={`${idPrefix}-controls`} testID={`${idPrefix}-controls`}>
+        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-controls-title`} testID={`${idPrefix}-controls-title`}>
+          Corredores
+        </Text>
         <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-white" nativeID={`${idPrefix}-search-box`} testID={`${idPrefix}-search-box`}>
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
           <TextInput
@@ -161,14 +164,33 @@ export function AttendanceGrid({
           ) : null}
         </View>
 
+        {/* Ícono + texto, y el texto dice el estado ACTUAL ("A–Z" = está de A a
+            Z ahora), no una etiqueta del botón ("Ordenar"), que no diría en qué
+            orden está la lista. Con un ícono solo no seCommunicaba el estado:
+            el mismo ícono para los dos casos hacía imposible saber si estabas
+            mirando la lista al derecho o al revés.
+
+            Los nombres de ícono están verificados contra el glyphmap de
+            MaterialCommunityIcons de la versión instalada: `sort-alpha-*` NO
+            existe (renderiza el glyph de fallback, un "?"), y el nombre correcto
+            es `sort-alphabetical-*`. */}
         <Pressable
-          accessibilityLabel={sortOrder === 'asc' ? 'Ordenados de la A a la Z. Tocar para ordenar al revés' : 'Ordenados de la Z a la A. Tocar para ordenar de la A a la Z'}
-          className="h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:bg-white dark:hover:bg-slate-800"
+          accessibilityLabel={sortOrder === 'asc'
+            ? 'Orden actual: de la A a la Z. Tocar para ordenar de la Z a la A'
+            : 'Orden actual: de la Z a la A. Tocar para ordenar de la A a la Z'}
+          className="h-11 flex-row items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:bg-white dark:hover:bg-slate-800"
           nativeID={`${idPrefix}-sort-toggle`}
           onPress={() => setSortOrder((current) => (current === 'asc' ? 'desc' : 'asc'))}
           testID={`${idPrefix}-sort-toggle`}
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="sort-alpha-ascending" size={20} />
+          <MaterialCommunityIcons
+            color={colors.onSurfaceVariant}
+            name={sortOrder === 'asc' ? 'sort-alphabetical-ascending' : 'sort-alphabetical-descending'}
+            size={18}
+          />
+          <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-sort-label`} testID={`${idPrefix}-sort-label`}>
+            {sortOrder === 'asc' ? 'A–Z' : 'Z–A'}
+          </Text>
         </Pressable>
       </View>
 
