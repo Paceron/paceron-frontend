@@ -21,6 +21,7 @@ import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.j
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { AttendanceGrid } from './attendance-grid.jsx';
+import { AttendanceQrModal } from './attendance-qr-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
 import { AttendanceSelectionPanel, formatSessionDate } from './attendance-selection-panel.jsx';
@@ -471,6 +472,7 @@ function AttendanceCascade() {
   // vibrar. Y la fila no puede, porque no sabe si el modal se está abriendo o
   // relanzándose.
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
   const { deleteAttendance, isDeleting } = useDeleteAttendance(teamId);
 
   useEffect(() => {
@@ -568,15 +570,36 @@ function AttendanceCascade() {
             encabezado", y es lo que hace visible que el link se resolvió. */}
           {selectedSession ? (
             <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID={`${ID_PREFIX}-session-card`} testID={`${ID_PREFIX}-session-card`}>
-              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-session-context`} testID={`${ID_PREFIX}-session-context`}>
-                {[selectedTeam?.name, selectedGroup?.name].filter(Boolean).join(' · ')}
-              </Text>
-              <Text className="mt-1 text-lg font-bold text-slate-900 dark:text-white" nativeID={`${ID_PREFIX}-session-title`} testID={`${ID_PREFIX}-session-title`}>
-                {selectedSession.name}
-              </Text>
-              <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-session-date`} testID={`${ID_PREFIX}-session-date`}>
-                {formatSessionDate(selectedSession.date)}
-              </Text>
+              <View className="flex-row items-start" nativeID={`${ID_PREFIX}-session-card-header`} testID={`${ID_PREFIX}-session-card-header`}>
+                <View className="flex-1" nativeID={`${ID_PREFIX}-session-card-texts`} testID={`${ID_PREFIX}-session-card-texts`}>
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-session-context`} testID={`${ID_PREFIX}-session-context`}>
+                    {[selectedTeam?.name, selectedGroup?.name].filter(Boolean).join(' · ')}
+                  </Text>
+                  <Text className="mt-1 text-lg font-bold text-slate-900 dark:text-white" nativeID={`${ID_PREFIX}-session-title`} testID={`${ID_PREFIX}-session-title`}>
+                    {selectedSession.name}
+                  </Text>
+                  <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-session-date`} testID={`${ID_PREFIX}-session-date`}>
+                    {formatSessionDate(selectedSession.date)}
+                  </Text>
+                </View>
+                {/* El QR va acá y no dentro de la grilla a propósito: el
+                    escenario del spec es "el QR sigue disponible con cambios sin
+                    guardar", así que el botón no se deshabilita nunca por tener
+                    marcas, ni por no haber asistencias todavía — el QR es de la
+                    sesión, no de las asistencias. */}
+                <Pressable
+                  accessibilityLabel={`Generar el QR de la sesión ${selectedSession.name}`}
+                  className="h-10 flex-row items-center gap-1.5 rounded-full border border-slate-200 px-3 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                  nativeID={`${ID_PREFIX}-qr-button`}
+                  onPress={() => setQrModalVisible(true)}
+                  testID={`${ID_PREFIX}-qr-button`}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode" size={18} />
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`${ID_PREFIX}-qr-button-label`} testID={`${ID_PREFIX}-qr-button-label`}>
+                    QR
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           ) : (
             /* Sin sesión no se muestran las tarjetas de métricas (spec, escenario
@@ -629,6 +652,16 @@ function AttendanceCascade() {
             onConfirm={handleConfirmDelete}
             title="Eliminar asistencia"
             visible={Boolean(pendingDelete)}
+          />
+
+          <AttendanceQrModal
+            formatDate={formatSessionDate}
+            onClose={() => setQrModalVisible(false)}
+            session={selectedSession}
+            sessionInstanceId={sessionInstanceId}
+            teamId={teamId}
+            teamName={selectedTeam?.name}
+            visible={qrModalVisible}
           />
         </View>
       </ScrollView>
