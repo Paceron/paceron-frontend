@@ -59,6 +59,13 @@ Existente que esta spec extiende, no reemplaza:
 - Trazado de ruta ideal y detección de desvíos — anotado como extensión futura sobre el mismo canal
   de sesión (`control`/`update` ya soporta agregar un tipo de mensaje nuevo sin rediseñar), sin
   diseño propio todavía.
+- **Reconstruir la trayectoria completa de la sesión (Play a Finalizar) a posteriori.** Con este
+  diseño, solo los tramos con serie activa quedan durables (vía `workout_feedback` points) — los
+  tramos de descanso/transición viajan como `presence:position` y no se guardan. Alcanza para el
+  requisito de hoy (ver la posición en vivo), pero **no** para graficar después una única trayectoria
+  de punta a punta. Si eso se pide a futuro, va a hacer falta persistir también los tramos sin serie
+  activa — probablemente un endpoint/tabla nuevo del lado backend (no el de `workout_feedback`, que
+  está atado a una serie puntual), a diseñar cuando surja el requisito real, no ahora.
 - Cualquier feature de notificaciones que reuse este bus — el diseño lo deja posible (canales
   genéricos), pero no se construye ninguna notificación nueva en esta spec.
 - Agente de IA autónomo (mencionado como visión a largo plazo) — no impacta este diseño más que
@@ -115,7 +122,7 @@ Tipos y quién los emite:
 | type | event | emisor | uso |
 |---|---|---|---|
 | `presence` | `joined` / `left` | corredor (al montar/desmontar la pantalla en vivo) | el servidor pisa `from`, reenvía al canal para que cualquier suscriptor (spec 2: el entrenador) sepa quién está en la sesión |
-| `presence` | `position` | corredor, periódico mientras hay GPS activo **sin serie corriendo** | posición en vivo efímera, solo para el mapa del entrenador (spec 2) — no se persiste, ver "GPS continuo" abajo |
+| `presence` | `position` | corredor, en cada punto GPS aceptado **sin serie corriendo** | posición en vivo efímera, sin throttle artificial — misma cadencia que el listener de GPS (ver "GPS continuo" abajo), solo para el mapa del entrenador (spec 2), no se persiste |
 | `control` | `session_paused` / `session_finished` / `announcement` | entrenador | servidor valida que el emisor sea el entrenador de esa sesión (misma autorización que ya aplica en REST, no se reinventa), reenvía a `to` (un `athleteUserId`) o a todo el canal (`to: 'all'`) |
 | `update` | `gps_point` / `set_event` | **solo servidor**, nunca un cliente | disparado apenas el REST de Gap 12 persiste un punto o un evento de serie — payload incluye los mismos campos persistidos + `athleteUserId` |
 | `subscribe` / `unsubscribe` | — | cliente | unirse/salir de un canal |
@@ -175,14 +182,23 @@ sin cambios. El destino de cada punto aceptado depende de si hay una serie corri
 - **Con serie activa:** idéntico al flujo async, sin cambios de semántica — se persiste local
   (`insertGpsPoint`, asociado al set) y se encola para subir por
   `POST /workout-feedback/:id/points`, inmediato si hay conexión o desde la cola de salida genérica
-  si no. Estos puntos son los que alimentan distancia/historial de esa serie, igual que hoy.
+  si no. Estos puntos son los que alimentan distancia/historial de esa serie, igual que hoy. Además,
+  cada uno dispara el `update:gps_point` que el backend reenvía al canal (ver Gap 18) — así el mapa
+  del entrenador se mueve con cada punto, no solo al iniciar/terminar la serie.
 - **Sin serie activa (transición/descanso):** no hay `workout_feedback` id al cual asociarlo — el
   endpoint REST de Gap 12 no aplica acá, y tampoco tiene sentido forzarlo (un punto tomado
   descansando no le pertenece a ninguna serie). Se manda como `presence: position` por WS
   directamente (sin paso por SQLite ni por la cola de reintento) — es una señal efímera solo para
-  que el mapa del entrenador (spec 2) vea la posición en vivo; si se pierde un mensaje de estos no
-  pasa nada, el próximo llega segundos después. Throttle recomendado (a definir en el plan, ej. cada
-  3-5s) ya que no necesita la resolución fina que sí necesita el cálculo de distancia de una serie.
+  que el mapa del entrenador vea la posición en vivo; si se pierde un mensaje de estos no pasa nada,
+  el próximo llega en el siguiente punto.
+
+**Importante — el mapa del entrenador se actualiza con cada punto GPS aceptado, no con cada evento
+de serie.** Los dos caminos de arriba (REST+broadcast con serie activa, WS directo sin ella) están
+pensados para dar la MISMA cadencia visual de principio a fin — la única diferencia entre ellos es
+durabilidad (uno queda guardado, el otro no), nunca frecuencia. No hay throttle artificial en
+ninguno de los dos: la cadencia real ya la fija el listener de ubicación (`Accuracy.High`,
+`timeInterval: 1000`, ver `utils/distance.js`/CLAUDE.md) más el filtro `acceptGpsLeg` — eso solo,
+sin agregar un intervalo propio encima.
 
 **Eventos de serie:** `markSetStarted`/`finishSet`/`markSetSkipped`/`markSetInterrupted` se llaman
 exactamente igual que en el flujo async (mismas funciones de `services/session-db.js`, sin cambios
