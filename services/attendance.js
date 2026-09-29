@@ -94,7 +94,20 @@ export async function registerCheckin({ teamId, sessionInstanceId }) {
 // (services/api.js): es contra ese equipo que se autoriza el borrado, y sin él
 // no hay forma de decidir entre 403 y 404. El 204 no trae cuerpo, así que esto
 // resuelve en null.
+//
+// El `attendance_id` se valida ACÁ y no se deja que llegue al backend. Con
+// `undefined` la URL queda `/attendance/undefined` y la respuesta es un 400
+// genérico ("debe ser un número entero mayor a 0") que no dice que el problema
+// es del caller — que es exactamente cómo se coló el bug del 2026-09-28: el hook
+// desestructuraba `{ attendanceId }` de un argumento posicional, y sin esta
+// guarda el error le llega al usuario como si fuera del servidor.
 export async function deleteAttendance(attendanceId, teamId) {
+  if (!Number.isInteger(attendanceId) || attendanceId <= 0) {
+    throw new Error(
+      `deleteAttendance: attendance_id inválido (${JSON.stringify(attendanceId)}). `
+      + 'Se espera el id numérico de la fila de la grilla.',
+    );
+  }
   if (USE_MOCKS) return await mockDeleteAttendance(attendanceId, teamId);
   return await api.delete(`/attendance/${attendanceId}?team_id=${encodeURIComponent(teamId)}`);
 }

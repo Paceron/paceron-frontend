@@ -491,7 +491,15 @@ function AttendanceCascade() {
   const handleConfirmDelete = async () => {
     if (!pendingDelete || isDeleting) return;
     try {
-      await deleteAttendance(pendingDelete.attendance_id, teamId);
+      // El hook recibe un OBJETO (`{ attendanceId }`), no argumentos posicionales:
+      // `mutateAsync` toma un solo valor —las variables de la mutación— y
+      // `teamId` ya está fijo en el closure de `useDeleteAttendance(teamId)`, a
+      // propósito, para que el caller no pueda apuntar el borrado a otro equipo.
+      //
+      // Pasarle el id suelto hacía que `({ attendanceId })` desestructurara un
+      // número: `attendance_id` quedaba `undefined` y salía
+      // `DELETE /attendance/undefined?team_id=29` → 400. Bug real, 2026-09-28.
+      await deleteAttendance({ attendanceId: pendingDelete.attendance_id });
       setPendingDelete(null);
       notifySuccess();
       Toast.show({ type: 'success', text1: 'Asistencia eliminada' });

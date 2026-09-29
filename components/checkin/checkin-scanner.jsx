@@ -135,7 +135,7 @@ export function CheckinScanner() {
           <View
             className="absolute left-0 right-0 top-0 items-center pt-14"
             nativeID="checkin-scanner-brand"
-            pointerEvents="none"
+            style={{ pointerEvents: 'none' }}
             testID="checkin-scanner-brand"
           >
             <View
@@ -153,7 +153,7 @@ export function CheckinScanner() {
             </View>
           </View>
 
-          <View className="absolute inset-x-0 bottom-0 px-6 pb-10" nativeID="checkin-scanner-hint-wrapper" testID="checkin-scanner-hint-wrapper" pointerEvents="none">
+          <View className="absolute inset-x-0 bottom-0 px-6 pb-10" nativeID="checkin-scanner-hint-wrapper" testID="checkin-scanner-hint-wrapper" style={{ pointerEvents: 'none' }}>
             <Text className="text-center text-sm text-white" nativeID="checkin-scanner-hint" testID="checkin-scanner-hint">
               Apuntá la cámara al QR de la sesión
             </Text>
@@ -203,7 +203,7 @@ function ScanFrame() {
   const bracket = 'absolute border-primary';
 
   return (
-    <View className="absolute inset-0" nativeID="checkin-scanner-guide" pointerEvents="none" testID="checkin-scanner-guide">
+    <View className="absolute inset-0" nativeID="checkin-scanner-guide" style={{ pointerEvents: 'none' }} testID="checkin-scanner-guide">
       {/* La franja de arriba es más alta a propósito: deja lugar para el logo y
           para el botón de cerrar sin que caigan sobre el recuadro. */}
       <View className={`${dim} left-0 right-0 top-0`} style={{ height: top }} nativeID="checkin-scanner-dim-top" testID="checkin-scanner-dim-top" />

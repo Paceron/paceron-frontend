@@ -40,3 +40,30 @@ describe('deleteAttendance', () => {
     expect(url).toBe('/attendance/99?team_id=7');
   });
 });
+
+describe('deleteAttendance: guarda de argumentos', () => {
+  beforeEach(() => { mockDelete.mockClear(); });
+
+  // La clase de bug que se coló el 2026-09-28: un id que no llega al hook como
+  // número produce `/attendance/undefined` y un 400 del backend que no dice que
+  // el problema es del caller. Con la guarda, el fallo es local y dice qué pidió.
+  test('rechaza undefined, null, string y no-enteros SIN pegarle al backend', async () => {
+    for (const bad of [undefined, null, NaN, 0, -1, 1.5, '22', '', {}]) {
+      await expect(deleteAttendance(bad, 29)).rejects.toThrow(/attendance_id inválido/);
+    }
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  test('el mensaje nombra el valor recibido y qué espera', async () => {
+    await expect(deleteAttendance(undefined, 29)).rejects.toThrow(/undefined/);
+    await expect(deleteAttendance(undefined, 29)).rejects.toThrow(/id numérico/);
+  });
+
+  // El id de la grilla llega como número del JSON del backend, así que se exige
+  // entero positivo y no se castea nada: un string acá es el síntoma de que el
+  // caller está leyendo el campo equivocado, que es justo el bug que se busca.
+  test('un id numérico válido pasa y sale en la URL', async () => {
+    await deleteAttendance(22, 29);
+    expect(mockDelete).toHaveBeenCalledWith('/attendance/22?team_id=29');
+  });
+});

@@ -32,8 +32,7 @@ export function CheckinResult({ visible, outcome, onAccept }) {
       accessibilityViewIsModal
       className="absolute inset-0 items-center justify-center px-6"
       nativeID="checkin-result-overlay"
-      pointerEvents="auto"
-      style={{ backgroundColor: OVERLAY_BG, paddingTop: insets.top, paddingBottom: insets.bottom }}
+      style={{ backgroundColor: OVERLAY_BG, paddingTop: insets.top, paddingBottom: insets.bottom, pointerEvents: 'auto' }}
       testID="checkin-result-overlay"
     >
       <View

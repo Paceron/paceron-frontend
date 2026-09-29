@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Es una capa ABSOLUTA, no un `Modal` de react-native: el `Modal` de RN monta
 // su propia superficie nativa por encima de la ventana, y anidarlo encima de la
 // cámara deja el árbol de dos superficies con la cámara de por medio. Con
-// `pointerEvents` en la capa, nada de lo que hay abajo recibe toques mientras
+// `pointerEvents` en el `style` de la capa, nada de lo que hay abajo recibe toques mientras
 // espera.
 const OVERLAY_BG = '#979597';
 
@@ -28,8 +28,7 @@ export function CheckinWaitingOverlay({ visible }) {
       accessibilityViewIsModal
       className="absolute inset-0 items-center justify-center px-6"
       nativeID="checkin-waiting-overlay"
-      pointerEvents="auto"
-      style={{ backgroundColor: OVERLAY_BG, paddingTop: insets.top, paddingBottom: insets.bottom }}
+      style={{ backgroundColor: OVERLAY_BG, paddingTop: insets.top, paddingBottom: insets.bottom, pointerEvents: 'auto' }}
       testID="checkin-waiting-overlay"
     >
       <View className="items-center" nativeID="checkin-waiting-overlay-content" testID="checkin-waiting-overlay-content">
