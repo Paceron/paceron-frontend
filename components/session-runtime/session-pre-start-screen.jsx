@@ -106,7 +106,7 @@ function SessionPreStartScreenContent() {
       gpsEnabled = false;
     }
     setGpsEnabled(gpsEnabled);
-    router.push('/training-session-active');
+    router.push(pendingSession.isPresencial ? '/training-session-live' : '/training-session-active');
   };
 
   const handleOpenReview = () => {
