@@ -300,6 +300,27 @@ function AttendanceCascade() {
     setSelectedIds((current) => (current.size === 0 ? current : new Set()));
   }, []);
 
+  // Saca UNA fila de la selección, para el caso en que ya no hay nada que
+  // guardar de ese corredor.
+  //
+  // El borrado individual es el que necesita esto: `selectedIds` son los
+  // corredores "pendientes de marcar" que van en el guardado masivo. Si el
+  // entrenador borra la asistencia de un corredor que ya tenía tildado, la fila
+  // queda sin asistencia pero con el check, y parece que hay un cambio sin
+  // guardar que no existe — más encima el guardado masivo volvería a crearla.
+  //
+  // Se saca solo esa fila, no la selección entera: las otras pueden seguir
+  // pendientes de verdad y borrarlas del Set las haría perder trabajo.
+  const unselectRow = useCallback((userId) => {
+    const key = String(userId);
+    setSelectedIds((current) => {
+      if (!current.has(key)) return current;
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
   // ── Guard de cambios sin guardar (tarea 5.9) ────────────────────────────
   //
   // El guard tiene DOS gatillos y por eso el estado vive acá y no en el hook:
@@ -500,6 +521,10 @@ function AttendanceCascade() {
       // número: `attendance_id` quedaba `undefined` y salía
       // `DELETE /attendance/undefined?team_id=29` → 400. Bug real, 2026-09-28.
       await deleteAttendance({ attendanceId: pendingDelete.attendance_id });
+      // La fila queda sin asistencia, así que tampoco puede seguir "pendiente
+      // de marcar": si se dejara tildada, el guardado masivo la volvería a
+      // crear y la pantalla mostraría un cambio sin guardar que no existe.
+      unselectRow(pendingDelete.user_id);
       setPendingDelete(null);
       notifySuccess();
       Toast.show({ type: 'success', text1: 'Asistencia eliminada' });
