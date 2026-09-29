@@ -56,6 +56,9 @@ export function SearchablePickerField({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const triggerRef = useRef(null);
+  // `true` solo mientras el modal está abierto; lo consume el efecto de
+  // devolver el foco, para no correr en el mount.
+  const wasOpenRef = useRef(false);
 
   // `options` puede llegar sin resolver mientras el caller carga, y hay dos
   // basura que hay quesacarle ANTES de tocar nada: las opciones sin `id` (no son
@@ -90,6 +93,7 @@ export function SearchablePickerField({
   const triggerDisabled = disabled || loading;
 
   const openPicker = () => {
+    wasOpenRef.current = true;
     // El filtro se limpia al abrir, no al cerrar: si el modal queda montado
     // (visible=false) el estado viejo se vería apenas se reabre.
     setQuery('');
@@ -122,7 +126,13 @@ export function SearchablePickerField({
     // react-native-web ya devuelve el foco al elemento previo al cerrar, que
     // era el motivo por el que se añadió.
     if (isWeb) return;
-    if (open || !triggerRef.current) return;
+    // Y solo cuando el modal *se acaba de cerrar*, no en el primer render: sin
+    // este booleano el efecto corría en el mount (donde `open` ya es false) y
+    // pedía el foco de un nodo que recién se estaba montando, tres veces seguidas
+    // —una por cada picker de la pantalla. Se comparan renders consecutivos
+    // porque el estado que importa es "antes estaba abierto, ahora no".
+    if (open || !wasOpenRef.current || !triggerRef.current) return;
+    wasOpenRef.current = false;
     AccessibilityInfo.setAccessibilityFocus(findNodeHandle(triggerRef.current));
   }, [open]);
 
@@ -352,17 +362,24 @@ export function SearchablePickerField({
                     {query ? emptyMessage : 'Sin opciones disponibles'}
                   </Text>
                 ) : (
-                  // role="listbox" en el contenedor: es el padre que ARIA
-                  // exige para las opciones. No está en el union de roles de RN
-                  // 0.81, pero el union de AccessibilityRole cierra en
-                  // `| string` y react-native-web reenvía `role` tal cual al
-                  // DOM, así que en web arma el HTML válido y en nativo se
-                  // ignora sin ruido. Con esto los lectores de pantalla anuncian
-                  // la posición ("3 de 87") solos, leyéndola del DOM.
+                  // `role` crudo y NO `accessibilityRole`: en Android,
+                  // `accessibilityRole` pasa por un switch que TIRA
+                  // IllegalArgumentException ("Invalid accessibility role
+                  // value") para todo valor fuera de la lista de TalkBack, y
+                  // `listbox` no está en ella. El prop `role` crudo va por otro
+                  // camino — `BaseViewManager.setRole` → `Role.fromValue`, que
+                  // devuelve null y lo ignora — así que en nativo no rompe y en
+                  // web sigue llegando al DOM.
+                  //
+                  // Esto no era un warning: crasheó la app entera al abrir la
+                  // cascada en Android, sin pantalla roja, un FATAL EXCEPTION
+                  // nativo. Los tipos NO lostrateban: el union
+                  // `AccessibilityRole` cierra en `| string`, así que `listbox`
+                  // compila limpio y revienta en runtime.
                   <View
-                    accessibilityRole="listbox"
                     className="gap-1.5"
                     nativeID={`${idPrefix}-modal-list`}
+                    role="listbox"
                     testID={`${idPrefix}-modal-list`}
                   >
                     {filtered.map((option) => {
@@ -372,14 +389,19 @@ export function SearchablePickerField({
 
                       return (
                         <Pressable
-                          // `option` y no `button`: por ARIA 1.2 `aria-selected`
-                          // es un estado válido de option/row/tab/gridcell y NO
-                          // de button, así que con role="button" el DOM queda
-                          // `<div role="button" aria-selected>` — que es
-                          // exactamente lo que marca axe con aria-allowed-attr.
-                          // `option` sí existe en el union de RN 0.81 y RNW
-                          // mapea `role`/`accessibilityRole` al mismo ariaRole.
-                          accessibilityRole="option"
+                          // Los DOS roles, y no es redundancia: `option` es lo
+                          // correcto para `aria-selected` en el DOM de web (ARIA
+                          // 1.2 no lo permite sobre `button`, que es lo que
+                          // marca axe con aria-allowed-attr), pero en Android
+                          // `option` NO está en la lista de TalkBack y crashea.
+                          // Entonces: `accessibilityRole` queda en `button`
+                          // (válido en nativo, con `accessibilityState.selected`
+                          // para que TalkBack anuncie la selección) y el `role`
+                          // crudo lleva la semántica correcta a web, donde
+                          // react-native-web prioriza `role` sobre
+                          // `accessibilityRole` (createDOMProps/index.js:654).
+                          accessibilityRole="button"
+                          role="option"
                           // react-native-web 0.21 no implementa
                           // `accessibilityState` (no aparece en su dist): en web
                           // el estado hay que pasarlo con el alias plano
