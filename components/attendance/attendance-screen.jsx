@@ -491,7 +491,7 @@ function AttendanceCascade() {
   const handleConfirmDelete = async () => {
     if (!pendingDelete || isDeleting) return;
     try {
-      await deleteAttendance(pendingDelete.attendance_id);
+      await deleteAttendance(pendingDelete.attendance_id, teamId);
       setPendingDelete(null);
       notifySuccess();
       Toast.show({ type: 'success', text1: 'Asistencia eliminada' });

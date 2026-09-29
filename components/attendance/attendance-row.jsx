@@ -139,7 +139,15 @@ export function AttendanceRow({ row, selected, onToggle, onRequestDelete, idPref
 
       {/* Sin asistencia no hay nada que eliminar: `DELETE /attendance/:id`
           necesita el `attendance_id`, y ofrecer la acción sin él sería un botón
-          que no puede funcionar. */}
+          que no puede funcionar.
+
+          OJO: `onRequestDelete(row)`, NO `onRequestDelete` a secas. `onPress` de
+          react-native entrega el EVENTO del gesto como primer argumento, no la
+          fila. Pasarla directo guardedaba el evento del press en el estado de la
+          fila pendiente, `attendance_id` quedaba `undefined` y el DELETE salía
+          como `/attendance/undefined?team_id=…` → el backend respondía
+          "attendance_id debe ser un número entero mayor a 0", y el modal de
+          confirmación mostraba "undefined" en el nombre. Bug real, 2026-09-28. */}
       {hasAttendance ? (
         <Pressable
           accessibilityLabel={`Eliminar la asistencia de ${row.name}`}
@@ -147,7 +155,7 @@ export function AttendanceRow({ row, selected, onToggle, onRequestDelete, idPref
           className="rounded-full p-1.5 active:opacity-70"
           hitSlop={8}
           nativeID={`${rowId}-delete-button`}
-          onPress={onRequestDelete}
+          onPress={() => onRequestDelete(row)}
           testID={`${rowId}-delete-button`}
         >
           <MaterialCommunityIcons color={colors.error} name="trash-can-outline" size={18} />
