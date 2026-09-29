@@ -13,13 +13,28 @@ export function canStartAsyncSession(day, now = new Date()) {
   return day.kind === 'training' && !day.isPresencial && isSameDay(day.date, now);
 }
 
+// Ventana de arranque: desde 30 min antes del horario de inicio hasta el
+// horario de fin (`presencialTimeTo`) -- un corredor que llega tarde a una
+// sesión larga tiene que poder sumarse igual, no solo dentro de los primeros
+// 30 min. Si por algún motivo no hay `presencialTimeTo` cargado (no debería
+// pasar, el form de armado de plan lo exige), cae al criterio anterior
+// (±30 min alrededor del inicio) para no dejar el caso sin ventana alguna.
 export function canStartPresencialSession(day, now = new Date()) {
   if (day.kind !== 'training' || !day.isPresencial || !day.presencialTimeFrom) return false;
   if (!isSameDay(day.date, now)) return false;
-  const [hours, minutes] = day.presencialTimeFrom.split(':').map(Number);
-  const scheduledStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
-  const diffMinutes = (now.getTime() - scheduledStart.getTime()) / 60000;
-  return diffMinutes >= -PRESENCIAL_WINDOW_MINUTES && diffMinutes <= PRESENCIAL_WINDOW_MINUTES;
+  const [fromHours, fromMinutes] = day.presencialTimeFrom.split(':').map(Number);
+  const scheduledStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), fromHours, fromMinutes, 0, 0);
+  const windowStart = new Date(scheduledStart.getTime() - PRESENCIAL_WINDOW_MINUTES * 60000);
+
+  let windowEnd;
+  if (day.presencialTimeTo) {
+    const [toHours, toMinutes] = day.presencialTimeTo.split(':').map(Number);
+    windowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), toHours, toMinutes, 0, 0);
+  } else {
+    windowEnd = new Date(scheduledStart.getTime() + PRESENCIAL_WINDOW_MINUTES * 60000);
+  }
+
+  return now.getTime() >= windowStart.getTime() && now.getTime() <= windowEnd.getTime();
 }
 
 // Fecha ya pasada (cualquier kind que tenga `date`): toda sesión vencida
