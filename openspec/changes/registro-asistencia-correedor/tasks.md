@@ -56,9 +56,9 @@ Contexto de ejecución:
 - [ ] **5.2** Recorrido sin sesión: entrar al escáner sin loguearse → login → **el registro continúa solo**, sin volver a escanear.
 - [ ] **5.3** Errores: 403, 400, 404 y error de red, cada uno con su mensaje y su icono.
 - [ ] **5.4** Denegar el permiso de cámara → mensaje + acción de ajustes.
-- [ ] **5.5** `npm test` completo + `npm run lint` en verde.
-- [ ] **5.6** `CLAUDE.md`: nota con (a) que el QR es una URL y por qué no un payload, (b) que el asset de la animación es bicromático y no se le quita el fondo, (c) que App Links quedó fuera a propósito y por qué reincorporarlo es barato.
-- [ ] **5.7** Commit por etapa, subject en inglés y cuerpo en español si el "por qué" no es obvio del diff. **Sin push/merge.**
+- [x] **5** `npm test` completo + `npm run lint` en verde.
+- [x] **6** `CLAUDE.md`: nota con (a) que el QR es una URL y por qué no un payload, (b) que el asset de la animación es bicromático y no se le quita el fondo, (c) que App Links quedó fuera a propósito y por qué reincorporarlo es barato.
+- [x] **7** Commit por etapa, subject en inglés y cuerpo en español si el "por qué" no es obvio del diff. **Sin push/merge.**
 
 ## Notas de la verificación en web
 
