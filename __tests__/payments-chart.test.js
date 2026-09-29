@@ -1,9 +1,9 @@
 import { buildMonthlyBars } from '../utils/payments-chart.js';
 
 const monthly = [
-  { month: '2026-07', grossAmount: 50 },
-  { month: '2026-08', grossAmount: 0 },
-  { month: '2026-09', grossAmount: 100 },
+  { month: '2026-07', value: 50 },
+  { month: '2026-08', value: 0 },
+  { month: '2026-09', value: 100 },
 ];
 
 describe('buildMonthlyBars', () => {
@@ -26,7 +26,7 @@ describe('buildMonthlyBars', () => {
 
   test('un mes sin cobros queda en 0 y un mes chico se ve igual', () => {
     const bars = buildMonthlyBars(
-      [{ month: 'a', grossAmount: 1 }, { month: 'b', grossAmount: 0 }, { month: 'c', grossAmount: 100000 }],
+      [{ month: 'a', value: 1 }, { month: 'b', value: 0 }, { month: 'c', value: 100000 }],
       { width: 300, height: 160 }
     );
     expect(bars[1].height).toBe(0);
@@ -39,7 +39,7 @@ describe('buildMonthlyBars', () => {
   });
 
   test('todo en cero no divide por cero', () => {
-    const bars = buildMonthlyBars([{ month: 'a', grossAmount: 0 }, { month: 'b', grossAmount: 0 }], { width: 200, height: 100 });
+    const bars = buildMonthlyBars([{ month: 'a', value: 0 }, { month: 'b', value: 0 }], { width: 200, height: 100 });
     bars.forEach((b) => expect(b.height).toBe(0));
   });
 
@@ -48,4 +48,21 @@ describe('buildMonthlyBars', () => {
     expect(buildMonthlyBars(monthly, { width: 0, height: 160 })).toEqual([]);
     expect(buildMonthlyBars(null, { width: 300, height: 160 })).toEqual([]);
   });
+});
+
+describe('buildMonthlyBars con neto', () => {
+  test('un punto sin dato queda en 0 y marcado, y el parcial se marca', () => {
+    const bars = buildMonthlyBars(
+      [{ month: 'a', value: 100, partial: true }, { month: 'b', value: null, missing: true }],
+      { width: 200, height: 100 }
+    );
+    expect(bars[0]).toEqual(expect.objectContaining({ partial: true, missing: false }));
+    expect(bars[1]).toEqual(expect.objectContaining({ value: 0, height: 0, missing: true, partial: false }));
+  });
+});
+
+test('con currentMonth solo se resalta ese mes, y ninguno si la ventana es vieja', () => {
+  const pts = [{ month: '2026-03', value: 1 }, { month: '2026-04', value: 1 }];
+  expect(buildMonthlyBars(pts, { width: 200, height: 100, currentMonth: '2026-04' }).map((b) => b.isCurrent)).toEqual([false, true]);
+  expect(buildMonthlyBars(pts, { width: 200, height: 100, currentMonth: '2026-09' }).map((b) => b.isCurrent)).toEqual([false, false]);
 });
