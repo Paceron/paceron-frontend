@@ -300,6 +300,14 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   ficticia mientras el split no mande `application_fee`. El neto se muestra solo si
   Mercado Pago lo informó (`net_amount` puede ser `null`); si no, "Neto no disponible"
   o "Neto parcial … (x de y)" con `utils/payments-summary.js#formatNetLabel`.
+- **Dos consultas del resumen (2026-09-29).** `useReceivedPaymentsSummary()` sin `until`
+  es la ventana que termina hoy: la usan los tiles y la tarjeta del perfil. El gráfico y
+  "Cobros por equipo" se pueden correr de a 6 meses con ‹ ›, y cuando la ventana no es la
+  actual piden `useReceivedPaymentsSummary({ until })` (`until` va en la query key, cada
+  ventana se cachea aparte). La ‹ se frena en `earliest_month`, el primer mes con cobros.
+  El switch Bruto/Neto cambia tiles, gráfico y equipos juntos, siempre vía
+  `utils/payments-summary.js#amountFor`: un mes sin neto es `s/d`, nunca un 0 inventado.
+  "Pagos" está en el navbar (`paymentsRoute`, último, sin `role`).
 - **Primer `useInfiniteQuery` del repo** (`hooks/use-payment-history.js`). Se eligió
   en vez de la acumulación manual de `use-team-search.js` porque hay pull-to-refresh:
   el `refetch` de un infinite query vuelve a pedir todas las páginas cargadas. Para
