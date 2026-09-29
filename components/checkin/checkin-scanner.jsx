@@ -9,6 +9,7 @@ import { useCheckinStore } from '../../store/checkin-store.js';
 import { useSaveCheckin } from '../../hooks/use-checkin.js';
 import { parseCheckinQrPayload } from '../../utils/checkin-qr-url.js';
 import { toOutcome } from '../../utils/checkin-outcome.js';
+import { MIN_WAITING_MS, waitMinimum } from '../../utils/checkin-waiting.js';
 import { notifyError, notifySuccess } from '../../utils/haptics.js';
 import { CheckinWaitingOverlay } from './checkin-waiting-overlay.jsx';
 import { CheckinResult } from './checkin-result.jsx';
@@ -36,6 +37,7 @@ export function CheckinScanner() {
   // sesión, `RequireAuth` manda a `/login`, y sin esto el identificador leído del
   // QR se perdía justo cuando el corredor ya lo tenía apuntado (Etapa 3).
   const attempt = useCallback(async (payload) => {
+    const startedAt = Date.now();
     setPhase(PHASE.SUBMITTING);
     // Se guarda ANTES de disparar la request. Si el token expira con la request
     // en vuelo, `services/api.js` cierra la sesión, `RequireAuth` manda a
@@ -44,10 +46,18 @@ export function CheckinScanner() {
     setPendingCheckin(payload);
     try {
       const response = await saveCheckin(payload);
+      // El pendiente se borra apenas la request responde, NO después de la
+      // espera: si el usuario cierra la app en el medio del piso de 2 s, ya no
+      // tiene que volver a escanear nada.
       clearPendingCheckin();
+      await waitMinimum(MIN_WAITING_MS, startedAt);
       notifySuccess();
       setOutcome(toOutcome(response, null));
     } catch (error) {
+      // La espera también aplica al camino de error. Un fallo rápido contra un
+      // backend local mostraba el GIF un flash y encima una X: el mismo efecto
+      // de "se rompió" que se quiere evitar.
+      await waitMinimum(MIN_WAITING_MS, startedAt);
       notifyError();
       setOutcome(toOutcome(null, error));
     }
