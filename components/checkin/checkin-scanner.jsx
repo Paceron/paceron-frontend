@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -139,7 +139,35 @@ export function CheckinScanner() {
 
       {phase === PHASE.SCANNING ? (
         <>
-          <View className="absolute left-0 right-0 top-0 h-64 border-b-4 border-primary" nativeID="checkin-scanner-guide" testID="checkin-scanner-guide" pointerEvents="none" />
+          <ScanFrame />
+
+          {/* El logo va sobre una placa translúcida, no directo sobre la cámara.
+              `paceron-symbol-transparent.png` es transparente (que es lo pedido:
+              nada de fondo horneado como en el GIF de espera), pero su color es
+              un gris medio y la preview de la cámara es un feed oscuro e
+              impredecible — directo encima no se lee. La placa garantiza
+              contraste sin volver a meter un fondo al logo. */}
+          <View
+            className="absolute left-0 right-0 top-0 items-center pt-14"
+            nativeID="checkin-scanner-brand"
+            pointerEvents="none"
+            testID="checkin-scanner-brand"
+          >
+            <View
+              className="rounded-2xl bg-black/50 px-4 py-2"
+              nativeID="checkin-scanner-brand-plate"
+              testID="checkin-scanner-brand-plate"
+            >
+              <Image
+                contentFit="contain"
+                nativeID="checkin-scanner-logo"
+                source={require('../../assets/paceron-symbol-transparent.png')}
+                style={{ height: 44, width: 48 }}
+                testID="checkin-scanner-logo"
+              />
+            </View>
+          </View>
+
           <View className="absolute inset-x-0 bottom-0 px-6 pb-10" nativeID="checkin-scanner-hint-wrapper" testID="checkin-scanner-hint-wrapper" pointerEvents="none">
             <Text className="text-center text-sm text-white" nativeID="checkin-scanner-hint" testID="checkin-scanner-hint">
               Apuntá la cámara al QR de la sesión
@@ -148,9 +176,60 @@ export function CheckinScanner() {
         </>
       ) : null}
 
+      {/* El overlay de espera va por encima de todo (zIndex) y el de resultado
+          también, así que el cerrar solo aparece mientras se escanea. */}
+      {phase === PHASE.SCANNING ? (
+        <Pressable
+          accessibilityLabel="Cerrar el escáner y volver"
+          accessibilityRole="button"
+          className="absolute right-5 top-14 h-11 w-11 items-center justify-center rounded-full bg-black/50 active:opacity-70"
+          hitSlop={8}
+          nativeID="checkin-scanner-close-button"
+          onPress={() => router.back()}
+          testID="checkin-scanner-close-button"
+        >
+          <MaterialCommunityIcons color="#ffffff" name="close" size={26} />
+        </Pressable>
+      ) : null}
+
       <CheckinWaitingOverlay visible={phase === PHASE.SUBMITTING} />
 
       <CheckinResult onAccept={handleAccept} outcome={outcome} visible={phase === PHASE.RESULT} />
+    </View>
+  );
+}
+
+// Recuadro de encuadre: oscurece todo lo que está FUERA del cuadrado y deja
+// cuatro esquinas en el color de acento.
+//
+// El "agujero" del medio se arma con CUATRO views (arriba/abajo/izq/der) en vez
+// de un overlay con el centro transparente: react-native no tiene mascara ni
+// `clip-path`, y un único `View` con `backgroundColor` taparía justo la parte
+// que hay que ver. Las cuatro se miden contra el viewport real, así que el
+// cuadrado se ve igual en un teléfono angosto que en una tablet.
+function ScanFrame() {
+  const { width, height } = useWindowDimensions();
+  const size = Math.min(width, height) * 0.68;
+  const top = (height - size) / 2;
+  const side = (width - size) / 2;
+  const arm = Math.max(28, size * 0.16); // largo de cada esquina
+
+  const dim = 'absolute bg-black/60';
+  const bracket = 'absolute border-primary';
+
+  return (
+    <View className="absolute inset-0" nativeID="checkin-scanner-guide" pointerEvents="none" testID="checkin-scanner-guide">
+      {/* La franja de arriba es más alta a propósito: deja lugar para el logo y
+          para el botón de cerrar sin que caigan sobre el recuadro. */}
+      <View className={`${dim} left-0 right-0 top-0`} style={{ height: top }} nativeID="checkin-scanner-dim-top" testID="checkin-scanner-dim-top" />
+      <View className={`${dim} inset-x-0 bottom-0`} style={{ height: top }} nativeID="checkin-scanner-dim-bottom" testID="checkin-scanner-dim-bottom" />
+      <View className={`${dim} left-0`} style={{ top, height: size, width: side }} nativeID="checkin-scanner-dim-left" testID="checkin-scanner-dim-left" />
+      <View className={`${dim} right-0`} style={{ top, height: size, width: side }} nativeID="checkin-scanner-dim-right" testID="checkin-scanner-dim-right" />
+
+      <View className={`${bracket} rounded-tl-lg border-l-4 border-t-4`} style={{ left: side, top, width: arm, height: arm }} nativeID="checkin-scanner-corner-tl" testID="checkin-scanner-corner-tl" />
+      <View className={`${bracket} rounded-tr-lg border-r-4 border-t-4`} style={{ left: side + size - arm, top, width: arm, height: arm }} nativeID="checkin-scanner-corner-tr" testID="checkin-scanner-corner-tr" />
+      <View className={`${bracket} rounded-bl-lg border-b-4 border-l-4`} style={{ left: side, top: top + size - arm, width: arm, height: arm }} nativeID="checkin-scanner-corner-bl" testID="checkin-scanner-corner-bl" />
+      <View className={`${bracket} rounded-br-lg border-b-4 border-r-4`} style={{ left: side + size - arm, top: top + size - arm, width: arm, height: arm }} nativeID="checkin-scanner-corner-br" testID="checkin-scanner-corner-br" />
     </View>
   );
 }
