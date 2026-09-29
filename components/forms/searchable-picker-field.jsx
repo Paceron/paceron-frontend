@@ -254,7 +254,7 @@ export function SearchablePickerField({
               </View>
 
               <View
-                className="mb-3 h-11 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900/60"
+                className="mb-3 h-11 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900"
                 nativeID={`${idPrefix}-modal-search-box`}
                 testID={`${idPrefix}-modal-search-box`}
               >

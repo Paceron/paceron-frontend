@@ -137,13 +137,13 @@ export function AttendanceGrid({
         <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-controls-title`} testID={`${idPrefix}-controls-title`}>
           Corredores
         </Text>
-        <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-white" nativeID={`${idPrefix}-search-box`} testID={`${idPrefix}-search-box`}>
+        <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" nativeID={`${idPrefix}-search-box`} testID={`${idPrefix}-search-box`}>
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
           <TextInput
             accessibilityLabel={`Filtrar corredores por nombre. Se muestran ${visibleRows.length} de ${rows.length}`}
             autoCapitalize="none"
             autoCorrect={false}
-            className="flex-1 text-sm text-slate-900 outline-none dark:text-slate-900"
+            className="flex-1 text-sm text-slate-900 outline-none dark:text-white"
             nativeID={`${idPrefix}-search-input`}
             onChangeText={setQuery}
             placeholder="Filtrar por nombre"
