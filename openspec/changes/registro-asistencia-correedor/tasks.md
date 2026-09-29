@@ -30,10 +30,10 @@ Contexto de ejecución:
 
 ## Etapa 2 — Servicio y parsing
 
-- [ ] **2.1** `utils/checkin-qr-url.js` + test: `parseCheckinQrPayload(text)` → `{ teamId, sessionInstanceId }` o `null`. Acepta la URL del QR (`<frontend>/attendance/register?team_id=&session_instance_id=`, con o sin query extra, con o sin barra final, con http/https, con query en otro orden). Rechaza: texto que no es URL, URL de otro host, URL nuestra de otra ruta, y URL sin alguno de los dos ids. IDs como **string**, sin castear: el comparador es `isSameId`.
-- [ ] **2.2** `services/attendance.js`: `registerCheckin({ teamId, sessionInstanceId })` → `POST /attendance/team/{teamId}/session/{sessionInstanceId}` con `Number()` en ambos ids (regla del `CLAUDE.md` sobre ids del roster). Guard de `USE_MOCKS` primero, comentario `// POST /api/v1/...` arriba.
-- [ ] **2.3** `services/__mocks__/attendance-mock.js`: el mock de registro, con los tres casos (201 / 200 / 403) y una latencia artificial de ~900 ms para poder ver el overlay de espera.
-- [ ] **2.4** `npm test` + `npm run lint` en verde.
+- [x] **2.1** `utils/checkin-qr-url.js` + test: `parseCheckinQrPayload(text)` → `{ teamId, sessionInstanceId }` o `null`. Acepta la URL del QR (`<frontend>/attendance/register?team_id=&session_instance_id=`, con o sin query extra, con o sin barra final, con http/https, con query en otro orden). Rechaza: texto que no es URL, URL de otro host, URL nuestra de otra ruta, y URL sin alguno de los dos ids. IDs como **string**, sin castear: el comparador es `isSameId`.
+- [x] **2.2** `services/attendance.js`: `registerCheckin({ teamId, sessionInstanceId })` → `POST /attendance/team/{teamId}/session/{sessionInstanceId}` con `Number()` en ambos ids (regla del `CLAUDE.md` sobre ids del roster). Guard de `USE_MOCKS` primero, comentario `// POST /api/v1/...` arriba.
+- [x] **2.3** `services/__mocks__/attendance-mock.js`: el mock de registro, con los tres casos (201 / 200 / 403) y una latencia artificial de ~900 ms para poder ver el overlay de espera.
+- [x] **2.4** `npm test` + `npm run lint` en verde.
 
 ## Etapa 3 — Store de intención pendiente
 

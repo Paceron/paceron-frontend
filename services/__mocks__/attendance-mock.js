@@ -114,6 +114,18 @@ function attendanceError(message, status) {
   return error;
 }
 
+// Latencia del registro del corredor, para que el overlay de espera se pueda
+// ver al developear. El backend real responde en milisegundos; sin esto el
+// "Registrando asistencia" pasa tan rápido que no se alcanza a ver y parece que
+// la pantalla no hace nada. Es del mock, no del service.
+const CHECKIN_LATENCY_MS = 900;
+
+// `user_id` del corredor que el mock registra. Es el primero del roster (101),
+// que es el que está en el SEARCH_CATALOG de user-mock.js.
+const MOCK_RUNNER_USER_ID = 101;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function findSessionOrThrow(sessionInstanceId) {
   const session = SESSIONS.find((s) => String(s.session_instance_id) === String(sessionInstanceId));
   if (!session) {
@@ -234,7 +246,12 @@ export async function mockGetAttendanceQr(teamId, trainingSessionId) {
   const session = findSessionOrThrow(trainingSessionId);
   return {
     qr_code_base64: MOCK_QR_PNG_BASE64,
-    url_encoded: `https://api.paceron.app/api/v1/attendance/team/${TEAM.team_id}/session/${session.session_instance_id}`,
+    // La URL que el backend emite DENTRO del QR. Apunta al FRONTEND y a la
+    // ruta de la pantalla, no a la API: el QR lo escanea un teléfono y tiene que
+    // abrir una pantalla. Este valor era el de la versión vieja (la ruta de la
+    // API), que ya no es lo que emite el backend —commit 9c0dfe5— y por lo tanto
+    // el `parseCheckinQrPayload` la rechazaba.
+    url_encoded: `https://paceron-frontend.vercel.app/attendance/register?team_id=${TEAM.team_id}&session_instance_id=${session.session_instance_id}`,
   };
 }
 
@@ -248,6 +265,47 @@ export async function mockDeleteAttendance(attendanceId, teamId) {
   }
   mockAttendances.splice(index, 1);
   return null;
+}
+
+// Registro del corredor (POST /api/v1/attendance/team/:team_id/session/...).
+// El otro lado del QR, del que el service `registerCheckin` es la única
+// consumidor.
+//
+// Los status replican los del backend real porque la pantalla decide qué pintar
+// mirando `error.status` (D7): 201 registrada por primera vez, 200 idempotente
+// de "ya estaba", 403 cuando el corredor no es del equipo. El 200 devuelve el
+// mismo shape que el 201 con otro `message`, igual que el backend.
+export async function mockRegisterCheckin({ teamId, sessionInstanceId }) {
+  await wait(CHECKIN_LATENCY_MS);
+
+  const session = SESSIONS.find((s) => String(s.session_instance_id) === String(sessionInstanceId));
+  if (!session) throw attendanceError('La sesión indicada no existe', 404);
+  if (String(TEAM.team_id) !== String(teamId)) {
+    throw attendanceError('No perteneces al equipo de la sesión', 403);
+  }
+
+  const already = mockAttendances.some(
+    (a) => String(a.training_session_id) === String(sessionInstanceId)
+      && String(a.user_id) === String(MOCK_RUNNER_USER_ID),
+  );
+  if (already) {
+    return { message: 'esta asistencia fue previamente registrada' };
+  }
+
+  // El registro interno guarda el id de INSTANCIA en la columna
+  // `training_session_id` — mismo criterio que el resto de este mock y que el
+  // resto del dominio: es una FK opaca (ver CLAUDE.md del backend). Por eso
+  // acá va `training_session_id: session.session_instance_id` y no al revés.
+  mockAttendances.push({
+    id: nextAttendanceId++,
+    team_id: TEAM.team_id,
+    training_session_id: session.session_instance_id,
+    user_id: MOCK_RUNNER_USER_ID,
+    source: 'qr',
+    registered_at: new Date().toISOString(),
+  });
+
+  return { message: 'asistencia registrada' };
 }
 
 export function __resetAttendanceMock() {

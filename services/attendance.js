@@ -6,6 +6,7 @@ import {
   mockBulkSaveAttendance,
   mockGetAttendanceQr,
   mockDeleteAttendance,
+  mockRegisterCheckin,
 } from './__mocks__/attendance-mock.js';
 import { toBulkAttendancePayload } from '../utils/attendance-payload.js';
 
@@ -67,6 +68,25 @@ export async function getAttendanceQr(teamId, trainingSessionId) {
   if (USE_MOCKS) return await mockGetAttendanceQr(teamId, trainingSessionId);
   const params = new URLSearchParams({ team_id: teamId, training_session_id: trainingSessionId });
   return await api.get(`/attendance/qr?${params.toString()}`);
+}
+
+// POST /api/v1/attendance/team/:team_id/session/:training_session_id — el
+// registro del CORREDOR (el del entrenador es `bulkSaveAttendance`).
+//
+// Es el otro lado del QR: el endpoint ya existía para que el corredor se
+// auto-registrara, y hasta ahora no tenía consumidor en el front.
+//
+// `Number()` en los dos ids porque llegan como string del parser del QR
+// (utils/checkin-qr-url.js) y el backend rechaza el body con "cuerpo de
+// solicitud inválido" si no son numéricos — misma regla que ya aplica
+// bulkSaveAttendance.
+//
+// El 200 no es un error: es el caso idempotente de "ya estaba registrada", y el
+// service devuelve la respuesta tal cual para que la pantalla distinga 201 de
+// 200 con `error.status` (D7). El mensaje del backend no se usa para decidir.
+export async function registerCheckin({ teamId, sessionInstanceId }) {
+  if (USE_MOCKS) return await mockRegisterCheckin({ teamId, sessionInstanceId });
+  return await api.post(`/attendance/team/${Number(teamId)}/session/${Number(sessionInstanceId)}`);
 }
 
 // DELETE /api/v1/attendance/{attendance_id}?team_id=
