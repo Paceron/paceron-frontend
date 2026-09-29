@@ -1,3 +1,4 @@
+import { URL as RNURL } from 'react-native/Libraries/Blob/URL';
 import { parseCheckinQrPayload } from '../utils/checkin-qr-url.js';
 
 // La URL que el backend codifica hoy (ver commit 9c0dfe5 en paceron-backend):
@@ -87,5 +88,45 @@ describe('parseCheckinQrPayload', () => {
     const r = parseCheckinQrPayload('https://a.dev/attendance/register?team_id=04&session_instance_id=0501');
     expect(r).toEqual({ teamId: '04', sessionInstanceId: '0501' });
     expect(typeof r.teamId).toBe('string');
+  });
+});
+
+// El resto del archivo corre contra el `URL` GLOBAL, que en Jest es el de Node.
+// En el device es el polyfill propio de react-native (Libraries/Blob/URL), que
+// es otra implementación, minimalista y deliberadamente no-spec: no lanza con
+// basura (por eso el parser valida a mano) y su soporte de `searchParams` no es
+// el de Node. Este bloque corre los mismos casos con el polyfill inyectado como
+// global, para que una diferencia entre las dos no pueda colarse hasta el
+// teléfono — que es donde no hay forma de probar rápido.
+describe('con el polyfill de URL de react-native (lo que corre en el device)', () => {
+  const realURL = global.URL;
+
+  beforeAll(() => { global.URL = RNURL; });
+  afterAll(() => { global.URL = realURL; });
+
+  test('el default del backend local (http://localhost:PORT) lo acepta', () => {
+    // El host NO se valida a propósito, así que el puerto y el host local no
+    // pueden filtrar el QR que emite el backend sin ATTENDANCE_BASE_URL seteado.
+    expect(parseCheckinQrPayload('http://localhost:8081/attendance/register?team_id=4&session_instance_id=503'))
+      .toEqual({ teamId: '4', sessionInstanceId: '503' });
+    expect(parseCheckinQrPayload('http://192.168.100.66:8081/attendance/register?team_id=4&session_instance_id=501'))
+      .toEqual({ teamId: '4', sessionInstanceId: '501' });
+  });
+
+  test('sigue aceptando https y los hosts de Vercel', () => {
+    expect(parseCheckinQrPayload('https://paceron-frontend.vercel.app/attendance/register?team_id=1&session_instance_id=2'))
+      .toEqual({ teamId: '1', sessionInstanceId: '2' });
+  });
+
+  test('el contrato de "nunca lanza" se sostiene también acá', () => {
+    // El riesgo concreto: si el polyfill no tuviera `searchParams`, la línea que
+    // lee los query params tiraría TypeError y rompería el scanner, que promises
+    // que un QR malo no lo tira abajo.
+    for (const basura of ['', '   ', 'hola que tal', '/attendance/register?team_id=4', 'javascript:alert(1)',
+      'mailto:a@b.dev', 'not:a/url', 'https://', 'http://', 'https://a.dev/otra/4?team_id=4&session_instance_id=5',
+      'https://a.dev/attendance/register', null, undefined, 123, {}]) {
+      expect(() => parseCheckinQrPayload(basura)).not.toThrow();
+      expect(parseCheckinQrPayload(basura)).toBeNull();
+    }
   });
 });
