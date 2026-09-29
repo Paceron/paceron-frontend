@@ -99,9 +99,32 @@ export function canStartPresencialSession(day) {
 **Asunción a confirmar en la revisión de esta spec:** la ventana de ±30 min se mide contra
 `presencial_time_from` (horario de inicio planificado), no contra `presencial_time_to`.
 
-El corredor solo ve el botón en asignaciones con `isPresencial === false` — la presencial la
-arranca el entrenador; la participación del corredor en una presencial (asistencia vía QR) es un
-módulo distinto, no un "iniciar" desde su lado.
+> **Corregido 2026-09-28 — una sola regla para las dos modalidades.** Esta spec decía que "el
+> corredor solo ve el botón en asignaciones con `isPresencial === false` — la presencial la
+> arranca el entrenador", y el código lo cumplía con un ternario por rol
+> (`role === 'runner' ? canStartAsyncSession : canStartPresencialSession`). Como
+> `canStartAsyncSession` excluye la presencial por definición, el corredor se quedaba **sin
+> botón en toda sesión presencial** mientras la pantalla de al lado le mostraba que la sesión
+> era presencial: dos widgets evaluando la misma cosa por ejes distintos.
+>
+> El producto cambió debajo: el corredor ahora corre y registra su propia sesión (Registro de
+> Sesión, spec 2026-09-24), y en una presencial llega, se registra por QR y **corre**. La
+> asistencia y el entrenamiento no son módulos distintos, son el mismo día.
+>
+> **Regla vigente (`canStartSession`): una sesión de entrenamiento se puede arrancar el día de
+> su fecha, a cualquier hora, para cualquier rol y sea presencial o no.** La entrada es
+> `canStartSession(day, now)` y no recibe el rol: no hay nada que ramificar.
+>
+> **Por qué se saca la ventana de ±30 min (y no solo se la afloja al corredor).** Se medía
+> contra `presencial_time_from`, que es el horario *planificado del gimnasio*: una hora local
+> de otro lugar, no la del teléfono del corredor. Comparar dos relojes que no son el mismo hace
+> que el botón aparezca o no según la zona horaria del dispositivo, y el costo real es que el
+> corredor llega al gym y no puede arrancar. Para la asíncrona el problema no se veía porque no
+> hay hora planificada que comparar — la asíncrona ya era "mismo día" — y esa es justamente la
+> regla que se unifica.
+>
+> La ventana queda implementada y testeada en `canStartPresencialSession` (parked, el calendario
+> ya no la usa) con su constante, para reconsiderarla cuando el modelo de horarios esté firme.
 
 Recálculo: en `useFocusEffect` al enfocar la pantalla del calendario. Sin ticker por segundo — la
 ventana es de 30 minutos, no hace falta esa precisión.

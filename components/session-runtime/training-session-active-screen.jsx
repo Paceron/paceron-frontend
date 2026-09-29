@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -277,9 +277,43 @@ function DragToFinishButton({
   );
 }
 
+// El gris del plate del GIF, medido del archivo final. Tiene que ser EXACTAMENTE
+// el mismo que en `checkin-waiting-overlay.jsx` porque es el mismo asset: el GIF
+// es bicromático y no se le puede quitar el fondo (sobre oscuro desaparece la
+// "D", sobre claro desaparecen el corredor y los arcos). Empalmando el gris del
+// asset, el rectángulo de la animación no se ve.
+const COUNTDOWN_GIF_BG = '#979597';
+
 function CountdownOverlay({ value, onCancelCountdown }) {
   return (
     <View className="absolute inset-0 z-20 items-center justify-center rounded-3xl bg-black/70" nativeID="countdown-overlay" testID="countdown-overlay">
+      {/* La animación va en su propia placa y NO como fondo del overlay: el
+          overlay tiene el número grande como protagonista y tapar todo de gris
+          en medio de un ejercicio rompe la lectura. En una placa, el rectángulo
+          del GIF empalma con el gris y queda como un elemento más de la cuenta
+          regresiva.
+
+          El GIF dura ~1,2 s y la cuenta 3 s, así que va a completar dos vueltas
+          y media: el movimiento es continuo durante toda la cuenta, que es lo
+          que le da el dinamismo. */}
+      <View
+        className="mb-5 overflow-hidden rounded-2xl px-5 py-3"
+        nativeID="countdown-overlay-animation-plate"
+        style={{ backgroundColor: COUNTDOWN_GIF_BG }}
+        testID="countdown-overlay-animation-plate"
+      >
+        <Image
+          accessibilityIgnoresInvertColors
+          accessibilityLabel="Animación de un corredor corriendo"
+          contentFit="contain"
+          nativeID="countdown-overlay-animation"
+          resizeMode="contain"
+          source={require('../../assets/paceron-runner-waiting.gif')}
+          style={{ height: 64, width: 114 }}
+          testID="countdown-overlay-animation"
+        />
+      </View>
+
       <Text className="text-base font-semibold uppercase tracking-wide text-white/80" nativeID="countdown-overlay-label" testID="countdown-overlay-label">Empezamos en</Text>
       <Text className="mt-2 text-8xl text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID="countdown-overlay-value" testID="countdown-overlay-value">{value}</Text>
       <Pressable className="mt-6 h-9 items-center justify-center rounded-full border border-white/30 px-4" nativeID="countdown-overlay-cancel" onPress={onCancelCountdown} testID="countdown-overlay-cancel">
