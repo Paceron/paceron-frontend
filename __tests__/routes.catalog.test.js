@@ -1,4 +1,4 @@
-import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute } from '../routes/catalog.js';
+import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, paymentsRoute } from '../routes/catalog.js';
 
 describe('routes catalog', () => {
   test('exposes the home route as the first navigation route', () => {
@@ -43,6 +43,21 @@ describe('getRoutesByRole', () => {
       expect(routes).toContainEqual(teamsRoute);
       expect(routes).toContainEqual(notificationsRoute);
     });
+  });
+});
+
+describe('paymentsRoute', () => {
+  test('is the last route for every role, after Entrenamientos', () => {
+    ['runner', 'trainer'].forEach((role) => {
+      const routes = getRoutesByRole(role);
+      expect(routes[routes.length - 1]).toBe(paymentsRoute);
+      expect(routes[routes.length - 2].label).toBe('Entrenamientos');
+    });
+  });
+
+  test('points to the payment history screen', () => {
+    expect(paymentsRoute.href).toBe('/profile/payments');
+    expect(paymentsRoute.role).toBeUndefined();
   });
 });
 

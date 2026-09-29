@@ -11,8 +11,10 @@ import { useThemeColors } from '../../theme/colors.js';
 // realizados") necesitan ese ancho para partir entre palabras en mobile, con
 // 3 tiles flex-1. La etiqueta va en text-[11px] y sin numberOfLines: se deja
 // crecer a 2 líneas en vez de truncarse. Con `onPress` se vuelve presionable
-// (ej. tocar "Rechazados" filtra la lista).
-export function StatTile({ icon, label, value, hint, onPress, active = false, idPrefix = 'stat-tile' }) {
+// (ej. tocar "Rechazados" filtra la lista). `actionHint` es la pista de que el
+// tile hace algo ("Tocá para filtrar"): sin ella un tile presionable se ve
+// igual que uno que solo muestra un número.
+export function StatTile({ icon, label, value, hint, actionHint, onPress, active = false, idPrefix = 'stat-tile' }) {
   const colors = useThemeColors();
   const id = `${idPrefix}-${label}`;
   const Container = onPress ? Pressable : View;
@@ -36,6 +38,14 @@ export function StatTile({ icon, label, value, hint, onPress, active = false, id
         <Text className="mt-1 text-center text-[11px] leading-4 text-slate-400 dark:text-slate-500" nativeID={`${id}-hint`} testID={`${id}-hint`}>
           {hint}
         </Text>
+      ) : null}
+      {actionHint ? (
+        <View className="mt-1.5 flex-row items-center justify-center" nativeID={`${id}-action`} testID={`${id}-action`}>
+          <Text className="text-center text-[11px] font-semibold leading-4 text-primary" nativeID={`${id}-action-text`} testID={`${id}-action-text`}>
+            {actionHint}
+          </Text>
+          <MaterialCommunityIcons color={colors.primary} name="chevron-right" size={14} />
+        </View>
       ) : null}
     </Container>
   );

@@ -60,7 +60,17 @@ export const administeredCalendarRoute = {
   role: 'trainer',
 };
 
-export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, myCalendarRoute, administeredCalendarRoute];
+// Historial de pagos de cualquier usuario (y, con el rol entrenador activo,
+// también sus cobros): sin `role`, va último para los dos. La ruta vive bajo
+// /profile porque se llega también desde la tarjeta de Mi perfil.
+export const paymentsRoute = {
+  name: 'payments',
+  label: 'Pagos',
+  href: '/profile/payments',
+  icon: 'cash-multiple',
+};
+
+export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, myCalendarRoute, administeredCalendarRoute, paymentsRoute];
 
 // `role` es el activeRole actual ('runner'/'trainer'/null) — no el rol
 // asignado, el que se está viendo ahora mismo (ver store/auth-store.js,

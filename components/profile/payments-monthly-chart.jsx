@@ -8,15 +8,18 @@ import { formatMonthShort } from '../../utils/payments-summary.js';
 
 const CHART_HEIGHT = 170;
 
-// Barras del bruto cobrado por mes. SVG a mano con react-native-svg (ya
+// Barras de lo cobrado por mes, en bruto o en neto según `points` (ver
+// toChartPoints). Un mes sin neto informado se dibuja como un contorno con
+// "s/d" y un neto parcial lleva "*" en su etiqueta: el neto nunca se estima. SVG a mano con react-native-svg (ya
 // instalado): no hay librería de gráficos en el repo y para 6 barras no vale
 // la pena sumar una. El ancho se mide con onLayout porque SVG necesita números.
 // El Text de svg se importa como SvgText para no confundirlo con el de RN.
-export function PaymentsMonthlyChart({ monthly }) {
+export function PaymentsMonthlyChart({ points, currentMonth }) {
   const colors = useThemeColors();
   const [width, setWidth] = useState(0);
-  const bars = buildMonthlyBars(monthly, { width, height: CHART_HEIGHT });
-  const isEmpty = !monthly?.some((m) => m.grossAmount > 0);
+  const bars = buildMonthlyBars(points, { width, height: CHART_HEIGHT, currentMonth });
+  const isEmpty = !points?.some((p) => p.value > 0 || p.missing);
+  const plotBottom = CHART_HEIGHT - 18;
 
   return (
     <View
@@ -29,14 +32,32 @@ export function PaymentsMonthlyChart({ monthly }) {
         <Svg height={CHART_HEIGHT} nativeID="payments-monthly-chart-svg" testID="payments-monthly-chart-svg" width={width}>
           {bars.map((bar) => (
             <G key={bar.month}>
-              <Rect
-                fill={bar.isCurrent ? colors.primary : colors.outlineVariant}
-                height={bar.height}
-                rx={4}
-                width={bar.width}
-                x={bar.x}
-                y={bar.y}
-              />
+              {bar.missing ? (
+                <>
+                  <Rect
+                    fill="none"
+                    height={24}
+                    rx={4}
+                    stroke={colors.outlineVariant}
+                    strokeDasharray="4 3"
+                    width={bar.width}
+                    x={bar.x}
+                    y={plotBottom - 24}
+                  />
+                  <SvgText fill={colors.onSurfaceVariant} fontSize={10} textAnchor="middle" x={bar.x + bar.width / 2} y={plotBottom - 30}>
+                    s/d
+                  </SvgText>
+                </>
+              ) : (
+                <Rect
+                  fill={bar.isCurrent ? colors.primary : colors.outlineVariant}
+                  height={bar.height}
+                  rx={4}
+                  width={bar.width}
+                  x={bar.x}
+                  y={bar.y}
+                />
+              )}
               {bar.value > 0 ? (
                 <SvgText
                   fill={colors.onSurfaceVariant}
@@ -46,7 +67,7 @@ export function PaymentsMonthlyChart({ monthly }) {
                   x={bar.x + bar.width / 2}
                   y={bar.y - 4}
                 >
-                  {formatARSCompact(bar.value)}
+                  {`${formatARSCompact(bar.value)}${bar.partial ? '*' : ''}`}
                 </SvgText>
               ) : null}
               <SvgText

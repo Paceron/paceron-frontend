@@ -11,6 +11,7 @@ import { usePermissions, useUser } from '../../hooks/use-user.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { usePaymentHistory, useReceivedPayments, useReceivedPaymentsSummary } from '../../hooks/use-payment-history.js';
 import { buildReceiptHtml, receiptFileName } from '../../utils/receipt-html.js';
+import { canGoBack, shiftMonth } from '../../utils/payments-summary.js';
 // Sin extensión a propósito: hay split .js / .web.js y Metro solo resuelve por
 // plataforma cuando el specifier no la trae (quirk en CLAUDE.md).
 import { shareReceiptPdf } from '../../services/receipt';
@@ -19,6 +20,9 @@ import { TabBar } from '../shared/tab-bar.jsx';
 import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
+
+// Cuántos meses corre la ventana del gráfico cada flecha: los mismos que muestra.
+const WINDOW_MONTHS = 6;
 
 const TRAINER_TABS = [
   { id: 'received', label: 'Cobros', icon: 'cash-plus' },
@@ -45,14 +49,24 @@ function PaymentsScreenContent() {
   const [historyType, setHistoryType] = useState('');
   const [historyStatus, setHistoryStatus] = useState('');
   const [receiptBusyId, setReceiptBusyId] = useState(null);
+  const [amountMode, setAmountMode] = useState('gross');
+  // 0 = la ventana termina en el mes actual; 1 = los 6 meses anteriores; etc.
+  const [windowOffset, setWindowOffset] = useState(0);
 
+  // `summary` es siempre la ventana que termina hoy (tiles). `windowQuery` solo
+  // se pide cuando la ventana del gráfico está corrida hacia atrás.
   const summary = useReceivedPaymentsSummary({ enabled: isTrainer });
+  const monthly = summary.summary?.monthly ?? [];
+  const currentMonth = monthly[monthly.length - 1]?.month ?? null;
+  const until = windowOffset > 0 && currentMonth ? shiftMonth(currentMonth, -WINDOW_MONTHS * windowOffset) : undefined;
+  const windowQuery = useReceivedPaymentsSummary({ enabled: isTrainer && Boolean(until), until });
+  const windowSummary = until ? windowQuery.summary : summary.summary;
   const received = useReceivedPayments({ teamId, status: receivedStatus, enabled: isTrainer && activeTab === 'received' });
   const history = usePaymentHistory({ type: historyType, status: historyStatus, enabled: activeTab === 'history' });
   const activeList = activeTab === 'received' ? received : history;
 
   const { refreshing, onRefresh } = usePullToRefresh(() =>
-    Promise.all([isTrainer ? summary.refetch() : null, activeList.refetch()])
+    Promise.all([isTrainer ? summary.refetch() : null, until ? windowQuery.refetch() : null, activeList.refetch()])
   );
 
   const selectStatus = (group) => {
@@ -102,12 +116,23 @@ function PaymentsScreenContent() {
           <>
             <PaymentsDashboard
               activeStatus={receivedStatus}
+              amountMode={amountMode}
+              canNext={windowOffset > 0}
+              canPrev={Boolean(windowSummary) && canGoBack(windowSummary.monthly, summary.summary?.earliestMonth)}
+              currentMonth={currentMonth}
               failed={summary.failed}
               isWide={isWide}
               loading={summary.loading}
+              onChangeAmountMode={setAmountMode}
+              onNext={() => setWindowOffset((o) => Math.max(0, o - 1))}
+              onPrev={() => setWindowOffset((o) => o + 1)}
               onRetry={() => summary.refetch()}
+              onRetryWindow={() => windowQuery.refetch()}
               onSelectStatus={selectStatus}
               summary={summary.summary}
+              windowFailed={Boolean(until) && windowQuery.failed}
+              windowLoading={Boolean(until) && windowQuery.loading}
+              windowSummary={windowSummary}
             />
             <TabBar active={activeTab} onChange={setTab} scope="payments-screen-tabs" tabs={TRAINER_TABS} />
           </>
