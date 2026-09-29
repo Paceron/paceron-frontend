@@ -657,3 +657,28 @@ entrenador activo sin MP, así que el caso es real, no teórico.
 
 **Pedido:** un flag de "puede recibir pagos" en el payload del equipo (o en el de búsqueda), para
 poder avisar antes de que el corredor se una a un equipo que no va a poder cobrarle.
+
+## Gap 18 — gateway WebSocket genérico + broadcast de eventos de sesión
+
+Pedido de infraestructura de tiempo real, mismo patrón que Gap 13/14 (contrato deseado, backend
+confirma o ajusta) — ver
+`docs/superpowers/specs/2026-09-28-presencial-live-session-transport-runner-design.md` para el
+diseño completo del lado frontend.
+
+- Gateway WebSocket genérico (`/ws`), autenticado por JWT en query param (`?token=`), con soporte
+  de `subscribe`/`unsubscribe` por canal string arbitrario y reenvío de mensajes `presence`/
+  `control` a los demás suscriptores del mismo canal, aplicando la autorización que ya existe para
+  el recurso que el canal nombra (para `session:{id}`, la misma regla de "atleta asignado o
+  entrenador/owner del equipo" que ya protege los endpoints REST de esa sesión).
+- Al persistir vía `POST /workout-feedback` (creación de una serie ya terminada/salteada/
+  interrumpida), backend emite además un mensaje `update:set_event` al canal
+  `session:{sessionInstanceId}` correspondiente con el mismo payload persistido +
+  `athleteUserId` — puramente informativo, no cambia la respuesta HTTP existente.
+  `POST /workout-feedback/:id/points` no necesita broadcast propio.
+- Heartbeat: servidor espera `ping` cada 20-30s, cierra conexiones inactivas más allá de eso (a
+  confirmar el valor exacto con backend según límites de Render).
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea la
+posición en vivo y el feed casi-en-vivo de registros de la spec 2 (pantalla del entrenador). El
+cliente corredor de esta spec (piezas transporte + corredor) funciona igual sin este gap resuelto,
+salvo que sus mensajes `presence`/`control` no llegan a ningún destinatario real todavía.
