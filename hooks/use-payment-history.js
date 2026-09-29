@@ -23,11 +23,14 @@ export const PAYMENT_HISTORY_KEYS = {
   history: (userId) => ['payments-history', userId],
 };
 
-export function useReceivedPaymentsSummary({ enabled = true, months = 6 } = {}) {
+// `until` (YYYY-MM) corre la ventana hacia atrás; sin él termina en el mes
+// actual. Va en la query key: cada ventana se cachea aparte, y la de "hoy"
+// (tiles y tarjeta del perfil) no se pisa al mover el gráfico.
+export function useReceivedPaymentsSummary({ enabled = true, months = 6, until } = {}) {
   const userId = useAuthStore((s) => s.userId);
   const query = useQuery({
-    queryKey: [...PAYMENT_HISTORY_KEYS.summary(userId), months],
-    queryFn: () => getReceivedPaymentsSummary({ months }).then(toReceivedSummaryModel),
+    queryKey: [...PAYMENT_HISTORY_KEYS.summary(userId), months, until ?? 'current'],
+    queryFn: () => getReceivedPaymentsSummary({ months, until }).then(toReceivedSummaryModel),
     enabled: enabled && Boolean(userId),
   });
 

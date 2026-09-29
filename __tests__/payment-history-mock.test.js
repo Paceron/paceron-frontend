@@ -105,6 +105,24 @@ describe('payment-history mock — resumen', () => {
     expect(s.by_team).toHaveLength(3);
   });
 
+  test('con until la ventana termina en ese mes y no suma cobros posteriores', async () => {
+    const s = await mockGetReceivedPaymentsSummary({ months: 6, until: '2026-07' });
+    expect(s.monthly.map((m) => m.month)).toEqual(['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07']);
+    const all = await allReceived();
+    const july = all
+      .filter((p) => p.status === 'approved' && p.created_at >= '2026-07-01T03:00:00Z' && p.created_at < '2026-08-01T03:00:00Z')
+      .reduce((acc, p) => acc + p.gross_amount, 0);
+    expect(s.monthly[5].gross_amount).toBe(july);
+  });
+
+  test('earliest_month es el mes del cobro más viejo, sin importar la ventana', async () => {
+    const all = await allReceived();
+    const oldest = all.map((p) => p.created_at).sort()[0];
+    const expected = new Date(new Date(oldest).getTime() - 3 * 3600 * 1000).toISOString().slice(0, 7);
+    expect((await mockGetReceivedPaymentsSummary({ months: 6 })).earliest_month).toBe(expected);
+    expect((await mockGetReceivedPaymentsSummary({ months: 6, until: '2026-05' })).earliest_month).toBe(expected);
+  });
+
   test('con 3 meses el equipo nuevo sigue apareciendo', async () => {
     const s = await mockGetReceivedPaymentsSummary({ months: 3 });
     expect(s.monthly).toHaveLength(3);
@@ -189,6 +207,8 @@ describe('normalizers de historial de pagos', () => {
     expect(model.monthly[5]).toEqual(expect.objectContaining({ month: '2026-09', grossAmount: expect.any(Number) }));
     expect(model.byTeam[0]).toEqual(expect.objectContaining({ teamId: expect.any(String), pendingCount: expect.any(Number) }));
     expect(model.pendingCount).toBe(2);
+    expect(model.earliestMonth).toMatch(/^\d{4}-\d{2}$/);
+    expect(toReceivedSummaryModel({ monthly: [], by_team: [] }).earliestMonth).toBeNull();
     expect(toReceivedSummaryModel(null)).toBeNull();
   });
 });

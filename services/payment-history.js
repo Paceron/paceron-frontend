@@ -27,11 +27,12 @@ export async function getReceivedPayments({ page = 1, teamId, status } = {}) {
   return await api.get(`/payments/received${toQueryString({ page, team_id: teamId, status })}`);
 }
 
-// GET /api/v1/payments/received/summary?months — payment.ReceivedSummaryResponse.
-// `monthly` trae `months` meses seguidos y el último es el mes actual.
-export async function getReceivedPaymentsSummary({ months = 6 } = {}) {
-  if (USE_MOCKS) return await mockGetReceivedPaymentsSummary({ months });
-  return await api.get(`/payments/received/summary${toQueryString({ months })}`);
+// GET /api/v1/payments/received/summary?months&until — payment.ReceivedSummaryResponse.
+// `monthly` trae `months` meses seguidos y el último es `until` (YYYY-MM) o, sin
+// él, el mes actual. `earliest_month` es el primer mes con cobros, o null.
+export async function getReceivedPaymentsSummary({ months = 6, until } = {}) {
+  if (USE_MOCKS) return await mockGetReceivedPaymentsSummary({ months, until });
+  return await api.get(`/payments/received/summary${toQueryString({ months, until })}`);
 }
 
 // GET /api/v1/payments/history?page&type&status — payment.HistoryPaymentsResponse

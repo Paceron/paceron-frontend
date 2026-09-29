@@ -615,6 +615,7 @@ export function toReceivedSummaryModel(dto) {
     })),
     pendingCount: dto.pending_count ?? 0,
     rejectedCount: dto.rejected_count ?? 0,
+    earliestMonth: dto.earliest_month ?? null,
     generatedAt: dto.generated_at,
   };
 }

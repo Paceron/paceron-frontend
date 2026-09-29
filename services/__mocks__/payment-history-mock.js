@@ -219,15 +219,19 @@ export async function mockGetPaymentHistory({ page = 1, type, status } = {}) {
 }
 
 // GET /api/v1/payments/received/summary
-export async function mockGetReceivedPaymentsSummary({ months = 6 } = {}) {
-  const { year, month } = artParts(now());
+export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {}) {
+  // La ventana termina en `until` (YYYY-MM) o, sin él, en el mes actual (D14).
+  const current = artParts(now());
+  const [year, month] = until ? [Number(until.slice(0, 4)), Number(until.slice(5, 7)) - 1] : [current.year, current.month];
   const keys = [];
   for (let i = months - 1; i >= 0; i -= 1) {
     const d = new Date(Date.UTC(year, month - i, 1));
     keys.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
   }
   const inWindow = new Set(keys);
-  const rows = buildReceived().filter((p) => inWindow.has(monthKeyART(p.created_at)));
+  const allRows = buildReceived();
+  const rows = allRows.filter((p) => inWindow.has(monthKeyART(p.created_at)));
+  const earliest = allRows.map((p) => p.created_at).sort()[0];
 
   const monthly = keys.map((key) => ({ month: key, gross_amount: 0, net_amount: 0, approved_count: 0, net_known_count: 0 }));
   const monthIndex = Object.fromEntries(keys.map((k, i) => [k, i]));
@@ -287,6 +291,7 @@ export async function mockGetReceivedPaymentsSummary({ months = 6 } = {}) {
       .sort((a, b) => b.gross_amount - a.gross_amount || a.team_name.localeCompare(b.team_name) || a.team_id - b.team_id),
     pending_count: pending,
     rejected_count: rejected,
+    earliest_month: earliest ? monthKeyART(earliest) : null,
     generated_at: now().toISOString(),
   };
 }
