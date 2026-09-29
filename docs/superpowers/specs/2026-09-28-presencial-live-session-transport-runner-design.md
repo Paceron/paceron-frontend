@@ -74,14 +74,16 @@ Existente que esta spec extiende, no reemplaza:
 ## Arquitectura de tiempo real
 
 **Separación de responsabilidades — por qué dos transportes, no uno:**
-- **Datos de entrenamiento (GPS, series completadas) → REST.** Es el dato "de verdad": necesita
-  sobrevivir cortes de conexión y no perderse. Reusa los endpoints de Gap 12 tal cual, ya
-  construidos y probados por el flujo async — la única diferencia es que se llaman evento por
-  evento (apenas pasa cada cosa) en vez de en un batch al finalizar.
-- **Señalización/control (presencia, avisos del entrenador, "algo cambió") → WebSocket.** Es
-  efímero por naturaleza — si se pierde un mensaje de control no pasa nada grave (el estado real
-  vive en REST), así que puede ir por un canal más liviano y de baja latencia sin cargar con la
-  responsabilidad de no perder datos.
+- **Resultado final de cada serie (completada/salteada/interrumpida) → REST.** Es el dato "de
+  verdad": necesita sobrevivir cortes de conexión y no perderse. Reusa los endpoints de Gap 12 tal
+  cual, ya construidos y probados por el flujo async — la única diferencia es que se sube apenas esa
+  serie puntual termina, no en un batch al finalizar toda la sesión.
+- **Posición en vivo + señalización/control → WebSocket.** Ambas son efímeras por naturaleza: si se
+  pierde un punto de posición no pasa nada (llega el siguiente en un segundo), y si se pierde un
+  mensaje de control tampoco (el estado real vive en REST) — así que van por un canal más liviano y
+  de baja latencia sin cargar con la responsabilidad de no perder datos. Importante: esto **no
+  depende de si hay una serie corriendo o no** — todo punto GPS aceptado viaja por WS igual, haya o
+  no serie activa (ver "GPS continuo" más abajo para el porqué).
 
 Esta separación evita pedirle a backend que mueva persistencia crítica a un gateway nuevo — el WS
 solo necesita un hook de "avisá cuando se escribió algo" más un canal de control chico, no
@@ -122,11 +124,13 @@ Tipos y quién los emite:
 | type | event | emisor | uso |
 |---|---|---|---|
 | `presence` | `joined` / `left` | corredor (al montar/desmontar la pantalla en vivo) | el servidor pisa `from`, reenvía al canal para que cualquier suscriptor (spec 2: el entrenador) sepa quién está en la sesión |
-| `presence` | `position` | corredor, en cada punto GPS aceptado **sin serie corriendo** | posición en vivo efímera, sin throttle artificial — misma cadencia que el listener de GPS (ver "GPS continuo" abajo), solo para el mapa del entrenador (spec 2), no se persiste |
+| `presence` | `position` | corredor, en **cada** punto GPS aceptado — siempre, haya o no serie corriendo | posición en vivo efímera, sin throttle artificial — misma cadencia que el listener de GPS (ver "GPS continuo" abajo), solo para el mapa del entrenador (spec 2), nunca se persiste |
 | `control` | `session_paused` / `session_finished` / `announcement` | entrenador | servidor valida que el emisor sea el entrenador de esa sesión (misma autorización que ya aplica en REST, no se reinventa), reenvía a `to` (un `athleteUserId`) o a todo el canal (`to: 'all'`) |
-| `update` | `gps_point` / `set_event` | **solo servidor**, nunca un cliente | disparado apenas el REST de Gap 12 persiste un punto o un evento de serie — payload incluye los mismos campos persistidos + `athleteUserId` |
+| `update` | `set_event` | **solo servidor**, nunca un cliente | disparado apenas el REST de Gap 12 persiste el resultado final de una serie (`finished`/`skipped`/`interrupted`) — payload incluye los mismos campos persistidos + `athleteUserId`, para el feed de registros del entrenador (spec 2) |
 | `subscribe` / `unsubscribe` | — | cliente | unirse/salir de un canal |
 | `ping` / `pong` | — | ambos | heartbeat, sin `channel` |
+
+**Por qué no hay `update:gps_point`:** el REST de Gap 12 solo persiste los puntos de una serie cuando esa serie ya terminó (necesita un `feedback_id`, que no existe hasta conocer el resultado final — ver "GPS continuo" abajo) — para entonces el movimiento en vivo de esos puntos ya no importa, la serie dejó de correr. El movimiento en vivo lo cubre `presence:position` por sí solo, sin depender de si/cuándo se persiste.
 
 **Handshake y autenticación:** `wss://<host>/ws?token=<jwt>` — token como query param, no header
 (ni el navegador ni React Native permiten headers custom en el handshake WS). Backend valida el JWT
@@ -153,10 +157,11 @@ o ajusta):
   a los demás suscriptores del mismo canal, aplicando la autorización que ya existe para el recurso
   que el canal nombra (para `session:{id}`, la misma regla de "atleta asignado o entrenador/owner
   del equipo" que ya protege los endpoints REST de esa sesión).
-- Al persistir vía los endpoints ya existentes de Gap 12 (`POST /workout-feedback`,
-  `PUT /workout-feedback/:id`, `POST /workout-feedback/:id/points`), backend emite además un mensaje
-  `update` al canal `session:{sessionInstanceId}` correspondiente con el mismo payload persistido +
-  `athleteUserId` — puramente informativo, no cambia la respuesta HTTP existente.
+- Al persistir vía `POST /workout-feedback` (creación de una serie ya terminada/salteada/
+  interrumpida), backend emite además un mensaje `update:set_event` al canal
+  `session:{sessionInstanceId}` correspondiente con el mismo payload persistido + `athleteUserId` —
+  puramente informativo, no cambia la respuesta HTTP existente. `POST /workout-feedback/:id/points`
+  no necesita broadcast propio (los puntos de una serie ya terminada no aportan a un mapa en vivo).
 - Heartbeat: servidor espera `ping` cada 20-30s, cierra conexiones inactivas más allá de eso
   (a confirmar el valor exacto con backend según límites de Render).
 
@@ -173,37 +178,36 @@ regresiones en el flujo asíncrono ya estable y probado.
 `canStartPresencialSession` (`utils/session-start-window.js`, ya existe) sigue gateando la ventana
 de inicio sin cambios.
 
-**GPS continuo:** hook nuevo `hooks/use-session-gps-tracker.js` — arranca al dar Play, corre durante
-toda la sesión (incluye transiciones y descansos entre series), se detiene al finalizar/cancelar.
-Reemplaza, para esta pantalla únicamente, el uso por-serie de `hooks/use-gps-tracker.js` que sigue
-intacto en la pantalla async. Reusa el mismo filtro de calidad `acceptGpsLeg` (`utils/distance.js`)
-sin cambios. El destino de cada punto aceptado depende de si hay una serie corriendo:
+**GPS continuo — dos funciones separadas, nunca mezcladas:** hook nuevo
+`hooks/use-session-gps-tracker.js` — arranca al dar Play, corre durante toda la sesión (incluye
+transiciones y descansos entre series), se detiene al finalizar/cancelar. Reemplaza, para esta
+pantalla únicamente, el uso por-serie de `hooks/use-gps-tracker.js` que sigue intacto en la pantalla
+async. Reusa el mismo filtro de calidad `acceptGpsLeg` (`utils/distance.js`) sin cambios.
 
-- **Con serie activa:** idéntico al flujo async, sin cambios de semántica — se persiste local
-  (`insertGpsPoint`, asociado al set) y se encola para subir por
-  `POST /workout-feedback/:id/points`, inmediato si hay conexión o desde la cola de salida genérica
-  si no. Estos puntos son los que alimentan distancia/historial de esa serie, igual que hoy. Además,
-  cada uno dispara el `update:gps_point` que el backend reenvía al canal (ver Gap 18) — así el mapa
-  del entrenador se mueve con cada punto, no solo al iniciar/terminar la serie.
-- **Sin serie activa (transición/descanso):** no hay `workout_feedback` id al cual asociarlo — el
-  endpoint REST de Gap 12 no aplica acá, y tampoco tiene sentido forzarlo (un punto tomado
-  descansando no le pertenece a ninguna serie). Se manda como `presence: position` por WS
-  directamente (sin paso por SQLite ni por la cola de reintento) — es una señal efímera solo para
-  que el mapa del entrenador vea la posición en vivo; si se pierde un mensaje de estos no pasa nada,
-  el próximo llega en el siguiente punto.
-
-**Importante — el mapa del entrenador se actualiza con cada punto GPS aceptado, no con cada evento
-de serie.** Los dos caminos de arriba (REST+broadcast con serie activa, WS directo sin ella) están
-pensados para dar la MISMA cadencia visual de principio a fin — la única diferencia entre ellos es
-durabilidad (uno queda guardado, el otro no), nunca frecuencia. No hay throttle artificial en
-ninguno de los dos: la cadencia real ya la fija el listener de ubicación (`Accuracy.High`,
-`timeInterval: 1000`, ver `utils/distance.js`/CLAUDE.md) más el filtro `acceptGpsLeg` — eso solo,
-sin agregar un intervalo propio encima.
+- **Movimiento en vivo (mapa del entrenador):** CADA punto aceptado, sin importar si hay serie
+  activa o no, se manda de inmediato como `presence: position` por WS — sin pasar por SQLite ni por
+  ninguna cola. Es una señal efímera; si se pierde un mensaje de estos no pasa nada, el próximo llega
+  en el siguiente punto (~1/seg). No hay throttle artificial — la cadencia real ya la fija el
+  listener de ubicación (`Accuracy.High`, `timeInterval: 1000`, ver `utils/distance.js`/CLAUDE.md)
+  más el filtro `acceptGpsLeg`, nada se agrega encima.
+- **Persistencia durable (historial/distancia de la serie):** sigue el mismo timing de hoy en
+  async, sin cambios — mientras la serie está corriendo, los puntos se guardan solo local
+  (`insertGpsPoint`, igual que siempre). Recién cuando la serie **termina** (`finishSet`) se sube por
+  REST el conjunto completo de esa serie: `POST /workout-feedback` (vía `createWorkoutFeedback`,
+  mismo payload que ya arma `utils/session-sync-payload.js#buildSetPayload`) y, si tiene distancia,
+  `POST /workout-feedback/:id/points` con el `feedback_id` recién devuelto (mismo
+  `buildPointsPayload`). Motivo de este timing, no antes: el endpoint de puntos necesita un
+  `feedback_id`, que el backend solo entrega cuando ya sabe el resultado final de la serie (Gap 12
+  no soporta un estado "en curso") — no se puede subir durable algo que todavía no tiene dueño.
 
 **Eventos de serie:** `markSetStarted`/`finishSet`/`markSetSkipped`/`markSetInterrupted` se llaman
 exactamente igual que en el flujo async (mismas funciones de `services/session-db.js`, sin cambios
-ahí). La diferencia es que, en esta pantalla, cada una dispara además un encolado del
-`POST`/`PUT` de `workout-feedback` correspondiente, resuelto de inmediato o desde la cola.
+ahí). La diferencia es que, en esta pantalla, **cada una que sea terminal** (`finishSet`,
+`markSetSkipped`, `markSetInterrupted` — no `markSetStarted`, que no tiene resultado final todavía)
+encola de inmediato la subida REST de esa serie (feedback + puntos si aplica), en vez de esperar a
+que termine toda la sesión — resuelto ya si hay conexión, o desde la cola de salida si no. Cada
+subida exitosa dispara además el `update:set_event` que el backend reenvía al canal (ver Gap 18),
+para que el feed de registros del entrenador (spec 2) se actualice casi en vivo.
 
 **Canal de sesión:** al montar, `useRealtimeChannel('session:{sessionInstanceId}', { onMessage })`
 — manda `presence joined`; al desmontar/finalizar/cancelar, `presence left`. Escucha `control`:
@@ -237,8 +241,6 @@ Por convención del proyecto (sin tests de render de componentes), Jest cubre so
 - Armado/parseo del sobre de mensaje (`realtime-client.js`).
 - Orden de drenado de la cola de salida (FIFO, no se saltea ni duplica ítems).
 - Cálculo de backoff de reconexión (exponencial + jitter, con tope).
-- Decisión de ruteo de un punto GPS (REST durable si hay serie activa, `presence:position` efímero
-  por WS si no).
 
 El gesto de conexión en sí (reconexión real, heartbeat, comportamiento de background) no es
 simulable de forma confiable en el preview — verificación de eso queda para dispositivo/backend
