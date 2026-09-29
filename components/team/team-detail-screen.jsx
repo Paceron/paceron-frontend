@@ -25,8 +25,8 @@ import { InlinePicker, Row, Col } from '../forms/fields.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
-import { TabBar } from '../shared/tab-bar.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
+import { TabBar } from '../shared/tab-bar.jsx';
 import { CreateGroupModal } from './create-group-modal.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
@@ -85,6 +85,7 @@ function Tag({ label, bg, text, nativeID, testID }) {
     </View>
   );
 }
+
 function Field({ label, value }) {
   return (
     <View className="mb-4" nativeID={`team-detail-field-${label}`} testID={`team-detail-field-${label}`}>
@@ -808,9 +809,9 @@ function TeamDetailScreenContent({ teamId }) {
 
       <SectionCard icon="chart-line" title="Estadísticas del equipo">
         <View className="flex-row gap-2" nativeID="team-detail-stats-row" testID="team-detail-stats-row">
-          <StatTile idPrefix="team-detail-stat" icon="account-group" label="Corredores" value={filteredMembers.length} />
-          <StatTile idPrefix="team-detail-stat" icon="run" label="Entrenamientos realizados" value={MOCK_TEAM_METRICS.trainingsCompleted} />
-          <StatTile idPrefix="team-detail-stat" icon="flag-checkered" label="Objetivos cumplidos" value={MOCK_TEAM_METRICS.goalsCompleted} />
+          <StatTile colors={colors} icon="account-group" idPrefix="team-detail-stat" label="Corredores" value={filteredMembers.length} />
+          <StatTile colors={colors} icon="run" idPrefix="team-detail-stat" label="Entrenamientos realizados" value={MOCK_TEAM_METRICS.trainingsCompleted} />
+          <StatTile colors={colors} icon="flag-checkered" idPrefix="team-detail-stat" label="Objetivos cumplidos" value={MOCK_TEAM_METRICS.goalsCompleted} />
         </View>
       </SectionCard>
     </>

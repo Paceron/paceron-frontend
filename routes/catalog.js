@@ -1,3 +1,5 @@
+import { isMobile } from '../utils/platform.js';
+
 export const homeRoute = {
   name: 'index',
   label: 'Inicio',
@@ -60,9 +62,37 @@ export const administeredCalendarRoute = {
   role: 'trainer',
 };
 
+export const attendanceRoute = {
+  name: 'attendance',
+  label: 'Asistencia',
+  href: '/attendance',
+  icon: 'clipboard-check-outline',
+  role: 'trainer',
+};
+
+// Registro de asistencia por QR del corredor. `mobileOnly` y NO aparece en la
+// navegación web a propósito (spec del change
+// registro-asistencia-correedor, requisito 1): el escaneo por cámara en
+// react-native-web no es confiable y el caso real es el teléfono. La ruta sigue
+// siendo alcanzable por URL directa en web, para poder depurar — lo que cambia
+// es la visibilidad del ítem de navegación, no la existencia de la ruta.
+//
+// El ícono va verificado contra el glyphmap de MaterialCommunityIcons
+// instalado: `qrcode-scan` existe (y `qrcode-scan-helper`, que es el que uno
+// escribiría por costumbre, NO).
+export const checkinRoute = {
+  name: 'checkin',
+  label: 'Registrar asistencia',
+  href: '/attendance/register',
+  icon: 'qrcode-scan',
+  role: 'runner',
+  mobileOnly: true,
+};
+
 // Historial de pagos de cualquier usuario (y, con el rol entrenador activo,
-// también sus cobros): sin `role`, va último para los dos. La ruta vive bajo
-// /profile porque se llega también desde la tarjeta de Mi perfil.
+// también sus cobros): sin `role`, va último para los dos, en todas las
+// plataformas. La ruta vive bajo /profile porque se llega también desde la
+// tarjeta de Mi perfil.
 export const paymentsRoute = {
   name: 'payments',
   label: 'Pagos',
@@ -70,13 +100,24 @@ export const paymentsRoute = {
   icon: 'cash-multiple',
 };
 
-export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, myCalendarRoute, administeredCalendarRoute, paymentsRoute];
+export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, myCalendarRoute, administeredCalendarRoute, attendanceRoute, checkinRoute, paymentsRoute];
 
 // `role` es el activeRole actual ('runner'/'trainer'/null) — no el rol
 // asignado, el que se está viendo ahora mismo (ver store/auth-store.js,
 // mismo criterio que canManageTeam/isTrainerView en team-detail-screen.jsx).
 // Una ruta sin `role` propio se muestra siempre; una con `role` solo cuando
 // coincide con el activeRole actual.
-export function getRoutesByRole(role) {
-  return navigationRoutes.filter((route) => !route.role || route.role === role);
+//
+// `isNative` es un SEGUNDO criterio, para rutas que además son de una sola
+// plataforma. Va como parámetro con default en vez de leerse de `isMobile`
+// adentro por dos razones: los callers no cambian (`getRoutesByRole(role)`), y
+// sobre todo los tests pueden simular web sin mockear un módulo entero — bajo
+// jest-expo `Platform.OS` es siempre `ios`, así que leerlo internamente haría
+// imposible testear la rama de web.
+export function getRoutesByRole(role, isNative = isMobile) {
+  return navigationRoutes.filter((route) => {
+    if (route.role && route.role !== role) return false;
+    if (route.mobileOnly && !isNative) return false;
+    return true;
+  });
 }

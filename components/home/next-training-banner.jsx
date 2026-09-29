@@ -5,7 +5,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useNextTrainingBanner } from '../../hooks/use-next-training-banner.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
-import { canStartAsyncSession, canStartPresencialSession } from '../../utils/session-start-window.js';
+import { canStartSession } from '../../utils/session-start-window.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 
@@ -80,12 +80,12 @@ export function NextTrainingBanner() {
       {!loading && nextTraining && (
         <NextTrainingCardGroup
           cancelledSessions={cancelledSessions}
-          eligible={role === 'trainer' ? canStartPresencialSession(nextTraining) : canStartAsyncSession(nextTraining)}
+          eligible={canStartSession(nextTraining)}
           isFetching={isFetching}
           nextTraining={nextTraining}
           onCancelledPress={goToCalendarDay}
           onHeroPress={() => {
-            if ((role === 'trainer' ? canStartPresencialSession(nextTraining) : canStartAsyncSession(nextTraining)) && !isWeb) {
+            if (canStartSession(nextTraining) && !isWeb) {
               setPendingSession(nextTraining);
               router.push('/training-session');
               return;

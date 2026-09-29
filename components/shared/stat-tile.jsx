@@ -13,9 +13,13 @@ import { useThemeColors } from '../../theme/colors.js';
 // crecer a 2 líneas en vez de truncarse. Con `onPress` se vuelve presionable
 // (ej. tocar "Rechazados" filtra la lista). `actionHint` es la pista de que el
 // tile hace algo ("Tocá para filtrar"): sin ella un tile presionable se ve
-// igual que uno que solo muestra un número.
-export function StatTile({ icon, label, value, hint, actionHint, onPress, active = false, idPrefix = 'stat-tile' }) {
-  const colors = useThemeColors();
+// igual que uno que solo muestra un número. Sin hint, actionHint ni onPress se
+// ve exactamente igual que antes: attendance-metric-cards.jsx alinea sus
+// tarjetas contra esa altura. `colors` es opcional (algunos consumidores lo
+// pasan); si no viene, sale del tema.
+export function StatTile({ icon, label, value, hint, actionHint, onPress, active = false, idPrefix = 'stat-tile', colors: colorsProp }) {
+  const themeColors = useThemeColors();
+  const colors = colorsProp ?? themeColors;
   const id = `${idPrefix}-${label}`;
   const Container = onPress ? Pressable : View;
   const border = active ? 'border-primary' : 'border-slate-200 dark:border-slate-700';

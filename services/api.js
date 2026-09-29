@@ -17,7 +17,7 @@ function buildUrl(path) {
 // disparar uno cada una.
 let refreshPromise = null;
 
-async function request(path, { _isRetry, skipAuthRefresh, ...fetchOptions } = {}) {
+async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, ...fetchOptions } = {}) {
   const { token } = useAuthStore.getState();
   const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
   const headers = {
@@ -59,7 +59,7 @@ async function request(path, { _isRetry, skipAuthRefresh, ...fetchOptions } = {}
         });
       }
       await refreshPromise;
-      return await request(path, { ...fetchOptions, _isRetry: true });
+      return await request(path, { ...fetchOptions, _isRetry: true, exposeStatus });
     } catch {
       await useAuthStore.getState().logout();
       // sigue abajo y deja que la response 401 original se maneje como
@@ -80,9 +80,20 @@ async function request(path, { _isRetry, skipAuthRefresh, ...fetchOptions } = {}
     throw error;
   }
   if (response.status === 204) {
-    return null;
+    // 204 no trae cuerpo, pero el status sigue siendo información: un 204 y un
+    // 200 vacío no se distinguen de otro modo, y hay callers que necesitan
+    // saberlo (borrar algo ya borrado, por ejemplo).
+    return exposeStatus ? { status: 204, data: null } : null;
   }
-  return response.json();
+
+  const data = await response.json();
+  // `exposeStatus` es opt-in a propósito: la mayoría de los callers usan
+  // `services/*` que ya desenvuelven la respuesta, y meter un envoltorio en
+  // todos los endpoints sería un cambio de contrato del que no se benefit nadie.
+  // Solo lo piden los que necesitan distinguir dos respuestas con el mismo
+  // body — el registro por QR, donde 201 (nueva) y 200 (ya estaba) comparten
+  // forma y solo difieren en el status.
+  return exposeStatus ? { status: response.status, data } : data;
 }
 
 export default {

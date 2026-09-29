@@ -1,4 +1,4 @@
-import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, paymentsRoute } from '../routes/catalog.js';
+import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, attendanceRoute, checkinRoute, paymentsRoute } from '../routes/catalog.js';
 
 describe('routes catalog', () => {
   test('exposes the home route as the first navigation route', () => {
@@ -47,17 +47,22 @@ describe('getRoutesByRole', () => {
 });
 
 describe('paymentsRoute', () => {
-  test('is the last route for every role, after Entrenamientos', () => {
+  test('es la última ruta para los dos roles y en las dos plataformas, después de Entrenamientos', () => {
     ['runner', 'trainer'].forEach((role) => {
-      const routes = getRoutesByRole(role);
-      expect(routes[routes.length - 1]).toBe(paymentsRoute);
-      expect(routes[routes.length - 2].label).toBe('Entrenamientos');
+      [true, false].forEach((isNative) => {
+        const routes = getRoutesByRole(role, isNative);
+        expect(routes[routes.length - 1]).toBe(paymentsRoute);
+        const calendarIndex = routes.findIndex((r) => r.label === 'Entrenamientos');
+        expect(calendarIndex).toBeGreaterThan(-1);
+        expect(routes.indexOf(paymentsRoute)).toBeGreaterThan(calendarIndex);
+      });
     });
   });
 
-  test('points to the payment history screen', () => {
+  test('apunta al historial de pagos y no depende del rol', () => {
     expect(paymentsRoute.href).toBe('/profile/payments');
     expect(paymentsRoute.role).toBeUndefined();
+    expect(paymentsRoute.mobileOnly).toBeUndefined();
   });
 });
 
@@ -88,5 +93,68 @@ describe('trainingPlansRoute', () => {
     expect(trainingPlansRoute.name).toBe('training-plans');
     expect(trainingPlansRoute.href).toBe('/training-plans');
     expect(trainingPlansRoute.role).toBe('trainer');
+  });
+});
+
+describe('attendanceRoute', () => {
+  test('is scoped to the trainer role', () => {
+    expect(attendanceRoute.name).toBe('attendance');
+    expect(attendanceRoute.href).toBe('/attendance');
+    expect(attendanceRoute.icon).toBe('clipboard-check-outline');
+    expect(attendanceRoute.role).toBe('trainer');
+  });
+
+  test('shows for trainer, not for runner', () => {
+    expect(getRoutesByRole('trainer')).toContainEqual(attendanceRoute);
+    expect(getRoutesByRole('runner')).not.toContainEqual(attendanceRoute);
+  });
+
+  test('is excluded when there is no active role', () => {
+    expect(getRoutesByRole(null)).not.toContainEqual(attendanceRoute);
+  });
+});
+
+describe('checkinRoute', () => {
+  test('es del corredor y solo de mobile', () => {
+    expect(checkinRoute.name).toBe('checkin');
+    expect(checkinRoute.href).toBe('/attendance/register');
+    // El nombre del ícono va verificado contra el glyphmap instalado:
+    // `qrcode-scan` existe, `qrcode-scan-helper` — que es el que uno escribiría
+    // por costumbre — no, y un nombre inexistente renderiza un "?" en pantalla.
+    expect(checkinRoute.icon).toBe('qrcode-scan');
+    expect(checkinRoute.role).toBe('runner');
+    expect(checkinRoute.mobileOnly).toBe(true);
+  });
+
+  // `getRoutesByRole` toma la plataforma como segundo parámetro justamente para
+  // poder testear las dos ramas: bajo jest-expo `Platform.OS` es siempre `ios`,
+  // así que si la leyera internamente la rama web sería intestable sin mockear
+  // el módulo entero.
+  test('aparece para el corredor en mobile', () => {
+    expect(getRoutesByRole('runner', true)).toContainEqual(checkinRoute);
+  });
+
+  test('NO aparece en web, ni para el corredor', () => {
+    expect(getRoutesByRole('runner', false)).not.toContainEqual(checkinRoute);
+  });
+
+  test('NO aparece nunca para el entrenador, en ninguna plataforma', () => {
+    // El requisito es "solo perfil corredor": el flag de plataforma no debe
+    // abrirle la puerta al entrenador en mobile.
+    expect(getRoutesByRole('trainer', true)).not.toContainEqual(checkinRoute);
+    expect(getRoutesByRole('trainer', false)).not.toContainEqual(checkinRoute);
+  });
+
+  test('tampoco sin rol activo', () => {
+    expect(getRoutesByRole(null, true)).not.toContainEqual(checkinRoute);
+    expect(getRoutesByRole(null, false)).not.toContainEqual(checkinRoute);
+  });
+
+  test('el resto del catálogo no depende de la plataforma', () => {
+    // El flag `mobileOnly` es por ruta: no puede arrastrar a las demás. Si esto
+    // se rompiera, web perdería el resto de la navegación.
+    const enMobile = getRoutesByRole('trainer', true);
+    const enWeb = getRoutesByRole('trainer', false);
+    expect(enWeb).toEqual(enMobile);
   });
 });

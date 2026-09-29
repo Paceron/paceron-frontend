@@ -116,12 +116,36 @@ const noDirectSelectFieldRule = {
 // accidental es peor que la fricción de un botón de cerrar.
 const BACKDROP_CLOSE_EXEMPT_FILES = ['payments/checkout-flow.jsx', 'payments/checkout-flow.web.jsx'];
 
+// Devuelve la cola estática del valor de un atributo JSX, para poder decidir
+// si termina en `-backdrop`. Cubre los 3 formatos que se usan en el repo:
+// literal plano (`"x-backdrop"`), template literal (`` `${idPrefix}-backdrop` ``)
+// y expression container con literal adentro.
+//
+// Los template literals importan: el componente compartido
+// `ConfirmDestructiveModal` construye todos sus ids con un `idPrefix` dinámico,
+// así que con el chequeo anterior — que solo aceptaba literales — la regla
+// dejaba de vigilar ese modal en silencio, y un backdrop sin `onPress` pasaba
+// sin error. Eso es justo lo que la regla existe para evitar. Se mira solo la
+// última quasi (la parte estática del final): alcanza para detectar el sufijo
+// y no obliga a resolver las expresiones.
+function staticTailOfAttrValue(value) {
+  if (!value) return null;
+  if (value.type === 'Literal') return typeof value.value === 'string' ? value.value : null;
+  if (value.type === 'TemplateLiteral') {
+    const lastQuasi = value.quasis[value.quasis.length - 1];
+    return lastQuasi?.value?.cooked ?? lastQuasi?.value?.raw ?? null;
+  }
+  if (value.type === 'JSXExpressionContainer') return staticTailOfAttrValue(value.expression);
+  return null;
+}
+
 function findBackdropElements(node, results) {
   if (!node || node.type !== 'JSXElement') return;
   const nativeIdAttr = node.openingElement.attributes.find(
     (a) => a.type === 'JSXAttribute' && a.name.name === 'nativeID'
   );
-  if (nativeIdAttr?.value?.type === 'Literal' && typeof nativeIdAttr.value.value === 'string' && nativeIdAttr.value.value.endsWith('-backdrop')) {
+  const tail = staticTailOfAttrValue(nativeIdAttr?.value);
+  if (typeof tail === 'string' && tail.endsWith('-backdrop')) {
     results.push(node.openingElement);
   }
   for (const child of node.children) findBackdropElements(child, results);
