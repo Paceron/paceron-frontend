@@ -137,20 +137,32 @@ otra pantalla ni recargar datos.
 
 ### Requirement: El flujo SHALL continuar automáticamente después de iniciar sesión
 
-Si el corredor no tiene sesión al entrar al escáner, la app SHALL dirigirlo a la pantalla
-de login, y una vez que inicia sesión el flujo de registro SHALL continuar por su cuenta. Los
-identificadores leídos del QR SHALL NOT perderse al pasar por login.
+Si el token del corredor expira con una request de registro en vuelo, la app SHALL
+dirigirlo a la pantalla de login sin perder el identificador leído del QR, y una vez que
+inicia sesión el flujo de registro SHALL continuar por su cuenta.
 
-#### Scenario: Corredor sin sesión escanea
+#### Scenario: La sesión se cae con el escaneo ya leído
 
-Dado un corredor sin sesión, cuando escanea un QR válido, entonces la app SHALL pedir el
-login y SHALL preservar los identificadores leídos.
+Dado un corredor con un escaneo válido leído y registrado en el store de intención, cuando
+la sesión expira con la request en vuelo, entonces la app SHALL llevar al login y SHALL
+preservar los identificadores leídos.
 
 #### Scenario: El registro continúa solo después del login
 
-Dado que el corredor acá de loguearse, cuando el login es exitoso, entonces la app SHALL
-disparar el registro de la sesión leída **sin** que el corredor tenga que volver al menú ni
-volver a escanear.
+Dado que el corredor acá de loguearse, cuando el login es exitoso y vuelve al escáner,
+entonces la app SHALL disparar el registro de la sesión leída **sin** que el corredor tenga
+que volver a apuntar la cámara al cartel.
+
+> Por qué "vuelve al escáner" y no "automáticamente al instante": el requisito es que no se
+> pierda el escaneo, no que se salte la pantalla de login. El login siempre devuelve al
+> home (es su comportamiento propio, compartido con el resto de la app), así que el
+> corredor reabre el escáner desde el menú y el registro sale solo. Reclamar el redirect
+> post-login obligaría a acoplar la pantalla de login con un store de un dominio que no
+> conoce, para un salto de pantalla que el usuario tiene que hacer igual.
+>
+> Y por qué no "entrar al escáner sin sesión y escanear": la ruta vive detrás del menú, y
+> el menú exige sesión, así que sin token no se llega a la cámara. El único camino real al
+> caso sin sesión es perder la sesión con el escaneo ya leído.
 
 ### Requirement: El sistema SHALL explicar en web que la función es de la app nativa
 

@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useCheckinStore } from '../../store/checkin-store.js';
 import { useSaveCheckin } from '../../hooks/use-checkin.js';
 import { parseCheckinQrPayload } from '../../utils/checkin-qr-url.js';
+import { toOutcome } from '../../utils/checkin-outcome.js';
 import { notifyError, notifySuccess } from '../../utils/haptics.js';
 import { CheckinWaitingOverlay } from './checkin-waiting-overlay.jsx';
 import { CheckinResult } from './checkin-result.jsx';
@@ -17,22 +18,6 @@ import { CheckinResult } from './checkin-result.jsx';
 // intermedio de la request: es un POST que resuelve o falla, y meter más estados
 // sería código para un caso que no existe.
 const PHASE = { SCANNING: 'scanning', SUBMITTING: 'submitting', RESULT: 'result' };
-
-// Traduce la respuesta del backend al resultado de pantalla (D7). El texto es
-// del front: el del backend no se muestra salvo en el caso no clasificado, para
-// no filtrar nada de la sesión.
-function toOutcome(response, error) {
-  if (!error) {
-    return response?.message === 'esta asistencia fue previamente registrada'
-      ? { kind: 'duplicate' }
-      : { kind: 'registered' };
-  }
-  const byStatus = { 400: 'invalid', 403: 'forbidden', 404: 'gone' };
-  const kind = byStatus[error.status];
-  return kind
-    ? { kind }
-    : { kind: 'unknown', detail: error.message };
-}
 
 export function CheckinScanner() {
   const router = useRouter();

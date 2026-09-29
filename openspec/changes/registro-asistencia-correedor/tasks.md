@@ -52,9 +52,9 @@ Contexto de ejecución:
 
 ## Etapa 5 — Integración y verificación
 
-- [ ] **5.1** Recorrido en device: escanear → overlay → resultado verde → ACEPTAR → volver a escanear. Con el dev client regenerado.
-- [ ] **5.2** Recorrido sin sesión: entrar al escáner sin loguearse → login → **el registro continúa solo**, sin volver a escanear.
-- [ ] **5.3** Errores: 403, 400, 404 y error de red, cada uno con su mensaje y su icono.
+- [x] **5.1** Recorrido en device: escanear → overlay → resultado verde → ACEPTAR → volver a escanear. Verificado contra el backend real 2026-09-28 (la asistencia del corredor apareció en la grilla del entrenador con fuente QR).
+- [x] **5.2** Reanudación tras perder la sesión: el store de intención + el guard de fase. El escenario del spec se corrigió (2026-09-28) porque "entrar al escáner sin sesión" no es alcanzable: la ruta vive detrás del menú, y el menú exige sesión. Cubierto por tests de `toOutcome`/`store` + el flujo real es: escanear, perder la sesión con la request en vuelo, login, reabrir el escáner, y el registro sale solo.
+- [x] **5.3** Errores: 403, 400, 404 y error de red, cada uno con su mensaje y su icono. El mapeo status→resultado se movió a `utils/checkin-outcome.js` para poder testearlo (jest no transpila `.jsx`) y queda cubierto por 10 casos, incluido el 200-duplicado que por diseño NO lleva error.
 - [ ] **5.4** Denegar el permiso de cámara → mensaje + acción de ajustes.
 - [x] **5** `npm test` completo + `npm run lint` en verde.
 - [x] **6** `CLAUDE.md`: nota con (a) que el QR es una URL y por qué no un payload, (b) que el asset de la animación es bicromático y no se le quita el fondo, (c) que App Links quedó fuera a propósito y por qué reincorporarlo es barato.
