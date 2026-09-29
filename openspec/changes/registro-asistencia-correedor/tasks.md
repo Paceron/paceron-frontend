@@ -37,18 +37,18 @@ Contexto de ejecución:
 
 ## Etapa 3 — Store de intención pendiente
 
-- [ ] **3.1** `store/checkin-store.js`: `pendingCheckin` (`{ teamId, sessionInstanceId } | null`), `setPendingCheckin`, `clearPendingCheckin`. Mismo patrón que `store/session-runtime-store.js#pendingSession`.
-- [ ] **3.2** La pantalla, al detectar que no hay sesión, escribe el pendiente y redirige a `/login`. Al montar con sesión presente, si hay pendiente, lo consume y arranca el registro.
+- [x] **3.1** `store/checkin-store.js`: `pendingCheckin` (`{ teamId, sessionInstanceId } | null`), `setPendingCheckin`, `clearPendingCheckin`. Mismo patrón que `store/session-runtime-store.js#pendingSession`.
+- [x] **3.2** La pantalla, al detectar que no hay sesión, escribe el pendiente y redirige a `/login`. Al montar con sesión presente, si hay pendiente, lo consume y arranca el registro.
 
 ## Etapa 4 — Pantalla y overlay
 
-- [ ] **4.1** `components/checkin/checkin-screen.jsx`: máquina de fases `scanning` → `submitting` → `result` (D8). `scanning` monta la cámara; `submitting` el overlay; `result` el mensaje + ACEPTAR.
-- [ ] **4.2** Permiso de cámara: pedirlo en runtime al montar `scanning`. Denegado → mensaje explicando que hace falta permiso, con acción para abrir ajustes del sistema.
-- [ ] **4.3** Escaneo: `onBarcodeScanned` con guarda de request en vuelo (requisito 2 — un escaneo no dispara dos POSTs).
-- [ ] **4.4** `components/checkin/checkin-waiting-overlay.jsx`: fondo `#979597` — el gris del asset optimizado, **medido del archivo**, D4/R3, la animación con `Image` + `paceron-runner-waiting.gif`, y debajo "Registrando asistencia". `nativeID`+`testID` en todo. Sin `Modal` propio: es una capa absoluta sobre la pantalla, para no anidar dos superficies nativas.
-- [ ] **4.5** `components/checkin/checkin-result.jsx`: check verde / X roja + mensaje + botón ACEPTAR. Iconos de `MaterialCommunityIcons` **verificados contra el glyphmap instalado** (mismo criterio que el bug de `sort-alpha-ascending`).
-- [ ] **4.6** Aviso de plataforma y de rol (requisitos 1 y 6): web → "solo en la app"; rol no corredor → aviso. Sin montar la cámara.
-- [ ] **4.7** `npm run lint` en verde.
+- [x] **4.1** `components/checkin/checkin-screen.jsx`: máquina de fases `scanning` → `submitting` → `result` (D8). `scanning` monta la cámara; `submitting` el overlay; `result` el mensaje + ACEPTAR.
+- [x] **4.2** Permiso de cámara: pedirlo en runtime al montar `scanning`. Denegado → mensaje explicando que hace falta permiso, con acción para abrir ajustes del sistema.
+- [x] **4.3** Escaneo: `onBarcodeScanned` con guarda de request en vuelo (requisito 2 — un escaneo no dispara dos POSTs).
+- [x] **4.4** `components/checkin/checkin-waiting-overlay.jsx`: fondo `#979597` — el gris del asset optimizado, **medido del archivo**, D4/R3, la animación con `Image` + `paceron-runner-waiting.gif`, y debajo "Registrando asistencia". `nativeID`+`testID` en todo. Sin `Modal` propio: es una capa absoluta sobre la pantalla, para no anidar dos superficies nativas.
+- [x] **4.5** `components/checkin/checkin-result.jsx`: check verde / X roja + mensaje + botón ACEPTAR. Iconos de `MaterialCommunityIcons` **verificados contra el glyphmap instalado** (mismo criterio que el bug de `sort-alpha-ascending`).
+- [x] **4.6** Aviso de plataforma y de rol (requisitos 1 y 6): web → "solo en la app"; rol no corredor → aviso. Sin montar la cámara.
+- [x] **4.7** `npm run lint` en verde.
 
 ## Etapa 5 — Integración y verificación
 

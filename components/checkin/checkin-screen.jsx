@@ -1,15 +1,16 @@
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
+import { CheckinScanner } from './checkin-scanner.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 
-// Etapa 1 del change registro-asistencia-correedor: acá vive solo el *gate* —
-// que se puede entrar por rol corredor y en mobile — más un placeholder. La
-// cámara, el overlay de espera y el resultado llegan en la etapa 4.
+// Gate de la pantalla de check-in del corredor: se entra con perfil corredor y
+// en mobile (requisito 1). La cámara, el overlay de espera y el resultado viven
+// en `checkin-scanner.jsx`.
 //
 // La pantalla se arma en dos componentes por la misma razón que
 // attendance-screen.jsx: con el rol o la plataforma equivocados NO tiene que
@@ -17,7 +18,11 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 // de la sesión que viene; un componente que no se monta no pide nada.
 export function CheckinScreen() {
   return (
-    <RequireAuth>
+    // `redirectHref` a `/login` y no al `/` que trae el guard por default: el
+    // escenario real es que la sesión se caiga con el escaneo ya leído (token
+    // expirado en pleno POST). El pendiente ya quedó guardado antes de la
+    // request, así que al volver al escáner el registro continúa solo.
+    <RequireAuth redirectHref="/login">
       <CheckinGate />
     </RequireAuth>
   );
@@ -38,7 +43,7 @@ function CheckinGate() {
   if (isWeb) return <PlatformNotice />;
   if (!canCheckIn) return <TrainerProfileNotice hasRunnerRole={hasRunnerRole} />;
 
-  return <CheckinPlaceholder />;
+  return <CheckinScanner />;
 }
 
 // Requisito 6 del spec: en web la función es de la app nativa, y no se pide
@@ -108,33 +113,5 @@ function TrainerProfileNotice({ hasRunnerRole }) {
         </View>
       </View>
     </View>
-  );
-}
-
-// Placeholder de la etapa 4. Existe para que la ruta sea navegable desde ya y
-// se vea dónde va a caer el escáner.
-function CheckinPlaceholder() {
-  const colors = useThemeColors();
-
-  return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="checkin-root" testID="checkin-root">
-      <View className="w-full self-center max-w-2xl" nativeID="checkin-container" testID="checkin-container">
-        <View className="mb-4 flex-row items-center gap-2" nativeID="checkin-header" testID="checkin-header">
-          <Text className="text-xl text-slate-900 dark:text-white" nativeID="checkin-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="checkin-title">
-            Registrar asistencia
-          </Text>
-        </View>
-
-        <View className="items-center rounded-2xl border border-dashed border-slate-300 px-6 py-12 dark:border-slate-700" nativeID="checkin-placeholder" testID="checkin-placeholder">
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={40} />
-          <Text className="mt-3 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="checkin-placeholder-text" testID="checkin-placeholder-text">
-            El escáner de QR llega en la etapa 4 de este change.
-          </Text>
-          <Text className="mt-1 text-center text-xs text-slate-400 dark:text-slate-500" nativeID="checkin-placeholder-hint" testID="checkin-placeholder-hint">
-            Con la ruta y la entrada de menú ya andamiaje.
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
   );
 }
