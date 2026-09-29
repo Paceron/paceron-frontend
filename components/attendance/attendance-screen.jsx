@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueries } from '@tanstack/react-query';
@@ -638,45 +638,6 @@ function AttendanceCascade() {
                     único elemento que destaca del botón y marca dónde está la
                     acción. */}
 
-                {/* Refrescar, junto al QR y no dentro de la grilla: usa los mismos
-                    filtros que ya están seleccionados (equipo, grupo y sesión) sin
-                    volver a pasarlos, que es lo que el gesture de pull-to-refresh
-                    ya hace en nativo pero NO existe en web — sin este botón, en web
-                    la única forma de recargar era F5.
-
-                    Es un botón y no otro pull-to-refresh porque tiene que funcionar
-                    en las dos plataformas y además dejar feedback visible: acá el
-                    gesto no da ninguna señal de que algo pasó.
-
-                    Icono solo, con `accessibilityLabel`: el ícono no tiene texto y
-                    el `Pressable` necesita nombre para lectores de pantalla. El
-                    spinner va EN el ícono (no hay texto que cambiar) y el botón se
-                    deshabilita mientras corre para que dos toques seguidos no
-                    disparen dos refetches.
-
-                    Reusa `onRefresh` del pull-to-refresh, que refetchea grilla Y
-                    listado de sesiones: el selector de sesión muestra cuántas
-                    asistencias lleva cada una, y eso se desactualiza junto con la
-                    grilla. */}
-                <Pressable
-                  accessibilityLabel="Actualizar la asistencia de la sesión"
-                  accessibilityRole="button"
-                  accessibilityState={{ busy: refreshing || gridRefetching || sessionsRefetching, disabled: refreshing }}
-                  className="mr-2 h-10 w-10 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
-                  disabled={refreshing}
-                  hitSlop={8}
-                  nativeID={`${ID_PREFIX}-refresh-button`}
-                  onPress={onRefresh}
-                  testID={`${ID_PREFIX}-refresh-button`}
-                >
-                  {refreshing || gridRefetching || sessionsRefetching ? (
-                    <ActivityIndicator color={colors.primary} size="small" />
-                  ) : (
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="refresh" size={20} />
-                  )}
-                </Pressable>
-
-
                 <Pressable
                   accessibilityLabel={`Generar el código QR de la sesión ${selectedSession.name}`}
                   className="h-10 flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-4 active:opacity-80"
@@ -710,8 +671,14 @@ function AttendanceCascade() {
               error={gridError}
               idPrefix={`${ID_PREFIX}-grid`}
               isLoading={gridLoading}
-              isRefetching={gridRefetching || sessionsRefetching}
+              // `refreshing` entra porque el pull-to-refresh y el botón disparan
+              // la MISMA operación: sin él, el spinner del botón no se encendía
+              // durante el gesto y el feedback quedaba a cargo del
+              // RefreshControl del ScrollView, que está en otro lugar de la
+              // pantalla.
+              isRefetching={refreshing || gridRefetching || sessionsRefetching}
               isSaving={isSaving}
+              onRefresh={onRefresh}
               onRequestDelete={handleRequestDelete}
               onRetry={refetchGrid}
               onSave={handleSave}

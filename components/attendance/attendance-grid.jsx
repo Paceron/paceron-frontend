@@ -25,6 +25,7 @@ export function AttendanceGrid({
   onRequestDelete,
   onSave,
   onRetry,
+  onRefresh,
   isSaving,
   idPrefix,
 }) {
@@ -185,19 +186,56 @@ export function AttendanceGrid({
           accessibilityLabel={sortOrder === 'asc'
             ? 'Orden actual: de la A a la Z. Tocar para ordenar de la Z a la A'
             : 'Orden actual: de la Z a la A. Tocar para ordenar de la A a la Z'}
-          className="h-11 shrink-0 flex-row items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+          // Verde `primary` (#8cc63e), el mismo del botón de Código QR: los tres
+          // botones de la pantalla comparten color y forma, y el buscador queda
+          // como el único control de superficie blanca — que es lo que hace
+          // evidente cuál se escribe y cuáles se accionan. Texto casi negro
+          // (`#111518`, el `onPrimary` del repo) e ícono BLANCO, igual que el QR.
+          className="h-11 shrink-0 flex-row items-center gap-1.5 rounded-xl bg-primary px-3 active:opacity-80"
           nativeID={`${idPrefix}-sort-toggle`}
           onPress={() => setSortOrder((current) => (current === 'asc' ? 'desc' : 'asc'))}
           testID={`${idPrefix}-sort-toggle`}
         >
           <MaterialCommunityIcons
-            color={colors.onSurfaceVariant}
+            color="#ffffff"
             name={sortOrder === 'asc' ? 'sort-alphabetical-ascending' : 'sort-alphabetical-descending'}
             size={18}
           />
-          <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-sort-label`} testID={`${idPrefix}-sort-label`}>
+          <Text className="text-xs font-semibold text-[#111518]" nativeID={`${idPrefix}-sort-label`} testID={`${idPrefix}-sort-label`}>
             {sortOrder === 'asc' ? 'A–Z' : 'Z–A'}
           </Text>
+        </Pressable>
+
+        {/* Refrescar va acá, al lado del buscador y del orden, y no en la card de
+            la sesión: los tres son controles de la MISMA lista —filtrar, ordenar,
+            recargar— y juntos se leen como una fila. En la card quedaban en otro
+            bloque, con otro contexto.
+
+            El pull-to-refresh no cubre el caso: el gesture no existe en web, y
+            aun en nativo el botón es mejor porque da feedback — con el ícono
+            reemplazado por un spinner y deshabilitado, así que dos toques
+            seguidos no disparan dos refetches.
+
+            `h-11` para empatar la altura con el buscador y el de orden, y
+            `w-11` porque no tiene texto: solo el ícono, así que el
+            `accessibilityLabel` es lo que le da nombre a los lectores de
+            pantalla, y `busy` hace que "está actualizando" sea anunciable. */}
+        <Pressable
+          accessibilityLabel="Actualizar la asistencia de la sesión"
+          accessibilityRole="button"
+          accessibilityState={{ busy: Boolean(isRefetching), disabled: Boolean(isRefetching) }}
+          className="h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary active:opacity-80"
+          disabled={isRefetching}
+          hitSlop={6}
+          nativeID={`${idPrefix}-refresh-button`}
+          onPress={onRefresh}
+          testID={`${idPrefix}-refresh-button`}
+        >
+          {isRefetching ? (
+            <ActivityIndicator color="#ffffff" size="small" />
+          ) : (
+            <MaterialCommunityIcons color="#ffffff" name="refresh" size={20} />
+          )}
         </Pressable>
       </View>
 
