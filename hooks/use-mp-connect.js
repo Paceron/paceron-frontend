@@ -27,6 +27,9 @@ export function useMpConnectStatus() {
   return {
     connected: query.data?.connected ?? false,
     accountStatus: query.data?.account_status ?? null,
+    // Vencimiento del access token (ISO), o null. Mercado Pago lo emite por 180
+    // días y nada lo renueva; vencido, el backend ya devuelve connected=false.
+    tokenExpiresAt: query.data?.token_expires_at ?? null,
     loading: query.isLoading,
     refetching: query.isFetching,
     // Sin esto, un fallo de la consulta es indistinguible de "no conectaste":

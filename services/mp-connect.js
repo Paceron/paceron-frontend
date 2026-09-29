@@ -18,7 +18,8 @@ export async function getMpConnectAuthUrl(platform) {
 }
 
 // GET /api/v1/mercadopago/connect/status — mpconnect.StatusResponse
-// {connected, account_status}. El usuario sale del token, no va por query.
+// {connected, account_status, token_expires_at}. El usuario sale del token, no
+// va por query. `connected` ya es false si el token venció.
 //
 // Es la ÚNICA fuente de verdad del estado de la conexión: el `status` que
 // llega por la URL de retorno sirve para el mensaje inmediato, nunca para
