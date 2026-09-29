@@ -86,7 +86,18 @@ export async function getAttendanceQr(teamId, trainingSessionId) {
 // 200 con `error.status` (D7). El mensaje del backend no se usa para decidir.
 export async function registerCheckin({ teamId, sessionInstanceId }) {
   if (USE_MOCKS) return await mockRegisterCheckin({ teamId, sessionInstanceId });
-  return await api.post(`/attendance/team/${Number(teamId)}/session/${Number(sessionInstanceId)}`);
+  // `exposeStatus` porque 201 (asistencia nueva) y 200 (ya estaba) devuelven
+  // el MISMO body salvo por `message`. Clasificar por texto ataba el front a la
+  // redacción del backend: si se reescribía, el 200 se reportaba como registro
+  // nuevo. Y sin el status a la vista tampoco se podía diagnosticar un
+  // "ya estaba registrada" que no correspondía — el 200 en Network era la única
+  // prueba, y no se veía desde la app.
+  const { status, data } = await api.post(
+    `/attendance/team/${Number(teamId)}/session/${Number(sessionInstanceId)}`,
+    undefined,
+    { exposeStatus: true },
+  );
+  return { ...data, status };
 }
 
 // DELETE /api/v1/attendance/{attendance_id}?team_id=

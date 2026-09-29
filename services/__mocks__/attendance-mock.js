@@ -307,7 +307,7 @@ export async function mockRegisterCheckin({ teamId, sessionInstanceId }) {
   };
 
   if (already) {
-    return { message: 'esta asistencia fue previamente registrada', ...sessionContext };
+    return { message: 'esta asistencia fue previamente registrada', status: 200, ...sessionContext };
   }
 
   // El registro interno guarda el id de INSTANCIA en la columna
@@ -323,7 +323,7 @@ export async function mockRegisterCheckin({ teamId, sessionInstanceId }) {
     registered_at: new Date().toISOString(),
   });
 
-  return { message: 'asistencia registrada', ...sessionContext };
+  return { message: 'asistencia registrada', status: 201, ...sessionContext };
 }
 
 export function __resetAttendanceMock() {

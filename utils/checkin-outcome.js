@@ -15,8 +15,9 @@
 /**
  * El backend responde este texto exacto en el 200 idempotente
  * (`attendance.MessageAlreadyExists`). Exportado para que el test de contrato
- * loCompare con el valor real: es el único acoplamiento por STRING entre este
- * repo y el backend en todo el flujo de check-in.
+ * lo compara con el valor real: era el único acoplamiento por STRING entre este
+ * repo y el backend en todo el flujo de check-in. Ya no decide nada — el status
+ * manda— pero queda el texto a mano para poder compararlo.
  */
 export const ALREADY_REGISTERED = 'esta asistencia fue previamente registrada';
 
@@ -30,7 +31,7 @@ const BY_STATUS = { 400: 'invalid', 403: 'forbidden', 404: 'gone' };
 const SUCCESS_KINDS = new Set(['registered', 'duplicate']);
 
 /**
- * @param {object|null} response cuerpo de la respuesta 2xx, o null si hubo error
+ * @param {object|null} response respuesta 2xx con `status` a mano, o null si hubo error
  * @param {object|null} error error normalizado de `services/api.js`, o null
  * @returns {{ kind: string, sessionDate: string|null, detail?: string }}
  *   `kind` nunca es undefined. `sessionDate` es la fecha (YYYY-MM-DD) de la
@@ -38,8 +39,18 @@ const SUCCESS_KINDS = new Set(['registered', 'duplicate']);
  */
 export function toOutcome(response, error) {
   if (!error) {
+    // El STATUS manda, no el texto. El 201 (asistencia nueva) y el 200 (ya
+    // estaba) devuelven el mismo body salvo por `message`, así que clasificar
+    // por texto ataba el front a la redacción del otro repo — y ya se vio el
+    // costo: un "ya estaba registrada" que no correspondía quedó sin forma de
+    // diagnosticar porque el 200 no se veía desde la app.
+    //
+    // Sin `status` (backend viejo, o un test que arma la respuesta a mano) cae
+    // en "registered", que es el default prudente: un duplicado mostrado como
+    // registro nuevo molesta menos que un registro nuevo mostrado como duplicado.
+    const successKind = response?.status === 200 ? 'duplicate' : 'registered';
     return {
-      kind: response?.message === ALREADY_REGISTERED ? 'duplicate' : 'registered',
+      kind: successKind,
       sessionDate: typeof response?.session_date === 'string' ? response.session_date : null,
     };
   }

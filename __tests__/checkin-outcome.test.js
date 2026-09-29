@@ -6,13 +6,13 @@ import { ALREADY_REGISTERED, destinationForOutcome, isCheckinSuccess, toOutcome 
 // al entrenador en vez de que revise si la sesión sigue en pie.
 describe('toOutcome', () => {
   test('201: registrado', () => {
-    expect(toOutcome({ message: 'asistencia registrada' }, null)).toEqual({ kind: 'registered', sessionDate: null });
+    expect(toOutcome({ status: 201, message: 'asistencia registrada' }, null)).toEqual({ kind: 'registered', sessionDate: null });
   });
 
   // El 200 NO lleva X: la asistencia quedó registrada igual, que es lo que el
   // corredor quería. Ponerle error mentiría sobre si su sesión está en el cartel.
   test('200: ya registrada, con check verde y no con error', () => {
-    const o = toOutcome({ message: 'esta asistencia fue previamente registrada' }, null);
+    const o = toOutcome({ status: 200, message: 'esta asistencia fue previamente registrada' }, null);
     expect(o.kind).toBe('duplicate');
     expect(o.kind).not.toBe('invalid');
   });
@@ -67,7 +67,7 @@ describe('contrato con el backend para el 200 idempotente', () => {
     // Documenta la consecuencia: si el backend reescribe el mensaje, el
     // duplicado pasa por `registered`. No es un bug de este repo, es la
     // dependencia de que ese string no cambie.
-    expect(toOutcome({ message: 'ya estabas anotado' }, null).kind).toBe('registered');
+    expect(toOutcome({ status: 201, message: 'ya estabas anotado' }, null).kind).toBe('registered');
   });
 });
 
@@ -133,5 +133,38 @@ describe('sessionDate viaja desde la respuesta del backend', () => {
   test('los errores nunca traen sessionDate', () => {
     expect(toOutcome(null, { status: 403 }).sessionDate).toBeNull();
     expect(toOutcome(null, { message: 'offline' }).sessionDate).toBeNull();
+  });
+});
+
+// La clasificación por STATUS. El caso que la motiva: se borró una asistencia,
+// se reescaneó el mismo QR y la app dijo "ya estaba registrada". Con clasificación
+// por texto no había forma de distinguir un 200 real de un 201 mal leído, porque
+// `api.js` descartaba el status.
+describe('toOutcome clasifica por status, no por texto', () => {
+  test('201 = asistencia nueva', () => {
+    expect(toOutcome({ status: 201, message: 'asistencia registrada' }, null).kind).toBe('registered');
+  });
+
+  test('200 = ya estaba', () => {
+    expect(toOutcome({ status: 200, message: 'esta asistencia fue previamente registrada' }, null).kind)
+      .toBe('duplicate');
+  });
+
+  // La dirección del default importa: un duplicado mostrado como "registrada"
+  // molesta menos que un registro nuevo mostrado como "ya estaba", porque el
+  // primero solo confunde y el segundo hace dudar de si la asistencia quedó.
+  test('sin status, cae en registered (no en duplicate)', () => {
+    expect(toOutcome({ message: 'esta asistencia fue previamente registrada' }, null).kind)
+      .toBe('registered');
+  });
+
+  test('el status manda aunque el texto diga lo contrario', () => {
+    // Backend incoherente: 200 con el texto del 201. Gana el status.
+    expect(toOutcome({ status: 200, message: 'asistencia registrada' }, null).kind).toBe('duplicate');
+  });
+
+  test('sessionDate se lee igual, venga con status o sin él', () => {
+    expect(toOutcome({ status: 201, session_date: '2026-09-28' }, null).sessionDate).toBe('2026-09-28');
+    expect(toOutcome({ status: 200, session_date: '2026-09-28' }, null).sessionDate).toBe('2026-09-28');
   });
 });
