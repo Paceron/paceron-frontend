@@ -297,6 +297,11 @@ pero ahora ambos son obligatorios. El enforcement es **solo de UI**: el backend 
 - **Deep link `paceron://mp-connect/callback`** (`paceron-dev://` en la variante de desarrollo).
   Tiene que coincidir con `MP_OAUTH_APP_RETURN_URL` del backend; su par web es
   `MP_OAUTH_WEB_RETURN_URL`. Los dos se declaran en el `render.yaml` del backend.
+- **La conexión vence a los 180 días y nada la renueva (2026-09-29).** El backend usa el
+  `refresh_token` una sola vez, en el callback. `/connect/status` devuelve
+  `token_expires_at` y ya informa `connected: false` si venció. Mi perfil (card "Datos de
+  entrenador") muestra Conectada / Vencida / No conectada y "Sincronizada hasta el …",
+  con la lógica en `utils/mp-connect-status.js`.
 - Los `reason` de error (`invalid_state`, `expired_state`, `exchange_failed`, …) son un contrato
   estable del backend — mapearlos con `utils/mp-connect-messages.js`, **nunca mostrar el slug**.
 
