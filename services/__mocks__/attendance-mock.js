@@ -288,8 +288,26 @@ export async function mockRegisterCheckin({ teamId, sessionInstanceId }) {
     (a) => String(a.training_session_id) === String(sessionInstanceId)
       && String(a.user_id) === String(MOCK_RUNNER_USER_ID),
   );
+  // `group_id` y `session_date` van en la respuesta (como en el backend real)
+  // porque el front los usa para armar el deep link al día recién registrado:
+  // el QR solo trae team_id y session_instance_id, así que sin la fecha no hay
+  // forma de saber a qué día saltar. El 200 idempotente los devuelve igual.
+  // `GROUP` y no `session.group_id`: las sesiones del mock no lo traen, el grupo
+  // es único en este mock (line 20).
+  //
+  // `session_date` se recorta a YYYY-MM-DD y no se pasa la ISO del `session.date`
+  // crudo: el backend responde `Date.Format("2006-01-02")` porque es lo que
+  // matchea el segment [date] de la ruta del calendario. Un mock con la ISO
+  // completa haría que el deep link fuori y no se detectaría probando solo
+  // contra mocks.
+  const sessionContext = {
+    group_id: GROUP.group_id,
+    session_date: String(session.date).slice(0, 10),
+    session_name: session.name,
+  };
+
   if (already) {
-    return { message: 'esta asistencia fue previamente registrada' };
+    return { message: 'esta asistencia fue previamente registrada', ...sessionContext };
   }
 
   // El registro interno guarda el id de INSTANCIA en la columna
@@ -305,7 +323,7 @@ export async function mockRegisterCheckin({ teamId, sessionInstanceId }) {
     registered_at: new Date().toISOString(),
   });
 
-  return { message: 'asistencia registrada' };
+  return { message: 'asistencia registrada', ...sessionContext };
 }
 
 export function __resetAttendanceMock() {

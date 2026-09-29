@@ -26,24 +26,55 @@ export const ALREADY_REGISTERED = 'esta asistencia fue previamente registrada';
 // equivocada.
 const BY_STATUS = { 400: 'invalid', 403: 'forbidden', 404: 'gone' };
 
+/** Los dos resultados de éxito: el corredor quedó registrado. */
+const SUCCESS_KINDS = new Set(['registered', 'duplicate']);
+
 /**
  * @param {object|null} response cuerpo de la respuesta 2xx, o null si hubo error
  * @param {object|null} error error normalizado de `services/api.js`, o null
- * @returns {{ kind: string, detail?: string }} `kind` nunca es undefined.
+ * @returns {{ kind: string, sessionDate: string|null, detail?: string }}
+ *   `kind` nunca es undefined. `sessionDate` es la fecha (YYYY-MM-DD) de la
+ *   sesión recién registrada, que es lo que permite abrir el día exacto.
  */
 export function toOutcome(response, error) {
   if (!error) {
-    return response?.message === ALREADY_REGISTERED
-      ? { kind: 'duplicate' }
-      : { kind: 'registered' };
+    return {
+      kind: response?.message === ALREADY_REGISTERED ? 'duplicate' : 'registered',
+      sessionDate: typeof response?.session_date === 'string' ? response.session_date : null,
+    };
   }
 
   const kind = BY_STATUS[error.status];
-  if (kind) return { kind };
+  if (kind) return { kind, sessionDate: null };
 
   // Sin status conocido: error de red (offline), un 5xx, o un 401 que el
   // interceptor no llegó a convertir. No se le inventa un mensaje concreto —
   // se conserva el detail real para que se pueda reportar, y el ícono es el de
   // error genérico.
-  return { kind: 'unknown', detail: error.message };
+  return { kind: 'unknown', sessionDate: null, detail: error.message };
+}
+
+/** ¿El corredor quedó registrado, sea la primera vez o la segunda? */
+export function isCheckinSuccess(kind) {
+  return SUCCESS_KINDS.has(kind);
+}
+
+/**
+ * A dónde va el corredor cuando toca ACEPTAR.
+ *
+ * Éxito con fecha: directo al día que recién registró. La pantalla de
+ * calendário ya sabe abrir un día por deep link (`?date=`): salta al mes y abre
+ * el modal, así que no hace falta tocar el calendario a mano.
+ *
+ * Éxito sin fecha: se lo manda al calendario igual, en vez de dejarlo en un
+ * limbo. Puede pasar si el backend no manda `session_date` (no debería, hay
+ * contrato, pero el front no se rompe por eso).
+ *
+ * Error: al home. El calendario es un lugar de trabajo, no un lugar al que se
+ * cae uno cuando el registro falló — y además en el 403 la sesión ni era suya.
+ */
+export function destinationForOutcome(outcome) {
+  if (!outcome || !isCheckinSuccess(outcome.kind)) return '/';
+  if (outcome.sessionDate) return `/calendar?date=${encodeURIComponent(outcome.sessionDate)}`;
+  return '/calendar';
 }

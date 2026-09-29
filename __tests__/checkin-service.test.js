@@ -29,7 +29,11 @@ beforeEach(() => { __resetAttendanceMock(); });
 describe('registro del corredor (mock)', () => {
   test('201 cuando la asistencia se registra por primera vez', async () => {
     const r = await registerCheckin({ teamId: TEAM, sessionInstanceId: SESSION });
-    expect(r).toEqual({ message: 'asistencia registrada' });
+    // group_id/session_date van en la respuesta: el front los usa para abrir el
+    // día recién registrado, y el QR no los trae.
+    expect(r.message).toBe('asistencia registrada');
+    expect(r.group_id).toBe(4);
+    expect(r.session_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   // El 200 NO es un error: es el caso idempotente. La pantalla lo pinta con check
@@ -37,7 +41,10 @@ describe('registro del corredor (mock)', () => {
   test('200 con el mensaje de "ya registrada" en el segundo intento', async () => {
     await registerCheckin({ teamId: TEAM, sessionInstanceId: SESSION });
     const r = await registerCheckin({ teamId: TEAM, sessionInstanceId: SESSION });
-    expect(r).toEqual({ message: 'esta asistencia fue previamente registrada' });
+    expect(r.message).toBe('esta asistencia fue previamente registrada');
+    // El 200 también trae el contexto: el corredor tiene que poder llegar
+    // igual a la sesión que ya tenía registrada.
+    expect(r.session_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   test('403 cuando el corredor no es del equipo', async () => {

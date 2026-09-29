@@ -8,7 +8,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useCheckinStore } from '../../store/checkin-store.js';
 import { useSaveCheckin } from '../../hooks/use-checkin.js';
 import { parseCheckinQrPayload } from '../../utils/checkin-qr-url.js';
-import { toOutcome } from '../../utils/checkin-outcome.js';
+import { destinationForOutcome, toOutcome } from '../../utils/checkin-outcome.js';
 import { MIN_WAITING_MS, waitMinimum } from '../../utils/checkin-waiting.js';
 import { notifyError, notifySuccess } from '../../utils/haptics.js';
 import { CheckinWaitingOverlay } from './checkin-waiting-overlay.jsx';
@@ -101,10 +101,12 @@ export function CheckinScanner() {
     attempt(payload);
   }, [phase, userId, attempt, router, setPendingCheckin]);
 
+  // ACEPTAR no vuelve al escáner: cierra la cámara y se va. Volver al escáner
+  // dejaría al corredor con la pantalla de la cámara abierta sin nada que
+  // escanear, que es el peor final posible después de ya haberse registrado.
   const handleAccept = useCallback(() => {
-    setOutcome(null);
-    setPhase(PHASE.SCANNING);
-  }, []);
+    router.replace(destinationForOutcome(outcome));
+  }, [outcome, router]);
 
   if (!permission) {
     return (
