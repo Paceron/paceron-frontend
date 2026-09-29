@@ -120,7 +120,9 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
   const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
 
   const past = isPastSessionDate(assignment);
-  const inWindow = role === 'runner' ? canStartAsyncSession(assignment) : canStartPresencialSession(assignment);
+  const inWindow = role === 'runner'
+    ? (assignment.isPresencial ? canStartPresencialSession(assignment) : canStartAsyncSession(assignment))
+    : canStartPresencialSession(assignment);
   const hasSession = Boolean(assignment.sessionInstance);
   const idPrefix = `start-session-button-${assignment.id}`;
 
