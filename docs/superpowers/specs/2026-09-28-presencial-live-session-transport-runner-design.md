@@ -21,9 +21,10 @@ Existente que esta spec extiende, no reemplaza:
 - `training-session-active-screen.jsx` — pantalla de sesión asíncrona (queda intacta, sin tocar).
 - `utils/session-start-window.js` — ya tiene `canStartPresencialSession` (ventana ±30min),
   independiente de `canStartAsyncSession`. Se reusa tal cual.
-- `services/session-db.js` / `services/session-sync.js` — persistencia local SQLite + sync al
-  finalizar (modelo async). Esta spec generaliza el patrón "cola local + reintento" a nivel de
-  evento suelto, no lo reemplaza.
+- `services/session-db.js` / `services/session-sync.js` — persistencia local SQLite +
+  `syncRun(runId)` (sube todo lo pendiente del run, tolera fallos parciales). Esta spec **no
+  modifica `syncRun`** — solo lo llama más seguido (por serie terminada, no solo al finalizar la
+  sesión), reusando su reintento ya existente.
 - Gap 12 (`docs/BACKEND_API_GAPS.md`) — ya resuelto en su primer punto: `POST /workout-feedback`,
   `PUT /workout-feedback/:id`, `POST/GET /workout-feedback/:id/points`,
   `GET /session-instances/:id/feedback`. Esta spec **reusa estos endpoints tal cual**, llamados
@@ -45,9 +46,9 @@ Existente que esta spec extiende, no reemplaza:
 - GPS continuo durante toda la sesión presencial (desde el Play hasta finalizar, incluye
   transiciones/descansos entre series) — a diferencia del modelo async, que solo trackea durante
   cada serie en curso.
-- Envío incremental (no batch) de GPS y eventos de serie por REST, reusando los endpoints de Gap 12,
-  con cola local de reintento generalizada (mismo espíritu que `session-sync.js`, ahora por evento
-  suelto).
+- Envío incremental (no batch al final de la sesión) del resultado de cada serie por REST, reusando
+  los endpoints de Gap 12 y `syncRun(runId)` tal cual existe hoy — llamado por serie terminada en
+  vez de solo al finalizar.
 - `session-pre-start-screen.jsx` rutea el Play a la pantalla presencial cuando
   `assignment.isPresencial`, sin cambiar su interfaz.
 - Banner de estado de conexión no bloqueante (en vivo / reconectando / sin conexión).
@@ -139,13 +140,15 @@ igual que en REST. La autorización por canal (quién puede suscribirse/publicar
 (atleta asignado, o entrenador/owner del equipo) — no son reglas nuevas, son las mismas aplicadas a
 un transporte distinto.
 
-**Cola de salida genérica (fallback offline):** nueva tabla SQLite (extiende
-`services/session-db.js` o archivo propio — se decide en el plan) con forma
-`{ id, endpoint, method, payload, created_at, sent }`. Cada llamada REST incremental (ver abajo) se
-intenta enviar de inmediato si hay conexión; si falla o no hay conexión, queda en esta cola y se
-reintenta con backoff, drenándose en orden al reconectar/volver a foreground. Generaliza
-`services/session-sync.js#syncRun` (que hoy sincroniza todo el run junto al finalizar) a nivel de
-evento individual.
+**Fallback offline: se reusa `services/session-sync.js#syncRun(runId)` tal cual, sin tocarlo.** Esta
+función ya sincroniza TODAS las series del run que todavía no subieron (`getSetsForSync` filtra por
+`synced = 0`), y ya tolera fallos parciales (una serie que falla no rompe las demás, queda pendiente
+para el próximo llamado). Hoy async la llama una sola vez, al finalizar la sesión entera. Para el
+envío incremental de esta spec alcanza con llamarla más seguido — después de cada serie que termina,
+no solo al final —, sin inventar ninguna cola/tabla nueva: cada llamada ya reintenta lo que quedó
+pendiente de una llamada anterior que falló por estar offline, así que el comportamiento de
+"mandar apenas termina cada serie, reintentar en la próxima oportunidad si falló" sale gratis,
+reusando código ya probado por el flujo async en vez de una cola genérica nueva.
 
 ## Gap 18 (a documentar en `docs/BACKEND_API_GAPS.md`)
 
@@ -192,22 +195,20 @@ async. Reusa el mismo filtro de calidad `acceptGpsLeg` (`utils/distance.js`) sin
   más el filtro `acceptGpsLeg`, nada se agrega encima.
 - **Persistencia durable (historial/distancia de la serie):** sigue el mismo timing de hoy en
   async, sin cambios — mientras la serie está corriendo, los puntos se guardan solo local
-  (`insertGpsPoint`, igual que siempre). Recién cuando la serie **termina** (`finishSet`) se sube por
-  REST el conjunto completo de esa serie: `POST /workout-feedback` (vía `createWorkoutFeedback`,
-  mismo payload que ya arma `utils/session-sync-payload.js#buildSetPayload`) y, si tiene distancia,
-  `POST /workout-feedback/:id/points` con el `feedback_id` recién devuelto (mismo
-  `buildPointsPayload`). Motivo de este timing, no antes: el endpoint de puntos necesita un
-  `feedback_id`, que el backend solo entrega cuando ya sabe el resultado final de la serie (Gap 12
-  no soporta un estado "en curso") — no se puede subir durable algo que todavía no tiene dueño.
+  (`insertGpsPoint`, igual que siempre). El envío REST (feedback + puntos) sale a través de
+  `syncRun(runId)`, sin cambios en esa función — ver más abajo cuándo se llama.
 
 **Eventos de serie:** `markSetStarted`/`finishSet`/`markSetSkipped`/`markSetInterrupted` se llaman
 exactamente igual que en el flujo async (mismas funciones de `services/session-db.js`, sin cambios
 ahí). La diferencia es que, en esta pantalla, **cada una que sea terminal** (`finishSet`,
 `markSetSkipped`, `markSetInterrupted` — no `markSetStarted`, que no tiene resultado final todavía)
-encola de inmediato la subida REST de esa serie (feedback + puntos si aplica), en vez de esperar a
-que termine toda la sesión — resuelto ya si hay conexión, o desde la cola de salida si no. Cada
-subida exitosa dispara además el `update:set_event` que el backend reenvía al canal (ver Gap 18),
-para que el feed de registros del entrenador (spec 2) se actualice casi en vivo.
+dispara un llamado a `syncRun(runId)` (fire-and-forget, mismo patrón ya usado para
+`createRunnerSession` en `session-pre-start-screen.jsx`) apenas pasa, en vez de esperar a que termine
+toda la sesión. Como `syncRun` ya sincroniza TODO lo pendiente del run (no solo la serie recién
+terminada), cada llamada también reintenta cualquier serie anterior que hubiera fallado por estar
+offline — sin necesidad de ninguna cola nueva. Cada subida exitosa dispara además el
+`update:set_event` que el backend reenvía al canal (ver Gap 18), para que el feed de registros del
+entrenador (spec 2) se actualice casi en vivo.
 
 **Canal de sesión:** al montar, `useRealtimeChannel('session:{sessionInstanceId}', { onMessage })`
 — manda `presence joined`; al desmontar/finalizar/cancelar, `presence left`. Escucha `control`:
@@ -217,51 +218,57 @@ local, `announcement` muestra un `Toast`.
 
 **Banner de estado:** pill no bloqueante con 3 estados — "En vivo" (verde), "Reconectando…" (ámbar),
 "Sin conexión — guardando localmente" (gris). El entrenamiento sigue sin importar el estado de la
-conexión — la cola local absorbe cualquier corte, igual que ya garantiza el modelo async hoy.
+conexión — el tracking local y `syncRun` absorben cualquier corte, igual que ya garantiza el modelo
+async hoy.
 
 ## Bordes
 
 - **App en background:** el WS se corta solo (el sistema operativo suspende red en background). Al
-  volver a foreground, reconecta + resuscribe + drena la cola REST automáticamente. El tracking
-  local (GPS, estados de serie) sigue sin depender de la red, igual que en el modelo async hoy — no
-  se introduce ningún riesgo nuevo de pérdida de datos.
+  volver a foreground, reconecta + resuscribe. El tracking local (GPS, estados de serie) sigue sin
+  depender de la red, igual que en el modelo async hoy — no se introduce ningún riesgo nuevo de
+  pérdida de datos.
 - **Multi-dispositivo:** fuera de alcance — se asume un dispositivo activo por corredor por sesión,
   misma asunción implícita que ya tiene `runner_session` (una sesión activa por atleta).
 - **El entrenador nunca da Play:** no afecta al corredor — su sesión presencial vive en su propia
   ventana horaria (`canStartPresencialSession`) independiente de si el entrenador se unió o no; solo
   deja de recibir mensajes de `control` mientras tanto.
-- **Falla real de REST (no solo offline):** el ítem de la cola se reintenta con backoff igual que el
-  resto de los patrones de reintento del repo; si nunca resuelve durante la sesión, se refleja en un
-  estado de sincronización al finalizar (mismo patrón visual que `SessionCompleteModal` en el flujo
-  async, sin duplicar diseño).
+- **Falla real de REST (no solo offline):** `syncRun` corta ese llamado puntual y deja la serie sin
+  `synced` — la próxima serie terminada (o el sync final al cerrar sesión) vuelve a intentarlo,
+  mismo comportamiento que ya tiene el flujo async hoy, sin cambios.
 
 ## Testing
 
 Por convención del proyecto (sin tests de render de componentes), Jest cubre solo lógica pura:
-- Armado/parseo del sobre de mensaje (`realtime-client.js`).
-- Orden de drenado de la cola de salida (FIFO, no se saltea ni duplica ítems).
-- Cálculo de backoff de reconexión (exponencial + jitter, con tope).
+- Armado/parseo del sobre de mensaje y `buildWsUrl` (`utils/realtime-message.js`).
+- Cálculo de backoff de reconexión (exponencial + jitter, con tope) (`utils/realtime-backoff.js`).
+- Conexión/reconexión/heartbeat/subscribe/send de `services/realtime-client.js`, mockeando el
+  global `WebSocket` (mismo espíritu que el mock de `global.fetch` en
+  `__tests__/api-client.test.js`).
 
-El gesto de conexión en sí (reconexión real, heartbeat, comportamiento de background) no es
-simulable de forma confiable en el preview — verificación de eso queda para dispositivo/backend
-real levantado, mismo límite ya documentado en este repo para otros mecanismos de timing (ver
-CLAUDE.md, sección de drag-and-drop).
+El gesto de conexión real (timing de reconexión en dispositivo, heartbeat contra un servidor real,
+comportamiento de background) no es simulable de forma confiable en el preview — verificación de
+eso queda para dispositivo/backend real levantado, mismo límite ya documentado en este repo para
+otros mecanismos de timing (ver CLAUDE.md, sección de drag-and-drop).
 
 ## Archivos
 
 **Nuevos:**
-- `services/realtime-client.js`
-- `hooks/use-realtime-channel.js`
-- Cola de salida genérica (extensión de `services/session-db.js` o archivo propio — a definir en el
-  plan según cuánto crezca `session-db.js`)
-- `hooks/use-session-gps-tracker.js`
-- `components/session-runtime/training-session-live-screen.jsx`
-- Ruta `app/training-session-live.jsx` (o el nombre de archivo que siga la convención de
-  Expo Router ya usada por `app/training-session.jsx`)
+- `utils/realtime-message.js` — construcción/parseo del sobre de mensaje + `buildWsUrl`.
+- `utils/realtime-backoff.js` — cálculo de backoff exponencial + jitter.
+- `services/realtime-client.js` — singleton WS.
+- `hooks/use-realtime-channel.js`.
+- `hooks/use-session-gps-tracker.js`.
+- `components/session-runtime/training-session-live-screen.jsx`.
+- `app/training-session-live.jsx` — ruta nueva, mismo patrón de wrapper delgado que
+  `app/training-session-active.jsx`.
 
 **Modificados:**
-- `components/session-runtime/session-pre-start-screen.jsx` — ruteo del Play según `isPresencial`
-- `docs/BACKEND_API_GAPS.md` — nuevo Gap 18
+- `components/session-runtime/session-pre-start-screen.jsx` — ruteo del Play según `isPresencial`.
+- `components/calendar/start-session-button.jsx` — `inWindow` del corredor hoy siempre usa
+  `canStartAsyncSession`, incluso para una sesión presencial; pasa a elegir según
+  `assignment.isPresencial`.
+- `docs/BACKEND_API_GAPS.md` — nuevo Gap 18.
 
 **Sin tocar:** `training-session-active-screen.jsx`, `hooks/use-gps-tracker.js`,
-`services/session-sync.js`, `utils/session-start-window.js` (se reusa, no se modifica).
+`services/session-db.js`, `services/session-sync.js`, `utils/session-start-window.js` (se reusan,
+no se modifican).
