@@ -65,6 +65,13 @@ export function useLiveSessionRuntime() {
     enabled: Boolean(channel),
   });
 
+  useEffect(() => {
+    if (!channel) return undefined;
+    send('presence', undefined, { event: 'joined' });
+    return () => { send('presence', undefined, { event: 'left' }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel]);
+
   const gps = useSessionGpsTracker(gpsEnabled);
 
   const reloadSets = async (runId) => {
