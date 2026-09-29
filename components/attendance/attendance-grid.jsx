@@ -133,10 +133,17 @@ export function AttendanceGrid({
           mientras se escribe) porque es el que dice si el filtro está ocultando
           corredores marcados — sin eso, un filtro con 3 de 8 de los cuales 2 marcados
           deja al entrenador guardando sobre una lista que no ve completa. */}
+      {/* El buscador y el botón de orden, sin etiqueta "Corredores" al lado. La
+          etiqueta se veía bien en desktop pero en un teléfono angosto empujaba
+          el botón de orden —el último hijo de la fila— fuera del borde, sin
+          scroll horizontal que lo delatara: directamente no se veía. Y era
+          redundante: el contador de abajo ya dice "N corredores" y el
+          placeholder del buscador dice "Filtrar por nombre".
+
+          `shrink-0` en el botón por si vuelve a faltar ancho: sin él, el
+          buscador (flex-1) es el único que cede terreno y el orden es lo último
+          que se cae del lado visible. */}
       <View className="mt-3 flex-row items-center gap-2" nativeID={`${idPrefix}-controls`} testID={`${idPrefix}-controls`}>
-        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-controls-title`} testID={`${idPrefix}-controls-title`}>
-          Corredores
-        </Text>
         <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" nativeID={`${idPrefix}-search-box`} testID={`${idPrefix}-search-box`}>
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
           <TextInput
@@ -178,7 +185,7 @@ export function AttendanceGrid({
           accessibilityLabel={sortOrder === 'asc'
             ? 'Orden actual: de la A a la Z. Tocar para ordenar de la Z a la A'
             : 'Orden actual: de la Z a la A. Tocar para ordenar de la A a la Z'}
-          className="h-11 flex-row items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:bg-white dark:hover:bg-slate-800"
+          className="h-11 shrink-0 flex-row items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
           nativeID={`${idPrefix}-sort-toggle`}
           onPress={() => setSortOrder((current) => (current === 'asc' ? 'desc' : 'asc'))}
           testID={`${idPrefix}-sort-toggle`}
