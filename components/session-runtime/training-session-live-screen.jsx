@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,7 +8,6 @@ import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useLiveSessionRuntime } from '../../hooks/use-live-session-runtime.js';
-import { useStopwatch } from '../../hooks/use-stopwatch.js';
 import { formatStopwatch } from '../../utils/time.js';
 import { formatMeters } from '../../utils/distance.js';
 import { notifyError, notifySuccess } from '../../utils/haptics.js';
@@ -32,21 +31,48 @@ function ConnectionBanner({ status }) {
   );
 }
 
-function SeriesRow({ set, isNext, onStart, onFinish, onSkip, distance }) {
+function SkipMenuModal({ visible, onCancel, onSkipSeries, onSkipExercise }) {
+  return (
+    <Modal animationType="fade" nativeID="training-session-live-skip-modal" onRequestClose={onCancel} testID="training-session-live-skip-modal" transparent visible={visible}>
+      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="training-session-live-skip-modal-backdrop" onPress={onCancel} testID="training-session-live-skip-modal-backdrop">
+        <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="training-session-live-skip-modal-card" onPress={() => {}} testID="training-session-live-skip-modal-card">
+          <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="training-session-live-skip-modal-title" testID="training-session-live-skip-modal-title">
+            ¿Qué querés saltear?
+          </Text>
+          <View className="mt-4 gap-3" nativeID="training-session-live-skip-modal-options" testID="training-session-live-skip-modal-options">
+            <Pressable
+              className="h-11 items-center justify-center rounded-full border border-slate-200 px-4 active:opacity-70 dark:border-slate-700"
+              nativeID="training-session-live-skip-modal-series-button"
+              onPress={onSkipSeries}
+              testID="training-session-live-skip-modal-series-button"
+            >
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="training-session-live-skip-modal-series-label" testID="training-session-live-skip-modal-series-label">
+                Saltar esta serie
+              </Text>
+            </Pressable>
+            <Pressable
+              className="h-11 items-center justify-center rounded-full bg-amber-500 px-4 active:opacity-80"
+              nativeID="training-session-live-skip-modal-exercise-button"
+              onPress={onSkipExercise}
+              testID="training-session-live-skip-modal-exercise-button"
+            >
+              <Text className="text-sm font-semibold uppercase tracking-wide text-amber-950" nativeID="training-session-live-skip-modal-exercise-label" testID="training-session-live-skip-modal-exercise-label">
+                Saltar todo el ejercicio
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function SeriesRow({ set, isNext, isActive, phase, wallMs, distance, onStart, onPause, onResume, onFinish, onOpenSkipMenu }) {
   const colors = useThemeColors();
-  const stopwatch = useStopwatch();
   const idPrefix = `training-session-live-set-${set.id}`;
-  const running = set.status === 'started';
-
-  const handlePlay = async () => {
-    stopwatch.start();
-    await onStart(set.id);
-  };
-
-  const handleFinish = async () => {
-    const snap = stopwatch.pause();
-    await onFinish(set.id, snap);
-  };
+  const running = isActive && phase === 'running';
+  const paused = isActive && phase === 'paused';
+  const showPendingActions = !isActive && isNext && set.status === 'pending';
 
   return (
     <View className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" nativeID={`${idPrefix}-card`} testID={`${idPrefix}-card`}>
@@ -55,12 +81,12 @@ function SeriesRow({ set, isNext, onStart, onFinish, onSkip, distance }) {
           {set.exercise_name} · Serie {set.set_number + 1}
         </Text>
         <Text className="text-xs uppercase text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
-          {set.status}
+          {paused ? 'pausada' : set.status}
         </Text>
       </View>
-      {running && (
+      {(running || paused) && (
         <Text className="mt-2 text-3xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
-          {formatStopwatch(stopwatch.wallMs)}
+          {formatStopwatch(wallMs)}
         </Text>
       )}
       {distance != null && (
@@ -68,22 +94,41 @@ function SeriesRow({ set, isNext, onStart, onFinish, onSkip, distance }) {
           {formatMeters(distance)}
         </Text>
       )}
-      {isNext && set.status === 'pending' && (
+      {showPendingActions && (
         <View className="mt-3 flex-row gap-2" nativeID={`${idPrefix}-actions-pending`} testID={`${idPrefix}-actions-pending`}>
-          <Pressable className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80" nativeID={`${idPrefix}-play-button`} onPress={handlePlay} testID={`${idPrefix}-play-button`}>
+          <Pressable className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80" nativeID={`${idPrefix}-play-button`} onPress={() => onStart(set.id)} testID={`${idPrefix}-play-button`}>
             <MaterialCommunityIcons color={colors.onPrimary} name="play" size={18} />
             <Text className="text-sm font-bold uppercase text-[#111518]" nativeID={`${idPrefix}-play-label`} testID={`${idPrefix}-play-label`}>Iniciar</Text>
           </Pressable>
-          <Pressable className="h-11 items-center justify-center rounded-full border border-slate-200 px-4 active:opacity-70 dark:border-slate-700" nativeID={`${idPrefix}-skip-button`} onPress={() => onSkip(set.id)} testID={`${idPrefix}-skip-button`}>
+          <Pressable className="h-11 items-center justify-center rounded-full border border-slate-200 px-4 active:opacity-70 dark:border-slate-700" nativeID={`${idPrefix}-skip-button`} onPress={() => onOpenSkipMenu(set)} testID={`${idPrefix}-skip-button`}>
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-skip-label`} testID={`${idPrefix}-skip-label`}>Saltear</Text>
           </Pressable>
         </View>
       )}
       {running && (
-        <Pressable className="mt-3 h-11 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80" nativeID={`${idPrefix}-finish-button`} onPress={handleFinish} testID={`${idPrefix}-finish-button`}>
-          <MaterialCommunityIcons color={colors.onPrimary} name="flag-checkered" size={18} />
-          <Text className="text-sm font-bold uppercase text-[#111518]" nativeID={`${idPrefix}-finish-label`} testID={`${idPrefix}-finish-label`}>Finalizar</Text>
-        </Pressable>
+        <View className="mt-3 flex-row gap-2" nativeID={`${idPrefix}-actions-running`} testID={`${idPrefix}-actions-running`}>
+          <Pressable className="h-11 flex-1 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700" nativeID={`${idPrefix}-pause-button`} onPress={onPause} testID={`${idPrefix}-pause-button`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pause" size={18} />
+          </Pressable>
+          <Pressable className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80" nativeID={`${idPrefix}-finish-button`} onPress={() => onFinish(set.id)} testID={`${idPrefix}-finish-button`}>
+            <MaterialCommunityIcons color={colors.onPrimary} name="flag-checkered" size={18} />
+            <Text className="text-sm font-bold uppercase text-[#111518]" nativeID={`${idPrefix}-finish-label`} testID={`${idPrefix}-finish-label`}>Finalizar</Text>
+          </Pressable>
+        </View>
+      )}
+      {paused && (
+        <View className="mt-3 flex-row gap-2" nativeID={`${idPrefix}-actions-paused`} testID={`${idPrefix}-actions-paused`}>
+          <Pressable className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80" nativeID={`${idPrefix}-resume-button`} onPress={onResume} testID={`${idPrefix}-resume-button`}>
+            <MaterialCommunityIcons color={colors.onPrimary} name="play" size={18} />
+            <Text className="text-sm font-bold uppercase text-[#111518]" nativeID={`${idPrefix}-resume-label`} testID={`${idPrefix}-resume-label`}>Reanudar</Text>
+          </Pressable>
+          <Pressable className="h-11 items-center justify-center rounded-full border border-slate-200 px-4 active:opacity-70 dark:border-slate-700" nativeID={`${idPrefix}-skip-button`} onPress={() => onOpenSkipMenu(set)} testID={`${idPrefix}-skip-button`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="skip-next" size={18} />
+          </Pressable>
+          <Pressable className="h-11 flex-1 items-center justify-center rounded-full bg-primary active:opacity-80" nativeID={`${idPrefix}-finish-button`} onPress={() => onFinish(set.id)} testID={`${idPrefix}-finish-button`}>
+            <Text className="text-sm font-bold uppercase text-[#111518]" nativeID={`${idPrefix}-finish-label`} testID={`${idPrefix}-finish-label`}>Finalizar</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -100,13 +145,20 @@ function TrainingSessionLiveScreenContent() {
     pendingControl,
     clearPendingControl,
     distanceBySetId,
+    activeSetId,
+    activePhase,
+    stopwatchWallMs,
     startSet,
+    pauseSet,
+    resumeSet,
     finishSet,
     skipSet,
+    skipExercise,
     cancelSession,
     finalizeSession,
   } = useLiveSessionRuntime();
   const [finishing, setFinishing] = useState(false);
+  const [skipMenuTarget, setSkipMenuTarget] = useState(null); // set row o null
 
   const nextSet = sets.find((s) => s.status === 'pending');
 
@@ -120,6 +172,13 @@ function TrainingSessionLiveScreenContent() {
       clearPendingControl();
       return;
     }
+    if (pendingControl.event === 'session_paused') {
+      // La pausa en sí ya la aplica el hook (use-live-session-runtime.js)
+      // apenas llega el mensaje -- acá solo se avisa al corredor.
+      Toast.show({ type: 'info', text1: 'El entrenador pausó tu serie en curso' });
+      clearPendingControl();
+      return;
+    }
     if (pendingControl.event === 'session_finished' && !finishing) {
       setFinishing(true);
       finalizeSession().finally(() => {
@@ -129,6 +188,18 @@ function TrainingSessionLiveScreenContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingControl]);
+
+  const handleSkipSeries = async () => {
+    const target = skipMenuTarget;
+    setSkipMenuTarget(null);
+    if (target) await skipSet(target.id);
+  };
+
+  const handleSkipExercise = async () => {
+    const target = skipMenuTarget;
+    setSkipMenuTarget(null);
+    if (target) await skipExercise(target.exercise_instance_id);
+  };
 
   if (!booted) {
     return (
@@ -168,18 +239,23 @@ function TrainingSessionLiveScreenContent() {
     <MobileOnlyRoute>
       <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="training-session-live-root" testID="training-session-live-root">
         <View className="items-center py-2" nativeID="training-session-live-banner-container" testID="training-session-live-banner-container">
-          <ConnectionBanner status={connectionStatus} />
+          {connectionStatus && <ConnectionBanner status={connectionStatus} />}
         </View>
         <ScrollView contentContainerClassName="gap-3 p-4" nativeID="training-session-live-scroll" testID="training-session-live-scroll">
           {sets.map((set) => (
             <SeriesRow
               distance={distanceBySetId.get(set.id)}
+              isActive={activeSetId === set.id}
               isNext={nextSet?.id === set.id}
               key={set.id}
               onFinish={finishSet}
-              onSkip={skipSet}
+              onOpenSkipMenu={setSkipMenuTarget}
+              onPause={pauseSet}
+              onResume={resumeSet}
               onStart={startSet}
+              phase={activePhase}
               set={set}
+              wallMs={stopwatchWallMs}
             />
           ))}
         </ScrollView>
@@ -192,6 +268,12 @@ function TrainingSessionLiveScreenContent() {
           </Pressable>
         </View>
       </SafeAreaView>
+      <SkipMenuModal
+        onCancel={() => setSkipMenuTarget(null)}
+        onSkipExercise={handleSkipExercise}
+        onSkipSeries={handleSkipSeries}
+        visible={skipMenuTarget != null}
+      />
     </MobileOnlyRoute>
   );
 }

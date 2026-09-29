@@ -24,12 +24,19 @@ import { acceptGpsLeg } from '../utils/distance.js';
 import { toIsoUtc } from '../utils/time.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
 import { useRealtimeChannel } from './use-realtime-channel.js';
+import { useStopwatch } from './use-stopwatch.js';
 
 // Motor no-visual de la pantalla presencial en vivo (Task 10 la consume).
 // GPS continuo: TODO punto aceptado se manda en vivo por WS
 // (presence:position, sin importar si hay serie activa) -- la persistencia
 // durable sigue el timing de siempre (solo cuando una serie TERMINA), vía
 // syncRun sin modificar, llamado por serie en vez de solo al final.
+//
+// El cronómetro/fase de la serie activa vive ACÁ (no en cada fila de la
+// pantalla, a diferencia de un primer borrador) -- así un control remoto
+// (control:session_paused del entrenador) puede pausarlo sin importar qué
+// fila esté montada, y cada transición (started/paused/finished/skipped) se
+// puede avisar en vivo por el mismo canal, no solo lo que ya se persistió.
 export function useLiveSessionRuntime() {
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const gpsEnabled = useLiveSessionStore((s) => s.gpsEnabled);
@@ -42,22 +49,47 @@ export function useLiveSessionRuntime() {
   const [sets, setSets] = useState([]);
   const [distanceBySetId, setDistanceBySetId] = useState(new Map());
   const [pendingControl, setPendingControl] = useState(null);
+  const [activeSetId, setActiveSetIdState] = useState(null);
+  const [activePhase, setActivePhaseState] = useState('idle'); // 'idle' | 'running' | 'paused'
+
+  const stopwatch = useStopwatch();
 
   const activeSetIdRef = useRef(null);
+  const activePhaseRef = useRef('idle');
   const lastPointRef = useRef(null);
   const pointOrderRef = useRef(0);
+  const pausedSnapshotRef = useRef({ wallMs: 0, activeMs: 0 });
   // Acumulador real por set-id, en un ref -- handleGpsPoint se pasa a
   // gps.start() UNA sola vez (el efecto de abajo corre solo al bootear), así
   // que cualquier valor leído de useState ahí quedaría pegado al snapshot de
   // ese momento para siempre. distanceBySetId (state) es solo el espejo para
-  // renderizar -- la cuenta real vive acá.
+  // renderizar -- la cuenta real vive acá. activeSetIdRef/activePhaseRef
+  // siguen el mismo criterio y por la misma razón (los lee handleGpsPoint).
   const distanceRef = useRef(new Map());
 
+  const setActiveSet = (setId) => {
+    activeSetIdRef.current = setId;
+    setActiveSetIdState(setId);
+  };
+
+  const setPhase = (phase) => {
+    activePhaseRef.current = phase;
+    setActivePhaseState(phase);
+  };
+
   const channel = run ? `session:${run.session_instance_id}` : null;
+
+  const broadcastSetStatus = (payload) => {
+    send('presence', undefined, { event: 'set_status', payload });
+  };
 
   const handleChannelMessage = (msg) => {
     if (msg.type !== 'control') return;
     setPendingControl({ event: msg.event, payload: msg.payload });
+    // El entrenador pausa remotamente pausando la serie que esté corriendo
+    // en ESTE momento -- misma acción que el botón local de pausa, no hay
+    // "reanudar" remoto en esta spec (ver nota de alcance en Task 10).
+    if (msg.event === 'session_paused') pauseSet();
   };
 
   const { status: connectionStatus, send } = useRealtimeChannel(channel, {
@@ -118,7 +150,12 @@ export function useLiveSessionRuntime() {
     send('presence', undefined, { event: 'position', payload: { latitude: point.latitude, longitude: point.longitude } });
 
     const setId = activeSetIdRef.current;
-    if (!setId) return; // sin serie activa: solo el broadcast de arriba, nada más
+    // Los puntos que caen mientras la serie está en PAUSA no suman distancia
+    // -- mismo criterio que async (ahí el GPS se corta del todo en pausa).
+    // Acá el tracker es de toda la sesión y no se detiene, así que el filtro
+    // se hace por fase (leída del ref, no del state -- ver comentario de
+    // distanceRef arriba, misma razón).
+    if (!setId || activePhaseRef.current !== 'running') return;
 
     if (!lastPointRef.current) {
       lastPointRef.current = point;
@@ -154,43 +191,76 @@ export function useLiveSessionRuntime() {
   };
 
   const startSet = async (setId) => {
-    activeSetIdRef.current = setId;
+    setActiveSet(setId);
     lastPointRef.current = null;
     pointOrderRef.current = 0;
+    pausedSnapshotRef.current = { wallMs: 0, activeMs: 0 };
+    stopwatch.start();
+    setPhase('running');
     await markSetStarted(setId, toIsoUtc());
     await reloadSets(run.id);
+    broadcastSetStatus({ setId, status: 'started' });
   };
 
-  const finishSet = async (setId, { wallMs, activeMs }) => {
+  // Pausa la serie activa -- la llama tanto el propio corredor (botón
+  // Pausar) como un control:session_paused remoto del entrenador. No-op si
+  // no hay ninguna serie corriendo en este momento.
+  const pauseSet = async () => {
+    const setId = activeSetIdRef.current;
+    if (!setId || activePhaseRef.current !== 'running') return;
+    const snap = stopwatch.pause();
+    pausedSnapshotRef.current = snap;
+    await updateSetTimings(setId, { durationMs: snap.wallMs, activeDurationMs: snap.activeMs });
+    setPhase('paused');
+    await reloadSets(run.id);
+    broadcastSetStatus({ setId, status: 'paused' });
+  };
+
+  // Reanudar es siempre una acción del propio corredor -- no hay "reanudar"
+  // remoto en esta spec, el entrenador solo puede pausar (ver Task 10).
+  const resumeSet = async () => {
+    const setId = activeSetIdRef.current;
+    if (!setId || activePhaseRef.current !== 'paused') return;
+    stopwatch.resumeFrom(pausedSnapshotRef.current);
+    setPhase('running');
+    broadcastSetStatus({ setId, status: 'started' });
+  };
+
+  const finishSet = async (setId) => {
+    const snap = activePhaseRef.current === 'running' ? stopwatch.pause() : pausedSnapshotRef.current;
     const distance = distanceRef.current.get(setId) ?? null;
-    await finishSetDb(setId, { endedAtIso: toIsoUtc(), durationMs: wallMs, activeDurationMs: activeMs, distanceMeters: distance });
-    activeSetIdRef.current = null;
+    await finishSetDb(setId, { endedAtIso: toIsoUtc(), durationMs: snap.wallMs, activeDurationMs: snap.activeMs, distanceMeters: distance });
+    setActiveSet(null);
+    setPhase('idle');
     lastPointRef.current = null;
     await reloadSets(run.id);
+    broadcastSetStatus({ setId, status: 'finished' });
     syncIncrementally();
   };
 
   const skipSet = async (setId) => {
     await markSetSkipped(setId);
     if (activeSetIdRef.current === setId) {
-      activeSetIdRef.current = null;
+      setActiveSet(null);
+      setPhase('idle');
       lastPointRef.current = null;
     }
     await reloadSets(run.id);
+    broadcastSetStatus({ setId, status: 'skipped' });
     syncIncrementally();
   };
 
   const skipExercise = async (exerciseInstanceId) => {
     await skipSetsForExercise(run.id, exerciseInstanceId);
-    activeSetIdRef.current = null;
+    setActiveSet(null);
+    setPhase('idle');
     lastPointRef.current = null;
     await reloadSets(run.id);
+    // A diferencia de skipSet (una serie puntual), esto puede afectar varias
+    // series del mismo ejercicio a la vez -- un único aviso a nivel
+    // ejercicio en vez de uno por serie.
+    broadcastSetStatus({ exerciseInstanceId, status: 'skipped', scope: 'exercise' });
     syncIncrementally();
-  };
-
-  const pauseSet = async (setId, { wallMs, activeMs }) => {
-    await updateSetTimings(setId, { durationMs: wallMs, activeDurationMs: activeMs });
-    await reloadSets(run.id);
   };
 
   const cancelSession = async () => {
@@ -213,11 +283,15 @@ export function useLiveSessionRuntime() {
     pendingControl,
     clearPendingControl: () => setPendingControl(null),
     distanceBySetId,
+    activeSetId,
+    activePhase,
+    stopwatchWallMs: stopwatch.wallMs,
     startSet,
+    pauseSet,
+    resumeSet,
     finishSet,
     skipSet,
     skipExercise,
-    pauseSet,
     cancelSession,
     finalizeSession,
   };

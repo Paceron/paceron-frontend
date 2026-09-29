@@ -6,14 +6,23 @@ import { connect, getStatus, off, on, onStatusChange, send as sendMessage, subsc
 // la suscripción/desuscripción de ESTE canal en particular durante el ciclo
 // de vida del componente que lo usa.
 export function useRealtimeChannel(channel, { onMessage, enabled = true } = {}) {
-  const [status, setStatus] = useState(getStatus());
+  // Arranca en null (no "lo que el singleton tenía de antes") -- el
+  // singleton persiste entre sesiones de la app (a propósito, ver spec), así
+  // que sembrar con getStatus() acá podía mostrar por un instante el estado
+  // de una sesión anterior. Se resincroniza con el valor real recién dentro
+  // del efecto, después de conectar/suscribir ESTA instancia.
+  const [status, setStatus] = useState(null);
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
 
   useEffect(() => {
-    if (!enabled || !channel) return undefined;
+    if (!enabled || !channel) {
+      setStatus(null);
+      return undefined;
+    }
     connect();
     subscribe(channel);
+    setStatus(getStatus());
     const handler = (msg) => onMessageRef.current?.(msg);
     on(channel, handler);
     const unsubscribeStatus = onStatusChange(setStatus);
