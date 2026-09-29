@@ -22,11 +22,11 @@ Contexto de ejecución:
 
 ## Etapa 1 — Ruta y navegación
 
-- [ ] **1.1** `app/attendance/register.jsx`: wrapper mínimo de la ruta `/attendance/register`, auto-descubierta por Expo Router, **sin** `.web.jsx`.
-- [ ] **1.2** `routes/catalog.js`: agregar `checkinRoute` (`name: 'checkin'`, `label: 'Registrar asistencia'`, `href: '/attendance/register'`, `icon: 'qrcode-scan'`, `role: 'runner'`, `mobileOnly: true`).
-- [ ] **1.3** `getRoutesByRole`: filtrar `mobileOnly` con `isMobile` de `utils/platform.js`. Actualizar el comentario de la función, que hoy solo documenta la regla de `role`.
-- [ ] **1.4** `__tests__/routes.catalog.test.js`: la ruta aparece para `runner` en mobile y **no** en web; **no** aparece nunca para `trainer`, en ninguna plataforma.
-- [ ] **1.5** `npm test` + `npm run lint` en verde.
+- [x] **1.1** `app/attendance/register.jsx`: wrapper mínimo de la ruta `/attendance/register`, auto-descubierta por Expo Router, **sin** `.web.jsx`.
+- [x] **1.2** `routes/catalog.js`: agregar `checkinRoute` (`name: 'checkin'`, `label: 'Registrar asistencia'`, `href: '/attendance/register'`, `icon: 'qrcode-scan'`, `role: 'runner'`, `mobileOnly: true`).
+- [x] **1.3** `getRoutesByRole`: filtrar `mobileOnly` con `isMobile` de `utils/platform.js`. Actualizar el comentario de la función, que hoy solo documenta la regla de `role`.
+- [x] **1.4** `__tests__/routes.catalog.test.js`: la ruta aparece para `runner` en mobile y **no** en web; **no** aparece nunca para `trainer`, en ninguna plataforma.
+- [x] **1.5** `npm test` + `npm run lint` en verde.
 
 ## Etapa 2 — Servicio y parsing
 
