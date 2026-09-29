@@ -13,7 +13,6 @@ import {
   initSessionDb,
   insertGpsPoint,
   interruptStartedSets,
-  markSetInterrupted,
   markSetSkipped,
   markSetStarted,
   skipSetsForExercise,
