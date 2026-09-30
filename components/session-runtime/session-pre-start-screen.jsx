@@ -71,6 +71,7 @@ function SessionPreStartScreenContent() {
   const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const userId = useAuthStore((s) => s.userId);
+  const [starting, setStarting] = useState(false);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const { runnerSession, refetch } = useRunnerSession(sessionInstanceId, userId);
@@ -100,6 +101,14 @@ function SessionPreStartScreenContent() {
   // usuario lo niega o el build no tiene el módulo, la sesión arranca igual
   // pero sin distancias — gpsEnabled queda en falso para toda la sesión.
   const handlePlay = async () => {
+    // Guard contra doble tap: handlePlay es async (permiso GPS de por medio,
+    // hasta 5s de timeout) -- sin esto, un segundo tap antes de que resuelva
+    // dispara un segundo router.push, montando dos instancias del runtime
+    // en simultáneo sobre el mismo canal WS (bug real, 2026-09-30: la
+    // primera en desmontarse desuscribía el canal para la otra también,
+    // "no suscripto al canal" en los logs).
+    if (starting) return;
+    setStarting(true);
     // Fire-and-forget del estado runner_session (wip, idempotente): si el Play
     // arranca offline, el pipeline de sync reintenta el mismo upsert antes del
     // primer POST feedback. No se espera acá porque no bloquea la navegación.
@@ -245,7 +254,8 @@ function SessionPreStartScreenContent() {
           </View>
         ) : (
           <Pressable
-            className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
+            className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting ? 'opacity-50' : ''}`}
+            disabled={starting}
             nativeID="session-pre-start-screen-play-button"
             onPress={handlePlay}
             testID="session-pre-start-screen-play-button"
