@@ -13,6 +13,7 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
+import { getLatestRun, initSessionDb, RUN_STATUS } from '../../services/session-db.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { logDebug } from '../../utils/debug-log.js';
@@ -73,6 +74,7 @@ function SessionPreStartScreenContent() {
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const userId = useAuthStore((s) => s.userId);
   const [starting, setStarting] = useState(false);
+  const [locallyCompleted, setLocallyCompleted] = useState(false);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
@@ -84,7 +86,25 @@ function SessionPreStartScreenContent() {
       // el stack) -- sin este reset, "starting" quedaba en true para siempre
       // al volver con router.back() y el botón Play quedaba bloqueado.
       setStarting(false);
-    }, [refetch]),
+      // finalizeSession() marca el run local como completado y dispara el
+      // cierre remoto de runner_session SIN esperarlo (fire-and-forget, a
+      // propósito) -- así que el refetch de arriba puede resolver ANTES que
+      // ese PATCH llegue al backend, mostrando Play de nuevo aunque ya se
+      // haya terminado todo (bug real, 2026-09-30: un tap rápido ahí creaba
+      // un run nuevo desde cero). Chequeo local aparte (SQLite, sin red) para
+      // no depender solo del estado remoto en esta ventana corta.
+      let cancelled = false;
+      (async () => {
+        try {
+          await initSessionDb();
+          const latest = await getLatestRun(sessionInstanceId, pendingSession?.date, userId);
+          if (!cancelled) setLocallyCompleted(latest?.status === RUN_STATUS.COMPLETED);
+        } catch {
+          if (!cancelled) setLocallyCompleted(false);
+        }
+      })();
+      return () => { cancelled = true; };
+    }, [refetch, sessionInstanceId, pendingSession?.date, userId]),
   );
 
   // Registro de Sesión vs. Play (spec 2026-09-24). El `runner_session` manda
@@ -92,9 +112,10 @@ function SessionPreStartScreenContent() {
   // terminar tiene que ir al registro también, no al Play — si no, al volver
   // acá después de "Terminar" el botón Play sigue disponible y deja correr
   // dos veces la misma sesión (getActiveRun solo busca runs `in_progress`, así
-  // que el segundo Play crea un run nuevo desde cero).
+  // que el segundo Play crea un run nuevo desde cero). `locallyCompleted`
+  // cubre el hueco corto entre ese cierre local y la confirmación remota.
   const past = isPastSessionDate(pendingSession ?? { date: '' });
-  const finished = runnerSession?.status === 'finished';
+  const finished = runnerSession?.status === 'finished' || locallyCompleted;
   const mode = finished ? 'review' : 'manual';
   const showReview = past || finished;
 
