@@ -51,19 +51,22 @@ describe('parseMessage', () => {
 });
 
 describe('buildWsUrl', () => {
-  test('converts an https API base URL with a path suffix to a wss /ws URL', () => {
-    expect(buildWsUrl('https://paceron-backend-as9c.onrender.com/api/v1')).toBe('wss://paceron-backend-as9c.onrender.com/ws');
+  // El gateway vive bajo el mismo prefijo que el resto de la API (Gap 18,
+  // confirmado con backend 2026-09-29) -- preserva el path del base URL, no
+  // lo tira.
+  test('preserves the API base path and appends /ws, over https', () => {
+    expect(buildWsUrl('https://paceron-backend-as9c.onrender.com/api/v1')).toBe('wss://paceron-backend-as9c.onrender.com/api/v1/ws');
   });
 
-  test('converts an http (local dev) API base URL to a plain ws /ws URL', () => {
-    expect(buildWsUrl('http://localhost:8080/api/v1')).toBe('ws://localhost:8080/ws');
+  test('converts an http (local dev) API base URL to a plain ws URL, path preserved', () => {
+    expect(buildWsUrl('http://localhost:8080/api/v1')).toBe('ws://localhost:8080/api/v1/ws');
   });
 
   test('handles a base URL without a path suffix', () => {
     expect(buildWsUrl('https://example.com')).toBe('wss://example.com/ws');
   });
 
-  test('handles a base URL with a trailing slash', () => {
-    expect(buildWsUrl('https://example.com/api/v1/')).toBe('wss://example.com/ws');
+  test('handles a base URL with a trailing slash, no double slash before /ws', () => {
+    expect(buildWsUrl('https://example.com/api/v1/')).toBe('wss://example.com/api/v1/ws');
   });
 });

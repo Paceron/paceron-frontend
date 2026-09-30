@@ -130,14 +130,26 @@ function SessionPreStartScreenContent() {
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
-        <Pressable
-          className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70"
-          nativeID="session-pre-start-screen-back-button"
-          onPress={() => router.back()}
-          testID="session-pre-start-screen-back-button"
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
-        </Pressable>
+        <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+            nativeID="session-pre-start-screen-back-button"
+            onPress={() => router.back()}
+            testID="session-pre-start-screen-back-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+          </Pressable>
+          {pendingSession.isPresencial && (
+            <Pressable
+              className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+              nativeID="session-pre-start-screen-attendance-button"
+              onPress={() => router.push('/attendance/register')}
+              testID="session-pre-start-screen-attendance-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={20} />
+            </Pressable>
+          )}
+        </View>
 
         <View className="mb-6 mt-4 items-center" nativeID="session-pre-start-screen-title-block" testID="session-pre-start-screen-title-block">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-date" testID="session-pre-start-screen-date">
@@ -161,6 +173,26 @@ function SessionPreStartScreenContent() {
                   <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={16} />
                   <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-group-label" testID="session-pre-start-screen-group-label">
                     {pendingSession.groupName}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+          {pendingSession.isPresencial && (pendingSession.presencialTimeFrom || pendingSession.presencialLocation?.label) && (
+            <View className="mt-2 flex-row items-center gap-4" nativeID="session-pre-start-screen-presencial-info" testID="session-pre-start-screen-presencial-info">
+              {pendingSession.presencialTimeFrom && (
+                <View className="flex-row items-center gap-1" nativeID="session-pre-start-screen-presencial-schedule" testID="session-pre-start-screen-presencial-schedule">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clock-outline" size={16} />
+                  <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-presencial-schedule-label" testID="session-pre-start-screen-presencial-schedule-label">
+                    {pendingSession.presencialTimeFrom}–{pendingSession.presencialTimeTo}
+                  </Text>
+                </View>
+              )}
+              {pendingSession.presencialLocation?.label && (
+                <View className="flex-row items-center gap-1" nativeID="session-pre-start-screen-presencial-location" testID="session-pre-start-screen-presencial-location">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-outline" size={16} />
+                  <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
+                    {pendingSession.presencialLocation.label}
                   </Text>
                 </View>
               )}

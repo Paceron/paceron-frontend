@@ -236,6 +236,9 @@ export function useLiveSessionRuntime() {
     await reloadSets(run.id);
     broadcastSetStatus({ setId, status: 'finished' });
     syncIncrementally();
+    // La pantalla necesita el snapshot para el resumen post-serie -- para
+    // entonces el cronómetro del hook ya se reinició, así que se devuelve acá.
+    return { wallMs: snap.wallMs, activeMs: snap.activeMs, distanceMeters: distance };
   };
 
   const skipSet = async (setId) => {
@@ -286,6 +289,7 @@ export function useLiveSessionRuntime() {
     activeSetId,
     activePhase,
     stopwatchWallMs: stopwatch.wallMs,
+    stopwatchActiveMs: stopwatch.activeMs,
     startSet,
     pauseSet,
     resumeSet,

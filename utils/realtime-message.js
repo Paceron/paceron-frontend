@@ -21,12 +21,15 @@ export function parseMessage(raw) {
   return parsed;
 }
 
-// wss://host/ws (o ws:// para desarrollo local sobre http) a partir de
+// wss://host/api/v1/ws (o ws:// para desarrollo local sobre http) a partir de
 // EXPO_PUBLIC_API_URL / el default remoto -- ver config/env.js#API_BASE_URL.
-// Tira el path (/api/v1 o lo que sea) y agrega /ws, sin importar si el base
+// El gateway vive bajo el mismo prefijo que el resto de la API (Gap 18,
+// confirmado con backend 2026-09-29) -- no en la raíz. Preserva el path del
+// base URL (típicamente /api/v1) y le agrega /ws, sin importar si el base
 // URL trae barra final o no.
 export function buildWsUrl(apiBaseUrl) {
   const url = new URL(apiBaseUrl);
   const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${wsProtocol}//${url.host}/ws`;
+  const basePath = url.pathname.replace(/\/+$/, ''); // sin barra final
+  return `${wsProtocol}//${url.host}${basePath}/ws`;
 }
