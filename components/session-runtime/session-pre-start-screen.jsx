@@ -15,6 +15,7 @@ import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { logDebug } from '../../utils/debug-log.js';
 
 // URL universal de Google Maps -- funciona igual en la app nativa (abre la
 // app de mapas instalada si el sistema la asocia a ese link) y en web (nueva
@@ -123,14 +124,24 @@ function SessionPreStartScreenContent() {
     // primer POST feedback. No se espera acá porque no bloquea la navegación.
     createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString() }).catch(() => {});
     let gpsEnabled = false;
+    // Instrumentado con tiempos (2026-09-30): la demora ocasional de hasta
+    // ~25s al darle Play no aparecía en ningún log de bootstrap/WS -- sospecha
+    // es que getCurrentPositionAsync no siempre respeta su propio `timeout`
+    // (quirk conocido de expo-location en ciertos Android/proveedores de
+    // ubicación) y queda esperando un fix real mucho más de lo pedido. Estos
+    // logs lo confirman o lo descartan en la próxima prueba.
+    const gpsStartedAt = Date.now();
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
+      logDebug(`[pre-start] permiso GPS resuelto (${Date.now() - gpsStartedAt}ms) granted=${permission.granted}`);
       gpsEnabled = Boolean(permission.granted);
       if (gpsEnabled) {
         const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced, timeout: 5000 });
+        logDebug(`[pre-start] getCurrentPositionAsync resuelto (${Date.now() - gpsStartedAt}ms total)`);
         gpsEnabled = Boolean(position?.coords);
       }
-    } catch {
+    } catch (error) {
+      logDebug(`[pre-start] GPS ERROR (${Date.now() - gpsStartedAt}ms): ${error.message}`);
       gpsEnabled = false;
     }
     setGpsEnabled(gpsEnabled);

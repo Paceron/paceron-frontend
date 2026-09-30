@@ -756,7 +756,14 @@ function ReviewFlow({ slot }) {
   const reviewModel = useMemo(() => buildSessionReviewModel(sessionInstance ?? {}, groups), [sessionInstance, groups]);
   const sessionName = slot.sessionName ?? sessionInstance?.name;
 
-  if (instanceLoading && !sessionInstance) {
+  // El segundo término evita el flash de "Sin registro" mientras el fetch de
+  // feedback todavía está en vuelo -- buildSessionReviewModel ya corre con
+  // `groups` en su default vacío ([]) antes de que la respuesta llegue, así
+  // que sin este gate se ve (por un instante) como si nada estuviera
+  // registrado y después "aparece" la info real (bug real reportado
+  // 2026-09-30). Solo bloquea el PRIMER fetch (groups.length === 0) -- un
+  // refetch de fondo con datos ya mostrados no debería tapar la pantalla.
+  if ((instanceLoading && !sessionInstance) || (loading && groups.length === 0)) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-loading-root" testID="session-review-loading-root">
         <ActivityIndicator color={colors.primary} />
