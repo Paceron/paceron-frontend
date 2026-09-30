@@ -100,8 +100,8 @@ export function useLiveSessionRuntime() {
 
   useEffect(() => {
     if (!channel) return undefined;
-    send('presence', undefined, { event: 'joined' });
-    return () => { send('presence', undefined, { event: 'left' }); };
+    send('presence', undefined, { event: 'joined', payload: {} });
+    return () => { send('presence', undefined, { event: 'left', payload: {} }); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel]);
 
