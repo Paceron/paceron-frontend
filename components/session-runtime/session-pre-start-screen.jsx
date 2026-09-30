@@ -144,23 +144,22 @@ function SessionPreStartScreenContent() {
     // arranca offline, el pipeline de sync reintenta el mismo upsert antes del
     // primer POST feedback. No se espera acá porque no bloquea la navegación.
     createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString() }).catch(() => {});
-    let gpsEnabled = false;
-    // Instrumentado con tiempos (2026-09-30): la demora ocasional de hasta
-    // ~25s al darle Play no aparecía en ningún log de bootstrap/WS -- sospecha
-    // es que getCurrentPositionAsync no siempre respeta su propio `timeout`
-    // (quirk conocido de expo-location en ciertos Android/proveedores de
-    // ubicación) y queda esperando un fix real mucho más de lo pedido. Estos
-    // logs lo confirman o lo descartan en la próxima prueba.
+    // Confirmado con logs (2026-09-30): getCurrentPositionAsync no respeta su
+    // propio `timeout` -- se observó una resolución real de ~25s contra un
+    // timeout de 5s pedido (quirk conocido de expo-location en ciertos
+    // Android/proveedores de ubicación), bloqueando el Play entero por ese
+    // tiempo. Ya no se espera acá: gpsEnabled se decide solo por el permiso
+    // (rápido, típicamente <200ms) y se navega de inmediato. El tracker
+    // continuo de la sesión (useSessionGpsTracker/useGpsTracker) usa
+    // watchPositionAsync, una API distinta que no bloquea nada -- si el GPS
+    // realmente no consigue un fix, simplemente no llegan puntos, mismo
+    // resultado gracioso que cuando el permiso se niega.
     const gpsStartedAt = Date.now();
+    let gpsEnabled = false;
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       logDebug(`[pre-start] permiso GPS resuelto (${Date.now() - gpsStartedAt}ms) granted=${permission.granted}`);
       gpsEnabled = Boolean(permission.granted);
-      if (gpsEnabled) {
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced, timeout: 5000 });
-        logDebug(`[pre-start] getCurrentPositionAsync resuelto (${Date.now() - gpsStartedAt}ms total)`);
-        gpsEnabled = Boolean(position?.coords);
-      }
     } catch (error) {
       logDebug(`[pre-start] GPS ERROR (${Date.now() - gpsStartedAt}ms): ${error.message}`);
       gpsEnabled = false;
