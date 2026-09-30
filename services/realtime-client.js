@@ -2,6 +2,7 @@ import { API_BASE_URL } from '../config/env.js';
 import { useAuthStore } from '../store/auth-store.js';
 import { buildMessage, buildWsUrl, parseMessage } from '../utils/realtime-message.js';
 import { computeBackoffMs } from '../utils/realtime-backoff.js';
+import { logDebug } from '../utils/debug-log.js';
 
 // Cliente WS genérico, singleton a nivel módulo (spec 2026-09-28) -- un solo
 // socket físico multiplexado por canales. Pensado para reusarse más allá de
@@ -56,6 +57,7 @@ function clearReconnectTimer() {
 function scheduleReconnect() {
   clearReconnectTimer();
   const delay = computeBackoffMs(reconnectAttempt);
+  logDebug(`[realtime] scheduleReconnect intento=${reconnectAttempt} delayMs=${delay}`);
   reconnectAttempt += 1;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
@@ -65,7 +67,16 @@ function scheduleReconnect() {
 
 function dispatchMessage(raw) {
   const msg = parseMessage(raw);
-  if (!msg || msg.type === 'pong') return;
+  if (!msg) return;
+  if (msg.type === 'pong' || msg.type === 'subscribed' || msg.type === 'unsubscribed') return;
+  // El backend nunca corta la conexión por un canal ajeno/malformado -- solo
+  // manda este error suelto. Sin loguearlo, un subscribe rechazado queda
+  // completamente invisible (el status sigue "open", nada avisa que la
+  // suscripción en particular falló).
+  if (msg.type === 'error') {
+    logDebug(`[realtime] error del servidor: ${msg.message ?? '(sin mensaje)'}`);
+    return;
+  }
   const listeners = channelListeners.get(msg.channel);
   if (!listeners) return;
   for (const listener of listeners) listener(msg);
@@ -75,11 +86,14 @@ export function connect() {
   if (socket && (socket.readyState === 0 || socket.readyState === 1)) return; // ya conectando/abierto
   explicitlyClosed = false;
   const { token } = useAuthStore.getState();
-  const url = `${buildWsUrl(API_BASE_URL)}?token=${encodeURIComponent(token ?? '')}`;
+  const wsUrl = buildWsUrl(API_BASE_URL);
+  const url = `${wsUrl}?token=${encodeURIComponent(token ?? '')}`;
+  logDebug(`[realtime] connect() intento=${reconnectAttempt} url=${wsUrl} token=${token ? 'presente' : 'AUSENTE'}`);
   setStatus(reconnectAttempt > 0 ? 'reconnecting' : 'connecting');
   socket = new WebSocket(url);
 
   socket.onopen = () => {
+    logDebug('[realtime] onopen -- conexión abierta');
     reconnectAttempt = 0;
     setStatus('open');
     startHeartbeat();
@@ -90,7 +104,8 @@ export function connect() {
 
   socket.onmessage = (event) => dispatchMessage(event.data);
 
-  socket.onclose = () => {
+  socket.onclose = (event) => {
+    logDebug(`[realtime] onclose code=${event?.code} reason=${event?.reason || '(sin razón)'} explicitlyClosed=${explicitlyClosed}`);
     stopHeartbeat();
     if (explicitlyClosed) {
       setStatus('closed');
@@ -100,8 +115,10 @@ export function connect() {
     scheduleReconnect();
   };
 
-  socket.onerror = () => {
-    // el cierre real llega por onclose -- acá no hace falta lógica propia
+  socket.onerror = (event) => {
+    // El cierre real llega por onclose -- esto es solo para tener visibilidad
+    // en los logs de por qué falló (ej. host inalcanzable, TLS, etc.).
+    logDebug(`[realtime] onerror ${event?.message ?? '(sin detalle -- revisar onclose)'}`);
   };
 }
 

@@ -445,6 +445,7 @@ function LiveSeriesView({
   onSkipSeries,
   onSkipExercise,
   onBack,
+  onAdvance,
   onCancelConfirmed,
 }) {
   const colors = useThemeColors();
@@ -472,20 +473,26 @@ function LiveSeriesView({
     }
   };
 
+  // OJO acá: nunca llamar a beginAfterCountdown() (que termina disparando un
+  // setState del HOOK PADRE vía onStart) desde DENTRO de un updater funcional
+  // de setState de ESTE componente -- React lo rechaza con "Cannot update a
+  // component while rendering a different component" (bug real, encontrado
+  // en dispositivo 2026-09-29). Por eso el conteo se lleva en una variable
+  // plana del closure del intervalo, no en el `prev` del updater -- mismo
+  // patrón que ya usa el countdown de la pantalla asíncrona.
   const startCountdown = () => {
-    setCountdown(3);
+    let remaining = 3;
+    setCountdown(remaining);
     countdownTimerRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        const next = (prev ?? 1) - 1;
-        if (next <= 0) {
-          if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
-          countdownTimerRef.current = null;
-          setBusy(true);
-          beginAfterCountdown();
-          return null;
-        }
-        return next;
-      });
+      remaining -= 1;
+      if (remaining <= 0) {
+        if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null; }
+        setCountdown(null);
+        setBusy(true);
+        beginAfterCountdown();
+      } else {
+        setCountdown(remaining);
+      }
     }, 1000);
   };
 
@@ -527,13 +534,16 @@ function LiveSeriesView({
     }
   };
 
+  // onSkipSeries/onSkipExercise ya deciden y aplican la navegación (siguiente
+  // serie o overview/finalizar) del lado del padre -- llamar a onBack() acá
+  // encima pisaba esa decisión y siempre forzaba volver a overview, aunque
+  // el padre hubiera elegido saltar directo a la próxima serie.
   const skipSeries = async () => {
     if (busy) return;
     setBusy(true);
     try {
       await onSkipSeries(set.id);
       setSkipVisible(false);
-      onBack();
     } finally {
       setBusy(false);
     }
@@ -545,7 +555,6 @@ function LiveSeriesView({
     try {
       await onSkipExercise(set.exercise_instance_id);
       setSkipVisible(false);
-      onBack();
     } finally {
       setBusy(false);
     }
@@ -641,7 +650,7 @@ function LiveSeriesView({
       {countdown != null && <CountdownOverlay onCancelCountdown={cancelCountdown} value={countdown} />}
 
       <SkipMenuModal onCancel={() => setSkipVisible(false)} onSkipExercise={skipExercise} onSkipSeries={skipSeries} visible={skipVisible} />
-      <FinishSummaryModal onClose={onBack} summary={summary ?? { wallMs: 0, activeMs: 0 }} visible={summary != null} />
+      <FinishSummaryModal onClose={() => { setSummary(null); onAdvance(); }} summary={summary ?? { wallMs: 0, activeMs: 0 }} visible={summary != null} />
       <ConfirmCancelModal
         onCancel={() => setCancelVisible(false)}
         onConfirm={async () => { await onCancelConfirmed(); }}
@@ -787,6 +796,7 @@ function TrainingSessionLiveScreenContent() {
             activePhase={activePhase}
             distance={distanceBySetId.get(currentSet.id)}
             key={currentSet.id}
+            onAdvance={advance}
             onBack={() => setMode('overview')}
             onCancelConfirmed={handleCancelConfirmed}
             onFinish={async (setId) => {
