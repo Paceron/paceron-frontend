@@ -708,8 +708,17 @@ function TrainingSessionLiveScreenContent() {
   // siempre corre con el `sets` ya confirmado por React.
   useEffect(() => {
     if (!booted || sets.length === 0 || finalizeTriggeredRef.current) return;
-    const anyPending = sets.some((s) => s.status === 'pending');
-    if (anyPending) return;
+    // "pending" no alcanza -- una serie recién iniciada (status "started")
+    // tampoco es "pending" pero sigue en curso, no resuelta. Con solo chequear
+    // "sin pending" bastaba con arrancar el conteo regresivo de la ÚLTIMA
+    // serie de la sesión para que este efecto la diera por terminada de
+    // inmediato (bug real, 2026-09-30: la sesión se cortaba sola apenas
+    // arrancaba la última serie, sin completarla ni saltearla, esa serie
+    // quedaba sin ended_at/duración -- nunca la toma getSetsForSync, por eso
+    // aparecía "Sin registro" solo para esa). El criterio correcto es que
+    // TODAS las series estén en un estado terminal.
+    const allResolved = sets.every((s) => s.status === 'finished' || s.status === 'skipped' || s.status === 'interrupted');
+    if (!allResolved) return;
     finalizeTriggeredRef.current = true;
     finalizeSession()
       .then(() => { notifySuccess(); setSessionComplete(true); })
