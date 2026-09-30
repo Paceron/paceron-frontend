@@ -688,6 +688,27 @@ function TrainingSessionLiveScreenContent() {
   const [currentSetId, setCurrentSetId] = useState(null);
   const [finishing, setFinishing] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
+  const finalizeTriggeredRef = useRef(false);
+
+  // Detecta que no queda ninguna serie pendiente y finaliza -- reacciona a
+  // `sets` (no a un chequeo puntual dentro de advance()) para cubrir DOS
+  // casos con el mismo código: (1) se acaba de terminar/saltear la última
+  // serie de la sesión, y (2) el corredor RE-ENTRA a una sesión que ya
+  // había quedado sin pendientes de una vuelta anterior (antes no pasaba
+  // nada visible en este caso -- bug real reportado 2026-09-29). También
+  // evita el problema de leer `sets` desde un closure potencialmente
+  // obsoleto justo después de un await (advance() lo hacía antes) -- acá
+  // siempre corre con el `sets` ya confirmado por React.
+  useEffect(() => {
+    if (!booted || sets.length === 0 || finalizeTriggeredRef.current) return;
+    const anyPending = sets.some((s) => s.status === 'pending');
+    if (anyPending) return;
+    finalizeTriggeredRef.current = true;
+    finalizeSession()
+      .then(() => { notifySuccess(); setSessionComplete(true); })
+      .catch(() => { notifyError(); finalizeTriggeredRef.current = false; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sets, booted]);
 
   useEffect(() => {
     if (!pendingControl) return;
@@ -733,24 +754,15 @@ function TrainingSessionLiveScreenContent() {
   };
 
   // Igual que el flujo asíncrono: al terminar/saltear una serie se salta
-  // directo a la próxima (sin volver a overview en el medio), y si no queda
-  // ninguna pendiente se finaliza la sesión sola.
-  const advance = async () => {
-    const next = sets.find((s) => s.status === 'pending' && s.id !== currentSetId);
+  // directo a la próxima (sin volver a overview en el medio). La detección
+  // de "no queda ninguna pendiente -> finalizar" vive aparte, en el efecto
+  // de arriba (reacciona a `sets` ya confirmado, no a este closure).
+  const advance = () => {
+    const next = sets.find((s) => s.status === 'pending');
     if (next) {
       setCurrentSetId(next.id);
       setMode('series');
       return;
-    }
-    const stillPending = sets.some((s) => s.status === 'pending');
-    if (!stillPending) {
-      try {
-        await finalizeSession();
-        notifySuccess();
-        setSessionComplete(true);
-      } catch {
-        notifyError();
-      }
     }
     setMode('overview');
   };
