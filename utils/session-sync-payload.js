@@ -16,7 +16,15 @@ export function buildSetPayload({ set, run }) {
     athlete_user_id: toNumberOrNull(run.athlete_user_id),
     report_source: run.report_source ?? 'corredor',
     session_date: run.session_date,
-    set_number: set.set_number,
+    // set.set_number es 0-indexado en el almacenamiento local (session-db.js,
+    // "Serie N" en pantalla siempre le suma 1 al mostrarlo) -- el backend
+    // espera 1-indexado, mismo criterio que ya usa buildManualSetPayload
+    // (arma set_number a partir de un `i + 1`). Sin este +1, cualquier
+    // sesión sincronizada por este camino (vivo o asíncrono) queda con
+    // set_number=0,1,2... y la revisión, que busca 1,2,3..., nunca matchea
+    // ninguna fila -- "Sin registro" para todo lo sincronizado (bug real,
+    // 2026-09-30, confirmado con datos reales de workout_feedback).
+    set_number: set.set_number + 1,
   };
 
   if (set.status === 'skipped') {

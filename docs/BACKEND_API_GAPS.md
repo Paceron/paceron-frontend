@@ -657,3 +657,68 @@ entrenador activo sin MP, así que el caso es real, no teórico.
 
 **Pedido:** un flag de "puede recibir pagos" en el payload del equipo (o en el de búsqueda), para
 poder avisar antes de que el corredor se una a un equipo que no va a poder cobrarle.
+
+## Gap 18 — gateway WebSocket genérico + broadcast de eventos de sesión
+
+Pedido de infraestructura de tiempo real, mismo patrón que Gap 13/14 (contrato deseado, backend
+confirma o ajusta) — ver
+`docs/superpowers/specs/2026-09-28-presencial-live-session-transport-runner-design.md` para el
+diseño completo del lado frontend.
+
+- Gateway WebSocket genérico (`/ws`), autenticado por JWT en query param (`?token=`), con soporte
+  de `subscribe`/`unsubscribe` por canal string arbitrario y reenvío de mensajes `presence`/
+  `control` a los demás suscriptores del mismo canal, aplicando la autorización que ya existe para
+  el recurso que el canal nombra (para `session:{id}`, la misma regla de "atleta asignado o
+  entrenador/owner del equipo" que ya protege los endpoints REST de esa sesión).
+- Al persistir vía `POST /workout-feedback` (creación de una serie ya terminada/salteada/
+  interrumpida), backend emite además un mensaje `update:set_event` al canal
+  `session:{sessionInstanceId}` correspondiente con el mismo payload persistido +
+  `athleteUserId` — puramente informativo, no cambia la respuesta HTTP existente.
+  `POST /workout-feedback/:id/points` no necesita broadcast propio.
+- Heartbeat: servidor espera `ping` cada 20-30s, cierra conexiones inactivas más allá de eso (a
+  confirmar el valor exacto con backend según límites de Render).
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto — bloquea la
+posición en vivo y el feed casi-en-vivo de registros de la spec 2 (pantalla del entrenador). El
+cliente corredor de esta spec (piezas transporte + corredor) funciona igual sin este gap resuelto,
+salvo que sus mensajes `presence`/`control` no llegan a ningún destinatario real todavía.
+
+## Gap 19 — `runner_session` necesita un tercer estado `interrupted` (cancelar ≠ nunca empezó)
+
+Detectado probando cancelación en la sesión presencial en vivo (2026-09-30), pero el problema es
+preexistente y compartido con la sesión asíncrona — `cancelRun` (`services/session-db.js`) ya
+existe y se usa igual en ambas pantallas.
+
+Hoy `runner_session` solo tiene dos estados (`wip`/`finished`, ver `POST`/`PATCH
+/session-instances/:id/runner`). Cancelar una sesión a mitad de camino (botón "mantener para
+cancelar") marca el run **local** como `cancelled` (con su `ended_at`), pero no tiene ningún
+reflejo remoto — el `runner_session` del atleta se queda en `wip` para siempre. Consecuencias:
+
+- Desde otro dispositivo (o tras reinstalar la app / perder la DB local), la sesión cancelada
+  sigue apareciendo como si nunca se hubiera empezado — Play vuelve a estar disponible y se puede
+  rejugar desde cero, aunque ya haya series completadas y sincronizadas.
+- El entrenador (pantalla de la spec 2) no tiene forma de distinguir "todavía no empezó" de
+  "empezó y la cortó a mitad de camino" — ambos casos se ven como `wip` sin más contexto.
+
+**Concepto correcto (confirmado con el usuario, 2026-09-30):** cancelar una sesión en curso es
+**terminarla de forma temprana**, no "deshacerla" — el feedback de las series ya hechas hasta ese
+punto debe quedar guardado tal cual (esto YA funciona: `syncRun` sube lo que llegó a
+completarse/saltearse antes de la cancelación), y el estado final de la sesión debe reflejar que
+se cortó antes de tiempo, en qué momento, y que NO está disponible para volver a intentarse.
+
+**Pedido:** un tercer valor de `status` para `runner_session`, `interrupted` (o el nombre que el
+backend prefiera), aceptado por el mismo `PATCH /session-instances/:id/runner` que ya recibe
+`{status: 'finished'}` — idealmente con la misma idempotencia y con un guard de transición
+análogo al que ya existe para `finished` (nunca debería poder "bajarse" de `finished` a
+`interrupted`, y una vez `interrupted` tampoco debería poder pasar a `finished` sin una acción
+explícita nueva). El `end_date` que ya maneja el servidor para `finished` aplicaría igual acá.
+
+**Impacto en frontend, una vez resuelto:** el frontend ya calcula el momento de cancelación
+localmente (`cancelRun` guarda `ended_at`) — solo falta que `cancelSession()`
+(`hooks/use-live-session-runtime.js`) y el `handleCancelConfirmed` de la sesión asíncrona llamen a
+este nuevo status en vez de dejar el `runner_session` remoto en `wip`, y que el pre-start trate
+`interrupted` igual que `finished` para el gate de Play/Registro (ambas pantallas comparten esa
+lógica en `session-pre-start-screen.jsx`). Sin este gap resuelto, el frontend puede en el
+mientras tanto aplicar un bloqueo solo-local (mismo dispositivo) sin esperar al backend, pero
+queda fuera de esta rama a pedido del usuario -- por ahora cancelar sigue permitiendo rejugar la
+sesión, igual que ya pasa hoy en la asíncrona.

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,8 +13,20 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
+import { getLatestRun, initSessionDb, RUN_STATUS } from '../../services/session-db.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { logDebug } from '../../utils/debug-log.js';
+
+// URL universal de Google Maps -- funciona igual en la app nativa (abre la
+// app de mapas instalada si el sistema la asocia a ese link) y en web (nueva
+// pestaña), sin ramificar por plataforma.
+function openLocationInMaps(location) {
+  if (!location?.lat || !location?.lng) return;
+  // Coordenadas, no el label -- el label es solo para mostrar, puede ser
+  // ambiguo (nombre repetido en otro lugar); lat/lng es siempre exacto.
+  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`);
+}
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();
@@ -61,14 +73,38 @@ function SessionPreStartScreenContent() {
   const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const userId = useAuthStore((s) => s.userId);
+  const [starting, setStarting] = useState(false);
+  const [locallyCompleted, setLocallyCompleted] = useState(false);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
-  const { runnerSession, refetch } = useRunnerSession(sessionInstanceId, userId);
+  const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
 
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch]),
+      // Esta pantalla no se desmonta al navegar a la sesión en vivo (sigue en
+      // el stack) -- sin este reset, "starting" quedaba en true para siempre
+      // al volver con router.back() y el botón Play quedaba bloqueado.
+      setStarting(false);
+      // finalizeSession() marca el run local como completado y dispara el
+      // cierre remoto de runner_session SIN esperarlo (fire-and-forget, a
+      // propósito) -- así que el refetch de arriba puede resolver ANTES que
+      // ese PATCH llegue al backend, mostrando Play de nuevo aunque ya se
+      // haya terminado todo (bug real, 2026-09-30: un tap rápido ahí creaba
+      // un run nuevo desde cero). Chequeo local aparte (SQLite, sin red) para
+      // no depender solo del estado remoto en esta ventana corta.
+      let cancelled = false;
+      (async () => {
+        try {
+          await initSessionDb();
+          const latest = await getLatestRun(sessionInstanceId, pendingSession?.date, userId);
+          if (!cancelled) setLocallyCompleted(latest?.status === RUN_STATUS.COMPLETED);
+        } catch {
+          if (!cancelled) setLocallyCompleted(false);
+        }
+      })();
+      return () => { cancelled = true; };
+    }, [refetch, sessionInstanceId, pendingSession?.date, userId]),
   );
 
   // Registro de Sesión vs. Play (spec 2026-09-24). El `runner_session` manda
@@ -76,9 +112,10 @@ function SessionPreStartScreenContent() {
   // terminar tiene que ir al registro también, no al Play — si no, al volver
   // acá después de "Terminar" el botón Play sigue disponible y deja correr
   // dos veces la misma sesión (getActiveRun solo busca runs `in_progress`, así
-  // que el segundo Play crea un run nuevo desde cero).
+  // que el segundo Play crea un run nuevo desde cero). `locallyCompleted`
+  // cubre el hueco corto entre ese cierre local y la confirmación remota.
   const past = isPastSessionDate(pendingSession ?? { date: '' });
-  const finished = runnerSession?.status === 'finished';
+  const finished = runnerSession?.status === 'finished' || locallyCompleted;
   const mode = finished ? 'review' : 'manual';
   const showReview = past || finished;
 
@@ -90,23 +127,45 @@ function SessionPreStartScreenContent() {
   // usuario lo niega o el build no tiene el módulo, la sesión arranca igual
   // pero sin distancias — gpsEnabled queda en falso para toda la sesión.
   const handlePlay = async () => {
+    // Guard contra doble tap: handlePlay es async (permiso GPS de por medio,
+    // hasta 5s de timeout) -- sin esto, un segundo tap antes de que resuelva
+    // dispara un segundo router.push, montando dos instancias del runtime
+    // en simultáneo sobre el mismo canal WS (bug real, 2026-09-30: la
+    // primera en desmontarse desuscribía el canal para la otra también,
+    // "no suscripto al canal" en los logs).
+    // runnerSessionLoading: al volver de una sesión recién completada, el
+    // refetch de foco todavía puede no haber confirmado el estado "finished"
+    // -- sin este guard, un tap rápido acá creaba un run local nuevo desde
+    // cero para una sesión que el backend ya tiene cerrada (bug real,
+    // 2026-09-30).
+    if (starting || runnerSessionLoading) return;
+    setStarting(true);
     // Fire-and-forget del estado runner_session (wip, idempotente): si el Play
     // arranca offline, el pipeline de sync reintenta el mismo upsert antes del
     // primer POST feedback. No se espera acá porque no bloquea la navegación.
     createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString() }).catch(() => {});
+    // Confirmado con logs (2026-09-30): getCurrentPositionAsync no respeta su
+    // propio `timeout` -- se observó una resolución real de ~25s contra un
+    // timeout de 5s pedido (quirk conocido de expo-location en ciertos
+    // Android/proveedores de ubicación), bloqueando el Play entero por ese
+    // tiempo. Ya no se espera acá: gpsEnabled se decide solo por el permiso
+    // (rápido, típicamente <200ms) y se navega de inmediato. El tracker
+    // continuo de la sesión (useSessionGpsTracker/useGpsTracker) usa
+    // watchPositionAsync, una API distinta que no bloquea nada -- si el GPS
+    // realmente no consigue un fix, simplemente no llegan puntos, mismo
+    // resultado gracioso que cuando el permiso se niega.
+    const gpsStartedAt = Date.now();
     let gpsEnabled = false;
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
+      logDebug(`[pre-start] permiso GPS resuelto (${Date.now() - gpsStartedAt}ms) granted=${permission.granted}`);
       gpsEnabled = Boolean(permission.granted);
-      if (gpsEnabled) {
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced, timeout: 5000 });
-        gpsEnabled = Boolean(position?.coords);
-      }
-    } catch {
+    } catch (error) {
+      logDebug(`[pre-start] GPS ERROR (${Date.now() - gpsStartedAt}ms): ${error.message}`);
       gpsEnabled = false;
     }
     setGpsEnabled(gpsEnabled);
-    router.push('/training-session-active');
+    router.push(pendingSession.isPresencial ? '/training-session-live' : '/training-session-active');
   };
 
   const handleOpenReview = () => {
@@ -130,18 +189,31 @@ function SessionPreStartScreenContent() {
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
-        <Pressable
-          className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70"
-          nativeID="session-pre-start-screen-back-button"
-          onPress={() => router.back()}
-          testID="session-pre-start-screen-back-button"
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
-        </Pressable>
+        <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+            nativeID="session-pre-start-screen-back-button"
+            onPress={() => router.back()}
+            testID="session-pre-start-screen-back-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+          </Pressable>
+          {pendingSession.isPresencial && (
+            <Pressable
+              className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+              nativeID="session-pre-start-screen-attendance-button"
+              onPress={() => router.push('/attendance/register')}
+              testID="session-pre-start-screen-attendance-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={20} />
+            </Pressable>
+          )}
+        </View>
 
         <View className="mb-6 mt-4 items-center" nativeID="session-pre-start-screen-title-block" testID="session-pre-start-screen-title-block">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-date" testID="session-pre-start-screen-date">
             {formatWeekdayLabel(pendingSession.date)}, {formatDisplayDate(pendingSession.date)}
+            {pendingSession.isPresencial && pendingSession.presencialTimeFrom ? ` · ${pendingSession.presencialTimeFrom}–${pendingSession.presencialTimeTo}` : ''}
           </Text>
           <Text className="mt-1 text-center text-3xl text-slate-900 dark:text-white" nativeID="session-pre-start-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="session-pre-start-screen-title">
             {pendingSession.sessionInstance?.name ?? 'Entrenamiento'}
@@ -165,6 +237,19 @@ function SessionPreStartScreenContent() {
                 </View>
               )}
             </View>
+          )}
+          {pendingSession.isPresencial && pendingSession.presencialLocation?.label && (
+            <Pressable
+              className="mt-2 max-w-full flex-row items-center gap-1 px-4"
+              nativeID="session-pre-start-screen-presencial-location"
+              onPress={() => openLocationInMaps(pendingSession.presencialLocation)}
+              testID="session-pre-start-screen-presencial-location"
+            >
+              <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} />
+              <Text className="text-sm font-semibold text-primary underline" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
+                {pendingSession.presencialLocation.label}
+              </Text>
+            </Pressable>
           )}
           {finished && (
             <View className="mt-3 flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-completed-badge" testID="session-pre-start-screen-completed-badge">
@@ -209,12 +294,13 @@ function SessionPreStartScreenContent() {
           </View>
         ) : (
           <Pressable
-            className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
+            className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
+            disabled={starting || runnerSessionLoading}
             nativeID="session-pre-start-screen-play-button"
             onPress={handlePlay}
             testID="session-pre-start-screen-play-button"
           >
-            <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />
+            {runnerSessionLoading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
           </Pressable>
         )}
       </View>
