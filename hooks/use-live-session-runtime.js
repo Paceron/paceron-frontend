@@ -20,6 +20,7 @@ import {
   updateSetTimings,
 } from '../services/session-db.js';
 import { syncRun } from '../services/session-sync.js';
+import { send as sendRaw } from '../services/realtime-client.js';
 import { acceptGpsLeg } from '../utils/distance.js';
 import { toIsoUtc } from '../utils/time.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
@@ -93,17 +94,16 @@ export function useLiveSessionRuntime() {
     if (msg.event === 'session_paused') pauseSet();
   };
 
+  // joined/left van por sendRaw (no por el `send` que devuelve este mismo
+  // hook -- todavía no existe en este punto) y se disparan DENTRO del efecto
+  // de suscripción del hook (onSubscribed/onBeforeUnsubscribe), no en un
+  // efecto propio aparte -- ver el comentario en use-realtime-channel.js.
   const { status: connectionStatus, send } = useRealtimeChannel(channel, {
     onMessage: handleChannelMessage,
     enabled: Boolean(channel),
+    onSubscribed: () => sendRaw(channel, 'presence', undefined, { event: 'joined', payload: {} }),
+    onBeforeUnsubscribe: () => sendRaw(channel, 'presence', undefined, { event: 'left', payload: {} }),
   });
-
-  useEffect(() => {
-    if (!channel) return undefined;
-    send('presence', undefined, { event: 'joined', payload: {} });
-    return () => { send('presence', undefined, { event: 'left', payload: {} }); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel]);
 
   const gps = useSessionGpsTracker(gpsEnabled);
 

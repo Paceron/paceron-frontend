@@ -79,6 +79,10 @@ function SessionPreStartScreenContent() {
   useFocusEffect(
     useCallback(() => {
       refetch();
+      // Esta pantalla no se desmonta al navegar a la sesión en vivo (sigue en
+      // el stack) -- sin este reset, "starting" quedaba en true para siempre
+      // al volver con router.back() y el botón Play quedaba bloqueado.
+      setStarting(false);
     }, [refetch]),
   );
 
