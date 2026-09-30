@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -74,7 +74,7 @@ function SessionPreStartScreenContent() {
   const [starting, setStarting] = useState(false);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
-  const { runnerSession, refetch } = useRunnerSession(sessionInstanceId, userId);
+  const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
 
   useFocusEffect(
     useCallback(() => {
@@ -111,7 +111,12 @@ function SessionPreStartScreenContent() {
     // en simultáneo sobre el mismo canal WS (bug real, 2026-09-30: la
     // primera en desmontarse desuscribía el canal para la otra también,
     // "no suscripto al canal" en los logs).
-    if (starting) return;
+    // runnerSessionLoading: al volver de una sesión recién completada, el
+    // refetch de foco todavía puede no haber confirmado el estado "finished"
+    // -- sin este guard, un tap rápido acá creaba un run local nuevo desde
+    // cero para una sesión que el backend ya tiene cerrada (bug real,
+    // 2026-09-30).
+    if (starting || runnerSessionLoading) return;
     setStarting(true);
     // Fire-and-forget del estado runner_session (wip, idempotente): si el Play
     // arranca offline, el pipeline de sync reintenta el mismo upsert antes del
@@ -258,13 +263,13 @@ function SessionPreStartScreenContent() {
           </View>
         ) : (
           <Pressable
-            className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting ? 'opacity-50' : ''}`}
-            disabled={starting}
+            className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
+            disabled={starting || runnerSessionLoading}
             nativeID="session-pre-start-screen-play-button"
             onPress={handlePlay}
             testID="session-pre-start-screen-play-button"
           >
-            <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />
+            {runnerSessionLoading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
           </Pressable>
         )}
       </View>

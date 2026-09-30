@@ -258,6 +258,16 @@ export function useLiveSessionRuntime() {
     return { wallMs: snap.wallMs, activeMs: snap.activeMs, distanceMeters: distance };
   };
 
+  // Devuelven el array de sets recién recargado -- el caller (la pantalla)
+  // lo necesita para decidir "cuál es la próxima serie" sin depender de la
+  // variable `sets` de su propio closure, que en este flujo queda desactualizada
+  // (bug real, 2026-09-30: `advance()` corría con el `sets` de ANTES del
+  // saltear, encontraba la serie recién salteada como si siguiera "pending" y
+  // volvía a abrir esa misma serie -- ya con su status real (`skipped`), sin
+  // ningún botón visible porque ninguno de los bloques de control matchea ese
+  // status). El flujo de Completar en regla no sufre esto porque el avance
+  // lo dispara el usuario recién al cerrar el modal de resumen, momento en el
+  // que la pantalla ya tuvo tiempo de re-renderizar con el `sets` fresco.
   const skipSet = async (setId) => {
     logDebug(`[live] skipSet(${setId})`);
     await markSetSkipped(setId);
@@ -266,9 +276,10 @@ export function useLiveSessionRuntime() {
       setPhase('idle');
       lastPointRef.current = null;
     }
-    await reloadSets(run.id);
+    const updated = await reloadSets(run.id);
     broadcastSetStatus({ setId, status: 'skipped' });
     syncIncrementally();
+    return updated;
   };
 
   const skipExercise = async (exerciseInstanceId) => {
@@ -276,12 +287,13 @@ export function useLiveSessionRuntime() {
     setActiveSet(null);
     setPhase('idle');
     lastPointRef.current = null;
-    await reloadSets(run.id);
+    const updated = await reloadSets(run.id);
     // A diferencia de skipSet (una serie puntual), esto puede afectar varias
     // series del mismo ejercicio a la vez -- un único aviso a nivel
     // ejercicio en vez de uno por serie.
     broadcastSetStatus({ exerciseInstanceId, status: 'skipped', scope: 'exercise' });
     syncIncrementally();
+    return updated;
   };
 
   const cancelSession = async () => {

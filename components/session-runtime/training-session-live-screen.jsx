@@ -393,6 +393,13 @@ function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCa
           {groups.map((group) => {
             const isNext = nextSet != null && String(group.exerciseInstanceId) === String(nextSet.exercise_instance_id);
             const isActiveGroup = group.sets.some((s) => s.id === activeSetId);
+            // Ya resuelto (todas sus series completadas/salteadas, ninguna
+            // pending) -- no es "el próximo" pero tampoco está bloqueado por
+            // nada, así que no debería mostrar el aviso de "se habilita
+            // cuando completes las anteriores" (bug real, 2026-09-30: se
+            // mostraba en cualquier ejercicio que no fuera el actual, incluidos
+            // los ya pasados).
+            const isResolved = group.sets.every((s) => s.status !== 'pending');
             const hiddenPrefix = `training-session-live-overview-exercise-${group.exerciseInstanceId}`;
             return (
               <Pressable
@@ -412,7 +419,7 @@ function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCa
                     <SetStatusChip idPrefix={hiddenPrefix} isActive={set.id === activeSetId} key={set.id} phase={activePhase} set={set} />
                   ))}
                 </View>
-                {!isNext && !isActiveGroup && (
+                {!isNext && !isActiveGroup && !isResolved && (
                   <Text className="mt-2 text-xs text-slate-400 dark:text-slate-500" nativeID={`${hiddenPrefix}-locked-note`} testID={`${hiddenPrefix}-locked-note`}>
                     Se habilita cuando completes las anteriores
                   </Text>
@@ -757,8 +764,12 @@ function TrainingSessionLiveScreenContent() {
   // directo a la próxima (sin volver a overview en el medio). La detección
   // de "no queda ninguna pendiente -> finalizar" vive aparte, en el efecto
   // de arriba (reacciona a `sets` ya confirmado, no a este closure).
-  const advance = () => {
-    const next = sets.find((s) => s.status === 'pending');
+  // `sourceSets` opcional: cuando el caller ya tiene un array más fresco que
+  // el `sets` de este render (ver skipSet/skipExercise en el hook -- su
+  // propio reloadSets recién resuelto), se usa ese en vez del closure de acá.
+  const advance = (sourceSets) => {
+    const list = sourceSets ?? sets;
+    const next = list.find((s) => s.status === 'pending');
     if (next) {
       setCurrentSetId(next.id);
       setMode('series');
@@ -773,13 +784,13 @@ function TrainingSessionLiveScreenContent() {
   };
 
   const handleSkipSet = async (setId) => {
-    await skipSet(setId);
-    await advance();
+    const updated = await skipSet(setId);
+    advance(updated);
   };
 
   const handleSkipExercise = async (exerciseInstanceId) => {
-    await skipExercise(exerciseInstanceId);
-    await advance();
+    const updated = await skipExercise(exerciseInstanceId);
+    advance(updated);
   };
 
   const handleCancelConfirmed = async () => {
