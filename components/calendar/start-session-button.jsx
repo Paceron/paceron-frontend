@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
-import { canStartAsyncSession, canStartPresencialSession, isPastSessionDate } from '../../utils/session-start-window.js';
+import { canStartSession, isPastSessionDate } from '../../utils/session-start-window.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
@@ -120,9 +120,10 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
   const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
 
   const past = isPastSessionDate(assignment);
-  const inWindow = role === 'runner'
-    ? (assignment.isPresencial ? canStartPresencialSession(assignment) : canStartAsyncSession(assignment))
-    : canStartPresencialSession(assignment);
+  // Una sola regla para las dos modalidades: el día de la sesión, a cualquier
+  // hora. El ternario por rol que había antes dejaba al corredor sin botón en
+  // toda sesión presencial.
+  const inWindow = canStartSession(assignment);
   const hasSession = Boolean(assignment.sessionInstance);
   const idPrefix = `start-session-button-${assignment.id}`;
 

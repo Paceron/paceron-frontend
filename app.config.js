@@ -47,6 +47,12 @@ module.exports = {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      // El escáner de QR del corredor (openspec/changes/
+      // registro-asistencia-correedor) usa expo-camera. Android 13+ exige que el
+      // permiso esté DECLARADO en el manifest, además del pedido en runtime que
+      // hace la app: sin esta línea el pedido en runtime falla y la cámara no
+      // abre nunca. No se pide en iOS, que no lo necesita declarado.
+      permissions: ['CAMERA'],
     },
     web: {
       favicon: './assets/paceron-symbol-transparent.png',
