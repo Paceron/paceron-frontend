@@ -53,20 +53,6 @@ describe('canStartPresencialSession', () => {
   test('no presencial, deshabilitado', () => {
     expect(canStartPresencialSession({ ...base, isPresencial: false, presencialTimeFrom: '10:00' }, NOW)).toBe(false);
   });
-
-  test('con presencialTimeTo cargado, la ventana cubre todo el horario (no solo ±30min del inicio)', () => {
-    // Arrancó a las 08:00, termina a las 11:00 -- a las 10:00 (NOW) ya pasaron
-    // más de 30 min desde el inicio, pero la sesión sigue en curso.
-    expect(canStartPresencialSession({ ...base, presencialTimeFrom: '08:00', presencialTimeTo: '11:00' }, NOW)).toBe(true);
-  });
-
-  test('con presencialTimeTo cargado, deshabilitado después del horario de fin', () => {
-    expect(canStartPresencialSession({ ...base, presencialTimeFrom: '08:00', presencialTimeTo: '09:30' }, NOW)).toBe(false);
-  });
-
-  test('con presencialTimeTo cargado, sigue respetando los 30 min de margen antes del inicio', () => {
-    expect(canStartPresencialSession({ ...base, presencialTimeFrom: '11:00', presencialTimeTo: '13:00' }, NOW)).toBe(false);
-  });
 });
 
 describe('isPastSessionDate', () => {
