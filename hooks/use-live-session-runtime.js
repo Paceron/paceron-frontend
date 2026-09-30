@@ -224,6 +224,7 @@ export function useLiveSessionRuntime() {
   const pauseSet = async () => {
     const setId = activeSetIdRef.current;
     if (!setId || activePhaseRef.current !== 'running') return;
+    logDebug(`[live] pauseSet(${setId})`);
     const snap = stopwatch.pause();
     pausedSnapshotRef.current = snap;
     await updateSetTimings(setId, { durationMs: snap.wallMs, activeDurationMs: snap.activeMs });
@@ -237,6 +238,7 @@ export function useLiveSessionRuntime() {
   const resumeSet = async () => {
     const setId = activeSetIdRef.current;
     if (!setId || activePhaseRef.current !== 'paused') return;
+    logDebug(`[live] resumeSet(${setId})`);
     stopwatch.resumeFrom(pausedSnapshotRef.current);
     setPhase('running');
     broadcastSetStatus({ setId, status: 'started' });
