@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +15,16 @@ import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+
+// URL universal de Google Maps -- funciona igual en la app nativa (abre la
+// app de mapas instalada si el sistema la asocia a ese link) y en web (nueva
+// pestaña), sin ramificar por plataforma.
+function openLocationInMaps(location) {
+  if (!location?.lat || !location?.lng) return;
+  // Coordenadas, no el label -- el label es solo para mostrar, puede ser
+  // ambiguo (nombre repetido en otro lugar); lat/lng es siempre exacto.
+  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`);
+}
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();
@@ -154,6 +164,7 @@ function SessionPreStartScreenContent() {
         <View className="mb-6 mt-4 items-center" nativeID="session-pre-start-screen-title-block" testID="session-pre-start-screen-title-block">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-date" testID="session-pre-start-screen-date">
             {formatWeekdayLabel(pendingSession.date)}, {formatDisplayDate(pendingSession.date)}
+            {pendingSession.isPresencial && pendingSession.presencialTimeFrom ? ` · ${pendingSession.presencialTimeFrom}–${pendingSession.presencialTimeTo}` : ''}
           </Text>
           <Text className="mt-1 text-center text-3xl text-slate-900 dark:text-white" nativeID="session-pre-start-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="session-pre-start-screen-title">
             {pendingSession.sessionInstance?.name ?? 'Entrenamiento'}
@@ -178,25 +189,18 @@ function SessionPreStartScreenContent() {
               )}
             </View>
           )}
-          {pendingSession.isPresencial && (pendingSession.presencialTimeFrom || pendingSession.presencialLocation?.label) && (
-            <View className="mt-2 flex-row items-center gap-4" nativeID="session-pre-start-screen-presencial-info" testID="session-pre-start-screen-presencial-info">
-              {pendingSession.presencialTimeFrom && (
-                <View className="flex-row items-center gap-1" nativeID="session-pre-start-screen-presencial-schedule" testID="session-pre-start-screen-presencial-schedule">
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clock-outline" size={16} />
-                  <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-presencial-schedule-label" testID="session-pre-start-screen-presencial-schedule-label">
-                    {pendingSession.presencialTimeFrom}–{pendingSession.presencialTimeTo}
-                  </Text>
-                </View>
-              )}
-              {pendingSession.presencialLocation?.label && (
-                <View className="flex-row items-center gap-1" nativeID="session-pre-start-screen-presencial-location" testID="session-pre-start-screen-presencial-location">
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-outline" size={16} />
-                  <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
-                    {pendingSession.presencialLocation.label}
-                  </Text>
-                </View>
-              )}
-            </View>
+          {pendingSession.isPresencial && pendingSession.presencialLocation?.label && (
+            <Pressable
+              className="mt-2 max-w-full flex-row items-center gap-1 px-4"
+              nativeID="session-pre-start-screen-presencial-location"
+              onPress={() => openLocationInMaps(pendingSession.presencialLocation)}
+              testID="session-pre-start-screen-presencial-location"
+            >
+              <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} />
+              <Text className="text-sm font-semibold text-primary underline" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
+                {pendingSession.presencialLocation.label}
+              </Text>
+            </Pressable>
           )}
           {finished && (
             <View className="mt-3 flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-completed-badge" testID="session-pre-start-screen-completed-badge">

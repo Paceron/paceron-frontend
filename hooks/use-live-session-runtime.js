@@ -25,6 +25,7 @@ import { toIsoUtc } from '../utils/time.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
 import { useRealtimeChannel } from './use-realtime-channel.js';
 import { useStopwatch } from './use-stopwatch.js';
+import { logDebug } from '../utils/debug-log.js';
 
 // Motor no-visual de la pantalla presencial en vivo (Task 10 la consume).
 // GPS continuo: TODO punto aceptado se manda en vivo por WS
@@ -113,11 +114,14 @@ export function useLiveSessionRuntime() {
   };
 
   const bootstrap = async () => {
+    const startedAt = Date.now();
+    logDebug('[live] bootstrap start');
     try {
       await initSessionDb();
       const sessionInstance = pendingSession.sessionInstance;
       const sessionDate = pendingSession.date;
       let runRow = await getActiveRun(sessionInstance.id, sessionDate, userId);
+      logDebug(`[live] getActiveRun -> ${runRow ? `reuso run=${runRow.id}` : 'sin run existente, voy a crear uno'} (${Date.now() - startedAt}ms)`);
       if (!runRow) {
         const createdId = await createRun({
           sessionInstanceId: sessionInstance.id,
@@ -129,12 +133,15 @@ export function useLiveSessionRuntime() {
           exercises: sessionInstance.exercises ?? [],
         });
         runRow = await getRun(createdId);
+        logDebug(`[live] createRun -> run=${createdId} (${Date.now() - startedAt}ms)`);
       }
       setSessionStarted(runRow.id, Boolean(runRow.gps_enabled));
       setRun(runRow);
       await reloadSets(runRow.id);
       setBooted(true);
+      logDebug(`[live] bootstrap OK total=${Date.now() - startedAt}ms`);
     } catch (error) {
+      logDebug(`[live] bootstrap ERROR (${Date.now() - startedAt}ms): ${error.message}`);
       setBootError(error);
     }
   };
@@ -187,10 +194,19 @@ export function useLiveSessionRuntime() {
   }, [booted]);
 
   const syncIncrementally = () => {
-    if (run) syncRun(run.id).catch(() => {}); // fire-and-forget, mismo patrón que createRunnerSession en el pre-start
+    if (!run) return;
+    logDebug(`[live] syncRun(${run.id}) disparado`);
+    // Fire-and-forget, mismo patrón que createRunnerSession en el pre-start --
+    // pero logueamos el resultado igual, para poder confirmar en los logs de
+    // dispositivo si el feedback de cada serie efectivamente sube (y cuántas
+    // quedaron sin sincronizar si algo falló).
+    syncRun(run.id)
+      .then((result) => logDebug(`[live] syncRun(${run.id}) OK synced=${result.synced} conflicts=${result.conflicts} errors=${result.errors.length}`))
+      .catch((error) => logDebug(`[live] syncRun(${run.id}) ERROR ${error.message}`));
   };
 
   const startSet = async (setId) => {
+    logDebug(`[live] startSet(${setId})`);
     setActiveSet(setId);
     lastPointRef.current = null;
     pointOrderRef.current = 0;
@@ -227,6 +243,7 @@ export function useLiveSessionRuntime() {
   };
 
   const finishSet = async (setId) => {
+    logDebug(`[live] finishSet(${setId})`);
     const snap = activePhaseRef.current === 'running' ? stopwatch.pause() : pausedSnapshotRef.current;
     const distance = distanceRef.current.get(setId) ?? null;
     await finishSetDb(setId, { endedAtIso: toIsoUtc(), durationMs: snap.wallMs, activeDurationMs: snap.activeMs, distanceMeters: distance });
@@ -242,6 +259,7 @@ export function useLiveSessionRuntime() {
   };
 
   const skipSet = async (setId) => {
+    logDebug(`[live] skipSet(${setId})`);
     await markSetSkipped(setId);
     if (activeSetIdRef.current === setId) {
       setActiveSet(null);
