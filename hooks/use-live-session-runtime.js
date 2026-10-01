@@ -85,6 +85,17 @@ export function useLiveSessionRuntime() {
     send('presence', undefined, { event: 'set_status', payload });
   };
 
+  // `setId` es un id LOCAL de SQLite -- sin significado para el entrenador,
+  // que no tiene esa base. exerciseInstanceId/exerciseName/setNumber sí
+  // vienen del backend (misma fila ya cargada acá) y son lo que le permite al
+  // entrenador mostrar "Sentadillas · Serie 2" en vez de nada (bug real,
+  // 2026-10-01: "no puedo ver la serie o ejercicio que se está realizando").
+  const setMeta = (setId) => {
+    const row = sets.find((s) => s.id === setId);
+    if (!row) return {};
+    return { exerciseInstanceId: row.exercise_instance_id, exerciseName: row.exercise_name, setNumber: row.set_number };
+  };
+
   const handleChannelMessage = (msg) => {
     if (msg.type !== 'control') return;
     setPendingControl({ event: msg.event, payload: msg.payload });
@@ -188,6 +199,7 @@ export function useLiveSessionRuntime() {
 
   useEffect(() => {
     if (!booted) return undefined;
+    logDebug(`[live] gps.start() gpsEnabled=${gpsEnabled}`);
     gps.start({ onPoint: handleGpsPoint });
     return () => { gps.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,7 +227,7 @@ export function useLiveSessionRuntime() {
     setPhase('running');
     await markSetStarted(setId, toIsoUtc());
     await reloadSets(run.id);
-    broadcastSetStatus({ setId, status: 'started' });
+    broadcastSetStatus({ setId, status: 'started', ...setMeta(setId) });
   };
 
   // Pausa la serie activa -- la llama tanto el propio corredor (botón
@@ -230,7 +242,7 @@ export function useLiveSessionRuntime() {
     await updateSetTimings(setId, { durationMs: snap.wallMs, activeDurationMs: snap.activeMs });
     setPhase('paused');
     await reloadSets(run.id);
-    broadcastSetStatus({ setId, status: 'paused' });
+    broadcastSetStatus({ setId, status: 'paused', ...setMeta(setId) });
   };
 
   // Reanudar es siempre una acción del propio corredor -- no hay "reanudar"
@@ -241,7 +253,7 @@ export function useLiveSessionRuntime() {
     logDebug(`[live] resumeSet(${setId})`);
     stopwatch.resumeFrom(pausedSnapshotRef.current);
     setPhase('running');
-    broadcastSetStatus({ setId, status: 'started' });
+    broadcastSetStatus({ setId, status: 'started', ...setMeta(setId) });
   };
 
   const finishSet = async (setId) => {

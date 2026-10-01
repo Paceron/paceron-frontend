@@ -116,6 +116,7 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
 
   useEffect(() => {
     if (!channel) return undefined;
+    logDebug(`[trainer-live] gps.start() canal=${channel} gpsEnabled=${gpsEnabled}`);
     gps.start({
       onPoint: (point) => {
         send('presence', undefined, { event: 'position', payload: { latitude: point.latitude, longitude: point.longitude } });
