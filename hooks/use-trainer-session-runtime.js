@@ -1,0 +1,126 @@
+import { useEffect, useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { useLiveSessionStore } from '../store/live-session-store.js';
+import { useRealtimeChannel } from './use-realtime-channel.js';
+import { useSessionGpsTracker } from './use-session-gps-tracker.js';
+import { send as sendRaw } from '../services/realtime-client.js';
+import { getSessionFeedback } from '../services/runnerSession.js';
+import { toSessionFeedbackModel } from '../services/normalizers.js';
+import { initParticipants, applyParticipantMessage } from '../utils/trainer-participant-state.js';
+import { appendFeedEvent } from '../utils/trainer-records-feed.js';
+import { logDebug } from '../utils/debug-log.js';
+
+// Motor no-visual de la pantalla en vivo del entrenador. A diferencia de
+// hooks/use-live-session-runtime.js (corredor), acá NO hay SQLite ni ningún
+// session_run local -- el entrenador es supervisor, no ejecuta series. Su GPS
+// es incondicional mientras la pantalla está montada (sin el gate por serie
+// activa que tiene el corredor, porque no hay series propias que gatear).
+export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers }) {
+  const gpsEnabled = useLiveSessionStore((s) => s.gpsEnabled);
+
+  const [participants, setParticipants] = useState(() => initParticipants(rosterMembers));
+  const [feed, setFeed] = useState([]);
+  const [bootstrapped, setBootstrapped] = useState(false);
+
+  const channel = sessionInstanceId ? `session:${sessionInstanceId}` : null;
+
+  const handleChannelMessage = (msg) => {
+    if (msg.type === 'presence') {
+      setParticipants((current) => applyParticipantMessage(current, msg, exercises));
+      return;
+    }
+    if (msg.type === 'update' && msg.event === 'set_event') {
+      const payload = msg.payload ?? {};
+      // Casing defensivo hasta confirmar Gap 20 -- probar snake primero (es el
+      // que usa el resto del DTO de workout_feedback vía REST).
+      const athleteUserId = payload.athlete_user_id ?? payload.athleteUserId;
+      if (athleteUserId == null) return;
+      const feedback = toSessionFeedbackModel(payload);
+      if (!feedback) return;
+      const member = rosterMembers.find((m) => String(m.userId) === String(athleteUserId));
+      setFeed((current) => appendFeedEvent(current, {
+        id: feedback.id,
+        athleteUserId: String(athleteUserId),
+        athleteName: member?.name ?? `Atleta ${athleteUserId}`,
+        exerciseName: feedback.exerciseName ?? '',
+        setNumber: feedback.setNumber,
+        status: feedback.completionStatus,
+        timestamp: new Date(feedback.updatedAt ?? feedback.endedAt ?? Date.now()).getTime(),
+      }));
+    }
+  };
+
+  const { status: connectionStatus, send } = useRealtimeChannel(channel, {
+    onMessage: handleChannelMessage,
+    enabled: Boolean(channel),
+    onSubscribed: () => sendRaw(channel, 'presence', undefined, { event: 'joined', payload: {} }),
+    onBeforeUnsubscribe: () => sendRaw(channel, 'presence', undefined, { event: 'left', payload: {} }),
+  });
+
+  // Bootstrap del feed: un fan-out de GET .../feedback?athlete_user_id= por
+  // cada miembro del roster (Gap 20, punto 1 -- fallback ya implementado acá
+  // desde el principio, no una rama condicional). Cubre lo que ya pasó ANTES
+  // de que el entrenador se sumara; de ahí en más, update:set_event lo sigue.
+  const feedbackQueries = useQueries({
+    queries: (rosterMembers ?? []).map((member) => ({
+      queryKey: ['session-feedback', sessionInstanceId, member.userId],
+      queryFn: () => getSessionFeedback(sessionInstanceId, member.userId),
+      enabled: Boolean(sessionInstanceId && member.userId),
+    })),
+  });
+
+  const feedbackQueriesResolved = feedbackQueries.length > 0 && feedbackQueries.every((q) => q.isFetched);
+
+  useEffect(() => {
+    if (bootstrapped || !feedbackQueriesResolved) return;
+    let bootstrapFeed = [];
+    let resolvedByAthlete = new Map();
+    feedbackQueries.forEach((query, index) => {
+      const member = rosterMembers[index];
+      const rows = (query.data?.data ?? []).map(toSessionFeedbackModel).filter(Boolean);
+      resolvedByAthlete.set(String(member.userId), rows.length);
+      for (const row of rows) {
+        bootstrapFeed = appendFeedEvent(bootstrapFeed, {
+          id: row.id,
+          athleteUserId: String(member.userId),
+          athleteName: member.name,
+          exerciseName: row.exerciseName ?? '',
+          setNumber: row.setNumber,
+          status: row.completionStatus,
+          timestamp: new Date(row.updatedAt ?? row.endedAt ?? 0).getTime(),
+        });
+      }
+    });
+    setFeed(bootstrapFeed);
+    setParticipants((current) => {
+      const next = new Map(current);
+      for (const [userId, count] of resolvedByAthlete.entries()) {
+        const existing = next.get(userId);
+        if (existing) next.set(userId, { ...existing, resolvedSetCount: count });
+      }
+      return next;
+    });
+    setBootstrapped(true);
+    logDebug(`[trainer-live] bootstrap feed OK, ${bootstrapFeed.length} eventos previos`);
+  }, [bootstrapped, feedbackQueriesResolved, feedbackQueries, rosterMembers]);
+
+  const gps = useSessionGpsTracker(gpsEnabled);
+
+  useEffect(() => {
+    if (!channel) return undefined;
+    gps.start({
+      onPoint: (point) => {
+        send('presence', undefined, { event: 'position', payload: { latitude: point.latitude, longitude: point.longitude } });
+      },
+    });
+    return () => { gps.stop(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel]);
+
+  const finalize = async () => {
+    logDebug('[trainer-live] finalize -- control:session_finished a todo el canal');
+    send('control', undefined, { event: 'session_finished', to: 'all', payload: {} });
+  };
+
+  return { connectionStatus, participants, feed, gpsEnabled, finalize };
+}
