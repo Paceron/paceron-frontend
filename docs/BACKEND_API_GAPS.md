@@ -806,3 +806,41 @@ para probar el feed en vivo de punta a punta hace falta una sesión/atleta/ejerc
 haya sincronizado antes contra ese backend, o resetear la base entre pruebas. Si a futuro se
 quisiera que una actualización (PATCH) también notifique en vivo, es un cambio de backend (el
 `Notifier.Emit` del controller solo se dispara en el branch de `Create`).
+
+## Gap 23 — `GET /users?ids=` (batch lookup) no trae `photo_url`
+
+El roster de equipo/grupo (`hooks/use-team-roster.js`, usado por la pantalla en vivo del
+entrenador para los marcadores/listas con foto+color) resuelve nombre vía
+`batchLookupUsers`/`GET /users?ids=1,2,3`. Confirmado leyendo el backend
+(`cmd/api/domains/user/batch_lookup_response.go` + `search_response.go`): `BatchLookupResponse`
+tiene el mismo shape que `SearchResultItem` --
+
+```go
+type SearchResultItem struct {
+	UserID  int64  `json:"user_id"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Email   string `json:"email"`
+}
+```
+
+-- **sin `photo_url`**, a propósito (el propio comentario del endpoint dice "resuelve nombre/
+apellido/email", nunca mencionó foto). No es un bug ni un problema de permisos del lado del
+frontend -- el dato simplemente no está en esta respuesta. Por eso un corredor con foto de perfil
+real sigue viéndose con iniciales en el mapa/listas del entrenador: `photoUrl` cae a `null` siempre
+para cualquier roster resuelto por este camino.
+
+**Pedido concreto para backend:** agregar `photo_url` (puede ser `""`/`null` si no tiene) a
+`SearchResultItem`/`BatchLookupResponse`. Es un campo más en un struct ya existente, sin impacto en
+otros consumidores de `GET /users?ids=` que ya ignoran campos nuevos. Frontend ya está listo para
+consumirlo apenas aparezca (`photoUrl: user.photo_url ?? null` en `hooks/use-team-roster.js`, sin
+cambios necesarios ahí).
+
+## Gap 24 — `WorkoutFeedbackResponse` tampoco trae `exercise_name` (ya resuelto client-side)
+
+Mismo tipo de ausencia que el Gap 23 pero sin pedido de cambio -- el feedback de una serie
+(`POST`/`GET /workout-feedback`) solo trae `assigned_exercise_id`, nunca un nombre. El feed en vivo
+del entrenador (`hooks/use-trainer-session-runtime.js`) lo resuelve contra la lista de ejercicios
+de la sesión (`utils/trainer-participant-progress.js#exerciseNameById`, ya disponible en memoria,
+sin request extra) -- documentado acá solo para que quien toque este código de nuevo no asuma que
+`exercise_name` puede llegar algún día del lado de `workout_feedback` y lo lea directo del DTO.

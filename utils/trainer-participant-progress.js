@@ -13,6 +13,17 @@ export function totalSetsForSession(exercises) {
   return (exercises ?? []).reduce((sum, exercise) => sum + Math.max(1, exercise.repeatCount ?? 1), 0);
 }
 
+// El feedback que devuelve el backend (POST/GET /workout-feedback) NUNCA trae
+// `exercise_name` -- solo `assigned_exercise_id` (confirmado contra el DTO
+// real, `WorkoutFeedbackResponse` del backend). El feed en vivo del
+// entrenador quedaba con el nombre del ejercicio vacío para TODOS los
+// registros (bug real, 2026-10-03) -- se resuelve acá contra la lista de
+// ejercicios de la sesión, que sí tiene nombre por id.
+export function exerciseNameById(exercises, exerciseInstanceId) {
+  const exercise = (exercises ?? []).find((e) => String(e.id) === String(exerciseInstanceId));
+  return exercise?.name ?? '';
+}
+
 // Próximo ejercicio/serie a realizar, derivado de resolvedSetCount asumiendo
 // que los ejercicios se hacen en el orden de la sesión -- es lo que permite
 // mostrar "Sentadillas · Serie 1" en el detalle de un participante que está

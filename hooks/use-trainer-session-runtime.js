@@ -7,6 +7,7 @@ import { send as sendRaw } from '../services/realtime-client.js';
 import { getSessionFeedback } from '../services/runnerSession.js';
 import { toSessionFeedbackModel } from '../services/normalizers.js';
 import { initParticipants, applyParticipantMessage } from '../utils/trainer-participant-state.js';
+import { exerciseNameById } from '../utils/trainer-participant-progress.js';
 import { appendFeedEvent } from '../utils/trainer-records-feed.js';
 import { logDebug } from '../utils/debug-log.js';
 
@@ -50,7 +51,11 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
         id: feedback.id,
         athleteUserId: String(athleteUserId),
         athleteName: member?.name ?? `Atleta ${athleteUserId}`,
-        exerciseName: feedback.exerciseName ?? '',
+        athletePhotoUrl: member?.photoUrl ?? null,
+        // feedback.exerciseName SIEMPRE es null (el backend no lo manda, solo
+        // assignedExerciseId) -- se resuelve contra la lista de ejercicios de
+        // la sesión.
+        exerciseName: exerciseNameById(exercises, feedback.assignedExerciseId),
         setNumber: feedback.setNumber,
         status: feedback.completionStatus,
         timestamp: new Date(feedback.updatedAt ?? feedback.endedAt ?? Date.now()).getTime(),
@@ -92,7 +97,8 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
           id: row.id,
           athleteUserId: String(member.userId),
           athleteName: member.name,
-          exerciseName: row.exerciseName ?? '',
+          athletePhotoUrl: member.photoUrl ?? null,
+          exerciseName: exerciseNameById(exercises, row.assignedExerciseId),
           setNumber: row.setNumber,
           status: row.completionStatus,
           timestamp: new Date(row.updatedAt ?? row.endedAt ?? 0).getTime(),
