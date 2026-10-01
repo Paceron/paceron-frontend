@@ -750,3 +750,59 @@ atribuir ningún mensaje a nadie). Ya corregido en frontend:
 
 **`GET /session-instances/:id/feedback` sin `?athlete_user_id=` (si devuelve todos los atletas)
 sigue sin confirmar** -- el fan-out de `useQueries` (Task 7) sigue siendo el camino, sin cambios.
+
+## Gap 21 — RESUELTO en frontend (2026-10-02): `event` y `channel` no sobreviven el relay de presence/control
+
+Encontrado con logs reales de dispositivo (bloques `[realtime] recibido canal=undefined
+type=presence event=undefined from=N` de ambos lados, corredor y entrenador) tras el fix del Gap
+20 -- `from` ya se parseaba bien, pero `presence`/`control` seguían sin atribuirse a nadie.
+Confirmado leyendo `cmd/api/realtime/protocol.go` y `connection.go`:
+
+1. **`clientMessage` (decode de lo que manda el cliente) solo tiene `Type`/`Channel`/`Payload`.**
+   Cualquier otro campo de nivel raíz que el frontend mande (`event`, `to`, `ts`) lo descarta el
+   propio `json.Unmarshal` de Go al no existir ese campo en el struct -- se pierde ANTES de llegar
+   siquiera al Hub.
+2. **El relay server→cliente arma el frame saliente con solo `{type, from, payload}`**
+   (`connection.go#apply`: `&outboundMessage{Type: msg.Type, From: sc.userID, Payload: msg.Payload}`)
+   -- nunca incluye `channel` (a diferencia de `update:set_event`, que sí lo trae). Confirma el
+   ejemplo de `docs/REALTIME_WS.md` (`{"type":"presence","from":12,"payload":{...}}`, sin
+   `channel` ahí tampoco).
+
+**Consecuencia:** el diseño original del frontend (spec 2026-09-28) ponía `event` como hermano de
+`payload` a nivel raíz del frame (`{type, channel, event, payload}`) -- ese campo nunca sobrevivía
+ni la ida (se descarta al decodificar en el servidor) ni la vuelta (el relay no lo reconstruye).
+`presence`/`control` llegaban con type/from intactos pero sin ninguna otra información útil --
+"No se unió" para TODOS los corredores en TODAS las condiciones, sin importar los fixes de `from`.
+
+**Fix en frontend, sin tocar el backend** (`services/realtime-client.js`):
+- `send()` ahora pliega `event` DENTRO de `payload` antes de mandar (`{event, ...payloadReal}`) --
+  `payload` es el único campo que el backend retransmite intacto (opaco, nunca lo toca).
+- `dispatchMessage()` deshace el pliegue al recibir (saca `event` de `payload`, lo vuelve a exponer
+  como `msg.event` de nivel raíz) para que el resto del código (reducers) no tenga que saber de
+  este detalle del wire format.
+- Cuando el servidor no manda `channel` (presence/control), se resuelve a la única suscripción
+  activa de la conexión (`subscribedChannels`, tamaño 1 -- el caso real de esta app hoy, una sesión
+  en vivo a la vez). Con más de un canal activo simultáneo el mensaje queda sin destino resoluble y
+  se descarta (no se adivina a cuál pertenece) -- documentado para cuando se agregue multi-canal
+  real a futuro.
+
+**Posible mejora futura del lado backend** (no urgente, no bloquea nada hoy): si el gateway alguna
+vez necesita soportar más de un canal activo simultáneo por conexión, el relay de presence/control
+va a necesitar empezar a incluir `channel` en el frame saliente (mismo criterio que ya usa
+`update:set_event`) -- la resolución por "única suscripción" deja de alcanzar ahí.
+
+## Gap 22 — un 409 en `POST /workout-feedback` nunca dispara `update:set_event` (ni aunque el valor cambie)
+
+No es un bug, es consecuencia directa de "Solo Create emite" (`docs/REALTIME_WS.md` §5) + el índice
+único `unique_feedback_per_set` -- documentado acá porque generó confusión real probando en vivo:
+repetir la MISMA sesión/atleta/ejercicio/serie entre varios intentos de prueba (cada uno con un
+`run` local nuevo, ya que el `run` es puramente local a SQLite) siempre pega contra la fila que ya
+existe del lado del backend (la unicidad es por `assigned_session_id` + `exercise_instance_id` +
+`athlete_user_id` + `set_number`, ninguno de los cuales depende del `run` local) → 409 → `syncRun`
+lo marca `synced` y sigue (`services/session-sync.js`, sin PATCH de respaldo acá, a diferencia del
+flujo manual de la pantalla de revisión) → ningún evento en vivo para el entrenador, aunque el
+corredor haya "completado la serie" en su pantalla. **No hay nada que arreglar en el cliente** --
+para probar el feed en vivo de punta a punta hace falta una sesión/atleta/ejercicio que nunca se
+haya sincronizado antes contra ese backend, o resetear la base entre pruebas. Si a futuro se
+quisiera que una actualización (PATCH) también notifique en vivo, es un cambio de backend (el
+`Notifier.Emit` del controller solo se dispara en el branch de `Create`).

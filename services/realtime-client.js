@@ -72,6 +72,22 @@ function scheduleReconnect() {
   }, delay);
 }
 
+// El relay de presence/control del backend ARMA el frame saliente con SOLO
+// {type, from, payload} (confirmado leyendo
+// cmd/api/realtime/connection.go#apply: `&outboundMessage{Type: msg.Type,
+// From: sc.userID, Payload: msg.Payload}`, sin `Channel` nunca) -- a
+// diferencia de `update:set_event`, que sí lo incluye. Con un único canal
+// activo por conexión (el caso real de esta app: una sesión en vivo a la
+// vez), la lista de canales suscriptos tiene un solo elemento -- se usa como
+// fallback cuando el servidor no mandó `channel`. Con más de un canal activo
+// a la vez, un mensaje sin `channel` queda sin destino resoluble (se
+// descarta, no se adivina a cuál de varios pertenece) -- no es el caso de
+// hoy, pero que quede explícito para cuando se agregue multi-canal real.
+function soleSubscribedChannel() {
+  if (subscribedChannels.size !== 1) return undefined;
+  return subscribedChannels.values().next().value;
+}
+
 function dispatchMessage(raw) {
   const msg = parseMessage(raw);
   if (!msg) return;
@@ -99,18 +115,32 @@ function dispatchMessage(raw) {
     logDebug(`[realtime] error del servidor: ${msg.message ?? '(sin mensaje)'}`);
     return;
   }
+  // `event` viaja DENTRO de `payload` para presence/control -- ver el
+  // comentario en send() más abajo para el porqué (se pierde en el relay si
+  // viaja a nivel raíz). Se resuelve acá UNA vez y se re-expone como
+  // `msg.event` (con el payload real sin el campo event mezclado) para que el
+  // resto del código (reducers, logs) pueda seguir leyendo `msg.event` como
+  // si fuera parte nativa del protocolo.
+  let resolvedChannel = msg.channel;
+  if ((msg.type === 'presence' || msg.type === 'control') && msg.payload && typeof msg.payload === 'object') {
+    const { event, ...restPayload } = msg.payload;
+    msg.event = event;
+    msg.payload = restPayload;
+    if (resolvedChannel == null) resolvedChannel = soleSubscribedChannel();
+  }
+
   // Traza de diagnóstico para presence/control -- joined/left/set_status (poco
   // frecuentes) siempre; position (cada ~1s por corredor) solo la primera vez
   // por canal, para confirmar que llega AL MENOS una sin inundar el log.
   if (msg.type === 'presence' || msg.type === 'control') {
     if (msg.event !== 'position') {
-      logDebug(`[realtime] recibido canal=${msg.channel} type=${msg.type} event=${msg.event} from=${msg.from}`);
-    } else if (!loggedFirstPosition.has(msg.channel)) {
-      loggedFirstPosition.add(msg.channel);
-      logDebug(`[realtime] primera position recibida canal=${msg.channel} from=${msg.from}`);
+      logDebug(`[realtime] recibido canal=${resolvedChannel} type=${msg.type} event=${msg.event} from=${msg.from}`);
+    } else if (!loggedFirstPosition.has(resolvedChannel)) {
+      loggedFirstPosition.add(resolvedChannel);
+      logDebug(`[realtime] primera position recibida canal=${resolvedChannel} from=${msg.from}`);
     }
   }
-  const listeners = channelListeners.get(msg.channel);
+  const listeners = channelListeners.get(resolvedChannel);
   if (!listeners) return;
   for (const listener of listeners) listener(msg);
 }
@@ -189,10 +219,23 @@ export function send(channel, type, payload, extra = {}) {
     }
     return; // efímero -- sin cola, se descarta si no hay conexión
   }
+  // `event` (y `ts`) viajaban a nivel raíz del frame -- confirmado leyendo
+  // cmd/api/realtime/protocol.go#clientMessage (backend) que SOLO decodifica
+  // `type`/`channel`/`payload`; cualquier otro campo de nivel raíz lo
+  // descarta el propio json.Unmarshal de Go al ingresar, y ADEMÁS el relay
+  // server→cliente arma el frame saliente con solo {type, from, payload}
+  // (connection.go#apply) -- `event` nunca sobrevivía el viaje de ida y
+  // vuelta. `payload` es el ÚNICO campo opaco que el backend retransmite
+  // intacto, así que `event` tiene que viajar ADENTRO de él. Bug real,
+  // 2026-10-02: "No se unió" persistía para TODOS los corredores incluso
+  // después de corregir el parseo de `from` -- el mensaje nunca traía nada
+  // de información del otro lado en absoluto.
+  const realPayload = payload ?? extra.payload;
+  const wirePayload = extra.event !== undefined ? { event: extra.event, ...(realPayload ?? {}) } : realPayload;
   if (extra?.event !== 'position') {
     logDebug(`[realtime] send() canal=${channel} type=${type} event=${extra?.event}`);
   }
-  socket.send(JSON.stringify(buildMessage({ channel, type, payload, ...extra })));
+  socket.send(JSON.stringify(buildMessage({ channel, type, payload: wirePayload, to: extra.to })));
 }
 
 export function on(channel, callback) {
