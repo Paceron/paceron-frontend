@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useUser } from '../../hooks/use-user.js';
 import { useTrainerSessionRuntime } from '../../hooks/use-trainer-session-runtime.js';
 import { computeBounds } from '../../utils/map-bounds.js';
+import { filterByName } from '../../utils/attendance-filter.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { PARTICIPANT_STATUS } from '../../utils/trainer-participant-state.js';
 import { colorForUserId, TRAINER_MARKER_COLOR } from '../../utils/participant-color.js';
@@ -245,6 +246,11 @@ function DragToFinishButton({ onTrigger, idPrefix, label }) {
 function ParticipantsListModal({ visible, onClose, participants, onSelectParticipant }) {
   const colors = useThemeColors();
   const idPrefix = 'trainer-session-live-participants-modal';
+  const [query, setQuery] = useState('');
+  // filterByName (misma util del pre-start) preserva el orden del array de
+  // entrada por substring-filter -- como `participants` ya llega ordenado
+  // alfabéticamente desde el padre, filtrar acá no lo desordena.
+  const visibleParticipants = filterByName(participants, query);
 
   return (
     <Modal animationType="fade" nativeID={`${idPrefix}`} onRequestClose={onClose} testID={`${idPrefix}`} transparent visible={visible}>
@@ -257,8 +263,17 @@ function ParticipantsListModal({ visible, onClose, participants, onSelectPartici
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
               </Pressable>
             </View>
+            <TextInput
+              className="mb-2 h-10 rounded-full border border-slate-200 bg-white px-4 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              nativeID={`${idPrefix}-search`}
+              onChangeText={setQuery}
+              placeholder="Buscar participante"
+              placeholderTextColor={colors.onSurfaceVariant}
+              testID={`${idPrefix}-search`}
+              value={query}
+            />
             <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
-              {participants.map((participant) => {
+              {visibleParticipants.map((participant) => {
                 const activity = currentActivityLabel(participant);
                 return (
                   <Pressable
@@ -288,6 +303,11 @@ function ParticipantsListModal({ visible, onClose, participants, onSelectPartici
                   </Pressable>
                 );
               })}
+              {visibleParticipants.length === 0 && (
+                <Text className="p-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
+                  Sin coincidencias.
+                </Text>
+              )}
             </ScrollView>
           </SafeAreaView>
         </Pressable>
@@ -311,15 +331,29 @@ function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilterAthle
                 <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
               </Pressable>
             </View>
-            <SearchablePickerField
-              dense
-              idPrefix={`${idPrefix}-filter`}
-              label="Filtrar por corredor"
-              onChange={onChangeFeedFilter}
-              options={feedOptions}
-              placeholder="Todos"
-              value={feedFilterAthleteId}
-            />
+            <View className="flex-row items-end gap-2" nativeID={`${idPrefix}-filter-row`} testID={`${idPrefix}-filter-row`}>
+              <SearchablePickerField
+                className="mb-0 flex-1"
+                dense
+                idPrefix={`${idPrefix}-filter`}
+                label="Filtrar por corredor"
+                onChange={onChangeFeedFilter}
+                options={feedOptions}
+                placeholder="Todos"
+                value={feedFilterAthleteId}
+              />
+              {feedFilterAthleteId != null && (
+                <Pressable
+                  accessibilityLabel="Quitar filtro"
+                  className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 active:opacity-70 dark:border-slate-700"
+                  nativeID={`${idPrefix}-filter-clear`}
+                  onPress={() => onChangeFeedFilter(null)}
+                  testID={`${idPrefix}-filter-clear`}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={20} />
+                </Pressable>
+              )}
+            </View>
             <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
               {feed.map((event) => (
                 <View className="border-b border-slate-100 p-3 dark:border-slate-800" key={event.id} nativeID={`${idPrefix}-item-${event.id}`} testID={`${idPrefix}-item-${event.id}`}>
