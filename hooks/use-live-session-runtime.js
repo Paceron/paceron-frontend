@@ -93,7 +93,13 @@ export function useLiveSessionRuntime() {
   const setMeta = (setId) => {
     const row = sets.find((s) => s.id === setId);
     if (!row) return {};
-    return { exerciseInstanceId: row.exercise_instance_id, exerciseName: row.exercise_name, setNumber: row.set_number };
+    // row.set_number es 0-indexado en el almacenamiento local (ver
+    // session-db.js#createRun, `for (let setNumber = 0; ...)`) -- mismo
+    // criterio ya documentado en utils/session-sync-payload.js, "Serie N" en
+    // pantalla siempre le suma 1. Sin este +1, un ejercicio de UNA sola serie
+    // (setNumber local 0) le aparecía al entrenador como "Serie 0" (bug real,
+    // 2026-10-03).
+    return { exerciseInstanceId: row.exercise_instance_id, exerciseName: row.exercise_name, setNumber: row.set_number + 1 };
   };
 
   const handleChannelMessage = (msg) => {
