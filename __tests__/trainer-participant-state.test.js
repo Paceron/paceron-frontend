@@ -26,17 +26,19 @@ describe('initParticipants', () => {
       status: PARTICIPANT_STATUS.NOT_JOINED,
       position: null,
       resolvedSetCount: 0,
+      currentExerciseName: null,
+      currentSetNumber: null,
     });
   });
 });
 
 describe('applyParticipantMessage', () => {
-  test('presence joined marca joined=true y pasa a in_progress', () => {
+  test('presence joined marca joined=true y pasa a connected (todavía no arrancó ninguna serie)', () => {
     const initial = initParticipants(ROSTER);
     const msg = { type: 'presence', event: 'joined', payload: {}, from: 12 };
     const next = applyParticipantMessage(initial, msg, EXERCISES);
     expect(next.get('12').joined).toBe(true);
-    expect(next.get('12').status).toBe(PARTICIPANT_STATUS.IN_PROGRESS);
+    expect(next.get('12').status).toBe(PARTICIPANT_STATUS.CONNECTED);
     // No muta el mapa original
     expect(initial.get('12').joined).toBe(false);
   });
@@ -46,7 +48,7 @@ describe('applyParticipantMessage', () => {
     const joined = applyParticipantMessage(initial, { type: 'presence', event: 'joined', payload: {}, from: 12 }, EXERCISES);
     const left = applyParticipantMessage(joined, { type: 'presence', event: 'left', payload: {}, from: 12 }, EXERCISES);
     expect(left.get('12').joined).toBe(false);
-    expect(left.get('12').status).toBe(PARTICIPANT_STATUS.IN_PROGRESS);
+    expect(left.get('12').status).toBe(PARTICIPANT_STATUS.CONNECTED);
   });
 
   test('presence position actualiza la posición', () => {
@@ -56,12 +58,17 @@ describe('applyParticipantMessage', () => {
     expect(next.get('13').position).toEqual({ latitude: -34.6, longitude: -58.4, ts: 1000 });
   });
 
-  test('set_status started -> in_progress, paused -> paused', () => {
+  test('set_status started -> in_progress con exercise/set actual, paused -> paused sin perderlo', () => {
     const initial = initParticipants(ROSTER);
-    const started = applyParticipantMessage(initial, { type: 'presence', event: 'set_status', payload: { setId: 1, status: 'started' }, from: 12 }, EXERCISES);
+    const started = applyParticipantMessage(initial, { type: 'presence', event: 'set_status', payload: { setId: 1, status: 'started', exerciseInstanceId: 500, exerciseName: 'Caminata', setNumber: 1 }, from: 12 }, EXERCISES);
     expect(started.get('12').status).toBe(PARTICIPANT_STATUS.IN_PROGRESS);
+    expect(started.get('12').currentExerciseName).toBe('Caminata');
+    expect(started.get('12').currentSetNumber).toBe(1);
     const paused = applyParticipantMessage(started, { type: 'presence', event: 'set_status', payload: { setId: 1, status: 'paused' }, from: 12 }, EXERCISES);
     expect(paused.get('12').status).toBe(PARTICIPANT_STATUS.PAUSED);
+    // paused no manda exerciseName/setNumber de nuevo -- se conserva lo último sabido
+    expect(paused.get('12').currentExerciseName).toBe('Caminata');
+    expect(paused.get('12').currentSetNumber).toBe(1);
   });
 
   test('set_status finished suma 1 al resolvedSetCount, completa si llega al total', () => {

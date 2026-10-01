@@ -7,6 +7,10 @@ import { countSetsForExercise, totalSetsForSession } from './trainer-participant
 // llena resolvedSetCount al abrir; de ahí en más este reducer sigue solo).
 export const PARTICIPANT_STATUS = {
   NOT_JOINED: 'not_joined',
+  // Se unió al canal pero todavía no arrancó ninguna serie (recién entró, o
+  // está entre series) -- antes esto se mostraba igual que IN_PROGRESS ("En
+  // curso"), confundiendo "está conectado" con "está corriendo ahora mismo".
+  CONNECTED: 'connected',
   IN_PROGRESS: 'in_progress',
   PAUSED: 'paused',
   COMPLETED: 'completed',
@@ -21,6 +25,10 @@ function emptyParticipant(userId, member) {
     status: PARTICIPANT_STATUS.NOT_JOINED,
     position: null,
     resolvedSetCount: 0,
+    // Último ejercicio/serie conocido -- solo tiene sentido mientras
+    // IN_PROGRESS/PAUSED (ver UI); null el resto del tiempo.
+    currentExerciseName: null,
+    currentSetNumber: null,
   };
 }
 
@@ -59,7 +67,7 @@ export function applyParticipantMessage(participants, msg, exercises) {
     next.set(userId, {
       ...current,
       joined: true,
-      status: current.status === PARTICIPANT_STATUS.NOT_JOINED ? PARTICIPANT_STATUS.IN_PROGRESS : current.status,
+      status: current.status === PARTICIPANT_STATUS.NOT_JOINED ? PARTICIPANT_STATUS.CONNECTED : current.status,
     });
     return next;
   }
@@ -78,17 +86,36 @@ export function applyParticipantMessage(participants, msg, exercises) {
   }
 
   if (msg.event === 'set_status') {
-    const { status, scope, exerciseInstanceId } = msg.payload ?? {};
+    // exerciseName/setNumber viajan desde Task del corredor que enriquece
+    // broadcastSetStatus (use-live-session-runtime.js) -- antes solo mandaba
+    // un `setId` local (un id de SQLite del corredor, sin significado acá), y
+    // el entrenador no tenía forma de mostrar QUÉ está hacienda cada uno.
+    const { status, scope, exerciseInstanceId, exerciseName, setNumber } = msg.payload ?? {};
     const addedSets = scope === 'exercise' ? countSetsForExercise(exercises, exerciseInstanceId) : (status === 'finished' || status === 'skipped') ? 1 : 0;
     const resolvedSetCount = current.resolvedSetCount + addedSets;
     const total = totalSetsForSession(exercises);
 
     let nextStatus = current.status;
-    if (status === 'started') nextStatus = PARTICIPANT_STATUS.IN_PROGRESS;
-    else if (status === 'paused') nextStatus = PARTICIPANT_STATUS.PAUSED;
-    else if (addedSets > 0) nextStatus = total > 0 && resolvedSetCount >= total ? PARTICIPANT_STATUS.COMPLETED : PARTICIPANT_STATUS.IN_PROGRESS;
+    let currentExerciseName = current.currentExerciseName;
+    let currentSetNumber = current.currentSetNumber;
+    if (status === 'started') {
+      nextStatus = PARTICIPANT_STATUS.IN_PROGRESS;
+      currentExerciseName = exerciseName ?? current.currentExerciseName;
+      currentSetNumber = setNumber ?? current.currentSetNumber;
+    } else if (status === 'paused') {
+      nextStatus = PARTICIPANT_STATUS.PAUSED;
+      // mantiene currentExerciseName/currentSetNumber -- sigue siendo lo
+      // último que estaba haciendo, solo cambia el estado.
+    } else if (addedSets > 0) {
+      nextStatus = total > 0 && resolvedSetCount >= total ? PARTICIPANT_STATUS.COMPLETED : PARTICIPANT_STATUS.IN_PROGRESS;
+      // finished/skipped: esa serie ya no es "lo que está haciendo ahora" --
+      // se limpia hasta que llegue el próximo `started`, para no mostrar la
+      // serie anterior como si siguiera en curso en el hueco entre series.
+      currentExerciseName = null;
+      currentSetNumber = null;
+    }
 
-    next.set(userId, { ...current, resolvedSetCount, status: nextStatus });
+    next.set(userId, { ...current, resolvedSetCount, status: nextStatus, currentExerciseName, currentSetNumber });
     return next;
   }
 
