@@ -392,8 +392,9 @@ function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilterAthle
             </View>
             <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
               {feed.map((event) => (
-                <View className="border-b border-slate-100 p-3 dark:border-slate-800" key={event.id} nativeID={`${idPrefix}-item-${event.id}`} testID={`${idPrefix}-item-${event.id}`}>
-                  <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${idPrefix}-item-${event.id}-text`} testID={`${idPrefix}-item-${event.id}-text`}>
+                <View className="flex-row items-center gap-2.5 border-b border-slate-100 p-3 dark:border-slate-800" key={event.id} nativeID={`${idPrefix}-item-${event.id}`} testID={`${idPrefix}-item-${event.id}`}>
+                  <ParticipantAvatar color={colorForUserId(event.athleteUserId)} idPrefix={`${idPrefix}-item-${event.id}`} name={event.athleteName} photoUrl={event.athletePhotoUrl} size={32} />
+                  <Text className="flex-1 text-sm text-slate-900 dark:text-white" nativeID={`${idPrefix}-item-${event.id}-text`} testID={`${idPrefix}-item-${event.id}-text`}>
                     {event.athleteName} · {event.exerciseName} · Serie {event.setNumber} · {event.status === 'skipped' ? 'Salteada' : 'Completada'}
                   </Text>
                 </View>
@@ -553,8 +554,19 @@ function TrainerSessionLiveScreenContent() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="trainer-session-live-root" testID="trainer-session-live-root">
-      <View className="items-center py-2" nativeID="trainer-session-live-banner-container" testID="trainer-session-live-banner-container">
-        {connectionStatus && <ConnectionBanner status={connectionStatus} />}
+      <View className="flex-row items-center justify-between px-4 py-2" nativeID="trainer-session-live-banner-container" testID="trainer-session-live-banner-container">
+        <Pressable
+          className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+          nativeID="trainer-session-live-back-button"
+          onPress={() => router.back()}
+          testID="trainer-session-live-back-button"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+        </Pressable>
+        <View className="flex-1 items-center" nativeID="trainer-session-live-banner-center" testID="trainer-session-live-banner-center">
+          {connectionStatus && <ConnectionBanner status={connectionStatus} />}
+        </View>
+        <View className="w-9" nativeID="trainer-session-live-banner-spacer" testID="trainer-session-live-banner-spacer" />
       </View>
 
       <View className="flex-1 overflow-hidden" nativeID="trainer-session-live-map-container" testID="trainer-session-live-map-container">
