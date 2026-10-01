@@ -33,7 +33,7 @@ describe('buildSetPayload', () => {
       athlete_user_id: 99,
       report_source: 'corredor',
       session_date: '2026-09-24',
-      set_number: 0,
+      set_number: 1,
       completion_status: COMPLETION_STATUS.COMPLETED,
       started_at: '2026-09-24T10:00:00.000Z',
       ended_at: '2026-09-24T10:00:12.500Z',
@@ -55,6 +55,14 @@ describe('buildSetPayload', () => {
     expect(payload.duration_ms).toBeNull();
     expect(payload.active_duration_ms).toBeNull();
     expect(payload.distance_meters).toBeNull();
+  });
+
+  test('set_number local 0-indexado se manda 1-indexado (convención del backend)', () => {
+    const payload = buildSetPayload({
+      set: { id: 7, exercise_instance_id: '3', set_number: 2, status: 'finished' },
+      run: RUN,
+    });
+    expect(payload.set_number).toBe(3);
   });
 
   test('coerce ids a Number incluso desde strings', () => {
