@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
-import { useAuthStore } from '../../store/auth-store.js';
+import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
@@ -62,7 +63,7 @@ function TrainerSessionPreStartScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
-  const userId = useAuthStore((s) => s.userId);
+  const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const [participantsExpanded, setParticipantsExpanded] = useState(false);
   const [participantsQuery, setParticipantsQuery] = useState('');
   const [attendanceVisible, setAttendanceVisible] = useState(false);
@@ -77,7 +78,21 @@ function TrainerSessionPreStartScreenContent() {
   const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name));
   const visibleMembers = participantsExpanded ? filterByName(sortedMembers, participantsQuery) : sortedMembers.slice(0, PARTICIPANTS_COLLAPSED_COUNT);
 
-  const handlePlay = () => {
+  // Permiso GPS una sola vez por sesión, mismo patrón que el handlePlay del
+  // corredor (session-pre-start-screen.jsx) -- el entrenador también comparte
+  // su posición real en el mapa (useTrainerSessionRuntime depende de
+  // gpsEnabled vía useLiveSessionStore). Solo el permiso importa acá, sin
+  // getCurrentPositionAsync bloqueante (ya descartado del lado del corredor
+  // por no respetar su propio timeout).
+  const handlePlay = async () => {
+    let gpsEnabled = false;
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      gpsEnabled = Boolean(permission.granted);
+    } catch {
+      gpsEnabled = false;
+    }
+    setGpsEnabled(gpsEnabled);
     router.push('/trainer-session-live');
   };
 
