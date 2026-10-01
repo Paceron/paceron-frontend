@@ -532,6 +532,94 @@ export function toPaymentModel(dto) {
   };
 }
 
+// Historial de pagos del entrenador (GET /payments/received y /payments/mine,
+// ver services/payment-history.js). `netAmount` queda null cuando Mercado Pago
+// no informó el neto: nunca se calcula en el cliente.
+export function toReceivedPaymentModel(dto) {
+  if (!dto) return null;
+  const payerName = [dto.payer?.name, dto.payer?.surname].filter(Boolean).join(' ');
+  return {
+    id: String(dto.id),
+    mpPaymentId: dto.mp_payment_id,
+    status: dto.status,
+    statusGroup: dto.status_group,
+    statusDetail: dto.status_detail,
+    grossAmount: dto.gross_amount,
+    netAmount: dto.net_amount ?? null,
+    currencyId: dto.currency_id,
+    paymentMethodId: dto.payment_method_id,
+    createdAt: dto.created_at,
+    installmentId: dto.installment_id,
+    installmentNumber: dto.installment_number,
+    team: { id: String(dto.team?.id ?? ''), name: dto.team?.name ?? '' },
+    payer: { id: String(dto.payer?.id ?? ''), fullName: payerName, email: dto.payer?.email ?? '' },
+  };
+}
+
+// Pago del historial del usuario (GET /payments/history). Según `type` viene
+// `tier`, o `team` + `trainer`; el otro par queda en null.
+export function toHistoryPaymentModel(dto) {
+  if (!dto) return null;
+  const trainerName = [dto.trainer?.name, dto.trainer?.surname].filter(Boolean).join(' ');
+  return {
+    id: String(dto.id),
+    mpPaymentId: dto.mp_payment_id,
+    type: dto.type,
+    status: dto.status,
+    statusGroup: dto.status_group,
+    statusDetail: dto.status_detail,
+    amount: dto.amount,
+    currencyId: dto.currency_id,
+    paymentMethodId: dto.payment_method_id,
+    createdAt: dto.created_at,
+    installmentId: dto.installment_id,
+    installmentNumber: dto.installment_number,
+    dueDate: dto.due_date ?? null,
+    tier: dto.tier ? { id: String(dto.tier.id), name: dto.tier.name, roleName: dto.tier.role_name } : null,
+    team: dto.team ? { id: String(dto.team.id), name: dto.team.name } : null,
+    trainer: dto.trainer ? { id: String(dto.trainer.id), fullName: trainerName } : null,
+  };
+}
+
+// Página de un listado paginado del backend ({payments, has_more}).
+export function toPaymentsPageModel(dto, mapItem) {
+  return {
+    items: (dto?.payments ?? []).map(mapItem),
+    hasMore: Boolean(dto?.has_more),
+  };
+}
+
+function toAmountBucket(dto) {
+  return {
+    grossAmount: dto.gross_amount ?? 0,
+    netAmount: dto.net_amount ?? null,
+    approvedCount: dto.approved_count ?? 0,
+    netKnownCount: dto.net_known_count ?? 0,
+  };
+}
+
+// GET /payments/received/summary. `monthly` viene en orden y el último es el
+// mes actual.
+export function toReceivedSummaryModel(dto) {
+  if (!dto) return null;
+  return {
+    currencyId: dto.currency_id,
+    months: dto.months,
+    monthly: (dto.monthly ?? []).map((m) => ({ month: m.month, ...toAmountBucket(m) })),
+    byTeam: (dto.by_team ?? []).map((t) => ({
+      teamId: String(t.team_id),
+      teamName: t.team_name,
+      ...toAmountBucket(t),
+      pendingCount: t.pending_count ?? 0,
+      rejectedCount: t.rejected_count ?? 0,
+    })),
+    pendingCount: dto.pending_count ?? 0,
+    rejectedCount: dto.rejected_count ?? 0,
+    earliestMonth: dto.earliest_month ?? null,
+    generatedAt: dto.generated_at,
+  };
+}
+
 // Fase 1 de pagos — GET /users/{id}/subscriptions/current y la
 // respuesta de PUT /users/{id}/roles/{role_id}/tier comparten
 // exactamente el mismo shape (ChangeTierResponse ===

@@ -1,4 +1,4 @@
-import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, attendanceRoute, checkinRoute } from '../routes/catalog.js';
+import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, attendanceRoute, checkinRoute, paymentsRoute } from '../routes/catalog.js';
 
 describe('routes catalog', () => {
   test('exposes the home route as the first navigation route', () => {
@@ -43,6 +43,26 @@ describe('getRoutesByRole', () => {
       expect(routes).toContainEqual(teamsRoute);
       expect(routes).toContainEqual(notificationsRoute);
     });
+  });
+});
+
+describe('paymentsRoute', () => {
+  test('es la última ruta para los dos roles y en las dos plataformas, después de Entrenamientos', () => {
+    ['runner', 'trainer'].forEach((role) => {
+      [true, false].forEach((isNative) => {
+        const routes = getRoutesByRole(role, isNative);
+        expect(routes[routes.length - 1]).toBe(paymentsRoute);
+        const calendarIndex = routes.findIndex((r) => r.label === 'Entrenamientos');
+        expect(calendarIndex).toBeGreaterThan(-1);
+        expect(routes.indexOf(paymentsRoute)).toBeGreaterThan(calendarIndex);
+      });
+    });
+  });
+
+  test('apunta al historial de pagos y no depende del rol', () => {
+    expect(paymentsRoute.href).toBe('/profile/payments');
+    expect(paymentsRoute.role).toBeUndefined();
+    expect(paymentsRoute.mobileOnly).toBeUndefined();
   });
 });
 

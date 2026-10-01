@@ -1,33 +1,56 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useThemeColors } from '../../theme/colors.js';
 
-// El padding horizontal es más chico que el resto de las cards (px-1.5 en
-// vez de p-4 parejo) porque las etiquetas más largas — "Entrenamientos
-// realizados" en el detalle de equipo — necesitan ese ancho extra para
-// partir en "Entrenamientos" / "realizados" en mobile (varios tiles
-// angostos, flex-1). Sin esto, la palabra no entraba y se cortaba mitad de
-// palabra en vez de partir prolijo entre las dos. text-[11px] en vez de
-// text-xs (12px) da un margen extra por las dudas en pantallas más
-// angostas — sin numberOfLines: se deja crecer a 2 líneas libremente, no
-// se trunca.
+// Tile de un número con ícono y etiqueta. Extraído de team-detail-screen.jsx
+// para reusarlo en el dashboard de pagos. `idPrefix` arma los nativeID/testID
+// (`${idPrefix}-${label}`), así team-detail conserva sus ids de siempre.
 //
-// `idPrefix` es requerido a propósito: la regla `local/require-native-id`
-// exige ids, y hardcodear un prefijo acá haría que dos tiles del mismo
-// árbol colisionaran apenas aparece un segundo consumidor.
-export function StatTile({ icon, label, value, colors, idPrefix }) {
+// El padding horizontal es más chico que en el resto de las cards (px-1.5 en
+// vez de p-4 parejo) porque las etiquetas largas ("Entrenamientos
+// realizados") necesitan ese ancho para partir entre palabras en mobile, con
+// 3 tiles flex-1. La etiqueta va en text-[11px] y sin numberOfLines: se deja
+// crecer a 2 líneas en vez de truncarse. Con `onPress` se vuelve presionable
+// (ej. tocar "Rechazados" filtra la lista). `actionHint` es la pista de que el
+// tile hace algo ("Tocá para filtrar"): sin ella un tile presionable se ve
+// igual que uno que solo muestra un número. Sin hint, actionHint ni onPress se
+// ve exactamente igual que antes: attendance-metric-cards.jsx alinea sus
+// tarjetas contra esa altura. `colors` es opcional (algunos consumidores lo
+// pasan); si no viene, sale del tema.
+export function StatTile({ icon, label, value, hint, actionHint, onPress, active = false, idPrefix = 'stat-tile', colors: colorsProp }) {
+  const themeColors = useThemeColors();
+  const colors = colorsProp ?? themeColors;
+  const id = `${idPrefix}-${label}`;
+  const Container = onPress ? Pressable : View;
+  const border = active ? 'border-primary' : 'border-slate-200 dark:border-slate-700';
+
   return (
-    <View
-      className="flex-1 items-center rounded-2xl border border-slate-200 bg-white px-1.5 py-4 dark:border-slate-700 dark:bg-surface"
-      nativeID={`${idPrefix}-${label}`}
-      testID={`${idPrefix}-${label}`}
+    <Container
+      className={`flex-1 items-center rounded-2xl border bg-white px-1.5 py-4 dark:bg-surface ${border} ${onPress ? 'hover:opacity-90 active:opacity-80' : ''}`}
+      nativeID={id}
+      onPress={onPress}
+      testID={id}
     >
       <MaterialCommunityIcons color={colors.primary} name={icon} size={22} style={{ marginBottom: 6 }} />
-      <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-${label}-value`} testID={`${idPrefix}-${label}-value`}>
+      <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID={`${id}-value`} testID={`${id}-value`}>
         {value}
       </Text>
-      <Text className="text-center text-[11px] leading-4 text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-${label}-label`} testID={`${idPrefix}-${label}-label`}>
+      <Text className="text-center text-[11px] leading-4 text-slate-500 dark:text-slate-400" nativeID={`${id}-label`} testID={`${id}-label`}>
         {label}
       </Text>
-    </View>
+      {hint ? (
+        <Text className="mt-1 text-center text-[11px] leading-4 text-slate-400 dark:text-slate-500" nativeID={`${id}-hint`} testID={`${id}-hint`}>
+          {hint}
+        </Text>
+      ) : null}
+      {actionHint ? (
+        <View className="mt-1.5 flex-row items-center justify-center" nativeID={`${id}-action`} testID={`${id}-action`}>
+          <Text className="text-center text-[11px] font-semibold leading-4 text-primary" nativeID={`${id}-action-text`} testID={`${id}-action-text`}>
+            {actionHint}
+          </Text>
+          <MaterialCommunityIcons color={colors.primary} name="chevron-right" size={14} />
+        </View>
+      ) : null}
+    </Container>
   );
 }

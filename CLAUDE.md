@@ -307,6 +307,54 @@ pero ahora ambos son obligatorios. El enforcement es **solo de UI**: el backend 
 
 Detalle completo: `docs/superpowers/specs/2026-09-16-mp-connect-trainer-onboarding-design.md`.
 
+## Historial de pagos y cobros
+
+`/profile/payments` muestra el **historial de pagos de cualquier usuario** (HU
+"Historial de pagos y facturación": suscripciones y pagos a entrenadores, con
+comprobante en PDF). Con el rol entrenador activo suma sus cobros y un dashboard.
+En Mi perfil se llega por `payments-history-card.jsx` o, con el rol entrenador
+activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
+`/payments/received` y `/payments/received/summary` (change de OpenSpec
+`historial-pagos-cobros-entrenador` del backend).
+
+- **Nunca mostrar comisión ni estimar el neto.** La `marketplace_fee` del backend es
+  ficticia mientras el split no mande `application_fee`. El neto se muestra solo si
+  Mercado Pago lo informó (`net_amount` puede ser `null`); si no, "Neto no disponible"
+  o "Neto parcial … (x de y)" con `utils/payments-summary.js#formatNetLabel`.
+- **Dos consultas del resumen (2026-09-29).** `useReceivedPaymentsSummary()` sin `until`
+  es la ventana que termina hoy: la usan los tiles y la tarjeta del perfil. El gráfico y
+  "Cobros por equipo" se pueden correr de a 6 meses con ‹ ›, y cuando la ventana no es la
+  actual piden `useReceivedPaymentsSummary({ until })` (`until` va en la query key, cada
+  ventana se cachea aparte). La ‹ se frena en `earliest_month`, el primer mes con cobros.
+  El switch Bruto/Neto cambia tiles, gráfico y equipos juntos, siempre vía
+  `utils/payments-summary.js#amountFor`: un mes sin neto es `s/d`, nunca un 0 inventado.
+  "Pagos" está en el navbar (`paymentsRoute`, último, sin `role`).
+- **Primer `useInfiniteQuery` del repo** (`hooks/use-payment-history.js`). Se eligió
+  en vez de la acumulación manual de `use-team-search.js` porque hay pull-to-refresh:
+  el `refetch` de un infinite query vuelve a pedir todas las páginas cargadas. Para
+  listados paginados nuevos con refresh, preferir este patrón.
+- **Los tiles cuentan cuotas; la lista muestra intentos.** "Cuotas pendientes/rechazadas"
+  del resumen miran el último intento de cada cuota, y una cuota rechazada que después
+  se pagó no cuenta. Por eso pueden no coincidir con las filas de la lista filtrada, y
+  la pantalla lo aclara.
+- **Reutilizables nuevos:** `components/shared/stat-tile.jsx` (extraído de
+  `team-detail-screen.jsx`) y `formatARSCompact` en `utils/currency.js`. El historial
+  usa el mismo `formatArs` que el pago de membresía de equipo (con `decimals: 2` para
+  el neto y el comprobante); las dos ramas habían extraído un `currency.js` propio y
+  se unificaron en el merge. Para montos en pesos, usar estos en vez de otro
+  `Intl.NumberFormat` inline.
+- **Comprobantes en PDF con `expo-print` + `expo-sharing`, dos módulos nativos** sumados
+  en esta feature: hay que **regenerar el dev client** (`npm run android:run`), un OTA no
+  alcanza. **En web `expo-print` no sirve**: su implementación web es solo `window.print()`
+  e ignora el HTML, así que imprime la app entera. `services/receipt.web.js` carga el
+  comprobante en un `iframe` oculto y lo imprime; el import va sin extensión
+  (`from '../../services/receipt'`), mismo quirk del split `.web.js`.
+- El gráfico mensual es SVG a mano con `react-native-svg` (`payments-monthly-chart.jsx`),
+  con la geometría en `utils/payments-chart.js` para poder testearla. No hay librería
+  de gráficos en el repo.
+
+Detalle completo: `docs/superpowers/specs/2026-09-26-trainer-payments-dashboard-design.md`.
+
 ## Documentación existente en `docs/`
 
 Además de `docs/superpowers/{specs,plans}/`, hay documentación previa al uso de Claude Code en este repo: `WORKFLOW.md`, `BRANCH_POLICIES.md`, `TESTING.md`, `STYLE_CONTRACT.md`, `ARQUITECTURA.md`, `FRONTEND_DEFINITIONS.md`, `BACKEND_DEFINITIONS.md`, `EXPO_ROUTER_GUIDE.md`, `FUNCTIONAL_PROPOSE.md`. Son una buena base pero **no están 100% sincronizados con la práctica actual** (ej. `BRANCH_POLICIES.md` describe un modelo con `release/`/`hotfix/`/tickets de Jira que todavía no se usa en la práctica — hoy el flujo real es el descripto arriba). Si algo de ahí queda desactualizado al tocarlo, corregirlo ahí también, no solo acá.
