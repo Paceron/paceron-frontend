@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,13 +8,16 @@ import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
-import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
+import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { useUser } from '../../hooks/use-user.js';
 import { useTrainerSessionRuntime } from '../../hooks/use-trainer-session-runtime.js';
 import { computeBounds } from '../../utils/map-bounds.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { PARTICIPANT_STATUS } from '../../utils/trainer-participant-state.js';
+import { colorForUserId, TRAINER_MARKER_COLOR } from '../../utils/participant-color.js';
 import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { notifySuccess } from '../../utils/haptics.js';
@@ -26,10 +29,21 @@ import { notifySuccess } from '../../utils/haptics.js';
 
 const STATUS_META = {
   [PARTICIPANT_STATUS.NOT_JOINED]: { label: 'No se unió', bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-200' },
+  [PARTICIPANT_STATUS.CONNECTED]: { label: 'En vivo', bg: 'bg-sky-200 dark:bg-sky-900', text: 'text-sky-800 dark:text-sky-200' },
   [PARTICIPANT_STATUS.IN_PROGRESS]: { label: 'En curso', bg: 'bg-primary', text: 'text-[#111518]' },
   [PARTICIPANT_STATUS.PAUSED]: { label: 'Pausado', bg: 'bg-amber-300', text: 'text-amber-950' },
   [PARTICIPANT_STATUS.COMPLETED]: { label: 'Completó todo', bg: 'bg-emerald-500', text: 'text-white' },
 };
+
+// Subtítulo "Ejercicio · Serie N" -- solo tiene sentido mientras hay una serie
+// en curso/pausada; el resto de los estados no tiene un "ahora mismo" que mostrar.
+function currentActivityLabel(participant) {
+  if (participant.status !== PARTICIPANT_STATUS.IN_PROGRESS && participant.status !== PARTICIPANT_STATUS.PAUSED) return null;
+  if (!participant.currentExerciseName) return null;
+  return participant.currentSetNumber != null
+    ? `${participant.currentExerciseName} · Serie ${participant.currentSetNumber}`
+    : participant.currentExerciseName;
+}
 
 const CONNECTION_META = {
   open: { label: 'En vivo', dot: 'bg-primary', text: 'text-emerald-700 dark:text-emerald-400' },
@@ -59,6 +73,27 @@ function ConnectionBanner({ status }) {
   );
 }
 
+// Foto de perfil o iniciales, con un borde del color distintivo de ese
+// usuario (colorForUserId/TRAINER_MARKER_COLOR) -- mismo componente para el
+// marcador del mapa (corredor y entrenador) y reusable donde haga falta el
+// mismo círculo. El color del borde es la señal de identidad consistente
+// entre el mapa y el puntito de las listas de participantes.
+function ParticipantAvatar({ name, photoUrl, color, size, idPrefix }) {
+  const initials = (name ?? '?').slice(0, 2).toUpperCase();
+  const circleStyle = { width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: color };
+
+  if (photoUrl) {
+    return <Image nativeID={`${idPrefix}-avatar-photo`} resizeMode="cover" source={{ uri: photoUrl }} style={circleStyle} testID={`${idPrefix}-avatar-photo`} />;
+  }
+  return (
+    <View className="items-center justify-center bg-slate-500" nativeID={`${idPrefix}-avatar-initials`} style={circleStyle} testID={`${idPrefix}-avatar-initials`}>
+      <Text className="text-[10px] font-bold text-white" nativeID={`${idPrefix}-avatar-initials-label`} testID={`${idPrefix}-avatar-initials-label`}>
+        {initials}
+      </Text>
+    </View>
+  );
+}
+
 // `Marker` en sí no expone un `onPress` propio en esta versión de
 // @maplibre/maplibre-react-native -- pero su contenido es un árbol de vistas
 // nativo normal, así que un `Pressable` adentro recibe el toque igual que en
@@ -67,9 +102,9 @@ function ConnectionBanner({ status }) {
 // nunca necesitó probar esto). `onSelect` es `setSelectedParticipantId` del
 // componente padre.
 function ParticipantMarker({ participant, onSelect }) {
-  const initials = (participant.name ?? '?').slice(0, 2).toUpperCase();
   const pulse = useSharedValue(1);
   const isRecent = Date.now() - (participant.position.ts ?? 0) < 20000;
+  const idPrefix = `trainer-session-live-marker-${participant.userId}`;
 
   useEffect(() => {
     if (isRecent) {
@@ -84,35 +119,34 @@ function ParticipantMarker({ participant, onSelect }) {
 
   return (
     <Marker anchor="center" key={participant.userId} lngLat={[participant.position.longitude, participant.position.latitude]}>
-      <Animated.View nativeID={`trainer-session-live-marker-${participant.userId}-pulse`} pointerEvents="box-none" style={pulseStyle} testID={`trainer-session-live-marker-${participant.userId}-pulse`}>
+      <Animated.View nativeID={`${idPrefix}-pulse`} pointerEvents="box-none" style={pulseStyle} testID={`${idPrefix}-pulse`}>
+        {/* Opacidad reducida (no color) para "sin novedades hace rato" -- el
+            color del borde ya está ocupado comunicando DE QUIÉN es el punto,
+            así que la frescura se señala aparte. */}
         <Pressable
-          className={`h-9 w-9 items-center justify-center rounded-full border-2 border-white shadow-md ${isRecent ? 'bg-primary' : 'bg-slate-400'}`}
-          nativeID={`trainer-session-live-marker-${participant.userId}`}
+          className="h-9 w-9 items-center justify-center rounded-full shadow-md"
+          nativeID={idPrefix}
           onPress={() => onSelect(participant.userId)}
-          testID={`trainer-session-live-marker-${participant.userId}`}
+          style={{ opacity: isRecent ? 1 : 0.5 }}
+          testID={idPrefix}
         >
-          <Text className="text-[10px] font-bold text-[#111518]" nativeID={`trainer-session-live-marker-${participant.userId}-label`} testID={`trainer-session-live-marker-${participant.userId}-label`}>
-            {initials}
-          </Text>
+          <ParticipantAvatar color={colorForUserId(participant.userId)} idPrefix={idPrefix} name={participant.name} photoUrl={participant.photoUrl} size={36} />
         </Pressable>
       </Animated.View>
     </Marker>
   );
 }
 
-// Marcador de la posición propia del entrenador -- distinto en color/ícono de
-// los de los corredores (ParticipantMarker) para que se distinga de un
-// vistazo en el mapa. Sin pulso de "reciente" (a diferencia de los
-// corredores, no hace falta señalar antigüedad de la propia posición).
-function SelfMarker({ position }) {
+// Marcador de la posición propia del entrenador -- mismo componente de avatar
+// que los corredores (foto o iniciales), pero con TRAINER_MARKER_COLOR (un
+// color reservado, nunca lo pisa el hash de colorForUserId) para que se
+// distinga de un vistazo en el mapa sin importar qué color le haya tocado a
+// cada corredor.
+function SelfMarker({ position, name, photoUrl }) {
   return (
     <Marker anchor="center" lngLat={[position.longitude, position.latitude]}>
-      <View
-        className="h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-amber-500 shadow-md"
-        nativeID="trainer-session-live-self-marker"
-        testID="trainer-session-live-self-marker"
-      >
-        <MaterialCommunityIcons color="#ffffff" name="account-supervisor" size={20} />
+      <View nativeID="trainer-session-live-self-marker" testID="trainer-session-live-self-marker">
+        <ParticipantAvatar color={TRAINER_MARKER_COLOR} idPrefix="trainer-session-live-self-marker" name={name} photoUrl={photoUrl} size={36} />
       </View>
     </Marker>
   );
@@ -173,8 +207,17 @@ function DragToFinishButton({ onTrigger, idPrefix, label }) {
 
   return (
     <GestureDetector gesture={pan}>
+      {/* Sin flex-1: a diferencia de training-session-live-screen.jsx (donde
+          este track comparte una fila con el botón de mantener-para-cancelar
+          y flex-1 reparte el ANCHO disponible en ESA fila), acá es el único
+          hijo de un contenedor en COLUMNA -- flex-1 ahí significa "ocupar
+          el alto restante", y como ese contenedor es de alto automático
+          (sin flex propio), Yoga lo termina colapsando a casi 0px (bug
+          real, 2026-10-01: "el slider queda casi escondido"). El ancho
+          completo ya sale gratis del stretch por default de los hijos de
+          una columna, sin necesitar flex-1 para nada acá. */}
       <View
-        className={`h-14 flex-1 rounded-full border ${colors.trackBorder}`}
+        className={`h-14 rounded-full border ${colors.trackBorder}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => { widthSV.value = Math.round(event.nativeEvent.layout.width); }}
         testID={`${idPrefix}-drag-track`}
@@ -215,20 +258,36 @@ function ParticipantsListModal({ visible, onClose, participants, onSelectPartici
               </Pressable>
             </View>
             <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
-              {participants.map((participant) => (
-                <Pressable
-                  className="flex-row items-center justify-between border-b border-slate-100 p-3 active:opacity-70 dark:border-slate-800"
-                  key={participant.userId}
-                  nativeID={`${idPrefix}-list-${participant.userId}`}
-                  onPress={() => onSelectParticipant(participant.userId)}
-                  testID={`${idPrefix}-list-${participant.userId}`}
-                >
-                  <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-list-${participant.userId}-name`} testID={`${idPrefix}-list-${participant.userId}-name`}>{participant.name}</Text>
-                  <View className={`rounded-full px-2.5 py-1 ${STATUS_META[participant.status].bg}`} nativeID={`${idPrefix}-list-${participant.userId}-status`} testID={`${idPrefix}-list-${participant.userId}-status`}>
-                    <Text className={`text-[11px] font-semibold ${STATUS_META[participant.status].text}`} nativeID={`${idPrefix}-list-${participant.userId}-status-label`} testID={`${idPrefix}-list-${participant.userId}-status-label`}>{STATUS_META[participant.status].label}</Text>
-                  </View>
-                </Pressable>
-              ))}
+              {participants.map((participant) => {
+                const activity = currentActivityLabel(participant);
+                return (
+                  <Pressable
+                    className="flex-row items-center justify-between gap-2 border-b border-slate-100 p-3 active:opacity-70 dark:border-slate-800"
+                    key={participant.userId}
+                    nativeID={`${idPrefix}-list-${participant.userId}`}
+                    onPress={() => onSelectParticipant(participant.userId)}
+                    testID={`${idPrefix}-list-${participant.userId}`}
+                  >
+                    <View className="flex-1 flex-row items-center gap-2" nativeID={`${idPrefix}-list-${participant.userId}-identity`} testID={`${idPrefix}-list-${participant.userId}-identity`}>
+                      <View
+                        className="h-2.5 w-2.5 rounded-full"
+                        nativeID={`${idPrefix}-list-${participant.userId}-dot`}
+                        style={{ backgroundColor: colorForUserId(participant.userId) }}
+                        testID={`${idPrefix}-list-${participant.userId}-dot`}
+                      />
+                      <View className="flex-1" nativeID={`${idPrefix}-list-${participant.userId}-text`} testID={`${idPrefix}-list-${participant.userId}-text`}>
+                        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-list-${participant.userId}-name`} numberOfLines={1} testID={`${idPrefix}-list-${participant.userId}-name`}>{participant.name}</Text>
+                        {activity && (
+                          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-list-${participant.userId}-activity`} numberOfLines={1} testID={`${idPrefix}-list-${participant.userId}-activity`}>{activity}</Text>
+                        )}
+                      </View>
+                    </View>
+                    <View className={`rounded-full px-2.5 py-1 ${STATUS_META[participant.status].bg}`} nativeID={`${idPrefix}-list-${participant.userId}-status`} testID={`${idPrefix}-list-${participant.userId}-status`}>
+                      <Text className={`text-[11px] font-semibold ${STATUS_META[participant.status].text}`} nativeID={`${idPrefix}-list-${participant.userId}-status-label`} testID={`${idPrefix}-list-${participant.userId}-status-label`}>{STATUS_META[participant.status].label}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </SafeAreaView>
         </Pressable>
@@ -289,13 +348,26 @@ function ParticipantDetailModal({ participant, onClose }) {
         <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-surface" nativeID="trainer-session-live-participant-detail-card" onPress={() => {}} testID="trainer-session-live-participant-detail-card">
           {participant && (
             <>
-              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="trainer-session-live-participant-detail-name" testID="trainer-session-live-participant-detail-name">{participant.name}</Text>
+              <View className="flex-row items-center gap-2" nativeID="trainer-session-live-participant-detail-identity" testID="trainer-session-live-participant-detail-identity">
+                <View
+                  className="h-2.5 w-2.5 rounded-full"
+                  nativeID="trainer-session-live-participant-detail-dot"
+                  style={{ backgroundColor: colorForUserId(participant.userId) }}
+                  testID="trainer-session-live-participant-detail-dot"
+                />
+                <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="trainer-session-live-participant-detail-name" testID="trainer-session-live-participant-detail-name">{participant.name}</Text>
+              </View>
               <View className="mt-3 flex-row items-center gap-2" nativeID="trainer-session-live-participant-detail-status" testID="trainer-session-live-participant-detail-status">
                 <View className={`rounded-full px-3 py-1 ${STATUS_META[participant.status].bg}`} nativeID="trainer-session-live-participant-detail-status-chip" testID="trainer-session-live-participant-detail-status-chip">
                   <Text className={`text-xs font-semibold ${STATUS_META[participant.status].text}`} nativeID="trainer-session-live-participant-detail-status-label" testID="trainer-session-live-participant-detail-status-label">{STATUS_META[participant.status].label}</Text>
                 </View>
                 <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="trainer-session-live-participant-detail-sets" testID="trainer-session-live-participant-detail-sets">{participant.resolvedSetCount} serie(s) resueltas</Text>
               </View>
+              {currentActivityLabel(participant) && (
+                <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID="trainer-session-live-participant-detail-activity" testID="trainer-session-live-participant-detail-activity">
+                  {currentActivityLabel(participant)}
+                </Text>
+              )}
             </>
           )}
         </Pressable>
@@ -315,6 +387,9 @@ function TrainerSessionLiveScreenContent() {
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
   const { members: rosterMembers } = useTeamRoster(teamId, groupId ? [groupId] : []);
+
+  const trainerUserId = useAuthStore((s) => s.userId);
+  const { user: trainerUser } = useUser(trainerUserId);
 
   const { connectionStatus, participants, feed, selfPosition, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers });
 
@@ -377,12 +452,17 @@ function TrainerSessionLiveScreenContent() {
       </View>
 
       <View className="flex-1 overflow-hidden" nativeID="trainer-session-live-map-container" testID="trainer-session-live-map-container">
-        <Map mapStyle={OPENFREEMAP_STYLE_URL} nativeID="trainer-session-live-map" style={{ flex: 1 }} testID="trainer-session-live-map">
-          <Camera initialViewState={{ center: initialCameraCenter, zoom: initialCameraZoom }} ref={cameraRef} />
+        <Map mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL} nativeID="trainer-session-live-map" style={{ flex: 1 }} testID="trainer-session-live-map">
+          {/* maxZoom frena el "fit all points" cuando los puntos coinciden
+              casi exactamente (ej. solo el entrenador conectado, sin ningún
+              corredor todavía) -- sin esto, fitBounds sobre una caja de área
+              casi nula pide el zoom más cercano posible (bug real reportado,
+              2026-10-01: "zoom insano"). */}
+          <Camera initialViewState={{ center: initialCameraCenter, zoom: initialCameraZoom }} maxZoom={17} ref={cameraRef} />
           {positionedParticipants.map((participant) => (
             <ParticipantMarker key={participant.userId} onSelect={setSelectedParticipantId} participant={participant} />
           ))}
-          {selfPosition && <SelfMarker position={selfPosition} />}
+          {selfPosition && <SelfMarker name={trainerUser?.name} photoUrl={trainerUser?.photoUrl} position={selfPosition} />}
         </Map>
         <View className="absolute right-3 top-3 gap-2" nativeID="trainer-session-live-map-buttons" testID="trainer-session-live-map-buttons">
           <Pressable
