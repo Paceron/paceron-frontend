@@ -129,9 +129,12 @@ const DRAG_VARIANTS = {
 };
 
 // Copiado casi verbatim de training-session-live-screen.jsx (spec 1) -- mismo
-// mecanismo de gesto ya probado en dispositivo, no reinventado.
+// mecanismo de gesto ya probado en dispositivo, no reinventado. Más chico que
+// el original (THUMB_SIZE 64→48, track h-20→h-14) a pedido del usuario: acá
+// es el ÚNICO control de la pantalla en vivo del entrenador (sin
+// pausar/saltear series como el corredor), no necesita el mismo protagonismo.
 function DragToFinishButton({ onTrigger, idPrefix, label }) {
-  const THUMB_SIZE = 64;
+  const THUMB_SIZE = 48;
   const colors = DRAG_VARIANTS.finish;
   const translateX = useSharedValue(0);
   const widthSV = useSharedValue(120);
@@ -171,20 +174,111 @@ function DragToFinishButton({ onTrigger, idPrefix, label }) {
   return (
     <GestureDetector gesture={pan}>
       <View
-        className={`h-20 flex-1 rounded-full border ${colors.trackBorder}`}
+        className={`h-14 flex-1 rounded-full border ${colors.trackBorder}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => { widthSV.value = Math.round(event.nativeEvent.layout.width); }}
         testID={`${idPrefix}-drag-track`}
       >
         <Animated.View className={`absolute inset-y-0 left-0 rounded-full ${colors.fill}`} nativeID={`${idPrefix}-drag-fill`} style={fillStyle} testID={`${idPrefix}-drag-fill`} />
-        <Animated.View className={`absolute left-0.5 top-2 h-16 w-16 items-center justify-center rounded-full ${colors.thumb}`} nativeID={`${idPrefix}-drag-thumb`} style={thumbStyle} testID={`${idPrefix}-drag-thumb`}>
-          <MaterialCommunityIcons color={colors.iconColor} name="flag-checkered" size={24} />
+        <Animated.View className={`absolute left-0.5 top-1 h-12 w-12 items-center justify-center rounded-full ${colors.thumb}`} nativeID={`${idPrefix}-drag-thumb`} style={thumbStyle} testID={`${idPrefix}-drag-thumb`}>
+          <MaterialCommunityIcons color={colors.iconColor} name="flag-checkered" size={18} />
         </Animated.View>
-        <View className="absolute inset-0 items-center justify-center px-20" nativeID={`${idPrefix}-drag-content`} pointerEvents="none" testID={`${idPrefix}-drag-content`}>
-          <Text className={`text-center text-sm font-bold uppercase tracking-wide ${colors.label}`} nativeID={`${idPrefix}-drag-label`} numberOfLines={1} testID={`${idPrefix}-drag-label`}>{label}</Text>
+        <View className="absolute inset-0 items-center justify-center px-14" nativeID={`${idPrefix}-drag-content`} pointerEvents="none" testID={`${idPrefix}-drag-content`}>
+          <Text className={`text-center text-xs font-bold uppercase tracking-wide ${colors.label}`} nativeID={`${idPrefix}-drag-label`} numberOfLines={1} testID={`${idPrefix}-drag-label`}>{label}</Text>
         </View>
       </View>
     </GestureDetector>
+  );
+}
+
+// Participantes y registros pasaron de paneles inline a Modal (a pedido del
+// usuario) -- y con el MISMO estilo full-screen que AttendanceSessionModal
+// (pantalla completa, backdrop a la derecha, SafeAreaView adentro), no el
+// card chico centrado que tenían al principio. El usuario pidió explícitamente
+// uniformar los tres (asistencia/participantes/registros) y quedarse con "la
+// opción más segura" -- el patrón de asistencia ya está probado y resuelve el
+// respeto de la status bar en Android, así que es ese el que se replica acá en
+// vez de inventar uno nuevo.
+function ParticipantsListModal({ visible, onClose, participants, onSelectParticipant }) {
+  const colors = useThemeColors();
+  const idPrefix = 'trainer-session-live-participants-modal';
+
+  return (
+    <Modal animationType="fade" nativeID={`${idPrefix}`} onRequestClose={onClose} testID={`${idPrefix}`} transparent visible={visible}>
+      <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
+        <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
+          <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
+            <View className="mb-3 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>Participantes</Text>
+              <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID={`${idPrefix}-close-button`} onPress={onClose} testID={`${idPrefix}-close-button`}>
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
+              </Pressable>
+            </View>
+            <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
+              {participants.map((participant) => (
+                <Pressable
+                  className="flex-row items-center justify-between border-b border-slate-100 p-3 active:opacity-70 dark:border-slate-800"
+                  key={participant.userId}
+                  nativeID={`${idPrefix}-list-${participant.userId}`}
+                  onPress={() => onSelectParticipant(participant.userId)}
+                  testID={`${idPrefix}-list-${participant.userId}`}
+                >
+                  <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-list-${participant.userId}-name`} testID={`${idPrefix}-list-${participant.userId}-name`}>{participant.name}</Text>
+                  <View className={`rounded-full px-2.5 py-1 ${STATUS_META[participant.status].bg}`} nativeID={`${idPrefix}-list-${participant.userId}-status`} testID={`${idPrefix}-list-${participant.userId}-status`}>
+                    <Text className={`text-[11px] font-semibold ${STATUS_META[participant.status].text}`} nativeID={`${idPrefix}-list-${participant.userId}-status-label`} testID={`${idPrefix}-list-${participant.userId}-status-label`}>{STATUS_META[participant.status].label}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilterAthleteId, onChangeFeedFilter }) {
+  const colors = useThemeColors();
+  const idPrefix = 'trainer-session-live-feed-modal';
+
+  return (
+    <Modal animationType="fade" nativeID={`${idPrefix}`} onRequestClose={onClose} testID={`${idPrefix}`} transparent visible={visible}>
+      <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
+        <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
+          <SafeAreaView className="flex-1 gap-2 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
+            <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>Registros</Text>
+              <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID={`${idPrefix}-close-button`} onPress={onClose} testID={`${idPrefix}-close-button`}>
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
+              </Pressable>
+            </View>
+            <SearchablePickerField
+              dense
+              idPrefix={`${idPrefix}-filter`}
+              label="Filtrar por corredor"
+              onChange={onChangeFeedFilter}
+              options={feedOptions}
+              placeholder="Todos"
+              value={feedFilterAthleteId}
+            />
+            <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
+              {feed.map((event) => (
+                <View className="border-b border-slate-100 p-3 dark:border-slate-800" key={event.id} nativeID={`${idPrefix}-item-${event.id}`} testID={`${idPrefix}-item-${event.id}`}>
+                  <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${idPrefix}-item-${event.id}-text`} testID={`${idPrefix}-item-${event.id}-text`}>
+                    {event.athleteName} · {event.exerciseName} · Serie {event.setNumber} · {event.status === 'skipped' ? 'Salteada' : 'Completada'}
+                  </Text>
+                </View>
+              ))}
+              {feed.length === 0 && (
+                <Text className="p-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
+                  Sin registros todavía.
+                </Text>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -224,12 +318,23 @@ function TrainerSessionLiveScreenContent() {
 
   const { connectionStatus, participants, feed, selfPosition, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers });
 
-  const [mode, setMode] = useState('map'); // 'map' | 'participants' | 'feed'
+  const [participantsVisible, setParticipantsVisible] = useState(false);
+  const [feedVisible, setFeedVisible] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
   const [feedFilterAthleteId, setFeedFilterAthleteId] = useState(null);
   const [fullscreenMap, setFullscreenMap] = useState(false);
   const [attendanceVisible, setAttendanceVisible] = useState(false);
   const cameraRef = useRef(null);
+
+  // Centro inicial del mapa: el punto de encuentro marcado para la sesión
+  // presencial, no una zona fija arbitraria -- el auto-encuadre (efecto de
+  // abajo) sigue ajustando a partir de acá a medida que se suman corredores.
+  // Sin ubicación cargada, cae al mismo default de siempre.
+  const meetingPoint = pendingSession?.presencialLocation;
+  const initialCameraCenter = meetingPoint?.lng != null && meetingPoint?.lat != null
+    ? [meetingPoint.lng, meetingPoint.lat]
+    : [-58.4, -34.6];
+  const initialCameraZoom = meetingPoint?.lng != null && meetingPoint?.lat != null ? 15 : 12;
 
   const participantList = useMemo(() => [...participants.values()].sort((a, b) => a.name.localeCompare(b.name)), [participants]);
   const positionedParticipants = useMemo(() => participantList.filter((p) => p.position), [participantList]);
@@ -271,26 +376,44 @@ function TrainerSessionLiveScreenContent() {
         {connectionStatus && <ConnectionBanner status={connectionStatus} />}
       </View>
 
-      <View className={fullscreenMap ? 'flex-1' : 'h-[45%]'} nativeID="trainer-session-live-map-container" testID="trainer-session-live-map-container">
+      <View className="flex-1 overflow-hidden" nativeID="trainer-session-live-map-container" testID="trainer-session-live-map-container">
         <Map mapStyle={OPENFREEMAP_STYLE_URL} nativeID="trainer-session-live-map" style={{ flex: 1 }} testID="trainer-session-live-map">
-          <Camera initialViewState={{ center: [-58.4, -34.6], zoom: 12 }} ref={cameraRef} />
+          <Camera initialViewState={{ center: initialCameraCenter, zoom: initialCameraZoom }} ref={cameraRef} />
           {positionedParticipants.map((participant) => (
             <ParticipantMarker key={participant.userId} onSelect={setSelectedParticipantId} participant={participant} />
           ))}
           {selfPosition && <SelfMarker position={selfPosition} />}
         </Map>
-        <Pressable
-          className="absolute right-3 top-3 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md dark:bg-surface"
-          nativeID="trainer-session-live-fullscreen-button"
-          onPress={() => setFullscreenMap((v) => !v)}
-          testID="trainer-session-live-fullscreen-button"
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={fullscreenMap ? 'fullscreen-exit' : 'fullscreen'} size={22} />
-        </Pressable>
+        <View className="absolute right-3 top-3 gap-2" nativeID="trainer-session-live-map-buttons" testID="trainer-session-live-map-buttons">
+          <Pressable
+            className="h-10 w-10 items-center justify-center rounded-full bg-white shadow-md dark:bg-surface"
+            nativeID="trainer-session-live-fullscreen-button"
+            onPress={() => setFullscreenMap((v) => !v)}
+            testID="trainer-session-live-fullscreen-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name={fullscreenMap ? 'fullscreen-exit' : 'fullscreen'} size={22} />
+          </Pressable>
+          <Pressable
+            className="h-10 w-10 items-center justify-center rounded-full bg-white shadow-md dark:bg-surface"
+            nativeID="trainer-session-live-recenter-button"
+            onPress={() => cameraRef.current?.flyTo({ center: initialCameraCenter, duration: 500 })}
+            testID="trainer-session-live-recenter-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-radius-outline" size={22} />
+          </Pressable>
+          <Pressable
+            className="h-10 w-10 items-center justify-center rounded-full bg-white shadow-md dark:bg-surface"
+            nativeID="trainer-session-live-fit-all-button"
+            onPress={() => { if (bounds) cameraRef.current?.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 }, 500); }}
+            testID="trainer-session-live-fit-all-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="fit-to-page-outline" size={22} />
+          </Pressable>
+        </View>
       </View>
 
       {!fullscreenMap && (
-        <View className="flex-1 gap-3 p-4" nativeID="trainer-session-live-controls" testID="trainer-session-live-controls">
+        <View className="gap-3 p-4" nativeID="trainer-session-live-controls" testID="trainer-session-live-controls">
           <View className="flex-row gap-3" nativeID="trainer-session-live-controls-row" testID="trainer-session-live-controls-row">
             <Pressable
               className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
@@ -304,7 +427,7 @@ function TrainerSessionLiveScreenContent() {
             <Pressable
               className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
               nativeID="trainer-session-live-participants-button"
-              onPress={() => setMode('participants')}
+              onPress={() => setParticipantsVisible(true)}
               testID="trainer-session-live-participants-button"
             >
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-group-outline" size={18} />
@@ -315,63 +438,32 @@ function TrainerSessionLiveScreenContent() {
           <Pressable
             className="h-11 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
             nativeID="trainer-session-live-feed-button"
-            onPress={() => setMode('feed')}
+            onPress={() => setFeedVisible(true)}
             testID="trainer-session-live-feed-button"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clipboard-text-clock-outline" size={18} />
             <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-feed-button-label" testID="trainer-session-live-feed-button-label">Ver registros</Text>
           </Pressable>
 
-          {mode === 'participants' && (
-            <ScrollView className="flex-1 rounded-2xl border border-slate-200 dark:border-slate-700" nativeID="trainer-session-live-participants-list" testID="trainer-session-live-participants-list">
-              {participantList.map((participant) => (
-                <Pressable
-                  className="flex-row items-center justify-between border-b border-slate-100 p-3 active:opacity-70 dark:border-slate-800"
-                  key={participant.userId}
-                  nativeID={`trainer-session-live-participants-list-${participant.userId}`}
-                  onPress={() => setSelectedParticipantId(participant.userId)}
-                  testID={`trainer-session-live-participants-list-${participant.userId}`}
-                >
-                  <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`trainer-session-live-participants-list-${participant.userId}-name`} testID={`trainer-session-live-participants-list-${participant.userId}-name`}>{participant.name}</Text>
-                  <View className={`rounded-full px-2.5 py-1 ${STATUS_META[participant.status].bg}`} nativeID={`trainer-session-live-participants-list-${participant.userId}-status`} testID={`trainer-session-live-participants-list-${participant.userId}-status`}>
-                    <Text className={`text-[11px] font-semibold ${STATUS_META[participant.status].text}`} nativeID={`trainer-session-live-participants-list-${participant.userId}-status-label`} testID={`trainer-session-live-participants-list-${participant.userId}-status-label`}>{STATUS_META[participant.status].label}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
-
-          {mode === 'feed' && (
-            <View className="flex-1 gap-2" nativeID="trainer-session-live-feed-container" testID="trainer-session-live-feed-container">
-              <SearchablePickerField
-                dense
-                idPrefix="trainer-session-live-feed-filter"
-                label="Filtrar por corredor"
-                onChange={setFeedFilterAthleteId}
-                options={feedOptions}
-                placeholder="Todos"
-                value={feedFilterAthleteId}
-              />
-              <ScrollView className="flex-1 rounded-2xl border border-slate-200 dark:border-slate-700" nativeID="trainer-session-live-feed-list" testID="trainer-session-live-feed-list">
-                {visibleFeed.map((event) => (
-                  <View className="border-b border-slate-100 p-3 dark:border-slate-800" key={event.id} nativeID={`trainer-session-live-feed-item-${event.id}`} testID={`trainer-session-live-feed-item-${event.id}`}>
-                    <Text className="text-sm text-slate-900 dark:text-white" nativeID={`trainer-session-live-feed-item-${event.id}-text`} testID={`trainer-session-live-feed-item-${event.id}-text`}>
-                      {event.athleteName} · {event.exerciseName} · Serie {event.setNumber} · {event.status === 'skipped' ? 'Salteada' : 'Completada'}
-                    </Text>
-                  </View>
-                ))}
-                {visibleFeed.length === 0 && (
-                  <Text className="p-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-live-feed-empty" testID="trainer-session-live-feed-empty">
-                    Sin registros todavía.
-                  </Text>
-                )}
-              </ScrollView>
-            </View>
-          )}
-
           <DragToFinishButton idPrefix="trainer-session-live-finish" label="Deslizá para finalizar la sesión" onTrigger={handleFinish} />
         </View>
       )}
+
+      <ParticipantsListModal
+        onClose={() => setParticipantsVisible(false)}
+        onSelectParticipant={setSelectedParticipantId}
+        participants={participantList}
+        visible={participantsVisible}
+      />
+
+      <RecordsFeedModal
+        feed={visibleFeed}
+        feedFilterAthleteId={feedFilterAthleteId}
+        feedOptions={feedOptions}
+        onChangeFeedFilter={setFeedFilterAthleteId}
+        onClose={() => setFeedVisible(false)}
+        visible={feedVisible}
+      />
 
       <ParticipantDetailModal onClose={() => setSelectedParticipantId(null)} participant={selectedParticipant} />
 
