@@ -64,11 +64,18 @@ export function useAttendanceSessions(groupId, teamId) {
 // que un corredor que se bajasó después igual aparece si estaba en la fecha. Es
 // la diferencia entre el roster de la grilla y el del equipo, y por eso esto no
 // se puede derivar de otro hook.
-export function useSessionAttendance(sessionInstanceId, teamId, groupId) {
+// `refetchInterval` es opcional -- sin él, comportamiento de siempre (sin
+// polling). La pantalla en vivo del entrenador lo pasa mientras el modal está
+// abierto: no existe ningún evento WS para "se leyó un QR de asistencia" (el
+// único broadcast server-originado hoy es `update:set_event` de
+// workout_feedback, ver docs/REALTIME_WS.md) y sin esto el entrenador no se
+// enteraba de una lectura ajena hasta refrescar a mano (bug real, 2026-10-01).
+export function useSessionAttendance(sessionInstanceId, teamId, groupId, { refetchInterval } = {}) {
   const query = useQuery({
     queryKey: ['attendance', teamId, 'grid', groupId, sessionInstanceId],
     queryFn: () => getSessionAttendanceService(sessionInstanceId, teamId, groupId),
     enabled: Boolean(sessionInstanceId && teamId && groupId),
+    refetchInterval,
   });
 
   return {

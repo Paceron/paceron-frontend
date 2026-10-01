@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -20,7 +21,10 @@ export function AttendanceSessionModal({ visible, onClose, teamId, groupId, sess
   const colors = useThemeColors();
   const idPrefix = 'attendance-session-modal';
 
-  const { rows, summary, isLoading, isRefetching, error, refetch } = useSessionAttendance(sessionInstanceId, teamId, groupId);
+  // Polling liviano SOLO mientras el modal está abierto -- ver el comentario
+  // en useSessionAttendance (sin evento WS de asistencia, es el único camino
+  // "casi en vivo" sin backend nuevo).
+  const { rows, summary, isLoading, isRefetching, error, refetch } = useSessionAttendance(sessionInstanceId, teamId, groupId, { refetchInterval: visible ? 6000 : false });
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [discardVisible, setDiscardVisible] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -102,48 +106,50 @@ export function AttendanceSessionModal({ visible, onClose, teamId, groupId, sess
     <Modal animationType="fade" nativeID={`${idPrefix}-modal`} onRequestClose={handleRequestClose} testID={`${idPrefix}-modal`} transparent visible={visible}>
       <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={handleRequestClose} testID={`${idPrefix}-backdrop`}>
         <Pressable
-          className="h-full w-full max-w-lg bg-white p-4 dark:bg-surface"
+          className="h-full w-full max-w-lg bg-white dark:bg-surface"
           nativeID={`${idPrefix}-card`}
           onPress={() => {}}
           testID={`${idPrefix}-card`}
         >
-          <View className="mb-3 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-            <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
-              Asistencia
-            </Text>
-            <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header-actions`} testID={`${idPrefix}-header-actions`}>
-              <Pressable
-                className="h-9 flex-row items-center gap-1.5 rounded-full border border-slate-200 px-3 active:opacity-70 dark:border-slate-700"
-                nativeID={`${idPrefix}-qr-button`}
-                onPress={() => setQrModalVisible(true)}
-                testID={`${idPrefix}-qr-button`}
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode" size={16} />
-                <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-qr-button-label`} testID={`${idPrefix}-qr-button-label`}>
-                  Mostrar QR
-                </Text>
-              </Pressable>
-              <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID={`${idPrefix}-close-button`} onPress={handleRequestClose} testID={`${idPrefix}-close-button`}>
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
-              </Pressable>
+          <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
+            <View className="mb-3 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
+                Asistencia
+              </Text>
+              <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header-actions`} testID={`${idPrefix}-header-actions`}>
+                <Pressable
+                  className="h-9 flex-row items-center gap-1.5 rounded-full border border-slate-200 px-3 active:opacity-70 dark:border-slate-700"
+                  nativeID={`${idPrefix}-qr-button`}
+                  onPress={() => setQrModalVisible(true)}
+                  testID={`${idPrefix}-qr-button`}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode" size={16} />
+                  <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-qr-button-label`} testID={`${idPrefix}-qr-button-label`}>
+                    Mostrar QR
+                  </Text>
+                </Pressable>
+                <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID={`${idPrefix}-close-button`} onPress={handleRequestClose} testID={`${idPrefix}-close-button`}>
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
+                </Pressable>
+              </View>
             </View>
-          </View>
 
-          <AttendanceGrid
-            error={error}
-            idPrefix={`${idPrefix}-grid`}
-            isLoading={isLoading}
-            isRefetching={isRefetching}
-            isSaving={isSaving}
-            onRefresh={refetch}
-            onRequestDelete={handleRequestDelete}
-            onRetry={refetch}
-            onSave={handleSave}
-            onToggle={toggleRow}
-            rows={rows}
-            selectedIds={selectedIds}
-            summary={summary}
-          />
+            <AttendanceGrid
+              error={error}
+              idPrefix={`${idPrefix}-grid`}
+              isLoading={isLoading}
+              isRefetching={isRefetching}
+              isSaving={isSaving}
+              onRefresh={refetch}
+              onRequestDelete={handleRequestDelete}
+              onRetry={refetch}
+              onSave={handleSave}
+              onToggle={toggleRow}
+              rows={rows}
+              selectedIds={selectedIds}
+              summary={summary}
+            />
+          </SafeAreaView>
         </Pressable>
       </Pressable>
 
