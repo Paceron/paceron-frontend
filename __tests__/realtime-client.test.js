@@ -170,4 +170,57 @@ describe('realtime-client', () => {
     socket.simulateOpen();
     expect(() => socket.simulateMessage('not-json{{')).not.toThrow();
   });
+
+  // onSubscribed/offSubscribed: el ACK real del servidor (no "ya pedimos
+  // suscribirnos") es lo que gatea anunciar presence:joined -- ver el
+  // comentario en hooks/use-realtime-channel.js para el bug que esto arregla.
+  test('onSubscribed(channel, cb) fires when the server confirms that channel subscribed', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    const acks = [];
+    realtimeClient.onSubscribed('session:42', () => acks.push('session:42'));
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:99' }));
+    expect(acks).toHaveLength(0); // canal distinto, no dispara
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:42' }));
+    expect(acks).toEqual(['session:42']);
+  });
+
+  test('a subscribed ack is never dispatched to regular channel listeners', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    const received = [];
+    realtimeClient.on('session:42', (msg) => received.push(msg));
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:42' }));
+    expect(received).toHaveLength(0);
+  });
+
+  test('offSubscribed(channel, cb) stops delivering acks to that callback', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    const acks = [];
+    const handler = () => acks.push('fired');
+    realtimeClient.onSubscribed('session:42', handler);
+    realtimeClient.offSubscribed('session:42', handler);
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:42' }));
+    expect(acks).toHaveLength(0);
+  });
+
+  test('resubscribing (reconnect) fires onSubscribed again -- re-announces joined', () => {
+    realtimeClient.connect();
+    realtimeClient.subscribe('session:42');
+    const acks = [];
+    realtimeClient.onSubscribed('session:42', () => acks.push('ack'));
+    const ackMsg = JSON.stringify({ type: 'subscribed', channel: 'session:42' });
+    FakeWebSocket.instances[0].simulateOpen();
+    FakeWebSocket.instances[0].simulateMessage(ackMsg); // el servidor confirma la 1ra suscripción
+    expect(acks).toEqual(['ack']);
+    FakeWebSocket.instances[0].simulateClose();
+    jest.advanceTimersByTime(35000);
+    FakeWebSocket.instances[1].simulateOpen();
+    FakeWebSocket.instances[1].simulateMessage(ackMsg); // y de nuevo tras la reconexión
+    expect(acks).toEqual(['ack', 'ack']);
+  });
 });

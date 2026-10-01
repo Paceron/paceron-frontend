@@ -13,6 +13,9 @@ let socket = null;
 let status = 'closed';
 const statusListeners = new Set();
 const channelListeners = new Map(); // channel -> Set<callback>
+// Listeners del ACK `subscribed` del servidor, por canal -- ver onSubscribed()
+// más abajo para el porqué (evita la carrera de "joined" perdido).
+const subscribeAckListeners = new Map();
 const subscribedChannels = new Set();
 let reconnectAttempt = 0;
 let reconnectTimer = null;
@@ -68,7 +71,22 @@ function scheduleReconnect() {
 function dispatchMessage(raw) {
   const msg = parseMessage(raw);
   if (!msg) return;
-  if (msg.type === 'pong' || msg.type === 'subscribed' || msg.type === 'unsubscribed') return;
+  if (msg.type === 'pong' || msg.type === 'unsubscribed') return;
+  if (msg.type === 'subscribed') {
+    // Confirmación real de que el canal quedó suscripto DEL LADO DEL SERVIDOR
+    // -- la señal que onSubscribed()/use-realtime-channel.js esperan antes de
+    // anunciar `presence:joined`. Sin esto, "joined" se mandaba apenas se
+    // LLAMABA a connect()+subscribe() en el mismo tick, sin importar si el
+    // socket ya estaba abierto -- en una conexión fría (la primera del
+    // proceso), el socket todavía está en CONNECTING y `send()` descarta el
+    // frame en silencio (sin cola, "efímero" por diseño). El corredor/
+    // entrenador quedaba sin anunciar su propio join la primera vez que abría
+    // la sesión, y el otro lado nunca lo mostraba en el mapa/lista de
+    // participantes -- bug real, 2026-10-01.
+    const ackListeners = subscribeAckListeners.get(msg.channel);
+    if (ackListeners) for (const listener of ackListeners) listener();
+    return;
+  }
   // El backend nunca corta la conexión por un canal ajeno/malformado -- solo
   // manda este error suelto. Sin loguearlo, un subscribe rechazado queda
   // completamente invisible (el status sigue "open", nada avisa que la
@@ -157,4 +175,18 @@ export function on(channel, callback) {
 
 export function off(channel, callback) {
   channelListeners.get(channel)?.delete(callback);
+}
+
+// Avisa cuando el servidor confirma (`{"type":"subscribed"}`) que ESTE canal
+// quedó suscripto -- dispara también en cada resubscribe (el backend responde
+// `subscribed` de nuevo cada vez, incluso idempotente), que es justo lo que
+// hace falta para re-anunciar `presence:joined` después de una reconexión
+// (el servidor limpia las suscripciones viejas al caer la conexión).
+export function onSubscribed(channel, callback) {
+  if (!subscribeAckListeners.has(channel)) subscribeAckListeners.set(channel, new Set());
+  subscribeAckListeners.get(channel).add(callback);
+}
+
+export function offSubscribed(channel, callback) {
+  subscribeAckListeners.get(channel)?.delete(callback);
 }
