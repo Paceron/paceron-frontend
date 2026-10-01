@@ -179,6 +179,10 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
 
   const handlePress = () => {
     setPendingSession(assignment);
+    if (role === 'trainer' && assignment.isPresencial) {
+      router.push('/trainer-session-pre-start');
+      return;
+    }
     router.push('/training-session');
   };
 
