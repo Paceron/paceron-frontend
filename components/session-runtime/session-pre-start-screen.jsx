@@ -202,7 +202,7 @@ function SessionPreStartScreenContent() {
             <Pressable
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
               nativeID="session-pre-start-screen-attendance-button"
-              onPress={() => router.push('/attendance/register')}
+              onPress={() => router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session' } })}
               testID="session-pre-start-screen-attendance-button"
             >
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={20} />

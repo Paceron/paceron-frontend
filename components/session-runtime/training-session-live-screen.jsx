@@ -45,15 +45,18 @@ function ConnectionBanner({ status }) {
 }
 
 // Acceso directo al escáner de asistencia (módulo aparte, ya construido en
-// develop) -- la pantalla no necesita pasarle nada, el QR trae su propio
-// contexto de sesión. Ver components/checkin/checkin-screen.jsx.
+// develop) -- la pantalla no necesita pasarle nada más que `returnTo`, el QR
+// trae su propio contexto de sesión. Ver components/checkin/checkin-screen.jsx
+// y destinationForOutcome en utils/checkin-outcome.js (sin `returnTo`, un
+// escaneo exitoso sacaba al corredor de la sesión en curso -- bug real,
+// 2026-10-01).
 function AttendanceQuickAccessButton({ router, idPrefix }) {
   const colors = useThemeColors();
   return (
     <Pressable
       className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
       nativeID={`${idPrefix}-attendance-button`}
-      onPress={() => router.push('/attendance/register')}
+      onPress={() => router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session-live' } })}
       testID={`${idPrefix}-attendance-button`}
     >
       <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={20} />
