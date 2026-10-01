@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
@@ -40,9 +40,20 @@ const CONNECTION_META = {
 
 function ConnectionBanner({ status }) {
   const meta = CONNECTION_META[status] ?? CONNECTION_META.closed;
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    pulse.value = status === 'open'
+      ? withRepeat(withTiming(1.4, { duration: 700 }), -1, true)
+      : withTiming(1, { duration: 300 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   return (
     <View className="flex-row items-center gap-2 self-center rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800" nativeID="trainer-session-live-connection-banner" testID="trainer-session-live-connection-banner">
-      <View className={`h-2 w-2 rounded-full ${meta.dot}`} nativeID="trainer-session-live-connection-dot" testID="trainer-session-live-connection-dot" />
+      <Animated.View className={`h-2 w-2 rounded-full ${meta.dot}`} nativeID="trainer-session-live-connection-dot" style={pulseStyle} testID="trainer-session-live-connection-dot" />
       <Text className={`text-xs font-semibold ${meta.text}`} nativeID="trainer-session-live-connection-label" testID="trainer-session-live-connection-label">{meta.label}</Text>
     </View>
   );
@@ -57,18 +68,34 @@ function ConnectionBanner({ status }) {
 // componente padre.
 function ParticipantMarker({ participant, onSelect }) {
   const initials = (participant.name ?? '?').slice(0, 2).toUpperCase();
+  const pulse = useSharedValue(1);
+  const isRecent = Date.now() - (participant.position.ts ?? 0) < 20000;
+
+  useEffect(() => {
+    if (isRecent) {
+      pulse.value = withRepeat(withTiming(1.15, { duration: 700 }), -1, true);
+    } else {
+      pulse.value = withTiming(1, { duration: 300 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecent]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   return (
     <Marker anchor="center" key={participant.userId} lngLat={[participant.position.longitude, participant.position.latitude]}>
-      <Pressable
-        className="h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-primary shadow-md"
-        nativeID={`trainer-session-live-marker-${participant.userId}`}
-        onPress={() => onSelect(participant.userId)}
-        testID={`trainer-session-live-marker-${participant.userId}`}
-      >
-        <Text className="text-[10px] font-bold text-[#111518]" nativeID={`trainer-session-live-marker-${participant.userId}-label`} testID={`trainer-session-live-marker-${participant.userId}-label`}>
-          {initials}
-        </Text>
-      </Pressable>
+      <Animated.View nativeID={`trainer-session-live-marker-${participant.userId}-pulse`} pointerEvents="box-none" style={pulseStyle} testID={`trainer-session-live-marker-${participant.userId}-pulse`}>
+        <Pressable
+          className={`h-9 w-9 items-center justify-center rounded-full border-2 border-white shadow-md ${isRecent ? 'bg-primary' : 'bg-slate-400'}`}
+          nativeID={`trainer-session-live-marker-${participant.userId}`}
+          onPress={() => onSelect(participant.userId)}
+          testID={`trainer-session-live-marker-${participant.userId}`}
+        >
+          <Text className="text-[10px] font-bold text-[#111518]" nativeID={`trainer-session-live-marker-${participant.userId}-label`} testID={`trainer-session-live-marker-${participant.userId}-label`}>
+            {initials}
+          </Text>
+        </Pressable>
+      </Animated.View>
     </Marker>
   );
 }
