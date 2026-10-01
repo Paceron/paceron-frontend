@@ -13,7 +13,10 @@ import { getUserInitials } from '../../utils/user-initials.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { useMpConnectStatus } from '../../hooks/use-mp-connect.js';
 import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
+import { mpConnectionState } from '../../utils/mp-connect-status.js';
+import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
@@ -47,17 +50,26 @@ function FieldGrid({ children }) {
   return <View className={isDesktopWeb ? 'flex-row flex-wrap' : ''} nativeID="profile-screen-field-grid" testID="profile-screen-field-grid">{children}</View>;
 }
 
-function Field({ label, value }) {
+// Etiqueta + contenido de un campo, con el mismo ancho que el resto de la grilla.
+function FieldShell({ label, slug, children }) {
   const isNarrowWeb = useIsNarrowWeb();
   const isDesktopWeb = isWeb && !isNarrowWeb;
-  const slug = `profile-screen-field-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
     <View className={isDesktopWeb ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
       <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
         <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
-        <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${slug}-value`} testID={`${slug}-value`}>{value}</Text>
+        {children}
       </View>
     </View>
+  );
+}
+
+function Field({ label, value }) {
+  const slug = `profile-screen-field-${label.toLowerCase().replace(/\s+/g, '-')}`;
+  return (
+    <FieldShell label={label} slug={slug}>
+      <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${slug}-value`} testID={`${slug}-value`}>{value}</Text>
+    </FieldShell>
   );
 }
 
@@ -156,11 +168,57 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
   );
 }
 
+const MP_STATE_TONE = {
+  connected: { badge: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary', icon: 'check-circle' },
+  expired: { badge: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', icon: 'clock-alert-outline' },
+  disconnected: { badge: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-300', icon: 'link-variant-off' },
+};
+
+// Estado de la cuenta de Mercado Pago con la que el entrenador cobra: si está
+// conectada y hasta cuándo (el token dura 180 días y no se renueva solo).
+function MpConnectionField() {
+  const colors = useThemeColors();
+  const status = useMpConnectStatus();
+  const slug = 'profile-screen-field-mercado-pago';
+  const mp = mpConnectionState(status);
+  const tone = MP_STATE_TONE[mp.state];
+
+  let body;
+  if (status.loading) {
+    body = <SkeletonBlock height={20} nativeID={`${slug}-skeleton`} rounded="rounded-full" testID={`${slug}-skeleton`} width={120} />;
+  } else if (status.failed) {
+    body = (
+      <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${slug}-error`} testID={`${slug}-error`}>
+        No pudimos consultar la conexión.
+      </Text>
+    );
+  } else {
+    body = (
+      <View className="gap-1" nativeID={`${slug}-status`} testID={`${slug}-status`}>
+        <View className={`flex-row items-center gap-1 self-start rounded-full px-2 py-0.5 ${tone.badge}`} nativeID={`${slug}-badge`} testID={`${slug}-badge`}>
+          <MaterialCommunityIcons color={mp.state === 'connected' ? colors.primary : colors.onSurfaceVariant} name={tone.icon} size={14} />
+          <Text className={`text-xs font-semibold ${tone.text}`} nativeID={`${slug}-badge-label`} testID={`${slug}-badge-label`}>{mp.label}</Text>
+        </View>
+        {mp.detail ? (
+          <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${slug}-detail`} testID={`${slug}-detail`}>{mp.detail}</Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <FieldShell label="Cuenta de Mercado Pago" slug={slug}>
+      {body}
+    </FieldShell>
+  );
+}
+
 function TrainerDataSection({ bankAlias }) {
   return (
     <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
       <FieldGrid>
         <Field label="Alias de pagos" value={display(bankAlias)} />
+        <MpConnectionField />
       </FieldGrid>
     </SectionCard>
   );
@@ -214,10 +272,12 @@ export function ProfileScreen() {
   const activeRole = useAuthStore((s) => s.activeRole);
   const queryClient = useQueryClient();
   const { user } = useUser(userId);
-  const refreshUser = () => Promise.all([
-    queryClient.invalidateQueries({ queryKey: ['user', userId] }),
-    queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.summary(userId) }),
-  ]);
+  const refreshUser = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['user', userId] }),
+      queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.summary(userId) }),
+      queryClient.invalidateQueries({ queryKey: ['mp-connect-status', userId] }),
+    ]);
   const { deactivateAccount, deactivateTrainerRole, uploadPhoto, deletePhoto } = useUserMutations();
   const { roles } = usePermissions(userId);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');

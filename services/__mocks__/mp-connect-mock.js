@@ -32,10 +32,14 @@ export async function mockGetMpConnectAuthUrl(platform) {
   };
 }
 
+// Como Mercado Pago: el token dura 180 días desde que se conectó.
+const TOKEN_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+
 export async function mockGetMpConnectStatus() {
   return {
     connected: mockConnected,
     account_status: mockConnected ? 'authorized' : 'deauthorized',
+    token_expires_at: mockConnected ? new Date(Date.now() + TOKEN_TTL_MS).toISOString() : null,
   };
 }
 
