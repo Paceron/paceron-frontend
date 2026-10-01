@@ -722,3 +722,34 @@ lógica en `session-pre-start-screen.jsx`). Sin este gap resuelto, el frontend p
 mientras tanto aplicar un bloqueo solo-local (mismo dispositivo) sin esperar al backend, pero
 queda fuera de esta rama a pedido del usuario -- por ahora cancelar sigue permitiendo rejugar la
 sesión, igual que ya pasa hoy en la asíncrona.
+
+## Gap 20 — confirmar 2 comportamientos del bus de tiempo real para el cliente entrenador
+
+Dos confirmaciones necesarias para la pantalla en vivo del entrenador (spec
+`docs/superpowers/specs/2026-09-30-presencial-live-session-trainer-design.md`), ninguna bloquea el
+plan — las dos tienen fallback ya decidido.
+
+1. **`GET /session-instances/:id/feedback` sin `?athlete_user_id=` — ¿devuelve todos los atletas de
+   la sesión?** Siempre se documentó y usó con ese filtro puesto (un atleta puntual). El feed de
+   registros del entrenador necesita ver el progreso de TODOS los corredores, incluido lo que pasó
+   antes de que el entrenador se sumara. **Fallback ya implementado (Task 7 de este plan):**
+   fan-out de `useQueries`, una consulta `?athlete_user_id=` por miembro del roster, mismo patrón
+   que `hooks/use-team-roster.js` usa para resolver nombres. Si el filtro resulta ser opcional,
+   se simplifica a una sola consulta más adelante.
+2. **El envelope de cada mensaje WS reenviado declara `from: {userId, role}`, asignado por el
+   servidor — ¿está esto realmente implementado en el gateway ya desplegado?** El cliente corredor
+   (spec 1) nunca tuvo que leer `from` (solo procesa `control`, siempre asumido del entrenador). El
+   cliente entrenador SÍ depende de `from.userId` para saber a qué corredor pertenece cada
+   `presence:joined/left/position/set_status` — esos mensajes no llevan el id del atleta en su
+   `payload` (a diferencia de `update:set_event`, que sí trae `athleteUserId` explícito). **Sin
+   confirmar, el mapa/lista de participantes simplemente no atribuye ningún mensaje a nadie** (el
+   reducer de `utils/trainer-participant-state.js` ignora silenciosamente cualquier mensaje sin
+   `from.userId`, sin romper nada, pero sin mostrar nada tampoco).
+3. **Casing exacto del payload de `update:set_event`** — la spec 1 lo documentó en prosa
+   ("payload incluye los mismos campos persistidos + athleteUserId") sin fijar si es
+   `athlete_user_id` (snake, como el resto del DTO de `workout_feedback`) o `athleteUserId`
+   (camel). El cliente entrenador (Task 7) lee ambas variantes defensivamente hasta confirmar.
+
+**Impacto en frontend:** sin acción pendiente mientras se confirma — los tres puntos ya tienen
+manejo defensivo en el código de este plan (Task 7), listos para simplificarse si backend confirma
+el camino más simple en cada caso.
