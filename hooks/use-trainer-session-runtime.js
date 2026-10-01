@@ -21,6 +21,7 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
   const [participants, setParticipants] = useState(() => initParticipants(rosterMembers));
   const [feed, setFeed] = useState([]);
   const [bootstrapped, setBootstrapped] = useState(false);
+  const [selfPosition, setSelfPosition] = useState(null);
 
   const channel = sessionInstanceId ? `session:${sessionInstanceId}` : null;
 
@@ -111,6 +112,7 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
     gps.start({
       onPoint: (point) => {
         send('presence', undefined, { event: 'position', payload: { latitude: point.latitude, longitude: point.longitude } });
+        setSelfPosition({ latitude: point.latitude, longitude: point.longitude, ts: point.timestamp ?? Date.now() });
       },
     });
     return () => { gps.stop(); };
@@ -122,5 +124,5 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
     send('control', undefined, { event: 'session_finished', to: 'all', payload: {} });
   };
 
-  return { connectionStatus, participants, feed, gpsEnabled, finalize };
+  return { connectionStatus, participants, feed, gpsEnabled, selfPosition, finalize };
 }

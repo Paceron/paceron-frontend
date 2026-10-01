@@ -100,6 +100,24 @@ function ParticipantMarker({ participant, onSelect }) {
   );
 }
 
+// Marcador de la posición propia del entrenador -- distinto en color/ícono de
+// los de los corredores (ParticipantMarker) para que se distinga de un
+// vistazo en el mapa. Sin pulso de "reciente" (a diferencia de los
+// corredores, no hace falta señalar antigüedad de la propia posición).
+function SelfMarker({ position }) {
+  return (
+    <Marker anchor="center" lngLat={[position.longitude, position.latitude]}>
+      <View
+        className="h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-amber-500 shadow-md"
+        nativeID="trainer-session-live-self-marker"
+        testID="trainer-session-live-self-marker"
+      >
+        <MaterialCommunityIcons color="#ffffff" name="account-supervisor" size={20} />
+      </View>
+    </Marker>
+  );
+}
+
 const DRAG_VARIANTS = {
   finish: {
     trackBorder: 'border-emerald-300 dark:border-emerald-800/70',
@@ -204,7 +222,7 @@ function TrainerSessionLiveScreenContent() {
   const groupId = pendingSession?.groupId ?? null;
   const { members: rosterMembers } = useTeamRoster(teamId, groupId ? [groupId] : []);
 
-  const { connectionStatus, participants, feed, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers });
+  const { connectionStatus, participants, feed, selfPosition, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers });
 
   const [mode, setMode] = useState('map'); // 'map' | 'participants' | 'feed'
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
@@ -215,7 +233,15 @@ function TrainerSessionLiveScreenContent() {
 
   const participantList = useMemo(() => [...participants.values()].sort((a, b) => a.name.localeCompare(b.name)), [participants]);
   const positionedParticipants = useMemo(() => participantList.filter((p) => p.position), [participantList]);
-  const bounds = useMemo(() => computeBounds(positionedParticipants.map((p) => p.position)), [positionedParticipants]);
+  // Posición propia incluida en el cálculo de bounds (para que el auto-encuadre
+  // no deje al entrenador afuera de cuadro), pero NO en las deps del efecto de
+  // abajo -- el movimiento continuo del propio entrenador nunca debe disparar
+  // un refit, solo la llegada de un corredor nuevo.
+  const boundsPoints = useMemo(
+    () => [...positionedParticipants.map((p) => p.position), ...(selfPosition ? [selfPosition] : [])],
+    [positionedParticipants, selfPosition],
+  );
+  const bounds = useMemo(() => computeBounds(boundsPoints), [boundsPoints]);
 
   // Auto-encuadre SOLO cuando se suma un participante nuevo (el conteo sube),
   // no en cada movimiento -- clave en las deps es positionedParticipants.length,
@@ -251,6 +277,7 @@ function TrainerSessionLiveScreenContent() {
           {positionedParticipants.map((participant) => (
             <ParticipantMarker key={participant.userId} onSelect={setSelectedParticipantId} participant={participant} />
           ))}
+          {selfPosition && <SelfMarker position={selfPosition} />}
         </Map>
         <Pressable
           className="absolute right-3 top-3 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md dark:bg-surface"
