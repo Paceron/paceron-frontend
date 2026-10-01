@@ -17,6 +17,10 @@ const channelListeners = new Map(); // channel -> Set<callback>
 // más abajo para el porqué (evita la carrera de "joined" perdido).
 const subscribeAckListeners = new Map();
 const subscribedChannels = new Set();
+// Canales para los que ya se logueó la primera `presence:position` recibida --
+// solo diagnóstico (ver dispatchMessage): confirma que AL MENOS una posición
+// llegó, sin inundar el log con una línea por cada punto de GPS.
+const loggedFirstPosition = new Set();
 let reconnectAttempt = 0;
 let reconnectTimer = null;
 let heartbeatTimer = null;
@@ -95,6 +99,17 @@ function dispatchMessage(raw) {
     logDebug(`[realtime] error del servidor: ${msg.message ?? '(sin mensaje)'}`);
     return;
   }
+  // Traza de diagnóstico para presence/control -- joined/left/set_status (poco
+  // frecuentes) siempre; position (cada ~1s por corredor) solo la primera vez
+  // por canal, para confirmar que llega AL MENOS una sin inundar el log.
+  if (msg.type === 'presence' || msg.type === 'control') {
+    if (msg.event !== 'position') {
+      logDebug(`[realtime] recibido canal=${msg.channel} type=${msg.type} event=${msg.event} from=${msg.from}`);
+    } else if (!loggedFirstPosition.has(msg.channel)) {
+      loggedFirstPosition.add(msg.channel);
+      logDebug(`[realtime] primera position recibida canal=${msg.channel} from=${msg.from}`);
+    }
+  }
   const listeners = channelListeners.get(msg.channel);
   if (!listeners) return;
   for (const listener of listeners) listener(msg);
@@ -164,7 +179,19 @@ export function unsubscribe(channel) {
 }
 
 export function send(channel, type, payload, extra = {}) {
-  if (!socket || socket.readyState !== 1) return; // efímero -- sin cola, se descarta si no hay conexión
+  if (!socket || socket.readyState !== 1) {
+    // Antes se descartaba en total silencio -- diagnóstico del bug de
+    // 2026-10-01 (presence:joined perdido en conexión fría) recién fue posible
+    // después de agregar esta línea. event !== 'position' para no inundar si
+    // esto empieza a pasar seguido con el GPS continuo.
+    if (extra?.event !== 'position') {
+      logDebug(`[realtime] send() DESCARTADO (socket no abierto) canal=${channel} type=${type} event=${extra?.event}`);
+    }
+    return; // efímero -- sin cola, se descarta si no hay conexión
+  }
+  if (extra?.event !== 'position') {
+    logDebug(`[realtime] send() canal=${channel} type=${type} event=${extra?.event}`);
+  }
   socket.send(JSON.stringify(buildMessage({ channel, type, payload, ...extra })));
 }
 
