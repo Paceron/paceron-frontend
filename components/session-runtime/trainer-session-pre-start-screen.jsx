@@ -11,6 +11,8 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { colorForUserId } from '../../utils/participant-color.js';
+import { logDebug } from '../../utils/debug-log.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 
 // Mismo criterio que session-pre-start-screen.jsx (URL universal de Google
@@ -52,6 +54,15 @@ function ParticipantRow({ member, idPrefix }) {
           </Text>
         </View>
       )}
+      {/* Mismo color que va de borde en el marcador del mapa en vivo
+          (colorForUserId) -- acá como puntito, para reconocer de un vistazo
+          a quién corresponde cada corredor entre el pre-start y la sesión. */}
+      <View
+        className="h-2.5 w-2.5 rounded-full"
+        nativeID={`${rowId}-dot`}
+        style={{ backgroundColor: colorForUserId(member.userId) }}
+        testID={`${rowId}-dot`}
+      />
       <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${rowId}-name`} numberOfLines={1} testID={`${rowId}-name`}>
         {member.name}
       </Text>
@@ -85,13 +96,20 @@ function TrainerSessionPreStartScreenContent() {
   // getCurrentPositionAsync bloqueante (ya descartado del lado del corredor
   // por no respetar su propio timeout).
   const handlePlay = async () => {
+    const startedAt = Date.now();
     let gpsEnabled = false;
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       gpsEnabled = Boolean(permission.granted);
-    } catch {
+    } catch (error) {
       gpsEnabled = false;
+      logDebug(`[trainer-pre-start] permiso GPS ERROR ${error?.message ?? error}`);
     }
+    // Mismo log que session-pre-start-screen.jsx (corredor) -- antes este
+    // flujo no logueaba nada, así que un "el entrenador no comparte su
+    // posición" no se podía distinguir de "nunca se intentó" vs "se negó el
+    // permiso" (2026-10-01).
+    logDebug(`[trainer-pre-start] permiso GPS resuelto (${Date.now() - startedAt}ms) granted=${gpsEnabled}`);
     setGpsEnabled(gpsEnabled);
     router.push('/trainer-session-live');
   };
