@@ -40,7 +40,14 @@ export function initParticipants(rosterMembers) {
 // identidad y evitar un re-render de más.
 export function applyParticipantMessage(participants, msg, exercises) {
   if (msg?.type !== 'presence') return participants;
-  const userId = msg.from?.userId != null ? String(msg.from.userId) : null;
+  // `from` es el userID emisor, un número plano puesto por el servidor --
+  // NUNCA un objeto `{userId}` (Gap 20, confirmado contra
+  // cmd/api/realtime/protocol.go#outboundMessage y docs/REALTIME_WS.md del
+  // backend: `{"type":"presence","from":12,"payload":{...}}`). Asumir
+  // `msg.from.userId` dejaba este reducer sin atribuir NINGÚN mensaje a
+  // nadie -- el bug real detrás de "No se unió" para un corredor que sí
+  // estaba en vivo.
+  const userId = msg.from != null ? String(msg.from) : null;
   if (!userId) return participants;
 
   const current = participants.get(userId);

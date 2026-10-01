@@ -30,11 +30,18 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
       setParticipants((current) => applyParticipantMessage(current, msg, exercises));
       return;
     }
-    if (msg.type === 'update' && msg.event === 'set_event') {
-      const payload = msg.payload ?? {};
-      // Casing defensivo hasta confirmar Gap 20 -- probar snake primero (es el
-      // que usa el resto del DTO de workout_feedback vía REST).
-      const athleteUserId = payload.athlete_user_id ?? payload.athleteUserId;
+    // El tipo es el STRING LITERAL "update:set_event" (un solo campo `type`,
+    // no `type:"update"` + `event:"set_event"` separados), y el feedback real
+    // viaja en `data.data` -- `data` es el MutationResponse completo
+    // ({message, data}) que el endpoint HTTP devuelve, no el feedback directo
+    // (Gap 20, confirmado contra
+    // cmd/api/controllers/workout_feedback_controller.go#MarshalUpdateSetEvent
+    // y docs/REALTIME_WS.md del backend). Leer `msg.event`/`msg.payload` acá
+    // nunca matcheaba nada -- los registros del corredor nunca llegaban al
+    // feed del entrenador.
+    if (msg.type === 'update:set_event') {
+      const payload = msg.data?.data ?? {};
+      const athleteUserId = payload.athlete_user_id;
       if (athleteUserId == null) return;
       const feedback = toSessionFeedbackModel(payload);
       if (!feedback) return;
