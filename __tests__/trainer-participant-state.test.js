@@ -2,6 +2,7 @@ import {
   PARTICIPANT_STATUS,
   initParticipants,
   applyParticipantMessage,
+  displayStatus,
 } from '../utils/trainer-participant-state.js';
 
 const ROSTER = [
@@ -106,5 +107,41 @@ describe('applyParticipantMessage', () => {
     const initial = initParticipants(ROSTER);
     const next = applyParticipantMessage(initial, { type: 'control', event: 'session_finished', from: 12 }, EXERCISES);
     expect(next).toBe(initial);
+  });
+});
+
+describe('displayStatus', () => {
+  test('not_joined -- se muestra tal cual, no "desconectado"', () => {
+    const initial = initParticipants(ROSTER);
+    expect(displayStatus(initial.get('12'))).toBe(PARTICIPANT_STATUS.NOT_JOINED);
+  });
+
+  test('se unió y se fue sin arrancar nada -- desconectado', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'joined', payload: {}, from: 12 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'left', payload: {}, from: 12 }, EXERCISES);
+    expect(displayStatus(participants.get('12'))).toBe(PARTICIPANT_STATUS.DISCONNECTED);
+  });
+
+  test('se fue a mitad de una serie en curso -- desconectado, no "en curso"', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { status: 'started', exerciseInstanceId: 500, exerciseName: 'Caminata', setNumber: 1 }, from: 12 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'left', payload: {}, from: 12 }, EXERCISES);
+    expect(displayStatus(participants.get('12'))).toBe(PARTICIPANT_STATUS.DISCONNECTED);
+  });
+
+  test('completó todo y se fue -- sigue mostrando "completó todo", no desconectado', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { exerciseInstanceId: 500, status: 'skipped', scope: 'exercise' }, from: 13 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { exerciseInstanceId: 501, status: 'skipped', scope: 'exercise' }, from: 13 }, EXERCISES);
+    expect(participants.get('13').status).toBe(PARTICIPANT_STATUS.COMPLETED);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'left', payload: {}, from: 13 }, EXERCISES);
+    expect(displayStatus(participants.get('13'))).toBe(PARTICIPANT_STATUS.COMPLETED);
+  });
+
+  test('todavía unido -- se muestra el status real sin importar cuál sea', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'joined', payload: {}, from: 12 }, EXERCISES);
+    expect(displayStatus(participants.get('12'))).toBe(PARTICIPANT_STATUS.CONNECTED);
   });
 });

@@ -14,7 +14,26 @@ export const PARTICIPANT_STATUS = {
   IN_PROGRESS: 'in_progress',
   PAUSED: 'paused',
   COMPLETED: 'completed',
+  // Solo para PRESENTACIÓN (ver displayStatus) -- nunca lo asigna el reducer
+  // directamente. `joined` puede volver a `false` (evento `left`) sin que el
+  // `status` de fondo cambie (no hay "abandonó a mitad de una serie" como
+  // transición real), así que sin esto la lista seguía mostrando "En vivo"/
+  // "En curso" para alguien que ya cerró la app -- bug real, 2026-10-03.
+  DISCONNECTED: 'disconnected',
 };
+
+// Qué mostrar en la UI -- no es lo mismo que `participant.status` (el estado
+// "de fondo", lo último que se supo que estaba haciendo). Alguien que se fue
+// (`joined: false`) sin haber completado todo se muestra como DISCONNECTED
+// sin importar en qué status quedó (en_progress/paused/connected); completar
+// todo y salir sigue mostrando "Completó todo" (irse después de terminar no
+// es una señal de alarma).
+export function displayStatus(participant) {
+  if (!participant.joined && participant.status !== PARTICIPANT_STATUS.NOT_JOINED && participant.status !== PARTICIPANT_STATUS.COMPLETED) {
+    return PARTICIPANT_STATUS.DISCONNECTED;
+  }
+  return participant.status;
+}
 
 function emptyParticipant(userId, member) {
   return {
