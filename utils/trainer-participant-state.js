@@ -99,6 +99,14 @@ export function applyParticipantMessage(participants, msg, exercises) {
   if (msg.event === 'position') {
     next.set(userId, {
       ...current,
+      // Recibir CUALQUIER mensaje de este userId ya prueba que está
+      // conectado -- si el entrenador entra DESPUÉS de que el corredor mandó
+      // su único `joined` (un broadcast efímero, nadie lo re-manda por
+      // "quién está ya adentro"), nunca lo iba a ver sin esto: quedaba
+      // "No se unió" para siempre pese a recibir sus posiciones en vivo
+      // (bug real, 2026-10-03).
+      joined: true,
+      status: current.status === PARTICIPANT_STATUS.NOT_JOINED ? PARTICIPANT_STATUS.CONNECTED : current.status,
       position: { latitude: msg.payload?.latitude, longitude: msg.payload?.longitude, ts: msg.ts ?? Date.now() },
     });
     return next;
@@ -134,7 +142,10 @@ export function applyParticipantMessage(participants, msg, exercises) {
       currentSetNumber = null;
     }
 
-    next.set(userId, { ...current, resolvedSetCount, status: nextStatus, currentExerciseName, currentSetNumber });
+    // Mismo criterio que `position` -- recibir un set_status prueba que está
+    // conectado, sin importar si el entrenador llegó a tiempo para el
+    // `joined` explícito.
+    next.set(userId, { ...current, joined: true, resolvedSetCount, status: nextStatus, currentExerciseName, currentSetNumber });
     return next;
   }
 

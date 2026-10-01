@@ -59,6 +59,26 @@ describe('applyParticipantMessage', () => {
     expect(next.get('13').position).toEqual({ latitude: -34.6, longitude: -58.4, ts: 1000 });
   });
 
+  // El entrenador puede entrar al canal DESPUÉS de que el corredor ya mandó
+  // su único `joined` (broadcast efímero, nadie lo repite) -- sin esto, un
+  // corredor que llegó antes queda "No se unió" para siempre pese a que sus
+  // posiciones/series sí llegan (bug real, 2026-10-03).
+  test('position de alguien que nunca mandó joined explícito -- igual lo marca conectado', () => {
+    const initial = initParticipants(ROSTER);
+    const msg = { type: 'presence', event: 'position', payload: { latitude: -34.6, longitude: -58.4 }, from: 13 };
+    const next = applyParticipantMessage(initial, msg, EXERCISES);
+    expect(next.get('13').joined).toBe(true);
+    expect(next.get('13').status).toBe(PARTICIPANT_STATUS.CONNECTED);
+  });
+
+  test('set_status de alguien que nunca mandó joined explícito -- igual lo marca conectado', () => {
+    const initial = initParticipants(ROSTER);
+    const msg = { type: 'presence', event: 'set_status', payload: { status: 'started', exerciseInstanceId: 500, exerciseName: 'Caminata', setNumber: 1 }, from: 13 };
+    const next = applyParticipantMessage(initial, msg, EXERCISES);
+    expect(next.get('13').joined).toBe(true);
+    expect(next.get('13').status).toBe(PARTICIPANT_STATUS.IN_PROGRESS);
+  });
+
   test('set_status started -> in_progress con exercise/set actual, paused -> paused sin perderlo', () => {
     const initial = initParticipants(ROSTER);
     const started = applyParticipantMessage(initial, { type: 'presence', event: 'set_status', payload: { setId: 1, status: 'started', exerciseInstanceId: 500, exerciseName: 'Caminata', setNumber: 1 }, from: 12 }, EXERCISES);
