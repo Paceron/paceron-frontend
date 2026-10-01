@@ -148,6 +148,25 @@ export async function getActiveRun(sessionInstanceId, sessionDate, athleteUserId
   return rows[0] ?? null;
 }
 
+// Último run local para (sesión, fecha, atleta) sin filtrar por status --
+// a diferencia de getActiveRun, sirve para saber si YA se completó una
+// sesión aunque el sync remoto del cierre (finalizeSession -> syncRun,
+// fire-and-forget) todavía no haya llegado al backend. El pre-start lo usa
+// para no confiar solo en el estado remoto de runner_session, que puede
+// quedar atrás por un rato corto (bug real, 2026-09-30: un tap rápido en
+// Play justo después de terminar creaba un run nuevo desde cero porque el
+// refetch remoto ganaba la carrera contra el PATCH de cierre).
+export async function getLatestRun(sessionInstanceId, sessionDate, athleteUserId) {
+  const db = await getDb();
+  const rows = await db.getAllAsync(
+    `SELECT * FROM session_runs
+     WHERE session_instance_id = ? AND session_date = ? AND athlete_user_id = ?
+     ORDER BY id DESC LIMIT 1`,
+    [toNumberOrNull(sessionInstanceId), sessionDate, toNumberOrNull(athleteUserId)]
+  );
+  return rows[0] ?? null;
+}
+
 export async function getRun(runId) {
   const db = await getDb();
   const rows = await db.getAllAsync('SELECT * FROM session_runs WHERE id = ?', [runId]);
