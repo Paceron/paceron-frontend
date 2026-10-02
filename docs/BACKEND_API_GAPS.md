@@ -844,3 +844,106 @@ del entrenador (`hooks/use-trainer-session-runtime.js`) lo resuelve contra la li
 de la sesión (`utils/trainer-participant-progress.js#exerciseNameById`, ya disponible en memoria,
 sin request extra) -- documentado acá solo para que quien toque este código de nuevo no asuma que
 `exercise_name` puede llegar algún día del lado de `workout_feedback` y lo lea directo del DTO.
+
+## Gap 25 — asistencia en vivo (`GET /attendance/session/{id}`) no refleja a todos los corredores sin confirmar
+
+Detectado probando la asistencia durante una sesión presencial en vivo (2026-10-03): con 3
+corredores del grupo, el modal mostró "1 confirmada, 0 sin confirmar" cuando en realidad faltaban
+2 por confirmar (deberían haber aparecido como `not_confirmed`).
+
+**Confirmado del lado frontend (no es diffing ni filtro local):** `useSessionAttendance`
+(`hooks/use-attendance.js`) y `AttendanceSessionModal` (consumidor durante la sesión en vivo, vía
+`trainer-session-live-screen.jsx`) muestran `summary.attended`/`summary.not_confirmed` y la lista
+`roster` **tal cual los devuelve el backend**, sin ningún cálculo ni reconciliación contra el
+roster del equipo/grupo (`use-team-roster.js`) de por medio -- `AttendanceMetricCards` solo hace
+`toCount(summary?.attended)`/`toCount(summary?.not_confirmed)`, sin aritmética propia. Si faltan
+corredores en "sin confirmar", es porque `roster`/`summary` del response ya vienen así.
+
+**Dos hipótesis, ninguna descartada todavía:**
+1. **Backend:** la resolución de "miembros con membresía activa en la fecha de la sesión"
+   (comentario propio del endpoint, `services/attendance.js`) no está trayendo bien a esos 2
+   corredores -- posible bug de join/rango de fechas en el query real.
+2. **Frontend, a verificar antes de pedir cambio de backend:** confirmar que
+   `AttendanceSessionModal` le pasa a `useSessionAttendance` el `teamId`/`groupId`/
+   `sessionInstanceId` correctos de la sesión en vivo (no un id resuelto mal desde
+   `pendingSession`/`sessionInstanceId`) -- un id equivocado también produciría un roster
+   incompleto sin que sea un bug de backend.
+
+**Pedido concreto para backend (si la hipótesis 1 se confirma):** revisar la query de
+`GET /attendance/session/{session_instance_id}` que arma `roster`/`summary.not_confirmed` --
+debería incluir TODOS los miembros con membresía activa en la fecha de la sesión, no solo los que
+ya tienen alguna fila de asistencia. Antes de encarar el fix, reproducir contra el backend local
+con un caso controlado (grupo con N miembros, 1 solo confirmado) y loguear el response crudo para
+confirmar cuál de las dos hipótesis es la real.
+
+## Gap 26 — sesión presencial controlada por el entrenador (apertura/cierre), no solo por franja horaria
+
+Mejora futura (roadmap, no se empieza sin confirmación explícita, ver conversación 2026-10-03) --
+documentada ahora para que el backend pueda ir evaluando el alcance en paralelo.
+
+**Idea:** hoy la sesión presencial "vive" dentro de su franja horaria (`presencial_time_from`/
+`presencial_time_to`) sin importar si el entrenador presionó Play -- cada corredor se une de forma
+independiente con su propio Play. El cambio propuesto da control real al entrenador: los
+corredores llegan al pre-start (que pasa a actuar como sala de espera) pero solo pueden unirse
+**entre** el momento en que el entrenador abre la sesión (su Play) y el momento en que la cierra
+(su slide-to-finish) -- el entrenador puede abrir/cerrar antes o después de la franja planificada,
+la franja queda como guía, no como regla dura.
+
+**Piezas que tocarían backend:**
+- Un concepto de "sesión abierta/cerrada" del lado del servidor (hoy el `control:session_finished`
+  que ya manda el entrenador es solo un mensaje de WebSocket efímero, sin persistencia -- si un
+  corredor se conecta después de que el entrenador cerró, hoy no hay forma de que el backend se lo
+  diga de entrada, sin depender de que el WS siga vivo).
+- Posiblemente un campo de estado en `session_instance` o similar (`open`/`closed`,
+  `opened_at`/`closed_at`) para que un corredor que recién abre el pre-start sepa si puede unirse
+  sin depender de haber estado conectado por WS en el momento exacto en que el entrenador abrió.
+- Validaciones de advertencia (no bloqueantes) ya resueltas 100% client-side: avisar al entrenador
+  si abre/cierra con más de 15 minutos de diferencia respecto a la franja planificada, y si cierra
+  habiendo corredores en vivo sin completar todo -- no requieren nada nuevo de backend, se resuelven
+  con los datos que el entrenador ya tiene en pantalla (franja del día + estado de participantes).
+
+**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía.
+Documentado para que el backend pueda pensar el modelo de "sesión abierta/cerrada" mientras se
+cierran primero los gaps de WS ya abiertos (26-28) y la base de la versión actual.
+
+## Gap 27 — WebSocket no soporta mensajes dirigidos ni persistentes (para broadcast/mensajería del entrenador)
+
+Mejora futura (roadmap, no se empieza sin confirmación explícita) -- necesaria para el próximo
+feature de "el entrenador manda mensajes (info/advertencia/alerta/crítico) a todos los corredores
+de la sesión o a uno puntual."
+
+El gateway actual (Gap 18, ya implementado) retransmite `presence`/`control` a **todos** los
+suscriptores del canal -- no hay forma de dirigir un mensaje a un `userId` puntual. Además,
+confirmado en Gap 21: ningún campo fuera de `type`/`channel`/`payload` sobrevive el relay (ni
+`to`, aunque el frontend ya lo manda hoy para `control:session_finished` con `to:'all'` -- ese
+valor nunca se usa realmente del lado servidor, es decorativo). Para mensajería dirigida hace
+falta:
+
+- Que el relay del backend respete un `to` (userId) dentro de `payload` (mismo patrón que ya usa
+  `event`, plegado adentro del payload opaco) y entregue el mensaje SOLO a esa conexión, en vez de
+  a todos los suscriptores del canal.
+- Definir si un mensaje de severidad alta (`crítico`/`alerta`) necesita persistencia -- hoy todo el
+  bus es fire-and-forget (si el corredor no está conectado en ese instante, el mensaje se pierde
+  para siempre, sin reintentos ni cola). Si un mensaje crítico necesita llegar aunque el corredor
+  esté momentáneamente desconectado, hace falta algún mecanismo de persistencia/entrega diferida
+  (ej. guardar el mensaje y reenviarlo si el corredor se reconecta durante la sesión, o degradar a
+  una notificación push si ya existe infraestructura de push -- a definir con backend).
+
+**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía.
+
+## Gap 28 — sin evento de WebSocket para asistencia registrada (QR o manual)
+
+Mejora futura (roadmap, no se empieza sin confirmación explícita) -- hoy el modal de asistencia
+del entrenador durante la sesión en vivo (`AttendanceSessionModal`) resuelve "casi en vivo" con
+polling (`refetchInterval: 6000` sobre `useSessionAttendance`), decisión tomada explícitamente
+como solución temporal (ver ronda de feedback 2026-10-02) mientras no exista un evento real.
+
+**Pedido:** cuando se registra una asistencia (por lectura de QR del corredor, o input manual del
+entrenador), el backend emite un mensaje al canal `session:{sessionInstanceId}` (mismo canal que ya
+usa el resto de la sesión en vivo) con el registro nuevo/actualizado -- mismo patrón que
+`update:set_event` (Gap 18), un `update:attendance_event` o similar, con el `athlete_user_id` y el
+nuevo estado de asistencia. El frontend reemplazaría el polling de 6s por escuchar este evento y
+listo.
+
+**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía. El
+polling actual sigue funcionando mientras tanto, solo con el delay de hasta 6s ya conocido.
