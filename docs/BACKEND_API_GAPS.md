@@ -906,6 +906,32 @@ la franja queda como guía, no como regla dura.
 Documentado para que el backend pueda pensar el modelo de "sesión abierta/cerrada" mientras se
 cierran primero los gaps de WS ya abiertos (26-28) y la base de la versión actual.
 
+**Actualización 2026-10-04 -- backend implementó el gate ANTES de que el frontend hiciera el resto
+del roadmap, y eso rompió el flujo existente (regresión real, no un gap nuevo).** El backend
+resolvió Gap 26 completo del lado servidor (apertura/cierre persistido en `group_calendar_day`,
+`presencial_open`/`opened_at`/`closed_at` en `GET /session-instances/:id`, 409
+`session_not_opened`/`session_closed` en `POST .../runner` del no-owner, `update:session_state` por
+WS) -- pero el frontend nunca llegó a construir la sala de espera ni ningún aviso para el corredor,
+porque esa parte quedó marcada "roadmap, no entra en esta rama todavía" más arriba. El gate del
+backend aplica igual, sin que el frontend lo supiera: el Play del ENTRENADOR nunca llamaba a
+`POST /session-instances/:id/runner` (no tiene SQLite propio, nunca necesitó ese endpoint antes de
+Gap 26) -- o sea que ninguna sesión presencial se "abría" nunca, y el primer `POST .../runner` de
+CUALQUIER corredor (su propio Play) caía siempre en 409 `session_not_opened`. Sin esa apertura,
+`syncRun` corta en el primer paso (`create_runner_session`) y nunca llega a mandar ni una sola
+serie -- esto rompía el registro completo del corredor (ni feed en vivo del entrenador, ni
+"Registro de Sesión" con datos al revisar después), no solo el caso de cancelación que se estaba
+probando cuando se encontró.
+
+**Fix ya aplicado en frontend (sin esperar el resto del roadmap):** el Play del entrenador
+(`trainer-session-pre-start-screen.jsx`) ahora llama `createRunnerSession(sessionInstanceId)` (self,
+sin `athleteUserId` -- el owner autenticado) antes de navegar, abriendo la sesión igual que
+describía la opción (a) ya acordada. El slide-to-finish (`finalize()` en
+`hooks/use-trainer-session-runtime.js`) ahora también llama `finishRunnerSession(sessionInstanceId)`
+(self) además del `control:session_finished` por WS que ya mandaba, para que `closed_at` quede
+seteado. Ninguna de las dos espera su resultado para bloquear la navegación (el entrenador no tiene
+cola de reintento local si falla, así que solo se loguea) -- la sala de espera/advertencias del
+pre-start del corredor siguen siendo roadmap, sin empezar.
+
 ## Gap 27 — WebSocket no soporta mensajes dirigidos ni persistentes (para broadcast/mensajería del entrenador)
 
 Mejora futura (roadmap, no se empieza sin confirmación explícita) -- necesaria para el próximo

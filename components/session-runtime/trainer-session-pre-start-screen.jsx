@@ -13,6 +13,7 @@ import { filterByName } from '../../utils/attendance-filter.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { logDebug } from '../../utils/debug-log.js';
+import { createRunnerSession } from '../../services/runnerSession.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 
 // Mismo criterio que session-pre-start-screen.jsx (URL universal de Google
@@ -95,6 +96,8 @@ function TrainerSessionPreStartScreenContent() {
   // gpsEnabled vía useLiveSessionStore). Solo el permiso importa acá, sin
   // getCurrentPositionAsync bloqueante (ya descartado del lado del corredor
   // por no respetar su propio timeout).
+  const sessionInstanceId = pendingSession.sessionInstance?.id;
+
   const handlePlay = async () => {
     const startedAt = Date.now();
     let gpsEnabled = false;
@@ -111,6 +114,23 @@ function TrainerSessionPreStartScreenContent() {
     // permiso" (2026-10-01).
     logDebug(`[trainer-pre-start] permiso GPS resuelto (${Date.now() - startedAt}ms) granted=${gpsEnabled}`);
     setGpsEnabled(gpsEnabled);
+    // Gap 26: el Play del entrenador ES la apertura de la sesión presencial
+    // del lado del backend (self, sin athleteUserId -- el owner autenticado).
+    // Sin este POST, el backend nunca marca `opened_at` y CUALQUIER corredor
+    // que intente crear su propio runner_session (su propio Play) recibe 409
+    // `session_not_opened` para siempre -- bug real, 2026-10-04: sin esto,
+    // ni un solo registro del corredor llegaba a sincronizarse (el loop de
+    // syncRun corta en el primer paso, createRunnerSession, y nunca llega a
+    // mandar ninguna serie). El entrenador no tiene SQLite propio para
+    // reintentar esto si falla, así que se loguea el resultado -- no bloquea
+    // la navegación (el entrenador sigue pudiendo supervisar aunque la
+    // apertura remota haya fallado, igual que el resto de esta pantalla).
+    try {
+      await createRunnerSession(sessionInstanceId);
+      logDebug(`[trainer-pre-start] sesión presencial abierta (session_instance=${sessionInstanceId})`);
+    } catch (error) {
+      logDebug(`[trainer-pre-start] ERROR abriendo sesión presencial: ${error?.message ?? error}`);
+    }
     router.push('/trainer-session-live');
   };
 

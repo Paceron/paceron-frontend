@@ -4,7 +4,7 @@ import { useLiveSessionStore } from '../store/live-session-store.js';
 import { useRealtimeChannel } from './use-realtime-channel.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
 import { send as sendRaw } from '../services/realtime-client.js';
-import { getRunnerSession, getSessionFeedback } from '../services/runnerSession.js';
+import { finishRunnerSession, getRunnerSession, getSessionFeedback } from '../services/runnerSession.js';
 import { toRunnerSessionModel, toSessionFeedbackModel } from '../services/normalizers.js';
 import { runnerSessionQueryKey } from './use-runner-session.js';
 import { applyParticipantMessage, applyRunnerStatus, initParticipants } from '../utils/trainer-participant-state.js';
@@ -168,6 +168,16 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
   const finalize = async () => {
     logDebug('[trainer-live] finalize -- control:session_finished a todo el canal');
     send('control', undefined, { event: 'session_finished', to: 'all', payload: {} });
+    // Gap 26: el slide-to-finish ES el cierre de la sesión presencial del
+    // lado del backend (self, PATCH status:'finished' sobre el propio
+    // runner_session abierto al Play) -- sin esto, `closed_at` nunca se
+    // setea y la sesión queda "abierta" para siempre del lado del backend.
+    try {
+      await finishRunnerSession(sessionInstanceId);
+      logDebug(`[trainer-live] sesión presencial cerrada (session_instance=${sessionInstanceId})`);
+    } catch (error) {
+      logDebug(`[trainer-live] ERROR cerrando sesión presencial: ${error?.message ?? error}`);
+    }
   };
 
   return { connectionStatus, participants, feed, gpsEnabled, selfPosition, finalize };
