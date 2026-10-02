@@ -189,6 +189,7 @@ function SessionPreStartScreenContent() {
       role: 'runner',
       athleteUserId: userId,
       mode,
+      completionStatus: interrupted ? 'interrupted' : finished ? 'finished' : null,
       teamId: pendingSession.teamId ?? null,
       teamName: pendingSession.teamName ?? null,
       groupName: pendingSession.groupName ?? null,
