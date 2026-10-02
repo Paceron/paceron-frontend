@@ -7,7 +7,7 @@ import {
   markSetSynced,
 } from './session-db.js';
 import { createWorkoutFeedback, createWorkoutFeedbackPoints } from './workoutFeedback.js';
-import { createRunnerSession, finishRunnerSession } from './runnerSession.js';
+import { createRunnerSession, finishRunnerSession, interruptRunnerSession } from './runnerSession.js';
 import { buildPointsPayload, buildSetPayload } from '../utils/session-sync-payload.js';
 
 // Orquestador de sync: popular el backend con los sets de un run ya
@@ -69,6 +69,11 @@ export async function syncRun(runId) {
     }
   }
 
+  // Gap 19: cancelar (status local 'cancelled') es una terminación TEMPRANA,
+  // no "deshacer" -- se refleja remoto como 'interrupted', nunca dejando el
+  // runner_session en 'wip' para siempre (eso hacía que el run quedara
+  // rejugable desde cero, y que el entrenador no pudiera distinguir "no
+  // arrancó" de "arrancó y lo cortó a mitad de camino").
   if (run.status === 'completed' && !run.runner_session_finished) {
     try {
       await finishRunnerSession(run.session_instance_id, {
@@ -78,6 +83,17 @@ export async function syncRun(runId) {
     } catch (error) {
       if (error.status !== 409) {
         result.errors.push({ error, step: 'finish_runner_session' });
+      }
+    }
+  } else if (run.status === 'cancelled' && !run.runner_session_finished) {
+    try {
+      await interruptRunnerSession(run.session_instance_id, {
+        athleteUserId: run.athlete_user_id ?? undefined,
+      });
+      await markRunnerSessionFinished(runId);
+    } catch (error) {
+      if (error.status !== 409) {
+        result.errors.push({ error, step: 'interrupt_runner_session' });
       }
     }
   }

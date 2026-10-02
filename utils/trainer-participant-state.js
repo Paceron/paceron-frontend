@@ -20,6 +20,10 @@ export const PARTICIPANT_STATUS = {
   // transición real), así que sin esto la lista seguía mostrando "En vivo"/
   // "En curso" para alguien que ya cerró la app -- bug real, 2026-10-03.
   DISCONNECTED: 'disconnected',
+  // También solo PRESENTACIÓN -- deriva de `runnerStatus` (Gap 19, ver abajo),
+  // nunca de mensajes WS. Terminación temprana real (el corredor canceló),
+  // distinta de PAUSED (una pausa espera reanudarse; esto no).
+  INTERRUPTED: 'interrupted',
 };
 
 // Qué mostrar en la UI -- no es lo mismo que `participant.status` (el estado
@@ -28,7 +32,20 @@ export const PARTICIPANT_STATUS = {
 // sin importar en qué status quedó (en_progress/paused/connected); completar
 // todo y salir sigue mostrando "Completó todo" (irse después de terminar no
 // es una señal de alarma).
+// `runnerStatus` (Gap 19 -- 'wip'/'finished'/'interrupted'/null, resuelto por
+// REST contra GET .../runner, ver use-trainer-session-runtime.js) es la
+// fuente AUTORITATIVA para los dos estados terminales: manda por encima de
+// `status`/`joined`, lo que sea que el stream de WS haya inferido mientras
+// tanto. Antes de esto, COMPLETED se inferÍa solo contando series resueltas
+// (resolvedSetCount >= total) -- un corredor que canceló a mitad de camino
+// (serie final nunca completada/salteada, nunca pudo pues emitir ningún
+// set_status para ella) podía de todos modos terminar mostrando "Completó
+// todo" por un total mal calculado o un bootstrap tardío (bug real,
+// 2026-10-03). `runnerStatus==='finished'` es la única fuente confiable de
+// "de verdad completó todo".
 export function displayStatus(participant) {
+  if (participant.runnerStatus === 'interrupted') return PARTICIPANT_STATUS.INTERRUPTED;
+  if (participant.runnerStatus === 'finished') return PARTICIPANT_STATUS.COMPLETED;
   if (!participant.joined && participant.status !== PARTICIPANT_STATUS.NOT_JOINED && participant.status !== PARTICIPANT_STATUS.COMPLETED) {
     return PARTICIPANT_STATUS.DISCONNECTED;
   }
@@ -42,6 +59,9 @@ function emptyParticipant(userId, member) {
     photoUrl: member?.photoUrl ?? null,
     joined: false,
     status: PARTICIPANT_STATUS.NOT_JOINED,
+    // Estado remoto de runner_session (Gap 19) -- 'wip'/'finished'/
+    // 'interrupted', o null mientras no se resolvió/no existe todavía.
+    runnerStatus: null,
     position: null,
     resolvedSetCount: 0,
     // Último ejercicio/serie conocido -- solo tiene sentido mientras
@@ -150,4 +170,17 @@ export function applyParticipantMessage(participants, msg, exercises) {
   }
 
   return participants;
+}
+
+// Mezcla el estado remoto de runner_session (Gap 19) resuelto por REST --
+// no es un mensaje de WS, así que vive separado de applyParticipantMessage.
+// Misma identidad-si-no-cambia-nada que el resto del módulo (el caller es un
+// polling, se llama seguido con el mismo valor la mayoría de las veces).
+export function applyRunnerStatus(participants, userId, runnerStatus) {
+  const key = String(userId);
+  const current = participants.get(key);
+  if (!current || current.runnerStatus === runnerStatus) return participants;
+  const next = new Map(participants);
+  next.set(key, { ...current, runnerStatus });
+  return next;
 }

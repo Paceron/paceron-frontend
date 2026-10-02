@@ -4,9 +4,10 @@ import { useLiveSessionStore } from '../store/live-session-store.js';
 import { useRealtimeChannel } from './use-realtime-channel.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
 import { send as sendRaw } from '../services/realtime-client.js';
-import { getSessionFeedback } from '../services/runnerSession.js';
-import { toSessionFeedbackModel } from '../services/normalizers.js';
-import { initParticipants, applyParticipantMessage } from '../utils/trainer-participant-state.js';
+import { getRunnerSession, getSessionFeedback } from '../services/runnerSession.js';
+import { toRunnerSessionModel, toSessionFeedbackModel } from '../services/normalizers.js';
+import { runnerSessionQueryKey } from './use-runner-session.js';
+import { applyParticipantMessage, applyRunnerStatus, initParticipants } from '../utils/trainer-participant-state.js';
 import { exerciseNameById } from '../utils/trainer-participant-progress.js';
 import { appendFeedEvent } from '../utils/trainer-records-feed.js';
 import { logDebug } from '../utils/debug-log.js';
@@ -117,6 +118,37 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
     setBootstrapped(true);
     logDebug(`[trainer-live] bootstrap feed OK, ${bootstrapFeed.length} eventos previos`);
   }, [bootstrapped, feedbackQueriesResolved, feedbackQueries, rosterMembers]);
+
+  // Gap 19: estado real de runner_session por atleta ('wip'/'finished'/
+  // 'interrupted'), resuelto por REST -- no hay evento WS para esto, así que
+  // es polling (mismo criterio que AttendanceSessionModal, 6s). Es la fuente
+  // autoritativa de "completó todo"/"interrumpió" en displayStatus -- antes
+  // de esto, el entrenador solo tenía la inferencia por resolvedSetCount, que
+  // podía mostrar "Completó todo" para alguien que canceló antes de terminar.
+  const runnerStatusQueries = useQueries({
+    queries: (rosterMembers ?? []).map((member) => ({
+      queryKey: runnerSessionQueryKey(sessionInstanceId, member.userId),
+      queryFn: async () => {
+        try {
+          const res = await getRunnerSession(sessionInstanceId, member.userId);
+          return toRunnerSessionModel(res?.data ?? null);
+        } catch (error) {
+          if (error.status === 404) return null;
+          throw error;
+        }
+      },
+      enabled: Boolean(sessionInstanceId && member.userId),
+      refetchInterval: 6000,
+    })),
+  });
+
+  useEffect(() => {
+    (rosterMembers ?? []).forEach((member, index) => {
+      const runnerSession = runnerStatusQueries[index]?.data;
+      if (!runnerSession) return;
+      setParticipants((current) => applyRunnerStatus(current, member.userId, runnerSession.status));
+    });
+  }, [rosterMembers, runnerStatusQueries]);
 
   const gps = useSessionGpsTracker(gpsEnabled);
 

@@ -36,6 +36,7 @@ const STATUS_META = {
   [PARTICIPANT_STATUS.PAUSED]: { label: 'Pausado', bg: 'bg-amber-300', text: 'text-amber-950' },
   [PARTICIPANT_STATUS.COMPLETED]: { label: 'Completó todo', bg: 'bg-emerald-500', text: 'text-white' },
   [PARTICIPANT_STATUS.DISCONNECTED]: { label: 'Desconectado', bg: 'bg-slate-300 dark:bg-slate-600', text: 'text-slate-700 dark:text-slate-200' },
+  [PARTICIPANT_STATUS.INTERRUPTED]: { label: 'Interrumpió', bg: 'bg-red-500', text: 'text-white' },
 };
 
 // `fitBounds(bounds, options)` -- el comentario de ejemplo de la librería
@@ -418,9 +419,12 @@ function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilterAthle
 // detalle de un participante que todavía no arrancó nada (CONNECTED) o que
 // está entre series no se queda sin decir nada.
 function activityOrNextLabel(participant, exercises) {
+  // Gap 19: un estado terminal (completó o interrumpió) ya no tiene "ahora"
+  // ni "próximo" que mostrar -- displayStatus ya cubre ambos casos arriba.
+  const resolved = displayStatus(participant);
+  if (resolved === PARTICIPANT_STATUS.COMPLETED || resolved === PARTICIPANT_STATUS.INTERRUPTED) return null;
   const current = currentActivityLabel(participant);
   if (current) return { prefix: 'Ahora', label: current };
-  if (participant.status === PARTICIPANT_STATUS.COMPLETED) return null;
   const next = nextExercise(exercises, participant.resolvedSetCount);
   if (!next) return null;
   return { prefix: 'Próximo', label: `${next.exerciseName} · Serie ${next.setNumber}` };

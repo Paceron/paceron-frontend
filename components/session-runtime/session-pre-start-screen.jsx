@@ -74,7 +74,11 @@ function SessionPreStartScreenContent() {
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const userId = useAuthStore((s) => s.userId);
   const [starting, setStarting] = useState(false);
-  const [locallyCompleted, setLocallyCompleted] = useState(false);
+  // 'completed' | 'cancelled' | null -- cubre el mismo hueco corto que antes
+  // (local vs. confirmación remota) para los DOS cierres terminales (Gap 19:
+  // cancelar ya no deja el runner_session en wip para siempre, así que
+  // también necesita su propia ventana de "ya sé localmente que terminó").
+  const [locallyTerminalStatus, setLocallyTerminalStatus] = useState(null);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
@@ -98,9 +102,13 @@ function SessionPreStartScreenContent() {
         try {
           await initSessionDb();
           const latest = await getLatestRun(sessionInstanceId, pendingSession?.date, userId);
-          if (!cancelled) setLocallyCompleted(latest?.status === RUN_STATUS.COMPLETED);
+          if (!cancelled) {
+            setLocallyTerminalStatus(
+              latest?.status === RUN_STATUS.COMPLETED ? 'completed' : latest?.status === RUN_STATUS.CANCELLED ? 'cancelled' : null,
+            );
+          }
         } catch {
-          if (!cancelled) setLocallyCompleted(false);
+          if (!cancelled) setLocallyTerminalStatus(null);
         }
       })();
       return () => { cancelled = true; };
@@ -115,9 +123,13 @@ function SessionPreStartScreenContent() {
   // que el segundo Play crea un run nuevo desde cero). `locallyCompleted`
   // cubre el hueco corto entre ese cierre local y la confirmación remota.
   const past = isPastSessionDate(pendingSession ?? { date: '' });
-  const finished = runnerSession?.status === 'finished' || locallyCompleted;
-  const mode = finished ? 'review' : 'manual';
-  const showReview = past || finished;
+  const finished = runnerSession?.status === 'finished' || locallyTerminalStatus === 'completed';
+  // Gap 19: cancelar a mitad de camino es una terminación temprana, no
+  // "deshacer" -- entra a Registro de Sesión igual que `finished` (lo ya
+  // hecho queda ahí para revisar/editar), nunca vuelve a Play.
+  const interrupted = runnerSession?.status === 'interrupted' || locallyTerminalStatus === 'cancelled';
+  const mode = finished || interrupted ? 'review' : 'manual';
+  const showReview = past || finished || interrupted;
 
   if (!pendingSession) return <Redirect href="/" />;
 
@@ -251,14 +263,21 @@ function SessionPreStartScreenContent() {
               </Text>
             </Pressable>
           )}
-          {finished && (
+          {interrupted ? (
+            <View className="mt-3 flex-row items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 dark:bg-red-900/20" nativeID="session-pre-start-screen-completed-badge" testID="session-pre-start-screen-completed-badge">
+              <MaterialCommunityIcons color="#dc2626" name="alert-decagram" size={16} />
+              <Text className="text-sm font-semibold text-red-700 dark:text-red-400" nativeID="session-pre-start-screen-completed-badge-label" testID="session-pre-start-screen-completed-badge-label">
+                Sesión interrumpida
+              </Text>
+            </View>
+          ) : finished ? (
             <View className="mt-3 flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-completed-badge" testID="session-pre-start-screen-completed-badge">
               <MaterialCommunityIcons color="#16a34a" name="check-decagram" size={16} />
               <Text className="text-sm font-semibold text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-completed-badge-label" testID="session-pre-start-screen-completed-badge-label">
                 Sesión completada
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View className="mb-4" nativeID="session-pre-start-screen-exercise-container" testID="session-pre-start-screen-exercise-container">
@@ -289,7 +308,7 @@ function SessionPreStartScreenContent() {
               </Text>
             </Pressable>
             <Text className="mt-2 px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID={`${reviewButtonId}-hint`} testID={`${reviewButtonId}-hint`}>
-              {finished ? 'Revisá y editá lo registrado en la sesión.' : 'Ingresá manualmente los datos de la sesión.'}
+              {finished || interrupted ? 'Revisá y editá lo registrado en la sesión.' : 'Ingresá manualmente los datos de la sesión.'}
             </Text>
           </View>
         ) : (

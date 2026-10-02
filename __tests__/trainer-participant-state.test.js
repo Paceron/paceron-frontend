@@ -2,6 +2,7 @@ import {
   PARTICIPANT_STATUS,
   initParticipants,
   applyParticipantMessage,
+  applyRunnerStatus,
   displayStatus,
 } from '../utils/trainer-participant-state.js';
 
@@ -25,6 +26,7 @@ describe('initParticipants', () => {
       photoUrl: 'https://x/12.jpg',
       joined: false,
       status: PARTICIPANT_STATUS.NOT_JOINED,
+      runnerStatus: null,
       position: null,
       resolvedSetCount: 0,
       currentExerciseName: null,
@@ -163,5 +165,60 @@ describe('displayStatus', () => {
     let participants = initParticipants(ROSTER);
     participants = applyParticipantMessage(participants, { type: 'presence', event: 'joined', payload: {}, from: 12 }, EXERCISES);
     expect(displayStatus(participants.get('12'))).toBe(PARTICIPANT_STATUS.CONNECTED);
+  });
+
+  // Gap 19: runnerStatus (REST, autoritativo) manda por encima de lo que el
+  // stream de WS haya inferido -- un corredor que canceló a mitad de camino
+  // (última serie nunca completada/salteada) no debe mostrarse como
+  // "Completó todo" solo porque resolvedSetCount llegó al total por error.
+  test('runnerStatus interrupted manda por encima de in_progress', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { status: 'started', exerciseInstanceId: 500, exerciseName: 'Caminata', setNumber: 1 }, from: 12 }, EXERCISES);
+    participants = applyRunnerStatus(participants, '12', 'interrupted');
+    expect(displayStatus(participants.get('12'))).toBe(PARTICIPANT_STATUS.INTERRUPTED);
+  });
+
+  test('runnerStatus interrupted manda incluso si el reducer de WS ya lo había marcado COMPLETED por error', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { exerciseInstanceId: 500, status: 'skipped', scope: 'exercise' }, from: 13 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { exerciseInstanceId: 501, status: 'skipped', scope: 'exercise' }, from: 13 }, EXERCISES);
+    expect(participants.get('13').status).toBe(PARTICIPANT_STATUS.COMPLETED);
+    participants = applyRunnerStatus(participants, '13', 'interrupted');
+    expect(displayStatus(participants.get('13'))).toBe(PARTICIPANT_STATUS.INTERRUPTED);
+  });
+
+  test('runnerStatus finished manda COMPLETED incluso si joined volvió a false', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyRunnerStatus(participants, '12', 'finished');
+    expect(displayStatus(participants.get('12'))).toBe(PARTICIPANT_STATUS.COMPLETED);
+  });
+
+  test('runnerStatus wip o null -- no cambia el comportamiento previo', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyRunnerStatus(participants, '12', 'wip');
+    expect(displayStatus(participants.get('12'))).toBe(PARTICIPANT_STATUS.NOT_JOINED);
+  });
+});
+
+describe('applyRunnerStatus', () => {
+  test('setea runnerStatus del participante indicado', () => {
+    const initial = initParticipants(ROSTER);
+    const next = applyRunnerStatus(initial, '12', 'finished');
+    expect(next.get('12').runnerStatus).toBe('finished');
+    expect(initial.get('12').runnerStatus).toBeNull();
+  });
+
+  test('mismo valor -- devuelve el mismo mapa (identidad, sin re-render de más)', () => {
+    const initial = initParticipants(ROSTER);
+    const once = applyRunnerStatus(initial, '12', 'wip');
+    const twice = applyRunnerStatus(once, '12', 'wip');
+    expect(twice).toBe(once);
+  });
+
+  test('userId fuera del roster -- devuelve el mismo mapa sin agregar entradas', () => {
+    const initial = initParticipants(ROSTER);
+    const next = applyRunnerStatus(initial, '999', 'finished');
+    expect(next).toBe(initial);
+    expect(next.size).toBe(2);
   });
 });
