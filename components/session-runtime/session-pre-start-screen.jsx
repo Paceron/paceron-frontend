@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
@@ -14,7 +14,8 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
-import { getLatestRun, initSessionDb, RUN_STATUS } from '../../services/session-db.js';
+import { cancelRun, getLatestRun, initSessionDb, interruptStartedSets, RUN_STATUS } from '../../services/session-db.js';
+import { syncRun } from '../../services/session-sync.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { logDebug } from '../../utils/debug-log.js';
@@ -147,11 +148,49 @@ function SessionPreStartScreenContent() {
   // ingreso nuevo. Polling (sin WS acá) a GET /session-instances/:id, mismo
   // criterio que AttendanceSessionModal.
   const alreadyStarted = runnerSession?.status === 'wip' || hasLocalInProgressRun || finished || interrupted;
-  const gateEnabled = Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !alreadyStarted;
-  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, gateEnabled, { refetchInterval: gateEnabled ? 5000 : false });
-  const gateLoading = gateEnabled && liveInstance == null;
-  const waitingForTrainer = gateEnabled && liveInstance != null && liveInstance.openedAt == null;
-  const closedByTrainer = gateEnabled && liveInstance != null && liveInstance.closedAt != null;
+  // El polling sigue activo mientras el corredor tenga un run en curso --
+  // no solo antes de arrancar -- para el caso de abajo (cierre forzado del
+  // entrenador mientras este corredor estaba con la app cerrada). Se corta
+  // una vez que el corredor ya tiene su propio cierre terminal (finished o
+  // interrupted), ahí no hay nada más que vigilar.
+  const instanceGateEnabled = Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !finished && !interrupted;
+  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, instanceGateEnabled, { refetchInterval: instanceGateEnabled ? 5000 : false });
+  const gateLoading = instanceGateEnabled && !alreadyStarted && liveInstance == null;
+  const waitingForTrainer = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.openedAt == null;
+  // Nunca llegó a arrancar nada y el entrenador ya cerró -- caso límite, sin
+  // alternativa de carga manual por ahora.
+  const closedByTrainer = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.closedAt != null;
+
+  // El entrenador puede cerrar la sesión mientras este corredor estaba lejos
+  // de la app (sin WS conectado para recibir el control:session_finished en
+  // vivo) -- al volver a entrar acá con un run local todavía in_progress, se
+  // fuerza la MISMA terminación temprana que un cancelar manual
+  // (interruptStartedSets + cancelRun + sync), para que no quede colgado
+  // esperando un Play que ya no corresponde ni vuelva a aparecer como si
+  // pudiera reanudar. El pre-start pasa solo a mostrar "Registro de Sesión"
+  // (vía `interrupted` más abajo), sin navegar a ningún lado por su cuenta.
+  const [forcingClose, setForcingClose] = useState(false);
+  useEffect(() => {
+    if (!hasLocalInProgressRun || liveInstance?.closedAt == null || forcingClose) return;
+    setForcingClose(true);
+    (async () => {
+      try {
+        const latest = await getLatestRun(sessionInstanceId, pendingSession?.date, userId);
+        if (latest?.status === RUN_STATUS.IN_PROGRESS) {
+          await interruptStartedSets(latest.id);
+          await cancelRun(latest.id);
+          await syncRun(latest.id);
+        }
+      } catch {
+        // Se reintenta solo (mismo polling, mismo chequeo) en el próximo tick
+        // o el próximo focus -- nada que mostrarle al usuario acá.
+      } finally {
+        setLocallyTerminalStatus('cancelled');
+        setHasLocalInProgressRun(false);
+        setForcingClose(false);
+      }
+    })();
+  }, [hasLocalInProgressRun, liveInstance?.closedAt, forcingClose, sessionInstanceId, pendingSession?.date, userId]);
 
   if (!pendingSession) return <Redirect href="/" />;
 

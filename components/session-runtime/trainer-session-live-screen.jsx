@@ -573,15 +573,14 @@ function TrainerSessionLiveScreenContent() {
     router.back();
   };
 
-  // Gap 26: el slide-to-finish dispara ESTO, no handleFinish directo -- si
-  // hay corredores que se presentaron y no terminaron, se confirma antes de
-  // cerrar. El thumb vuelve al inicio si se cancela (ver DragToFinishButton).
+  // El slide-to-finish SIEMPRE confirma, haya o no corredores sin terminar --
+  // mismo criterio de seguridad que el mantener-presionado del corredor para
+  // cancelar (un gesto de una sola dirección en una pantalla con mapa no es
+  // garantía de intención, a diferencia de un deslizar explícito con feedback
+  // visual -- igual se pide confirmación explícita antes de un cierre que
+  // afecta a todos). El mensaje varía según haya o no corredores sin terminar.
   const handleFinishTrigger = () => {
-    if (unfinished.length > 0) {
-      setFinishConfirmVisible(true);
-      return;
-    }
-    handleFinish();
+    setFinishConfirmVisible(true);
   };
 
   const handleCancelFinishConfirm = () => {
@@ -721,12 +720,16 @@ function TrainerSessionLiveScreenContent() {
       />
 
       <ConfirmDestructiveModal
-        confirmLabel="Finalizar igual"
-        description={`Todavía hay ${unfinished.length} corredor${unfinished.length === 1 ? '' : 'es'} que no completó su sesión: ${unfinished.map((p) => p.name).join(', ')}. ¿Finalizar igual?`}
+        confirmLabel={unfinished.length > 0 ? 'Finalizar igual' : 'Finalizar sesión'}
+        description={
+          unfinished.length > 0
+            ? `Todavía hay ${unfinished.length} corredor${unfinished.length === 1 ? '' : 'es'} que no completó su sesión: ${unfinished.map((p) => p.name).join(', ')}. Al finalizar se cierra la sesión para TODOS los corredores -- quedan registrados hasta donde llegaron, el resto sin registro. ¿Finalizar igual?`
+            : 'Se va a cerrar la sesión para todos los corredores. ¿Confirmás finalizar?'
+        }
         idPrefix="trainer-session-live-finish-confirm"
         onCancel={handleCancelFinishConfirm}
         onConfirm={handleConfirmFinishAnyway}
-        title="Finalizar con corredores sin terminar"
+        title={unfinished.length > 0 ? 'Finalizar con corredores sin terminar' : 'Finalizar la sesión'}
         visible={finishConfirmVisible}
       />
     </SafeAreaView>

@@ -745,7 +745,23 @@ function TrainingSessionLiveScreenContent() {
     }
     if (pendingControl.event === 'session_finished' && !finishing) {
       setFinishing(true);
-      finalizeSession().finally(() => {
+      // El entrenador cierra la sesión PARA TODOS -- si este corredor ya
+      // había resuelto todas sus series por su cuenta (el efecto de arriba ya
+      // disparó finalizeSession), esto es un cierre legítimo, no se toca
+      // nada más. Si NO había terminado, es una terminación temprana
+      // EXTERNA (el corredor no la pidió) -- misma semántica que cancelar a
+      // mano (interruptStartedSets + cancelRun + sync), para que el
+      // registro quede con lo hecho hasta acá y lo demás "sin registro",
+      // y el badge sea el rojo de interrumpida, no el verde de completada
+      // (bug real, 2026-10-04: alguien que ni había arrancado un ejercicio
+      // quedaba con la sesión colgada hasta que el entrenador insistía).
+      if (finalizeTriggeredRef.current || sessionComplete) {
+        clearLiveSession();
+        router.back();
+        return;
+      }
+      Toast.show({ type: 'info', text1: 'El entrenador finalizó la sesión' });
+      cancelSession().finally(() => {
         clearLiveSession();
         router.back();
       });

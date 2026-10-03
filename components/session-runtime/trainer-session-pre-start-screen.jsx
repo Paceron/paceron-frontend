@@ -9,6 +9,7 @@ import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { colorForUserId } from '../../utils/participant-color.js';
@@ -84,6 +85,14 @@ function TrainerSessionPreStartScreenContent() {
   const groupId = pendingSession?.groupId ?? null;
   const { members, loading: rosterLoading } = useTeamRoster(teamId, groupId ? [groupId] : []);
 
+  const sessionInstanceId = pendingSession?.sessionInstance?.id;
+  // El entrenador puede salir y volver a entrar a su propia sesión ya
+  // abierta sin pasar por finalizar -- esto es lo que le permite distinguir
+  // "todavía no la abrí" (Play) de "ya la abrí, estoy volviendo" (Reanudar),
+  // en vez de mostrar Play como si fuera a abrirla de nuevo desde cero.
+  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial));
+  const sessionAlreadyOpen = Boolean(liveInstance?.openedAt) && !liveInstance?.closedAt;
+
   if (!pendingSession) return <Redirect href="/" />;
 
   const exercises = pendingSession.sessionInstance?.exercises ?? [];
@@ -96,8 +105,6 @@ function TrainerSessionPreStartScreenContent() {
   // gpsEnabled vía useLiveSessionStore). Solo el permiso importa acá, sin
   // getCurrentPositionAsync bloqueante (ya descartado del lado del corredor
   // por no respetar su propio timeout).
-  const sessionInstanceId = pendingSession.sessionInstance?.id;
-
   const handlePlay = async () => {
     const startedAt = Date.now();
     let gpsEnabled = false;
@@ -127,9 +134,9 @@ function TrainerSessionPreStartScreenContent() {
     // apertura remota haya fallado, igual que el resto de esta pantalla).
     try {
       await createRunnerSession(sessionInstanceId);
-      logDebug(`[trainer-pre-start] sesión presencial abierta (session_instance=${sessionInstanceId})`);
+      logDebug(`[trainer-pre-start] sesión presencial ${sessionAlreadyOpen ? 'reanudada' : 'abierta'} (session_instance=${sessionInstanceId})`);
     } catch (error) {
-      logDebug(`[trainer-pre-start] ERROR abriendo sesión presencial: ${error?.message ?? error}`);
+      logDebug(`[trainer-pre-start] ERROR abriendo/reanudando sesión presencial: ${error?.message ?? error}`);
     }
     router.push('/trainer-session-live');
   };
@@ -249,14 +256,24 @@ function TrainerSessionPreStartScreenContent() {
       </ScrollView>
 
       <View className="border-t border-slate-100 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="trainer-session-pre-start-screen-footer" testID="trainer-session-pre-start-screen-footer">
-        <Pressable
-          className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
-          nativeID="trainer-session-pre-start-screen-play-button"
-          onPress={handlePlay}
-          testID="trainer-session-pre-start-screen-play-button"
-        >
-          <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />
-        </Pressable>
+        <View className="items-center" nativeID="trainer-session-pre-start-screen-play-container" testID="trainer-session-pre-start-screen-play-container">
+          <Pressable
+            className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
+            nativeID="trainer-session-pre-start-screen-play-button"
+            onPress={handlePlay}
+            testID="trainer-session-pre-start-screen-play-button"
+          >
+            {/* Ya abierta (el entrenador salió y volvió sin finalizar) -- no
+                es "iniciar de nuevo", es retomar la supervisión de la misma
+                sesión. Mismo ícono base (play), distinto label abajo. */}
+            <MaterialCommunityIcons color={colors.onPrimary} name={sessionAlreadyOpen ? 'play-circle-outline' : 'play'} size={44} />
+          </Pressable>
+          {sessionAlreadyOpen && (
+            <Text className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-play-resume-label" testID="trainer-session-pre-start-screen-play-resume-label">
+              Reanudar sesión
+            </Text>
+          )}
+        </View>
       </View>
 
       <AttendanceSessionModal
