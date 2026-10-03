@@ -1,5 +1,6 @@
+const mockGetState = jest.fn(() => ({ token: 'fake-jwt', userId: 1 }));
 jest.mock('../store/auth-store.js', () => ({
-  useAuthStore: { getState: () => ({ token: 'fake-jwt' }) },
+  useAuthStore: { getState: (...args) => mockGetState(...args) },
 }));
 
 class FakeWebSocket {
@@ -39,6 +40,7 @@ describe('realtime-client', () => {
     FakeWebSocket.instances = [];
     global.WebSocket = FakeWebSocket;
     jest.useFakeTimers();
+    mockGetState.mockReturnValue({ token: 'fake-jwt', userId: 1 });
     // eslint-disable-next-line global-require
     realtimeClient = require('../services/realtime-client.js');
   });
@@ -55,6 +57,31 @@ describe('realtime-client', () => {
   });
 
   test('connect() is idempotent while a socket is already open', () => {
+    realtimeClient.connect();
+    FakeWebSocket.instances[0].simulateOpen();
+    realtimeClient.connect();
+    expect(FakeWebSocket.instances).toHaveLength(1);
+  });
+
+  // Bug real, 2026-10-03: corredor cierra sesión e inicia sesión con OTRA
+  // cuenta sin cerrar la app -- sin este guard, el socket viejo (todavía
+  // abierto) seguía mandando `presence` como el usuario anterior para
+  // siempre, el entrenador nunca veía al nuevo.
+  test('connect() closes and reopens the socket when the active user changed while one is still open', () => {
+    mockGetState.mockReturnValue({ token: 'token-a', userId: 1 });
+    realtimeClient.connect();
+    FakeWebSocket.instances[0].simulateOpen();
+
+    mockGetState.mockReturnValue({ token: 'token-b', userId: 2 });
+    realtimeClient.connect();
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    expect(FakeWebSocket.instances[0].readyState).toBe(3); // viejo, cerrado
+    expect(FakeWebSocket.instances[1].url).toContain('token=token-b');
+  });
+
+  test('connect() stays idempotent across calls for the SAME user', () => {
+    mockGetState.mockReturnValue({ token: 'token-a', userId: 1 });
     realtimeClient.connect();
     FakeWebSocket.instances[0].simulateOpen();
     realtimeClient.connect();

@@ -8,14 +8,17 @@ import { useThemeColors } from '../../theme/colors.js';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
+import { useUser } from '../../hooks/use-user.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
+import { TrainerCard } from './trainer-card.jsx';
 
 // Mismo criterio que session-pre-start-screen.jsx (URL universal de Google
 // Maps, coordenadas no label) -- copiado, no importado: esa función no está
@@ -84,6 +87,12 @@ function TrainerSessionPreStartScreenContent() {
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
   const { members, loading: rosterLoading } = useTeamRoster(teamId, groupId ? [groupId] : []);
+  const trainerUserId = useAuthStore((s) => s.userId);
+  const { user: trainerUser } = useUser(trainerUserId);
+  // El entrenador puede figurar en el roster del grupo (es dueño del equipo,
+  // a veces también miembro) -- no es un corredor más, se muestra aparte vía
+  // TrainerCard, nunca mezclado en la lista de participantes.
+  const runnerMembers = members.filter((m) => String(m.userId) !== String(trainerUserId));
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   // El entrenador puede salir y volver a entrar a su propia sesión ya
@@ -96,7 +105,7 @@ function TrainerSessionPreStartScreenContent() {
   if (!pendingSession) return <Redirect href="/" />;
 
   const exercises = pendingSession.sessionInstance?.exercises ?? [];
-  const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedMembers = [...runnerMembers].sort((a, b) => a.name.localeCompare(b.name));
   const visibleMembers = participantsExpanded ? filterByName(sortedMembers, participantsQuery) : sortedMembers.slice(0, PARTICIPANTS_COLLAPSED_COUNT);
 
   // Permiso GPS una sola vez por sesión, mismo patrón que el handlePlay del
@@ -230,7 +239,10 @@ function TrainerSessionPreStartScreenContent() {
               value={participantsQuery}
             />
           )}
-          <View className="gap-2" nativeID="trainer-session-pre-start-screen-participants-list" testID="trainer-session-pre-start-screen-participants-list">
+          {trainerUser && (
+            <TrainerCard idPrefix="trainer-session-pre-start-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
+          )}
+          <View className="mt-2 gap-2" nativeID="trainer-session-pre-start-screen-participants-list" testID="trainer-session-pre-start-screen-participants-list">
             {visibleMembers.map((member) => (
               <ParticipantRow idPrefix="trainer-session-pre-start-screen" key={member.userId} member={member} />
             ))}
