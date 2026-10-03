@@ -24,9 +24,11 @@ import { PaymentsList } from './payments-list.jsx';
 // Cuántos meses corre la ventana del gráfico cada flecha: los mismos que muestra.
 const WINDOW_MONTHS = 6;
 
+// Primero Cobros y después Pagos. Las métricas de cobros (dashboard) viven solo
+// en la pestaña de Cobros: en Pagos no aplican, son los pagos que hizo él.
 const TRAINER_TABS = [
   { id: 'received', label: 'Cobros', icon: 'cash-plus' },
-  { id: 'history', label: 'Mis pagos', icon: 'receipt-text-outline' },
+  { id: 'history', label: 'Pagos', icon: 'receipt-text-outline' },
 ];
 
 function PaymentsScreenContent() {
@@ -66,7 +68,11 @@ function PaymentsScreenContent() {
   const activeList = activeTab === 'received' ? received : history;
 
   const { refreshing, onRefresh } = usePullToRefresh(() =>
-    Promise.all([isTrainer ? summary.refetch() : null, until ? windowQuery.refetch() : null, activeList.refetch()])
+    Promise.all([
+      activeTab === 'received' ? summary.refetch() : null,
+      activeTab === 'received' && until ? windowQuery.refetch() : null,
+      activeList.refetch(),
+    ])
   );
 
   const selectStatus = (group) => {
@@ -112,7 +118,9 @@ function PaymentsScreenContent() {
           </Text>
         </View>
 
-        {isTrainer ? (
+        {isTrainer ? <TabBar active={activeTab} onChange={setTab} scope="payments-screen-tabs" tabs={TRAINER_TABS} /> : null}
+
+        {activeTab === 'received' ? (
           <>
             <PaymentsDashboard
               activeStatus={receivedStatus}
@@ -134,12 +142,6 @@ function PaymentsScreenContent() {
               windowLoading={Boolean(until) && windowQuery.loading}
               windowSummary={windowSummary}
             />
-            <TabBar active={activeTab} onChange={setTab} scope="payments-screen-tabs" tabs={TRAINER_TABS} />
-          </>
-        ) : null}
-
-        {activeTab === 'received' ? (
-          <>
             <PaymentsFilters
               isWide={isWide}
               onChangeStatus={setReceivedStatus}

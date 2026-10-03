@@ -329,6 +329,9 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   El switch Bruto/Neto cambia tiles, gráfico y equipos juntos, siempre vía
   `utils/payments-summary.js#amountFor`: un mes sin neto es `s/d`, nunca un 0 inventado.
   "Pagos" está en el navbar (`paymentsRoute`, último, sin `role`).
+- **Pestañas Cobros → Pagos (2026-10-03, feedback de la profesora).** Con el rol entrenador
+  activo, las pestañas van arriba (primero Cobros, después Pagos) y el dashboard de
+  métricas de cobros vive solo dentro de Cobros: en Pagos no se muestra.
 - **Primer `useInfiniteQuery` del repo** (`hooks/use-payment-history.js`). Se eligió
   en vez de la acumulación manual de `use-team-search.js` porque hay pull-to-refresh:
   el `refetch` de un infinite query vuelve a pedir todas las páginas cargadas. Para
