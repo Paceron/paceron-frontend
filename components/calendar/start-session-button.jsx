@@ -134,13 +134,16 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
   const hasSession = Boolean(assignment.sessionInstance);
   const idPrefix = `start-session-button-${assignment.id}`;
 
-  // El estado runner_session del CORREDOR manda por encima de la fecha, igual
-  // que en el pre-start: una sesión de HOY que ya terminó tiene que mostrar
-  // "Registro de Sesión", no el Play — si no, el calendario sigue ofreciendo
-  // arrancar una sesión ya corrida. Para el entrenador no se consulta (el
-  // estado depende del atleta, que se elige después en el selector) y corre
-  // solo la regla de fecha pasada.
-  const { runnerSession } = useRunnerSession(role === 'runner' ? assignment?.sessionInstance?.id : null, userId);
+  // El estado runner_session del usuario actual manda por encima de la fecha,
+  // igual que en el pre-start: una sesión de HOY que ya terminó tiene que
+  // mostrar "Registro de Sesión"/"Ver sesión", no el Play. El entrenador
+  // también tiene su propio runner_session (se crea con su Play, se cierra
+  // con su finalize -- ver use-trainer-session-runtime.js) así que esta
+  // consulta aplica igual para los dos roles -- antes solo corría para
+  // 'runner', y un entrenador que finalizaba una sesión presencial del mismo
+  // día seguía viendo "Iniciar entrenamiento" al volver, porque `past` da
+  // false el mismo día y nada más lo contemplaba (bug real, 2026-10-05).
+  const { runnerSession } = useRunnerSession(assignment?.sessionInstance?.id, userId);
   // Gap 19: interrupted manda igual que finished -- cancelar a mitad de
   // camino es una terminación, el calendario no debe seguir ofreciendo Play
   // para una sesión que el corredor ya cortó (bug real, 2026-10-04).
