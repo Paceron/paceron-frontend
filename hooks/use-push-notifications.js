@@ -70,6 +70,32 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!isAndroid || isExpoGo) return undefined;
 
+    // Tap con la app CERRADA (cold start): el evento nativo puede dispararse
+    // antes de que este efecto llegue a suscribir el listener de abajo (la
+    // app recién está arrancando), así que esa respuesta se pierde y el
+    // usuario termina en la ruta inicial (Home) en vez de en `data.route` —
+    // el bug reportado de "las notificaciones llevan a Home en vez de a la
+    // pantalla correcta". getLastNotificationResponseAsync() recupera esa
+    // respuesta "perdida" una sola vez al montar (gateado por isAndroid:
+    // en web esa llamada tira UnavailabilityError, el módulo del navegador
+    // no la implementa — por eso va DENTRO de este efecto ya gateado, no
+    // como el hook useLastNotificationResponse suelto, que se llamaría
+    // incondicionalmente y rompería ahí). clearLastNotificationResponseAsync
+    // es necesario: sin limpiarla, cada apertura futura de la app (no solo
+    // la causada por el tap) volvería a navegar a esa misma ruta vieja para
+    // siempre, en vez de una sola vez.
+    (async () => {
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (!response) return;
+        const route = response.notification.request.content.data?.route;
+        if (route) router.push(route);
+        await Notifications.clearLastNotificationResponseAsync();
+      } catch {
+        // best-effort, mismo criterio que el resto del archivo
+      }
+    })();
+
     const foregroundSub = Notifications.addNotificationReceivedListener((notification) => {
       const { title, body } = notification.request.content;
       Toast.show({ type: 'info', text1: title ?? '', text2: body ?? '' });
