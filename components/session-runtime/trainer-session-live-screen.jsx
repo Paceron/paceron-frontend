@@ -20,6 +20,7 @@ import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { PARTICIPANT_STATUS, displayStatus, unfinishedParticipants } from '../../utils/trainer-participant-state.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { RecordsFeedModal } from './records-feed-modal.jsx';
+import { TrainerCard } from './trainer-card.jsx';
 import { nextExercise } from '../../utils/trainer-participant-progress.js';
 import { colorForUserId, TRAINER_MARKER_COLOR } from '../../utils/participant-color.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
@@ -32,13 +33,13 @@ import { notifySuccess, notifyWarning } from '../../utils/haptics.js';
 // serie-a-serie: el entrenador es supervisor, ve el avance de otros.
 
 const STATUS_META = {
-  [PARTICIPANT_STATUS.NOT_JOINED]: { label: 'No se unió', bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-200' },
+  [PARTICIPANT_STATUS.NOT_JOINED]: { label: 'Sin unirse', bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-200' },
   [PARTICIPANT_STATUS.CONNECTED]: { label: 'En vivo', bg: 'bg-sky-200 dark:bg-sky-900', text: 'text-sky-800 dark:text-sky-200' },
   [PARTICIPANT_STATUS.IN_PROGRESS]: { label: 'En curso', bg: 'bg-primary', text: 'text-[#111518]' },
   [PARTICIPANT_STATUS.PAUSED]: { label: 'Pausado', bg: 'bg-amber-300', text: 'text-amber-950' },
-  [PARTICIPANT_STATUS.COMPLETED]: { label: 'Completó todo', bg: 'bg-emerald-500', text: 'text-white' },
+  [PARTICIPANT_STATUS.COMPLETED]: { label: 'Completado', bg: 'bg-emerald-500', text: 'text-white' },
   [PARTICIPANT_STATUS.DISCONNECTED]: { label: 'Desconectado', bg: 'bg-slate-300 dark:bg-slate-600', text: 'text-slate-700 dark:text-slate-200' },
-  [PARTICIPANT_STATUS.INTERRUPTED]: { label: 'Interrumpió', bg: 'bg-red-500', text: 'text-white' },
+  [PARTICIPANT_STATUS.INTERRUPTED]: { label: 'Interrumpido', bg: 'bg-red-500', text: 'text-white' },
 };
 
 // `fitBounds(bounds, options)` -- el comentario de ejemplo de la librería
@@ -277,7 +278,7 @@ const DragToFinishButton = forwardRef(function DragToFinishButton({ onTrigger, i
 // opción más segura" -- el patrón de asistencia ya está probado y resuelve el
 // respeto de la status bar en Android, así que es ese el que se replica acá en
 // vez de inventar uno nuevo.
-function ParticipantsListModal({ visible, onClose, participants, onSelectParticipant }) {
+function ParticipantsListModal({ visible, onClose, participants, onSelectParticipant, trainerName, trainerPhotoUrl }) {
   const colors = useThemeColors();
   const idPrefix = 'trainer-session-live-participants-modal';
   const [query, setQuery] = useState('');
@@ -306,7 +307,10 @@ function ParticipantsListModal({ visible, onClose, participants, onSelectPartici
               testID={`${idPrefix}-search`}
               value={query}
             />
-            <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
+            {trainerName && (
+              <TrainerCard idPrefix={`${idPrefix}-trainer-card`} name={trainerName} photoUrl={trainerPhotoUrl} />
+            )}
+            <ScrollView className="mt-2" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
               {visibleParticipants.map((participant) => {
                 const activity = currentActivityLabel(participant);
                 return (
@@ -437,8 +441,12 @@ function TrainerSessionLiveScreenContent() {
 
   const trainerUserId = useAuthStore((s) => s.userId);
   const { user: trainerUser } = useUser(trainerUserId);
+  // El entrenador puede figurar en el roster del grupo -- no es un corredor
+  // más, se supervisa aparte (SelfMarker en el mapa, TrainerCard en la
+  // lista), nunca mezclado con la gente a la que está supervisando.
+  const runnerMembers = rosterMembers.filter((m) => String(m.userId) !== String(trainerUserId));
 
-  const { connectionStatus, participants, feed, selfPosition, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers });
+  const { connectionStatus, participants, feed, selfPosition, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers: runnerMembers });
 
   const [participantsVisible, setParticipantsVisible] = useState(false);
   const [feedVisible, setFeedVisible] = useState(false);
@@ -483,7 +491,7 @@ function TrainerSessionLiveScreenContent() {
 
   const selectedParticipant = participantList.find((p) => p.userId === selectedParticipantId) ?? null;
   const visibleFeed = filterFeedByAthlete(feed, feedFilterAthleteId);
-  const feedOptions = rosterMembers.map((m) => ({ id: m.userId, name: m.name }));
+  const feedOptions = runnerMembers.map((m) => ({ id: m.userId, name: m.name }));
   const unfinished = useMemo(() => unfinishedParticipants(participants), [participants]);
 
   useEffect(() => {
@@ -621,6 +629,8 @@ function TrainerSessionLiveScreenContent() {
         onClose={() => setParticipantsVisible(false)}
         onSelectParticipant={setSelectedParticipantId}
         participants={participantList}
+        trainerName={trainerUser?.name}
+        trainerPhotoUrl={trainerUser?.photoUrl}
         visible={participantsVisible}
       />
 

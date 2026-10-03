@@ -7,14 +7,17 @@ import { useThemeColors } from '../../theme/colors.js';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useTrainerSessionSummary } from '../../hooks/use-trainer-session-summary.js';
+import { useUser } from '../../hooks/use-user.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { RecordsFeedModal } from './records-feed-modal.jsx';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
+import { TrainerCard } from './trainer-card.jsx';
 
 // Resumen post-sesión del entrenador -- entra acá después de confirmar el
 // slide-to-finish (trainer-session-live-screen.jsx) o desde el calendario
@@ -24,10 +27,10 @@ import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 // acceso directo a asistencia -- sin esto, el entrenador tenía que ir al
 // módulo de asistencia general y volver a elegir equipo/grupo/sesión a mano.
 const STATUS_META = {
-  none: { label: 'No se unió', bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-200' },
+  none: { label: 'Sin unirse', bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-200' },
   wip: { label: 'Sin cerrar', bg: 'bg-amber-300', text: 'text-amber-950' },
-  finished: { label: 'Completó todo', bg: 'bg-emerald-500', text: 'text-white' },
-  interrupted: { label: 'Interrumpió', bg: 'bg-red-500', text: 'text-white' },
+  finished: { label: 'Completado', bg: 'bg-emerald-500', text: 'text-white' },
+  interrupted: { label: 'Interrumpido', bg: 'bg-red-500', text: 'text-white' },
 };
 
 function openLocationInMaps(location) {
@@ -67,11 +70,16 @@ function TrainerSessionReviewScreenContent() {
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const exercises = pendingSession?.sessionInstance?.exercises ?? [];
   const { members: rosterMembers } = useTeamRoster(teamId, groupId ? [groupId] : []);
-  const { participants, feed, loading } = useTrainerSessionSummary({ sessionInstanceId, exercises, rosterMembers });
+  const trainerUserId = useAuthStore((s) => s.userId);
+  const { user: trainerUser } = useUser(trainerUserId);
+  // El entrenador puede figurar en el roster del grupo -- no es un corredor
+  // más, se muestra aparte vía TrainerCard, nunca en la lista de abajo.
+  const runnerMembers = rosterMembers.filter((m) => String(m.userId) !== String(trainerUserId));
+  const { participants, feed, loading } = useTrainerSessionSummary({ sessionInstanceId, exercises, rosterMembers: runnerMembers });
 
   const sortedParticipants = useMemo(() => [...participants].sort((a, b) => a.name.localeCompare(b.name)), [participants]);
   const visibleFeed = filterFeedByAthlete(feed, feedFilterAthleteId);
-  const feedOptions = rosterMembers.map((m) => ({ id: m.userId, name: m.name }));
+  const feedOptions = runnerMembers.map((m) => ({ id: m.userId, name: m.name }));
   const attendedCount = sortedParticipants.filter((p) => p.runnerStatus === 'finished' || p.runnerStatus === 'interrupted' || p.runnerStatus === 'wip').length;
 
   if (!pendingSession) return <Redirect href="/" />;
@@ -183,7 +191,10 @@ function TrainerSessionReviewScreenContent() {
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="trainer-session-review-screen-participants-label" testID="trainer-session-review-screen-participants-label">
             Participantes ({attendedCount}/{sortedParticipants.length})
           </Text>
-          <View className="gap-2" nativeID="trainer-session-review-screen-participants-list" testID="trainer-session-review-screen-participants-list">
+          {trainerUser && (
+            <TrainerCard idPrefix="trainer-session-review-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
+          )}
+          <View className="mt-2 gap-2" nativeID="trainer-session-review-screen-participants-list" testID="trainer-session-review-screen-participants-list">
             {sortedParticipants.map((participant) => (
               <ParticipantRow idPrefix="trainer-session-review-screen" key={participant.userId} onPress={() => openAthleteReview(participant)} participant={participant} />
             ))}

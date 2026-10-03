@@ -10,6 +10,11 @@ import { logDebug } from '../utils/debug-log.js';
 const HEARTBEAT_MS = 25000;
 
 let socket = null;
+// userId con el que se abrió el socket actual -- ver el guard de connect()
+// de abajo (bug real, 2026-10-03: un corredor que cierra sesión e inicia
+// sesión con OTRA cuenta, SIN cerrar la app, seguía viendo al entrenador el
+// corredor anterior hasta forzar el cierre de la app).
+let connectedUserId = null;
 let status = 'closed';
 const statusListeners = new Set();
 const channelListeners = new Map(); // channel -> Set<callback>
@@ -146,9 +151,20 @@ function dispatchMessage(raw) {
 }
 
 export function connect() {
-  if (socket && (socket.readyState === 0 || socket.readyState === 1)) return; // ya conectando/abierto
+  const { token, userId } = useAuthStore.getState();
+  if (socket && (socket.readyState === 0 || socket.readyState === 1)) {
+    if (connectedUserId === userId) return; // ya conectando/abierto, mismo usuario
+    // El usuario cambió (logout -> login de otra cuenta) con el socket
+    // todavía vivo -- sin esto, el socket viejo seguía mandando `presence`
+    // como el usuario ANTERIOR para siempre (ningún reconnect espontáneo lo
+    // iba a notar, el logout no cierra el socket por su cuenta). Se cierra
+    // acá antes de abrir el nuevo, mismo criterio que un cambio de cuenta
+    // real -- nada de lo que traía ese canal sigue siendo válido.
+    logDebug(`[realtime] connect() con usuario distinto (${connectedUserId} -> ${userId}) -- cerrando socket viejo`);
+    disconnect();
+  }
   explicitlyClosed = false;
-  const { token } = useAuthStore.getState();
+  connectedUserId = userId;
   const wsUrl = buildWsUrl(API_BASE_URL);
   const url = `${wsUrl}?token=${encodeURIComponent(token ?? '')}`;
   logDebug(`[realtime] connect() intento=${reconnectAttempt} url=${wsUrl} token=${token ? 'presente' : 'AUSENTE'}`);
@@ -191,6 +207,7 @@ export function disconnect() {
   stopHeartbeat();
   if (socket) socket.close();
   socket = null;
+  connectedUserId = null;
   setStatus('closed');
 }
 
