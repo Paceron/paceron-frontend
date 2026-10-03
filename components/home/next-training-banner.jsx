@@ -87,6 +87,10 @@ export function NextTrainingBanner() {
           onHeroPress={() => {
             if (canStartSession(nextTraining) && !isWeb) {
               setPendingSession(nextTraining);
+              if (role === 'trainer' && nextTraining.isPresencial) {
+                router.push('/trainer-session-pre-start');
+                return;
+              }
               router.push('/training-session');
               return;
             }

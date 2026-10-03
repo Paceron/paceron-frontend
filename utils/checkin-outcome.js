@@ -83,9 +83,18 @@ export function isCheckinSuccess(kind) {
  *
  * Error: al home. El calendario es un lugar de trabajo, no un lugar al que se
  * cae uno cuando el registro falló — y además en el 403 la sesión ni era suya.
+ *
+ * `returnTo`: cuando el escáner se abrió DESDE una sesión presencial en curso
+ * (pre-start o en vivo, ver `session-pre-start-screen.jsx`/
+ * `training-session-live-screen.jsx`), un éxito vuelve ahí en vez de saltar al
+ * calendario — si no, el corredor queda sacado de su propia sesión y tiene que
+ * rehacer el Play (bug real, 2026-10-01). Solo aplica a un ÉXITO: un error
+ * sigue yendo al home sin `returnTo`, mismo criterio de siempre (una sesión
+ * que no era suya no amerita devolverlo a ningún lado puntual).
  */
-export function destinationForOutcome(outcome) {
+export function destinationForOutcome(outcome, returnTo) {
   if (!outcome || !isCheckinSuccess(outcome.kind)) return '/';
+  if (returnTo) return returnTo;
   if (outcome.sessionDate) return `/calendar?date=${encodeURIComponent(outcome.sessionDate)}`;
   return '/calendar';
 }

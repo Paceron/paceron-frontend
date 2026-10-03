@@ -45,15 +45,18 @@ function ConnectionBanner({ status }) {
 }
 
 // Acceso directo al escáner de asistencia (módulo aparte, ya construido en
-// develop) -- la pantalla no necesita pasarle nada, el QR trae su propio
-// contexto de sesión. Ver components/checkin/checkin-screen.jsx.
+// develop) -- la pantalla no necesita pasarle nada más que `returnTo`, el QR
+// trae su propio contexto de sesión. Ver components/checkin/checkin-screen.jsx
+// y destinationForOutcome en utils/checkin-outcome.js (sin `returnTo`, un
+// escaneo exitoso sacaba al corredor de la sesión en curso -- bug real,
+// 2026-10-01).
 function AttendanceQuickAccessButton({ router, idPrefix }) {
   const colors = useThemeColors();
   return (
     <Pressable
       className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
       nativeID={`${idPrefix}-attendance-button`}
-      onPress={() => router.push('/attendance/register')}
+      onPress={() => router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session-live' } })}
       testID={`${idPrefix}-attendance-button`}
     >
       <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={20} />
@@ -742,7 +745,23 @@ function TrainingSessionLiveScreenContent() {
     }
     if (pendingControl.event === 'session_finished' && !finishing) {
       setFinishing(true);
-      finalizeSession().finally(() => {
+      // El entrenador cierra la sesión PARA TODOS -- si este corredor ya
+      // había resuelto todas sus series por su cuenta (el efecto de arriba ya
+      // disparó finalizeSession), esto es un cierre legítimo, no se toca
+      // nada más. Si NO había terminado, es una terminación temprana
+      // EXTERNA (el corredor no la pidió) -- misma semántica que cancelar a
+      // mano (interruptStartedSets + cancelRun + sync), para que el
+      // registro quede con lo hecho hasta acá y lo demás "sin registro",
+      // y el badge sea el rojo de interrumpida, no el verde de completada
+      // (bug real, 2026-10-04: alguien que ni había arrancado un ejercicio
+      // quedaba con la sesión colgada hasta que el entrenador insistía).
+      if (finalizeTriggeredRef.current || sessionComplete) {
+        clearLiveSession();
+        router.back();
+        return;
+      }
+      Toast.show({ type: 'info', text1: 'El entrenador finalizó la sesión' });
+      cancelSession().finally(() => {
         clearLiveSession();
         router.back();
       });

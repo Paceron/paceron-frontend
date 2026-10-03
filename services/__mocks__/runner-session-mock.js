@@ -66,11 +66,37 @@ export async function mockFinishRunnerSession(sessionInstanceId, body) {
     error.data = { message: error.message };
     throw error;
   }
-  if (row.status === 'wip') {
+  if (row.status === 'wip' || row.status === 'interrupted') {
     row.status = 'finished';
     row.end_date = new Date().toISOString();
   }
   return { message: 'sesión marcada como completada', data: toResponse(row) };
+}
+
+// PATCH {status:'interrupted'} -- terminación temprana (Gap 19). Transiciones
+// válidas: wip→interrupted, interrupted→interrupted (idempotente). Una sesión
+// ya `finished` NUNCA puede volver a `interrupted` (400) -- mismo criterio que
+// el backend real.
+export async function mockInterruptRunnerSession(sessionInstanceId, body) {
+  const athleteUserId = body.athlete_user_id ?? 0;
+  const row = findRow(sessionInstanceId, athleteUserId);
+  if (!row) {
+    const error = new Error('estado de sesión no encontrado');
+    error.status = 404;
+    error.data = { message: error.message };
+    throw error;
+  }
+  if (row.status === 'finished') {
+    const error = new Error('no se puede interrumpir una sesión ya completada');
+    error.status = 400;
+    error.data = { message: error.message, code: 'invalid_transition' };
+    throw error;
+  }
+  if (row.status === 'wip') {
+    row.status = 'interrupted';
+    row.end_date = new Date().toISOString();
+  }
+  return { message: 'sesión marcada como interrumpida', data: toResponse(row) };
 }
 
 export async function mockGetRunnerSession(sessionInstanceId, athleteUserId) {

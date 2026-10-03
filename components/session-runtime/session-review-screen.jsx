@@ -139,6 +139,12 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
   const colors = useThemeColors();
   const router = useRouter();
   const showBadge = slot.mode === 'review';
+  // Gap 19: 'review' cubre TANTO finished como interrupted (y el manual que
+  // acaba de autocompletarse, sin completionStatus seteado) -- sin esto, una
+  // sesión cancelada a mitad de camino mostraba igual el badge verde
+  // "Sesión completada", contradiciendo el badge rojo que ya se veía en el
+  // pre-start para el mismo estado (bug real, 2026-10-04).
+  const isInterrupted = slot.completionStatus === 'interrupted';
   const [bulkExerciseId, setBulkExerciseId] = useState(null);
 
   return (
@@ -156,7 +162,15 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
             <Text className="flex-shrink text-2xl text-slate-900 dark:text-white" nativeID="session-review-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="session-review-screen-title">
               {slot.sessionName ?? slot.sessionInstance?.name ?? 'Registro de Sesión'}
             </Text>
-            {showBadge && (
+            {showBadge && isInterrupted && (
+              <View className="flex-row items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 dark:bg-red-900/20" nativeID="session-review-screen-completed-badge" testID="session-review-screen-completed-badge">
+                <MaterialCommunityIcons color="#dc2626" name="alert-decagram" size={14} />
+                <Text className="text-xs font-semibold text-red-700 dark:text-red-400" nativeID="session-review-screen-completed-badge-label" testID="session-review-screen-completed-badge-label">
+                  Sesión interrumpida
+                </Text>
+              </View>
+            )}
+            {showBadge && !isInterrupted && (
               <View className="flex-row items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 dark:bg-emerald-900/20" nativeID="session-review-screen-completed-badge" testID="session-review-screen-completed-badge">
                 <MaterialCommunityIcons color="#16a34a" name="check-decagram" size={14} />
                 <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-400" nativeID="session-review-screen-completed-badge-label" testID="session-review-screen-completed-badge-label">

@@ -25,7 +25,9 @@ function RunnerReviewWebButton({ assignment, userId, fill }) {
   const { runnerSession, loading } = useRunnerSession(assignment.sessionInstance?.id, userId);
 
   const handlePress = () => {
-    const mode = runnerSession?.status === 'finished' ? 'review' : 'manual';
+    // Gap 19: interrupted entra a revisión igual que finished -- lo hecho
+    // antes de cancelar queda ahí para ver/editar, nunca a ingreso manual.
+    const mode = runnerSession?.status === 'finished' || runnerSession?.status === 'interrupted' ? 'review' : 'manual';
     setReviewSlot({
       sessionInstance: assignment.sessionInstance,
       sessionInstanceId: assignment.sessionInstance?.id,
@@ -34,6 +36,7 @@ function RunnerReviewWebButton({ assignment, userId, fill }) {
       role: 'runner',
       athleteUserId: userId,
       mode,
+      completionStatus: runnerSession?.status ?? null,
       teamId: assignment.teamId ?? null,
       teamName: assignment.teamName ?? null,
       groupName: assignment.groupName ?? null,
@@ -67,9 +70,12 @@ function TrainerReviewButton({ assignment, teamId, fill }) {
   const handleConfirmAthlete = async (member) => {
     setPickerVisible(false);
     let mode = 'manual';
+    let completionStatus = null;
     try {
       const res = await getRunnerSession(assignment.sessionInstance?.id, member.userId);
-      if (res?.data?.status === 'finished') mode = 'review';
+      completionStatus = res?.data?.status ?? null;
+      // Gap 19: interrupted entra a revisión igual que finished.
+      if (completionStatus === 'finished' || completionStatus === 'interrupted') mode = 'review';
     } catch {
       // 404 → todavía sin estado → ingreso manual
     }
@@ -81,6 +87,7 @@ function TrainerReviewButton({ assignment, teamId, fill }) {
       role: 'trainer',
       athleteUserId: member.userId,
       mode,
+      completionStatus,
       teamId: assignment.teamId ?? teamId ?? null,
       teamName: assignment.teamName ?? null,
       groupName: assignment.groupName ?? null,
@@ -134,12 +141,38 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
   // estado depende del atleta, que se elige después en el selector) y corre
   // solo la regla de fecha pasada.
   const { runnerSession } = useRunnerSession(role === 'runner' ? assignment?.sessionInstance?.id : null, userId);
-  const finished = runnerSession?.status === 'finished';
+  // Gap 19: interrupted manda igual que finished -- cancelar a mitad de
+  // camino es una terminación, el calendario no debe seguir ofreciendo Play
+  // para una sesión que el corredor ya cortó (bug real, 2026-10-04).
+  const finished = runnerSession?.status === 'finished' || runnerSession?.status === 'interrupted';
   const showReview = (past || finished) && hasSession;
 
   if (showReview) {
     if (role === 'trainer') {
-      if (!isWeb) return null;
+      if (!isWeb) {
+        // El entrenador en mobile no tenía NINGÚN botón acá (TrainerReviewButton
+        // es web-only, revisión por atleta) -- para una sesión presencial sí
+        // hay algo útil que mostrar: el resumen agregado (asistencia +
+        // participantes + registros), mismo que ve recién al finalizar en vivo.
+        if (!assignment.isPresencial) return null;
+        const handleOpenSummary = () => {
+          setPendingSession(assignment);
+          router.push('/trainer-session-review');
+        };
+        return (
+          <Pressable
+            className={`${fill ? 'flex-1' : 'mt-2'} h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80`}
+            nativeID={`${idPrefix}-ver-sesion`}
+            onPress={handleOpenSummary}
+            testID={`${idPrefix}-ver-sesion`}
+          >
+            <MaterialCommunityIcons color={colors.onPrimary} name="clipboard-text-multiple-outline" size={14} />
+            <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-ver-sesion-label`} testID={`${idPrefix}-ver-sesion-label`}>
+              Ver sesión
+            </Text>
+          </Pressable>
+        );
+      }
       return <TrainerReviewButton assignment={assignment} fill={fill} teamId={teamId} />;
     }
     if (isWeb) return <RunnerReviewWebButton assignment={assignment} fill={fill} userId={userId} />;
@@ -179,6 +212,10 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
 
   const handlePress = () => {
     setPendingSession(assignment);
+    if (role === 'trainer' && assignment.isPresencial) {
+      router.push('/trainer-session-pre-start');
+      return;
+    }
     router.push('/training-session');
   };
 
