@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,9 +18,10 @@ import { computeBounds } from '../../utils/map-bounds.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { PARTICIPANT_STATUS, displayStatus, unfinishedParticipants } from '../../utils/trainer-participant-state.js';
+import { ParticipantAvatar } from './participant-avatar.jsx';
+import { RecordsFeedModal } from './records-feed-modal.jsx';
 import { nextExercise } from '../../utils/trainer-participant-progress.js';
 import { colorForUserId, TRAINER_MARKER_COLOR } from '../../utils/participant-color.js';
-import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { notifySuccess, notifyWarning } from '../../utils/haptics.js';
@@ -98,22 +99,6 @@ function ConnectionBanner({ status }) {
 // marcador del mapa (corredor y entrenador) y reusable donde haga falta el
 // mismo círculo. El color del borde es la señal de identidad consistente
 // entre el mapa y el puntito de las listas de participantes.
-function ParticipantAvatar({ name, photoUrl, color, size, idPrefix }) {
-  const initials = (name ?? '?').slice(0, 2).toUpperCase();
-  const circleStyle = { width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: color };
-
-  if (photoUrl) {
-    return <Image nativeID={`${idPrefix}-avatar-photo`} resizeMode="cover" source={{ uri: photoUrl }} style={circleStyle} testID={`${idPrefix}-avatar-photo`} />;
-  }
-  return (
-    <View className="items-center justify-center bg-slate-500" nativeID={`${idPrefix}-avatar-initials`} style={circleStyle} testID={`${idPrefix}-avatar-initials`}>
-      <Text className="text-[10px] font-bold text-white" nativeID={`${idPrefix}-avatar-initials-label`} testID={`${idPrefix}-avatar-initials-label`}>
-        {initials}
-      </Text>
-    </View>
-  );
-}
-
 // `Marker` en sí no expone un `onPress` propio en esta versión de
 // @maplibre/maplibre-react-native -- pero su contenido es un árbol de vistas
 // nativo normal, así que un `Pressable` adentro recibe el toque igual que en
@@ -365,66 +350,6 @@ function ParticipantsListModal({ visible, onClose, participants, onSelectPartici
   );
 }
 
-function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilterAthleteId, onChangeFeedFilter }) {
-  const colors = useThemeColors();
-  const idPrefix = 'trainer-session-live-feed-modal';
-
-  return (
-    <Modal animationType="fade" nativeID={`${idPrefix}`} onRequestClose={onClose} testID={`${idPrefix}`} transparent visible={visible}>
-      <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
-        <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
-          <SafeAreaView className="flex-1 gap-2 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
-            <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>Registros</Text>
-              <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID={`${idPrefix}-close-button`} onPress={onClose} testID={`${idPrefix}-close-button`}>
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
-              </Pressable>
-            </View>
-            <View className="flex-row items-end gap-2" nativeID={`${idPrefix}-filter-row`} testID={`${idPrefix}-filter-row`}>
-              <SearchablePickerField
-                className="mb-0 flex-1"
-                dense
-                idPrefix={`${idPrefix}-filter`}
-                label="Filtrar por corredor"
-                onChange={onChangeFeedFilter}
-                options={feedOptions}
-                placeholder="Todos"
-                value={feedFilterAthleteId}
-              />
-              {feedFilterAthleteId != null && (
-                <Pressable
-                  accessibilityLabel="Quitar filtro"
-                  className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 active:opacity-70 dark:border-slate-700"
-                  nativeID={`${idPrefix}-filter-clear`}
-                  onPress={() => onChangeFeedFilter(null)}
-                  testID={`${idPrefix}-filter-clear`}
-                >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={20} />
-                </Pressable>
-              )}
-            </View>
-            <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
-              {feed.map((event) => (
-                <View className="flex-row items-center gap-2.5 border-b border-slate-100 p-3 dark:border-slate-800" key={event.id} nativeID={`${idPrefix}-item-${event.id}`} testID={`${idPrefix}-item-${event.id}`}>
-                  <ParticipantAvatar color={colorForUserId(event.athleteUserId)} idPrefix={`${idPrefix}-item-${event.id}`} name={event.athleteName} photoUrl={event.athletePhotoUrl} size={32} />
-                  <Text className="flex-1 text-sm text-slate-900 dark:text-white" nativeID={`${idPrefix}-item-${event.id}-text`} testID={`${idPrefix}-item-${event.id}-text`}>
-                    {event.athleteName} · {event.exerciseName} · Serie {event.setNumber} · {event.status === 'skipped' ? 'Salteada' : 'Completada'}
-                  </Text>
-                </View>
-              ))}
-              {feed.length === 0 && (
-                <Text className="p-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
-                  Sin registros todavía.
-                </Text>
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
 // "Ahora: Sentadillas · Serie 2" mientras hay una serie en curso/pausada;
 // "Próximo: ..." (derivado de resolvedSetCount, ver nextExercise) el resto
 // del tiempo, salvo que ya haya completado todo -- a pedido del usuario, el
@@ -503,7 +428,6 @@ function TrainerSessionLiveScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
-  const clearPendingSession = useSessionRuntimeStore((s) => s.clearPendingSession);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const exercises = pendingSession?.sessionInstance?.exercises ?? [];
@@ -569,8 +493,11 @@ function TrainerSessionLiveScreenContent() {
   const handleFinish = async () => {
     await finalize();
     notifySuccess();
-    clearPendingSession();
-    router.back();
+    // Al resumen post-sesión, no de vuelta al pre-start -- mismo criterio que
+    // la pantalla del corredor (badge + registro), acá a nivel de TODA la
+    // sesión. `pendingSession` sigue vivo (no se limpia acá) porque esa
+    // pantalla lo necesita; ella misma lo limpia al salir.
+    router.push('/trainer-session-review');
   };
 
   // El slide-to-finish SIEMPRE confirma, haya o no corredores sin terminar --
@@ -701,6 +628,7 @@ function TrainerSessionLiveScreenContent() {
         feed={visibleFeed}
         feedFilterAthleteId={feedFilterAthleteId}
         feedOptions={feedOptions}
+        idPrefix="trainer-session-live-feed-modal"
         onChangeFeedFilter={setFeedFilterAthleteId}
         onClose={() => setFeedVisible(false)}
         visible={feedVisible}

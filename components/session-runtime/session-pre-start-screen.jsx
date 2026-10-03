@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import { notifySuccess } from '../../utils/haptics.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
@@ -191,6 +193,18 @@ function SessionPreStartScreenContent() {
       }
     })();
   }, [hasLocalInProgressRun, liveInstance?.closedAt, forcingClose, sessionInstanceId, pendingSession?.date, userId]);
+
+  // Aviso de que se destrabó la sala de espera -- el polling de arriba ya
+  // hace que el botón cambie solo (sin recargar ni volver a entrar), pero sin
+  // esto no había ninguna señal de que el cambio pasó justo ahora.
+  const wasWaitingRef = useRef(false);
+  useEffect(() => {
+    if (wasWaitingRef.current && !waitingForTrainer) {
+      notifySuccess();
+      Toast.show({ type: 'success', text1: 'El entrenador abrió la sesión', text2: 'Ya podés iniciar.' });
+    }
+    wasWaitingRef.current = waitingForTrainer;
+  }, [waitingForTrainer]);
 
   if (!pendingSession) return <Redirect href="/" />;
 

@@ -149,7 +149,30 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
 
   if (showReview) {
     if (role === 'trainer') {
-      if (!isWeb) return null;
+      if (!isWeb) {
+        // El entrenador en mobile no tenía NINGÚN botón acá (TrainerReviewButton
+        // es web-only, revisión por atleta) -- para una sesión presencial sí
+        // hay algo útil que mostrar: el resumen agregado (asistencia +
+        // participantes + registros), mismo que ve recién al finalizar en vivo.
+        if (!assignment.isPresencial) return null;
+        const handleOpenSummary = () => {
+          setPendingSession(assignment);
+          router.push('/trainer-session-review');
+        };
+        return (
+          <Pressable
+            className={`${fill ? 'flex-1' : 'mt-2'} h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80`}
+            nativeID={`${idPrefix}-ver-sesion`}
+            onPress={handleOpenSummary}
+            testID={`${idPrefix}-ver-sesion`}
+          >
+            <MaterialCommunityIcons color={colors.onPrimary} name="clipboard-text-multiple-outline" size={14} />
+            <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-ver-sesion-label`} testID={`${idPrefix}-ver-sesion-label`}>
+              Ver sesión
+            </Text>
+          </Pressable>
+        );
+      }
       return <TrainerReviewButton assignment={assignment} fill={fill} teamId={teamId} />;
     }
     if (isWeb) return <RunnerReviewWebButton assignment={assignment} fill={fill} userId={userId} />;
