@@ -12,6 +12,7 @@ import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
+import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { getLatestRun, initSessionDb, RUN_STATUS } from '../../services/session-db.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
@@ -79,6 +80,10 @@ function SessionPreStartScreenContent() {
   // cancelar ya no deja el runner_session en wip para siempre, así que
   // también necesita su propia ventana de "ya sé localmente que terminó").
   const [locallyTerminalStatus, setLocallyTerminalStatus] = useState(null);
+  // Un run local YA en curso (volvió a entrar tras cerrar la app a mitad de
+  // sesión) exime de la sala de espera de abajo -- es resumir lo que ya
+  // arrancó, no un ingreso nuevo que el entrenador todavía no abrió.
+  const [hasLocalInProgressRun, setHasLocalInProgressRun] = useState(false);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
@@ -106,9 +111,13 @@ function SessionPreStartScreenContent() {
             setLocallyTerminalStatus(
               latest?.status === RUN_STATUS.COMPLETED ? 'completed' : latest?.status === RUN_STATUS.CANCELLED ? 'cancelled' : null,
             );
+            setHasLocalInProgressRun(latest?.status === RUN_STATUS.IN_PROGRESS);
           }
         } catch {
-          if (!cancelled) setLocallyTerminalStatus(null);
+          if (!cancelled) {
+            setLocallyTerminalStatus(null);
+            setHasLocalInProgressRun(false);
+          }
         }
       })();
       return () => { cancelled = true; };
@@ -130,6 +139,19 @@ function SessionPreStartScreenContent() {
   const interrupted = runnerSession?.status === 'interrupted' || locallyTerminalStatus === 'cancelled';
   const mode = finished || interrupted ? 'review' : 'manual';
   const showReview = past || finished || interrupted;
+
+  // Gap 26: la sesión presencial la abre/cierra el entrenador (su Play/
+  // slide-to-finish) -- un corredor que todavía no arrancó nada no puede
+  // ingresar hasta que eso pase. Alguien que YA tiene un run local en curso
+  // (wip remoto o in_progress local) queda exento -- es resumir, no un
+  // ingreso nuevo. Polling (sin WS acá) a GET /session-instances/:id, mismo
+  // criterio que AttendanceSessionModal.
+  const alreadyStarted = runnerSession?.status === 'wip' || hasLocalInProgressRun || finished || interrupted;
+  const gateEnabled = Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !alreadyStarted;
+  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, gateEnabled, { refetchInterval: gateEnabled ? 5000 : false });
+  const gateLoading = gateEnabled && liveInstance == null;
+  const waitingForTrainer = gateEnabled && liveInstance != null && liveInstance.openedAt == null;
+  const closedByTrainer = gateEnabled && liveInstance != null && liveInstance.closedAt != null;
 
   if (!pendingSession) return <Redirect href="/" />;
 
@@ -310,6 +332,24 @@ function SessionPreStartScreenContent() {
             </Pressable>
             <Text className="mt-2 px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID={`${reviewButtonId}-hint`} testID={`${reviewButtonId}-hint`}>
               {finished || interrupted ? 'Revisá y editá lo registrado en la sesión.' : 'Ingresá manualmente los datos de la sesión.'}
+            </Text>
+          </View>
+        ) : closedByTrainer ? (
+          <View className="items-center" nativeID="session-pre-start-screen-closed-container" testID="session-pre-start-screen-closed-container">
+            <View className="h-24 w-24 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700" nativeID="session-pre-start-screen-closed-icon" testID="session-pre-start-screen-closed-icon">
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="lock-clock" size={36} />
+            </View>
+            <Text className="mt-2 px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-closed-hint" testID="session-pre-start-screen-closed-hint">
+              El entrenador ya cerró esta sesión.
+            </Text>
+          </View>
+        ) : waitingForTrainer || gateLoading ? (
+          <View className="items-center" nativeID="session-pre-start-screen-waiting-container" testID="session-pre-start-screen-waiting-container">
+            <View className="h-24 w-24 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700" nativeID="session-pre-start-screen-waiting-icon" testID="session-pre-start-screen-waiting-icon">
+              {gateLoading ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : <MaterialCommunityIcons color={colors.onSurfaceVariant} name="timer-sand" size={36} />}
+            </View>
+            <Text className="mt-2 px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-waiting-hint" testID="session-pre-start-screen-waiting-hint">
+              {gateLoading ? 'Verificando si la sesión ya está abierta…' : 'Sala de espera — esperando que el entrenador inicie la sesión.'}
             </Text>
           </View>
         ) : (

@@ -644,6 +644,14 @@ export function toSessionInstanceModel(dto) {
       restMinutes: e.rest_minutes ?? 0,
       sourceExerciseId: e.exercise_id != null ? String(e.exercise_id) : null,
     })),
+    // Gap 26 -- SOLO el detalle standalone (GET /session-instances/:id) los
+    // setea (ApplyPresencialState); la copia embebida del calendario nunca
+    // los trae (omitempty del lado del backend), así que quedan `null` ahí a
+    // propósito -- no es un dato faltante, es un día no presencial o una
+    // fuente que nunca los calcula.
+    presencialOpen: dto.presencial_open ?? null,
+    openedAt: dto.opened_at ?? null,
+    closedAt: dto.closed_at ?? null,
   };
 }
 

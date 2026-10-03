@@ -184,3 +184,17 @@ export function applyRunnerStatus(participants, userId, runnerStatus) {
   next.set(key, { ...current, runnerStatus });
   return next;
 }
+
+// Gap 26 -- participantes que "se presentaron" (se unieron en algún momento,
+// nunca estuvieron en NOT_JOINED) y no quedaron en un estado terminal
+// (COMPLETED/INTERRUPTED) -- incluye a quien sigue en vivo (conectado, en
+// curso, pausado) Y a quien se desconectó sin terminar. Usado por el
+// slide-to-finish del entrenador para decidir si hace falta confirmar antes
+// de cerrar la sesión.
+export function unfinishedParticipants(participants) {
+  return [...participants.values()].filter((p) => {
+    if (p.status === PARTICIPANT_STATUS.NOT_JOINED) return false;
+    const resolved = displayStatus(p);
+    return resolved !== PARTICIPANT_STATUS.COMPLETED && resolved !== PARTICIPANT_STATUS.INTERRUPTED;
+  });
+}

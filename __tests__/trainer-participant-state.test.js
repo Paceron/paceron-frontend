@@ -4,6 +4,7 @@ import {
   applyParticipantMessage,
   applyRunnerStatus,
   displayStatus,
+  unfinishedParticipants,
 } from '../utils/trainer-participant-state.js';
 
 const ROSTER = [
@@ -220,5 +221,38 @@ describe('applyRunnerStatus', () => {
     const next = applyRunnerStatus(initial, '999', 'finished');
     expect(next).toBe(initial);
     expect(next.size).toBe(2);
+  });
+});
+
+describe('unfinishedParticipants', () => {
+  test('nadie se unió todavía -- lista vacía', () => {
+    const participants = initParticipants(ROSTER);
+    expect(unfinishedParticipants(participants)).toEqual([]);
+  });
+
+  test('conectado/en curso/pausado -- cuentan como sin terminar', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'joined', payload: {}, from: 12 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { status: 'started', exerciseInstanceId: 500, exerciseName: 'Caminata', setNumber: 1 }, from: 13 }, EXERCISES);
+    const unfinished = unfinishedParticipants(participants);
+    expect(unfinished.map((p) => p.userId).sort()).toEqual(['12', '13']);
+  });
+
+  test('desconectado sin terminar -- también cuenta', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'joined', payload: {}, from: 12 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'left', payload: {}, from: 12 }, EXERCISES);
+    const unfinished = unfinishedParticipants(participants);
+    expect(unfinished).toHaveLength(1);
+    expect(unfinished[0].userId).toBe('12');
+  });
+
+  test('completó todo o interrumpió -- no cuentan', () => {
+    let participants = initParticipants(ROSTER);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { exerciseInstanceId: 500, status: 'skipped', scope: 'exercise' }, from: 12 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'set_status', payload: { exerciseInstanceId: 501, status: 'skipped', scope: 'exercise' }, from: 12 }, EXERCISES);
+    participants = applyParticipantMessage(participants, { type: 'presence', event: 'joined', payload: {}, from: 13 }, EXERCISES);
+    participants = applyRunnerStatus(participants, '13', 'interrupted');
+    expect(unfinishedParticipants(participants)).toEqual([]);
   });
 });

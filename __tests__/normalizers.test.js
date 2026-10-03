@@ -4,6 +4,7 @@ import {
   toCreatePreferencePayload, toPreferenceResponseModel, toProcessPaymentPayload, toPaymentModel, toSubscriptionModel,
   toTeamSearchResultModel, toJoinRequestModel, mergeSessionExercises,
   toGroupCalendarDayModel, toAggregatedCalendarDayModel, toCalendarDayPayload, KEEP_CURRENT_SESSION,
+  toSessionInstanceModel,
   toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload, toBulkAssignPayload,
   toRunnerSessionModel, toSessionFeedbackModel, toSessionFeedbackListModel, buildSessionReviewModel,
   toRunnerSessionStartPayload, toFeedbackEditPayload,
@@ -682,6 +683,7 @@ describe('toGroupCalendarDayModel', () => {
     const model = toGroupCalendarDayModel(dto);
     expect(model.sessionInstance).toEqual({
       id: '123', name: 'Fartlek 5K', description: null, sourceSessionId: null,
+      presencialOpen: null, openedAt: null, closedAt: null,
       exercises: [{ id: '456', name: 'Trote', role: 'warmup', repeatCount: 1, restMinutes: 0, sourceExerciseId: null }],
     });
     expect(model.presencialTimeFrom).toBe('08:00');
@@ -711,6 +713,36 @@ describe('toGroupCalendarDayModel', () => {
 
   test('returns null for falsy dto', () => {
     expect(toGroupCalendarDayModel(null)).toBeNull();
+  });
+});
+
+describe('toSessionInstanceModel -- presencialOpen/openedAt/closedAt (Gap 26)', () => {
+  test('instancia standalone con sesión ya abierta', () => {
+    const dto = {
+      id: 10, name: 'Fondo', description: null, exercises: [],
+      presencial_open: true, opened_at: '2026-10-04T10:00:00Z', closed_at: null,
+    };
+    const model = toSessionInstanceModel(dto);
+    expect(model.presencialOpen).toBe(true);
+    expect(model.openedAt).toBe('2026-10-04T10:00:00Z');
+    expect(model.closedAt).toBeNull();
+  });
+
+  test('instancia standalone ya cerrada', () => {
+    const dto = {
+      id: 10, name: 'Fondo', description: null, exercises: [],
+      presencial_open: false, opened_at: '2026-10-04T10:00:00Z', closed_at: '2026-10-04T11:00:00Z',
+    };
+    const model = toSessionInstanceModel(dto);
+    expect(model.presencialOpen).toBe(false);
+    expect(model.closedAt).toBe('2026-10-04T11:00:00Z');
+  });
+
+  test('día no presencial o copia embebida del calendario -- los 3 campos quedan null, no undefined', () => {
+    const model = toSessionInstanceModel({ id: 10, name: 'Fondo', description: null, exercises: [] });
+    expect(model.presencialOpen).toBeNull();
+    expect(model.openedAt).toBeNull();
+    expect(model.closedAt).toBeNull();
   });
 });
 

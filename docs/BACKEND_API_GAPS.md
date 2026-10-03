@@ -876,7 +876,7 @@ ya tienen alguna fila de asistencia. Antes de encarar el fix, reproducir contra 
 con un caso controlado (grupo con N miembros, 1 solo confirmado) y loguear el response crudo para
 confirmar cuál de las dos hipótesis es la real.
 
-## Gap 26 — sesión presencial controlada por el entrenador (apertura/cierre), no solo por franja horaria
+## Gap 26 — sesión presencial controlada por el entrenador (apertura/cierre), no solo por franja horaria [RESUELTO]
 
 Mejora futura (roadmap, no se empieza sin confirmación explícita, ver conversación 2026-10-03) --
 documentada ahora para que el backend pueda ir evaluando el alcance en paralelo.
@@ -929,8 +929,28 @@ describía la opción (a) ya acordada. El slide-to-finish (`finalize()` en
 `hooks/use-trainer-session-runtime.js`) ahora también llama `finishRunnerSession(sessionInstanceId)`
 (self) además del `control:session_finished` por WS que ya mandaba, para que `closed_at` quede
 seteado. Ninguna de las dos espera su resultado para bloquear la navegación (el entrenador no tiene
-cola de reintento local si falla, así que solo se loguea) -- la sala de espera/advertencias del
-pre-start del corredor siguen siendo roadmap, sin empezar.
+cola de reintento local si falla, así que solo se loguea).
+
+**Actualización 2026-10-04 (2) -- Gap 26 completo, incluida la sala de espera del corredor y la
+confirmación del entrenador.** Ya no queda roadmap pendiente de este gap:
+
+- **Sala de espera (`session-pre-start-screen.jsx`):** mientras el corredor no arrancó nada (ni
+  `runner_session` remoto `wip`, ni un run local `in_progress` -- alguien que ya estaba corriendo
+  antes de un cierre queda exento, es resumir, no un ingreso nuevo), se hace polling cada 5s a
+  `GET /session-instances/:id` (`hooks/use-session-instance.js`, nuevo parámetro opcional
+  `refetchInterval`, mismo criterio que `AttendanceSessionModal`) para leer `openedAt`/`closedAt`
+  (`services/normalizers.js#toSessionInstanceModel`, 3 campos nuevos). `openedAt` null → "Sala de
+  espera"; `closedAt` seteado sin haber arrancado nunca → mensaje de sesión ya cerrada sin Play (caso
+  límite, sin alternativa de carga manual por ahora); ninguno de los dos → Play normal. Sin WS acá
+  todavía (mismo tipo de mejora futura que Gap 28 para asistencia -- `update:session_state` ya existe
+  del lado del backend, el polling es la versión simple antes de cablear el evento).
+- **Confirmación al finalizar (`trainer-session-live-screen.jsx`):** el slide-to-finish ya no cierra
+  directo -- `utils/trainer-participant-state.js#unfinishedParticipants` calcula quién se presentó
+  (`status !== NOT_JOINED`) y no quedó en un estado terminal (ni `COMPLETED` ni `INTERRUPTED`,
+  incluye conectado/en curso/pausado/desconectado-sin-terminar). Si hay alguno, un modal
+  (`ConfirmDestructiveModal` reusado) lista los nombres antes de confirmar; cancelar devuelve el
+  thumb del slider a su posición inicial (`DragToFinishButton` pasó a `forwardRef` con un `reset()`
+  imperativo).
 
 ## Gap 27 — WebSocket no soporta mensajes dirigidos ni persistentes (para broadcast/mensajería del entrenador)
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
@@ -17,12 +17,13 @@ import { useTrainerSessionRuntime } from '../../hooks/use-trainer-session-runtim
 import { computeBounds } from '../../utils/map-bounds.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
-import { PARTICIPANT_STATUS, displayStatus } from '../../utils/trainer-participant-state.js';
+import { PARTICIPANT_STATUS, displayStatus, unfinishedParticipants } from '../../utils/trainer-participant-state.js';
 import { nextExercise } from '../../utils/trainer-participant-progress.js';
 import { colorForUserId, TRAINER_MARKER_COLOR } from '../../utils/participant-color.js';
 import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
-import { notifySuccess } from '../../utils/haptics.js';
+import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
+import { notifySuccess, notifyWarning } from '../../utils/haptics.js';
 
 // Runtime de la sesión PRESENCIAL para el ENTRENADOR -- mapa con los
 // corredores conectados arriba, controles abajo. A diferencia de
@@ -205,12 +206,23 @@ const DRAG_VARIANTS = {
 // el original (THUMB_SIZE 64→48, track h-20→h-14) a pedido del usuario: acá
 // es el ÚNICO control de la pantalla en vivo del entrenador (sin
 // pausar/saltear series como el corredor), no necesita el mismo protagonismo.
-function DragToFinishButton({ onTrigger, idPrefix, label }) {
+// Gap 26: forwardRef + reset() imperativo -- si el entrenador desliza hasta
+// el final pero cancela el modal de confirmación (corredores sin terminar),
+// el thumb tiene que volver al inicio en vez de quedar trabado en "completó"
+// sin haber finalizado de verdad.
+const DragToFinishButton = forwardRef(function DragToFinishButton({ onTrigger, idPrefix, label }, ref) {
   const THUMB_SIZE = 48;
   const colors = DRAG_VARIANTS.finish;
   const translateX = useSharedValue(0);
   const widthSV = useSharedValue(120);
   const triggeredRef = useSharedValue(false);
+
+  useImperativeHandle(ref, () => ({
+    reset: () => {
+      triggeredRef.value = false;
+      translateX.value = withSpring(0, { damping: 14, stiffness: 200 });
+    },
+  }));
 
   const fillStyle = useAnimatedStyle(() => ({ width: translateX.value }));
   const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
@@ -270,7 +282,7 @@ function DragToFinishButton({ onTrigger, idPrefix, label }) {
       </View>
     </GestureDetector>
   );
-}
+});
 
 // Participantes y registros pasaron de paneles inline a Modal (a pedido del
 // usuario) -- y con el MISMO estilo full-screen que AttendanceSessionModal
@@ -510,7 +522,9 @@ function TrainerSessionLiveScreenContent() {
   const [feedFilterAthleteId, setFeedFilterAthleteId] = useState(null);
   const [fullscreenMap, setFullscreenMap] = useState(false);
   const [attendanceVisible, setAttendanceVisible] = useState(false);
+  const [finishConfirmVisible, setFinishConfirmVisible] = useState(false);
   const cameraRef = useRef(null);
+  const dragRef = useRef(null);
 
   // Centro inicial del mapa: el punto de encuentro marcado para la sesión
   // presencial, no una zona fija arbitraria -- el auto-encuadre (efecto de
@@ -546,12 +560,38 @@ function TrainerSessionLiveScreenContent() {
   const selectedParticipant = participantList.find((p) => p.userId === selectedParticipantId) ?? null;
   const visibleFeed = filterFeedByAthlete(feed, feedFilterAthleteId);
   const feedOptions = rosterMembers.map((m) => ({ id: m.userId, name: m.name }));
+  const unfinished = useMemo(() => unfinishedParticipants(participants), [participants]);
+
+  useEffect(() => {
+    if (finishConfirmVisible) notifyWarning();
+  }, [finishConfirmVisible]);
 
   const handleFinish = async () => {
     await finalize();
     notifySuccess();
     clearPendingSession();
     router.back();
+  };
+
+  // Gap 26: el slide-to-finish dispara ESTO, no handleFinish directo -- si
+  // hay corredores que se presentaron y no terminaron, se confirma antes de
+  // cerrar. El thumb vuelve al inicio si se cancela (ver DragToFinishButton).
+  const handleFinishTrigger = () => {
+    if (unfinished.length > 0) {
+      setFinishConfirmVisible(true);
+      return;
+    }
+    handleFinish();
+  };
+
+  const handleCancelFinishConfirm = () => {
+    setFinishConfirmVisible(false);
+    dragRef.current?.reset();
+  };
+
+  const handleConfirmFinishAnyway = () => {
+    setFinishConfirmVisible(false);
+    handleFinish();
   };
 
   if (!pendingSession) return null;
@@ -647,7 +687,7 @@ function TrainerSessionLiveScreenContent() {
             <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-feed-button-label" testID="trainer-session-live-feed-button-label">Ver registros</Text>
           </Pressable>
 
-          <DragToFinishButton idPrefix="trainer-session-live-finish" label="Deslizá para finalizar la sesión" onTrigger={handleFinish} />
+          <DragToFinishButton idPrefix="trainer-session-live-finish" label="Deslizá para finalizar la sesión" onTrigger={handleFinishTrigger} ref={dragRef} />
         </View>
       )}
 
@@ -678,6 +718,16 @@ function TrainerSessionLiveScreenContent() {
         teamId={teamId}
         teamName={pendingSession.teamName}
         visible={attendanceVisible}
+      />
+
+      <ConfirmDestructiveModal
+        confirmLabel="Finalizar igual"
+        description={`Todavía hay ${unfinished.length} corredor${unfinished.length === 1 ? '' : 'es'} que no completó su sesión: ${unfinished.map((p) => p.name).join(', ')}. ¿Finalizar igual?`}
+        idPrefix="trainer-session-live-finish-confirm"
+        onCancel={handleCancelFinishConfirm}
+        onConfirm={handleConfirmFinishAnyway}
+        title="Finalizar con corredores sin terminar"
+        visible={finishConfirmVisible}
       />
     </SafeAreaView>
   );
