@@ -32,16 +32,20 @@ function MenuToggle({ assignment, cardRef, onOpenMenu, idPrefix }) {
   // mobile). measureInWindow contra `cardRef` (fuera del ScrollView) da
   // coordenadas que un ÚNICO AnimatedDropdown, montado afuera del scroll,
   // puede usar sin que nada lo recorte.
+  //
+  // El offset horizontal NO sale de medir el botón -- dos intentos
+  // (left y right calculados con measureInWindow) seguían corridos en
+  // mobile mientras web quedaba bien, señal de que la medida de ancho
+  // del botón/tarjeta diverge entre plataformas. Como toda fila ocupa el
+  // mismo ancho (AssignmentRow con `px-3`, sin padding propio entre
+  // cardRef/ScrollView/el wrapper `gap-2`), el botón SIEMPRE queda a
+  // exactamente 12px (ese `px-3`) del borde derecho de cardRef -- un
+  // valor fijo, no medido, elimina la divergencia de plataforma de raíz.
   const handlePress = () => {
     if (!cardRef.current || !ref.current) return;
-    cardRef.current.measureInWindow((cardX, cardY, cardWidth) => {
+    cardRef.current.measureInWindow((cardX, cardY) => {
       ref.current?.measureInWindow((x, y, width, height) => {
-        // Ancla desde el borde DERECHO de la tarjeta (no `x - cardX` para un
-        // `left`) -- el panel cuelga del botón hacia la izquierda, así que
-        // anclarlo por la derecha evita sumar el redondeo de dos medidas
-        // independientes (x del botón Y ancho de la tarjeta) en una resta
-        // que además depende del ancho del panel.
-        onOpenMenu({ right: cardX + cardWidth - (x + width), top: y - cardY + height + 4 }, assignment);
+        onOpenMenu({ top: y - cardY + height + 4 }, assignment);
       });
     });
   };
@@ -291,7 +295,7 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
               </ScrollView>
             )}
 
-            <AnimatedDropdown anchorStyle={rowMenu ? { right: Math.max(8, rowMenu.anchor.right), top: rowMenu.anchor.top, width: 192 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
+            <AnimatedDropdown anchorStyle={rowMenu ? { right: 12, top: rowMenu.anchor.top, width: 192 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
               {rowMenu && <DayDetailRowMenu assignment={rowMenu.assignment} idPrefix="day-detail-modal-row-menu" onClose={handleCloseRowMenu} onRequestClear={setClearTarget} />}
             </AnimatedDropdown>
           </View>
