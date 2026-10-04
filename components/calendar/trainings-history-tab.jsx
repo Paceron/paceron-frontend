@@ -11,19 +11,19 @@ import { useGroups } from '../../hooks/use-groups.js';
 import { selectAdministeredTeams } from '../../store/team-store.js';
 import { useTrainingsHistory, useDeleteWorkoutFeedbackMutation } from '../../hooks/use-trainings-history.js';
 import { buildDateRangeFilters } from '../../utils/trainings-history-filters.js';
+import { groupHistoryItemsBySession } from '../../utils/trainings-history-grouping.js';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { DateField, FIELD_LABEL, InputField } from '../forms/fields.jsx';
+import { DateField } from '../forms/fields.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { TrainingsHistoryRow } from './trainings-history-row.jsx';
 import { TrainingsHistoryRowMenu } from './trainings-history-row-menu.jsx';
 import { BulkDeleteFeedbackModal } from './bulk-delete-feedback-modal.jsx';
 
-const SORT_OPTIONS = [
-  { id: 'feedback_date', name: 'Fecha' },
-  { id: 'set_number', name: 'Serie' },
-  { id: 'exercise_name', name: 'Ejercicio' },
-];
+// El historial se navega por SESIÓN (ver trainings-history-grouping.js), así
+// que "ordenar por serie/ejercicio" dejó de tener sentido -- el único eje
+// real es la fecha de la sesión, con el toggle de orden de siempre.
+const HISTORY_SORT = 'feedback_date';
 
 export function TrainingsHistoryTab({ role }) {
   const router = useRouter();
@@ -45,10 +45,8 @@ export function TrainingsHistoryTab({ role }) {
   const [dateToInput, setDateToInput] = useState('');
   const { dateFrom, dateTo, error: dateRangeError } = buildDateRangeFilters(dateFromInput, dateToInput);
 
-  const [sort, setSort] = useState('feedback_date');
   const [order, setOrder] = useState('desc');
   const [filterExerciseId, setFilterExerciseId] = useState('');
-  const [filterSetNumber, setFilterSetNumber] = useState('');
   const [filterAthleteId, setFilterAthleteId] = useState('');
 
   const handleTeamChange = (teamId) => {
@@ -62,36 +60,43 @@ export function TrainingsHistoryTab({ role }) {
     dateFrom,
     dateTo,
     exerciseId: filterExerciseId || null,
-    setNumber: filterSetNumber || null,
     athleteUserId: role === 'trainer' ? (filterAthleteId || null) : null,
-    sort,
+    sort: HISTORY_SORT,
     order,
   };
 
   const { items, hasMore, availableAthletes, availableExercises, loading, isFetching, loadMore } = useTrainingsHistory(role, userId, filters);
   const { deleteFeedback } = useDeleteWorkoutFeedbackMutation(role, userId, filters);
+  const sessionGroups = groupHistoryItemsBySession(items);
 
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [rowMenu, setRowMenu] = useState(null); // { anchor, item } | null
+  const [rowMenu, setRowMenu] = useState(null); // { anchor, group } | null
   const [bulkDeleteVisible, setBulkDeleteVisible] = useState(false);
 
-  const handleOpenRowMenu = (anchor, item) => setRowMenu({ anchor, item });
+  const handleOpenRowMenu = (anchor, group) => setRowMenu({ anchor, group });
   const handleCloseRowMenu = () => setRowMenu(null);
 
-  const handleToggleSelected = (itemId) => {
+  const handleToggleSelected = (groupId) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
       return next;
     });
   };
 
   const handleSelectFromMenu = () => {
-    const itemId = rowMenu.item.id;
+    const groupId = rowMenu.group.id;
     handleCloseRowMenu();
     setSelectionMode(true);
-    setSelectedIds(new Set([itemId]));
+    setSelectedIds(new Set([groupId]));
+  };
+
+  const handleDeleteFromMenu = () => {
+    const groupId = rowMenu.group.id;
+    handleCloseRowMenu();
+    setSelectedIds(new Set([groupId]));
+    setBulkDeleteVisible(true);
   };
 
   const handleExitSelection = () => {
@@ -99,44 +104,42 @@ export function TrainingsHistoryTab({ role }) {
     setSelectedIds(new Set());
   };
 
-  const handleViewReview = () => {
-    const item = rowMenu.item;
-    handleCloseRowMenu();
+  const handleOpenReview = (group) => {
     setReviewSlot({
-      sessionInstanceId: item.sessionInstanceId,
-      date: item.date,
-      sessionName: item.sessionName,
+      sessionInstanceId: group.sessionInstanceId,
+      date: group.date,
+      sessionName: group.sessionName,
       role: role === 'trainer' ? 'trainer' : 'runner',
-      athleteUserId: item.athleteUserId,
+      athleteUserId: group.athleteUserId,
       mode: 'review',
-      teamId: item.teamId,
-      teamName: item.teamName,
-      groupName: item.groupName,
+      teamId: group.teamId,
+      teamName: group.teamName,
+      groupName: group.groupName,
     });
     router.push('/training-session-review');
   };
 
   const handleBulkDelete = async () => {
-    const ids = Array.from(selectedIds);
+    const selectedGroups = sessionGroups.filter((g) => selectedIds.has(g.id));
+    const ids = selectedGroups.flatMap((g) => g.itemIds);
     const results = await Promise.all(ids.map((id) => deleteFeedback(id)));
     const failed = results.filter((r) => !r.success).length;
     setBulkDeleteVisible(false);
     handleExitSelection();
     if (failed > 0) {
-      Toast.show({ type: 'error', text1: 'Algunos registros no se pudieron eliminar', text2: `${failed} de ${ids.length} fallaron.` });
+      Toast.show({ type: 'error', text1: 'Algunas sesiones no se pudieron eliminar', text2: `${failed} de ${ids.length} registros fallaron.` });
       return;
     }
-    Toast.show({ type: 'success', text1: `${ids.length} registro${ids.length === 1 ? '' : 's'} eliminado${ids.length === 1 ? '' : 's'}` });
+    Toast.show({ type: 'success', text1: `${selectedGroups.length} sesión${selectedGroups.length === 1 ? '' : 'es'} eliminada${selectedGroups.length === 1 ? '' : 's'}` });
   };
 
-  const hasActiveFilters = Boolean(filterTeamId || filterGroupId || dateFromInput || dateToInput || filterExerciseId || filterSetNumber || filterAthleteId);
+  const hasActiveFilters = Boolean(filterTeamId || filterGroupId || dateFromInput || dateToInput || filterExerciseId || filterAthleteId);
   const handleClearFilters = () => {
     setFilterTeamId('');
     setFilterGroupId('');
     setDateFromInput('');
     setDateToInput('');
     setFilterExerciseId('');
-    setFilterSetNumber('');
     setFilterAthleteId('');
   };
 
@@ -177,29 +180,17 @@ export function TrainingsHistoryTab({ role }) {
             <DateField label="Hasta" onChange={setDateToInput} value={dateToInput} />
           </View>
         </View>
-        {items.length > 0 && (
+        {sessionGroups.length > 0 && (
           <>
             <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-exercise-wrapper" testID="trainings-history-tab-filter-exercise-wrapper">
               <ResponsiveSelectField
                 dense
                 hideErrorRow
                 label="Ejercicio"
-                onChange={(value) => { setFilterExerciseId(value); setFilterSetNumber(''); }}
+                onChange={setFilterExerciseId}
                 options={availableExercises}
                 placeholder="Todos"
                 value={filterExerciseId}
-              />
-            </View>
-            <View className="min-w-[90px] flex-1" nativeID="trainings-history-tab-filter-set-wrapper" testID="trainings-history-tab-filter-set-wrapper">
-              <InputField
-                dense
-                disabled={!filterExerciseId}
-                hideErrorRow
-                keyboardType="numeric"
-                label="Serie"
-                onChange={(value) => setFilterSetNumber(value.replace(/\D/g, ''))}
-                placeholder="Todas"
-                value={filterSetNumber}
               />
             </View>
             {role === 'trainer' && (
@@ -218,22 +209,17 @@ export function TrainingsHistoryTab({ role }) {
           </>
         )}
         <View className="w-full" nativeID="trainings-history-tab-sort-section" testID="trainings-history-tab-sort-section">
-          <Text className={FIELD_LABEL} nativeID="trainings-history-tab-sort-label" testID="trainings-history-tab-sort-label">
-            Ordenar por
-          </Text>
-          <View className="flex-row items-center gap-2" nativeID="trainings-history-tab-sort-row" testID="trainings-history-tab-sort-row">
-            <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-sort-wrapper" testID="trainings-history-tab-sort-wrapper">
-              <ResponsiveSelectField dense hideErrorRow hideLabel label="Ordenar por" onChange={setSort} options={SORT_OPTIONS} value={sort} />
-            </View>
-            <Pressable
-              className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-              nativeID="trainings-history-tab-order-toggle"
-              onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
-              testID="trainings-history-tab-order-toggle"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
-            </Pressable>
-          </View>
+          <Pressable
+            className="h-11 w-full flex-row items-center justify-center gap-2 rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            nativeID="trainings-history-tab-order-toggle"
+            onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+            testID="trainings-history-tab-order-toggle"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
+            <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="trainings-history-tab-order-toggle-label" testID="trainings-history-tab-order-toggle-label">
+              {order === 'desc' ? 'Más recientes primero' : 'Más antiguas primero'}
+            </Text>
+          </Pressable>
         </View>
       </FilterPanel>
 
@@ -276,7 +262,7 @@ export function TrainingsHistoryTab({ role }) {
         <View className="items-center py-6" nativeID="trainings-history-tab-loading" testID="trainings-history-tab-loading">
           <ActivityIndicator color={colors.primary} />
         </View>
-      ) : items.length === 0 ? (
+      ) : sessionGroups.length === 0 ? (
         <View className="items-center rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-surface" nativeID="trainings-history-tab-empty" testID="trainings-history-tab-empty">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="history" size={32} />
           <Text className="mt-2 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="trainings-history-tab-empty-label" testID="trainings-history-tab-empty-label">
@@ -285,15 +271,16 @@ export function TrainingsHistoryTab({ role }) {
         </View>
       ) : (
         <View className="gap-2" nativeID="trainings-history-tab-list" testID="trainings-history-tab-list">
-          {items.map((item) => (
+          {sessionGroups.map((group) => (
             <TrainingsHistoryRow
               containerRef={containerRef}
-              item={item}
-              key={item.id}
+              group={group}
+              key={group.id}
               onOpenMenu={handleOpenRowMenu}
+              onOpenReview={handleOpenReview}
               onToggleSelected={handleToggleSelected}
               role={role}
-              selected={selectedIds.has(item.id)}
+              selected={selectedIds.has(group.id)}
               selectionMode={selectionMode}
             />
           ))}
@@ -316,7 +303,7 @@ export function TrainingsHistoryTab({ role }) {
       )}
 
       <AnimatedDropdown anchorStyle={rowMenu ? { left: Math.max(8, rowMenu.anchor.x + rowMenu.anchor.width - 208), top: rowMenu.anchor.y + rowMenu.anchor.height + 4, width: 208 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
-        {rowMenu && <TrainingsHistoryRowMenu onSelect={handleSelectFromMenu} onViewReview={handleViewReview} />}
+        {rowMenu && <TrainingsHistoryRowMenu onDelete={handleDeleteFromMenu} onSelect={handleSelectFromMenu} />}
       </AnimatedDropdown>
 
       <BulkDeleteFeedbackModal count={selectedIds.size} onCancel={() => setBulkDeleteVisible(false)} onConfirm={handleBulkDelete} visible={bulkDeleteVisible} />
