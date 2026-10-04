@@ -262,7 +262,7 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
               unos px hacia la izquierda en mobile (confirmado por el
               usuario: en web, sin ese problema de elevation, ya alineaba
               bien). Este View interno no tiene sombra ni breakpoint propio. */}
-          <View className="relative flex-1" nativeID="day-detail-modal-card-inner" ref={cardRef} testID="day-detail-modal-card-inner">
+          <View className="relative" nativeID="day-detail-modal-card-inner" ref={cardRef} testID="day-detail-modal-card-inner">
             <Text className="mb-3 text-lg font-bold text-slate-900 dark:text-white" nativeID="day-detail-modal-title" testID="day-detail-modal-title">
               {formatWeekdayLabel(date)}, {formatDisplayDate(date)}
             </Text>
