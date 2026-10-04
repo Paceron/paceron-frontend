@@ -123,7 +123,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
   );
 }
 
-export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, visible }) {
+export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, exercisesError, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
@@ -139,7 +139,7 @@ export function SessionFormBody({ name, onSetName, nameError, description, onSet
         Mantené presionado un ejercicio del catálogo para sumarlo, o una fila para reordenarla.
       </Text>
 
-      <View className="h-[320px] rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="session-form-body-exercises-list" ref={dropTargetRef} testID="session-form-body-exercises-list">
+      <View className={`h-[320px] rounded-xl border border-dashed ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="session-form-body-exercises-list" ref={dropTargetRef} testID="session-form-body-exercises-list">
         <ReorderProvider>
           <GestureScrollView
             contentContainerClassName="gap-2 p-2 pb-4"

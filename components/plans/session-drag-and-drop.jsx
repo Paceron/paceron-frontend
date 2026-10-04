@@ -25,6 +25,13 @@ const SessionDragContext = createContext(null);
 // donde el dedo tapa la zona); STEP grande se siente a los saltos.
 const AUTO_SCROLL_EDGE = 56;
 const AUTO_SCROLL_STEP = 14;
+// onUpdate dispara a la frecuencia de touch del dispositivo (60-120Hz)
+// -- sin throttle, maybeAutoScroll (y su scrollTo) corría en CADA frame,
+// sentido "muy agresivo" (hasta ~1700px/s en un dispositivo de 120Hz) y
+// "trabado" con muchas filas (cada scrollTo de más compite por el hilo
+// de JS con el resto del trabajo de esa lista más larga). Cada ~33ms
+// (~30 llamadas/s tope) alcanza para que se vea fluido sin saturar.
+const AUTO_SCROLL_THROTTLE_MS = 33;
 
 // Compartidas entre DraggableExerciseCard (cross-container, catálogo →
 // sesión) y ReorderableRow (reordenar DENTRO de la sesión) -- misma
@@ -69,13 +76,12 @@ export function SessionDragProvider({ children }) {
   const dragY = useSharedValue(0);
   // Medición del drop target cacheada una vez al empezar el arrastre
   // (no en cada frame) — se usa tanto para el indicador de posición en
-  // vivo (hoverIndexSV/isHoveringSV, leídos desde un worklet) como para
-  // decidir el drop final, sin repetir measureInWindow al soltar.
+  // vivo (isHoveringSV, leído desde un worklet) como para decidir el
+  // drop final, sin repetir measureInWindow al soltar.
   const targetX = useSharedValue(0);
   const targetY = useSharedValue(0);
   const targetWidth = useSharedValue(0);
   const targetHeight = useSharedValue(0);
-  const hoverIndexSV = useSharedValue(0);
   const isHoveringSV = useSharedValue(0);
   const [draggedExercise, setDraggedExercise] = useState(null);
   const dropTargetRef = useRef(null);
@@ -87,17 +93,19 @@ export function SessionDragProvider({ children }) {
   const scrollOffsetRef = useRef(0);
   // Mismo offset que scrollOffsetRef, pero como SharedValue -- un ref de
   // JS plano no es legible desde un worklet (onUpdate corre en el hilo de
-  // UI). Sin esto, el índice de drop estimado y el indicador visual
-  // (hoverIndexSV/SessionDropIndicator) ignoraban cuánto estaba
-  // scrolleada la lista, y con suficientes ejercicios ya cargados (lista
-  // con scroll) el indicador quedaba desalineado con dónde realmente iba
-  // a caer el ejercicio (bug real, 2026-10-06).
+  // UI). Se usa para corregir el índice de drop final (checkDrop) contra
+  // cuánto está scrolleada la lista.
   const scrollOffsetSV = useSharedValue(0);
+  // Timestamp (ms) del último autoscroll disparado -- gate de throttle
+  // leído/escrito DENTRO del worklet de onUpdate (ver AUTO_SCROLL_THROTTLE_MS),
+  // así ni siquiera se llega a cruzar a JS (runOnJS) cuando no corresponde
+  // todavía scrollear de nuevo.
+  const lastAutoScrollAtSV = useSharedValue(0);
 
   return (
     <SessionDragContext.Provider value={{
-      dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
-      draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV,
+      dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV,
+      draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, lastAutoScrollAtSV,
     }}
     >
       {children}
@@ -138,37 +146,41 @@ export function useSessionAutoScrollTarget() {
   return { autoScrollRef, onListScroll };
 }
 
-// Índice estimado (y si hay arrastre activo sobre el target) para
-// pintar un indicador de "acá va a caer" — ver SessionDropIndicator más
-// abajo, se monta una vez dentro del contenedor de ejercicios de la
+// Estado del hover sobre el target de drop -- ver SessionDropIndicator
+// más abajo, se monta una vez dentro del contenedor de ejercicios de la
 // sesión.
 export function useSessionDropIndicator() {
-  const { hoverIndexSV, isHoveringSV, scrollOffsetSV } = useContext(SessionDragContext);
-  return { hoverIndexSV, isHoveringSV, scrollOffsetSV };
+  const { dragY, targetY, targetHeight, isHoveringSV } = useContext(SessionDragContext);
+  return { dragY, targetY, targetHeight, isHoveringSV };
 }
+
+const DROP_INDICATOR_HEIGHT = 3;
 
 // Línea horizontal que marca dónde caería el ejercicio si se soltara
 // ahora — se monta una sola vez, adentro del `View` con `ref={dropTargetRef}`.
-// Position absolute + top animado en vez de una fila más de la lista:
-// más simple que insertar/sacar una fila fantasma en cada frame de
-// arrastre. Resta scrollOffsetSV: hoverIndexSV es un índice LÓGICO (desde
-// el principio de la lista completa), pero el indicador se pinta por
-// fuera del ScrollView -- sin restar cuánto está scrolleado, la línea
-// quedaba en la posición de cuando la lista estaba en el tope, ignorando
-// el scroll real (mismo bug que el cálculo de hoverIndexSV más abajo).
+// Sigue la posición real del dedo/cursor (dragY, ya trackeado para
+// DragGhost) en vez de "redondear" a un índice de fila estimado -- ese
+// cálculo por índice (hoverIndexSV, ya retirado) dependía de
+// scrollOffsetSV, que se actualiza con un salto (+14px) en cada
+// autoscroll programático en vez de moverse continuo como el scroll
+// real: la línea "saltaba" en vez de deslizar (bug real, 2026-10-06,
+// "glitchea cerca de los bordes"). Clampeado a [0, altura del
+// contenedor] -- sin esto el indicador podía pintarse por fuera del
+// contenedor cuando el dedo pasaba el borde (otro bug reportado, mismo
+// origen: el índice estimado podía superar la última fila visible).
 export function SessionDropIndicator() {
   const colors = useThemeColors();
-  const { hoverIndexSV, isHoveringSV, scrollOffsetSV } = useSessionDropIndicator();
+  const { dragY, targetY, targetHeight, isHoveringSV } = useSessionDropIndicator();
   const style = useAnimatedStyle(() => ({
     opacity: isHoveringSV.value,
-    transform: [{ translateY: hoverIndexSV.value * ESTIMATED_ROW_HEIGHT - scrollOffsetSV.value }],
+    transform: [{ translateY: Math.min(Math.max(dragY.value - targetY.value, 0), Math.max(0, targetHeight.value - DROP_INDICATOR_HEIGHT)) }],
   }));
 
   return (
     <Animated.View
       nativeID="session-drop-indicator"
       style={[
-        { position: 'absolute', left: 8, right: 8, top: 0, height: 3, borderRadius: 2, backgroundColor: colors.primary },
+        { position: 'absolute', left: 8, right: 8, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary },
         style,
       ]}
       testID="session-drop-indicator"
@@ -192,8 +204,8 @@ export function SessionDropIndicator() {
 // `.simultaneousWithExternalGesture` más abajo para el porqué.
 export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, scrollViewRef }) {
   const {
-    dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
-    setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV,
+    dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV,
+    setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, lastAutoScrollAtSV,
   } = useContext(SessionDragContext);
 
   // Chequeo fresco con la posición final real (absoluteX/Y del propio
@@ -263,13 +275,11 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
           && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
         isHoveringSV.value = inside ? 1 : 0;
         if (inside) {
-          // + scrollOffsetSV.value: hoverIndexSV es un índice lógico desde
-          // el principio de la lista -- sin sumar cuánto está scrolleada,
-          // el indicador se desalineaba apenas la lista tenía más
-          // ejercicios que lo que entra en pantalla (ver comentario en
-          // SessionDropIndicator).
-          hoverIndexSV.value = estimateIndexFromOffset((e.absoluteY - targetY.value) + scrollOffsetSV.value);
-          runOnJS(maybeAutoScroll)(autoScrollRef, scrollOffsetRef, scrollOffsetSV, e.absoluteY, targetY.value, targetHeight.value);
+          const now = Date.now();
+          if (now - lastAutoScrollAtSV.value > AUTO_SCROLL_THROTTLE_MS) {
+            lastAutoScrollAtSV.value = now;
+            runOnJS(maybeAutoScroll)(autoScrollRef, scrollOffsetRef, scrollOffsetSV, e.absoluteY, targetY.value, targetHeight.value);
+          }
         }
       })
       .onEnd((e) => {
@@ -315,33 +325,42 @@ export function ReorderProvider({ children }) {
   const targetIndexSV = useSharedValue(-1);
   const dragOffsetY = useSharedValue(0);
   const itemCountSV = useSharedValue(0);
+  // Posición absoluta del dedo/cursor mientras se reordena -- separada de
+  // dragOffsetY (que es el translateY de la FILA arrastrada, relativo a su
+  // propia posición de origen). Se usa solo para pintar
+  // ReorderDropIndicator seguido el dedo, igual que SessionDropIndicator.
+  const dragAbsoluteY = useSharedValue(0);
 
   return (
-    <ReorderContext.Provider value={{ activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV }}>
+    <ReorderContext.Provider value={{ activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY }}>
       {children}
     </ReorderContext.Provider>
   );
 }
 
-// Línea que marca dónde caería la fila si se soltara ahora, mismo
-// criterio visual que SessionDropIndicator pero leyendo del
-// ReorderContext — se monta una vez, adentro del contenedor con las
-// filas de la lista de la sesión (mismo `View` que ya tiene
-// SessionDropIndicator montado, ambos inactivos salvo que su propio
-// gesto esté en curso).
+// Línea que marca dónde caería la fila si se soltara ahora -- mismo
+// criterio que SessionDropIndicator (seguir el dedo/cursor en vez de
+// redondear a un índice de fila, clampeado al contenedor): acá el salto
+// era todavía más notorio porque targetIndexSV es el índice LÓGICO final
+// (redondeado al cambiar de fila), no una posición continua -- la línea
+// saltaba de fila en fila en vez de deslizar. targetY/targetHeight salen
+// de SessionDragContext (mismo contenedor, mismas mediciones que ya
+// cachea ReorderableRow#onStart) para poder clampear igual que el otro
+// indicador.
 export function ReorderDropIndicator() {
   const colors = useThemeColors();
-  const { activeIndexSV, targetIndexSV } = useContext(ReorderContext);
+  const { activeIndexSV, dragAbsoluteY } = useContext(ReorderContext);
+  const { targetY, targetHeight } = useContext(SessionDragContext);
   const style = useAnimatedStyle(() => ({
     opacity: activeIndexSV.value >= 0 ? 1 : 0,
-    transform: [{ translateY: targetIndexSV.value * ESTIMATED_ROW_HEIGHT }],
+    transform: [{ translateY: Math.min(Math.max(dragAbsoluteY.value - targetY.value, 0), Math.max(0, targetHeight.value - DROP_INDICATOR_HEIGHT)) }],
   }));
 
   return (
     <Animated.View
       nativeID="session-reorder-drop-indicator"
       style={[
-        { position: 'absolute', left: 8, right: 8, top: 0, height: 3, borderRadius: 2, backgroundColor: colors.primary },
+        { position: 'absolute', left: 8, right: 8, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary },
         style,
       ]}
       testID="session-reorder-drop-indicator"
@@ -369,7 +388,7 @@ export function ReorderDropIndicator() {
 // arrastra por vez); las demás no se reacomodan en vivo — la línea de
 // ReorderDropIndicator ya comunica el destino.
 export function ReorderableRow({ index, itemCount, onReorder, children, scrollViewRef }) {
-  const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV } = useContext(ReorderContext);
+  const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY } = useContext(ReorderContext);
   // SessionDragContext además de ReorderContext (los dos conviven, ver
   // nota de "Contexto propio" más abajo) -- no para el mecanismo de
   // reordenamiento en sí, sino para poder autoscrollear cerca de los
@@ -378,7 +397,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // de esto, sostener una fila ya cargada cerca del borde del contenedor
   // no hacía nada -- solo el arrastre desde el catálogo autoscrolleaba
   // (bug real, 2026-10-06).
-  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth, autoScrollRef, scrollOffsetRef, scrollOffsetSV } = useContext(SessionDragContext);
+  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth, autoScrollRef, scrollOffsetRef, scrollOffsetSV, lastAutoScrollAtSV } = useContext(SessionDragContext);
   const onReorderRef = useRef(onReorder);
 
   useEffect(() => {
@@ -452,6 +471,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
       })
       .onUpdate((e) => {
         dragOffsetY.value = e.translationY;
+        dragAbsoluteY.value = e.absoluteY;
         // Delta de fila con signo (a diferencia de estimateIndexFromOffset,
         // pensada para una distancia siempre positiva desde el top de un
         // contenedor) — acá el desplazamiento es relativo a la fila propia
@@ -463,9 +483,14 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         // (e.absoluteY), no el translationY relativo a la fila de arriba.
         // targetWidth > 0 como guarda: todavía no llegó la medición async
         // de arriba, un alto 0 dispararía el borde inferior en cualquier
-        // posición.
+        // posición. Throttleado igual que el cross-container (ver
+        // AUTO_SCROLL_THROTTLE_MS).
         if (targetWidth.value > 0) {
-          runOnJS(maybeAutoScroll)(autoScrollRef, scrollOffsetRef, scrollOffsetSV, e.absoluteY, targetY.value, targetHeight.value);
+          const now = Date.now();
+          if (now - lastAutoScrollAtSV.value > AUTO_SCROLL_THROTTLE_MS) {
+            lastAutoScrollAtSV.value = now;
+            runOnJS(maybeAutoScroll)(autoScrollRef, scrollOffsetRef, scrollOffsetSV, e.absoluteY, targetY.value, targetHeight.value);
+          }
         }
       })
       .onEnd(() => {

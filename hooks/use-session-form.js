@@ -16,6 +16,14 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
   // recién abierto, sin tocar).
   const [attempted, setAttempted] = useState(false);
   const nameError = attempted && !name.trim();
+  // Mismo criterio que nameError -- cualquiera de las 3 condiciones que
+  // validate() chequea sobre exercises (vacía, con filas sin elegir, o
+  // sin algún rol obligatorio).
+  const exercisesError = attempted && (
+    exercises.length === 0
+    || exercises.some((e) => !e.exerciseId)
+    || SESSION_ROLE_ORDER.some((role) => !exercises.some((e) => e.role === role))
+  );
   const draftSeq = useRef(0);
 
   const makeBlankRow = (role) => ({
@@ -82,6 +90,6 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
     name, setName,
     description, setDescription,
     exercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped,
-    error, nameError, validate, getValues,
+    error, nameError, exercisesError, validate, getValues,
   };
 }

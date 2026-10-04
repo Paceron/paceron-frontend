@@ -114,7 +114,8 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
           </Text>
         ) : (
           <ScrollView
-            contentContainerClassName="gap-2 pb-1"
+            className="rounded-xl border border-slate-200 p-2 dark:border-slate-700"
+            contentContainerClassName="gap-2"
             horizontal
             nativeID="session-exercise-panel-list"
             ref={stripScrollRef}
@@ -177,7 +178,7 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
         />
       </View>
 
-      <ScrollView nativeID="session-exercise-panel-list" testID="session-exercise-panel-list">
+      <ScrollView className="flex-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700" nativeID="session-exercise-panel-list" testID="session-exercise-panel-list">
         {filtered.length === 0 ? (
           <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="session-exercise-panel-empty" testID="session-exercise-panel-empty">
             Ningún ejercicio coincide.

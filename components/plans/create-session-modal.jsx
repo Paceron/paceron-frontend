@@ -41,7 +41,7 @@ import { SessionExerciseRow, SessionFormBody } from './session-form-body.jsx';
 // padre (`create-session-modal-body`) es `flex-1` dentro de una card de
 // alto FIJO (`create-session-modal-card`, ver CreateSessionModal) — no
 // de un alto propio en cada columna.
-function SessionModalWideBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, visible }) {
+function SessionModalWideBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, exercisesError, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
@@ -80,7 +80,7 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
             (que a su vez habían reemplazado a react-native-drax,
             evaluado y descartado el mismo día por incompatibilidad con
             gesture-handler v2, ver CLAUDE.md). */}
-        <View className="flex-1 rounded-xl border border-dashed border-slate-300 dark:border-slate-600" nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
+        <View className={`flex-1 rounded-xl border border-dashed ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
           <ReorderProvider>
             <GestureScrollView
               contentContainerClassName="gap-2 p-2"
@@ -148,6 +148,12 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   // que apagar a mano en cada handler de texto.
   const [attempted, setAttempted] = useState(false);
   const nameError = attempted && !name.trim();
+  // Mismo criterio que hooks/use-session-form.js#exercisesError.
+  const exercisesError = attempted && (
+    exercises.length === 0
+    || exercises.some((e) => !e.exerciseId)
+    || SESSION_ROLE_ORDER.some((role) => !exercises.some((e) => e.role === role))
+  );
   const [submitting, setSubmitting] = useState(false);
   const draftSeq = useRef(0);
 
@@ -326,6 +332,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   description={description}
                   error={error}
                   exercises={exercises}
+                  exercisesError={exercisesError}
                   onChangeExercise={handleChangeExercise}
                   onChangeRole={handleChangeRole}
                   onExerciseDropped={handleExerciseDropped}
@@ -361,6 +368,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   description={description}
                   error={error}
                   exercises={exercises}
+                  exercisesError={exercisesError}
                   onChangeExercise={handleChangeExercise}
                   onChangeRole={handleChangeRole}
                   onExerciseDropped={handleExerciseDropped}
