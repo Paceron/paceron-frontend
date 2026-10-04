@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { StartSessionButton } from './start-session-button.jsx';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
+import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 
 function kindLabel(assignment) {
   if (assignment.kind === 'rest') return 'Descanso';
@@ -20,14 +21,83 @@ function kindLabel(assignment) {
   return 'Entrenamiento';
 }
 
-// Este menú NAVEGA para "Editar/Asignar" y "Cancelar" (mismo destino que ya
-// usa group-calendar-screen.jsx para esas dos acciones -- ninguna de las
-// dos muta inline ahí tampoco) en vez de duplicar lógica de edición acá --
-// la vista agregada es de solo lectura por diseño (ver
+function MenuToggle({ assignment, cardRef, onOpenMenu, idPrefix }) {
+  const colors = useThemeColors();
+  const ref = useRef(null);
+
+  // Mismo patrón que trainings-history-row.jsx -- NO un View absolute
+  // anidado dentro de la fila: la fila vive dentro del ScrollView del
+  // modal, que clippea cualquier hijo absoluto a su propio viewport sin
+  // importar z-index (bug real, 2026-10-05, se veía cortado en web Y
+  // mobile). measureInWindow contra `cardRef` (fuera del ScrollView) da
+  // coordenadas que un ÚNICO AnimatedDropdown, montado afuera del scroll,
+  // puede usar sin que nada lo recorte.
+  const handlePress = () => {
+    if (!cardRef.current || !ref.current) return;
+    cardRef.current.measureInWindow((cardX, cardY) => {
+      ref.current?.measureInWindow((x, y, width, height) => {
+        onOpenMenu({ x: x - cardX, y: y - cardY, width, height }, assignment);
+      });
+    });
+  };
+
+  return (
+    <Pressable
+      ref={ref}
+      accessibilityLabel="Más opciones"
+      className="h-7 w-7 items-center justify-center rounded-full hover:bg-black/5 active:opacity-70 dark:hover:bg-white/10"
+      nativeID={idPrefix}
+      onPress={handlePress}
+      testID={idPrefix}
+    >
+      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+    </Pressable>
+  );
+}
+
+// Editar/Cancelar NAVEGAN (mismo destino que ya usa group-calendar-screen.jsx
+// para esas dos acciones -- ninguna de las dos muta inline ahí tampoco, la
+// vista agregada es de solo lectura por diseño, ver
 // hooks/use-aggregated-calendar.js). "Vaciar" es la única excepción: un
-// delete simple e idempotente, mismo hook que ya usa la pantalla del
-// grupo, con confirmación porque es irreversible.
-function AssignmentRow({ assignment, variant, menuOpen, onToggleMenu, onRequestClear }) {
+// delete simple e idempotente, mismo hook que ya usa la pantalla del grupo,
+// con confirmación porque es irreversible.
+function DayDetailRowMenu({ assignment, idPrefix, onClose, onRequestClear }) {
+  const router = useRouter();
+  const closed = isCalendarDayClosed(assignment.date, { isPresencial: assignment.isPresencial, presencialTimeFrom: assignment.presencialTimeFrom });
+  const isTraining = assignment.kind === 'training';
+
+  const handleEdit = () => {
+    onClose();
+    router.push(`/teams/${assignment.teamId}/groups/${assignment.groupId}/calendar/${assignment.date}`);
+  };
+  const handleCancel = () => {
+    onClose();
+    router.push(`/teams/${assignment.teamId}/groups/${assignment.groupId}/calendar/${assignment.date}?action=cancel`);
+  };
+
+  return (
+    <View className="w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-panel`} testID={`${idPrefix}-panel`}>
+      <Pressable className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID={`${idPrefix}-edit`} onPress={handleEdit} testID={`${idPrefix}-edit`}>
+        <MaterialCommunityIcons color="#64748b" name="pencil-outline" size={16} />
+        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-edit-label`} testID={`${idPrefix}-edit-label`}>Editar</Text>
+      </Pressable>
+      {!closed && (
+        <Pressable className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID={`${idPrefix}-clear`} onPress={() => { onClose(); onRequestClear(assignment); }} testID={`${idPrefix}-clear`}>
+          <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={16} />
+          <Text className="text-sm text-red-600 dark:text-red-400" nativeID={`${idPrefix}-clear-label`} testID={`${idPrefix}-clear-label`}>Vaciar día</Text>
+        </Pressable>
+      )}
+      {isTraining && (
+        <Pressable className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID={`${idPrefix}-cancel`} onPress={handleCancel} testID={`${idPrefix}-cancel`}>
+          <MaterialCommunityIcons color="#d97706" name="calendar-remove-outline" size={16} />
+          <Text className="text-sm text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-cancel-label`} testID={`${idPrefix}-cancel-label`}>Cancelar sesión</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function AssignmentRow({ assignment, variant, cardRef, onOpenMenu }) {
   const colors = useThemeColors();
   const router = useRouter();
   const idPrefix = `day-detail-assignment-${assignment.id}`;
@@ -35,14 +105,8 @@ function AssignmentRow({ assignment, variant, menuOpen, onToggleMenu, onRequestC
   const handleGoToDay = () => {
     router.push(`/teams/${assignment.teamId}/groups/${assignment.groupId}/calendar/${assignment.date}`);
   };
-  const handleCancel = () => {
-    onToggleMenu(null);
-    router.push(`/teams/${assignment.teamId}/groups/${assignment.groupId}/calendar/${assignment.date}?action=cancel`);
-  };
 
   const kindColor = KIND_DOT_COLORS[assignment.kind];
-  const closed = isCalendarDayClosed(assignment.date, { isPresencial: assignment.isPresencial, presencialTimeFrom: assignment.presencialTimeFrom });
-  const isTraining = assignment.kind === 'training';
 
   return (
     <View
@@ -67,37 +131,7 @@ function AssignmentRow({ assignment, variant, menuOpen, onToggleMenu, onRequestC
           </View>
         </View>
         {variant === 'administered' && (
-          <View className="relative" nativeID={`${idPrefix}-menu-wrapper`} testID={`${idPrefix}-menu-wrapper`}>
-            <Pressable
-              accessibilityLabel="Más opciones"
-              className="h-7 w-7 items-center justify-center rounded-full hover:bg-black/5 active:opacity-70 dark:hover:bg-white/10"
-              nativeID={`${idPrefix}-menu-toggle`}
-              onPress={() => onToggleMenu(menuOpen ? null : assignment.id)}
-              testID={`${idPrefix}-menu-toggle`}
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
-            </Pressable>
-            {menuOpen && (
-              <View className="absolute right-0 top-8 z-50 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-menu-panel`} testID={`${idPrefix}-menu-panel`}>
-                <Pressable className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID={`${idPrefix}-menu-edit`} onPress={() => { onToggleMenu(null); handleGoToDay(); }} testID={`${idPrefix}-menu-edit`}>
-                  <MaterialCommunityIcons color="#64748b" name="pencil-outline" size={16} />
-                  <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-menu-edit-label`} testID={`${idPrefix}-menu-edit-label`}>Editar</Text>
-                </Pressable>
-                {!closed && (
-                  <Pressable className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID={`${idPrefix}-menu-clear`} onPress={() => { onToggleMenu(null); onRequestClear(assignment); }} testID={`${idPrefix}-menu-clear`}>
-                    <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={16} />
-                    <Text className="text-sm text-red-600 dark:text-red-400" nativeID={`${idPrefix}-menu-clear-label`} testID={`${idPrefix}-menu-clear-label`}>Vaciar día</Text>
-                  </Pressable>
-                )}
-                {isTraining && (
-                  <Pressable className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID={`${idPrefix}-menu-cancel`} onPress={handleCancel} testID={`${idPrefix}-menu-cancel`}>
-                    <MaterialCommunityIcons color="#d97706" name="calendar-remove-outline" size={16} />
-                    <Text className="text-sm text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-menu-cancel-label`} testID={`${idPrefix}-menu-cancel-label`}>Cancelar sesión</Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-          </View>
+          <MenuToggle assignment={assignment} cardRef={cardRef} idPrefix={`${idPrefix}-menu-toggle`} onOpenMenu={onOpenMenu} />
         )}
       </View>
       <Text className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-kind`} testID={`${idPrefix}-kind`}>
@@ -196,11 +230,15 @@ function ClearDayConfirm({ clearTarget, onCancel, onCleared }) {
 
 export function DayDetailModal({ visible, onClose, date, assignments, variant, loading }) {
   const colors = useThemeColors();
-  const [openMenuId, setOpenMenuId] = useState(null);
+  const cardRef = useRef(null);
+  const [rowMenu, setRowMenu] = useState(null); // { anchor, assignment } | null
   const [clearTarget, setClearTarget] = useState(null);
 
+  const handleCloseRowMenu = () => setRowMenu(null);
+  const handleOpenRowMenu = (anchor, assignment) => setRowMenu({ anchor, assignment });
+
   const handleClose = () => {
-    setOpenMenuId(null);
+    handleCloseRowMenu();
     onClose();
   };
 
@@ -208,9 +246,10 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
     <Modal animationType="fade" nativeID="day-detail-modal" onRequestClose={handleClose} testID="day-detail-modal" transparent visible={visible}>
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="day-detail-modal-backdrop" onPress={handleClose} testID="day-detail-modal-backdrop">
         <Pressable
-          className="max-h-[80%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
+          className="relative max-h-[80%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
           nativeID="day-detail-modal-card"
-          onPress={() => setOpenMenuId(null)}
+          onPress={handleCloseRowMenu}
+          ref={cardRef}
           testID="day-detail-modal-card"
         >
           <Text className="mb-3 text-lg font-bold text-slate-900 dark:text-white" nativeID="day-detail-modal-title" testID="day-detail-modal-title">
@@ -226,10 +265,9 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
                 {assignments.map((assignment) => (
                   <AssignmentRow
                     assignment={assignment}
+                    cardRef={cardRef}
                     key={assignment.id}
-                    menuOpen={openMenuId === assignment.id}
-                    onRequestClear={setClearTarget}
-                    onToggleMenu={setOpenMenuId}
+                    onOpenMenu={handleOpenRowMenu}
                     variant={variant}
                   />
                 ))}
@@ -241,6 +279,10 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
               </View>
             </ScrollView>
           )}
+
+          <AnimatedDropdown anchorStyle={rowMenu ? { left: Math.max(8, rowMenu.anchor.x + rowMenu.anchor.width - 192), top: rowMenu.anchor.y + rowMenu.anchor.height + 4, width: 192 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
+            {rowMenu && <DayDetailRowMenu assignment={rowMenu.assignment} idPrefix="day-detail-modal-row-menu" onClose={handleCloseRowMenu} onRequestClear={setClearTarget} />}
+          </AnimatedDropdown>
         </Pressable>
       </Pressable>
 
