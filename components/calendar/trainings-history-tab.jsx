@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
+import { useTrainingsHistoryFiltersStore } from '../../store/trainings-history-filters-store.js';
 import { useTeams, useMyMemberTeams } from '../../hooks/use-teams.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { selectAdministeredTeams } from '../../store/team-store.js';
@@ -37,21 +38,27 @@ export function TrainingsHistoryTab({ role }) {
   const administeredTeams = role === 'trainer' ? selectAdministeredTeams(allTeams, userId) : [];
   const teamOptions = role === 'trainer' ? administeredTeams : myTeams;
 
-  const [filterTeamId, setFilterTeamId] = useState('');
-  const [filterGroupId, setFilterGroupId] = useState('');
+  const filterTeamId = useTrainingsHistoryFiltersStore((s) => s.teamId);
+  const setFilterTeamId = useTrainingsHistoryFiltersStore((s) => s.setTeamId);
+  const filterGroupId = useTrainingsHistoryFiltersStore((s) => s.groupId);
+  const setFilterGroupId = useTrainingsHistoryFiltersStore((s) => s.setGroupId);
+  const dateFromInput = useTrainingsHistoryFiltersStore((s) => s.dateFromInput);
+  const setDateFromInput = useTrainingsHistoryFiltersStore((s) => s.setDateFromInput);
+  const dateToInput = useTrainingsHistoryFiltersStore((s) => s.dateToInput);
+  const setDateToInput = useTrainingsHistoryFiltersStore((s) => s.setDateToInput);
+  const order = useTrainingsHistoryFiltersStore((s) => s.order);
+  const setOrder = useTrainingsHistoryFiltersStore((s) => s.setOrder);
+  const filterExerciseId = useTrainingsHistoryFiltersStore((s) => s.exerciseId);
+  const setFilterExerciseId = useTrainingsHistoryFiltersStore((s) => s.setExerciseId);
+  const filterAthleteId = useTrainingsHistoryFiltersStore((s) => s.athleteId);
+  const setFilterAthleteId = useTrainingsHistoryFiltersStore((s) => s.setAthleteId);
+  const clearFilters = useTrainingsHistoryFiltersStore((s) => s.clearFilters);
+
   const { groups: groupOptions } = useGroups(role === 'trainer' ? filterTeamId : null, userId);
-
-  const [dateFromInput, setDateFromInput] = useState('');
-  const [dateToInput, setDateToInput] = useState('');
   const { dateFrom, dateTo, error: dateRangeError } = buildDateRangeFilters(dateFromInput, dateToInput);
-
-  const [order, setOrder] = useState('desc');
-  const [filterExerciseId, setFilterExerciseId] = useState('');
-  const [filterAthleteId, setFilterAthleteId] = useState('');
 
   const handleTeamChange = (teamId) => {
     setFilterTeamId(teamId);
-    setFilterGroupId('');
   };
 
   const filters = {
@@ -134,18 +141,9 @@ export function TrainingsHistoryTab({ role }) {
   };
 
   const hasActiveFilters = Boolean(filterTeamId || filterGroupId || dateFromInput || dateToInput || filterExerciseId || filterAthleteId);
-  const handleClearFilters = () => {
-    setFilterTeamId('');
-    setFilterGroupId('');
-    setDateFromInput('');
-    setDateToInput('');
-    setFilterExerciseId('');
-    setFilterAthleteId('');
-  };
-
   return (
     <View className="relative flex-1" nativeID="trainings-history-tab-root" ref={containerRef} testID="trainings-history-tab-root">
-      <FilterPanel hasActiveFilters={hasActiveFilters} idPrefix="trainings-history-tab-filter" loading={loading} onClear={handleClearFilters}>
+      <FilterPanel hasActiveFilters={hasActiveFilters} idPrefix="trainings-history-tab-filter" loading={loading} onClear={clearFilters}>
         <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-team-wrapper" testID="trainings-history-tab-filter-team-wrapper">
           <ResponsiveSelectField
             dense

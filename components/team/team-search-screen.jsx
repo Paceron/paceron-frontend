@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useTeamSearchStore } from '../../store/team-search-store.js';
 import { useUser } from '../../hooks/use-user.js';
 import { selectAdministeredTeams } from '../../store/team-store.js';
 import { useTeams, useMyMemberTeams } from '../../hooks/use-teams.js';
@@ -102,17 +103,37 @@ function TeamSearchResultCard({ team, membershipFee, onRequest, requesting }) {
 function TeamSearchScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const address = useAddressCascade();
-  const [name, setName] = useState('');
-  const [level, setLevel] = useState('');
+  // Semilla de una sola vez (no reactiva a propósito) -- useAddressCascade
+  // solo lee `initial` en el primer render, igual que su uso de "edit" en
+  // otras pantallas. getState() es la lectura vanilla de Zustand, no un hook.
+  const address = useAddressCascade(useTeamSearchStore.getState());
+  const name = useTeamSearchStore((s) => s.name);
+  const setName = useTeamSearchStore((s) => s.setName);
+  const level = useTeamSearchStore((s) => s.level);
+  const setLevel = useTeamSearchStore((s) => s.setLevel);
+  const searched = useTeamSearchStore((s) => s.searched);
+  const setSearched = useTeamSearchStore((s) => s.setSearched);
+  const setStoredAddress = useTeamSearchStore((s) => s.setAddress);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const { results, hasMore, loading, search, loadMore } = useTeamSearch();
   const { requests: myRequests } = useMyJoinRequests();
   const { createJoinRequest, isCreating } = useJoinRequestMutations();
   const [requestingTeamId, setRequestingTeamId] = useState(null);
-  const [searched, setSearched] = useState(false);
   const [confirmingTeam, setConfirmingTeam] = useState(null);
+
+  const handleCountryChange = (code) => {
+    address.handleCountryChange(code);
+    setStoredAddress({ country: code, province: '', city: '' });
+  };
+  const handleProvinceChange = (id) => {
+    address.handleProvinceChange(id);
+    setStoredAddress({ country: address.country, province: id, city: '' });
+  };
+  const handleCityChange = (city) => {
+    address.handleCityChange(city);
+    setStoredAddress({ country: address.country, province: address.province, city });
+  };
 
   // Un equipo que el usuario ya administra o integra nunca debería
   // aparecer como resultado de búsqueda — el backend ya excluye "donde el
@@ -135,15 +156,29 @@ function TeamSearchScreenContent() {
   // hooks/use-team-fees.js.
   const { getFee } = useTeamFees(visibleResults.map((t) => t.id));
 
+  const buildSearchFilters = () => ({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined });
+
   const handleSearch = () => {
     setSearched(true);
-    search({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined });
-    setFiltersCollapsed(true);
+    search(buildSearchFilters());
   };
+
+  // Si ya había una búsqueda hecha (restaurada del store tras volver del
+  // detalle de un equipo), se vuelve a disparar sola al montar -- mismos
+  // resultados que se perdieron con el remount, pero frescos (no un
+  // snapshot). Solo una vez: no depende de name/level/address porque no
+  // debe re-dispararse mientras se edita el formulario, solo al entrar.
+  const ranInitialSearchRef = useRef(false);
+  useEffect(() => {
+    if (ranInitialSearchRef.current) return;
+    ranInitialSearchRef.current = true;
+    if (searched) search(buildSearchFilters());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
-    searched ? search({ name: name.trim() || undefined, level: level || undefined, country: address.country || undefined, province: address.province || undefined, city: address.city || undefined }) : Promise.resolve(),
+    searched ? search(buildSearchFilters()) : Promise.resolve(),
     queryClient.invalidateQueries({ queryKey: ['join-requests-mine'] }),
   ]));
 
@@ -231,15 +266,15 @@ function TeamSearchScreenContent() {
                   <ResponsiveSelectField dense label="Nivel" onChange={setLevel} options={LEVEL_OPTIONS} placeholder="Cualquiera" value={level} />
                 </Col>
                 <Col>
-                  <ResponsiveSelectField dense label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Cualquiera" value={address.country} />
+                  <ResponsiveSelectField dense label="País" onChange={handleCountryChange} options={address.countryOptions} placeholder="Cualquiera" value={address.country} />
                 </Col>
               </Row>
               <Row>
                 <Col>
-                  <ResponsiveSelectField dense disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Cualquiera' : 'Elegí un país'} value={address.province} />
+                  <ResponsiveSelectField dense disabled={!address.country} label="Provincia" onChange={handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Cualquiera' : 'Elegí un país'} value={address.province} />
                 </Col>
                 <Col>
-                  <ResponsiveSelectField dense disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Cualquiera' : 'Elegí una provincia'} value={address.city} />
+                  <ResponsiveSelectField dense disabled={!address.province} label="Localidad" onChange={handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Cualquiera' : 'Elegí una provincia'} value={address.city} />
                 </Col>
               </Row>
             </View>

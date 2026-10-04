@@ -11,6 +11,8 @@ import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { useUser } from '../../hooks/use-user.js';
+import { colorForUserId } from '../../utils/participant-color.js';
+import { ParticipantAvatar } from './participant-avatar.jsx';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { buildSessionReviewModel } from '../../services/normalizers.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -150,8 +152,12 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
   const [bulkExerciseId, setBulkExerciseId] = useState(null);
   // El entrenador ve los registros de OTRO (slot.athleteUserId nunca es el
   // suyo en este modo) -- sin el nombre a la vista, la fila del back queda
-  // vacía y toca adivinar de quién son estos registros hasta scrollear.
+  // vacía y toca adivinar de quién son estos registros hasta scrollear. Un
+  // chip con avatar (mismo patrón que trainer-session-review-screen.jsx),
+  // no solo texto -- un label suelto se perdía en el espacio vacío de la
+  // fila (feedback real, 2026-10-05).
   const { user: athleteUser } = useUser(slot.role === 'trainer' ? slot.athleteUserId : null);
+  const athleteFullName = athleteUser ? `${athleteUser.name ?? ''} ${athleteUser.surname ?? ''}`.trim() : null;
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
@@ -160,11 +166,11 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
           <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           </Pressable>
-          {athleteUser && (
-            <View className="flex-row items-center gap-1.5" nativeID="session-review-screen-athlete" testID="session-review-screen-athlete">
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-outline" size={16} />
-              <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-review-screen-athlete-name" numberOfLines={1} testID="session-review-screen-athlete-name">
-                {athleteUser.name}
+          {athleteFullName && (
+            <View className="flex-row items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-screen-athlete" testID="session-review-screen-athlete">
+              <ParticipantAvatar color={colorForUserId(slot.athleteUserId)} idPrefix="session-review-screen-athlete" name={athleteFullName} photoUrl={athleteUser.photoUrl} size={28} />
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-athlete-name" numberOfLines={1} testID="session-review-screen-athlete-name">
+                {athleteFullName}
               </Text>
             </View>
           )}
