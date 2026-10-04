@@ -41,14 +41,14 @@ import { SessionExerciseRow, SessionFormBody } from './session-form-body.jsx';
 // padre (`create-session-modal-body`) es `flex-1` dentro de una card de
 // alto FIJO (`create-session-modal-card`, ver CreateSessionModal) — no
 // de un alto propio en cada columna.
-function SessionModalWideBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, visible }) {
+function SessionModalWideBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
   return (
     <View className="flex-1 flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
       <View className="w-[320px] shrink-0" nativeID="create-session-modal-form-column" testID="create-session-modal-form-column">
-        <InputField autoFocus={visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
+        <InputField autoFocus={visible} dense error={nameError} hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
         <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
 
         <View className="flex-1" nativeID="create-session-modal-catalog-wrapper" testID="create-session-modal-catalog-wrapper">
@@ -143,6 +143,11 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const [description, setDescription] = useState('');
   const [exercises, setExercises] = useState([]);
   const [error, setError] = useState(null);
+  // Mismo criterio que hooks/use-session-form.js#nameError -- derivado de
+  // "ya se intentó guardar" + "sigue vacío", no un segundo flag que haya
+  // que apagar a mano en cada handler de texto.
+  const [attempted, setAttempted] = useState(false);
+  const nameError = attempted && !name.trim();
   const [submitting, setSubmitting] = useState(false);
   const draftSeq = useRef(0);
 
@@ -189,6 +194,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     setDescription(resetValues.description);
     setExercises(resetValues.exercises);
     setError(null);
+    setAttempted(false);
   } else if (!visible) {
     prevResetKeyRef.current = null;
   }
@@ -241,6 +247,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
 
   const handleSubmit = async () => {
     if (submitting) return;
+    setAttempted(true);
     if (!name.trim() || exercises.length === 0) {
       setError('Completá el nombre y agregá al menos un ejercicio de cada tipo (entrada en calor, principal, vuelta a la calma).');
       return;
@@ -327,6 +334,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   onSetDescription={setDescription}
                   onSetName={setName}
                   name={name}
+                  nameError={nameError}
                   visible={visible}
                 />
               ) : (
@@ -361,6 +369,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                   onSetDescription={setDescription}
                   onSetName={setName}
                   name={name}
+                  nameError={nameError}
                   visible={visible}
                 />
               )}

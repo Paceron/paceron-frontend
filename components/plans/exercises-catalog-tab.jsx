@@ -362,7 +362,7 @@ export function ExercisesCatalogTab() {
                 Ningún ejercicio coincide con la búsqueda.
               </Text>
             ) : (
-              <View className="flex-row flex-wrap gap-3" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
+              <View className="flex-row flex-wrap justify-center gap-3" nativeID="exercises-catalog-list" testID="exercises-catalog-list">
                 {filteredExercises.map((exercise) => {
                   const usedIn = sessionsUsingExercise(exercise.id, sessions);
                   return (

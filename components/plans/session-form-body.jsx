@@ -123,13 +123,13 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
   );
 }
 
-export function SessionFormBody({ name, onSetName, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, visible }) {
+export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
   return (
     <ScrollView className="flex-1" nativeID="session-form-body-scroll" testID="session-form-body-scroll">
-      <InputField autoFocus={!isWeb && visible} dense hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
+      <InputField autoFocus={!isWeb && visible} dense error={nameError} hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
       <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
 
       <SessionExercisePanel horizontal onExerciseAdded={onExerciseDropped} />

@@ -108,6 +108,7 @@ function EditSessionForm({ session }) {
             error={form.error}
             exercises={form.exercises}
             name={form.name}
+            nameError={form.nameError}
             onChangeExercise={form.onChangeExercise}
             onChangeRole={form.onChangeRole}
             onExerciseDropped={form.onExerciseDropped}

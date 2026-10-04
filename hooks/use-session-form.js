@@ -9,6 +9,13 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
     initial?.exercises?.length ? initial.exercises.map((e) => ({ ...e })) : []
   );
   const [error, setError] = useState(null);
+  // Derivado, no un segundo useState a mano -- así el borde rojo del campo
+  // Nombre se apaga solo apenas se tipea algo, sin un setNameError(false)
+  // que haya que recordar llamar en cada handler. `attempted` marca si ya
+  // se intentó guardar al menos una vez (no mostrar el borde en un form
+  // recién abierto, sin tocar).
+  const [attempted, setAttempted] = useState(false);
+  const nameError = attempted && !name.trim();
   const draftSeq = useRef(0);
 
   const makeBlankRow = (role) => ({
@@ -47,6 +54,7 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
   });
 
   const validate = () => {
+    setAttempted(true);
     if (!name.trim() || exercises.length === 0) {
       setError('Completá el nombre y agregá al menos un ejercicio de cada tipo (entrada en calor, principal, vuelta a la calma).');
       return false;
@@ -74,6 +82,6 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
     name, setName,
     description, setDescription,
     exercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped,
-    error, validate, getValues,
+    error, nameError, validate, getValues,
   };
 }

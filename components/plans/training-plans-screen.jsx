@@ -130,7 +130,7 @@ function TrainingPlansScreenContent() {
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="training-plans-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="training-plans-screen-title">
-            Planes de entrenamiento
+            Catálogo
           </Text>
         </View>
 
