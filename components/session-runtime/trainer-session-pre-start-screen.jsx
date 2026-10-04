@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -17,6 +17,7 @@ import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-d
 import { colorForUserId } from '../../utils/participant-color.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
+import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
 
@@ -78,11 +79,22 @@ function ParticipantRow({ member, idPrefix }) {
 function TrainerSessionPreStartScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const navParams = useLocalSearchParams();
+  const storePendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const [participantsExpanded, setParticipantsExpanded] = useState(false);
   const [participantsQuery, setParticipantsQuery] = useState('');
   const [attendanceVisible, setAttendanceVisible] = useState(false);
+
+  // El store (Zustand, sin persist) es el camino rápido -- siempre
+  // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
+  // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
+  // start-session-button.jsx) + un fetch de la instancia por id -- misma
+  // sesión, sin mandar a home.
+  const needsFallback = !storePendingSession;
+  const fallbackSessionInstanceId = needsFallback ? navParams.sessionInstanceId : null;
+  const { sessionInstance: fetchedSessionInstance } = useSessionInstance(fallbackSessionInstanceId, Boolean(fallbackSessionInstanceId));
+  const pendingSession = storePendingSession ?? pendingSessionFromNavParams(navParams, fetchedSessionInstance);
 
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;

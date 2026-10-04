@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
@@ -834,7 +835,15 @@ export function SessionReviewScreen() {
 }
 
 function SessionReviewScreenContent() {
-  const reviewSlot = useSessionReviewStore((s) => s.reviewSlot);
+  // El store (Zustand, sin persist) es el camino rápido -- siempre
+  // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
+  // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
+  // start-session-button.jsx/session-pre-start-screen.jsx/trainer-session-
+  // review-screen.jsx) -- `ReviewFlow` ya sabe pedir `sessionInstance` por
+  // REST cuando no vino en el slot, así que acá alcanza con los IDs.
+  const navParams = useLocalSearchParams();
+  const storeReviewSlot = useSessionReviewStore((s) => s.reviewSlot);
+  const reviewSlot = storeReviewSlot ?? reviewSlotFromNavParams(navParams);
   if (!reviewSlot) return <Redirect href="/" />;
   return <ReviewFlow key={`${reviewSlot.sessionInstanceId}-${reviewSlot.athleteUserId}-${reviewSlot.mode}`} slot={reviewSlot} />;
 }

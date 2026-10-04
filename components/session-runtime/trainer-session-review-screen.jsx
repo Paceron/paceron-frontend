@@ -12,7 +12,8 @@ import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { useTrainerSessionSummary } from '../../hooks/use-trainer-session-summary.js';
 import { useUser } from '../../hooks/use-user.js';
-import { pendingSessionFromReviewParams } from '../../utils/trainer-review-nav.js';
+import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
+import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
@@ -76,7 +77,7 @@ function TrainerSessionReviewScreenContent() {
   const needsFallback = !storePendingSession;
   const fallbackSessionInstanceId = needsFallback ? navParams.sessionInstanceId : null;
   const { sessionInstance: fetchedSessionInstance } = useSessionInstance(fallbackSessionInstanceId, Boolean(fallbackSessionInstanceId));
-  const pendingSession = storePendingSession ?? pendingSessionFromReviewParams(navParams, fetchedSessionInstance);
+  const pendingSession = storePendingSession ?? pendingSessionFromNavParams(navParams, fetchedSessionInstance);
 
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
@@ -104,7 +105,7 @@ function TrainerSessionReviewScreenContent() {
 
   const openAthleteReview = (participant) => {
     const mode = participant.runnerStatus === 'finished' || participant.runnerStatus === 'interrupted' ? 'review' : 'manual';
-    setReviewSlot({
+    const slot = {
       sessionInstance: pendingSession.sessionInstance,
       sessionInstanceId,
       date: pendingSession.date,
@@ -116,8 +117,9 @@ function TrainerSessionReviewScreenContent() {
       teamId: pendingSession.teamId ?? null,
       teamName: pendingSession.teamName ?? null,
       groupName: pendingSession.groupName ?? null,
-    });
-    router.push('/training-session-review');
+    };
+    setReviewSlot(slot);
+    router.push({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });
   };
 
   return (

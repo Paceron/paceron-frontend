@@ -20,7 +20,7 @@ export function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilt
   return (
     <Modal animationType="fade" nativeID={`${idPrefix}`} onRequestClose={onClose} testID={`${idPrefix}`} transparent visible={visible}>
       <Pressable className={`flex-1 bg-black/50 ${isWeb ? 'items-center justify-center px-4' : 'items-end'}`} nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
-        <Pressable className={isWeb ? 'max-h-[85vh] w-full max-w-2xl rounded-2xl bg-white dark:bg-surface' : 'h-full w-full max-w-lg bg-white dark:bg-surface'} nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
+        <Pressable className={isWeb ? 'max-h-[85%] w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-surface' : 'h-full w-full max-w-lg bg-white dark:bg-surface'} nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
           <SafeAreaView className="flex-1 gap-2 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
             <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>Registros</Text>
