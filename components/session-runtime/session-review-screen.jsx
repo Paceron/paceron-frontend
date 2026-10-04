@@ -10,6 +10,7 @@ import { reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
+import { useUser } from '../../hooks/use-user.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { buildSessionReviewModel } from '../../services/normalizers.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -147,13 +148,27 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
   // pre-start para el mismo estado (bug real, 2026-10-04).
   const isInterrupted = slot.completionStatus === 'interrupted';
   const [bulkExerciseId, setBulkExerciseId] = useState(null);
+  // El entrenador ve los registros de OTRO (slot.athleteUserId nunca es el
+  // suyo en este modo) -- sin el nombre a la vista, la fila del back queda
+  // vacía y toca adivinar de quién son estos registros hasta scrollear.
+  const { user: athleteUser } = useUser(slot.role === 'trainer' ? slot.athleteUserId : null);
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
       <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" testID="session-review-screen-scroll">
-        <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
-        </Pressable>
+        <View className="flex-row items-center justify-between" nativeID="session-review-screen-top-row" testID="session-review-screen-top-row">
+          <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+          </Pressable>
+          {athleteUser && (
+            <View className="flex-row items-center gap-1.5" nativeID="session-review-screen-athlete" testID="session-review-screen-athlete">
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-outline" size={16} />
+              <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="session-review-screen-athlete-name" numberOfLines={1} testID="session-review-screen-athlete-name">
+                {athleteUser.name}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <View className="mb-5 mt-4" nativeID="session-review-screen-header" testID="session-review-screen-header">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-review-screen-date" testID="session-review-screen-date">

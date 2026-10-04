@@ -20,7 +20,7 @@ function historyQueryKey(role, userId, filtersKey, page) {
 
 export function useTrainingsHistory(role, userId, filters) {
   const [page, setPage] = useState(1);
-  const [accumulated, setAccumulated] = useState({ filtersKey: null, pageKey: null, items: [] });
+  const [accumulated, setAccumulated] = useState({ filtersKey: null, pageKey: null, responseKey: null, items: [] });
 
   const filtersKey = computeFiltersKey(filters);
   if (shouldResetPage(accumulated.filtersKey, filtersKey, page)) {
@@ -35,8 +35,11 @@ export function useTrainingsHistory(role, userId, filters) {
   });
 
   const pageKey = `${filtersKey}:${page}`;
-  if (query.isSuccess && accumulated.pageKey !== pageKey) {
-    setAccumulated(mergeHistoryPage(accumulated, filtersKey, pageKey, page, query.data.items));
+  // dataUpdatedAt entra en la clave a propósito -- ver el comentario de
+  // mergeHistoryPage (trainings-history-pagination.js).
+  const responseKey = query.dataUpdatedAt ? `${pageKey}:${query.dataUpdatedAt}` : null;
+  if (query.isSuccess && responseKey && accumulated.responseKey !== responseKey) {
+    setAccumulated(mergeHistoryPage(accumulated, filtersKey, pageKey, responseKey, page, query.data.items));
   }
 
   return {
