@@ -10,6 +10,7 @@ import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { getRunnerSession } from '../../services/runnerSession.js';
+import { buildTrainerReviewNavParams } from '../../utils/trainer-review-nav.js';
 import { AthletePickerModal } from '../team/athlete-picker-modal.jsx';
 
 // Punto de entrada del "Registro de Sesión" (spec 2026-09-24):
@@ -160,7 +161,10 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
       if (assignment.isPresencial) {
         const handleOpenSummary = () => {
           setPendingSession(assignment);
-          router.push('/trainer-session-review');
+          // Params en la URL (no solo el store en memoria) -- un F5 en web
+          // reinicia el store, y sin esto la pantalla no tenía de dónde
+          // reconstruir qué sesión mostrar (bug real, 2026-10-05).
+          router.push({ pathname: '/trainer-session-review', params: buildTrainerReviewNavParams(assignment) });
         };
         return (
           <Pressable

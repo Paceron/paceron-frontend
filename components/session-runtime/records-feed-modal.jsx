@@ -2,6 +2,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
@@ -18,8 +19,8 @@ export function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilt
 
   return (
     <Modal animationType="fade" nativeID={`${idPrefix}`} onRequestClose={onClose} testID={`${idPrefix}`} transparent visible={visible}>
-      <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
-        <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
+      <Pressable className={`flex-1 bg-black/50 ${isWeb ? 'items-center justify-center px-4' : 'items-end'}`} nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
+        <Pressable className={isWeb ? 'max-h-[85vh] w-full max-w-2xl rounded-2xl bg-white dark:bg-surface' : 'h-full w-full max-w-lg bg-white dark:bg-surface'} nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
           <SafeAreaView className="flex-1 gap-2 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
             <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>Registros</Text>
@@ -50,7 +51,7 @@ export function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilt
                 </Pressable>
               )}
             </View>
-            <ScrollView nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
+            <ScrollView className="flex-1" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
               {feed.map((event) => (
                 <View className="flex-row items-center gap-2.5 border-b border-slate-100 p-3 dark:border-slate-800" key={event.id} nativeID={`${idPrefix}-item-${event.id}`} testID={`${idPrefix}-item-${event.id}`}>
                   <ParticipantAvatar color={colorForUserId(event.athleteUserId)} idPrefix={`${idPrefix}-item-${event.id}`} name={event.athleteName} photoUrl={event.athletePhotoUrl} size={32} />

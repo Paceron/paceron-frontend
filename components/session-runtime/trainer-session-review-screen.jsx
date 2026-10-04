@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
@@ -9,8 +9,10 @@ import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { useTrainerSessionSummary } from '../../hooks/use-trainer-session-summary.js';
 import { useUser } from '../../hooks/use-user.js';
+import { pendingSessionFromReviewParams } from '../../utils/trainer-review-nav.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
@@ -58,12 +60,23 @@ function ParticipantRow({ participant, idPrefix, onPress }) {
 function TrainerSessionReviewScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const navParams = useLocalSearchParams();
+  const storePendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const clearPendingSession = useSessionRuntimeStore((s) => s.clearPendingSession);
   const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const [attendanceVisible, setAttendanceVisible] = useState(false);
   const [feedVisible, setFeedVisible] = useState(false);
   const [feedFilterAthleteId, setFeedFilterAthleteId] = useState(null);
+
+  // El store (Zustand, sin persist) es el camino rápido -- siempre
+  // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
+  // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
+  // start-session-button.jsx/trainer-session-live-screen.jsx) + un fetch de
+  // la instancia por id -- misma sesión, sin mandar a home.
+  const needsFallback = !storePendingSession;
+  const fallbackSessionInstanceId = needsFallback ? navParams.sessionInstanceId : null;
+  const { sessionInstance: fetchedSessionInstance } = useSessionInstance(fallbackSessionInstanceId, Boolean(fallbackSessionInstanceId));
+  const pendingSession = storePendingSession ?? pendingSessionFromReviewParams(navParams, fetchedSessionInstance);
 
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
