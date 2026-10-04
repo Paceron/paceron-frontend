@@ -34,9 +34,14 @@ function MenuToggle({ assignment, cardRef, onOpenMenu, idPrefix }) {
   // puede usar sin que nada lo recorte.
   const handlePress = () => {
     if (!cardRef.current || !ref.current) return;
-    cardRef.current.measureInWindow((cardX, cardY) => {
+    cardRef.current.measureInWindow((cardX, cardY, cardWidth) => {
       ref.current?.measureInWindow((x, y, width, height) => {
-        onOpenMenu({ x: x - cardX, y: y - cardY, width, height }, assignment);
+        // Ancla desde el borde DERECHO de la tarjeta (no `x - cardX` para un
+        // `left`) -- el panel cuelga del botón hacia la izquierda, así que
+        // anclarlo por la derecha evita sumar el redondeo de dos medidas
+        // independientes (x del botón Y ancho de la tarjeta) en una resta
+        // que además depende del ancho del panel.
+        onOpenMenu({ right: cardX + cardWidth - (x + width), top: y - cardY + height + 4 }, assignment);
       });
     });
   };
@@ -280,7 +285,7 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
             </ScrollView>
           )}
 
-          <AnimatedDropdown anchorStyle={rowMenu ? { left: Math.max(8, rowMenu.anchor.x + rowMenu.anchor.width - 192), top: rowMenu.anchor.y + rowMenu.anchor.height + 4, width: 192 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
+          <AnimatedDropdown anchorStyle={rowMenu ? { right: Math.max(8, rowMenu.anchor.right), top: rowMenu.anchor.top, width: 192 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
             {rowMenu && <DayDetailRowMenu assignment={rowMenu.assignment} idPrefix="day-detail-modal-row-menu" onClose={handleCloseRowMenu} onRequestClear={setClearTarget} />}
           </AnimatedDropdown>
         </Pressable>
