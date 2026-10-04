@@ -107,12 +107,12 @@ export function AttendanceSessionModal({ visible, onClose, teamId, groupId, sess
     <Modal animationType="fade" nativeID={`${idPrefix}-modal`} onRequestClose={handleRequestClose} testID={`${idPrefix}-modal`} transparent visible={visible}>
       <Pressable className={`flex-1 bg-black/50 ${isWeb ? 'items-center justify-center px-4' : 'items-end'}`} nativeID={`${idPrefix}-backdrop`} onPress={handleRequestClose} testID={`${idPrefix}-backdrop`}>
         <Pressable
-          className={isWeb ? 'max-h-[85%] w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-surface' : 'h-full w-full max-w-lg bg-white dark:bg-surface'}
+          className={isWeb ? 'max-h-[85%] w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface' : 'h-full w-full max-w-lg bg-white dark:bg-surface'}
           nativeID={`${idPrefix}-card`}
           onPress={() => {}}
           testID={`${idPrefix}-card`}
         >
-          <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
+          <SafeAreaView className={isWeb ? 'flex-1' : 'flex-1 p-4'} edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
             <View className="mb-3 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
                 Asistencia

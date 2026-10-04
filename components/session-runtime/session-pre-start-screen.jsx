@@ -463,7 +463,7 @@ function SessionPreStartScreenContent() {
 
       <Modal animationType="fade" nativeID="session-pre-start-screen-attendance-web-modal" onRequestClose={() => setAttendanceWebNoticeVisible(false)} testID="session-pre-start-screen-attendance-web-modal" transparent visible={attendanceWebNoticeVisible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-6" nativeID="session-pre-start-screen-attendance-web-modal-backdrop" onPress={() => setAttendanceWebNoticeVisible(false)} testID="session-pre-start-screen-attendance-web-modal-backdrop">
-          <Pressable className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-surface" nativeID="session-pre-start-screen-attendance-web-modal-card" onPress={() => {}} testID="session-pre-start-screen-attendance-web-modal-card">
+          <Pressable className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="session-pre-start-screen-attendance-web-modal-card" onPress={() => {}} testID="session-pre-start-screen-attendance-web-modal-card">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="cellphone" size={28} />
             <Text className="mt-3 text-base font-bold text-slate-900 dark:text-white" nativeID="session-pre-start-screen-attendance-web-modal-title" testID="session-pre-start-screen-attendance-web-modal-title">
               Registrar asistencia es una función de la app
