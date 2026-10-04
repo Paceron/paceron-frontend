@@ -5,7 +5,9 @@ import { useThemeColors } from '../../theme/colors.js';
 
 export function FilterPanel({ hasActiveFilters, loading, onClear, children, idPrefix }) {
   const colors = useThemeColors();
-  const [open, setOpen] = useState(false);
+  // Abierto por default -- da indicio de qué y cómo se puede filtrar en vez
+  // de esconderlo detrás de un toggle; se puede cerrar igual a voluntad.
+  const [open, setOpen] = useState(true);
 
   return (
     <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-root`} testID={`${idPrefix}-root`}>

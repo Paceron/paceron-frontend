@@ -18,6 +18,7 @@ import { computeBounds } from '../../utils/map-bounds.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { PARTICIPANT_STATUS, displayStatus, unfinishedParticipants } from '../../utils/trainer-participant-state.js';
+import { buildPendingSessionNavParams } from '../../utils/pending-session-nav.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { RecordsFeedModal } from './records-feed-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
@@ -504,8 +505,9 @@ function TrainerSessionLiveScreenContent() {
     // Al resumen post-sesión, no de vuelta al pre-start -- mismo criterio que
     // la pantalla del corredor (badge + registro), acá a nivel de TODA la
     // sesión. `pendingSession` sigue vivo (no se limpia acá) porque esa
-    // pantalla lo necesita; ella misma lo limpia al salir.
-    router.push('/trainer-session-review');
+    // pantalla lo necesita; ella misma lo limpia al salir. Params en la URL
+    // además del store -- resiliencia a F5 en web (bug real, 2026-10-05).
+    router.push({ pathname: '/trainer-session-review', params: buildPendingSessionNavParams(pendingSession) });
   };
 
   // El slide-to-finish SIEMPRE confirma, haya o no corredores sin terminar --

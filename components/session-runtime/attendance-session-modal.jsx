@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 import { useSessionAttendance, useSaveAttendance, useDeleteAttendance } from '../../hooks/use-attendance.js';
 import { AttendanceGrid } from '../attendance/attendance-grid.jsx';
 import { AttendanceQrModal } from '../attendance/attendance-qr-modal.jsx';
@@ -104,14 +105,14 @@ export function AttendanceSessionModal({ visible, onClose, teamId, groupId, sess
 
   return (
     <Modal animationType="fade" nativeID={`${idPrefix}-modal`} onRequestClose={handleRequestClose} testID={`${idPrefix}-modal`} transparent visible={visible}>
-      <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={handleRequestClose} testID={`${idPrefix}-backdrop`}>
+      <Pressable className={`flex-1 bg-black/50 ${isWeb ? 'items-center justify-center px-4' : 'items-end'}`} nativeID={`${idPrefix}-backdrop`} onPress={handleRequestClose} testID={`${idPrefix}-backdrop`}>
         <Pressable
-          className="h-full w-full max-w-lg bg-white dark:bg-surface"
+          className={isWeb ? 'max-h-[85%] w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface' : 'h-full w-full max-w-lg bg-white dark:bg-surface'}
           nativeID={`${idPrefix}-card`}
           onPress={() => {}}
           testID={`${idPrefix}-card`}
         >
-          <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
+          <SafeAreaView className={isWeb ? 'flex-1' : 'flex-1 p-4'} edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
             <View className="mb-3 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
                 Asistencia
@@ -134,21 +135,23 @@ export function AttendanceSessionModal({ visible, onClose, teamId, groupId, sess
               </View>
             </View>
 
-            <AttendanceGrid
-              error={error}
-              idPrefix={`${idPrefix}-grid`}
-              isLoading={isLoading}
-              isRefetching={isRefetching}
-              isSaving={isSaving}
-              onRefresh={refetch}
-              onRequestDelete={handleRequestDelete}
-              onRetry={refetch}
-              onSave={handleSave}
-              onToggle={toggleRow}
-              rows={rows}
-              selectedIds={selectedIds}
-              summary={summary}
-            />
+            <ScrollView className="flex-1" nativeID={`${idPrefix}-grid-scroll`} testID={`${idPrefix}-grid-scroll`}>
+              <AttendanceGrid
+                error={error}
+                idPrefix={`${idPrefix}-grid`}
+                isLoading={isLoading}
+                isRefetching={isRefetching}
+                isSaving={isSaving}
+                onRefresh={refetch}
+                onRequestDelete={handleRequestDelete}
+                onRetry={refetch}
+                onSave={handleSave}
+                onToggle={toggleRow}
+                rows={rows}
+                selectedIds={selectedIds}
+                summary={summary}
+              />
+            </ScrollView>
           </SafeAreaView>
         </Pressable>
       </Pressable>

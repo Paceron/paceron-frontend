@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { notifySuccess } from '../../utils/haptics.js';
 import { useThemeColors } from '../../theme/colors.js';
-import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
+import { isWeb } from '../../utils/platform.js';
+import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
@@ -16,6 +16,8 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
+import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
+import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { cancelRun, getLatestRun, initSessionDb, interruptStartedSets, RUN_STATUS } from '../../services/session-db.js';
 import { syncRun } from '../../services/session-sync.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
@@ -73,7 +75,8 @@ function ExerciseRow({ exercise, idPrefix }) {
 function SessionPreStartScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const navParams = useLocalSearchParams();
+  const storePendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const userId = useAuthStore((s) => s.userId);
@@ -87,6 +90,16 @@ function SessionPreStartScreenContent() {
   // sesión) exime de la sala de espera de abajo -- es resumir lo que ya
   // arrancó, no un ingreso nuevo que el entrenador todavía no abrió.
   const [hasLocalInProgressRun, setHasLocalInProgressRun] = useState(false);
+
+  // El store (Zustand, sin persist) es el camino rápido -- siempre
+  // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
+  // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
+  // start-session-button.jsx) + un fetch de la instancia por id -- misma
+  // sesión, sin mandar a home.
+  const needsFallback = !storePendingSession;
+  const fallbackSessionInstanceId = needsFallback ? navParams.sessionInstanceId : null;
+  const { sessionInstance: fetchedSessionInstance } = useSessionInstance(fallbackSessionInstanceId, Boolean(fallbackSessionInstanceId));
+  const pendingSession = storePendingSession ?? pendingSessionFromNavParams(navParams, fetchedSessionInstance);
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
@@ -105,6 +118,11 @@ function SessionPreStartScreenContent() {
       // haya terminado todo (bug real, 2026-09-30: un tap rápido ahí creaba
       // un run nuevo desde cero). Chequeo local aparte (SQLite, sin red) para
       // no depender solo del estado remoto en esta ventana corta.
+      // En web no hay (ni va a haber) run local SQLite -- expo-sqlite no
+      // corre ahí (sin headers COOP/COEP, ver CLAUDE.md), así que este chequeo
+      // ni se intenta: el estado terminal en web sale solo de runnerSession
+      // (REST), más abajo.
+      if (isWeb) return undefined;
       let cancelled = false;
       (async () => {
         try {
@@ -155,7 +173,10 @@ function SessionPreStartScreenContent() {
   // entrenador mientras este corredor estaba con la app cerrada). Se corta
   // una vez que el corredor ya tiene su propio cierre terminal (finished o
   // interrupted), ahí no hay nada más que vigilar.
-  const instanceGateEnabled = Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !finished && !interrupted;
+  // En web el footer nunca muestra sala de espera/cerrada (siempre el aviso
+  // de "solo app nativa" en su lugar) -- apagar el polling ahí evita pedidos
+  // que no se van a reflejar en ningún lado.
+  const instanceGateEnabled = !isWeb && Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !finished && !interrupted;
   const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, instanceGateEnabled, { refetchInterval: instanceGateEnabled ? 5000 : false });
   const gateLoading = instanceGateEnabled && !alreadyStarted && liveInstance == null;
   const waitingForTrainer = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.openedAt == null;
@@ -256,7 +277,7 @@ function SessionPreStartScreenContent() {
   };
 
   const handleOpenReview = () => {
-    setReviewSlot({
+    const slot = {
       sessionInstance: pendingSession.sessionInstance,
       sessionInstanceId: pendingSession.sessionInstance?.id,
       date: pendingSession.date,
@@ -268,14 +289,20 @@ function SessionPreStartScreenContent() {
       teamId: pendingSession.teamId ?? null,
       teamName: pendingSession.teamName ?? null,
       groupName: pendingSession.groupName ?? null,
-    });
-    router.push('/training-session-review');
+    };
+    setReviewSlot(slot);
+    router.push({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });
   };
 
   const reviewButtonId = 'session-pre-start-screen-review-button';
 
+  const handleOpenAttendance = () => {
+    router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session' } });
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
+      <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="session-pre-start-screen-width-container" testID="session-pre-start-screen-width-container">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
           <Pressable
@@ -286,11 +313,17 @@ function SessionPreStartScreenContent() {
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           </Pressable>
-          {pendingSession.isPresencial && (
+          {/* Solo nativo -- en web no hay cámara, así que de nada le sirve al
+              corredor este acceso (terminaba siempre en un aviso de "función
+              de la app"). Simplifica el control: en web directamente no
+              está. El entrenador SÍ mantiene su acceso a asistencia en web
+              (trainer-session-pre-start-screen.jsx), es otro caso: ahí es un
+              modal de gestión completo, no un scanner de cámara. */}
+          {pendingSession.isPresencial && !isWeb && (
             <Pressable
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
               nativeID="session-pre-start-screen-attendance-button"
-              onPress={() => router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session' } })}
+              onPress={handleOpenAttendance}
               testID="session-pre-start-screen-attendance-button"
             >
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={20} />
@@ -405,6 +438,13 @@ function SessionPreStartScreenContent() {
               {gateLoading ? 'Verificando si la sesión ya está abierta…' : 'Sala de espera — esperando que el entrenador inicie la sesión.'}
             </Text>
           </View>
+        ) : isWeb ? (
+          <View className="flex-row items-center gap-1.5 self-center rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-web-notice" testID="session-pre-start-screen-web-notice">
+            <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
+            <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-web-notice-label" testID="session-pre-start-screen-web-notice-label">
+              El inicio y registro del entrenamiento solo está disponible en la app nativa
+            </Text>
+          </View>
         ) : (
           <Pressable
             className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
@@ -417,14 +457,15 @@ function SessionPreStartScreenContent() {
           </Pressable>
         )}
       </View>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 export function SessionPreStartScreen() {
   return (
-    <MobileOnlyRoute>
+    <RequireAuth>
       <SessionPreStartScreenContent />
-    </MobileOnlyRoute>
+    </RequireAuth>
   );
 }

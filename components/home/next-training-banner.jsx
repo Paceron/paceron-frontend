@@ -51,10 +51,12 @@ export function NextTrainingBanner() {
 
   if (!role) return null;
 
-  const calendarHref = role === 'trainer' ? '/administered-calendar' : '/calendar';
-
-  const goToCalendarDay = (date) => {
-    router.push({ pathname: calendarHref, params: { date } });
+  // Antes iba al calendario general (con el día como deep-link, un modal
+  // más para llegar a donde ya se sabía ir) -- directo al día del grupo
+  // específico, mismo destino que "Ir a este día" en day-detail-modal.jsx
+  // (bug real, 2026-10-05: "para cada asignación" quedaba un paso atrás).
+  const goToCalendarDay = (session) => {
+    router.push(`/teams/${session.teamId}/groups/${session.groupId}/calendar/${session.date}`);
   };
 
   return (
@@ -94,7 +96,7 @@ export function NextTrainingBanner() {
               router.push('/training-session');
               return;
             }
-            goToCalendarDay(nextTraining.date);
+            goToCalendarDay(nextTraining);
           }}
         />
       )}
@@ -108,7 +110,7 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
   return (
     <View className="gap-2" nativeID="next-training-banner-list" testID="next-training-banner-list">
       {cancelledSessions.map((session) => (
-        <CancelledCard key={session.id} onPress={() => onCancelledPress(session.date)} session={session} />
+        <CancelledCard key={session.id} onPress={() => onCancelledPress(session)} session={session} />
       ))}
 
       <Pressable

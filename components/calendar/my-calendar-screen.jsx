@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useCalendarTabStore } from '../../store/calendar-tab-store.js';
 import { useMemberCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
@@ -38,7 +39,8 @@ function MyCalendarScreenContent() {
   const [filterTeamId, setFilterTeamId] = useState('');
   const [openDate, setOpenDate] = useState(null);
   const [dayModalVisible, setDayModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState('calendario');
+  const activeTab = useCalendarTabStore((s) => s.activeTab);
+  const setActiveTab = useCalendarTabStore((s) => s.setActiveTab);
   const appliedDeepLinkRef = useRef(false);
 
   const openDayModal = (date) => {
@@ -54,7 +56,7 @@ function MyCalendarScreenContent() {
     setVisibleMonth(month);
     setActiveTab('calendario');
     openDayModal(deepLinkDate);
-  }, [deepLinkDate]);
+  }, [deepLinkDate, setActiveTab]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading, isFetching } = useMemberCalendar(userId, from, to);

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
+import { isWeb } from '../../utils/platform.js';
+import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -17,6 +17,7 @@ import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-d
 import { colorForUserId } from '../../utils/participant-color.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
+import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
 
@@ -78,11 +79,22 @@ function ParticipantRow({ member, idPrefix }) {
 function TrainerSessionPreStartScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const navParams = useLocalSearchParams();
+  const storePendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const [participantsExpanded, setParticipantsExpanded] = useState(false);
   const [participantsQuery, setParticipantsQuery] = useState('');
   const [attendanceVisible, setAttendanceVisible] = useState(false);
+
+  // El store (Zustand, sin persist) es el camino rápido -- siempre
+  // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
+  // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
+  // start-session-button.jsx) + un fetch de la instancia por id -- misma
+  // sesión, sin mandar a home.
+  const needsFallback = !storePendingSession;
+  const fallbackSessionInstanceId = needsFallback ? navParams.sessionInstanceId : null;
+  const { sessionInstance: fetchedSessionInstance } = useSessionInstance(fallbackSessionInstanceId, Boolean(fallbackSessionInstanceId));
+  const pendingSession = storePendingSession ?? pendingSessionFromNavParams(navParams, fetchedSessionInstance);
 
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
@@ -151,7 +163,8 @@ function TrainerSessionPreStartScreenContent() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="trainer-session-pre-start-screen-root" testID="trainer-session-pre-start-screen-root">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-pre-start-screen-root" testID="trainer-session-pre-start-screen-root">
+      <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="trainer-session-pre-start-screen-width-container" testID="trainer-session-pre-start-screen-width-container">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="trainer-session-pre-start-screen-scroll" testID="trainer-session-pre-start-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-pre-start-screen-header-row" testID="trainer-session-pre-start-screen-header-row">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="trainer-session-pre-start-screen-back-button" onPress={() => router.back()} testID="trainer-session-pre-start-screen-back-button">
@@ -268,24 +281,34 @@ function TrainerSessionPreStartScreenContent() {
       </ScrollView>
 
       <View className="border-t border-slate-100 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="trainer-session-pre-start-screen-footer" testID="trainer-session-pre-start-screen-footer">
-        <View className="items-center" nativeID="trainer-session-pre-start-screen-play-container" testID="trainer-session-pre-start-screen-play-container">
-          <Pressable
-            className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
-            nativeID="trainer-session-pre-start-screen-play-button"
-            onPress={handlePlay}
-            testID="trainer-session-pre-start-screen-play-button"
-          >
-            {/* Ya abierta (el entrenador salió y volvió sin finalizar) -- no
-                es "iniciar de nuevo", es retomar la supervisión de la misma
-                sesión. Mismo ícono base (play), distinto label abajo. */}
-            <MaterialCommunityIcons color={colors.onPrimary} name={sessionAlreadyOpen ? 'play-circle-outline' : 'play'} size={44} />
-          </Pressable>
-          {sessionAlreadyOpen && (
-            <Text className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-play-resume-label" testID="trainer-session-pre-start-screen-play-resume-label">
-              Reanudar sesión
+        {isWeb ? (
+          <View className="flex-row items-center gap-1.5 self-center rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="trainer-session-pre-start-screen-web-notice" testID="trainer-session-pre-start-screen-web-notice">
+            <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
+            <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID="trainer-session-pre-start-screen-web-notice-label" testID="trainer-session-pre-start-screen-web-notice-label">
+              El inicio y registro del entrenamiento solo está disponible en la app nativa
             </Text>
-          )}
-        </View>
+          </View>
+        ) : (
+          <View className="items-center" nativeID="trainer-session-pre-start-screen-play-container" testID="trainer-session-pre-start-screen-play-container">
+            <Pressable
+              className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
+              nativeID="trainer-session-pre-start-screen-play-button"
+              onPress={handlePlay}
+              testID="trainer-session-pre-start-screen-play-button"
+            >
+              {/* Ya abierta (el entrenador salió y volvió sin finalizar) -- no
+                  es "iniciar de nuevo", es retomar la supervisión de la misma
+                  sesión. Mismo ícono base (play), distinto label abajo. */}
+              <MaterialCommunityIcons color={colors.onPrimary} name={sessionAlreadyOpen ? 'play-circle-outline' : 'play'} size={44} />
+            </Pressable>
+            {sessionAlreadyOpen && (
+              <Text className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-play-resume-label" testID="trainer-session-pre-start-screen-play-resume-label">
+                Reanudar sesión
+              </Text>
+            )}
+          </View>
+        )}
+      </View>
       </View>
 
       <AttendanceSessionModal
@@ -298,14 +321,14 @@ function TrainerSessionPreStartScreenContent() {
         teamName={pendingSession.teamName}
         visible={attendanceVisible}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 export function TrainerSessionPreStartScreen() {
   return (
-    <MobileOnlyRoute>
+    <RequireAuth>
       <TrainerSessionPreStartScreenContent />
-    </MobileOnlyRoute>
+    </RequireAuth>
   );
 }

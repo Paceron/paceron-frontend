@@ -35,16 +35,24 @@ describe('shouldResetPage', () => {
 });
 
 describe('mergeHistoryPage', () => {
-  const accumulated = { filtersKey: 'a', pageKey: 'a:1', items: [{ id: '1' }, { id: '2' }] };
+  const accumulated = { filtersKey: 'a', pageKey: 'a:1', responseKey: 'a:1:1000', items: [{ id: '1' }, { id: '2' }] };
 
   test('página 1 reemplaza el acumulado', () => {
-    const result = mergeHistoryPage(accumulated, 'b', 'b:1', 1, [{ id: '9' }]);
-    expect(result).toEqual({ filtersKey: 'b', pageKey: 'b:1', items: [{ id: '9' }] });
+    const result = mergeHistoryPage(accumulated, 'b', 'b:1', 'b:1:2000', 1, [{ id: '9' }]);
+    expect(result).toEqual({ filtersKey: 'b', pageKey: 'b:1', responseKey: 'b:1:2000', items: [{ id: '9' }] });
   });
 
   test('página > 1 concatena al acumulado existente', () => {
-    const result = mergeHistoryPage(accumulated, 'a', 'a:2', 2, [{ id: '3' }]);
-    expect(result).toEqual({ filtersKey: 'a', pageKey: 'a:2', items: [{ id: '1' }, { id: '2' }, { id: '3' }] });
+    const result = mergeHistoryPage(accumulated, 'a', 'a:2', 'a:2:2000', 2, [{ id: '3' }]);
+    expect(result).toEqual({ filtersKey: 'a', pageKey: 'a:2', responseKey: 'a:2:2000', items: [{ id: '1' }, { id: '2' }, { id: '3' }] });
+  });
+
+  test('un refetch de la MISMA página con responseKey nuevo reemplaza el contenido de la página 1', () => {
+    // Caso real del bug: se borra una sesión, invalidateQueries dispara un
+    // refetch de la misma página con los mismos filtros -- solo cambia
+    // dataUpdatedAt (acá modelado en el responseKey nuevo).
+    const result = mergeHistoryPage(accumulated, 'a', 'a:1', 'a:1:2000', 1, [{ id: '1' }]);
+    expect(result).toEqual({ filtersKey: 'a', pageKey: 'a:1', responseKey: 'a:1:2000', items: [{ id: '1' }] });
   });
 });
 

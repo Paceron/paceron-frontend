@@ -40,7 +40,7 @@ export const myPlansRoute = {
 
 export const trainingPlansRoute = {
   name: 'training-plans',
-  label: 'Planes de entrenamiento',
+  label: 'Catálogo',
   href: '/training-plans',
   icon: 'clipboard-list-outline',
   role: 'trainer',

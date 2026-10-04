@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
+import { isWeb } from '../../utils/platform.js';
+import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { useTrainerSessionSummary } from '../../hooks/use-trainer-session-summary.js';
 import { useUser } from '../../hooks/use-user.js';
+import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
+import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
@@ -58,12 +61,23 @@ function ParticipantRow({ participant, idPrefix, onPress }) {
 function TrainerSessionReviewScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const navParams = useLocalSearchParams();
+  const storePendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const clearPendingSession = useSessionRuntimeStore((s) => s.clearPendingSession);
   const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const [attendanceVisible, setAttendanceVisible] = useState(false);
   const [feedVisible, setFeedVisible] = useState(false);
   const [feedFilterAthleteId, setFeedFilterAthleteId] = useState(null);
+
+  // El store (Zustand, sin persist) es el camino rápido -- siempre
+  // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
+  // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
+  // start-session-button.jsx/trainer-session-live-screen.jsx) + un fetch de
+  // la instancia por id -- misma sesión, sin mandar a home.
+  const needsFallback = !storePendingSession;
+  const fallbackSessionInstanceId = needsFallback ? navParams.sessionInstanceId : null;
+  const { sessionInstance: fetchedSessionInstance } = useSessionInstance(fallbackSessionInstanceId, Boolean(fallbackSessionInstanceId));
+  const pendingSession = storePendingSession ?? pendingSessionFromNavParams(navParams, fetchedSessionInstance);
 
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
@@ -91,7 +105,7 @@ function TrainerSessionReviewScreenContent() {
 
   const openAthleteReview = (participant) => {
     const mode = participant.runnerStatus === 'finished' || participant.runnerStatus === 'interrupted' ? 'review' : 'manual';
-    setReviewSlot({
+    const slot = {
       sessionInstance: pendingSession.sessionInstance,
       sessionInstanceId,
       date: pendingSession.date,
@@ -103,13 +117,14 @@ function TrainerSessionReviewScreenContent() {
       teamId: pendingSession.teamId ?? null,
       teamName: pendingSession.teamName ?? null,
       groupName: pendingSession.groupName ?? null,
-    });
-    router.push('/training-session-review');
+    };
+    setReviewSlot(slot);
+    router.push({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="trainer-session-review-screen-root" testID="trainer-session-review-screen-root">
-      <ScrollView contentContainerClassName="px-4 py-6" nativeID="trainer-session-review-screen-scroll" testID="trainer-session-review-screen-scroll">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-review-screen-root" testID="trainer-session-review-screen-root">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="trainer-session-review-screen-scroll" testID="trainer-session-review-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-review-screen-header-row" testID="trainer-session-review-screen-header-row">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="trainer-session-review-screen-back-button" onPress={handleDone} testID="trainer-session-review-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
@@ -227,14 +242,14 @@ function TrainerSessionReviewScreenContent() {
         onClose={() => setFeedVisible(false)}
         visible={feedVisible}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 export function TrainerSessionReviewScreen() {
   return (
-    <MobileOnlyRoute>
+    <RequireAuth>
       <TrainerSessionReviewScreenContent />
-    </MobileOnlyRoute>
+    </RequireAuth>
   );
 }
