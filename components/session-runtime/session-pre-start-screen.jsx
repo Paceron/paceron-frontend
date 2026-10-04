@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
@@ -79,6 +78,10 @@ function SessionPreStartScreenContent() {
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const userId = useAuthStore((s) => s.userId);
   const [starting, setStarting] = useState(false);
+  // En web no hay cámara -- el botón de asistencia abre un aviso corto en
+  // vez de navegar a una pantalla (/attendance/register) que de todos modos
+  // termina mostrando el mismo aviso a pantalla completa.
+  const [attendanceWebNoticeVisible, setAttendanceWebNoticeVisible] = useState(false);
   // 'completed' | 'cancelled' | null -- cubre el mismo hueco corto que antes
   // (local vs. confirmación remota) para los DOS cierres terminales (Gap 19:
   // cancelar ya no deja el runner_session en wip para siempre, así que
@@ -283,8 +286,17 @@ function SessionPreStartScreenContent() {
 
   const reviewButtonId = 'session-pre-start-screen-review-button';
 
+  const handleOpenAttendance = () => {
+    if (isWeb) {
+      setAttendanceWebNoticeVisible(true);
+      return;
+    }
+    router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session' } });
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
+      <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="session-pre-start-screen-width-container" testID="session-pre-start-screen-width-container">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
           <Pressable
@@ -299,7 +311,7 @@ function SessionPreStartScreenContent() {
             <Pressable
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
               nativeID="session-pre-start-screen-attendance-button"
-              onPress={() => router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session' } })}
+              onPress={handleOpenAttendance}
               testID="session-pre-start-screen-attendance-button"
             >
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="qrcode-scan" size={20} />
@@ -433,7 +445,32 @@ function SessionPreStartScreenContent() {
           </Pressable>
         )}
       </View>
-    </SafeAreaView>
+      </View>
+
+      <Modal animationType="fade" nativeID="session-pre-start-screen-attendance-web-modal" onRequestClose={() => setAttendanceWebNoticeVisible(false)} testID="session-pre-start-screen-attendance-web-modal" transparent visible={attendanceWebNoticeVisible}>
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-6" nativeID="session-pre-start-screen-attendance-web-modal-backdrop" onPress={() => setAttendanceWebNoticeVisible(false)} testID="session-pre-start-screen-attendance-web-modal-backdrop">
+          <Pressable className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-surface" nativeID="session-pre-start-screen-attendance-web-modal-card" onPress={() => {}} testID="session-pre-start-screen-attendance-web-modal-card">
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="cellphone" size={28} />
+            <Text className="mt-3 text-base font-bold text-slate-900 dark:text-white" nativeID="session-pre-start-screen-attendance-web-modal-title" testID="session-pre-start-screen-attendance-web-modal-title">
+              Registrar asistencia es una función de la app
+            </Text>
+            <Text className="mt-1 text-sm text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-attendance-web-modal-hint" testID="session-pre-start-screen-attendance-web-modal-hint">
+              El escaneo del QR de la sesión se hace con la cámara, y eso solo funciona en la app de Paceron.
+            </Text>
+            <Pressable
+              className="mt-5 h-11 items-center justify-center rounded-full border border-slate-200 px-6 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+              nativeID="session-pre-start-screen-attendance-web-modal-close-button"
+              onPress={() => setAttendanceWebNoticeVisible(false)}
+              testID="session-pre-start-screen-attendance-web-modal-close-button"
+            >
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-pre-start-screen-attendance-web-modal-close-label" testID="session-pre-start-screen-attendance-web-modal-close-label">
+                Entendido
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
   );
 }
 

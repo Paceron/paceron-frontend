@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -152,7 +151,8 @@ function TrainerSessionPreStartScreenContent() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="trainer-session-pre-start-screen-root" testID="trainer-session-pre-start-screen-root">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-pre-start-screen-root" testID="trainer-session-pre-start-screen-root">
+      <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="trainer-session-pre-start-screen-width-container" testID="trainer-session-pre-start-screen-width-container">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="trainer-session-pre-start-screen-scroll" testID="trainer-session-pre-start-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-pre-start-screen-header-row" testID="trainer-session-pre-start-screen-header-row">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="trainer-session-pre-start-screen-back-button" onPress={() => router.back()} testID="trainer-session-pre-start-screen-back-button">
@@ -297,6 +297,7 @@ function TrainerSessionPreStartScreenContent() {
           </View>
         )}
       </View>
+      </View>
 
       <AttendanceSessionModal
         groupId={groupId}
@@ -308,7 +309,7 @@ function TrainerSessionPreStartScreenContent() {
         teamName={pendingSession.teamName}
         visible={attendanceVisible}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

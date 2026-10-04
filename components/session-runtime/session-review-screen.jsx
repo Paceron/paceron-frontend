@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
@@ -148,8 +148,8 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
   const [bulkExerciseId, setBulkExerciseId] = useState(null);
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-screen-root" testID="session-review-screen-root">
-      <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" testID="session-review-screen-scroll">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" testID="session-review-screen-scroll">
         <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
         </Pressable>
@@ -261,7 +261,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -477,8 +477,8 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
   const fieldId = `session-review-detail-field-${row.setNumber}`;
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-detail-root" testID="session-review-detail-root">
-      <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" testID="session-review-detail-scroll">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-detail-root" testID="session-review-detail-root">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" testID="session-review-detail-scroll">
         <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
         </Pressable>
@@ -722,7 +722,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
       </ScrollView>
 
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -779,22 +779,22 @@ function ReviewFlow({ slot }) {
   // refetch de fondo con datos ya mostrados no debería tapar la pantalla.
   if ((instanceLoading && !sessionInstance) || (loading && groups.length === 0)) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-loading-root" testID="session-review-loading-root">
+      <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="session-review-loading-root" testID="session-review-loading-root">
         <ActivityIndicator color={colors.primary} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!sessionInstance?.exercises?.length) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-empty-root" testID="session-review-empty-root">
+      <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="session-review-empty-root" testID="session-review-empty-root">
         <Text className="mb-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="session-review-empty-label" testID="session-review-empty-label">
           Esta sesión no tiene ejercicios para revisar.
         </Text>
         <Pressable className="h-11 items-center justify-center rounded-full bg-primary px-6 active:opacity-80" nativeID="session-review-empty-back-button" onPress={() => router.back()} testID="session-review-empty-back-button">
           <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="session-review-empty-back-label" testID="session-review-empty-back-label">Volver</Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
     );
   }
 

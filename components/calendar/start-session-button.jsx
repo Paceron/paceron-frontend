@@ -152,12 +152,12 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
 
   if (showReview) {
     if (role === 'trainer') {
-      if (!isWeb) {
-        // El entrenador en mobile no tenía NINGÚN botón acá (TrainerReviewButton
-        // es web-only, revisión por atleta) -- para una sesión presencial sí
-        // hay algo útil que mostrar: el resumen agregado (asistencia +
-        // participantes + registros), mismo que ve recién al finalizar en vivo.
-        if (!assignment.isPresencial) return null;
+      // Presencial: el resumen agregado (asistencia + participantes +
+      // registros) ahora se ve en las dos plataformas -- trainer-session-
+      // review-screen.jsx ya no es mobile-only (2026-10-05). Antes web caía
+      // siempre a TrainerReviewButton (elegir un corredor) y no había forma
+      // de llegar al resumen agregado desde ahí.
+      if (assignment.isPresencial) {
         const handleOpenSummary = () => {
           setPendingSession(assignment);
           router.push('/trainer-session-review');
@@ -176,6 +176,9 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
           </Pressable>
         );
       }
+      // Async: sin concepto de sesión en vivo del entrenador -- mobile sigue
+      // sin botón acá, web sigue con el selector de corredor por atleta.
+      if (!isWeb) return null;
       return <TrainerReviewButton assignment={assignment} fill={fill} teamId={teamId} />;
     }
     if (isWeb) return <RunnerReviewWebButton assignment={assignment} fill={fill} userId={userId} />;

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
@@ -108,8 +108,8 @@ function TrainerSessionReviewScreenContent() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="trainer-session-review-screen-root" testID="trainer-session-review-screen-root">
-      <ScrollView contentContainerClassName="px-4 py-6" nativeID="trainer-session-review-screen-scroll" testID="trainer-session-review-screen-scroll">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-review-screen-root" testID="trainer-session-review-screen-root">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="trainer-session-review-screen-scroll" testID="trainer-session-review-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-review-screen-header-row" testID="trainer-session-review-screen-header-row">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="trainer-session-review-screen-back-button" onPress={handleDone} testID="trainer-session-review-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
@@ -227,7 +227,7 @@ function TrainerSessionReviewScreenContent() {
         onClose={() => setFeedVisible(false)}
         visible={feedVisible}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
