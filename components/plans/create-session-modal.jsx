@@ -142,18 +142,30 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [exercises, setExercises] = useState([]);
-  const [error, setError] = useState(null);
   // Mismo criterio que hooks/use-session-form.js#nameError -- derivado de
   // "ya se intentó guardar" + "sigue vacío", no un segundo flag que haya
   // que apagar a mano en cada handler de texto.
   const [attempted, setAttempted] = useState(false);
   const nameError = attempted && !name.trim();
+  const missingRoles = SESSION_ROLE_ORDER.filter((role) => !exercises.some((e) => e.role === role));
   // Mismo criterio que hooks/use-session-form.js#exercisesError.
   const exercisesError = attempted && (
     exercises.length === 0
     || exercises.some((e) => !e.exerciseId)
-    || SESSION_ROLE_ORDER.some((role) => !exercises.some((e) => e.role === role))
+    || missingRoles.length > 0
   );
+  // Mismo criterio que hooks/use-session-form.js#error -- derivado, no un
+  // useState seteado solo en las ramas de fallo de handleSubmit (eso
+  // dejaba el mensaje de una falla vieja pegado en pantalla después de
+  // corregirla y guardar con éxito, bug real 2026-10-06).
+  const error = !attempted ? null
+    : !name.trim() || exercises.length === 0
+    ? 'Completá el nombre y agregá al menos un ejercicio de cada tipo (entrada en calor, principal, vuelta a la calma).'
+    : exercises.some((e) => !e.exerciseId)
+    ? 'Completá o quitá los ejercicios sin seleccionar.'
+    : missingRoles.length > 0
+    ? `Falta al menos un ejercicio de: ${missingRoles.map((r) => SESSION_ROLE_META[r].label).join(', ')}.`
+    : null;
   const [submitting, setSubmitting] = useState(false);
   const draftSeq = useRef(0);
 
@@ -199,7 +211,6 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
     setName(resetValues.name);
     setDescription(resetValues.description);
     setExercises(resetValues.exercises);
-    setError(null);
     setAttempted(false);
   } else if (!visible) {
     prevResetKeyRef.current = null;
@@ -254,19 +265,9 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   const handleSubmit = async () => {
     if (submitting) return;
     setAttempted(true);
-    if (!name.trim() || exercises.length === 0) {
-      setError('Completá el nombre y agregá al menos un ejercicio de cada tipo (entrada en calor, principal, vuelta a la calma).');
-      return;
-    }
-    if (exercises.some((e) => !e.exerciseId)) {
-      setError('Completá o quitá los ejercicios sin seleccionar.');
-      return;
-    }
-    const missingRoles = SESSION_ROLE_ORDER.filter((role) => !exercises.some((e) => e.role === role));
-    if (missingRoles.length > 0) {
-      setError(`Falta al menos un ejercicio de: ${missingRoles.map((r) => SESSION_ROLE_META[r].label).join(', ')}.`);
-      return;
-    }
+    if (!name.trim() || exercises.length === 0) return;
+    if (exercises.some((e) => !e.exerciseId)) return;
+    if (missingRoles.length > 0) return;
     setSubmitting(true);
     const form = {
       ownerId: userId,
