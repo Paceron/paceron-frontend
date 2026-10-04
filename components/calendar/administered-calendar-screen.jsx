@@ -8,6 +8,8 @@ import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useCalendarTabStore } from '../../store/calendar-tab-store.js';
 import { useAdministeredCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
+import { useTeams } from '../../hooks/use-teams.js';
+import { selectAdministeredTeams } from '../../store/team-store.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
 import { upcomingTrainingsRange, selectUpcomingTrainings } from '../../utils/upcoming-trainings.js';
@@ -16,6 +18,7 @@ import { SectionTabBar } from '../shared/section-tab-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
+import { TeamGroupPickerModal } from './team-group-picker-modal.jsx';
 import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
 import { TrainingsHistoryTab } from './trainings-history-tab.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -38,6 +41,13 @@ function AdministeredCalendarScreenContent() {
   const [filterTeamId, setFilterTeamId] = useState('');
   const [filterGroupId, setFilterGroupId] = useState('');
   const [openDate, setOpenDate] = useState(null);
+  const [groupPickerVisible, setGroupPickerVisible] = useState(false);
+  // Lista completa de equipos administrados (no derivada de `days`, a
+  // diferencia de `teamOptions` más abajo) -- el atajo tiene que poder
+  // apuntar a un grupo sin nada asignado este mes, que nunca aparecería en
+  // la lista day-derived.
+  const { teams: allTeams } = useTeams();
+  const administeredTeamOptions = useMemo(() => selectAdministeredTeams(allTeams, userId).map((t) => ({ id: t.id, name: t.name })), [allTeams, userId]);
   const [dayModalVisible, setDayModalVisible] = useState(false);
   const activeTab = useCalendarTabStore((s) => s.activeTab);
   const setActiveTab = useCalendarTabStore((s) => s.setActiveTab);
@@ -144,6 +154,18 @@ function AdministeredCalendarScreenContent() {
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="administered-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="administered-calendar-screen-title">
             Entrenamientos
           </Text>
+          <View className="flex-1" nativeID="administered-calendar-screen-header-spacer" testID="administered-calendar-screen-header-spacer" />
+          <Pressable
+            className="h-9 flex-row items-center gap-1.5 rounded-full border border-slate-200 px-3 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
+            nativeID="administered-calendar-screen-group-shortcut-button"
+            onPress={() => setGroupPickerVisible(true)}
+            testID="administered-calendar-screen-group-shortcut-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-edit" size={16} />
+            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="administered-calendar-screen-group-shortcut-button-label" testID="administered-calendar-screen-group-shortcut-button-label">
+              Ir al calendario de un grupo
+            </Text>
+          </Pressable>
         </View>
 
         <SectionTabBar active={activeTab} idPrefix="administered-calendar-screen" onChange={setActiveTab} tabs={TRAININGS_TABS} />
@@ -201,6 +223,17 @@ function AdministeredCalendarScreenContent() {
       </ScrollView>
 
       <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="administered" visible={dayModalVisible} />
+
+      <TeamGroupPickerModal
+        onClose={() => setGroupPickerVisible(false)}
+        onConfirm={(teamId, groupId) => {
+          setGroupPickerVisible(false);
+          router.push(`/teams/${teamId}/groups/${groupId}/calendar`);
+        }}
+        teamOptions={administeredTeamOptions}
+        userId={userId}
+        visible={groupPickerVisible}
+      />
     </View>
   );
 }
