@@ -8,7 +8,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { notifySuccess } from '../../utils/haptics.js';
 import { useThemeColors } from '../../theme/colors.js';
-import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
+import { isWeb } from '../../utils/platform.js';
+import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
@@ -105,6 +106,11 @@ function SessionPreStartScreenContent() {
       // haya terminado todo (bug real, 2026-09-30: un tap rápido ahí creaba
       // un run nuevo desde cero). Chequeo local aparte (SQLite, sin red) para
       // no depender solo del estado remoto en esta ventana corta.
+      // En web no hay (ni va a haber) run local SQLite -- expo-sqlite no
+      // corre ahí (sin headers COOP/COEP, ver CLAUDE.md), así que este chequeo
+      // ni se intenta: el estado terminal en web sale solo de runnerSession
+      // (REST), más abajo.
+      if (isWeb) return undefined;
       let cancelled = false;
       (async () => {
         try {
@@ -155,7 +161,10 @@ function SessionPreStartScreenContent() {
   // entrenador mientras este corredor estaba con la app cerrada). Se corta
   // una vez que el corredor ya tiene su propio cierre terminal (finished o
   // interrupted), ahí no hay nada más que vigilar.
-  const instanceGateEnabled = Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !finished && !interrupted;
+  // En web el footer nunca muestra sala de espera/cerrada (siempre el aviso
+  // de "solo app nativa" en su lugar) -- apagar el polling ahí evita pedidos
+  // que no se van a reflejar en ningún lado.
+  const instanceGateEnabled = !isWeb && Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !finished && !interrupted;
   const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, instanceGateEnabled, { refetchInterval: instanceGateEnabled ? 5000 : false });
   const gateLoading = instanceGateEnabled && !alreadyStarted && liveInstance == null;
   const waitingForTrainer = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.openedAt == null;
@@ -405,6 +414,13 @@ function SessionPreStartScreenContent() {
               {gateLoading ? 'Verificando si la sesión ya está abierta…' : 'Sala de espera — esperando que el entrenador inicie la sesión.'}
             </Text>
           </View>
+        ) : isWeb ? (
+          <View className="flex-row items-center gap-1.5 self-center rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-web-notice" testID="session-pre-start-screen-web-notice">
+            <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
+            <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-web-notice-label" testID="session-pre-start-screen-web-notice-label">
+              El inicio y registro del entrenamiento solo está disponible en la app nativa
+            </Text>
+          </View>
         ) : (
           <Pressable
             className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
@@ -423,8 +439,8 @@ function SessionPreStartScreenContent() {
 
 export function SessionPreStartScreen() {
   return (
-    <MobileOnlyRoute>
+    <RequireAuth>
       <SessionPreStartScreenContent />
-    </MobileOnlyRoute>
+    </RequireAuth>
   );
 }

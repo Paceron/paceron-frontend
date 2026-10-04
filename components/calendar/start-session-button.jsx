@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -202,17 +202,11 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
 
   if (!inWindow) return null;
 
-  if (isWeb) {
-    return (
-      <View className={`${fill ? 'flex-1' : 'mt-2'} flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20`} nativeID={`${idPrefix}-web-notice`} testID={`${idPrefix}-web-notice`}>
-        <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
-        <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID={`${idPrefix}-web-notice-label`} testID={`${idPrefix}-web-notice-label`}>
-          El inicio y registro del entrenamiento solo está disponible en la app nativa
-        </Text>
-      </View>
-    );
-  }
-
+  // Antes, web cortaba acá mismo con un aviso y nunca navegaba -- ahora
+  // entra al pre-start igual que mobile (detalles/roster/asistencia se ven
+  // en las dos plataformas); el aviso de "solo app nativa" se corrió adentro
+  // de cada pre-start, puntual en el lugar del botón Play (ver
+  // session-pre-start-screen.jsx/trainer-session-pre-start-screen.jsx).
   const handlePress = () => {
     setPendingSession(assignment);
     if (role === 'trainer' && assignment.isPresencial) {
@@ -231,7 +225,7 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
     >
       <MaterialCommunityIcons color={colors.onPrimary} name="play" size={14} />
       <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
-        Iniciar entrenamiento
+        Ir a entrenamiento
       </Text>
     </Pressable>
   );

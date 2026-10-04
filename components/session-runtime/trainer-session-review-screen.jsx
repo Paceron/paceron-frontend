@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
+import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -233,8 +233,8 @@ function TrainerSessionReviewScreenContent() {
 
 export function TrainerSessionReviewScreen() {
   return (
-    <MobileOnlyRoute>
+    <RequireAuth>
       <TrainerSessionReviewScreenContent />
-    </MobileOnlyRoute>
+    </RequireAuth>
   );
 }
