@@ -197,7 +197,9 @@ function WindowNav({ label, canPrev, canNext, onPrev, onNext }) {
     <Pressable
       accessibilityLabel={a11y}
       accessibilityState={{ disabled: !enabled }}
-      className={`rounded-full p-1.5 ${enabled ? 'hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800' : ''}`}
+      // Clases fijas aunque cambie `enabled`: agregar/quitar pseudo-estados después
+      // del primer render remonta el componente en nativo (ver payments-amount-mode).
+      className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
       disabled={!enabled}
       nativeID={id}
       onPress={onPress}
