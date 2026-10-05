@@ -324,9 +324,14 @@ function EditProfileForm({ user }) {
 
         <Row>
           <Col>
+            {/* keyboardType="default", no "phone-pad": se espera +54XXXXXXXXX
+                (ver placeholder) y el teclado numérico/dialer de "phone-pad"
+                no tiene tecla "+" accesible de forma confiable en todos los
+                dispositivos/teclados — bug real reportado, "+" no se podía
+                escribir. El teclado default sí lo tiene siempre. */}
             <InputField
               autoCapitalize="none"
-              keyboardType="phone-pad"
+              keyboardType="default"
               label="Teléfono"
               onChange={setPhone}
               placeholder="+54 11 1234 5678"
@@ -334,9 +339,10 @@ function EditProfileForm({ user }) {
             />
           </Col>
           <Col>
+            {/* keyboardType="default" — mismo motivo que el campo "Teléfono" de arriba. */}
             <InputField
               autoCapitalize="none"
-              keyboardType="phone-pad"
+              keyboardType="default"
               label="Teléfono de contacto"
               onChange={setPhoneContact}
               placeholder="Otro número de contacto"
