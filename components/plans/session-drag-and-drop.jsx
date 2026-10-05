@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isWeb } from '../../utils/platform.js';
@@ -20,24 +20,111 @@ export { reorderList };
 const SessionDragContext = createContext(null);
 
 // Cuánto antes del borde del contenedor (en px de pantalla) empieza a
-// autoscrollear, y cuánto scrollea por frame de arrastre. EDGE chico
-// haría falta acercarse demasiado al borde real (mala UX en mobile,
-// donde el dedo tapa la zona); STEP grande se siente a los saltos.
+// autoscrollear, y cuánto scrollea por tick del loop. EDGE chico haría
+// falta acercarse demasiado al borde real (mala UX en mobile, donde el
+// dedo tapa la zona); STEP grande se siente a los saltos.
 const AUTO_SCROLL_EDGE = 56;
 const AUTO_SCROLL_STEP = 14;
+// Período del loop de autoscroll (ver startAutoScrollLoop) -- ~30
+// ticks/s alcanza para que se vea fluido sin saturar el hilo de JS con
+// listas largas.
+const AUTO_SCROLL_THROTTLE_MS = 33;
+
+// Compartidas entre DraggableExerciseCard (cross-container, catálogo →
+// sesión) y ReorderableRow (reordenar DENTRO de la sesión) -- misma
+// medición y mismo cálculo de autoscroll, antes solo existían en
+// DraggableExerciseCard porque ReorderableRow no lo necesitaba (no
+// autoscrolleaba sosteniendo cerca de los bordes mientras reordena un
+// ejercicio YA cargado -- bug real, 2026-10-06).
+function cacheDropTargetMeasurements(dropTargetRef, targetX, targetY, targetWidth, targetHeight) {
+  if (!dropTargetRef.current) return;
+  dropTargetRef.current.measureInWindow((x, y, width, height) => {
+    targetX.value = x;
+    targetY.value = y;
+    targetWidth.value = width;
+    targetHeight.value = height;
+  });
+}
+
+function isNearEdge(absoluteY, top, height) {
+  const relativeY = absoluteY - top;
+  return relativeY < AUTO_SCROLL_EDGE || relativeY > height - AUTO_SCROLL_EDGE;
+}
+
+// JS-thread (ambos Pan de este archivo usan `.runOnJS(true)`, así que
+// sus callbacks YA corren en el hilo de JS, no como worklets de UI) — el
+// offset actual se rastrea por afuera (scrollOffsetRef, actualizado por
+// onScroll) porque el ScrollView no tiene forma de preguntar "en qué
+// offset estoy ahora", solo de pedirle uno nuevo. scrollOffsetSV se
+// actualiza acá también (no solo en onListScroll) para que el indicador
+// visual seguro refleje el scroll que ESTE autoscroll programático
+// acaba de disparar, sin esperar a que el evento onScroll nativo vuelva.
+// compensationSV (opcional): ver startAutoScrollLoop -- solo lo usa
+// ReorderableRow, para que la fila arrastrada no se quede atrás del
+// contenido que este mismo autoscroll está moviendo.
+function maybeAutoScroll(autoScrollRef, scrollOffsetRef, scrollOffsetSV, absoluteY, top, height, compensationSV) {
+  if (!autoScrollRef.current) return;
+  const relativeY = absoluteY - top;
+  let next = null;
+  if (relativeY < AUTO_SCROLL_EDGE) {
+    next = Math.max(0, scrollOffsetRef.current - AUTO_SCROLL_STEP);
+  } else if (relativeY > height - AUTO_SCROLL_EDGE) {
+    next = scrollOffsetRef.current + AUTO_SCROLL_STEP;
+  }
+  if (next === null || next === scrollOffsetRef.current) return;
+  const delta = next - scrollOffsetRef.current;
+  scrollOffsetRef.current = next;
+  scrollOffsetSV.value = next;
+  autoScrollRef.current.scrollTo({ y: next, animated: false });
+  // El scroll programático mueve TODO el contenido (incluida la fila que
+  // se está arrastrando, que es parte de ese mismo contenido) sin que el
+  // dedo se haya movido -- sin compensar, la fila se queda "atrás" del
+  // punto donde el dedo sigue apoyado en cada tick (bug real reportado,
+  // 2026-10-06). Sumar el delta a un offset aparte (no a dragOffsetY
+  // directo, que onUpdate pisa con la traslación cruda del dedo en cada
+  // evento) cancela ese corrimiento.
+  if (compensationSV) compensationSV.value += delta;
+}
+
+// Loop de autoscroll continuo, independiente de onUpdate -- antes el
+// autoscroll solo se disparaba DENTRO de onUpdate, que gesture-handler
+// solo llama cuando el dedo/cursor se MUEVE. Mantenerse quieto cerca de
+// un borde (el gesto natural para "quiero seguir scrolleando acá") no
+// genera nuevos eventos de movimiento, así que el autoscroll se
+// detenía en seco apenas el dedo dejaba de moverse (bug real reportado:
+// "va muy trabado" incluso con el throttle ya puesto). Un solo
+// setInterval por drag activo (arrancado al entrar a la zona de borde,
+// no uno por componente) resuelve esto leyendo la posición MÁS
+// RECIENTE conocida del dedo (getPointerY) en cada tick, sin depender
+// de que llegue un evento nuevo.
+function startAutoScrollLoop(dragCtx, getPointerY, compensationSV) {
+  if (dragCtx.autoScrollIntervalRef.current) return;
+  dragCtx.autoScrollIntervalRef.current = setInterval(() => {
+    maybeAutoScroll(
+      dragCtx.autoScrollRef, dragCtx.scrollOffsetRef, dragCtx.scrollOffsetSV,
+      getPointerY(), dragCtx.targetY.value, dragCtx.targetHeight.value, compensationSV
+    );
+  }, AUTO_SCROLL_THROTTLE_MS);
+}
+
+function stopAutoScrollLoop(dragCtx) {
+  if (dragCtx.autoScrollIntervalRef.current) {
+    clearInterval(dragCtx.autoScrollIntervalRef.current);
+    dragCtx.autoScrollIntervalRef.current = null;
+  }
+}
 
 export function SessionDragProvider({ children }) {
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   // Medición del drop target cacheada una vez al empezar el arrastre
   // (no en cada frame) — se usa tanto para el indicador de posición en
-  // vivo (hoverIndexSV/isHoveringSV, leídos desde un worklet) como para
-  // decidir el drop final, sin repetir measureInWindow al soltar.
+  // vivo (isHoveringSV, leído desde un worklet) como para decidir el
+  // drop final, sin repetir measureInWindow al soltar.
   const targetX = useSharedValue(0);
   const targetY = useSharedValue(0);
   const targetWidth = useSharedValue(0);
   const targetHeight = useSharedValue(0);
-  const hoverIndexSV = useSharedValue(0);
   const isHoveringSV = useSharedValue(0);
   const [draggedExercise, setDraggedExercise] = useState(null);
   const dropTargetRef = useRef(null);
@@ -47,11 +134,20 @@ export function SessionDragProvider({ children }) {
   // ahora", solo de pedirle uno nuevo (scrollTo).
   const autoScrollRef = useRef(null);
   const scrollOffsetRef = useRef(0);
+  // Mismo offset que scrollOffsetRef, pero como SharedValue -- un ref de
+  // JS plano no es legible desde un worklet (onUpdate corre en el hilo de
+  // UI). Se usa para corregir el índice de drop final (checkDrop) contra
+  // cuánto está scrolleada la lista.
+  const scrollOffsetSV = useSharedValue(0);
+  // Id del setInterval del loop de autoscroll (ver startAutoScrollLoop) --
+  // uno solo compartido entre DraggableExerciseCard y ReorderableRow
+  // porque nunca hay dos arrastres activos a la vez.
+  const autoScrollIntervalRef = useRef(null);
 
   return (
     <SessionDragContext.Provider value={{
-      dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
-      draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef,
+      dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV,
+      draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, autoScrollIntervalRef,
     }}
     >
       {children}
@@ -83,38 +179,50 @@ export function useSessionDropTarget() {
 // catálogo. `onListScroll` se cablea al `onScroll` del ScrollView
 // consumidor.
 export function useSessionAutoScrollTarget() {
-  const { autoScrollRef, scrollOffsetRef } = useContext(SessionDragContext);
-  const onListScroll = (e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; };
+  const { autoScrollRef, scrollOffsetRef, scrollOffsetSV } = useContext(SessionDragContext);
+  const onListScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    scrollOffsetRef.current = y;
+    scrollOffsetSV.value = y;
+  };
   return { autoScrollRef, onListScroll };
 }
 
-// Índice estimado (y si hay arrastre activo sobre el target) para
-// pintar un indicador de "acá va a caer" — ver SessionDropIndicator más
-// abajo, se monta una vez dentro del contenedor de ejercicios de la
+// Estado del hover sobre el target de drop -- ver SessionDropIndicator
+// más abajo, se monta una vez dentro del contenedor de ejercicios de la
 // sesión.
 export function useSessionDropIndicator() {
-  const { hoverIndexSV, isHoveringSV } = useContext(SessionDragContext);
-  return { hoverIndexSV, isHoveringSV };
+  const { dragY, targetY, targetHeight, isHoveringSV } = useContext(SessionDragContext);
+  return { dragY, targetY, targetHeight, isHoveringSV };
 }
+
+const DROP_INDICATOR_HEIGHT = 3;
 
 // Línea horizontal que marca dónde caería el ejercicio si se soltara
 // ahora — se monta una sola vez, adentro del `View` con `ref={dropTargetRef}`.
-// Position absolute + top animado en vez de una fila más de la lista:
-// más simple que insertar/sacar una fila fantasma en cada frame de
-// arrastre.
+// Sigue la posición real del dedo/cursor (dragY, ya trackeado para
+// DragGhost) en vez de "redondear" a un índice de fila estimado -- ese
+// cálculo por índice (hoverIndexSV, ya retirado) dependía de
+// scrollOffsetSV, que se actualiza con un salto (+14px) en cada
+// autoscroll programático en vez de moverse continuo como el scroll
+// real: la línea "saltaba" en vez de deslizar (bug real, 2026-10-06,
+// "glitchea cerca de los bordes"). Clampeado a [0, altura del
+// contenedor] -- sin esto el indicador podía pintarse por fuera del
+// contenedor cuando el dedo pasaba el borde (otro bug reportado, mismo
+// origen: el índice estimado podía superar la última fila visible).
 export function SessionDropIndicator() {
   const colors = useThemeColors();
-  const { hoverIndexSV, isHoveringSV } = useSessionDropIndicator();
+  const { dragY, targetY, targetHeight, isHoveringSV } = useSessionDropIndicator();
   const style = useAnimatedStyle(() => ({
     opacity: isHoveringSV.value,
-    transform: [{ translateY: hoverIndexSV.value * ESTIMATED_ROW_HEIGHT }],
+    transform: [{ translateY: Math.min(Math.max(dragY.value - targetY.value, 0), Math.max(0, targetHeight.value - DROP_INDICATOR_HEIGHT)) }],
   }));
 
   return (
     <Animated.View
       nativeID="session-drop-indicator"
       style={[
-        { position: 'absolute', left: 8, right: 8, top: 0, height: 3, borderRadius: 2, backgroundColor: colors.primary },
+        { position: 'absolute', left: 8, right: 8, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary },
         style,
       ]}
       testID="session-drop-indicator"
@@ -137,38 +245,8 @@ export function SessionDropIndicator() {
 // ScrollView de gesture-handler que envuelve esta card — ver
 // `.simultaneousWithExternalGesture` más abajo para el porqué.
 export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, scrollViewRef }) {
-  const {
-    dragX, dragY, targetX, targetY, targetWidth, targetHeight, hoverIndexSV, isHoveringSV,
-    setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef,
-  } = useContext(SessionDragContext);
-
-  const cacheTargetMeasurements = () => {
-    if (!dropTargetRef.current) return;
-    dropTargetRef.current.measureInWindow((x, y, width, height) => {
-      targetX.value = x;
-      targetY.value = y;
-      targetWidth.value = width;
-      targetHeight.value = height;
-    });
-  };
-
-  // Autoscroll: JS-thread, llamado desde el worklet de onUpdate vía
-  // runOnJS — el offset actual se rastrea por afuera (scrollOffsetRef,
-  // actualizado por onScroll) porque el ScrollView no tiene forma de
-  // preguntar "en qué offset estoy ahora", solo de pedirle uno nuevo.
-  const maybeAutoScroll = (absoluteY, top, height) => {
-    if (!autoScrollRef.current) return;
-    const relativeY = absoluteY - top;
-    let next = null;
-    if (relativeY < AUTO_SCROLL_EDGE) {
-      next = Math.max(0, scrollOffsetRef.current - AUTO_SCROLL_STEP);
-    } else if (relativeY > height - AUTO_SCROLL_EDGE) {
-      next = scrollOffsetRef.current + AUTO_SCROLL_STEP;
-    }
-    if (next === null || next === scrollOffsetRef.current) return;
-    scrollOffsetRef.current = next;
-    autoScrollRef.current.scrollTo({ y: next, animated: false });
-  };
+  const dragCtx = useContext(SessionDragContext);
+  const { dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, setDraggedExercise, dropTargetRef } = dragCtx;
 
   // Chequeo fresco con la posición final real (absoluteX/Y del propio
   // onEnd), no el `isHoveringSV` acumulado de onUpdate — un arrastre
@@ -177,12 +255,15 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
   // y el drop se perdía en silencio (bug real: soltar en la lista vacía
   // no cargaba nada). Sigue sin re-medir con measureInWindow — usa los
   // mismos target* cacheados en onStart, solo la comparación es nueva.
+  // + scrollOffsetSV.value: mismo ajuste que el indicador visual (ver
+  // SessionDropIndicator) -- sin él, el drop real caía en un índice
+  // distinto al que la línea mostraba apenas la lista tenía scroll.
   const checkDrop = (absoluteX, absoluteY) => {
     if (targetWidth.value <= 0) return;
     const inside = absoluteX >= targetX.value && absoluteX <= targetX.value + targetWidth.value
       && absoluteY >= targetY.value && absoluteY <= targetY.value + targetHeight.value;
     if (!inside) return;
-    const insertIndex = estimateIndexFromOffset(absoluteY - targetY.value);
+    const insertIndex = estimateIndexFromOffset((absoluteY - targetY.value) + dragCtx.scrollOffsetSV.value);
     onDropped(exercise, insertIndex);
   };
 
@@ -221,8 +302,9 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     }
     return p
       .onStart((e) => {
-        runOnJS(setDraggedExercise)(exercise);
-        runOnJS(cacheTargetMeasurements)();
+        stopAutoScrollLoop(dragCtx); // insurance: no debería quedar uno de un drag anterior
+        setDraggedExercise(exercise);
+        cacheDropTargetMeasurements(dropTargetRef, targetX, targetY, targetWidth, targetHeight);
         dragX.value = e.absoluteX;
         dragY.value = e.absoluteY;
       })
@@ -233,15 +315,19 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
           && e.absoluteX >= targetX.value && e.absoluteX <= targetX.value + targetWidth.value
           && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
         isHoveringSV.value = inside ? 1 : 0;
-        if (inside) {
-          hoverIndexSV.value = estimateIndexFromOffset(e.absoluteY - targetY.value);
-          runOnJS(maybeAutoScroll)(e.absoluteY, targetY.value, targetHeight.value);
+        if (inside && isNearEdge(e.absoluteY, targetY.value, targetHeight.value)) {
+          startAutoScrollLoop(dragCtx, () => dragY.value);
+        } else {
+          stopAutoScrollLoop(dragCtx);
         }
       })
       .onEnd((e) => {
-        runOnJS(checkDrop)(e.absoluteX, e.absoluteY);
+        checkDrop(e.absoluteX, e.absoluteY);
         isHoveringSV.value = 0;
-        runOnJS(setDraggedExercise)(null);
+        setDraggedExercise(null);
+      })
+      .onFinalize(() => {
+        stopAutoScrollLoop(dragCtx);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise, onDropped, holdMs, scrollViewRef]);
@@ -273,41 +359,55 @@ const ReorderContext = createContext(null);
 
 // itemCount se pasa por prop en cada fila (no como prop del Provider)
 // porque la lista puede crecer/achicarse mientras el Provider ya está
-// montado — se guarda en un shared value (leído desde el worklet de
-// onUpdate) y en un ref (leído desde runOnJS) actualizados en cada
-// render vía useEffect en ReorderableRow.
+// montado — se guarda en un shared value (leído desde onUpdate) y en un
+// ref (leído desde onEnd, vía commitReorder) actualizados en cada render
+// vía useEffect en ReorderableRow.
 export function ReorderProvider({ children }) {
   const activeIndexSV = useSharedValue(-1);
   const targetIndexSV = useSharedValue(-1);
   const dragOffsetY = useSharedValue(0);
   const itemCountSV = useSharedValue(0);
+  // Posición absoluta del dedo/cursor mientras se reordena -- separada de
+  // dragOffsetY (que es el translateY de la FILA arrastrada, relativo a su
+  // propia posición de origen). Se usa solo para pintar
+  // ReorderDropIndicator seguido el dedo, igual que SessionDropIndicator.
+  const dragAbsoluteY = useSharedValue(0);
+  // Corrección acumulada por el autoscroll (ver maybeAutoScroll) -- se
+  // SUMA a dragOffsetY al pintar la fila (no se mezcla con dragOffsetY
+  // mismo, que onUpdate pisa con la traslación cruda del dedo en cada
+  // evento y borraría la corrección en el próximo movimiento).
+  const scrollCompensationSV = useSharedValue(0);
 
   return (
-    <ReorderContext.Provider value={{ activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV }}>
+    <ReorderContext.Provider value={{ activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY, scrollCompensationSV }}>
       {children}
     </ReorderContext.Provider>
   );
 }
 
-// Línea que marca dónde caería la fila si se soltara ahora, mismo
-// criterio visual que SessionDropIndicator pero leyendo del
-// ReorderContext — se monta una vez, adentro del contenedor con las
-// filas de la lista de la sesión (mismo `View` que ya tiene
-// SessionDropIndicator montado, ambos inactivos salvo que su propio
-// gesto esté en curso).
+// Línea que marca dónde caería la fila si se soltara ahora -- mismo
+// criterio que SessionDropIndicator (seguir el dedo/cursor en vez de
+// redondear a un índice de fila, clampeado al contenedor): acá el salto
+// era todavía más notorio porque targetIndexSV es el índice LÓGICO final
+// (redondeado al cambiar de fila), no una posición continua -- la línea
+// saltaba de fila en fila en vez de deslizar. targetY/targetHeight salen
+// de SessionDragContext (mismo contenedor, mismas mediciones que ya
+// cachea ReorderableRow#onStart) para poder clampear igual que el otro
+// indicador.
 export function ReorderDropIndicator() {
   const colors = useThemeColors();
-  const { activeIndexSV, targetIndexSV } = useContext(ReorderContext);
+  const { activeIndexSV, dragAbsoluteY } = useContext(ReorderContext);
+  const { targetY, targetHeight } = useContext(SessionDragContext);
   const style = useAnimatedStyle(() => ({
     opacity: activeIndexSV.value >= 0 ? 1 : 0,
-    transform: [{ translateY: targetIndexSV.value * ESTIMATED_ROW_HEIGHT }],
+    transform: [{ translateY: Math.min(Math.max(dragAbsoluteY.value - targetY.value, 0), Math.max(0, targetHeight.value - DROP_INDICATOR_HEIGHT)) }],
   }));
 
   return (
     <Animated.View
       nativeID="session-reorder-drop-indicator"
       style={[
-        { position: 'absolute', left: 8, right: 8, top: 0, height: 3, borderRadius: 2, backgroundColor: colors.primary },
+        { position: 'absolute', left: 8, right: 8, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary },
         style,
       ]}
       testID="session-reorder-drop-indicator"
@@ -335,7 +435,17 @@ export function ReorderDropIndicator() {
 // arrastra por vez); las demás no se reacomodan en vivo — la línea de
 // ReorderDropIndicator ya comunica el destino.
 export function ReorderableRow({ index, itemCount, onReorder, children, scrollViewRef }) {
-  const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV } = useContext(ReorderContext);
+  const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY, scrollCompensationSV } = useContext(ReorderContext);
+  // SessionDragContext además de ReorderContext (los dos conviven, ver
+  // nota de "Contexto propio" más abajo) -- no para el mecanismo de
+  // reordenamiento en sí, sino para poder autoscrollear cerca de los
+  // bordes del MISMO contenedor que ya mide/scrollea DraggableExerciseCard
+  // (dropTargetRef/autoScrollRef/scrollOffsetRef/scrollOffsetSV). Antes
+  // de esto, sostener una fila ya cargada cerca del borde del contenedor
+  // no hacía nada -- solo el arrastre desde el catálogo autoscrolleaba
+  // (bug real, 2026-10-06).
+  const dragCtx = useContext(SessionDragContext);
+  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth } = dragCtx;
   const onReorderRef = useRef(onReorder);
 
   useEffect(() => {
@@ -343,15 +453,14 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
     itemCountSV.value = itemCount;
   });
 
-  // from/to llegan como ARGUMENTOS (leídos en el propio worklet de
-  // onEnd, antes de diferir a JS con runOnJS), no releídos acá adentro
-  // desde los shared values — mismo criterio que checkDrop en
-  // DraggableExerciseCard. onFinalize corre justo después de onEnd y
-  // resetea esos mismos shared values a -1; si esta función los
-  // releyera en vez de recibirlos ya capturados, una carrera entre el
-  // runOnJS diferido y el reset síncrono de onFinalize podía dejarlos en
-  // -1 antes de que esta función llegara a leerlos — bug real
-  // reportado: el reordenamiento no aplicaba en web (visualmente
+  // from/to llegan como ARGUMENTOS (leídos en el propio onEnd), no
+  // releídos acá adentro desde los shared values — mismo criterio que
+  // checkDrop en DraggableExerciseCard. onFinalize corre justo después
+  // de onEnd y resetea esos mismos shared values a -1; si esta función
+  // los releyera en vez de recibirlos ya capturados, el reset de
+  // onFinalize podía dejarlos en -1 antes de que esta función llegara a
+  // leerlos — bug real reportado: el reordenamiento no aplicaba en web
+  // (visualmente
   // arrastraba bien, pero al soltar no reordenaba).
   const commitReorder = (from, to) => {
     if (from === -1 || to === -1 || from === to) return;
@@ -398,26 +507,49 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
     }
     p = p
       .onStart(() => {
+        stopAutoScrollLoop(dragCtx); // insurance: no debería quedar uno de un drag anterior
         activeIndexSV.value = index;
         targetIndexSV.value = index;
         dragOffsetY.value = 0;
+        scrollCompensationSV.value = 0;
+        // Mide el contenedor de la lista -- mismo motivo que
+        // DraggableExerciseCard#onStart: sin esto targetY/targetHeight
+        // podrían seguir en 0 si todavía no se arrastró nada desde el
+        // catálogo en esta sesión del modal/pantalla.
+        cacheDropTargetMeasurements(dropTargetRef, targetX, targetY, targetWidth, targetHeight);
       })
       .onUpdate((e) => {
         dragOffsetY.value = e.translationY;
+        dragAbsoluteY.value = e.absoluteY;
         // Delta de fila con signo (a diferencia de estimateIndexFromOffset,
         // pensada para una distancia siempre positiva desde el top de un
         // contenedor) — acá el desplazamiento es relativo a la fila propia
         // y puede ir para cualquier lado.
         const rowDelta = Math.round(e.translationY / ESTIMATED_ROW_HEIGHT);
         targetIndexSV.value = clampIndex(index + rowDelta, itemCountSV.value);
+        // Autoscroll cerca de los bordes del contenedor -- mismo mecanismo
+        // que el cross-container, con la posición ABSOLUTA del dedo
+        // (e.absoluteY), no el translationY relativo a la fila de arriba.
+        // targetWidth > 0 como guarda: todavía no llegó la medición async
+        // de arriba, un alto 0 dispararía el borde inferior en cualquier
+        // posición. scrollCompensationSV: ver maybeAutoScroll -- sin esto
+        // la fila sostenida se queda atrás del contenido que este mismo
+        // autoscroll mueve (bug real reportado).
+        if (targetWidth.value > 0 && isNearEdge(e.absoluteY, targetY.value, targetHeight.value)) {
+          startAutoScrollLoop(dragCtx, () => dragAbsoluteY.value, scrollCompensationSV);
+        } else {
+          stopAutoScrollLoop(dragCtx);
+        }
       })
       .onEnd(() => {
-        runOnJS(commitReorder)(activeIndexSV.value, targetIndexSV.value);
+        commitReorder(activeIndexSV.value, targetIndexSV.value);
       })
       .onFinalize(() => {
+        stopAutoScrollLoop(dragCtx);
         activeIndexSV.value = -1;
         targetIndexSV.value = -1;
         dragOffsetY.value = 0;
+        scrollCompensationSV.value = 0;
       });
     return Gesture.Simultaneous(p, Gesture.Native());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -425,7 +557,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   const rowStyle = useAnimatedStyle(() => {
     const isActive = activeIndexSV.value === index;
     return {
-      transform: [{ translateY: isActive ? dragOffsetY.value : 0 }, { scale: isActive ? 1.02 : 1 }],
+      transform: [{ translateY: isActive ? dragOffsetY.value + scrollCompensationSV.value : 0 }, { scale: isActive ? 1.02 : 1 }],
       zIndex: isActive ? 10 : 0,
       opacity: isActive ? 0.95 : 1,
     };

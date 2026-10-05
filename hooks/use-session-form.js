@@ -8,7 +8,36 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
   const [exercises, setExercises] = useState(
     initial?.exercises?.length ? initial.exercises.map((e) => ({ ...e })) : []
   );
-  const [error, setError] = useState(null);
+  // Derivado, no un segundo useState a mano -- así el borde rojo del campo
+  // Nombre se apaga solo apenas se tipea algo, sin un setNameError(false)
+  // que haya que recordar llamar en cada handler. `attempted` marca si ya
+  // se intentó guardar al menos una vez (no mostrar el borde en un form
+  // recién abierto, sin tocar).
+  const [attempted, setAttempted] = useState(false);
+  const nameError = attempted && !name.trim();
+  const missingRoles = SESSION_ROLE_ORDER.filter((role) => !exercises.some((e) => e.role === role));
+  // Mismo criterio que nameError -- cualquiera de las 3 condiciones que
+  // validate() chequea sobre exercises (vacía, con filas sin elegir, o
+  // sin algún rol obligatorio).
+  const exercisesError = attempted && (
+    exercises.length === 0
+    || exercises.some((e) => !e.exerciseId)
+    || missingRoles.length > 0
+  );
+  // `error` (el mensaje de texto) también derivado, por el mismo motivo
+  // que nameError/exercisesError -- antes era un useState seteado solo en
+  // las ramas de FALLO de validate(), nunca limpiado en la rama de éxito:
+  // corregir el problema y reintentar un validate() exitoso dejaba el
+  // mensaje de la falla anterior pegado en pantalla para siempre (bug
+  // real, 2026-10-06, percibido como "el error no desaparece").
+  const error = !attempted ? null
+    : !name.trim() || exercises.length === 0
+    ? 'Completá el nombre y agregá al menos un ejercicio de cada tipo (entrada en calor, principal, vuelta a la calma).'
+    : exercises.some((e) => !e.exerciseId)
+    ? 'Completá o quitá los ejercicios sin seleccionar.'
+    : missingRoles.length > 0
+    ? `Falta al menos un ejercicio de: ${missingRoles.map((r) => SESSION_ROLE_META[r].label).join(', ')}.`
+    : null;
   const draftSeq = useRef(0);
 
   const makeBlankRow = (role) => ({
@@ -46,20 +75,16 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
     return next;
   });
 
+  // El mensaje (`error`, derivado más arriba) ya refleja estas mismas 3
+  // condiciones -- acá solo se recalculan para el valor de retorno, ya
+  // que `attempted` recién se vuelve true DESPUÉS de este render (el
+  // setAttempted de arriba no se refleja en el `error` de este mismo
+  // closure todavía).
   const validate = () => {
-    if (!name.trim() || exercises.length === 0) {
-      setError('Completá el nombre y agregá al menos un ejercicio de cada tipo (entrada en calor, principal, vuelta a la calma).');
-      return false;
-    }
-    if (exercises.some((e) => !e.exerciseId)) {
-      setError('Completá o quitá los ejercicios sin seleccionar.');
-      return false;
-    }
-    const missingRoles = SESSION_ROLE_ORDER.filter((role) => !exercises.some((e) => e.role === role));
-    if (missingRoles.length > 0) {
-      setError(`Falta al menos un ejercicio de: ${missingRoles.map((r) => SESSION_ROLE_META[r].label).join(', ')}.`);
-      return false;
-    }
+    setAttempted(true);
+    if (!name.trim() || exercises.length === 0) return false;
+    if (exercises.some((e) => !e.exerciseId)) return false;
+    if (missingRoles.length > 0) return false;
     return true;
   };
 
@@ -74,6 +99,6 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
     name, setName,
     description, setDescription,
     exercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped,
-    error, validate, getValues,
+    error, nameError, exercisesError, validate, getValues,
   };
 }

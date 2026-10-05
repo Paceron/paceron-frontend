@@ -112,6 +112,20 @@ describe('destinationForOutcome', () => {
     expect(destinationForOutcome({ kind: 'registered', sessionDate: '2026-09-28&x=1' }))
       .toBe('/calendar?date=2026-09-28%26x%3D1');
   });
+
+  // returnTo: el escáner abierto desde una sesión en curso vuelve ahí, no al
+  // calendario -- si no, el corredor queda afuera de su propia sesión.
+  test('con returnTo, un éxito vuelve ahí en vez de ir al calendario', () => {
+    expect(destinationForOutcome({ kind: 'registered', sessionDate: '2026-09-28' }, '/training-session-live'))
+      .toBe('/training-session-live');
+    expect(destinationForOutcome({ kind: 'duplicate', sessionDate: null }, '/training-session'))
+      .toBe('/training-session');
+  });
+
+  test('con returnTo, un error sigue yendo al home', () => {
+    expect(destinationForOutcome({ kind: 'forbidden', sessionDate: '2026-09-28' }, '/training-session-live'))
+      .toBe('/');
+  });
 });
 
 describe('sessionDate viaja desde la respuesta del backend', () => {

@@ -225,10 +225,15 @@ export function RegisterScreen() {
 
         <Row>
           <Col>
+            {/* keyboardType="default", no "phone-pad": se espera +54XXXXXXXXX
+                (ver placeholder) y el teclado numérico/dialer de "phone-pad"
+                no tiene tecla "+" accesible de forma confiable en todos los
+                dispositivos/teclados — bug real reportado, "+" no se podía
+                escribir. El teclado default sí lo tiene siempre. */}
             <InputField
               autoCapitalize="none"
               autoComplete="tel"
-              keyboardType="phone-pad"
+              keyboardType="default"
               label="Teléfono"
               onChange={setPhone}
               placeholder="+54 11 1234 5678"
@@ -238,10 +243,11 @@ export function RegisterScreen() {
             />
           </Col>
           <Col>
+            {/* keyboardType="default" — mismo motivo que el campo "Teléfono" de arriba. */}
             <InputField
               autoCapitalize="none"
               autoComplete="tel"
-              keyboardType="phone-pad"
+              keyboardType="default"
               label="Teléfono de contacto"
               onChange={setPhoneContact}
               placeholder="Otro número de contacto"

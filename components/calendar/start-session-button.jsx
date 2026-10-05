@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -10,6 +10,8 @@ import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { getRunnerSession } from '../../services/runnerSession.js';
+import { buildPendingSessionNavParams } from '../../utils/pending-session-nav.js';
+import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { AthletePickerModal } from '../team/athlete-picker-modal.jsx';
 
 // Punto de entrada del "Registro de Sesión" (spec 2026-09-24):
@@ -25,8 +27,10 @@ function RunnerReviewWebButton({ assignment, userId, fill }) {
   const { runnerSession, loading } = useRunnerSession(assignment.sessionInstance?.id, userId);
 
   const handlePress = () => {
-    const mode = runnerSession?.status === 'finished' ? 'review' : 'manual';
-    setReviewSlot({
+    // Gap 19: interrupted entra a revisión igual que finished -- lo hecho
+    // antes de cancelar queda ahí para ver/editar, nunca a ingreso manual.
+    const mode = runnerSession?.status === 'finished' || runnerSession?.status === 'interrupted' ? 'review' : 'manual';
+    const slot = {
       sessionInstance: assignment.sessionInstance,
       sessionInstanceId: assignment.sessionInstance?.id,
       date: assignment.date,
@@ -34,11 +38,15 @@ function RunnerReviewWebButton({ assignment, userId, fill }) {
       role: 'runner',
       athleteUserId: userId,
       mode,
+      completionStatus: runnerSession?.status ?? null,
       teamId: assignment.teamId ?? null,
       teamName: assignment.teamName ?? null,
       groupName: assignment.groupName ?? null,
-    });
-    router.push('/training-session-review');
+    };
+    setReviewSlot(slot);
+    // Params en la URL además del store -- un F5 en web no debería mandar a
+    // home (bug real, 2026-10-05).
+    router.push({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });
   };
 
   return (
@@ -67,13 +75,16 @@ function TrainerReviewButton({ assignment, teamId, fill }) {
   const handleConfirmAthlete = async (member) => {
     setPickerVisible(false);
     let mode = 'manual';
+    let completionStatus = null;
     try {
       const res = await getRunnerSession(assignment.sessionInstance?.id, member.userId);
-      if (res?.data?.status === 'finished') mode = 'review';
+      completionStatus = res?.data?.status ?? null;
+      // Gap 19: interrupted entra a revisión igual que finished.
+      if (completionStatus === 'finished' || completionStatus === 'interrupted') mode = 'review';
     } catch {
       // 404 → todavía sin estado → ingreso manual
     }
-    setReviewSlot({
+    const slot = {
       sessionInstance: assignment.sessionInstance,
       sessionInstanceId: assignment.sessionInstance?.id,
       date: assignment.date,
@@ -81,11 +92,13 @@ function TrainerReviewButton({ assignment, teamId, fill }) {
       role: 'trainer',
       athleteUserId: member.userId,
       mode,
+      completionStatus,
       teamId: assignment.teamId ?? teamId ?? null,
       teamName: assignment.teamName ?? null,
       groupName: assignment.groupName ?? null,
-    });
-    router.push('/training-session-review');
+    };
+    setReviewSlot(slot);
+    router.push({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });
   };
 
   return (
@@ -127,18 +140,53 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
   const hasSession = Boolean(assignment.sessionInstance);
   const idPrefix = `start-session-button-${assignment.id}`;
 
-  // El estado runner_session del CORREDOR manda por encima de la fecha, igual
-  // que en el pre-start: una sesión de HOY que ya terminó tiene que mostrar
-  // "Registro de Sesión", no el Play — si no, el calendario sigue ofreciendo
-  // arrancar una sesión ya corrida. Para el entrenador no se consulta (el
-  // estado depende del atleta, que se elige después en el selector) y corre
-  // solo la regla de fecha pasada.
-  const { runnerSession } = useRunnerSession(role === 'runner' ? assignment?.sessionInstance?.id : null, userId);
-  const finished = runnerSession?.status === 'finished';
+  // El estado runner_session del usuario actual manda por encima de la fecha,
+  // igual que en el pre-start: una sesión de HOY que ya terminó tiene que
+  // mostrar "Registro de Sesión"/"Ver sesión", no el Play. El entrenador
+  // también tiene su propio runner_session (se crea con su Play, se cierra
+  // con su finalize -- ver use-trainer-session-runtime.js) así que esta
+  // consulta aplica igual para los dos roles -- antes solo corría para
+  // 'runner', y un entrenador que finalizaba una sesión presencial del mismo
+  // día seguía viendo "Iniciar entrenamiento" al volver, porque `past` da
+  // false el mismo día y nada más lo contemplaba (bug real, 2026-10-05).
+  const { runnerSession } = useRunnerSession(assignment?.sessionInstance?.id, userId);
+  // Gap 19: interrupted manda igual que finished -- cancelar a mitad de
+  // camino es una terminación, el calendario no debe seguir ofreciendo Play
+  // para una sesión que el corredor ya cortó (bug real, 2026-10-04).
+  const finished = runnerSession?.status === 'finished' || runnerSession?.status === 'interrupted';
   const showReview = (past || finished) && hasSession;
 
   if (showReview) {
     if (role === 'trainer') {
+      // Presencial: el resumen agregado (asistencia + participantes +
+      // registros) ahora se ve en las dos plataformas -- trainer-session-
+      // review-screen.jsx ya no es mobile-only (2026-10-05). Antes web caía
+      // siempre a TrainerReviewButton (elegir un corredor) y no había forma
+      // de llegar al resumen agregado desde ahí.
+      if (assignment.isPresencial) {
+        const handleOpenSummary = () => {
+          setPendingSession(assignment);
+          // Params en la URL (no solo el store en memoria) -- un F5 en web
+          // reinicia el store, y sin esto la pantalla no tenía de dónde
+          // reconstruir qué sesión mostrar (bug real, 2026-10-05).
+          router.push({ pathname: '/trainer-session-review', params: buildPendingSessionNavParams(assignment) });
+        };
+        return (
+          <Pressable
+            className={`${fill ? 'flex-1' : 'mt-2'} h-9 flex-row items-center justify-center gap-1.5 rounded-full bg-primary active:opacity-80`}
+            nativeID={`${idPrefix}-ver-sesion`}
+            onPress={handleOpenSummary}
+            testID={`${idPrefix}-ver-sesion`}
+          >
+            <MaterialCommunityIcons color={colors.onPrimary} name="clipboard-text-multiple-outline" size={14} />
+            <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-ver-sesion-label`} testID={`${idPrefix}-ver-sesion-label`}>
+              Ver sesión
+            </Text>
+          </Pressable>
+        );
+      }
+      // Async: sin concepto de sesión en vivo del entrenador -- mobile sigue
+      // sin botón acá, web sigue con el selector de corredor por atleta.
       if (!isWeb) return null;
       return <TrainerReviewButton assignment={assignment} fill={fill} teamId={teamId} />;
     }
@@ -166,20 +214,21 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
 
   if (!inWindow) return null;
 
-  if (isWeb) {
-    return (
-      <View className={`${fill ? 'flex-1' : 'mt-2'} flex-row items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20`} nativeID={`${idPrefix}-web-notice`} testID={`${idPrefix}-web-notice`}>
-        <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
-        <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID={`${idPrefix}-web-notice-label`} testID={`${idPrefix}-web-notice-label`}>
-          El inicio y registro del entrenamiento solo está disponible en la app nativa
-        </Text>
-      </View>
-    );
-  }
-
+  // Antes, web cortaba acá mismo con un aviso y nunca navegaba -- ahora
+  // entra al pre-start igual que mobile (detalles/roster/asistencia se ven
+  // en las dos plataformas); el aviso de "solo app nativa" se corrió adentro
+  // de cada pre-start, puntual en el lugar del botón Play (ver
+  // session-pre-start-screen.jsx/trainer-session-pre-start-screen.jsx).
   const handlePress = () => {
     setPendingSession(assignment);
-    router.push('/training-session');
+    // Params en la URL además del store -- mismo motivo que el resumen del
+    // entrenador (bug real, 2026-10-05): un F5 en web vacía el store.
+    const navParams = buildPendingSessionNavParams(assignment);
+    if (role === 'trainer' && assignment.isPresencial) {
+      router.push({ pathname: '/trainer-session-pre-start', params: navParams });
+      return;
+    }
+    router.push({ pathname: '/training-session', params: navParams });
   };
 
   return (
@@ -191,7 +240,7 @@ export function StartSessionButton({ assignment, role, teamId, fill }) {
     >
       <MaterialCommunityIcons color={colors.onPrimary} name="play" size={14} />
       <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
-        Iniciar entrenamiento
+        Ir a entrenamiento
       </Text>
     </Pressable>
   );

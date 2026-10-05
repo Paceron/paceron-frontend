@@ -3,26 +3,24 @@ import { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { formatClock } from '../../utils/time.js';
-import { formatMeters } from '../../utils/distance.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 
-const STATUS_META = {
-  completed: { label: 'Completada', color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle', iconColor: '#047857' },
-  skipped: { label: 'Saltada', color: 'text-slate-500 dark:text-slate-400', icon: 'skip-next-circle-outline', iconColor: '#64748b' },
-};
-
-function StatusBadge({ status, idPrefix }) {
-  const meta = STATUS_META[status] ?? { label: status ?? 'Sin estado', color: 'text-slate-400 dark:text-slate-500', icon: 'circle-outline', iconColor: '#94a3b8' };
-  return (
-    <View className="flex-row items-center gap-1" nativeID={idPrefix} testID={idPrefix}>
-      <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={13} />
-      <Text className={`text-xs font-medium ${meta.color}`} nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>{meta.label}</Text>
-    </View>
-  );
+// `group` llega de utils/trainings-history-grouping.js -- una sesión
+// (sessionInstanceId+athleteUserId), no una serie. Verde=todo completo,
+// gris=nada registrado (no es un rojo de interrupción -- esto es historial
+// ya cerrado, 0 completadas puede ser una sesión salteada a propósito),
+// ámbar=mezcla.
+function completionMeta(group) {
+  if (group.completedCount === group.totalCount) {
+    return { color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle', iconColor: '#047857' };
+  }
+  if (group.completedCount === 0) {
+    return { color: 'text-slate-500 dark:text-slate-400', icon: 'skip-next-circle-outline', iconColor: '#64748b' };
+  }
+  return { color: 'text-amber-700 dark:text-amber-400', icon: 'circle-slice-5', iconColor: '#b45309' };
 }
 
-function MenuToggle({ item, onOpenMenu, containerRef, idPrefix }) {
+function MenuToggle({ group, onOpenMenu, containerRef, idPrefix }) {
   const colors = useThemeColors();
   const ref = useRef(null);
 
@@ -30,7 +28,7 @@ function MenuToggle({ item, onOpenMenu, containerRef, idPrefix }) {
     if (!containerRef.current || !ref.current) return;
     containerRef.current.measureInWindow((containerX, containerY) => {
       ref.current?.measureInWindow((x, y, width, height) => {
-        onOpenMenu({ x: x - containerX, y: y - containerY, width, height }, item);
+        onOpenMenu({ x: x - containerX, y: y - containerY, width, height }, group);
       });
     });
   };
@@ -39,7 +37,7 @@ function MenuToggle({ item, onOpenMenu, containerRef, idPrefix }) {
     <Pressable
       ref={ref}
       accessibilityLabel="Más opciones"
-      className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+      className="shrink-0 rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
       nativeID={idPrefix}
       onPress={handlePress}
       testID={idPrefix}
@@ -49,65 +47,89 @@ function MenuToggle({ item, onOpenMenu, containerRef, idPrefix }) {
   );
 }
 
-export function TrainingsHistoryRow({ item, role, selectionMode, selected, onToggleSelected, onOpenMenu, containerRef }) {
-  const idPrefix = `trainings-history-row-${item.id}`;
-  const statLine = [
-    `Serie ${item.setNumber}`,
-    item.durationMs != null ? formatClock(item.durationMs) : null,
-    item.distanceMeters != null ? formatMeters(item.distanceMeters) : null,
-  ].filter(Boolean).join(' · ');
+export function TrainingsHistoryRow({ group, role, selectionMode, selected, onToggleSelected, onOpenMenu, onOpenReview, containerRef }) {
+  const colors = useThemeColors();
+  const idPrefix = `trainings-history-row-${group.id}`;
+  const meta = completionMeta(group);
 
-  const chipLabel = role === 'trainer'
-    ? (item.groupName ?? 'Sin grupo')
-    : [item.teamName, item.groupName].filter(Boolean).join(' · ') || 'Sin equipo';
+  const handlePress = () => {
+    if (selectionMode) {
+      onToggleSelected(group.id);
+      return;
+    }
+    onOpenReview(group);
+  };
 
   return (
     <Pressable
-      className={`gap-1 rounded-xl border p-3 ${selected ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'}`}
+      className={`gap-1.5 rounded-xl border p-2.5 ${selected ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'}`}
       nativeID={idPrefix}
-      onPress={() => selectionMode && onToggleSelected(item.id)}
+      onPress={handlePress}
       testID={idPrefix}
     >
-      <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-top`} testID={`${idPrefix}-top`}>
-        <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-primary-label`} numberOfLines={1} testID={`${idPrefix}-primary-label`}>
-          {role === 'trainer' ? (item.athleteName ?? 'Corredor') : formatDisplayDate(item.date)}
-        </Text>
-        <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-top-right`} testID={`${idPrefix}-top-right`}>
-          <StatusBadge idPrefix={`${idPrefix}-status`} status={item.completionStatus} />
-          {selectionMode ? (
-            <Pressable
-              accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: selected }}
-              nativeID={`${idPrefix}-checkbox`}
-              onPress={() => onToggleSelected(item.id)}
-              testID={`${idPrefix}-checkbox`}
-            >
-              <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={20} />
-            </Pressable>
-          ) : (
-            <MenuToggle containerRef={containerRef} idPrefix={`${idPrefix}-menu-toggle`} item={item} onOpenMenu={onOpenMenu} />
+      <View className="flex-row items-start justify-between gap-2" nativeID={`${idPrefix}-top`} testID={`${idPrefix}-top`}>
+        {/* Orden fijo: fecha, nombre de sesión, corredor (solo entrenador) --
+            flex-wrap deja que reordene a varias líneas solo cuando el ancho
+            no alcanza, sin breakpoints de plataforma (mismo truco que
+            session-review-screen-title-row). */}
+        <View className="flex-1 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5" nativeID={`${idPrefix}-primary`} testID={`${idPrefix}-primary`}>
+          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
+            {formatDisplayDate(group.date)}
+          </Text>
+          <Text className="text-slate-300 dark:text-slate-600" nativeID={`${idPrefix}-sep-session`} testID={`${idPrefix}-sep-session`}>·</Text>
+          <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-session-name`} numberOfLines={1} testID={`${idPrefix}-session-name`}>
+            {group.sessionName ?? 'Sesión eliminada'}
+          </Text>
+          {role === 'trainer' && (
+            <>
+              <Text className="text-slate-300 dark:text-slate-600" nativeID={`${idPrefix}-sep-athlete`} testID={`${idPrefix}-sep-athlete`}>·</Text>
+              <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-athlete-name`} numberOfLines={1} testID={`${idPrefix}-athlete-name`}>
+                {group.athleteName ?? 'Corredor'}
+              </Text>
+            </>
           )}
         </View>
+
+        {selectionMode ? (
+          <Pressable
+            accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: selected }}
+            className="shrink-0"
+            nativeID={`${idPrefix}-checkbox`}
+            onPress={() => onToggleSelected(group.id)}
+            testID={`${idPrefix}-checkbox`}
+          >
+            <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={20} />
+          </Pressable>
+        ) : (
+          <MenuToggle containerRef={containerRef} group={group} idPrefix={`${idPrefix}-menu-toggle`} onOpenMenu={onOpenMenu} />
+        )}
       </View>
 
-      {role === 'trainer' && (
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
-          {formatDisplayDate(item.date)}
-        </Text>
-      )}
-
-      <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-session-exercise`} numberOfLines={1} testID={`${idPrefix}-session-exercise`}>
-        {[item.sessionName, item.exerciseName].filter(Boolean).join(' · ') || 'Sesión eliminada'}
-      </Text>
-
-      <View className="flex-row items-center justify-between" nativeID={`${idPrefix}-bottom`} testID={`${idPrefix}-bottom`}>
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat-line`} testID={`${idPrefix}-stat-line`}>
-          {statLine || '—'}
-        </Text>
-        <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-chip`} numberOfLines={1} testID={`${idPrefix}-chip`}>
-          {chipLabel}
-        </Text>
+      <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID={`${idPrefix}-meta`} testID={`${idPrefix}-meta`}>
+        {role !== 'trainer' && group.teamName && (
+          <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-team`} testID={`${idPrefix}-team`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={13} />
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-team-label`} numberOfLines={1} testID={`${idPrefix}-team-label`}>
+              {group.teamName}
+            </Text>
+          </View>
+        )}
+        {group.groupName && (
+          <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={13} />
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-group-label`} numberOfLines={1} testID={`${idPrefix}-group-label`}>
+              {group.groupName}
+            </Text>
+          </View>
+        )}
+        <View className="ml-auto flex-row items-center gap-1" nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
+          <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={13} />
+          <Text className={`text-xs font-medium ${meta.color}`} nativeID={`${idPrefix}-status-label`} testID={`${idPrefix}-status-label`}>
+            {group.completedCount}/{group.totalCount} series
+          </Text>
+        </View>
       </View>
     </Pressable>
   );

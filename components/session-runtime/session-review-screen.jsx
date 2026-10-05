@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
+import { useUser } from '../../hooks/use-user.js';
+import { colorForUserId } from '../../utils/participant-color.js';
+import { ParticipantAvatar } from './participant-avatar.jsx';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { buildSessionReviewModel } from '../../services/normalizers.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -139,14 +143,38 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
   const colors = useThemeColors();
   const router = useRouter();
   const showBadge = slot.mode === 'review';
+  // Gap 19: 'review' cubre TANTO finished como interrupted (y el manual que
+  // acaba de autocompletarse, sin completionStatus seteado) -- sin esto, una
+  // sesión cancelada a mitad de camino mostraba igual el badge verde
+  // "Sesión completada", contradiciendo el badge rojo que ya se veía en el
+  // pre-start para el mismo estado (bug real, 2026-10-04).
+  const isInterrupted = slot.completionStatus === 'interrupted';
   const [bulkExerciseId, setBulkExerciseId] = useState(null);
+  // El entrenador ve los registros de OTRO (slot.athleteUserId nunca es el
+  // suyo en este modo) -- sin el nombre a la vista, la fila del back queda
+  // vacía y toca adivinar de quién son estos registros hasta scrollear. Un
+  // chip con avatar (mismo patrón que trainer-session-review-screen.jsx),
+  // no solo texto -- un label suelto se perdía en el espacio vacío de la
+  // fila (feedback real, 2026-10-05).
+  const { user: athleteUser } = useUser(slot.role === 'trainer' ? slot.athleteUserId : null);
+  const athleteFullName = athleteUser ? `${athleteUser.name ?? ''} ${athleteUser.surname ?? ''}`.trim() : null;
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-screen-root" testID="session-review-screen-root">
-      <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" testID="session-review-screen-scroll">
-        <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
-        </Pressable>
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" testID="session-review-screen-scroll">
+        <View className="flex-row items-center justify-between" nativeID="session-review-screen-top-row" testID="session-review-screen-top-row">
+          <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+          </Pressable>
+          {athleteFullName && (
+            <View className="flex-row items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-screen-athlete" testID="session-review-screen-athlete">
+              <ParticipantAvatar color={colorForUserId(slot.athleteUserId)} idPrefix="session-review-screen-athlete" name={athleteFullName} photoUrl={athleteUser.photoUrl} size={28} />
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-athlete-name" numberOfLines={1} testID="session-review-screen-athlete-name">
+                {athleteFullName}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <View className="mb-5 mt-4" nativeID="session-review-screen-header" testID="session-review-screen-header">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-review-screen-date" testID="session-review-screen-date">
@@ -156,7 +184,15 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
             <Text className="flex-shrink text-2xl text-slate-900 dark:text-white" nativeID="session-review-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="session-review-screen-title">
               {slot.sessionName ?? slot.sessionInstance?.name ?? 'Registro de Sesión'}
             </Text>
-            {showBadge && (
+            {showBadge && isInterrupted && (
+              <View className="flex-row items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 dark:bg-red-900/20" nativeID="session-review-screen-completed-badge" testID="session-review-screen-completed-badge">
+                <MaterialCommunityIcons color="#dc2626" name="alert-decagram" size={14} />
+                <Text className="text-xs font-semibold text-red-700 dark:text-red-400" nativeID="session-review-screen-completed-badge-label" testID="session-review-screen-completed-badge-label">
+                  Sesión interrumpida
+                </Text>
+              </View>
+            )}
+            {showBadge && !isInterrupted && (
               <View className="flex-row items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 dark:bg-emerald-900/20" nativeID="session-review-screen-completed-badge" testID="session-review-screen-completed-badge">
                 <MaterialCommunityIcons color="#16a34a" name="check-decagram" size={14} />
                 <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-400" nativeID="session-review-screen-completed-badge-label" testID="session-review-screen-completed-badge-label">
@@ -247,7 +283,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -463,8 +499,8 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
   const fieldId = `session-review-detail-field-${row.setNumber}`;
 
   return (
-    <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-detail-root" testID="session-review-detail-root">
-      <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" testID="session-review-detail-scroll">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-detail-root" testID="session-review-detail-root">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" testID="session-review-detail-scroll">
         <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
         </Pressable>
@@ -708,7 +744,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
       </ScrollView>
 
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -765,22 +801,22 @@ function ReviewFlow({ slot }) {
   // refetch de fondo con datos ya mostrados no debería tapar la pantalla.
   if ((instanceLoading && !sessionInstance) || (loading && groups.length === 0)) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-loading-root" testID="session-review-loading-root">
+      <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="session-review-loading-root" testID="session-review-loading-root">
         <ActivityIndicator color={colors.primary} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!sessionInstance?.exercises?.length) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="session-review-empty-root" testID="session-review-empty-root">
+      <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="session-review-empty-root" testID="session-review-empty-root">
         <Text className="mb-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="session-review-empty-label" testID="session-review-empty-label">
           Esta sesión no tiene ejercicios para revisar.
         </Text>
         <Pressable className="h-11 items-center justify-center rounded-full bg-primary px-6 active:opacity-80" nativeID="session-review-empty-back-button" onPress={() => router.back()} testID="session-review-empty-back-button">
           <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="session-review-empty-back-label" testID="session-review-empty-back-label">Volver</Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -820,7 +856,15 @@ export function SessionReviewScreen() {
 }
 
 function SessionReviewScreenContent() {
-  const reviewSlot = useSessionReviewStore((s) => s.reviewSlot);
+  // El store (Zustand, sin persist) es el camino rápido -- siempre
+  // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
+  // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
+  // start-session-button.jsx/session-pre-start-screen.jsx/trainer-session-
+  // review-screen.jsx) -- `ReviewFlow` ya sabe pedir `sessionInstance` por
+  // REST cuando no vino en el slot, así que acá alcanza con los IDs.
+  const navParams = useLocalSearchParams();
+  const storeReviewSlot = useSessionReviewStore((s) => s.reviewSlot);
+  const reviewSlot = storeReviewSlot ?? reviewSlotFromNavParams(navParams);
   if (!reviewSlot) return <Redirect href="/" />;
   return <ReviewFlow key={`${reviewSlot.sessionInstanceId}-${reviewSlot.athleteUserId}-${reviewSlot.mode}`} slot={reviewSlot} />;
 }

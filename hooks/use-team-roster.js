@@ -59,6 +59,7 @@ export function useTeamRoster(teamId, groupIds = []) {
         userId: String(teamUserDto.user_id),
         name: `${user.name ?? ''} ${user.surname ?? ''}`.trim() || user.email,
         email: user.email,
+        photoUrl: user.photo_url ?? null,
         groupId: groupIdByUserId.get(teamUserDto.user_id) ?? null,
         joinedAt: teamUserDto.assignment_date ?? null,
         subscriptionStatus: null,

@@ -5,6 +5,7 @@ import {
   mockFinishRunnerSession,
   mockGetRunnerSession,
   mockGetSessionFeedback,
+  mockInterruptRunnerSession,
   mockUpdateWorkoutFeedback,
 } from '../services/__mocks__/runner-session-mock.js';
 import {
@@ -65,6 +66,39 @@ describe('mockFinishRunnerSession', () => {
 
   test('404 si no existe el estado', async () => {
     await expect(mockFinishRunnerSession(999, {})).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('mockInterruptRunnerSession', () => {
+  test('pasa de wip a interrupted y marca end_date', async () => {
+    await mockCreateRunnerSession(101, baseBody);
+    const res = await mockInterruptRunnerSession(101, {});
+    expect(res.data.status).toBe('interrupted');
+    expect(res.data.end_date).toBeTruthy();
+  });
+
+  test('idempotente: interrumpida dos veces devuelve el mismo estado', async () => {
+    await mockCreateRunnerSession(101, baseBody);
+    await mockInterruptRunnerSession(101, {});
+    const res = await mockInterruptRunnerSession(101, {});
+    expect(res.data.status).toBe('interrupted');
+  });
+
+  test('interrupted -> finished permitido (acción explícita del corredor)', async () => {
+    await mockCreateRunnerSession(101, baseBody);
+    await mockInterruptRunnerSession(101, {});
+    const res = await mockFinishRunnerSession(101, {});
+    expect(res.data.status).toBe('finished');
+  });
+
+  test('finished -> interrupted rechazado (400)', async () => {
+    await mockCreateRunnerSession(101, baseBody);
+    await mockFinishRunnerSession(101, {});
+    await expect(mockInterruptRunnerSession(101, {})).rejects.toMatchObject({ status: 400 });
+  });
+
+  test('404 si no existe el estado', async () => {
+    await expect(mockInterruptRunnerSession(999, {})).rejects.toMatchObject({ status: 404 });
   });
 });
 

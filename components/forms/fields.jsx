@@ -6,6 +6,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { formatDurationInput } from '../../utils/time.js';
+import { formatDateInput } from '../../utils/date-field-format.js';
 import { BREAKPOINTS } from '../../theme/tokens.js';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
@@ -149,6 +150,20 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
     : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
 
   if (isWeb) {
+    // Input de texto enmascarado en vez de <input type="date"> nativo: ese
+    // control exige el VALOR en ISO por spec de HTML, pero el formato VISUAL
+    // (y el orden día/mes al tipear) lo decide el navegador/SO según su
+    // configuración regional — no hay forma de forzarlo por CSS/HTML. Con un
+    // navegador en inglés (en-US) eso se ve mm/dd/aaaa sin que podamos
+    // evitarlo. Acá el formato es 100% nuestro (ver utils/date-field-format.js),
+    // igual que ya pasaba en mobile nativo — que nunca delegó el render del
+    // valor al picker del sistema. `value` queda en 'DD/MM/YYYY' en cualquier
+    // plataforma (antes era 'YYYY-MM-DD' solo en web).
+    const handleWebChange = (e) => {
+      const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+      onChange(formatDateInput(digits));
+    };
+
     return (
       <View className="mb-5" nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
         <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>
@@ -159,10 +174,13 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
         >
           <View className="flex-1 relative" nativeID={`date-field-${slug}-input-wrapper`} testID={`date-field-${slug}-input-wrapper`}>
             <input
-              type="date"
+              type="text"
+              inputMode="numeric"
+              placeholder="DD/MM/AAAA"
+              maxLength={10}
               className={`${DATE_BASE} ${borderClass}`}
               value={value}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={handleWebChange}
               onBlur={onBlur}
               disabled={disabled}
             />

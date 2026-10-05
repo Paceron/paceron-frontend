@@ -25,12 +25,6 @@ import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from 
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { changePassword } from '../../services/user.js';
 
-// DD/MM/YYYY -> YYYY-MM-DD para el <input type="date"> de web.
-function toDateInput(value) {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value || '');
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : value || '';
-}
-
 // Pestañas full-width — variante de TabBar de team-detail-screen.jsx (misma
 // paleta bg-primary-tint-subtle/text-primary cuando está activa), pero acá
 // en las dos plataformas (a diferencia de team-detail, que solo usa tabs en
@@ -103,7 +97,10 @@ function EditProfileForm({ user }) {
   const [firstName, setFirstName] = useState(user.name ?? '');
   const [lastName, setLastName] = useState(user.surname ?? '');
   const [dni, setDni] = useState(user.dni ?? '');
-  const [birthDate, setBirthDate] = useState(isWeb ? toDateInput(user.birthDate) : user.birthDate ?? '');
+  // Ya no hace falta distinguir plataforma acá: DateField emite 'DD/MM/YYYY'
+  // en cualquiera (antes web necesitaba 'YYYY-MM-DD', el formato que exige
+  // el <input type="date"> nativo del navegador — ver components/forms/fields.jsx).
+  const [birthDate, setBirthDate] = useState(user.birthDate ?? '');
   const [email, setEmail] = useState(user.email ?? '');
   const [phone, setPhone] = useState(user.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(user.phoneContact ?? '');
@@ -327,9 +324,14 @@ function EditProfileForm({ user }) {
 
         <Row>
           <Col>
+            {/* keyboardType="default", no "phone-pad": se espera +54XXXXXXXXX
+                (ver placeholder) y el teclado numérico/dialer de "phone-pad"
+                no tiene tecla "+" accesible de forma confiable en todos los
+                dispositivos/teclados — bug real reportado, "+" no se podía
+                escribir. El teclado default sí lo tiene siempre. */}
             <InputField
               autoCapitalize="none"
-              keyboardType="phone-pad"
+              keyboardType="default"
               label="Teléfono"
               onChange={setPhone}
               placeholder="+54 11 1234 5678"
@@ -337,9 +339,10 @@ function EditProfileForm({ user }) {
             />
           </Col>
           <Col>
+            {/* keyboardType="default" — mismo motivo que el campo "Teléfono" de arriba. */}
             <InputField
               autoCapitalize="none"
-              keyboardType="phone-pad"
+              keyboardType="default"
               label="Teléfono de contacto"
               onChange={setPhoneContact}
               placeholder="Otro número de contacto"

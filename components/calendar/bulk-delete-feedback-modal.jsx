@@ -27,7 +27,7 @@ export function BulkDeleteFeedbackModal({ visible, count, onCancel, onConfirm })
           <View className="mb-3 flex-row items-center gap-2" nativeID="bulk-delete-feedback-modal-header" testID="bulk-delete-feedback-modal-header">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text className="text-lg font-bold text-red-700 dark:text-red-400" nativeID="bulk-delete-feedback-modal-title" testID="bulk-delete-feedback-modal-title">
-              Eliminar {count} registro{count === 1 ? '' : 's'}
+              Eliminar {count} sesión{count === 1 ? '' : 'es'}
             </Text>
           </View>
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { connect, getStatus, off, on, onStatusChange, send as sendMessage, subscribe, unsubscribe } from '../services/realtime-client.js';
+import { connect, getStatus, off, offSubscribed, on, onStatusChange, onSubscribed as onSubscribedAck, send as sendMessage, subscribe, unsubscribe } from '../services/realtime-client.js';
 
 // Suscripción a un canal del bus de tiempo real genérico (spec 2026-09-28).
 // El socket físico es un singleton compartido -- este hook solo administra
@@ -25,22 +25,28 @@ export function useRealtimeChannel(channel, { onMessage, enabled = true, onSubsc
       return undefined;
     }
     connect();
+    // onSubscribed (el callback del caller, ej. anunciar presence:joined) NO
+    // se dispara acá sincrónico -- se espera el ACK real del servidor
+    // (`{"type":"subscribed"}`). Antes se llamaba apenas se pedía la
+    // suscripción, sin importar si el socket ya estaba abierto: en una
+    // conexión fría (la primera del proceso), el socket sigue en CONNECTING
+    // en este punto y el envío de "joined" se descartaba en silencio (sin
+    // cola -- `send()` es efímero por diseño). El otro lado nunca se enteraba
+    // de que alguien se había unido (bug real, 2026-10-01). El ACK también
+    // llega de nuevo en cada reconexión (resubscribe), así que esto además
+    // re-anuncia "joined" después de una caída de conexión, que es lo
+    // correcto (el servidor limpia las suscripciones viejas al desconectar).
+    const handleAck = () => onSubscribedRef.current?.();
+    onSubscribedAck(channel, handleAck);
     subscribe(channel);
     setStatus(getStatus());
-    // onSubscribed/onBeforeUnsubscribe corren DENTRO de este mismo efecto,
-    // no en uno aparte -- React limpia los efectos de un componente en el
-    // orden en que se declararon (no LIFO). Un efecto de "avisar
-    // presence:joined/left" declarado por separado, aunque sea DESPUÉS de
-    // este, corre su cleanup DESPUÉS del unsubscribe de acá -- el mensaje
-    // "left" llegaba al servidor ya desuscripto (bug real, 2026-09-30:
-    // "no suscripto al canal" en los logs, en cada salida de la sesión).
-    onSubscribedRef.current?.();
     const handler = (msg) => onMessageRef.current?.(msg);
     on(channel, handler);
     const unsubscribeStatus = onStatusChange(setStatus);
     return () => {
       onBeforeUnsubscribeRef.current?.();
       off(channel, handler);
+      offSubscribed(channel, handleAck);
       unsubscribe(channel);
       unsubscribeStatus();
     };

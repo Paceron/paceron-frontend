@@ -5,6 +5,7 @@ import {
   mockFinishRunnerSession,
   mockGetRunnerSession,
   mockGetSessionFeedback,
+  mockInterruptRunnerSession,
   mockUpdateWorkoutFeedback,
 } from './__mocks__/runner-session-mock.js';
 
@@ -34,6 +35,16 @@ export async function finishRunnerSession(sessionInstanceId, { athleteUserId } =
   const body = { status: 'finished' };
   if (athleteUserId != null) body.athlete_user_id = Number(athleteUserId);
   if (USE_MOCKS) return await mockFinishRunnerSession(sessionInstanceId, body);
+  return await api.patch(sessionPath(sessionInstanceId), body);
+}
+
+// PATCH /api/v1/session-instances/:id/runner — pasa a interrupted (Gap 19,
+// terminación temprana: el corredor canceló a mitad de camino). Idempotente
+// igual que finish; finished→interrupted es inválido (400 del backend).
+export async function interruptRunnerSession(sessionInstanceId, { athleteUserId } = {}) {
+  const body = { status: 'interrupted' };
+  if (athleteUserId != null) body.athlete_user_id = Number(athleteUserId);
+  if (USE_MOCKS) return await mockInterruptRunnerSession(sessionInstanceId, body);
   return await api.patch(sessionPath(sessionInstanceId), body);
 }
 

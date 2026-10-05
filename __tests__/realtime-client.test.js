@@ -1,5 +1,6 @@
+const mockGetState = jest.fn(() => ({ token: 'fake-jwt', userId: 1 }));
 jest.mock('../store/auth-store.js', () => ({
-  useAuthStore: { getState: () => ({ token: 'fake-jwt' }) },
+  useAuthStore: { getState: (...args) => mockGetState(...args) },
 }));
 
 class FakeWebSocket {
@@ -39,6 +40,7 @@ describe('realtime-client', () => {
     FakeWebSocket.instances = [];
     global.WebSocket = FakeWebSocket;
     jest.useFakeTimers();
+    mockGetState.mockReturnValue({ token: 'fake-jwt', userId: 1 });
     // eslint-disable-next-line global-require
     realtimeClient = require('../services/realtime-client.js');
   });
@@ -55,6 +57,31 @@ describe('realtime-client', () => {
   });
 
   test('connect() is idempotent while a socket is already open', () => {
+    realtimeClient.connect();
+    FakeWebSocket.instances[0].simulateOpen();
+    realtimeClient.connect();
+    expect(FakeWebSocket.instances).toHaveLength(1);
+  });
+
+  // Bug real, 2026-10-03: corredor cierra sesión e inicia sesión con OTRA
+  // cuenta sin cerrar la app -- sin este guard, el socket viejo (todavía
+  // abierto) seguía mandando `presence` como el usuario anterior para
+  // siempre, el entrenador nunca veía al nuevo.
+  test('connect() closes and reopens the socket when the active user changed while one is still open', () => {
+    mockGetState.mockReturnValue({ token: 'token-a', userId: 1 });
+    realtimeClient.connect();
+    FakeWebSocket.instances[0].simulateOpen();
+
+    mockGetState.mockReturnValue({ token: 'token-b', userId: 2 });
+    realtimeClient.connect();
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    expect(FakeWebSocket.instances[0].readyState).toBe(3); // viejo, cerrado
+    expect(FakeWebSocket.instances[1].url).toContain('token=token-b');
+  });
+
+  test('connect() stays idempotent across calls for the SAME user', () => {
+    mockGetState.mockReturnValue({ token: 'token-a', userId: 1 });
     realtimeClient.connect();
     FakeWebSocket.instances[0].simulateOpen();
     realtimeClient.connect();
@@ -94,6 +121,54 @@ describe('realtime-client', () => {
     expect(otherReceived).toHaveLength(0);
   });
 
+  // Forma REAL del frame que relaya el backend para presence/control (no la
+  // forma ideal que el protocolo documentaba): sin `channel` (solo
+  // `update:set_event` lo trae) y con `event` ADENTRO de `payload` (se
+  // pierde si viaja a nivel raíz -- ver el comentario de send() en
+  // realtime-client.js). dispatchMessage tiene que reconstruir ambos antes de
+  // que el listener los vea, para que el resto del código (reducers) pueda
+  // seguir leyendo msg.event/msg.channel como si fueran nativos del protocolo.
+  test('presence/control sin `channel`: se resuelve a la única suscripción activa', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    realtimeClient.subscribe('session:42');
+    const received = [];
+    realtimeClient.on('session:42', (msg) => received.push(msg));
+    socket.simulateMessage(JSON.stringify({ type: 'presence', from: 7, payload: { event: 'joined' } }));
+    expect(received).toHaveLength(1);
+    expect(received[0].event).toBe('joined');
+    expect(received[0].payload).toEqual({}); // event ya extraído, no queda mezclado
+    expect(received[0].from).toBe(7);
+  });
+
+  test('presence/control sin `channel` y con MÁS de un canal suscripto: se descarta (no se adivina)', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    realtimeClient.subscribe('session:42');
+    realtimeClient.subscribe('session:99');
+    const receivedA = [];
+    const receivedB = [];
+    realtimeClient.on('session:42', (msg) => receivedA.push(msg));
+    realtimeClient.on('session:99', (msg) => receivedB.push(msg));
+    socket.simulateMessage(JSON.stringify({ type: 'presence', from: 7, payload: { event: 'joined' } }));
+    expect(receivedA).toHaveLength(0);
+    expect(receivedB).toHaveLength(0);
+  });
+
+  test('presence con payload real (position) conserva los campos junto al event extraído', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    realtimeClient.subscribe('session:42');
+    const received = [];
+    realtimeClient.on('session:42', (msg) => received.push(msg));
+    socket.simulateMessage(JSON.stringify({ type: 'presence', from: 7, payload: { event: 'position', latitude: -31.4, longitude: -64.2 } }));
+    expect(received[0].event).toBe('position');
+    expect(received[0].payload).toEqual({ latitude: -31.4, longitude: -64.2 });
+  });
+
   test('off(channel, cb) stops delivering messages to that callback', () => {
     realtimeClient.connect();
     const socket = FakeWebSocket.instances[0];
@@ -106,13 +181,20 @@ describe('realtime-client', () => {
     expect(received).toHaveLength(0);
   });
 
-  test('send() writes an enveloped message when the socket is open', () => {
+  // `event` viaja DENTRO de `payload`, no a nivel raíz -- el backend real
+  // (clientMessage, protocol.go) solo decodifica type/channel/payload; un
+  // `event` a nivel raíz se pierde en el viaje de ida (lo descarta el
+  // Unmarshal) y en el de vuelta (el relay arma el frame con solo
+  // {type, from, payload}). Confirmado leyendo connection.go#apply,
+  // 2026-10-02.
+  test('send() folds `event` into `payload` (se pierde si viaja a nivel raíz del frame)', () => {
     realtimeClient.connect();
     const socket = FakeWebSocket.instances[0];
     socket.simulateOpen();
-    realtimeClient.send('session:42', 'presence', undefined, { event: 'joined' });
+    realtimeClient.send('session:42', 'presence', undefined, { event: 'joined', payload: {} });
     const sentJoin = socket.sent.map((s) => JSON.parse(s)).find((m) => m.type === 'presence');
-    expect(sentJoin).toMatchObject({ channel: 'session:42', type: 'presence', event: 'joined' });
+    expect(sentJoin.event).toBeUndefined();
+    expect(sentJoin).toMatchObject({ channel: 'session:42', type: 'presence', payload: { event: 'joined' } });
   });
 
   test('send() is a silent no-op when the socket is not open', () => {
@@ -169,5 +251,58 @@ describe('realtime-client', () => {
     const socket = FakeWebSocket.instances[0];
     socket.simulateOpen();
     expect(() => socket.simulateMessage('not-json{{')).not.toThrow();
+  });
+
+  // onSubscribed/offSubscribed: el ACK real del servidor (no "ya pedimos
+  // suscribirnos") es lo que gatea anunciar presence:joined -- ver el
+  // comentario en hooks/use-realtime-channel.js para el bug que esto arregla.
+  test('onSubscribed(channel, cb) fires when the server confirms that channel subscribed', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    const acks = [];
+    realtimeClient.onSubscribed('session:42', () => acks.push('session:42'));
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:99' }));
+    expect(acks).toHaveLength(0); // canal distinto, no dispara
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:42' }));
+    expect(acks).toEqual(['session:42']);
+  });
+
+  test('a subscribed ack is never dispatched to regular channel listeners', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    const received = [];
+    realtimeClient.on('session:42', (msg) => received.push(msg));
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:42' }));
+    expect(received).toHaveLength(0);
+  });
+
+  test('offSubscribed(channel, cb) stops delivering acks to that callback', () => {
+    realtimeClient.connect();
+    const socket = FakeWebSocket.instances[0];
+    socket.simulateOpen();
+    const acks = [];
+    const handler = () => acks.push('fired');
+    realtimeClient.onSubscribed('session:42', handler);
+    realtimeClient.offSubscribed('session:42', handler);
+    socket.simulateMessage(JSON.stringify({ type: 'subscribed', channel: 'session:42' }));
+    expect(acks).toHaveLength(0);
+  });
+
+  test('resubscribing (reconnect) fires onSubscribed again -- re-announces joined', () => {
+    realtimeClient.connect();
+    realtimeClient.subscribe('session:42');
+    const acks = [];
+    realtimeClient.onSubscribed('session:42', () => acks.push('ack'));
+    const ackMsg = JSON.stringify({ type: 'subscribed', channel: 'session:42' });
+    FakeWebSocket.instances[0].simulateOpen();
+    FakeWebSocket.instances[0].simulateMessage(ackMsg); // el servidor confirma la 1ra suscripción
+    expect(acks).toEqual(['ack']);
+    FakeWebSocket.instances[0].simulateClose();
+    jest.advanceTimersByTime(35000);
+    FakeWebSocket.instances[1].simulateOpen();
+    FakeWebSocket.instances[1].simulateMessage(ackMsg); // y de nuevo tras la reconexión
+    expect(acks).toEqual(['ack', 'ack']);
   });
 });

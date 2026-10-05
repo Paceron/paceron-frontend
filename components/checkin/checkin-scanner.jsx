@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useCheckinStore } from '../../store/checkin-store.js';
@@ -22,6 +22,10 @@ const PHASE = { SCANNING: 'scanning', SUBMITTING: 'submitting', RESULT: 'result'
 
 export function CheckinScanner() {
   const router = useRouter();
+  // Presente solo cuando el escáner se abrió desde una sesión presencial en
+  // curso (ver session-pre-start-screen.jsx/training-session-live-screen.jsx)
+  // -- ver destinationForOutcome en checkin-outcome.js para el porqué.
+  const { returnTo } = useLocalSearchParams();
   const userId = useAuthStore((s) => s.userId);
   const pendingCheckin = useCheckinStore((s) => s.pendingCheckin);
   const { setPendingCheckin, clearPendingCheckin } = useCheckinStore();
@@ -105,8 +109,8 @@ export function CheckinScanner() {
   // dejaría al corredor con la pantalla de la cámara abierta sin nada que
   // escanear, que es el peor final posible después de ya haberse registrado.
   const handleAccept = useCallback(() => {
-    router.replace(destinationForOutcome(outcome));
-  }, [outcome, router]);
+    router.replace(destinationForOutcome(outcome, returnTo));
+  }, [outcome, returnTo, router]);
 
   if (!permission) {
     return (

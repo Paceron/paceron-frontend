@@ -722,3 +722,274 @@ lógica en `session-pre-start-screen.jsx`). Sin este gap resuelto, el frontend p
 mientras tanto aplicar un bloqueo solo-local (mismo dispositivo) sin esperar al backend, pero
 queda fuera de esta rama a pedido del usuario -- por ahora cancelar sigue permitiendo rejugar la
 sesión, igual que ya pasa hoy en la asíncrona.
+
+## Gap 20 — RESUELTO (2026-10-01): contrato real del bus de tiempo real para el cliente entrenador
+
+Las 3 asunciones de este gap se confirmaron leyendo el backend local
+(`cmd/api/realtime/protocol.go`, `notifier.go`, `docs/REALTIME_WS.md`) durante una ronda de
+bugfixing en dispositivo real — **dos de las tres asunciones originales eran incorrectas**, y el
+código del entrenador (Task 7) las tenía mal, en silencio (sin error, sin romper nada, pero sin
+atribuir ningún mensaje a nadie). Ya corregido en frontend:
+
+1. **`from` es un número plano (`"from":12`), NUNCA un objeto `{userId, role}`.** Confirmado contra
+   `outboundMessage.From int64` y el ejemplo de `docs/REALTIME_WS.md`
+   (`{"type":"presence","from":12,"payload":{...}}`). `utils/trainer-participant-state.js` leía
+   `msg.from?.userId`, que para un número siempre da `undefined` -- el reducer ignoraba el 100% de
+   los mensajes `presence` de cualquier corredor. Corregido a `String(msg.from)`.
+2. **El tipo de `update:set_event` es el STRING LITERAL `"update:set_event"`**, no `type:"update"` +
+   un campo `event:"set_event"` separados. Confirmado contra `UpdateSetEventType = TypeUpdate + ":"
+   + EventSetEvent` y el ejemplo de la doc. `hooks/use-trainer-session-runtime.js` chequeaba
+   `msg.type === 'update' && msg.event === 'set_event'`, que nunca matcheaba -- los registros de
+   series de un corredor nunca llegaban al feed en vivo del entrenador.
+3. **El feedback real viaja en `data.data`, no en `payload`.** El campo del frame es `data` (no
+   `payload`) y contiene el `MutationResponse` completo del endpoint HTTP (`{message, data}`) --
+   `data.data` es el DTO de feedback (`athlete_user_id`, etc.), confirmado contra
+   `MarshalUpdateSetEvent`/`workout_feedback_controller.go` y el ejemplo de la doc. Casing es
+   siempre snake_case (nunca camelCase) -- el fallback defensivo de leer ambas variantes se
+   eliminó, ya no hace falta.
+
+**`GET /session-instances/:id/feedback` sin `?athlete_user_id=` (si devuelve todos los atletas)
+sigue sin confirmar** -- el fan-out de `useQueries` (Task 7) sigue siendo el camino, sin cambios.
+
+## Gap 21 — RESUELTO en frontend (2026-10-02): `event` y `channel` no sobreviven el relay de presence/control
+
+Encontrado con logs reales de dispositivo (bloques `[realtime] recibido canal=undefined
+type=presence event=undefined from=N` de ambos lados, corredor y entrenador) tras el fix del Gap
+20 -- `from` ya se parseaba bien, pero `presence`/`control` seguían sin atribuirse a nadie.
+Confirmado leyendo `cmd/api/realtime/protocol.go` y `connection.go`:
+
+1. **`clientMessage` (decode de lo que manda el cliente) solo tiene `Type`/`Channel`/`Payload`.**
+   Cualquier otro campo de nivel raíz que el frontend mande (`event`, `to`, `ts`) lo descarta el
+   propio `json.Unmarshal` de Go al no existir ese campo en el struct -- se pierde ANTES de llegar
+   siquiera al Hub.
+2. **El relay server→cliente arma el frame saliente con solo `{type, from, payload}`**
+   (`connection.go#apply`: `&outboundMessage{Type: msg.Type, From: sc.userID, Payload: msg.Payload}`)
+   -- nunca incluye `channel` (a diferencia de `update:set_event`, que sí lo trae). Confirma el
+   ejemplo de `docs/REALTIME_WS.md` (`{"type":"presence","from":12,"payload":{...}}`, sin
+   `channel` ahí tampoco).
+
+**Consecuencia:** el diseño original del frontend (spec 2026-09-28) ponía `event` como hermano de
+`payload` a nivel raíz del frame (`{type, channel, event, payload}`) -- ese campo nunca sobrevivía
+ni la ida (se descarta al decodificar en el servidor) ni la vuelta (el relay no lo reconstruye).
+`presence`/`control` llegaban con type/from intactos pero sin ninguna otra información útil --
+"No se unió" para TODOS los corredores en TODAS las condiciones, sin importar los fixes de `from`.
+
+**Fix en frontend, sin tocar el backend** (`services/realtime-client.js`):
+- `send()` ahora pliega `event` DENTRO de `payload` antes de mandar (`{event, ...payloadReal}`) --
+  `payload` es el único campo que el backend retransmite intacto (opaco, nunca lo toca).
+- `dispatchMessage()` deshace el pliegue al recibir (saca `event` de `payload`, lo vuelve a exponer
+  como `msg.event` de nivel raíz) para que el resto del código (reducers) no tenga que saber de
+  este detalle del wire format.
+- Cuando el servidor no manda `channel` (presence/control), se resuelve a la única suscripción
+  activa de la conexión (`subscribedChannels`, tamaño 1 -- el caso real de esta app hoy, una sesión
+  en vivo a la vez). Con más de un canal activo simultáneo el mensaje queda sin destino resoluble y
+  se descarta (no se adivina a cuál pertenece) -- documentado para cuando se agregue multi-canal
+  real a futuro.
+
+**Posible mejora futura del lado backend** (no urgente, no bloquea nada hoy): si el gateway alguna
+vez necesita soportar más de un canal activo simultáneo por conexión, el relay de presence/control
+va a necesitar empezar a incluir `channel` en el frame saliente (mismo criterio que ya usa
+`update:set_event`) -- la resolución por "única suscripción" deja de alcanzar ahí.
+
+## Gap 22 — un 409 en `POST /workout-feedback` nunca dispara `update:set_event` (ni aunque el valor cambie)
+
+No es un bug, es consecuencia directa de "Solo Create emite" (`docs/REALTIME_WS.md` §5) + el índice
+único `unique_feedback_per_set` -- documentado acá porque generó confusión real probando en vivo:
+repetir la MISMA sesión/atleta/ejercicio/serie entre varios intentos de prueba (cada uno con un
+`run` local nuevo, ya que el `run` es puramente local a SQLite) siempre pega contra la fila que ya
+existe del lado del backend (la unicidad es por `assigned_session_id` + `exercise_instance_id` +
+`athlete_user_id` + `set_number`, ninguno de los cuales depende del `run` local) → 409 → `syncRun`
+lo marca `synced` y sigue (`services/session-sync.js`, sin PATCH de respaldo acá, a diferencia del
+flujo manual de la pantalla de revisión) → ningún evento en vivo para el entrenador, aunque el
+corredor haya "completado la serie" en su pantalla. **No hay nada que arreglar en el cliente** --
+para probar el feed en vivo de punta a punta hace falta una sesión/atleta/ejercicio que nunca se
+haya sincronizado antes contra ese backend, o resetear la base entre pruebas. Si a futuro se
+quisiera que una actualización (PATCH) también notifique en vivo, es un cambio de backend (el
+`Notifier.Emit` del controller solo se dispara en el branch de `Create`).
+
+## Gap 23 — `GET /users?ids=` (batch lookup) no trae `photo_url`
+
+El roster de equipo/grupo (`hooks/use-team-roster.js`, usado por la pantalla en vivo del
+entrenador para los marcadores/listas con foto+color) resuelve nombre vía
+`batchLookupUsers`/`GET /users?ids=1,2,3`. Confirmado leyendo el backend
+(`cmd/api/domains/user/batch_lookup_response.go` + `search_response.go`): `BatchLookupResponse`
+tiene el mismo shape que `SearchResultItem` --
+
+```go
+type SearchResultItem struct {
+	UserID  int64  `json:"user_id"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Email   string `json:"email"`
+}
+```
+
+-- **sin `photo_url`**, a propósito (el propio comentario del endpoint dice "resuelve nombre/
+apellido/email", nunca mencionó foto). No es un bug ni un problema de permisos del lado del
+frontend -- el dato simplemente no está en esta respuesta. Por eso un corredor con foto de perfil
+real sigue viéndose con iniciales en el mapa/listas del entrenador: `photoUrl` cae a `null` siempre
+para cualquier roster resuelto por este camino.
+
+**Pedido concreto para backend:** agregar `photo_url` (puede ser `""`/`null` si no tiene) a
+`SearchResultItem`/`BatchLookupResponse`. Es un campo más en un struct ya existente, sin impacto en
+otros consumidores de `GET /users?ids=` que ya ignoran campos nuevos. Frontend ya está listo para
+consumirlo apenas aparezca (`photoUrl: user.photo_url ?? null` en `hooks/use-team-roster.js`, sin
+cambios necesarios ahí).
+
+## Gap 24 — `WorkoutFeedbackResponse` tampoco trae `exercise_name` (ya resuelto client-side)
+
+Mismo tipo de ausencia que el Gap 23 pero sin pedido de cambio -- el feedback de una serie
+(`POST`/`GET /workout-feedback`) solo trae `assigned_exercise_id`, nunca un nombre. El feed en vivo
+del entrenador (`hooks/use-trainer-session-runtime.js`) lo resuelve contra la lista de ejercicios
+de la sesión (`utils/trainer-participant-progress.js#exerciseNameById`, ya disponible en memoria,
+sin request extra) -- documentado acá solo para que quien toque este código de nuevo no asuma que
+`exercise_name` puede llegar algún día del lado de `workout_feedback` y lo lea directo del DTO.
+
+## Gap 25 — asistencia en vivo (`GET /attendance/session/{id}`) no refleja a todos los corredores sin confirmar
+
+Detectado probando la asistencia durante una sesión presencial en vivo (2026-10-03): con 3
+corredores del grupo, el modal mostró "1 confirmada, 0 sin confirmar" cuando en realidad faltaban
+2 por confirmar (deberían haber aparecido como `not_confirmed`).
+
+**Confirmado del lado frontend (no es diffing ni filtro local):** `useSessionAttendance`
+(`hooks/use-attendance.js`) y `AttendanceSessionModal` (consumidor durante la sesión en vivo, vía
+`trainer-session-live-screen.jsx`) muestran `summary.attended`/`summary.not_confirmed` y la lista
+`roster` **tal cual los devuelve el backend**, sin ningún cálculo ni reconciliación contra el
+roster del equipo/grupo (`use-team-roster.js`) de por medio -- `AttendanceMetricCards` solo hace
+`toCount(summary?.attended)`/`toCount(summary?.not_confirmed)`, sin aritmética propia. Si faltan
+corredores en "sin confirmar", es porque `roster`/`summary` del response ya vienen así.
+
+**Dos hipótesis, ninguna descartada todavía:**
+1. **Backend:** la resolución de "miembros con membresía activa en la fecha de la sesión"
+   (comentario propio del endpoint, `services/attendance.js`) no está trayendo bien a esos 2
+   corredores -- posible bug de join/rango de fechas en el query real.
+2. **Frontend, a verificar antes de pedir cambio de backend:** confirmar que
+   `AttendanceSessionModal` le pasa a `useSessionAttendance` el `teamId`/`groupId`/
+   `sessionInstanceId` correctos de la sesión en vivo (no un id resuelto mal desde
+   `pendingSession`/`sessionInstanceId`) -- un id equivocado también produciría un roster
+   incompleto sin que sea un bug de backend.
+
+**Pedido concreto para backend (si la hipótesis 1 se confirma):** revisar la query de
+`GET /attendance/session/{session_instance_id}` que arma `roster`/`summary.not_confirmed` --
+debería incluir TODOS los miembros con membresía activa en la fecha de la sesión, no solo los que
+ya tienen alguna fila de asistencia. Antes de encarar el fix, reproducir contra el backend local
+con un caso controlado (grupo con N miembros, 1 solo confirmado) y loguear el response crudo para
+confirmar cuál de las dos hipótesis es la real.
+
+## Gap 26 — sesión presencial controlada por el entrenador (apertura/cierre), no solo por franja horaria [RESUELTO]
+
+Mejora futura (roadmap, no se empieza sin confirmación explícita, ver conversación 2026-10-03) --
+documentada ahora para que el backend pueda ir evaluando el alcance en paralelo.
+
+**Idea:** hoy la sesión presencial "vive" dentro de su franja horaria (`presencial_time_from`/
+`presencial_time_to`) sin importar si el entrenador presionó Play -- cada corredor se une de forma
+independiente con su propio Play. El cambio propuesto da control real al entrenador: los
+corredores llegan al pre-start (que pasa a actuar como sala de espera) pero solo pueden unirse
+**entre** el momento en que el entrenador abre la sesión (su Play) y el momento en que la cierra
+(su slide-to-finish) -- el entrenador puede abrir/cerrar antes o después de la franja planificada,
+la franja queda como guía, no como regla dura.
+
+**Piezas que tocarían backend:**
+- Un concepto de "sesión abierta/cerrada" del lado del servidor (hoy el `control:session_finished`
+  que ya manda el entrenador es solo un mensaje de WebSocket efímero, sin persistencia -- si un
+  corredor se conecta después de que el entrenador cerró, hoy no hay forma de que el backend se lo
+  diga de entrada, sin depender de que el WS siga vivo).
+- Posiblemente un campo de estado en `session_instance` o similar (`open`/`closed`,
+  `opened_at`/`closed_at`) para que un corredor que recién abre el pre-start sepa si puede unirse
+  sin depender de haber estado conectado por WS en el momento exacto en que el entrenador abrió.
+- Validaciones de advertencia (no bloqueantes) ya resueltas 100% client-side: avisar al entrenador
+  si abre/cierra con más de 15 minutos de diferencia respecto a la franja planificada, y si cierra
+  habiendo corredores en vivo sin completar todo -- no requieren nada nuevo de backend, se resuelven
+  con los datos que el entrenador ya tiene en pantalla (franja del día + estado de participantes).
+
+**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía.
+Documentado para que el backend pueda pensar el modelo de "sesión abierta/cerrada" mientras se
+cierran primero los gaps de WS ya abiertos (26-28) y la base de la versión actual.
+
+**Actualización 2026-10-04 -- backend implementó el gate ANTES de que el frontend hiciera el resto
+del roadmap, y eso rompió el flujo existente (regresión real, no un gap nuevo).** El backend
+resolvió Gap 26 completo del lado servidor (apertura/cierre persistido en `group_calendar_day`,
+`presencial_open`/`opened_at`/`closed_at` en `GET /session-instances/:id`, 409
+`session_not_opened`/`session_closed` en `POST .../runner` del no-owner, `update:session_state` por
+WS) -- pero el frontend nunca llegó a construir la sala de espera ni ningún aviso para el corredor,
+porque esa parte quedó marcada "roadmap, no entra en esta rama todavía" más arriba. El gate del
+backend aplica igual, sin que el frontend lo supiera: el Play del ENTRENADOR nunca llamaba a
+`POST /session-instances/:id/runner` (no tiene SQLite propio, nunca necesitó ese endpoint antes de
+Gap 26) -- o sea que ninguna sesión presencial se "abría" nunca, y el primer `POST .../runner` de
+CUALQUIER corredor (su propio Play) caía siempre en 409 `session_not_opened`. Sin esa apertura,
+`syncRun` corta en el primer paso (`create_runner_session`) y nunca llega a mandar ni una sola
+serie -- esto rompía el registro completo del corredor (ni feed en vivo del entrenador, ni
+"Registro de Sesión" con datos al revisar después), no solo el caso de cancelación que se estaba
+probando cuando se encontró.
+
+**Fix ya aplicado en frontend (sin esperar el resto del roadmap):** el Play del entrenador
+(`trainer-session-pre-start-screen.jsx`) ahora llama `createRunnerSession(sessionInstanceId)` (self,
+sin `athleteUserId` -- el owner autenticado) antes de navegar, abriendo la sesión igual que
+describía la opción (a) ya acordada. El slide-to-finish (`finalize()` en
+`hooks/use-trainer-session-runtime.js`) ahora también llama `finishRunnerSession(sessionInstanceId)`
+(self) además del `control:session_finished` por WS que ya mandaba, para que `closed_at` quede
+seteado. Ninguna de las dos espera su resultado para bloquear la navegación (el entrenador no tiene
+cola de reintento local si falla, así que solo se loguea).
+
+**Actualización 2026-10-04 (2) -- Gap 26 completo, incluida la sala de espera del corredor y la
+confirmación del entrenador.** Ya no queda roadmap pendiente de este gap:
+
+- **Sala de espera (`session-pre-start-screen.jsx`):** mientras el corredor no arrancó nada (ni
+  `runner_session` remoto `wip`, ni un run local `in_progress` -- alguien que ya estaba corriendo
+  antes de un cierre queda exento, es resumir, no un ingreso nuevo), se hace polling cada 5s a
+  `GET /session-instances/:id` (`hooks/use-session-instance.js`, nuevo parámetro opcional
+  `refetchInterval`, mismo criterio que `AttendanceSessionModal`) para leer `openedAt`/`closedAt`
+  (`services/normalizers.js#toSessionInstanceModel`, 3 campos nuevos). `openedAt` null → "Sala de
+  espera"; `closedAt` seteado sin haber arrancado nunca → mensaje de sesión ya cerrada sin Play (caso
+  límite, sin alternativa de carga manual por ahora); ninguno de los dos → Play normal. Sin WS acá
+  todavía (mismo tipo de mejora futura que Gap 28 para asistencia -- `update:session_state` ya existe
+  del lado del backend, el polling es la versión simple antes de cablear el evento).
+- **Confirmación al finalizar (`trainer-session-live-screen.jsx`):** el slide-to-finish ya no cierra
+  directo -- `utils/trainer-participant-state.js#unfinishedParticipants` calcula quién se presentó
+  (`status !== NOT_JOINED`) y no quedó en un estado terminal (ni `COMPLETED` ni `INTERRUPTED`,
+  incluye conectado/en curso/pausado/desconectado-sin-terminar). Si hay alguno, un modal
+  (`ConfirmDestructiveModal` reusado) lista los nombres antes de confirmar; cancelar devuelve el
+  thumb del slider a su posición inicial (`DragToFinishButton` pasó a `forwardRef` con un `reset()`
+  imperativo).
+
+## Gap 27 — WebSocket no soporta mensajes dirigidos ni persistentes (para broadcast/mensajería del entrenador)
+
+Mejora futura (roadmap, no se empieza sin confirmación explícita) -- necesaria para el próximo
+feature de "el entrenador manda mensajes (info/advertencia/alerta/crítico) a todos los corredores
+de la sesión o a uno puntual."
+
+El gateway actual (Gap 18, ya implementado) retransmite `presence`/`control` a **todos** los
+suscriptores del canal -- no hay forma de dirigir un mensaje a un `userId` puntual. Además,
+confirmado en Gap 21: ningún campo fuera de `type`/`channel`/`payload` sobrevive el relay (ni
+`to`, aunque el frontend ya lo manda hoy para `control:session_finished` con `to:'all'` -- ese
+valor nunca se usa realmente del lado servidor, es decorativo). Para mensajería dirigida hace
+falta:
+
+- Que el relay del backend respete un `to` (userId) dentro de `payload` (mismo patrón que ya usa
+  `event`, plegado adentro del payload opaco) y entregue el mensaje SOLO a esa conexión, en vez de
+  a todos los suscriptores del canal.
+- Definir si un mensaje de severidad alta (`crítico`/`alerta`) necesita persistencia -- hoy todo el
+  bus es fire-and-forget (si el corredor no está conectado en ese instante, el mensaje se pierde
+  para siempre, sin reintentos ni cola). Si un mensaje crítico necesita llegar aunque el corredor
+  esté momentáneamente desconectado, hace falta algún mecanismo de persistencia/entrega diferida
+  (ej. guardar el mensaje y reenviarlo si el corredor se reconecta durante la sesión, o degradar a
+  una notificación push si ya existe infraestructura de push -- a definir con backend).
+
+**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía.
+
+## Gap 28 — sin evento de WebSocket para asistencia registrada (QR o manual)
+
+Mejora futura (roadmap, no se empieza sin confirmación explícita) -- hoy el modal de asistencia
+del entrenador durante la sesión en vivo (`AttendanceSessionModal`) resuelve "casi en vivo" con
+polling (`refetchInterval: 6000` sobre `useSessionAttendance`), decisión tomada explícitamente
+como solución temporal (ver ronda de feedback 2026-10-02) mientras no exista un evento real.
+
+**Pedido:** cuando se registra una asistencia (por lectura de QR del corredor, o input manual del
+entrenador), el backend emite un mensaje al canal `session:{sessionInstanceId}` (mismo canal que ya
+usa el resto de la sesión en vivo) con el registro nuevo/actualizado -- mismo patrón que
+`update:set_event` (Gap 18), un `update:attendance_event` o similar, con el `athlete_user_id` y el
+nuevo estado de asistencia. El frontend reemplazaría el polling de 6s por escuchar este evento y
+listo.
+
+**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía. El
+polling actual sigue funcionando mientras tanto, solo con el delay de hasta 6s ya conocido.
