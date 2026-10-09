@@ -48,7 +48,14 @@ Sin gap abierto de foto de equipo — sigue deliberadamente excluido hasta que e
 `docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md`) —
 se abre un gap propio detectado en el camino:
 
-## Gap 5 — sin endpoint para listar los permisos de un tier ajeno
+## Gap 5 — sin endpoint para listar los permisos de un tier ajeno [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** `GET /api/v1/tiers/{id}/permissions` — autenticado, sin ownership. `200
+{"permissions":[{"permission_id","permission_name"}]}` ordenado ASC; `200 []` si el tier no tiene
+permisos activos (los soft-deleted se omiten); `404` tier inexistente. Sin acción de frontend
+pendiente todavía — integrarlo a la pantalla "Mejorar tier" (reemplazar/enriquecer el
+`description` de texto libre) queda como mejora futura, no bloqueante.
 
 `POST /api/v1/tiers/{id}/permissions` (asignar un permiso a un tier)
 existe, pero no hay `GET /api/v1/tiers/{id}/permissions` (listar). El
@@ -618,7 +625,14 @@ Frontend: `services/sessionInstances.js#getSessionInstance`, `hooks/use-session-
 consumido por `session-review-screen.jsx#ReviewFlow` (fetch solo si `slot.sessionInstance` no vino
 ya en memoria — el resto de los flujos existentes no cambia).
 
-## Gap 15 — `membership_fee` no viene en el listado de búsqueda ni en las invitaciones
+## Gap 15 — `membership_fee` no viene en el listado de búsqueda ni en las invitaciones [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** `membership_fee` agregado a `TeamSearchResult` (`GET /teams/search`) y a las respuestas
+de invitación — es la fee VIGENTE del equipo (puede cambiar después; lo único congelado sigue
+siendo `init_amount` al momento de pagar, sin cambios ahí). **Pendiente de frontend:** borrar
+`hooks/use-team-fees.js` y leer el precio directo del listado/invitación, sin el fan-out de
+`useQueries` contra `['team', id]` por equipo.
 
 Detectado al cablear el pago de membresía de equipo
 (`docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md`). El requisito de
@@ -638,9 +652,19 @@ extra por página de búsqueda.
 **Pedido:** agregar `membership_fee` a los dos DTOs. **Impacto en frontend cuando exista:** se borra
 `hooks/use-team-fees.js` y el precio sale del listado directo, sin fan-out.
 
-## Gap 16 — `POST /payments/preference` colapsa todos sus errores a 500
+## Gap 16 — `POST /payments/preference` colapsa todos sus errores a 500 [RESUELTO]
 
-`payment_controller.go` responde `500 "Error al crear la preferencia"` para **cualquier** fallo del
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** Ahora devuelve errores reales: `409` con `code: "SELLER_NOT_CONNECTED"` en el body JSON
+(mismo patrón de `error.data` que ya usamos con `utils/mp-connect-messages.js`; incluye también el
+caso "trainer conectado pero sin public key", mensaje de reconectar), `404` equipo/cuota
+inexistente, `400` datos inválidos; cualquier otro error sigue `500` genérico (se descartó un 502
+explícito, no aporta nada distinto del lado UI). **Pendiente de frontend:** reemplazar el mensaje
+vago fijo de `team-subscription-screen.jsx` (`components/team/team-subscription-screen.jsx:106-117`)
+por un branch sobre `error.status`/`error.data?.code`, mapeando `SELLER_NOT_CONNECTED` a un mensaje
+concreto en vez del genérico "puede que el equipo todavía no esté listo para cobrar".
+
+`payment_controller.go` respondía `500 "Error al crear la preferencia"` para **cualquier** fallo del
 service. En particular, cuando el entrenador del equipo no conectó su cuenta de Mercado Pago, el
 service devuelve `SELLER_NOT_CONNECTED` (`"el entrenador debe conectar su cuenta de Mercado Pago"`)
 y su propia documentación (`docs/CU/02-pago-participacion-equipo.md`) promete un **409** — pero el
@@ -651,7 +675,17 @@ entrenador sin MP conectado, `POST /payments/preference` responde 500 con el men
 un mensaje deliberadamente vago ("puede que el equipo todavía no esté listo para cobrar") en vez de
 afirmar una causa que no podemos verificar. **Pedido:** propagar el código/status real.
 
-## Gap 17 — no hay forma de saber si un entrenador *ajeno* tiene Mercado Pago conectado
+## Gap 17 — no hay forma de saber si un entrenador *ajeno* tiene Mercado Pago conectado [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** `can_receive_payments` (bool) agregado a TODAS las respuestas de equipo (`GET
+/teams/search`, el GetAll de pantalla, `GetByID`, `Create`, `Update`, `UpdateAddress`) y también a
+`InvitationResponse` (pedido explícitamente para simetría con `membership_fee` del Gap 15 — unirse
+por invitación es la otra vía de entrar a un equipo, misma necesidad de avisar antes). Derivado
+server-side; si el lookup de MP falla devuelve `false` honesto, nunca bloquea la respuesta.
+**Pendiente de frontend:** mostrar el aviso antes de unirse/pagar — todavía sin UI que lo consuma
+(ni en `team-search-screen.jsx`, ni en la pantalla de invitaciones), queda para cuando se retome
+esta pantalla.
 
 `GET /mercadopago/connect/status` es self-only: saca el usuario del JWT y no acepta `user_id` ni
 `team_id`. `TeamResponse`/`TeamSearchResult` tampoco exponen nada sobre la conexión del dueño.
@@ -972,9 +1006,45 @@ confirmación del entrenador.** Ya no queda roadmap pendiente de este gap:
   thumb del slider a su posición inicial (`DragToFinishButton` pasó a `forwardRef` con un `reset()`
   imperativo).
 
-## Gap 27 — mensajería en sesión en vivo: persistencia + evento liviano de aviso (ya no roadmap, pedido concreto)
+## Gap 27 — mensajería en sesión en vivo: persistencia + evento liviano de aviso [RESUELTO]
 
-**Actualización 2026-10-09 — de roadmap a pedido concreto.** Spec de frontend ya escrita:
+**Actualización 2026-10-09 (2) — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** Contrato final confirmado (rama backend `feature/tiers-fees-pagos-y-mensajeria`):
+
+- `POST /api/v1/session-instances/{id}/messages` → `201` con el mensaje creado completo: `{id,
+  session_instance_id, sender_user_id, sender_role, type, recipient_mode, recipient_user_ids,
+  body, reply_to_message_id, created_at}` (`recipient_user_ids: []` cuando `recipient_mode: all`).
+  `body` trim no vacío, tope 2000 caracteres. `reply_to_message_id`, si viene, debe ser `>0`, existir,
+  ser de la misma sesión y visible para el emisor — cualquiera de las 4 violaciones (inexistente,
+  otra sesión, no visible, `<=0`) da `400` (`ErrSessionMessageInvalid`, body `{code:"Bad request",
+  message:"..."}`, mensaje específico por caso). Destinatarios duplicados en `recipient_user_ids` →
+  `400`. Destinatario que no es participante de la sesión → `400` (distinto del 403 de abajo: este
+  es "tenés acceso pero nombraste a alguien que no está en la tabla").
+- `GET /api/v1/session-instances/{id}/messages?since=<messageId>` → `{"messages": [...]}` (objeto
+  envolvente, no array crudo — ojo al normalizar), id ASC, sin paginación (`since` omitido o `0` =
+  desde el primero). Visibilidad aplicada server-side: ves lo tuyo, lo `all`, y lo que tengas en
+  `recipient_user_ids` — un DM corredor-corredor no lo ve el entrenador, sin caso especial.
+- **Autorización (POST y GET, idéntica para los dos):** `404` primero si `session_instance_id` no
+  existe. `403` (`code:"Forbidden"`, message `"no autorizado"`) si la instancia existe pero el
+  usuario autenticado no tiene acceso a ELLA — mismo guard dual que ya protege `POST
+  /workout-feedback` y `GET /session-instances/{id}` (miembro activo del grupo, owner del team, o
+  atleta/reportante con feedback activo). El `sender_user_id` siempre sale del token — nunca hay un
+  403 por "intentar mandar siendo otro", eso no es un vector posible acá. Con acceso confirmado, el
+  usuario SIEMPRE puede escribir; todo lo de contenido/destinatarios/reply cae en `400`, nunca `403`.
+- Al persistir, el backend emite al canal `session:{id}`: `{"type":"control:message_created",
+  "channel":"session:{id}","payload":{"sessionMessageId":N}}` — literal único (no `type:"control"`
+  + `event` separado), igual que `update:set_event`. Sin contenido, confirma la nota de privacidad
+  de abajo.
+- Sin edición ni borrado (fuera de alcance, ver spec).
+
+**Pendiente de frontend:** arrancar la implementación en `feature/live-session-messaging` sobre la
+spec ya aprobada (`docs/superpowers/specs/2026-10-09-live-session-messaging-design.md`) — era lo
+único que bloqueaba este gap, ya resuelto.
+
+---
+
+**Actualización 2026-10-09 (1) — de roadmap a pedido concreto (histórico, superado por la
+actualización de arriba).** Spec de frontend ya escrita:
 `docs/superpowers/specs/2026-10-09-live-session-messaging-design.md` (branch
 `feature/live-session-messaging`, implementación todavía no arrancada). El diseño descartó
 resolver esto ampliando el relay de WS genérico (lo que pedía la versión anterior de este gap,
@@ -1009,9 +1079,8 @@ rompería su privacidad apenas hubiera un tercer suscriptor conectado. Por eso e
 "revisá" -- el contenido siempre sale del `GET` autenticado del punto 3, que es el único lugar que
 aplica el filtro de verdad.
 
-**Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto del lado backend --
-bloquea el arranque de la implementación en `feature/live-session-messaging` (deliberadamente en
-pausa hasta que esto se resuelva, a pedido del usuario).
+**Impacto en frontend (histórico, ya resuelto — ver actualización 2026-10-09 (2) arriba):** este
+bloqueo ya no aplica.
 
 ---
 
