@@ -5,6 +5,8 @@ import { ThemeProvider, seedDefaultTheme } from './theme-provider.jsx';
 import { useAuthStore } from '../store/auth-store.js';
 import { queryClient } from '../lib/query-client.js';
 import { useUser, useRoleReconciliation } from '../hooks/use-user.js';
+import { isWeb } from '../utils/platform.js';
+import { syncPendingRuns } from '../services/session-sync.js';
 
 function AuthEffects() {
   const hydrate = useAuthStore((state) => state.hydrate);
@@ -54,12 +56,33 @@ function ForegroundRefetch() {
   return null;
 }
 
+// Barrido de resiliencia del registro en vivo (services/session-sync.js) --
+// mobile-only, SQLite no corre en web. Mismo criterio que ForegroundRefetch
+// (evento-driven por foreground, no un timer): recuperar señal casi siempre
+// coincide con volver a foreground, así que no hace falta pollear aparte. El
+// primer disparo (al montar, sin esperar ningún 'change') cubre el cold
+// start -- AppState ya arranca en 'active' y nunca emite ese valor como
+// evento de cambio.
+function SessionSyncSweep() {
+  useEffect(() => {
+    if (isWeb) return undefined;
+    syncPendingRuns();
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') syncPendingRuns();
+    });
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
+
 export function AppProviders({ children }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthEffects />
         <ForegroundRefetch />
+        <SessionSyncSweep />
         {children}
       </ThemeProvider>
     </QueryClientProvider>

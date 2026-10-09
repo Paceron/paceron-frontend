@@ -1,10 +1,13 @@
 import {
   getGpsPoints,
   getRun,
+  getRunsPendingSync,
   getSetsForSync,
+  initSessionDb,
   markRunnerSessionCreated,
   markRunnerSessionFinished,
   markSetSynced,
+  pruneSyncedRuns,
 } from './session-db.js';
 import { createWorkoutFeedback, createWorkoutFeedbackPoints } from './workoutFeedback.js';
 import { createRunnerSession, finishRunnerSession, interruptRunnerSession } from './runnerSession.js';
@@ -99,4 +102,30 @@ export async function syncRun(runId) {
   }
 
   return result;
+}
+
+// Barrido de resiliencia: hasta ahora syncRun solo se disparaba por eventos
+// puntuales (cada transición de serie en vivo, el modal de fin de sesión) --
+// si el dispositivo estuvo sin señal toda la sesión y el usuario salió de
+// ese modal sin reintentar, nada volvía a intentar subir lo que quedó local
+// para siempre. Esto cubre ese hueco sin tocar syncRun (ya es idempotente y
+// resumible por set, se banca que lo llamen de más): recorre TODOS los runs
+// locales que todavía le deben algo al backend (de cualquier sesión, no solo
+// la que el usuario tiene abierta ahora) y reintenta cada uno.
+//
+// Llamado desde providers/app-providers.jsx en cada foreground de la app --
+// evento-driven (recupera señal = vuelve a foreground, de 99% de los casos
+// reales), no un polling con intervalo fijo.
+export async function syncPendingRuns() {
+  try {
+    await initSessionDb();
+    const pending = await getRunsPendingSync();
+    for (const run of pending) {
+      await syncRun(run.id);
+    }
+    await pruneSyncedRuns();
+  } catch {
+    // Sin red, o SQLite todavía no disponible -- se reintenta en el próximo
+    // foreground, nada que mostrarle al usuario por un barrido silencioso.
+  }
 }
