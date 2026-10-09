@@ -55,8 +55,21 @@ export function NextTrainingBanner() {
   // más para llegar a donde ya se sabía ir) -- directo al día del grupo
   // específico, mismo destino que "Ir a este día" en day-detail-modal.jsx
   // (bug real, 2026-10-05: "para cada asignación" quedaba un paso atrás).
+  // Esa ruta es de GESTIÓN (editar/cancelar/vaciar), exclusiva del
+  // entrenador -- este banner se muestra para los DOS roles (es el mismo
+  // componente en Home), así que un corredor no puede ir ahí (bug real
+  // reportado 2026-10-08, "gravísimo": corredor viendo los botones de
+  // edición del entrenador). Ahora gateado también adentro de
+  // GroupCalendarDayScreen (RequireRole) como defensa real -- esto de acá
+  // es además la UX correcta: el corredor va a su propio calendario
+  // general con el día como deep-link (abre el mismo DayDetailModal de
+  // solo lectura que ya usa su calendario, ver my-calendar-screen.jsx).
   const goToCalendarDay = (session) => {
-    router.push(`/teams/${session.teamId}/groups/${session.groupId}/calendar/${session.date}`);
+    if (role === 'trainer') {
+      router.push(`/teams/${session.teamId}/groups/${session.groupId}/calendar/${session.date}`);
+      return;
+    }
+    router.push(`/calendar?date=${session.date}`);
   };
 
   return (

@@ -86,6 +86,14 @@ function SessionPreStartScreenContent() {
   // cancelar ya no deja el runner_session en wip para siempre, así que
   // también necesita su propia ventana de "ya sé localmente que terminó").
   const [locallyTerminalStatus, setLocallyTerminalStatus] = useState(null);
+  // Si el cierre terminal local (completed O cancelled -- las dos
+  // terminaciones posibles, ver Gap 19 arriba) YA llegó a confirmar su
+  // PATCH en el backend alguna vez (`session_runs.runner_session_finished`,
+  // puesto por syncRun#markRunnerSessionFinished SOLO después de ese PATCH
+  // exitoso, para CUALQUIERA de los dos cierres -- `synced` es de cada SET
+  // individual, no del cierre del run; no sirve acá) -- se usa más abajo
+  // para reconciliar contra el servidor, ver `finished`/`interrupted`.
+  const [locallyTerminalWasSynced, setLocallyTerminalWasSynced] = useState(false);
   // Un run local YA en curso (volvió a entrar tras cerrar la app a mitad de
   // sesión) exime de la sala de espera de abajo -- es resumir lo que ya
   // arrancó, no un ingreso nuevo que el entrenador todavía no abrió.
@@ -133,11 +141,15 @@ function SessionPreStartScreenContent() {
               latest?.status === RUN_STATUS.COMPLETED ? 'completed' : latest?.status === RUN_STATUS.CANCELLED ? 'cancelled' : null,
             );
             setHasLocalInProgressRun(latest?.status === RUN_STATUS.IN_PROGRESS);
+            setLocallyTerminalWasSynced(
+              (latest?.status === RUN_STATUS.COMPLETED || latest?.status === RUN_STATUS.CANCELLED) && latest.runner_session_finished === 1,
+            );
           }
         } catch {
           if (!cancelled) {
             setLocallyTerminalStatus(null);
             setHasLocalInProgressRun(false);
+            setLocallyTerminalWasSynced(false);
           }
         }
       })();
@@ -153,11 +165,41 @@ function SessionPreStartScreenContent() {
   // que el segundo Play crea un run nuevo desde cero). `locallyCompleted`
   // cubre el hueco corto entre ese cierre local y la confirmación remota.
   const past = isPastSessionDate(pendingSession ?? { date: '' });
-  const finished = runnerSession?.status === 'finished' || locallyTerminalStatus === 'completed';
+  // El local "completed"/"cancelled" (SQLite, session_runs) vive en el
+  // dispositivo -- sobrevive un reload de JS, cerrar la app, e incluso un
+  // reset del backend (make demo-restore en dev), que solo toca la base
+  // del servidor. Si ese cierre YA se había confirmado contra el backend
+  // alguna vez (locallyTerminalWasSynced) y el servidor ahora confirma que
+  // no existe NINGÚN runner_session para esta sesión (query resuelta, no
+  // `wip`, no `finished`, directamente null -- un 404 real, no "todavía
+  // cargando"), la única explicación es que algo externo al dispositivo
+  // borró ese registro -- el servidor manda por sobre un local que ya
+  // demostró poder sincronizar antes. Si el local NUNCA llegó a
+  // sincronizarse (`!locallyTerminalWasSynced`, ej. se cerró sin conexión y
+  // todavía no hizo el PATCH), NO se reconcilia -- ahí el servidor en null
+  // es simplemente "todavía no llegó", y hay que seguir confiando en lo
+  // local hasta que el sync lo resuelva (si no, un corredor sin señal
+  // podría terminar re-arrancando una sesión que de verdad ya hizo/cortó).
+  // Bug real reportado, 2026-10-08: después de un demo-restore el corredor
+  // seguía viendo "Registro de Sesión" con todas las series en "sin
+  // registro" para una sesión que el backend había vuelto a abrir -- el
+  // gate de abajo nunca consultaba el servidor para nada que no fuera el
+  // estado base, confiaba ciego en locallyTerminalStatus. Aplica a los DOS
+  // cierres (completed Y cancelled) -- un cierre forzado por el entrenador
+  // ANTES de que este corredor llegara a terminar su última serie
+  // (training-session-live-screen.jsx, control:session_finished -- ver ese
+  // archivo) pasa por cancelSession(), no finalizeSession(), dejando el run
+  // local en CANCELLED -- la primera versión de este fix solo cubría
+  // COMPLETED y no alcanzaba para ese caso real (reportado 2026-10-09,
+  // seguía fallando tras el primer intento).
+  const serverConfirmsNoRunnerSession = !runnerSessionLoading && runnerSession === null;
+  const externallyResetLocally = locallyTerminalWasSynced && serverConfirmsNoRunnerSession
+    && (locallyTerminalStatus === 'completed' || locallyTerminalStatus === 'cancelled');
+  const finished = runnerSession?.status === 'finished' || (locallyTerminalStatus === 'completed' && !externallyResetLocally);
   // Gap 19: cancelar a mitad de camino es una terminación temprana, no
   // "deshacer" -- entra a Registro de Sesión igual que `finished` (lo ya
   // hecho queda ahí para revisar/editar), nunca vuelve a Play.
-  const interrupted = runnerSession?.status === 'interrupted' || locallyTerminalStatus === 'cancelled';
+  const interrupted = runnerSession?.status === 'interrupted' || (locallyTerminalStatus === 'cancelled' && !externallyResetLocally);
   const mode = finished || interrupted ? 'review' : 'manual';
   const showReview = past || finished || interrupted;
 
@@ -177,7 +219,7 @@ function SessionPreStartScreenContent() {
   // de "solo app nativa" en su lugar) -- apagar el polling ahí evita pedidos
   // que no se van a reflejar en ningún lado.
   const instanceGateEnabled = !isWeb && Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !finished && !interrupted;
-  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, instanceGateEnabled, { refetchInterval: instanceGateEnabled ? 5000 : false });
+  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, instanceGateEnabled, { refetchInterval: instanceGateEnabled ? 5000 : false, staleTime: 0 });
   const gateLoading = instanceGateEnabled && !alreadyStarted && liveInstance == null;
   const waitingForTrainer = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.openedAt == null;
   // Nunca llegó a arrancar nada y el entrenador ya cerró -- caso límite, sin
@@ -218,14 +260,26 @@ function SessionPreStartScreenContent() {
   // Aviso de que se destrabó la sala de espera -- el polling de arriba ya
   // hace que el botón cambie solo (sin recargar ni volver a entrar), pero sin
   // esto no había ninguna señal de que el cambio pasó justo ahora.
+  // `waitingForTrainer` pasar de true a false NO siempre significa "el
+  // entrenador abrió la sesión" -- también pasa a false si `alreadyStarted`
+  // se vuelve true (ej. runnerSession resuelve DESPUÉS que liveInstance,
+  // en la misma carga inicial, confirmando que esta sesión ya se hizo) o si
+  // `instanceGateEnabled` se apaga por otro motivo. Con el chequeo de antes
+  // (comparar solo el booleano derivado) ese mismo caso disparaba la toast
+  // igual, con un mensaje que no correspondía -- bug real reportado,
+  // 2026-10-08, "cada vez que entro salta la toast". `nowOpen` repite la
+  // MISMA condición puntual (`liveInstance.openedAt != null`) que de verdad
+  // significa "se abrió", sin el atajo de "lo que sea que haga false a
+  // waitingForTrainer cuenta".
   const wasWaitingRef = useRef(false);
   useEffect(() => {
-    if (wasWaitingRef.current && !waitingForTrainer) {
+    const nowOpen = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.openedAt != null;
+    if (wasWaitingRef.current && nowOpen) {
       notifySuccess();
       Toast.show({ type: 'success', text1: 'El entrenador abrió la sesión', text2: 'Ya podés iniciar.' });
     }
     wasWaitingRef.current = waitingForTrainer;
-  }, [waitingForTrainer]);
+  }, [waitingForTrainer, instanceGateEnabled, alreadyStarted, liveInstance]);
 
   if (!pendingSession) return <Redirect href="/" />;
 

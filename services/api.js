@@ -60,8 +60,18 @@ async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, ...fetch
       }
       await refreshPromise;
       return await request(path, { ...fetchOptions, _isRetry: true, exposeStatus });
-    } catch {
-      await useAuthStore.getState().logout();
+    } catch (refreshErr) {
+      // Solo cerrar sesión si el refresh FALLÓ CON UNA RESPUESTA (status
+      // presente -- el backend de verdad rechazó el refresh token, ej.
+      // vencido/revocado). Un error de red (mapNetworkError, sin
+      // `.status`: timeout, backend reiniciando, microcorte de conexión)
+      // no significa que la sesión sea inválida -- antes cualquiera de
+      // los dos disparaba logout por igual, causando el "me desloguea de
+      // la nada" reportado (coincidía justo con reiniciar el backend o
+      // cortes breves de red, 2026-10-08).
+      if (refreshErr?.status) {
+        await useAuthStore.getState().logout();
+      }
       // sigue abajo y deja que la response 401 original se maneje como
       // cualquier otro error — el caller original ve el fallo, no queda colgado
     }

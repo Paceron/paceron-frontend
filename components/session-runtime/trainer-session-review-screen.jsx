@@ -98,9 +98,18 @@ function TrainerSessionReviewScreenContent() {
 
   if (!pendingSession) return <Redirect href="/" />;
 
+  // router.replace, no router.back(): esta pantalla se llega siempre por
+  // la misma cadena de pushes (calendario -> pre-start -> live ->
+  // review), 3 niveles -- un solo back() vuelve a la pantalla LIVE, que ya
+  // terminó (WS desconectado, sin participantes) y se ve en blanco; un
+  // segundo back() recién ahí llega a pre-start, mostrando el botón de
+  // iniciar de nuevo (bug real reportado, 2026-10-08: "a veces me manda
+  // al pre-sesión... otras me deja en una pantalla en blanco"). Reemplazar
+  // todo el stack en un solo salto evita volver a montar cualquiera de las
+  // dos pantallas intermedias, ya obsoletas una vez terminada la sesión.
   const handleDone = () => {
     clearPendingSession();
-    router.back();
+    router.replace('/administered-calendar');
   };
 
   const openAthleteReview = (participant) => {

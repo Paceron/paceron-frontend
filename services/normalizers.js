@@ -899,7 +899,12 @@ export function toSessionFeedbackListModel(dtos = []) {
 // skipped → "Saltada"; el resto "Completada" con sus valores.
 export function buildSessionReviewModel(sessionInstance, feedbackGroups = []) {
   const exercises = sessionInstance?.exercises ?? [];
-  const feedbackByExercise = new Map(feedbackGroups.map((group) => [String(group.exerciseId), group.sets]));
+  // Array.isArray, no solo el default de arriba -- el default de un
+  // parámetro solo cubre `undefined` explícito; `null` o cualquier otra
+  // forma no-array rompía igual (bug real reportado, 2026-10-08, durante
+  // rondas de demo-restore del backend).
+  const groups = Array.isArray(feedbackGroups) ? feedbackGroups : [];
+  const feedbackByExercise = new Map(groups.map((group) => [String(group.exerciseId), group.sets]));
 
   return exercises.map((exercise) => {
     const setsForExercise = feedbackByExercise.get(String(exercise.id)) ?? [];
