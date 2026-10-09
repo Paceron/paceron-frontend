@@ -228,6 +228,26 @@ export function useLiveSessionRuntime() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booted]);
 
+  // Heartbeat de presencia -- bug real reportado: el entrenador no veía a un
+  // corredor en el mapa/lista hasta que ese corredor salía y volvía a entrar
+  // (resuscribe -> nuevo `presence:joined` vía onSubscribed) o arrancaba una
+  // serie (primer `presence:set_status`). El `joined` de onSubscribed es UN
+  // SOLO tiro -- si el entrenador no estaba conectado en ese instante exacto
+  // (o el mensaje se perdió), nunca se repite por su cuenta. Si además el
+  // corredor tiene el GPS apagado (gpsEnabled=false o sin permiso), tampoco
+  // hay `position` continuo que lo salve -- quedaba invisible hasta una
+  // acción manual. Reenviar `joined` cada 15s mientras el canal esté activo
+  // autocura cualquier mensaje perdido sin esperar ninguna acción del
+  // corredor -- el reducer del entrenador (applyParticipantMessage) ya trata
+  // `joined` repetido como no-op seguro.
+  useEffect(() => {
+    if (!channel) return undefined;
+    const heartbeat = setInterval(() => {
+      send('presence', undefined, { event: 'joined', payload: {} });
+    }, 15000);
+    return () => clearInterval(heartbeat);
+  }, [channel, send]);
+
   const syncIncrementally = () => {
     if (!run) return;
     logDebug(`[live] syncRun(${run.id}) disparado`);

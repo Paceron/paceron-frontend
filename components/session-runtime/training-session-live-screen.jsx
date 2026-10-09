@@ -730,13 +730,19 @@ function TrainingSessionLiveScreenContent() {
 
   const [messagesVisible, setMessagesVisible] = useState(false);
   const sessionInstanceId = run?.session_instance_id ?? null;
-  const { messages } = useSessionMessages(sessionInstanceId);
+  const { messages, isLoading: messagesLoading } = useSessionMessages(sessionInstanceId);
   const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
   const deliveredMessageIdsRef = useRef(new Set());
   const messagesSeededRef = useRef(false);
   const [deliveryQueue, setDeliveryQueue] = useState([]);
 
+  // Esperar `!messagesLoading` antes de sembrar -- sin esto, el efecto corre
+  // una primera vez con `messages=[]` (antes de que la query resuelva), marca
+  // seeded=true ahí mismo, y cuando los datos reales llegan los trata a TODOS
+  // como "nuevos" (bug real: reabrir la sesión reproducía cada aviso/alerta
+  // de toda la sesión, con sonido y vibración, de una).
   useEffect(() => {
+    if (messagesLoading) return;
     if (!messagesSeededRef.current) {
       for (const message of messages) deliveredMessageIdsRef.current.add(message.id);
       messagesSeededRef.current = true;
@@ -754,7 +760,7 @@ function TrainingSessionLiveScreenContent() {
       if (delivery.haptics === 'heavy') notifyAlerta();
       if (delivery.sound) playAlertSound();
     }
-  }, [messages, myUserId, trainerName, peerMembers]);
+  }, [messages, messagesLoading, myUserId, trainerName, peerMembers]);
   const finalizeTriggeredRef = useRef(false);
 
   // Detecta que no queda ninguna serie pendiente y finaliza -- reacciona a

@@ -158,9 +158,20 @@ function MessageRow({ message, idPrefix, myUserId, rosterMembers, trainerName, o
   );
 }
 
-function ThreadCard({ thread, idPrefix, myUserId, rosterMembers, trainerName, onReply, replyDisabled }) {
+function ThreadCard({ thread, idPrefix, myUserId, rosterMembers, trainerName, onReply, replyDisabled, onHide }) {
   return (
     <View className="mb-3 gap-2.5 rounded-xl border border-slate-100 p-2.5 dark:border-slate-800" nativeID={`${idPrefix}-thread-${thread.rootId}`} testID={`${idPrefix}-thread-${thread.rootId}`}>
+      <Pressable
+        className="flex-row items-center gap-1 self-end active:opacity-70"
+        nativeID={`${idPrefix}-thread-${thread.rootId}-hide-button`}
+        onPress={onHide}
+        testID={`${idPrefix}-thread-${thread.rootId}-hide-button`}
+      >
+        <MaterialCommunityIcons color="#94a3b8" name="eye-off-outline" size={16} />
+        <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-thread-${thread.rootId}-hide-label`} testID={`${idPrefix}-thread-${thread.rootId}-hide-label`}>
+          Ocultar
+        </Text>
+      </Pressable>
       {thread.messages.map((message) => (
         <MessageRow
           idPrefix={`${idPrefix}-message-${message.id}`}
@@ -215,7 +226,7 @@ function TrainerRecipientPicker({ idPrefix, rosterMembers, allSelected, setAllSe
         <MaterialCommunityIcons color={allSelected ? colors.primary : colors.onSurfaceVariant} name={allSelected ? 'check-circle' : 'checkbox-blank-circle-outline'} size={24} />
         <Text className="text-base font-semibold text-slate-800 dark:text-white" nativeID={`${idPrefix}-trainer-picker-all-label`} testID={`${idPrefix}-trainer-picker-all-label`}>Todos</Text>
       </Pressable>
-      <ScrollView className="max-h-52" nativeID={`${idPrefix}-trainer-picker-list`} testID={`${idPrefix}-trainer-picker-list`}>
+      <ScrollView className="max-h-52" keyboardShouldPersistTaps="handled" nativeID={`${idPrefix}-trainer-picker-list`} testID={`${idPrefix}-trainer-picker-list`}>
         {visibleMembers.map((member) => {
           const checked = !allSelected && selectedUserIds.has(String(member.userId));
           return (
@@ -240,7 +251,7 @@ function TrainerRecipientPicker({ idPrefix, rosterMembers, allSelected, setAllSe
 function RunnerRecipientPicker({ idPrefix, trainerName, peerMembers, selectedUserId, setSelectedUserId }) {
   const colors = useThemeColors();
   return (
-    <ScrollView className="max-h-52" nativeID={`${idPrefix}-runner-picker`} testID={`${idPrefix}-runner-picker`}>
+    <ScrollView className="max-h-52" keyboardShouldPersistTaps="handled" nativeID={`${idPrefix}-runner-picker`} testID={`${idPrefix}-runner-picker`}>
       <Pressable
         className={`flex-row items-center gap-2.5 p-3 ${selectedUserId === 'trainer' ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''}`}
         nativeID={`${idPrefix}-runner-picker-trainer`}
@@ -290,6 +301,11 @@ export function SessionMessagesModal({
   const [allSelected, setAllSelected] = useState(true);
   const [selectedUserIds, setSelectedUserIds] = useState(() => new Set());
   const [runnerRecipientId, setRunnerRecipientId] = useState('trainer');
+  // Ocultar un hilo (sin backend para "borrar" un mensaje, Gap 27) -- solo
+  // local, dura mientras este componente esté montado (toda la visita a la
+  // sesión en vivo, el Modal se queda montado aunque `visible` esté en
+  // false). Vuelve a verse si se sale y se reentra a la sesión.
+  const [hiddenThreadIds, setHiddenThreadIds] = useState(() => new Set());
 
   const peerMembers = role === 'runner'
     ? rosterMembers.filter((m) => connectedPeerIds?.has(String(m.userId)))
@@ -337,11 +353,27 @@ export function SessionMessagesModal({
     ? (allSelected ? 'Todos' : `${selectedUserIds.size} seleccionado(s)`)
     : (runnerRecipientId === 'trainer' ? (trainerName ?? 'Entrenador') : rosterMembers.find((m) => String(m.userId) === runnerRecipientId)?.name ?? 'Elegí destinatario');
 
-  const threads = groupMessagesByThread(messages);
+  const threads = groupMessagesByThread(messages).filter((thread) => !hiddenThreadIds.has(thread.rootId));
+
+  const hideThread = (rootId) => {
+    setHiddenThreadIds((current) => new Set(current).add(rootId));
+  };
 
   return (
     <Modal animationType="fade" nativeID={idPrefix} onRequestClose={onClose} testID={idPrefix} transparent visible={visible}>
-      <KeyboardAvoidingView behavior={isAndroid ? undefined : 'padding'} nativeID={`${idPrefix}-keyboard-avoiding`} style={{ flex: 1 }} testID={`${idPrefix}-keyboard-avoiding`}>
+      {/* `behavior="height"` en Android (no `undefined`, a diferencia de
+        searchable-picker-field.jsx): ahí el input vive arriba de una card
+        chica centrada (max-h-85%), así que el `adjustResize` nativo nunca
+        necesitaba mover nada para mantenerlo visible -- "undefined" ahí
+        "funcionaba" por suerte de layout, no porque el Modal de RN herede
+        de verdad el resize de la ventana de la Activity. Acá el compose
+        vive pegado ABAJO de una card h-full -- el caso real que expone que
+        el Modal de Android no participa del adjustResize (bug real
+        reportado: el teclado seguía tapando el input aun con el
+        KeyboardAvoidingView puesto). `height` fuerza al KeyboardAvoidingView
+        a encogerse por su cuenta, sin depender de que la ventana nativa lo
+        haga. */}
+      <KeyboardAvoidingView behavior={isAndroid ? 'height' : 'padding'} nativeID={`${idPrefix}-keyboard-avoiding`} style={{ flex: 1 }} testID={`${idPrefix}-keyboard-avoiding`}>
         <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
           <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
             <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
@@ -383,12 +415,13 @@ export function SessionMessagesModal({
                 </View>
               ) : (
                 <>
-                  <ScrollView className="flex-1" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
+                  <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
                     {threads.map((thread) => (
                       <ThreadCard
                         idPrefix={idPrefix}
                         key={thread.rootId}
                         myUserId={myUserId}
+                        onHide={() => hideThread(thread.rootId)}
                         onReply={handleReply}
                         replyDisabled={isSending}
                         rosterMembers={rosterMembers}
@@ -396,9 +429,9 @@ export function SessionMessagesModal({
                         trainerName={trainerName}
                       />
                     ))}
-                    {messages.length === 0 && (
+                    {threads.length === 0 && (
                       <Text className="p-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
-                        Todavía no hay mensajes en esta sesión.
+                        {messages.length === 0 ? 'Todavía no hay mensajes en esta sesión.' : 'Ocultaste todos los mensajes.'}
                       </Text>
                     )}
                   </ScrollView>

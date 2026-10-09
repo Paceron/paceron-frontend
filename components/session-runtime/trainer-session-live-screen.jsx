@@ -472,7 +472,7 @@ function TrainerSessionLiveScreenContent() {
   const [attendanceVisible, setAttendanceVisible] = useState(false);
   const [finishConfirmVisible, setFinishConfirmVisible] = useState(false);
   const [messagesVisible, setMessagesVisible] = useState(false);
-  const { messages } = useSessionMessages(sessionInstanceId);
+  const { messages, isLoading: messagesLoading } = useSessionMessages(sessionInstanceId);
   const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
   const cameraRef = useRef(null);
   const dragRef = useRef(null);
@@ -520,13 +520,20 @@ function TrainerSessionLiveScreenContent() {
     if (finishConfirmVisible) notifyWarning();
   }, [finishConfirmVisible]);
 
-  // Entrega por severidad (Gap 27) -- el PRIMER fetch (al montar la pantalla,
-  // trae TODO el historial) solo siembra deliveredMessageIdsRef, sin disparar
-  // ningún toast/modal/haptics/sonido -- si no, reabrir esta pantalla
-  // reproduciría cada alerta de toda la sesión otra vez. Solo los mensajes
-  // que llegan DESPUÉS de ese primer fetch (vía la invalidación que dispara
-  // useTrainerSessionRuntime al recibir control:message_created) se entregan.
+  // Entrega por severidad (Gap 27) -- el PRIMER fetch que de verdad resuelve
+  // (no el render inicial con `messages=[]` mientras la query todavía está
+  // cargando) solo siembra deliveredMessageIdsRef, sin disparar ningún
+  // toast/modal/haptics/sonido -- si no, reabrir esta pantalla reproduciría
+  // cada alerta de toda la sesión otra vez (bug real: el efecto corre una
+  // primera vez con `messages=[]` ANTES de que la query resuelva, marcaba
+  // seeded=true ahí mismo, y cuando los datos reales llegaban un instante
+  // después los trataba a todos como "nuevos"). Esperar `!messagesLoading`
+  // asegura que la siembra ocurra sobre los datos reales, no sobre el
+  // array vacío del primer render. Solo los mensajes que llegan DESPUÉS de
+  // esa siembra (vía la invalidación que dispara useTrainerSessionRuntime al
+  // recibir control:message_created) se entregan.
   useEffect(() => {
+    if (messagesLoading) return;
     if (!messagesSeededRef.current) {
       for (const message of messages) deliveredMessageIdsRef.current.add(message.id);
       messagesSeededRef.current = true;
@@ -544,7 +551,7 @@ function TrainerSessionLiveScreenContent() {
       if (delivery.haptics === 'heavy') notifyAlerta();
       if (delivery.sound) playAlertSound();
     }
-  }, [messages, trainerUserId, runnerMembers]);
+  }, [messages, messagesLoading, trainerUserId, runnerMembers]);
 
   const handleFinish = async () => {
     await finalize();
