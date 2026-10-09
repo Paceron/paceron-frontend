@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
@@ -26,7 +27,11 @@ import { nextExercise } from '../../utils/trainer-participant-progress.js';
 import { colorForUserId, TRAINER_MARKER_COLOR } from '../../utils/participant-color.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
-import { notifySuccess, notifyWarning } from '../../utils/haptics.js';
+import { notifySuccess, notifyWarning, notifyAviso, notifyAlerta } from '../../utils/haptics.js';
+import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
+import { SessionMessagesModal } from './session-messages-modal.jsx';
+import { deliveryFor, pickUndeliveredMessages } from '../../utils/session-message-delivery.js';
+import { playAlertSound } from '../../utils/session-alert-sound.js';
 
 // Runtime de la sesión PRESENCIAL para el ENTRENADOR -- mapa con los
 // corredores conectados arriba, controles abajo. A diferencia de
@@ -466,8 +471,14 @@ function TrainerSessionLiveScreenContent() {
   const [fullscreenMap, setFullscreenMap] = useState(false);
   const [attendanceVisible, setAttendanceVisible] = useState(false);
   const [finishConfirmVisible, setFinishConfirmVisible] = useState(false);
+  const [messagesVisible, setMessagesVisible] = useState(false);
+  const { messages } = useSessionMessages(sessionInstanceId);
+  const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
   const cameraRef = useRef(null);
   const dragRef = useRef(null);
+  const deliveredMessageIdsRef = useRef(new Set());
+  const messagesSeededRef = useRef(false);
+  const [deliveryQueue, setDeliveryQueue] = useState([]);
 
   // Centro inicial del mapa: el punto de encuentro marcado para la sesión
   // presencial, no una zona fija arbitraria -- el auto-encuadre (efecto de
@@ -508,6 +519,32 @@ function TrainerSessionLiveScreenContent() {
   useEffect(() => {
     if (finishConfirmVisible) notifyWarning();
   }, [finishConfirmVisible]);
+
+  // Entrega por severidad (Gap 27) -- el PRIMER fetch (al montar la pantalla,
+  // trae TODO el historial) solo siembra deliveredMessageIdsRef, sin disparar
+  // ningún toast/modal/haptics/sonido -- si no, reabrir esta pantalla
+  // reproduciría cada alerta de toda la sesión otra vez. Solo los mensajes
+  // que llegan DESPUÉS de ese primer fetch (vía la invalidación que dispara
+  // useTrainerSessionRuntime al recibir control:message_created) se entregan.
+  useEffect(() => {
+    if (!messagesSeededRef.current) {
+      for (const message of messages) deliveredMessageIdsRef.current.add(message.id);
+      messagesSeededRef.current = true;
+      return;
+    }
+    const toDeliver = pickUndeliveredMessages(messages, deliveredMessageIdsRef.current, trainerUserId);
+    if (toDeliver.length === 0) return;
+    for (const message of toDeliver) {
+      deliveredMessageIdsRef.current.add(message.id);
+      const delivery = deliveryFor(message.type);
+      const senderName = message.senderRole === 'trainer' ? 'Vos' : (runnerMembers.find((m) => String(m.userId) === message.senderUserId)?.name ?? 'Corredor');
+      if (delivery.toast) Toast.show({ type: 'info', text1: senderName, text2: message.body });
+      if (delivery.modal) setDeliveryQueue((current) => [...current, message]);
+      if (delivery.haptics === 'medium') notifyAviso();
+      if (delivery.haptics === 'heavy') notifyAlerta();
+      if (delivery.sound) playAlertSound();
+    }
+  }, [messages, trainerUserId, runnerMembers]);
 
   const handleFinish = async () => {
     await finalize();
@@ -621,6 +658,15 @@ function TrainerSessionLiveScreenContent() {
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-group-outline" size={18} />
               <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-participants-button-label" testID="trainer-session-live-participants-button-label">Participantes</Text>
             </Pressable>
+            <Pressable
+              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
+              nativeID="trainer-session-live-messages-button"
+              onPress={() => setMessagesVisible(true)}
+              testID="trainer-session-live-messages-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="message-text-outline" size={18} />
+              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-messages-button-label" testID="trainer-session-live-messages-button-label">Mensajes</Text>
+            </Pressable>
           </View>
 
           <Pressable
@@ -669,6 +715,34 @@ function TrainerSessionLiveScreenContent() {
         teamName={pendingSession.teamName}
         visible={attendanceVisible}
       />
+
+      <SessionMessagesModal
+        idPrefix="trainer-session-live-messages-modal"
+        isSending={isSending}
+        myUserId={trainerUserId}
+        onClose={() => setMessagesVisible(false)}
+        onSend={sendMessage}
+        messages={messages}
+        role="trainer"
+        rosterMembers={runnerMembers}
+        visible={messagesVisible}
+      />
+
+      <Modal animationType="fade" nativeID="trainer-session-live-delivery-modal" onRequestClose={() => setDeliveryQueue((q) => q.slice(1))} testID="trainer-session-live-delivery-modal" transparent visible={deliveryQueue.length > 0}>
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="trainer-session-live-delivery-modal-backdrop" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="trainer-session-live-delivery-modal-backdrop">
+          <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="trainer-session-live-delivery-modal-card" onPress={() => {}} testID="trainer-session-live-delivery-modal-card">
+            <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="trainer-session-live-delivery-modal-title" testID="trainer-session-live-delivery-modal-title">
+              {deliveryQueue[0]?.type === 'alerta' ? 'Alerta' : 'Aviso'}
+            </Text>
+            <Text className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="trainer-session-live-delivery-modal-body" testID="trainer-session-live-delivery-modal-body">
+              {deliveryQueue[0]?.body}
+            </Text>
+            <Pressable className="mt-5 h-11 items-center justify-center rounded-full bg-primary active:opacity-80" nativeID="trainer-session-live-delivery-modal-close-button" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="trainer-session-live-delivery-modal-close-button">
+              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="trainer-session-live-delivery-modal-close-label" testID="trainer-session-live-delivery-modal-close-label">Cerrar</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <ConfirmDestructiveModal
         confirmLabel={unfinished.length > 0 ? 'Finalizar igual' : 'Finalizar sesión'}
