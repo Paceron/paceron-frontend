@@ -4,8 +4,8 @@ import { useThemeColors } from '../../theme/colors.js';
 
 // Barra de pestañas horizontal reusada por pantallas con secciones que
 // merecen navegación propia en vez de ir todas apiladas — hoy
-// TeamDetailScreen (solo en web, mobile apila) y TrainingPlansScreen
-// (en ambas plataformas, ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md).
+// TeamDetailScreen y TrainingPlansScreen (en las dos plataformas, ver
+// docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md).
 // `scope` prefija los nativeID/testID para que no colisionen entre
 // pantallas que la usen a la vez.
 export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {

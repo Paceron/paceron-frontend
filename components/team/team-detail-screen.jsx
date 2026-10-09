@@ -28,6 +28,7 @@ import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { useTeamDetailTabStore } from '../../store/team-detail-tab-store.js';
 import { CreateGroupModal } from './create-group-modal.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
@@ -65,8 +66,9 @@ const TEAM_STATUS_META = {
 // siguen siendo módulos reservados) — valores mock fijos.
 const MOCK_TEAM_METRICS = { trainingsCompleted: 210, goalsCompleted: 96 };
 
-// Pestañas — solo en web (isWeb más abajo). En mobile las 3 secciones van
-// apiladas en una sola pantalla, sin navegación por pestañas.
+// Pestañas, en las dos plataformas (antes solo en web, mobile apilaba las
+// 4 secciones en una sola pantalla sin navegación por pestañas -- misma
+// pieza de TabBar que ya usaba web, solo se sacó el gate de isWeb).
 const TABS = [
   { id: 'general', label: 'Información general y estadísticas', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
@@ -627,7 +629,20 @@ function TeamDetailScreenContent({ teamId }) {
   const canSeeGroups = isTrainerView || team?.showGroupsToRunners;
 
   const params = useLocalSearchParams();
-  const [activeTab, setActiveTab] = useState(TABS.some((t) => t.id === params.tab) ? params.tab : 'general');
+  // Zustand (sin persist), no useState -- esta pantalla se remonta al
+  // navegar afuera y volver (ej. al calendario de un grupo, al detalle
+  // de un corredor), lo que perdía la pestaña elegida. Un deep link con
+  // `?tab=` sigue pudiendo forzar una pestaña puntual al entrar, pero
+  // solo una vez por montaje (si no, pisaría la pestaña recordada en
+  // cualquier re-render futuro de este mismo montaje).
+  const activeTab = useTeamDetailTabStore((s) => s.activeTab);
+  const setActiveTab = useTeamDetailTabStore((s) => s.setActiveTab);
+  const appliedTabParamRef = useRef(false);
+  useEffect(() => {
+    if (appliedTabParamRef.current) return;
+    appliedTabParamRef.current = true;
+    if (TABS.some((t) => t.id === params.tab)) setActiveTab(params.tab);
+  }, [params.tab, setActiveTab]);
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
 
@@ -1071,22 +1086,11 @@ function TeamDetailScreenContent({ teamId }) {
           />
         )}
 
-        {isWeb ? (
-          <>
-            <TabBar active={activeTab} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
-            {activeTab === 'general' && generalContent}
-            {activeTab === 'corredores' && corredoresContent}
-            {activeTab === 'grupos' && gruposContent}
-            {activeTab === 'solicitudes' && solicitudesContent}
-          </>
-        ) : (
-          <>
-            {generalContent}
-            {corredoresContent}
-            {gruposContent}
-            {solicitudesContent}
-          </>
-        )}
+        <TabBar active={activeTab} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
+        {activeTab === 'general' && generalContent}
+        {activeTab === 'corredores' && corredoresContent}
+        {activeTab === 'grupos' && gruposContent}
+        {activeTab === 'solicitudes' && solicitudesContent}
       </View>
 
       {canDeleteTeam && (
