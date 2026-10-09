@@ -219,7 +219,7 @@ function SessionPreStartScreenContent() {
   // de "solo app nativa" en su lugar) -- apagar el polling ahí evita pedidos
   // que no se van a reflejar en ningún lado.
   const instanceGateEnabled = !isWeb && Boolean(sessionInstanceId) && Boolean(pendingSession?.isPresencial) && !finished && !interrupted;
-  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, instanceGateEnabled, { refetchInterval: instanceGateEnabled ? 5000 : false });
+  const { sessionInstance: liveInstance } = useSessionInstance(sessionInstanceId, instanceGateEnabled, { refetchInterval: instanceGateEnabled ? 5000 : false, staleTime: 0 });
   const gateLoading = instanceGateEnabled && !alreadyStarted && liveInstance == null;
   const waitingForTrainer = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.openedAt == null;
   // Nunca llegó a arrancar nada y el entrenador ya cerró -- caso límite, sin
