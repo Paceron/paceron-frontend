@@ -457,7 +457,7 @@ function TrainerSessionLiveScreenContent() {
   // lista), nunca mezclado con la gente a la que está supervisando.
   const runnerMembers = rosterMembers.filter((m) => String(m.userId) !== String(trainerUserId));
 
-  const { connectionStatus, participants, feed, selfPosition, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers: runnerMembers });
+  const { connectionStatus, participants, feed, selfPosition, finalize } = useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers: runnerMembers, teamId, groupId });
 
   const [participantsVisible, setParticipantsVisible] = useState(false);
   const [feedVisible, setFeedVisible] = useState(false);
@@ -661,6 +661,7 @@ function TrainerSessionLiveScreenContent() {
       <AttendanceSessionModal
         groupId={groupId}
         onClose={() => setAttendanceVisible(false)}
+        realtimeSynced
         sessionDate={pendingSession.date}
         sessionInstanceId={sessionInstanceId}
         sessionName={pendingSession.sessionInstance?.name}

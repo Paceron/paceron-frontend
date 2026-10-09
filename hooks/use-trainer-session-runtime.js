@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useLiveSessionStore } from '../store/live-session-store.js';
 import { useRealtimeChannel } from './use-realtime-channel.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
@@ -17,8 +17,9 @@ import { logDebug } from '../utils/debug-log.js';
 // session_run local -- el entrenador es supervisor, no ejecuta series. Su GPS
 // es incondicional mientras la pantalla está montada (sin el gate por serie
 // activa que tiene el corredor, porque no hay series propias que gatear).
-export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers }) {
+export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterMembers, teamId, groupId }) {
   const gpsEnabled = useLiveSessionStore((s) => s.gpsEnabled);
+  const queryClient = useQueryClient();
 
   const [participants, setParticipants] = useState(() => initParticipants(rosterMembers));
   const [feed, setFeed] = useState([]);
@@ -61,6 +62,15 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
         status: feedback.completionStatus,
         timestamp: new Date(feedback.updatedAt ?? feedback.endedAt ?? Date.now()).getTime(),
       }));
+      return;
+    }
+    // Gap 28: el backend emite esto apenas registra una asistencia (QR o
+    // carga manual), sin incluir la fila nueva en el payload -- igual que
+    // update:set_event, el aviso solo dice "revisá", no trae el dato. Invalida
+    // la query de AttendanceSessionModal (si está montada y escuchando) en vez
+    // de esperar al próximo tick del polling de 6s que esa pantalla ya tenía.
+    if (msg.type === 'update:attendance_event' && teamId && groupId) {
+      queryClient.invalidateQueries({ queryKey: ['attendance', teamId, 'grid', groupId, sessionInstanceId] });
     }
   };
 

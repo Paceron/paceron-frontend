@@ -162,7 +162,14 @@ del flujo de estampado (sub-pieza 3 de la serie de gestión avanzada del
 calendario — menú de día y selección múltiple ya implementados y
 probados), se abre un gap propio:
 
-## Gap 8 — `stamp` no permite excluir fechas puntuales del rango
+## Gap 8 — `stamp` no permite excluir fechas puntuales del rango [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, confirmado por backend.** `exclude_dates` (array de fechas
+`YYYY-MM-DD`) ya existe en el body de `POST /groups/{id}/calendar/stamp` -- formato inválido da
+`422`; fechas fuera del rango se ignoran; un rango totalmente excluido devuelve `201 {"days":[]}`.
+Semántica tal cual se pidió originalmente (ver detalle abajo). Sin acción de frontend pendiente más
+allá de integrar el campo en `stamp-plan-modal.jsx` cuando se retome "evitar pisar selectivo".
+
 
 Hoy `POST /groups/{id}/calendar/stamp {plan_id, start_date, force}` es
 atómico y todo-o-nada sobre el rango completo del plan: si `force` es
@@ -807,7 +814,15 @@ haya sincronizado antes contra ese backend, o resetear la base entre pruebas. Si
 quisiera que una actualización (PATCH) también notifique en vivo, es un cambio de backend (el
 `Notifier.Emit` del controller solo se dispara en el branch de `Create`).
 
-## Gap 23 — `GET /users?ids=` (batch lookup) no trae `photo_url`
+## Gap 23 — `GET /users?ids=` (batch lookup) no trae `photo_url` [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, confirmado por backend contra swagger actual.** `GET
+/users?ids=` y `GET /users/search` ya incluyen `photo_url` (nullable). Si en la práctica algún
+corredor sigue viéndose con iniciales en el mapa/listas del entrenador, ya no es por falta del
+campo -- revisar el fallback de imagen solo para 404s reales (URL rota), no asumir que el dato no
+llega. Sin acción de frontend pendiente -- `hooks/use-team-roster.js` ya estaba listo para
+consumirlo sin cambios.
+
 
 El roster de equipo/grupo (`hooks/use-team-roster.js`, usado por la pantalla en vivo del
 entrenador para los marcadores/listas con foto+color) resuelve nombre vía
@@ -845,7 +860,12 @@ de la sesión (`utils/trainer-participant-progress.js#exerciseNameById`, ya disp
 sin request extra) -- documentado acá solo para que quien toque este código de nuevo no asuma que
 `exercise_name` puede llegar algún día del lado de `workout_feedback` y lo lea directo del DTO.
 
-## Gap 25 — asistencia en vivo (`GET /attendance/session/{id}`) no refleja a todos los corredores sin confirmar
+## Gap 25 — asistencia en vivo (`GET /attendance/session/{id}`) no refleja a todos los corredores sin confirmar [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, confirmado por backend.** Era la hipótesis 1: la ventana de
+membresía ahora compara por FECHA (no por timestamp) -- corredores con alta el mismo día de la
+sesión ya aparecen en el roster y son elegibles para registrar asistencia. Mergeado en PR #93 del
+backend. Sin acción de frontend pendiente.
 
 Detectado probando la asistencia durante una sesión presencial en vivo (2026-10-03): con 3
 corredores del grupo, el modal mostró "1 confirmada, 0 sin confirmar" cuando en realidad faltaban
@@ -952,7 +972,51 @@ confirmación del entrenador.** Ya no queda roadmap pendiente de este gap:
   thumb del slider a su posición inicial (`DragToFinishButton` pasó a `forwardRef` con un `reset()`
   imperativo).
 
-## Gap 27 — WebSocket no soporta mensajes dirigidos ni persistentes (para broadcast/mensajería del entrenador)
+## Gap 27 — mensajería en sesión en vivo: persistencia + evento liviano de aviso (ya no roadmap, pedido concreto)
+
+**Actualización 2026-10-09 — de roadmap a pedido concreto.** Spec de frontend ya escrita:
+`docs/superpowers/specs/2026-10-09-live-session-messaging-design.md` (branch
+`feature/live-session-messaging`, implementación todavía no arrancada). El diseño descartó
+resolver esto ampliando el relay de WS genérico (lo que pedía la versión anterior de este gap,
+abajo como referencia histórica) -- en cambio el WS no lleva contenido, solo avisa "hay algo
+nuevo, pedilo por REST". Esto evita pedirle al backend un cambio de alcance mayor al gateway
+genérico (filtrado por destinatario a nivel de conexión), aprovechando que la privacidad de un
+mensaje dirigido ya la puede aplicar el backend en el mismo lugar que aplica cualquier filtro de
+autorización: una query REST autenticada.
+
+**Pedido concreto:**
+
+1. Tabla nueva `session_messages` (nombre sugerido, backend ajusta si prefiere): `id`,
+   `session_instance_id`, `sender_user_id`, `sender_role` (`trainer`|`runner`), `type`
+   (`info`|`aviso`|`alerta`), `recipient_mode` (`all`|`multiple`|`direct`), `recipient_user_ids`
+   (array o tabla join -- decisión interna de backend, no cambia el contrato que ve el frontend),
+   `body`, `reply_to_message_id` (nullable, FK a otro `session_messages.id`), `created_at`.
+2. `POST /session-instances/:id/messages` -- body `{type, recipient_mode, recipient_user_ids,
+   body, reply_to_message_id}`. `403` si el emisor no es participante de esa sesión (misma regla
+   de autorización que ya protege el resto de los endpoints de la sesión).
+3. `GET /session-instances/:id/messages?since=<id>` -- devuelve los mensajes visibles para el
+   usuario autenticado posteriores a `since` (omitido o `0` = todo el historial). Visibilidad: un
+   usuario ve un mensaje si es el emisor, O `recipient_mode = 'all'`, O su `userId` está en
+   `recipient_user_ids` -- el backend filtra, el frontend no vuelve a filtrar nada.
+4. Al persistir un `POST` exitoso, el backend reenvía por el canal `session:{id}` (ya existente,
+   Gap 18) un `control: message_created` con payload mínimo `{sessionMessageId}` -- SIN contenido,
+   a propósito (ver nota de privacidad abajo). Mismo patrón ya usado para `update:set_event`.
+
+**Nota de privacidad, por qué el aviso de WS no lleva contenido:** confirmado en Gap 21, el relay
+actual reenvía `presence`/`control` a TODOS los suscriptores del canal sin filtrar por
+destinatario. Mandar el cuerpo de un mensaje privado (ej. un DM corredor-a-corredor) por ese canal
+rompería su privacidad apenas hubiera un tercer suscriptor conectado. Por eso el WS solo avisa
+"revisá" -- el contenido siempre sale del `GET` autenticado del punto 3, que es el único lugar que
+aplica el filtro de verdad.
+
+**Impacto en frontend:** sin acción pendiente mientras este gap sigue abierto del lado backend --
+bloquea el arranque de la implementación en `feature/live-session-messaging` (deliberadamente en
+pausa hasta que esto se resuelva, a pedido del usuario).
+
+---
+
+<details>
+<summary>Versión anterior de este gap (roadmap, antes de la spec de 2026-10-09) -- dejada como referencia histórica, ya no vigente</summary>
 
 Mejora futura (roadmap, no se empieza sin confirmación explícita) -- necesaria para el próximo
 feature de "el entrenador manda mensajes (info/advertencia/alerta/crítico) a todos los corredores
@@ -975,21 +1039,26 @@ falta:
   (ej. guardar el mensaje y reenviarlo si el corredor se reconecta durante la sesión, o degradar a
   una notificación push si ya existe infraestructura de push -- a definir con backend).
 
-**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía.
+Resuelto en el diseño final (ver pedido concreto arriba): no se necesita tocar el relay genérico ni
+decidir persistencia especial por severidad -- todo mensaje persiste igual en `session_messages`
+(no solo los críticos), y el WS nunca lleva contenido, así que el problema de "filtrar por
+destinatario en el relay" no llega a existir.
 
-## Gap 28 — sin evento de WebSocket para asistencia registrada (QR o manual)
+</details>
 
-Mejora futura (roadmap, no se empieza sin confirmación explícita) -- hoy el modal de asistencia
-del entrenador durante la sesión en vivo (`AttendanceSessionModal`) resuelve "casi en vivo" con
-polling (`refetchInterval: 6000` sobre `useSessionAttendance`), decisión tomada explícitamente
-como solución temporal (ver ronda de feedback 2026-10-02) mientras no exista un evento real.
+## Gap 28 — sin evento de WebSocket para asistencia registrada (QR o manual) [RESUELTO del lado backend, pendiente de cablear en frontend]
 
-**Pedido:** cuando se registra una asistencia (por lectura de QR del corredor, o input manual del
-entrenador), el backend emite un mensaje al canal `session:{sessionInstanceId}` (mismo canal que ya
-usa el resto de la sesión en vivo) con el registro nuevo/actualizado -- mismo patrón que
-`update:set_event` (Gap 18), un `update:attendance_event` o similar, con el `athlete_user_id` y el
-nuevo estado de asistencia. El frontend reemplazaría el polling de 6s por escuchar este evento y
-listo.
+**Actualización 2026-10-09 — backend RESUELTO, confirmado.** El backend emite
+`update:attendance_event` al canal `session:{id}` en los 3 casos: alta por QR (`source:"qr"`, SOLO
+si se creó -- el `200` idempotente de un QR repetido no emite nada), carga manual (UN evento por
+corredor creado O actualizado, `source:"manual"`), y borrado (fila de baja: `status:"not_confirmed"`,
+resto de campos `null`). El payload es exactamente la fila de la grilla: `{user_id, status, source,
+registered_at, attendance_id}`. No excluye al emisor (si el propio entrenador carga manualmente,
+también le llega su propio evento).
 
-**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía. El
-polling actual sigue funcionando mientras tanto, solo con el delay de hasta 6s ya conocido.
+**Pendiente en frontend:** reemplazar el `refetchInterval: 6000` de `AttendanceSessionModal` (vía
+`useSessionAttendance`) por un listener del evento en el canal de la sesión ya suscripto (mismo
+patrón que `update:set_event`, Gap 18) -- al recibirlo, invalidar/refetchear la query de asistencia
+en vez de esperar el próximo tick del polling. Mapa de resolución entre backend-dicho (`Gap
+28`) y cómo cablearlo: ver `hooks/use-trainer-session-runtime.js`'s `handleChannelMessage` existente
+como referencia del dispatch pattern ya usado para `update:set_event`.
