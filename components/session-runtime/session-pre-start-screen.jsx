@@ -218,14 +218,26 @@ function SessionPreStartScreenContent() {
   // Aviso de que se destrabó la sala de espera -- el polling de arriba ya
   // hace que el botón cambie solo (sin recargar ni volver a entrar), pero sin
   // esto no había ninguna señal de que el cambio pasó justo ahora.
+  // `waitingForTrainer` pasar de true a false NO siempre significa "el
+  // entrenador abrió la sesión" -- también pasa a false si `alreadyStarted`
+  // se vuelve true (ej. runnerSession resuelve DESPUÉS que liveInstance,
+  // en la misma carga inicial, confirmando que esta sesión ya se hizo) o si
+  // `instanceGateEnabled` se apaga por otro motivo. Con el chequeo de antes
+  // (comparar solo el booleano derivado) ese mismo caso disparaba la toast
+  // igual, con un mensaje que no correspondía -- bug real reportado,
+  // 2026-10-08, "cada vez que entro salta la toast". `nowOpen` repite la
+  // MISMA condición puntual (`liveInstance.openedAt != null`) que de verdad
+  // significa "se abrió", sin el atajo de "lo que sea que haga false a
+  // waitingForTrainer cuenta".
   const wasWaitingRef = useRef(false);
   useEffect(() => {
-    if (wasWaitingRef.current && !waitingForTrainer) {
+    const nowOpen = instanceGateEnabled && !alreadyStarted && liveInstance != null && liveInstance.openedAt != null;
+    if (wasWaitingRef.current && nowOpen) {
       notifySuccess();
       Toast.show({ type: 'success', text1: 'El entrenador abrió la sesión', text2: 'Ya podés iniciar.' });
     }
     wasWaitingRef.current = waitingForTrainer;
-  }, [waitingForTrainer]);
+  }, [waitingForTrainer, instanceGateEnabled, alreadyStarted, liveInstance]);
 
   if (!pendingSession) return <Redirect href="/" />;
 
