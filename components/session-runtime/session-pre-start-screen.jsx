@@ -86,6 +86,11 @@ function SessionPreStartScreenContent() {
   // cancelar ya no deja el runner_session en wip para siempre, así que
   // también necesita su propia ventana de "ya sé localmente que terminó").
   const [locallyTerminalStatus, setLocallyTerminalStatus] = useState(null);
+  // Si el run local "completed" YA se había sincronizado alguna vez (la
+  // columna `synced` de session_runs, puesta por finishRunner/syncRun
+  // cuando el PATCH remoto confirmó) -- se usa más abajo para reconciliar
+  // contra el servidor, ver `finished`.
+  const [locallyCompletedWasSynced, setLocallyCompletedWasSynced] = useState(false);
   // Un run local YA en curso (volvió a entrar tras cerrar la app a mitad de
   // sesión) exime de la sala de espera de abajo -- es resumir lo que ya
   // arrancó, no un ingreso nuevo que el entrenador todavía no abrió.
@@ -133,11 +138,13 @@ function SessionPreStartScreenContent() {
               latest?.status === RUN_STATUS.COMPLETED ? 'completed' : latest?.status === RUN_STATUS.CANCELLED ? 'cancelled' : null,
             );
             setHasLocalInProgressRun(latest?.status === RUN_STATUS.IN_PROGRESS);
+            setLocallyCompletedWasSynced(latest?.status === RUN_STATUS.COMPLETED && latest.synced === 1);
           }
         } catch {
           if (!cancelled) {
             setLocallyTerminalStatus(null);
             setHasLocalInProgressRun(false);
+            setLocallyCompletedWasSynced(false);
           }
         }
       })();
@@ -153,7 +160,29 @@ function SessionPreStartScreenContent() {
   // que el segundo Play crea un run nuevo desde cero). `locallyCompleted`
   // cubre el hueco corto entre ese cierre local y la confirmación remota.
   const past = isPastSessionDate(pendingSession ?? { date: '' });
-  const finished = runnerSession?.status === 'finished' || locallyTerminalStatus === 'completed';
+  // El local "completed" (SQLite, session_runs) vive en el dispositivo --
+  // sobrevive un reload de JS, cerrar la app, e incluso un reset del
+  // backend (make demo-restore en dev), que solo toca la base del
+  // servidor. Si ese run completado YA se había sincronizado alguna vez
+  // (locallyCompletedWasSynced) y el servidor ahora confirma que no
+  // existe NINGÚN runner_session para esta sesión (query resuelta, no
+  // `wip`, no `finished`, directamente null -- un 404 real, no "todavía
+  // cargando"), la única explicación es que algo externo al dispositivo
+  // borró ese registro -- el servidor manda por sobre un local que ya
+  // demostró poder sincronizar antes. Si el local NUNCA llegó a
+  // sincronizarse (`!locallyCompletedWasSynced`, ej. completó la sesión
+  // sin conexión y todavía no hizo el PATCH), NO se reconcilia -- ahí el
+  // servidor en null es simplemente "todavía no llegó", y hay que seguir
+  // confiando en lo local hasta que el sync lo resuelva (si no, un
+  // corredor sin señal podría terminar re-arrancando una sesión que de
+  // verdad ya hizo). Bug real reportado, 2026-10-08: después de un
+  // demo-restore el corredor seguía viendo "Registro de Sesión" con todas
+  // las series en "sin registro" para una sesión que el backend había
+  // vuelto a abrir -- el gate de abajo nunca consultaba el servidor para
+  // nada que no fuera el estado base, confiaba ciego en locallyTerminalStatus.
+  const serverConfirmsNoRunnerSession = !runnerSessionLoading && runnerSession === null;
+  const externallyResetLocally = locallyTerminalStatus === 'completed' && locallyCompletedWasSynced && serverConfirmsNoRunnerSession;
+  const finished = runnerSession?.status === 'finished' || (locallyTerminalStatus === 'completed' && !externallyResetLocally);
   // Gap 19: cancelar a mitad de camino es una terminación temprana, no
   // "deshacer" -- entra a Registro de Sesión igual que `finished` (lo ya
   // hecho queda ahí para revisar/editar), nunca vuelve a Play.
