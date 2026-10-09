@@ -14,7 +14,7 @@ import { useTeam } from '../../hooks/use-teams.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useLiveSessionRuntime } from '../../hooks/use-live-session-runtime.js';
 import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
-import { SessionMessagesModal } from './session-messages-modal.jsx';
+import { SessionMessagesModal, DeliverySeverityModal } from './session-messages-modal.jsx';
 import { formatStopwatch } from '../../utils/time.js';
 import { formatMeters } from '../../utils/distance.js';
 import { notifyError, notifySuccess, notifyWarning, notifyAviso, notifyAlerta } from '../../utils/haptics.js';
@@ -973,21 +973,12 @@ function TrainingSessionLiveScreenContent() {
           visible={messagesVisible}
         />
 
-        <Modal animationType="fade" nativeID="training-session-live-delivery-modal" onRequestClose={() => setDeliveryQueue((q) => q.slice(1))} testID="training-session-live-delivery-modal" transparent visible={deliveryQueue.length > 0}>
-          <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="training-session-live-delivery-modal-backdrop" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="training-session-live-delivery-modal-backdrop">
-            <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="training-session-live-delivery-modal-card" onPress={() => {}} testID="training-session-live-delivery-modal-card">
-              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="training-session-live-delivery-modal-title" testID="training-session-live-delivery-modal-title">
-                {deliveryQueue[0]?.type === 'alerta' ? 'Alerta' : 'Aviso'}
-              </Text>
-              <Text className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="training-session-live-delivery-modal-body" testID="training-session-live-delivery-modal-body">
-                {deliveryQueue[0]?.body}
-              </Text>
-              <Pressable className="mt-5 h-11 items-center justify-center rounded-full bg-primary active:opacity-80" nativeID="training-session-live-delivery-modal-close-button" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="training-session-live-delivery-modal-close-button">
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="training-session-live-delivery-modal-close-label" testID="training-session-live-delivery-modal-close-label">Cerrar</Text>
-              </Pressable>
-            </Pressable>
-          </Pressable>
-        </Modal>
+        <DeliverySeverityModal
+          idPrefix="training-session-live-delivery-modal"
+          message={deliveryQueue[0] ?? null}
+          onClose={() => setDeliveryQueue((q) => q.slice(1))}
+          visible={deliveryQueue.length > 0}
+        />
       </SafeAreaView>
     </MobileOnlyRoute>
   );

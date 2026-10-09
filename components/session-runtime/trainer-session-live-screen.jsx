@@ -29,7 +29,7 @@ import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { notifySuccess, notifyWarning, notifyAviso, notifyAlerta } from '../../utils/haptics.js';
 import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
-import { SessionMessagesModal } from './session-messages-modal.jsx';
+import { SessionMessagesModal, DeliverySeverityModal } from './session-messages-modal.jsx';
 import { deliveryFor, pickUndeliveredMessages } from '../../utils/session-message-delivery.js';
 import { playAlertSound } from '../../utils/session-alert-sound.js';
 
@@ -639,45 +639,47 @@ function TrainerSessionLiveScreenContent() {
 
       {!fullscreenMap && (
         <View className="gap-3 p-4" nativeID="trainer-session-live-controls" testID="trainer-session-live-controls">
-          <View className="flex-row gap-3" nativeID="trainer-session-live-controls-row" testID="trainer-session-live-controls-row">
+          <View className="flex-row gap-3" nativeID="trainer-session-live-controls-row-1" testID="trainer-session-live-controls-row-1">
             <Pressable
-              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
+              className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
               nativeID="trainer-session-live-attendance-button"
               onPress={() => setAttendanceVisible(true)}
               testID="trainer-session-live-attendance-button"
             >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clipboard-check-outline" size={18} />
-              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-attendance-button-label" testID="trainer-session-live-attendance-button-label">Asistencia</Text>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clipboard-check-outline" size={22} />
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-attendance-button-label" testID="trainer-session-live-attendance-button-label">Asistencia</Text>
             </Pressable>
             <Pressable
-              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
-              nativeID="trainer-session-live-participants-button"
-              onPress={() => setParticipantsVisible(true)}
-              testID="trainer-session-live-participants-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-group-outline" size={18} />
-              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-participants-button-label" testID="trainer-session-live-participants-button-label">Participantes</Text>
-            </Pressable>
-            <Pressable
-              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
+              className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
               nativeID="trainer-session-live-messages-button"
               onPress={() => setMessagesVisible(true)}
               testID="trainer-session-live-messages-button"
             >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="message-text-outline" size={18} />
-              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-messages-button-label" testID="trainer-session-live-messages-button-label">Mensajes</Text>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="message-text-outline" size={22} />
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-messages-button-label" testID="trainer-session-live-messages-button-label">Mensajes</Text>
             </Pressable>
           </View>
 
-          <Pressable
-            className="h-11 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
-            nativeID="trainer-session-live-feed-button"
-            onPress={() => setFeedVisible(true)}
-            testID="trainer-session-live-feed-button"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clipboard-text-clock-outline" size={18} />
-            <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-feed-button-label" testID="trainer-session-live-feed-button-label">Ver registros</Text>
-          </Pressable>
+          <View className="flex-row gap-3" nativeID="trainer-session-live-controls-row-2" testID="trainer-session-live-controls-row-2">
+            <Pressable
+              className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
+              nativeID="trainer-session-live-participants-button"
+              onPress={() => setParticipantsVisible(true)}
+              testID="trainer-session-live-participants-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-group-outline" size={22} />
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-participants-button-label" testID="trainer-session-live-participants-button-label">Participantes</Text>
+            </Pressable>
+            <Pressable
+              className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
+              nativeID="trainer-session-live-feed-button"
+              onPress={() => setFeedVisible(true)}
+              testID="trainer-session-live-feed-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="clipboard-text-clock-outline" size={22} />
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-feed-button-label" testID="trainer-session-live-feed-button-label">Registros</Text>
+            </Pressable>
+          </View>
 
           <DragToFinishButton idPrefix="trainer-session-live-finish" label="Deslizá para finalizar la sesión" onTrigger={handleFinishTrigger} ref={dragRef} />
         </View>
@@ -728,21 +730,12 @@ function TrainerSessionLiveScreenContent() {
         visible={messagesVisible}
       />
 
-      <Modal animationType="fade" nativeID="trainer-session-live-delivery-modal" onRequestClose={() => setDeliveryQueue((q) => q.slice(1))} testID="trainer-session-live-delivery-modal" transparent visible={deliveryQueue.length > 0}>
-        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="trainer-session-live-delivery-modal-backdrop" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="trainer-session-live-delivery-modal-backdrop">
-          <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="trainer-session-live-delivery-modal-card" onPress={() => {}} testID="trainer-session-live-delivery-modal-card">
-            <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="trainer-session-live-delivery-modal-title" testID="trainer-session-live-delivery-modal-title">
-              {deliveryQueue[0]?.type === 'alerta' ? 'Alerta' : 'Aviso'}
-            </Text>
-            <Text className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="trainer-session-live-delivery-modal-body" testID="trainer-session-live-delivery-modal-body">
-              {deliveryQueue[0]?.body}
-            </Text>
-            <Pressable className="mt-5 h-11 items-center justify-center rounded-full bg-primary active:opacity-80" nativeID="trainer-session-live-delivery-modal-close-button" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="trainer-session-live-delivery-modal-close-button">
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="trainer-session-live-delivery-modal-close-label" testID="trainer-session-live-delivery-modal-close-label">Cerrar</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <DeliverySeverityModal
+        idPrefix="trainer-session-live-delivery-modal"
+        message={deliveryQueue[0] ?? null}
+        onClose={() => setDeliveryQueue((q) => q.slice(1))}
+        visible={deliveryQueue.length > 0}
+      />
 
       <ConfirmDestructiveModal
         confirmLabel={unfinished.length > 0 ? 'Finalizar igual' : 'Finalizar sesión'}
