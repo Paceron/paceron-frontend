@@ -122,7 +122,7 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
   };
 
   return (
-    <View className="h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-surface border-b border-slate-200 dark:border-slate-800" nativeID="web-shell-topbar" testID="web-shell-topbar">
+    <View className="relative z-20 h-[60px] w-full flex-row items-center bg-white px-3 dark:bg-surface border-b border-slate-200 dark:border-slate-800" nativeID="web-shell-topbar" testID="web-shell-topbar">
       <Pressable
         className="flex-row items-center gap-2 shrink-0"
         nativeID="web-shell-topbar-brand"

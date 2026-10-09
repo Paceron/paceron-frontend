@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 
@@ -12,7 +12,14 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
   const colors = useThemeColors();
 
   return (
-    <View className="mb-5 flex-row gap-2" nativeID={scope} testID={scope}>
+    <ScrollView
+      className="mb-5"
+      contentContainerClassName="flex-row gap-2"
+      horizontal
+      nativeID={scope}
+      showsHorizontalScrollIndicator={false}
+      testID={scope}
+    >
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
@@ -36,6 +43,6 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
