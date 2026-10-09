@@ -9,10 +9,17 @@ import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
+import { useTeam } from '../../hooks/use-teams.js';
+import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useLiveSessionRuntime } from '../../hooks/use-live-session-runtime.js';
+import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
+import { SessionMessagesModal } from './session-messages-modal.jsx';
 import { formatStopwatch } from '../../utils/time.js';
 import { formatMeters } from '../../utils/distance.js';
-import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
+import { notifyError, notifySuccess, notifyWarning, notifyAviso, notifyAlerta } from '../../utils/haptics.js';
+import { deliveryFor, pickUndeliveredMessages } from '../../utils/session-message-delivery.js';
+import { playAlertSound } from '../../utils/session-alert-sound.js';
 import { isWeb } from '../../utils/platform.js';
 import { logDebug } from '../../utils/debug-log.js';
 
@@ -342,7 +349,7 @@ function FinishSummaryModal({ summary, onClose, visible }) {
   );
 }
 
-function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCancel, router }) {
+function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCancel, onOpenMessages, router }) {
   const colors = useThemeColors();
   const [cancelVisible, setCancelVisible] = useState(false);
 
@@ -369,7 +376,17 @@ function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCa
         <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="training-session-live-overview-header-label" testID="training-session-live-overview-header-label">
           Sesión presencial
         </Text>
-        <AttendanceQuickAccessButton idPrefix="training-session-live-overview" router={router} />
+        <View className="flex-row items-center gap-1" nativeID="training-session-live-overview-header-actions" testID="training-session-live-overview-header-actions">
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+            nativeID="training-session-live-overview-messages-button"
+            onPress={onOpenMessages}
+            testID="training-session-live-overview-messages-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="message-text-outline" size={20} />
+          </Pressable>
+          <AttendanceQuickAccessButton idPrefix="training-session-live-overview" router={router} />
+        </View>
       </View>
       <ScrollView contentContainerClassName="p-4" nativeID="training-session-live-overview-scroll" testID="training-session-live-overview-scroll">
         <View className="mb-3" nativeID="training-session-live-overview-title-block" testID="training-session-live-overview-title-block">
@@ -673,12 +690,14 @@ function LiveSeriesView({
 function TrainingSessionLiveScreenContent() {
   const router = useRouter();
   const clearLiveSession = useLiveSessionStore((s) => s.clearLiveSession);
+  const myUserId = useAuthStore((s) => s.userId);
   const {
     booted,
     bootError,
     run,
     sets,
     connectionStatus,
+    connectedPeerIds,
     pendingControl,
     clearPendingControl,
     distanceBySetId,
@@ -698,6 +717,44 @@ function TrainingSessionLiveScreenContent() {
   const [currentSetId, setCurrentSetId] = useState(null);
   const [finishing, setFinishing] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
+
+  // `run` recién existe después del bootstrap -- antes de eso, `teamId` es
+  // null y los dos hooks de abajo simplemente no piden nada todavía (su
+  // propio `enabled` interno por id, mismo patrón que el resto del repo).
+  const teamId = run?.team_id ?? null;
+  const { team } = useTeam(teamId);
+  const { members: rosterMembers } = useTeamRoster(teamId);
+  const trainerUserId = team?.ownerId ?? null;
+  const trainerName = rosterMembers.find((m) => String(m.userId) === String(trainerUserId))?.name ?? null;
+  const peerMembers = rosterMembers.filter((m) => String(m.userId) !== String(myUserId) && String(m.userId) !== String(trainerUserId));
+
+  const [messagesVisible, setMessagesVisible] = useState(false);
+  const sessionInstanceId = run?.session_instance_id ?? null;
+  const { messages } = useSessionMessages(sessionInstanceId);
+  const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
+  const deliveredMessageIdsRef = useRef(new Set());
+  const messagesSeededRef = useRef(false);
+  const [deliveryQueue, setDeliveryQueue] = useState([]);
+
+  useEffect(() => {
+    if (!messagesSeededRef.current) {
+      for (const message of messages) deliveredMessageIdsRef.current.add(message.id);
+      messagesSeededRef.current = true;
+      return;
+    }
+    const toDeliver = pickUndeliveredMessages(messages, deliveredMessageIdsRef.current, myUserId);
+    if (toDeliver.length === 0) return;
+    for (const message of toDeliver) {
+      deliveredMessageIdsRef.current.add(message.id);
+      const delivery = deliveryFor(message.type);
+      const senderName = message.senderRole === 'trainer' ? (trainerName ?? 'Entrenador') : (peerMembers.find((m) => String(m.userId) === message.senderUserId)?.name ?? 'Corredor');
+      if (delivery.toast) Toast.show({ type: 'info', text1: senderName, text2: message.body });
+      if (delivery.modal) setDeliveryQueue((current) => [...current, message]);
+      if (delivery.haptics === 'medium') notifyAviso();
+      if (delivery.haptics === 'heavy') notifyAlerta();
+      if (delivery.sound) playAlertSound();
+    }
+  }, [messages, myUserId, trainerName, peerMembers]);
   const finalizeTriggeredRef = useRef(false);
 
   // Detecta que no queda ninguna serie pendiente y finaliza -- reacciona a
@@ -868,6 +925,7 @@ function TrainingSessionLiveScreenContent() {
             activePhase={activePhase}
             activeSetId={activeSetId}
             onCancel={handleCancelConfirmed}
+            onOpenMessages={() => setMessagesVisible(true)}
             onOpenSet={handleOpenSet}
             router={router}
             run={run}
@@ -895,6 +953,37 @@ function TrainingSessionLiveScreenContent() {
                 testID="training-session-live-complete-modal-close-button"
               >
                 <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="training-session-live-complete-modal-close-label" testID="training-session-live-complete-modal-close-label">Terminar</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        <SessionMessagesModal
+          connectedPeerIds={connectedPeerIds}
+          idPrefix="training-session-live-messages-modal"
+          isSending={isSending}
+          myUserId={myUserId}
+          onClose={() => setMessagesVisible(false)}
+          onSend={sendMessage}
+          messages={messages}
+          role="runner"
+          rosterMembers={peerMembers}
+          trainerName={trainerName}
+          trainerUserId={trainerUserId != null ? String(trainerUserId) : null}
+          visible={messagesVisible}
+        />
+
+        <Modal animationType="fade" nativeID="training-session-live-delivery-modal" onRequestClose={() => setDeliveryQueue((q) => q.slice(1))} testID="training-session-live-delivery-modal" transparent visible={deliveryQueue.length > 0}>
+          <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="training-session-live-delivery-modal-backdrop" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="training-session-live-delivery-modal-backdrop">
+            <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="training-session-live-delivery-modal-card" onPress={() => {}} testID="training-session-live-delivery-modal-card">
+              <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="training-session-live-delivery-modal-title" testID="training-session-live-delivery-modal-title">
+                {deliveryQueue[0]?.type === 'alerta' ? 'Alerta' : 'Aviso'}
+              </Text>
+              <Text className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="training-session-live-delivery-modal-body" testID="training-session-live-delivery-modal-body">
+                {deliveryQueue[0]?.body}
+              </Text>
+              <Pressable className="mt-5 h-11 items-center justify-center rounded-full bg-primary active:opacity-80" nativeID="training-session-live-delivery-modal-close-button" onPress={() => setDeliveryQueue((q) => q.slice(1))} testID="training-session-live-delivery-modal-close-button">
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="training-session-live-delivery-modal-close-label" testID="training-session-live-delivery-modal-close-label">Cerrar</Text>
               </Pressable>
             </Pressable>
           </Pressable>
