@@ -14,6 +14,7 @@ import { RoleBadge } from './role-badge.jsx';
 import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
 
@@ -200,18 +201,20 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
           </View>
         ) : (
           <>
-            <Pressable
-              accessibilityLabel="Notificaciones"
-              className="relative rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="web-shell-topbar-notifications-button"
-              onPress={() => router.push('/notifications')}
-              testID="web-shell-topbar-notifications-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="bell-outline" size={20} />
-              {notificationsBadgeCount > 0 && (
-                <View className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-topbar-notifications-badge" testID="web-shell-topbar-notifications-badge" />
-              )}
-            </Pressable>
+            <IconTooltip idPrefix="web-shell-topbar-notifications-button-tooltip" label="Notificaciones">
+              <Pressable
+                accessibilityLabel="Notificaciones"
+                className="relative rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                nativeID="web-shell-topbar-notifications-button"
+                onPress={() => router.push('/notifications')}
+                testID="web-shell-topbar-notifications-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="bell-outline" size={20} />
+                {notificationsBadgeCount > 0 && (
+                  <View className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-topbar-notifications-badge" testID="web-shell-topbar-notifications-badge" />
+                )}
+              </Pressable>
+            </IconTooltip>
             <Pressable
               className={`ml-1 flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
                 dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'

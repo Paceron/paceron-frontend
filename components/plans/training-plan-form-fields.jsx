@@ -11,6 +11,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InputField, TimeField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { LocationPicker } from '../shared/location-picker';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { DAY_KIND_META } from './exercise-kind-meta.js';
 import { SessionExercisesPreview } from './session-exercises-preview.jsx';
 
@@ -337,26 +338,30 @@ export function TrainingPlanFormFields({ form, autoFocusName = false }) {
             value={String(form.days.length)}
           />
           <View className="flex-row gap-2" nativeID="plan-day-count-buttons" testID="plan-day-count-buttons">
-            <Pressable
-              accessibilityLabel="Quitar último día"
-              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
-              disabled={form.days.length <= 2}
-              nativeID="plan-day-count-remove-button"
-              onPress={() => form.setDayCount(form.days.length - 1)}
-              testID="plan-day-count-remove-button"
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="minus" size={18} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Agregar día"
-              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
-              disabled={form.days.length >= 31}
-              nativeID="plan-day-count-add-button"
-              onPress={() => form.setDayCount(form.days.length + 1)}
-              testID="plan-day-count-add-button"
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="plus" size={18} />
-            </Pressable>
+            <IconTooltip idPrefix="plan-day-count-remove-button-tooltip" label="Quitar último día">
+              <Pressable
+                accessibilityLabel="Quitar último día"
+                className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
+                disabled={form.days.length <= 2}
+                nativeID="plan-day-count-remove-button"
+                onPress={() => form.setDayCount(form.days.length - 1)}
+                testID="plan-day-count-remove-button"
+              >
+                <MaterialCommunityIcons color="#94a3b8" name="minus" size={18} />
+              </Pressable>
+            </IconTooltip>
+            <IconTooltip idPrefix="plan-day-count-add-button-tooltip" label="Agregar día">
+              <Pressable
+                accessibilityLabel="Agregar día"
+                className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
+                disabled={form.days.length >= 31}
+                nativeID="plan-day-count-add-button"
+                onPress={() => form.setDayCount(form.days.length + 1)}
+                testID="plan-day-count-add-button"
+              >
+                <MaterialCommunityIcons color="#94a3b8" name="plus" size={18} />
+              </Pressable>
+            </IconTooltip>
           </View>
         </View>
 

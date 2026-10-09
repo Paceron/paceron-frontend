@@ -20,6 +20,7 @@ import { listAttendanceSessions } from '../../services/attendance.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { AttendanceGrid } from './attendance-grid.jsx';
 import { AttendanceQrModal } from './attendance-qr-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -743,15 +744,17 @@ function ScreenHeader() {
 
   return (
     <View className="mb-6 flex-row items-center gap-2" nativeID={`${ID_PREFIX}-header`} testID={`${ID_PREFIX}-header`}>
-      <Pressable
-        accessibilityLabel="Volver"
-        className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
-        nativeID={`${ID_PREFIX}-back-button`}
-        onPress={handleBack}
-        testID={`${ID_PREFIX}-back-button`}
-      >
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
-      </Pressable>
+      <IconTooltip idPrefix={`${ID_PREFIX}-back-button-tooltip`} label="Volver">
+        <Pressable
+          accessibilityLabel="Volver"
+          className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
+          nativeID={`${ID_PREFIX}-back-button`}
+          onPress={handleBack}
+          testID={`${ID_PREFIX}-back-button`}
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+        </Pressable>
+      </IconTooltip>
       <Text className="text-xl text-slate-900 dark:text-white" nativeID={`${ID_PREFIX}-title`} style={{ fontFamily: 'Orbitron_700Bold' }} testID={`${ID_PREFIX}-title`}>
         Asistencia
       </Text>

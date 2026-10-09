@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // `group` llega de utils/trainings-history-grouping.js -- una sesión
 // (sessionInstanceId+athleteUserId), no una serie. Verde=todo completo,
@@ -34,16 +35,18 @@ function MenuToggle({ group, onOpenMenu, containerRef, idPrefix }) {
   };
 
   return (
-    <Pressable
-      ref={ref}
-      accessibilityLabel="Más opciones"
-      className="shrink-0 rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-      nativeID={idPrefix}
-      onPress={handlePress}
-      testID={idPrefix}
-    >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
-    </Pressable>
+    <IconTooltip idPrefix={`${idPrefix}-tooltip`} label="Más opciones">
+      <Pressable
+        ref={ref}
+        accessibilityLabel="Más opciones"
+        className="shrink-0 rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+        nativeID={idPrefix}
+        onPress={handlePress}
+        testID={idPrefix}
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+      </Pressable>
+    </IconTooltip>
   );
 }
 
@@ -91,17 +94,19 @@ export function TrainingsHistoryRow({ group, role, selectionMode, selected, onTo
         </View>
 
         {selectionMode ? (
-          <Pressable
-            accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: selected }}
-            className="shrink-0"
-            nativeID={`${idPrefix}-checkbox`}
-            onPress={() => onToggleSelected(group.id)}
-            testID={`${idPrefix}-checkbox`}
-          >
-            <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={20} />
-          </Pressable>
+          <IconTooltip idPrefix={`${idPrefix}-checkbox-tooltip`} label={selected ? 'Quitar de la selección' : 'Agregar a la selección'}>
+            <Pressable
+              accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected }}
+              className="shrink-0"
+              nativeID={`${idPrefix}-checkbox`}
+              onPress={() => onToggleSelected(group.id)}
+              testID={`${idPrefix}-checkbox`}
+            >
+              <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={20} />
+            </Pressable>
+          </IconTooltip>
         ) : (
           <MenuToggle containerRef={containerRef} group={group} idPrefix={`${idPrefix}-menu-toggle`} onOpenMenu={onOpenMenu} />
         )}

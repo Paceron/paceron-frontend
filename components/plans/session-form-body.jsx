@@ -11,6 +11,7 @@ import {
   ReorderProvider, ReorderableRow, ReorderDropIndicator,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 const SESSION_ROLE_OPTIONS = SESSION_ROLE_ORDER.map((role) => ({ id: role, name: SESSION_ROLE_META[role].label }));
 
@@ -71,15 +72,17 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
             value={entry.exerciseId}
           />
         </View>
-        <Pressable
-          accessibilityLabel="Quitar ejercicio"
-          className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
-          nativeID={`${idPrefix}-remove-button`}
-          onPress={() => onRemove(entry.localKey)}
-          testID={`${idPrefix}-remove-button`}
-        >
-          <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-        </Pressable>
+        <IconTooltip idPrefix={`${idPrefix}-remove-button-tooltip`} label="Quitar ejercicio">
+          <Pressable
+            accessibilityLabel="Quitar ejercicio"
+            className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
+            nativeID={`${idPrefix}-remove-button`}
+            onPress={() => onRemove(entry.localKey)}
+            testID={`${idPrefix}-remove-button`}
+          >
+            <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
+          </Pressable>
+        </IconTooltip>
       </View>
 
       <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>

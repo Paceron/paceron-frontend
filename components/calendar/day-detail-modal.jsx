@@ -13,6 +13,7 @@ import { useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { StartSessionButton } from './start-session-button.jsx';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 function kindLabel(assignment) {
   if (assignment.kind === 'rest') return 'Descanso';
@@ -51,16 +52,18 @@ function MenuToggle({ assignment, cardRef, onOpenMenu, idPrefix }) {
   };
 
   return (
-    <Pressable
-      ref={ref}
-      accessibilityLabel="Más opciones"
-      className="h-7 w-7 items-center justify-center rounded-full hover:bg-black/5 active:opacity-70 dark:hover:bg-white/10"
-      nativeID={idPrefix}
-      onPress={handlePress}
-      testID={idPrefix}
-    >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
-    </Pressable>
+    <IconTooltip idPrefix={`${idPrefix}-tooltip`} label="Más opciones">
+      <Pressable
+        ref={ref}
+        accessibilityLabel="Más opciones"
+        className="h-7 w-7 items-center justify-center rounded-full hover:bg-black/5 active:opacity-70 dark:hover:bg-white/10"
+        nativeID={idPrefix}
+        onPress={handlePress}
+        testID={idPrefix}
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+      </Pressable>
+    </IconTooltip>
   );
 }
 

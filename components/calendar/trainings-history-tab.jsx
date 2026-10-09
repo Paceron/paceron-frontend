@@ -20,6 +20,7 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { TrainingsHistoryRow } from './trainings-history-row.jsx';
 import { TrainingsHistoryRowMenu } from './trainings-history-row-menu.jsx';
 import { BulkDeleteFeedbackModal } from './bulk-delete-feedback-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // El historial se navega por SESIÓN (ver trainings-history-grouping.js), así
 // que "ordenar por serie/ejercicio" dejó de tener sentido -- el único eje
@@ -233,25 +234,29 @@ export function TrainingsHistoryTab({ role }) {
             {selectedIds.size} seleccionado{selectedIds.size === 1 ? '' : 's'}
           </Text>
           <View className="flex-row items-center gap-2" nativeID="trainings-history-tab-selection-actions" testID="trainings-history-tab-selection-actions">
-            <Pressable
-              accessibilityLabel="Eliminar seleccionados"
-              className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-              disabled={selectedIds.size === 0}
-              nativeID="trainings-history-tab-bulk-delete-button"
-              onPress={() => setBulkDeleteVisible(true)}
-              testID="trainings-history-tab-bulk-delete-button"
-            >
-              <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Salir de selección"
-              className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-              nativeID="trainings-history-tab-selection-exit-button"
-              onPress={handleExitSelection}
-              testID="trainings-history-tab-selection-exit-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-            </Pressable>
+            <IconTooltip idPrefix="trainings-history-tab-bulk-delete-button-tooltip" label="Eliminar seleccionados">
+              <Pressable
+                accessibilityLabel="Eliminar seleccionados"
+                className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                disabled={selectedIds.size === 0}
+                nativeID="trainings-history-tab-bulk-delete-button"
+                onPress={() => setBulkDeleteVisible(true)}
+                testID="trainings-history-tab-bulk-delete-button"
+              >
+                <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
+              </Pressable>
+            </IconTooltip>
+            <IconTooltip idPrefix="trainings-history-tab-selection-exit-button-tooltip" label="Salir de selección">
+              <Pressable
+                accessibilityLabel="Salir de selección"
+                className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                nativeID="trainings-history-tab-selection-exit-button"
+                onPress={handleExitSelection}
+                testID="trainings-history-tab-selection-exit-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
+              </Pressable>
+            </IconTooltip>
           </View>
         </View>
       )}

@@ -26,6 +26,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { useTeamFees } from '../../hooks/use-team-fees.js';
 import { formatMonthlyFee } from '../../utils/currency.js';
 import { JoinTeamConfirmModal } from './join-team-confirm-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 function buttonState(team, myPendingTeamIds) {
   if (myPendingTeamIds.has(team.id)) return { disabled: true, label: 'Solicitud enviada' };
@@ -239,24 +240,28 @@ function TeamSearchScreenContent() {
                 value={name}
               />
             </View>
-            <Pressable
-              accessibilityLabel={advancedOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}
-              className={`h-11 w-11 items-center justify-center rounded-xl border ${advancedOpen ? 'border-primary bg-primary-tint dark:bg-primary/15' : 'border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'}`}
-              nativeID="team-search-advanced-toggle"
-              onPress={() => setAdvancedOpen((v) => !v)}
-              testID="team-search-advanced-toggle"
-            >
-              <MaterialCommunityIcons color={advancedOpen ? colors.primary : colors.onSurfaceVariant} name="tune-variant" size={20} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Buscar"
-              className="h-11 w-11 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
-              nativeID="team-search-submit-button"
-              onPress={handleSearch}
-              testID="team-search-submit-button"
-            >
-              <MaterialCommunityIcons color={colors.onPrimary} name="magnify" size={20} />
-            </Pressable>
+            <IconTooltip idPrefix="team-search-advanced-toggle-tooltip" label={advancedOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}>
+              <Pressable
+                accessibilityLabel={advancedOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}
+                className={`h-11 w-11 items-center justify-center rounded-xl border ${advancedOpen ? 'border-primary bg-primary-tint dark:bg-primary/15' : 'border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'}`}
+                nativeID="team-search-advanced-toggle"
+                onPress={() => setAdvancedOpen((v) => !v)}
+                testID="team-search-advanced-toggle"
+              >
+                <MaterialCommunityIcons color={advancedOpen ? colors.primary : colors.onSurfaceVariant} name="tune-variant" size={20} />
+              </Pressable>
+            </IconTooltip>
+            <IconTooltip idPrefix="team-search-submit-button-tooltip" label="Buscar">
+              <Pressable
+                accessibilityLabel="Buscar"
+                className="h-11 w-11 items-center justify-center rounded-xl bg-primary hover:opacity-90 active:opacity-80"
+                nativeID="team-search-submit-button"
+                onPress={handleSearch}
+                testID="team-search-submit-button"
+              >
+                <MaterialCommunityIcons color={colors.onPrimary} name="magnify" size={20} />
+              </Pressable>
+            </IconTooltip>
           </View>
 
           {advancedOpen && (

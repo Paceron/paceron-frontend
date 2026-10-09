@@ -15,6 +15,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FIELD_LABEL } from './fields.jsx';
 import { useThemeColors } from '../../theme/colors.js';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { dedupeById, isSameId } from '../../utils/id-match.js';
 import { isAndroid, isWeb } from '../../utils/platform.js';
@@ -288,14 +289,16 @@ export function SearchablePickerField({
                   value={query}
                 />
                 {query ? (
-                  <Pressable
-                    accessibilityLabel="Limpiar filtro"
-                    nativeID={`${idPrefix}-modal-search-clear-button`}
-                    onPress={() => setQuery('')}
-                    testID={`${idPrefix}-modal-search-clear-button`}
-                  >
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={16} />
-                  </Pressable>
+                  <IconTooltip idPrefix={`${idPrefix}-modal-search-clear-button-tooltip`} label="Limpiar filtro">
+                    <Pressable
+                      accessibilityLabel="Limpiar filtro"
+                      nativeID={`${idPrefix}-modal-search-clear-button`}
+                      onPress={() => setQuery('')}
+                      testID={`${idPrefix}-modal-search-clear-button`}
+                    >
+                      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={16} />
+                    </Pressable>
+                  </IconTooltip>
                 ) : null}
               </View>
 

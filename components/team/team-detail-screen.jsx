@@ -27,6 +27,7 @@ import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { CreateGroupModal } from './create-group-modal.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { DeleteTeamModal } from './delete-team-modal.jsx';
@@ -159,16 +160,18 @@ function RunnerMenu({ member, colors, onOpenMenu, containerRef }) {
   };
 
   return (
-    <Pressable
-      ref={ref}
-      accessibilityLabel="Más opciones"
-      className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-      nativeID={`team-detail-runner-${member.id}-menu-toggle`}
-      onPress={handlePress}
-      testID={`team-detail-runner-${member.id}-menu-toggle`}
-    >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
-    </Pressable>
+    <IconTooltip idPrefix={`team-detail-runner-${member.id}-menu-toggle-tooltip`} label="Más opciones">
+      <Pressable
+        ref={ref}
+        accessibilityLabel="Más opciones"
+        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+        nativeID={`team-detail-runner-${member.id}-menu-toggle`}
+        onPress={handlePress}
+        testID={`team-detail-runner-${member.id}-menu-toggle`}
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+      </Pressable>
+    </IconTooltip>
   );
 }
 
@@ -406,37 +409,43 @@ function GroupRow({ group, members, colors, onEdit, canEdit, onDelete, deleting,
 
   const actions = canManageTeam && (
     <View className="flex-row items-center gap-1" nativeID={`team-detail-group-${group.id}-actions`} testID={`team-detail-group-${group.id}-actions`}>
-      <Pressable
-        accessibilityLabel={`Ver calendario de ${group.name}`}
-        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-        nativeID={`team-detail-group-${group.id}-calendar-button`}
-        onPress={onViewCalendar}
-        testID={`team-detail-group-${group.id}-calendar-button`}
-      >
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-month-outline" size={18} />
-      </Pressable>
-      {canEdit && (
+      <IconTooltip idPrefix={`team-detail-group-${group.id}-calendar-button-tooltip`} label={`Ver calendario de ${group.name}`}>
         <Pressable
-          accessibilityLabel={`Editar grupo ${group.name}`}
+          accessibilityLabel={`Ver calendario de ${group.name}`}
           className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-          nativeID={`team-detail-group-${group.id}-edit-button`}
-          onPress={onEdit}
-          testID={`team-detail-group-${group.id}-edit-button`}
+          nativeID={`team-detail-group-${group.id}-calendar-button`}
+          onPress={onViewCalendar}
+          testID={`team-detail-group-${group.id}-calendar-button`}
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-month-outline" size={18} />
         </Pressable>
+      </IconTooltip>
+      {canEdit && (
+        <IconTooltip idPrefix={`team-detail-group-${group.id}-edit-button-tooltip`} label={`Editar grupo ${group.name}`}>
+          <Pressable
+            accessibilityLabel={`Editar grupo ${group.name}`}
+            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+            nativeID={`team-detail-group-${group.id}-edit-button`}
+            onPress={onEdit}
+            testID={`team-detail-group-${group.id}-edit-button`}
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+          </Pressable>
+        </IconTooltip>
       )}
       {canEdit && (
-        <Pressable
-          accessibilityLabel={`Eliminar grupo ${group.name}`}
-          className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-          disabled={deleting}
-          nativeID={`team-detail-group-${group.id}-delete-button`}
-          onPress={onDelete}
-          testID={`team-detail-group-${group.id}-delete-button`}
-        >
-          {deleting ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />}
-        </Pressable>
+        <IconTooltip idPrefix={`team-detail-group-${group.id}-delete-button-tooltip`} label={`Eliminar grupo ${group.name}`}>
+          <Pressable
+            accessibilityLabel={`Eliminar grupo ${group.name}`}
+            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+            disabled={deleting}
+            nativeID={`team-detail-group-${group.id}-delete-button`}
+            onPress={onDelete}
+            testID={`team-detail-group-${group.id}-delete-button`}
+          >
+            {deleting ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />}
+          </Pressable>
+        </IconTooltip>
       )}
     </View>
   );
@@ -821,24 +830,28 @@ function TeamDetailScreenContent({ teamId }) {
     <SectionCard
       headerRight={canManageTeam && (
         <View className="flex-row items-center gap-1" nativeID="team-detail-invite-actions" testID="team-detail-invite-actions">
-          <Pressable
-            accessibilityLabel="Ver solicitudes pendientes"
-            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-            nativeID="team-detail-invite-pending-button"
-            onPress={() => router.push(`/teams/${team.id}/invite`)}
-            testID="team-detail-invite-pending-button"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="email-check-outline" size={20} />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="Invitar corredor"
-            className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-            nativeID="team-detail-invite-button"
-            onPress={() => setInviteModalVisible(true)}
-            testID="team-detail-invite-button"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
-          </Pressable>
+          <IconTooltip idPrefix="team-detail-invite-pending-button-tooltip" label="Ver solicitudes pendientes">
+            <Pressable
+              accessibilityLabel="Ver solicitudes pendientes"
+              className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+              nativeID="team-detail-invite-pending-button"
+              onPress={() => router.push(`/teams/${team.id}/invite`)}
+              testID="team-detail-invite-pending-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="email-check-outline" size={20} />
+            </Pressable>
+          </IconTooltip>
+          <IconTooltip idPrefix="team-detail-invite-button-tooltip" label="Invitar corredor">
+            <Pressable
+              accessibilityLabel="Invitar corredor"
+              className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+              nativeID="team-detail-invite-button"
+              onPress={() => setInviteModalVisible(true)}
+              testID="team-detail-invite-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+            </Pressable>
+          </IconTooltip>
         </View>
       )}
       icon="account-multiple"
@@ -921,6 +934,7 @@ function TeamDetailScreenContent({ teamId }) {
   const gruposContent = isTrainerView && (
     <SectionCard
       headerRight={canManageTeam && (
+        <IconTooltip idPrefix="team-detail-add-group-button-tooltip" label="Agregar grupo">
         <Pressable
           accessibilityLabel="Agregar grupo"
           className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
@@ -930,6 +944,7 @@ function TeamDetailScreenContent({ teamId }) {
         >
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
         </Pressable>
+        </IconTooltip>
       )}
       icon="account-group"
       title="Grupos"
@@ -1007,37 +1022,43 @@ function TeamDetailScreenContent({ teamId }) {
             ) : null}
           </View>
           {canManageTeam && (
-            <Pressable
-              accessibilityLabel="Editar equipo"
-              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="team-detail-edit-button"
-              onPress={() => router.push(`/teams/${team.id}/edit`)}
-              testID="team-detail-edit-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={20} />
-            </Pressable>
+            <IconTooltip idPrefix="team-detail-edit-button-tooltip" label="Editar equipo">
+              <Pressable
+                accessibilityLabel="Editar equipo"
+                className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                nativeID="team-detail-edit-button"
+                onPress={() => router.push(`/teams/${team.id}/edit`)}
+                testID="team-detail-edit-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={20} />
+              </Pressable>
+            </IconTooltip>
           )}
           {canDeleteTeam && (
-            <Pressable
-              accessibilityLabel="Eliminar equipo"
-              className="rounded-full p-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
-              nativeID="team-detail-delete-button"
-              onPress={() => setDeleteModalVisible(true)}
-              testID="team-detail-delete-button"
-            >
-              <MaterialCommunityIcons color={colors.error} name="trash-can-outline" size={20} />
-            </Pressable>
+            <IconTooltip idPrefix="team-detail-delete-button-tooltip" label="Eliminar equipo">
+              <Pressable
+                accessibilityLabel="Eliminar equipo"
+                className="rounded-full p-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
+                nativeID="team-detail-delete-button"
+                onPress={() => setDeleteModalVisible(true)}
+                testID="team-detail-delete-button"
+              >
+                <MaterialCommunityIcons color={colors.error} name="trash-can-outline" size={20} />
+              </Pressable>
+            </IconTooltip>
           )}
           {!isTrainerView && canLeaveGroup && (
-            <Pressable
-              accessibilityLabel="Salir del grupo"
-              className="rounded-full p-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
-              nativeID="team-detail-leave-group-button"
-              onPress={() => setLeaveGroupModalVisible(true)}
-              testID="team-detail-leave-group-button"
-            >
-              <MaterialCommunityIcons color={colors.error} name="exit-run" size={20} />
-            </Pressable>
+            <IconTooltip idPrefix="team-detail-leave-group-button-tooltip" label="Salir del grupo">
+              <Pressable
+                accessibilityLabel="Salir del grupo"
+                className="rounded-full p-2 hover:bg-red-50 active:opacity-70 dark:hover:bg-red-900/20"
+                nativeID="team-detail-leave-group-button"
+                onPress={() => setLeaveGroupModalVisible(true)}
+                testID="team-detail-leave-group-button"
+              >
+                <MaterialCommunityIcons color={colors.error} name="exit-run" size={20} />
+              </Pressable>
+            </IconTooltip>
           )}
         </View>
 
