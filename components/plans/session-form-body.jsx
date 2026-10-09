@@ -123,12 +123,16 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
   );
 }
 
-export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, exercisesError, visible }) {
+// refreshControl (opcional): solo edit-session-screen.jsx lo pasa -- los
+// otros 2 call sites (create-session-screen.jsx, create-session-modal.jsx)
+// son formularios de alta, sin nada que refrescar, quedan sin tocar
+// (undefined, mismo comportamiento de siempre).
+export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, exercisesError, visible, refreshControl }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
   return (
-    <ScrollView className="flex-1" nativeID="session-form-body-scroll" testID="session-form-body-scroll">
+    <ScrollView className="flex-1" nativeID="session-form-body-scroll" refreshControl={refreshControl} testID="session-form-body-scroll">
       <InputField autoFocus={!isWeb && visible} dense error={nameError} hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
       <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
 

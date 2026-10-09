@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
@@ -139,7 +140,7 @@ function ExerciseBulkSave({ exercise, onClose, slot }) {
 
 // --- Vista A: lista de ejercicios/series ---
 
-function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
+function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, refreshing, onRefresh }) {
   const colors = useThemeColors();
   const router = useRouter();
   const showBadge = slot.mode === 'review';
@@ -161,7 +162,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow }) {
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
-      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" testID="session-review-screen-scroll">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="session-review-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="session-review-screen-top-row" testID="session-review-screen-top-row">
           <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
@@ -759,7 +760,8 @@ function ReviewFlow({ slot }) {
   const sessionInstanceId = slot.sessionInstanceId ?? slot.sessionInstance?.id;
   const { sessionInstance: fetchedSessionInstance, loading: instanceLoading } = useSessionInstance(sessionInstanceId, !slot.sessionInstance);
   const sessionInstance = slot.sessionInstance ?? fetchedSessionInstance;
-  const { groups, loading } = useSessionFeedback(sessionInstanceId, slot.athleteUserId);
+  const { groups, loading, refetch: refetchFeedback } = useSessionFeedback(sessionInstanceId, slot.athleteUserId);
+  const { refreshing, onRefresh } = usePullToRefresh(refetchFeedback);
 
   // Primer ingreso al modo manual → upsert idempotente de runner_session
   // (wip). Fire-and-forget: si falla (offline), el pipeline de sync del
@@ -841,6 +843,8 @@ function ReviewFlow({ slot }) {
       completing={finishing}
       loading={loading}
       onOpenRow={(payload) => setSelected(payload)}
+      onRefresh={onRefresh}
+      refreshing={refreshing}
       reviewModel={reviewModel}
       slot={{ ...slot, sessionName, sessionInstance, mode: completedNow ? 'review' : slot.mode }}
     />
