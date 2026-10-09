@@ -7,6 +7,7 @@ import { queryClient } from '../lib/query-client.js';
 import { useUser, useRoleReconciliation } from '../hooks/use-user.js';
 import { isWeb } from '../utils/platform.js';
 import { syncPendingRuns } from '../services/session-sync.js';
+import { SessionMessagesDelivery } from '../components/session-runtime/session-messages-delivery.jsx';
 
 function AuthEffects() {
   const hydrate = useAuthStore((state) => state.hydrate);
@@ -83,6 +84,7 @@ export function AppProviders({ children }) {
         <AuthEffects />
         <ForegroundRefetch />
         <SessionSyncSweep />
+        <SessionMessagesDelivery />
         {children}
       </ThemeProvider>
     </QueryClientProvider>

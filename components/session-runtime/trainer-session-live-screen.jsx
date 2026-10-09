@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
@@ -27,11 +26,9 @@ import { nextExercise } from '../../utils/trainer-participant-progress.js';
 import { colorForUserId, TRAINER_MARKER_COLOR } from '../../utils/participant-color.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
-import { notifySuccess, notifyWarning, notifyAviso, notifyAlerta } from '../../utils/haptics.js';
+import { notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
-import { SessionMessagesModal, DeliverySeverityModal } from './session-messages-modal.jsx';
-import { deliveryFor, pickUndeliveredMessages } from '../../utils/session-message-delivery.js';
-import { playAlertSound } from '../../utils/session-alert-sound.js';
+import { SessionMessagesModal } from './session-messages-modal.jsx';
 
 // Runtime de la sesión PRESENCIAL para el ENTRENADOR -- mapa con los
 // corredores conectados arriba, controles abajo. A diferencia de
@@ -472,13 +469,10 @@ function TrainerSessionLiveScreenContent() {
   const [attendanceVisible, setAttendanceVisible] = useState(false);
   const [finishConfirmVisible, setFinishConfirmVisible] = useState(false);
   const [messagesVisible, setMessagesVisible] = useState(false);
-  const { messages, isLoading: messagesLoading } = useSessionMessages(sessionInstanceId);
+  const { messages } = useSessionMessages(sessionInstanceId);
   const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
   const cameraRef = useRef(null);
   const dragRef = useRef(null);
-  const deliveredMessageIdsRef = useRef(new Set());
-  const messagesSeededRef = useRef(false);
-  const [deliveryQueue, setDeliveryQueue] = useState([]);
 
   // Centro inicial del mapa: el punto de encuentro marcado para la sesión
   // presencial, no una zona fija arbitraria -- el auto-encuadre (efecto de
@@ -519,39 +513,6 @@ function TrainerSessionLiveScreenContent() {
   useEffect(() => {
     if (finishConfirmVisible) notifyWarning();
   }, [finishConfirmVisible]);
-
-  // Entrega por severidad (Gap 27) -- el PRIMER fetch que de verdad resuelve
-  // (no el render inicial con `messages=[]` mientras la query todavía está
-  // cargando) solo siembra deliveredMessageIdsRef, sin disparar ningún
-  // toast/modal/haptics/sonido -- si no, reabrir esta pantalla reproduciría
-  // cada alerta de toda la sesión otra vez (bug real: el efecto corre una
-  // primera vez con `messages=[]` ANTES de que la query resuelva, marcaba
-  // seeded=true ahí mismo, y cuando los datos reales llegaban un instante
-  // después los trataba a todos como "nuevos"). Esperar `!messagesLoading`
-  // asegura que la siembra ocurra sobre los datos reales, no sobre el
-  // array vacío del primer render. Solo los mensajes que llegan DESPUÉS de
-  // esa siembra (vía la invalidación que dispara useTrainerSessionRuntime al
-  // recibir control:message_created) se entregan.
-  useEffect(() => {
-    if (messagesLoading) return;
-    if (!messagesSeededRef.current) {
-      for (const message of messages) deliveredMessageIdsRef.current.add(message.id);
-      messagesSeededRef.current = true;
-      return;
-    }
-    const toDeliver = pickUndeliveredMessages(messages, deliveredMessageIdsRef.current, trainerUserId);
-    if (toDeliver.length === 0) return;
-    for (const message of toDeliver) {
-      deliveredMessageIdsRef.current.add(message.id);
-      const delivery = deliveryFor(message.type);
-      const senderName = message.senderRole === 'trainer' ? 'Vos' : (runnerMembers.find((m) => String(m.userId) === message.senderUserId)?.name ?? 'Corredor');
-      if (delivery.toast) Toast.show({ type: 'info', text1: senderName, text2: message.body });
-      if (delivery.modal) setDeliveryQueue((current) => [...current, message]);
-      if (delivery.haptics === 'medium') notifyAviso();
-      if (delivery.haptics === 'heavy') notifyAlerta();
-      if (delivery.sound) playAlertSound();
-    }
-  }, [messages, messagesLoading, trainerUserId, runnerMembers]);
 
   const handleFinish = async () => {
     await finalize();
@@ -735,13 +696,6 @@ function TrainerSessionLiveScreenContent() {
         role="trainer"
         rosterMembers={runnerMembers}
         visible={messagesVisible}
-      />
-
-      <DeliverySeverityModal
-        idPrefix="trainer-session-live-delivery-modal"
-        message={deliveryQueue[0] ?? null}
-        onClose={() => setDeliveryQueue((q) => q.slice(1))}
-        visible={deliveryQueue.length > 0}
       />
 
       <ConfirmDestructiveModal

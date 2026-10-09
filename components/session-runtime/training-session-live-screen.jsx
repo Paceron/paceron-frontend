@@ -14,12 +14,10 @@ import { useTeam } from '../../hooks/use-teams.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useLiveSessionRuntime } from '../../hooks/use-live-session-runtime.js';
 import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
-import { SessionMessagesModal, DeliverySeverityModal } from './session-messages-modal.jsx';
+import { SessionMessagesModal } from './session-messages-modal.jsx';
 import { formatStopwatch } from '../../utils/time.js';
 import { formatMeters } from '../../utils/distance.js';
-import { notifyError, notifySuccess, notifyWarning, notifyAviso, notifyAlerta } from '../../utils/haptics.js';
-import { deliveryFor, pickUndeliveredMessages } from '../../utils/session-message-delivery.js';
-import { playAlertSound } from '../../utils/session-alert-sound.js';
+import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import { isWeb } from '../../utils/platform.js';
 import { logDebug } from '../../utils/debug-log.js';
 
@@ -730,37 +728,8 @@ function TrainingSessionLiveScreenContent() {
 
   const [messagesVisible, setMessagesVisible] = useState(false);
   const sessionInstanceId = run?.session_instance_id ?? null;
-  const { messages, isLoading: messagesLoading } = useSessionMessages(sessionInstanceId);
+  const { messages } = useSessionMessages(sessionInstanceId);
   const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
-  const deliveredMessageIdsRef = useRef(new Set());
-  const messagesSeededRef = useRef(false);
-  const [deliveryQueue, setDeliveryQueue] = useState([]);
-
-  // Esperar `!messagesLoading` antes de sembrar -- sin esto, el efecto corre
-  // una primera vez con `messages=[]` (antes de que la query resuelva), marca
-  // seeded=true ahí mismo, y cuando los datos reales llegan los trata a TODOS
-  // como "nuevos" (bug real: reabrir la sesión reproducía cada aviso/alerta
-  // de toda la sesión, con sonido y vibración, de una).
-  useEffect(() => {
-    if (messagesLoading) return;
-    if (!messagesSeededRef.current) {
-      for (const message of messages) deliveredMessageIdsRef.current.add(message.id);
-      messagesSeededRef.current = true;
-      return;
-    }
-    const toDeliver = pickUndeliveredMessages(messages, deliveredMessageIdsRef.current, myUserId);
-    if (toDeliver.length === 0) return;
-    for (const message of toDeliver) {
-      deliveredMessageIdsRef.current.add(message.id);
-      const delivery = deliveryFor(message.type);
-      const senderName = message.senderRole === 'trainer' ? (trainerName ?? 'Entrenador') : (peerMembers.find((m) => String(m.userId) === message.senderUserId)?.name ?? 'Corredor');
-      if (delivery.toast) Toast.show({ type: 'info', text1: senderName, text2: message.body });
-      if (delivery.modal) setDeliveryQueue((current) => [...current, message]);
-      if (delivery.haptics === 'medium') notifyAviso();
-      if (delivery.haptics === 'heavy') notifyAlerta();
-      if (delivery.sound) playAlertSound();
-    }
-  }, [messages, messagesLoading, myUserId, trainerName, peerMembers]);
   const finalizeTriggeredRef = useRef(false);
 
   // Detecta que no queda ninguna serie pendiente y finaliza -- reacciona a
@@ -977,13 +946,6 @@ function TrainingSessionLiveScreenContent() {
           trainerName={trainerName}
           trainerUserId={trainerUserId != null ? String(trainerUserId) : null}
           visible={messagesVisible}
-        />
-
-        <DeliverySeverityModal
-          idPrefix="training-session-live-delivery-modal"
-          message={deliveryQueue[0] ?? null}
-          onClose={() => setDeliveryQueue((q) => q.slice(1))}
-          visible={deliveryQueue.length > 0}
         />
       </SafeAreaView>
     </MobileOnlyRoute>
