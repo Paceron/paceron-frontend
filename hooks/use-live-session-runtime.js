@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSessionRuntimeStore } from '../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../store/live-session-store.js';
 import { useAuthStore } from '../store/auth-store.js';
@@ -22,6 +23,7 @@ import {
 import { syncRun } from '../services/session-sync.js';
 import { send as sendRaw } from '../services/realtime-client.js';
 import { acceptGpsLeg } from '../utils/distance.js';
+import { applyPeerPresence } from '../utils/connected-peers.js';
 import { toIsoUtc } from '../utils/time.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
 import { useRealtimeChannel } from './use-realtime-channel.js';
@@ -44,6 +46,7 @@ export function useLiveSessionRuntime() {
   const gpsEnabled = useLiveSessionStore((s) => s.gpsEnabled);
   const setSessionStarted = useLiveSessionStore((s) => s.setSessionStarted);
   const userId = useAuthStore((s) => s.userId);
+  const queryClient = useQueryClient();
 
   const [booted, setBooted] = useState(false);
   const [bootError, setBootError] = useState(null);
@@ -51,6 +54,10 @@ export function useLiveSessionRuntime() {
   const [sets, setSets] = useState([]);
   const [distanceBySetId, setDistanceBySetId] = useState(new Map());
   const [pendingControl, setPendingControl] = useState(null);
+  // Roster liviano de "quién está conectado" para el selector de
+  // destinatario de mensajería (Gap 27) -- nunca incluye mi propio userId
+  // (nunca recibo mis propios broadcasts de presence de vuelta).
+  const [connectedPeerIds, setConnectedPeerIds] = useState(() => new Set());
   const [activeSetId, setActiveSetIdState] = useState(null);
   const [activePhase, setActivePhaseState] = useState('idle'); // 'idle' | 'running' | 'paused'
 
@@ -103,6 +110,16 @@ export function useLiveSessionRuntime() {
   };
 
   const handleChannelMessage = (msg) => {
+    setConnectedPeerIds((current) => applyPeerPresence(current, msg));
+
+    // Gap 27: aviso de mensaje nuevo -- `run` ya está seteado en este punto
+    // (el canal solo se habilita cuando `run` existe, ver `channel` abajo),
+    // así que `run.session_instance_id` es seguro de leer acá.
+    if (msg.type === 'control:message_created') {
+      queryClient.invalidateQueries({ queryKey: ['session-messages', run.session_instance_id] });
+      return;
+    }
+
     if (msg.type !== 'control') return;
     setPendingControl({ event: msg.event, payload: msg.payload });
     // El entrenador pausa remotamente pausando la serie que esté corriendo
@@ -333,6 +350,7 @@ export function useLiveSessionRuntime() {
     run,
     sets,
     connectionStatus,
+    connectedPeerIds,
     pendingControl,
     clearPendingControl: () => setPendingControl(null),
     distanceBySetId,

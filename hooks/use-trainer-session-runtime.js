@@ -72,6 +72,15 @@ export function useTrainerSessionRuntime({ sessionInstanceId, exercises, rosterM
     if (msg.type === 'update:attendance_event' && teamId && groupId) {
       queryClient.invalidateQueries({ queryKey: ['attendance', teamId, 'grid', groupId, sessionInstanceId] });
     }
+
+    // Gap 27: aviso de que se mandó un mensaje nuevo en la sesión -- sin
+    // contenido, a propósito (ver utils/session-message-delivery.js y la
+    // nota de privacidad en BACKEND_API_GAPS.md). Invalida la query de
+    // mensajes; quien la tenga montada (el componente que usa
+    // useSessionMessages) hace el refetch solo.
+    if (msg.type === 'control:message_created') {
+      queryClient.invalidateQueries({ queryKey: ['session-messages', sessionInstanceId] });
+    }
   };
 
   const { status: connectionStatus, send } = useRealtimeChannel(channel, {
