@@ -102,15 +102,37 @@ describe('api client 401 refresh interceptor', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
-  test('logs out and propagates the original 401 when the refresh itself fails', async () => {
+  test('logs out and propagates the original 401 when the backend rejects the refresh token itself', async () => {
     const logout = jest.fn().mockResolvedValue();
-    const refreshSession = jest.fn().mockRejectedValue(new Error('refresh token vencido'));
+    // Error CON `.status` -- es la forma que toma un refresh que de verdad
+    // llegó al backend y volvió rechazado (ej. 401 en /auth/refresh,
+    // refresh token vencido/revocado).
+    const rejectedError = new Error('refresh token vencido');
+    rejectedError.status = 401;
+    const refreshSession = jest.fn().mockRejectedValue(rejectedError);
     mockGetState.mockReturnValue({ token: 'old-token', refreshToken: 'old-refresh', refreshSession, logout });
 
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ message: 'Token expirado.' }) });
 
     await expect(api.get('/teams')).rejects.toMatchObject({ status: 401 });
     expect(logout).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('does NOT log out when the refresh fails due to a network error, only propagates the original 401', async () => {
+    const logout = jest.fn().mockResolvedValue();
+    // Error SIN `.status` -- la forma que toma mapNetworkError (timeout,
+    // backend inalcanzable/reiniciando, microcorte de conexión): no es
+    // evidencia de que el refresh token sea inválido, así que no debe
+    // cerrar la sesión (bug real reportado 2026-10-08: el usuario se
+    // desloguea solo durante un reinicio de backend o un corte breve).
+    const refreshSession = jest.fn().mockRejectedValue(new Error('No pudimos conectarnos. Revisá tu conexión a internet.'));
+    mockGetState.mockReturnValue({ token: 'old-token', refreshToken: 'old-refresh', refreshSession, logout });
+
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ message: 'Token expirado.' }) });
+
+    await expect(api.get('/teams')).rejects.toMatchObject({ status: 401 });
+    expect(logout).not.toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 

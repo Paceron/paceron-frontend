@@ -180,9 +180,19 @@ function SelfMarker({ position, name, photoUrl }) {
 
 const DRAG_VARIANTS = {
   finish: {
+    // trackBg: antes el track no tenía fondo propio, solo el borde -- en
+    // modo claro, con el root en bg-paper (casi blanco), un thumb
+    // semitransparente (/70) sobre esa misma base casi blanca quedaba
+    // lavado y el ícono blanco adentro casi no se veía (bug real
+    // reportado, 2026-10-08, "fondo transparente queda mal y poco
+    // legible"). En oscuro el contraste con bg-ink ya alcanzaba, por eso
+    // no se había notado antes.
     trackBorder: 'border-emerald-300 dark:border-emerald-800/70',
+    trackBg: 'bg-white dark:bg-surface',
     fill: 'bg-emerald-500/20',
-    thumb: 'bg-emerald-500/70 border border-emerald-600/60',
+    // Thumb opaco (no /70) -- mismo motivo, necesita contraste sólido
+    // contra el ícono blanco sin depender de qué haya detrás.
+    thumb: 'bg-emerald-500 border border-emerald-600/60',
     iconColor: '#ffffff',
     label: 'text-emerald-700 dark:text-emerald-300',
   },
@@ -254,7 +264,7 @@ const DragToFinishButton = forwardRef(function DragToFinishButton({ onTrigger, i
           completo ya sale gratis del stretch por default de los hijos de
           una columna, sin necesitar flex-1 para nada acá. */}
       <View
-        className={`h-14 rounded-full border ${colors.trackBorder}`}
+        className={`h-14 rounded-full border ${colors.trackBorder} ${colors.trackBg}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => { widthSV.value = Math.round(event.nativeEvent.layout.width); }}
         testID={`${idPrefix}-drag-track`}
@@ -594,7 +604,7 @@ function TrainerSessionLiveScreenContent() {
         <View className="gap-3 p-4" nativeID="trainer-session-live-controls" testID="trainer-session-live-controls">
           <View className="flex-row gap-3" nativeID="trainer-session-live-controls-row" testID="trainer-session-live-controls-row">
             <Pressable
-              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
+              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
               nativeID="trainer-session-live-attendance-button"
               onPress={() => setAttendanceVisible(true)}
               testID="trainer-session-live-attendance-button"
@@ -603,7 +613,7 @@ function TrainerSessionLiveScreenContent() {
               <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="trainer-session-live-attendance-button-label" testID="trainer-session-live-attendance-button-label">Asistencia</Text>
             </Pressable>
             <Pressable
-              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
+              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
               nativeID="trainer-session-live-participants-button"
               onPress={() => setParticipantsVisible(true)}
               testID="trainer-session-live-participants-button"
@@ -614,7 +624,7 @@ function TrainerSessionLiveScreenContent() {
           </View>
 
           <Pressable
-            className="h-11 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700"
+            className="h-11 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white shadow-sm active:opacity-70 dark:border-slate-700 dark:bg-surface"
             nativeID="trainer-session-live-feed-button"
             onPress={() => setFeedVisible(true)}
             testID="trainer-session-live-feed-button"
