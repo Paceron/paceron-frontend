@@ -7,6 +7,7 @@ import { useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { addDaysISO } from '../../utils/build-stamp-draft.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Desplaza TODO lo que sigue desde `fromDate` (inclusive) N días adelante
 // — no es "mover este día puntual", el backend corre todas las filas con
@@ -64,28 +65,32 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
           </Text>
 
           <View className="mb-4 flex-row items-center justify-center gap-3" nativeID="shift-day-modal-stepper" testID="shift-day-modal-stepper">
-            <Pressable
-              accessibilityLabel="Menos días"
-              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
-              disabled={days <= 1}
-              nativeID="shift-day-modal-decrement-button"
-              onPress={() => setDays((d) => Math.max(1, d - 1))}
-              testID="shift-day-modal-decrement-button"
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="minus" size={18} />
-            </Pressable>
+            <IconTooltip idPrefix="shift-day-modal-decrement-button-tooltip" label="Menos días">
+              <Pressable
+                accessibilityLabel="Menos días"
+                className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40 dark:border-slate-700"
+                disabled={days <= 1}
+                nativeID="shift-day-modal-decrement-button"
+                onPress={() => setDays((d) => Math.max(1, d - 1))}
+                testID="shift-day-modal-decrement-button"
+              >
+                <MaterialCommunityIcons color="#94a3b8" name="minus" size={18} />
+              </Pressable>
+            </IconTooltip>
             <Text className="w-16 text-center text-2xl font-bold text-slate-900 dark:text-white" nativeID="shift-day-modal-days-value" testID="shift-day-modal-days-value">
               {days}
             </Text>
-            <Pressable
-              accessibilityLabel="Más días"
-              className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700"
-              nativeID="shift-day-modal-increment-button"
-              onPress={() => setDays((d) => d + 1)}
-              testID="shift-day-modal-increment-button"
-            >
-              <MaterialCommunityIcons color="#94a3b8" name="plus" size={18} />
-            </Pressable>
+            <IconTooltip idPrefix="shift-day-modal-increment-button-tooltip" label="Más días">
+              <Pressable
+                accessibilityLabel="Más días"
+                className="h-10 w-10 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700"
+                nativeID="shift-day-modal-increment-button"
+                onPress={() => setDays((d) => d + 1)}
+                testID="shift-day-modal-increment-button"
+              >
+                <MaterialCommunityIcons color="#94a3b8" name="plus" size={18} />
+              </Pressable>
+            </IconTooltip>
           </View>
 
           <Text className="mb-4 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="shift-day-modal-preview" testID="shift-day-modal-preview">

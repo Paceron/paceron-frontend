@@ -1,18 +1,25 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 
 // Barra de pestañas horizontal reusada por pantallas con secciones que
 // merecen navegación propia en vez de ir todas apiladas — hoy
-// TeamDetailScreen (solo en web, mobile apila) y TrainingPlansScreen
-// (en ambas plataformas, ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md).
+// TeamDetailScreen y TrainingPlansScreen (en las dos plataformas, ver
+// docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md).
 // `scope` prefija los nativeID/testID para que no colisionen entre
 // pantallas que la usen a la vez.
 export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
   const colors = useThemeColors();
 
   return (
-    <View className="mb-5 flex-row gap-2" nativeID={scope} testID={scope}>
+    <ScrollView
+      className="mb-5"
+      contentContainerClassName="flex-row gap-2"
+      horizontal
+      nativeID={scope}
+      showsHorizontalScrollIndicator={false}
+      testID={scope}
+    >
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
@@ -36,6 +43,6 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }

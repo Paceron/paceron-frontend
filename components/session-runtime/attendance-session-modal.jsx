@@ -18,14 +18,18 @@ import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.j
 // sesión de AttendanceScreen, porque acá los tres ids ya se saben de
 // pendingSession. Un solo componente, usado desde el pre-start y la pantalla
 // en vivo del entrenador.
-export function AttendanceSessionModal({ visible, onClose, teamId, groupId, sessionInstanceId, teamName, sessionName, sessionDate }) {
+export function AttendanceSessionModal({ visible, onClose, teamId, groupId, sessionInstanceId, teamName, sessionName, sessionDate, realtimeSynced = false }) {
   const colors = useThemeColors();
   const idPrefix = 'attendance-session-modal';
 
   // Polling liviano SOLO mientras el modal está abierto -- ver el comentario
-  // en useSessionAttendance (sin evento WS de asistencia, es el único camino
-  // "casi en vivo" sin backend nuevo).
-  const { rows, summary, isLoading, isRefetching, error, refetch } = useSessionAttendance(sessionInstanceId, teamId, groupId, { refetchInterval: visible ? 6000 : false });
+  // en useSessionAttendance. `realtimeSynced` lo pasa en `true` únicamente
+  // trainer-session-live-screen.jsx (Gap 28, ya resuelto en backend): ahí hay
+  // un canal WS activo (useTrainerSessionRuntime) que invalida esta misma
+  // query al recibir `update:attendance_event`, así que el polling sobra. Los
+  // otros dos call sites (pre-start, revisión post-sesión) no tienen ningún
+  // canal suscripto -- siguen con el polling de siempre.
+  const { rows, summary, isLoading, isRefetching, error, refetch } = useSessionAttendance(sessionInstanceId, teamId, groupId, { refetchInterval: visible && !realtimeSynced ? 6000 : false });
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [discardVisible, setDiscardVisible] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);

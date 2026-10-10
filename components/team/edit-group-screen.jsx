@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { InputField } from '../forms/fields.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -34,6 +36,12 @@ function EditGroupScreenContent({ teamId, groupId }) {
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { updateGroup } = useGroupMutations(teamId);
   const group = groups.find((g) => g.id === groupId);
+
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['team', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['groups', teamId] }),
+  ]));
 
   const [name, setName] = useState(group?.name ?? '');
   const [description, setDescription] = useState(group?.description ?? '');
@@ -111,6 +119,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="edit-group-screen-scroll"
+      refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="edit-group-screen-scroll"
     >

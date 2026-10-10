@@ -17,6 +17,7 @@ import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { PaymentsAmountMode } from './payments-amount-mode.jsx';
 import { PaymentsMonthlyChart } from './payments-monthly-chart.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Dashboard de cobros: KPIs, evolución mensual y cobros por equipo.
 // - Los tiles usan `summary` (la ventana que termina hoy): correr el gráfico no
@@ -194,20 +195,22 @@ export function PaymentsDashboard({
 function WindowNav({ label, canPrev, canNext, onPrev, onNext }) {
   const colors = useThemeColors();
   const arrow = (id, icon, enabled, onPress, a11y) => (
-    <Pressable
-      accessibilityLabel={a11y}
-      accessibilityState={{ disabled: !enabled }}
-      // Clases fijas aunque cambie `enabled`: agregar/quitar pseudo-estados después
-      // del primer render remonta el componente en nativo (ver payments-amount-mode).
-      className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-      disabled={!enabled}
-      nativeID={id}
-      onPress={onPress}
-      style={{ opacity: enabled ? 1 : 0.3 }}
-      testID={id}
-    >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name={icon} size={20} />
-    </Pressable>
+    <IconTooltip idPrefix={`${id}-tooltip`} label={a11y}>
+      <Pressable
+        accessibilityLabel={a11y}
+        accessibilityState={{ disabled: !enabled }}
+        // Clases fijas aunque cambie `enabled`: agregar/quitar pseudo-estados después
+        // del primer render remonta el componente en nativo (ver payments-amount-mode).
+        className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        disabled={!enabled}
+        nativeID={id}
+        onPress={onPress}
+        style={{ opacity: enabled ? 1 : 0.3 }}
+        testID={id}
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={icon} size={20} />
+      </Pressable>
+    </IconTooltip>
   );
   return (
     <View className="mb-3 flex-row items-center justify-between" nativeID="payments-dashboard-window" testID="payments-dashboard-window">

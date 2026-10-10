@@ -15,6 +15,7 @@ import { TabBar } from '../shared/tab-bar.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { SessionsCatalogTab } from './sessions-catalog-tab.jsx';
 import { ExercisesCatalogTab } from './exercises-catalog-tab.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Planes / Sesiones / Ejercicios — a diferencia de TeamDetailScreen
 // (pestañas solo en web), acá van en ambas plataformas: cada pestaña es
@@ -62,15 +63,17 @@ function PlansTab() {
   return (
     <SectionCard
       headerRight={(
-        <Pressable
-          accessibilityLabel="Crear plan"
-          className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-          nativeID="training-plans-create-button"
-          onPress={() => router.push('/training-plans/create')}
-          testID="training-plans-create-button"
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
-        </Pressable>
+        <IconTooltip idPrefix="training-plans-create-button-tooltip" label="Crear plan">
+          <Pressable
+            accessibilityLabel="Crear plan"
+            className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+            nativeID="training-plans-create-button"
+            onPress={() => router.push('/training-plans/create')}
+            testID="training-plans-create-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
+          </Pressable>
+        </IconTooltip>
       )}
       icon="clipboard-text-outline"
       title="Tus planes"

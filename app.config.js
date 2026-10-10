@@ -72,6 +72,7 @@ module.exports = {
       'expo-notifications',
       '@maplibre/maplibre-react-native',
       'expo-sqlite',
+      'expo-audio',
       [
         'expo-speech-recognition',
         {

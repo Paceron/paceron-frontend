@@ -100,7 +100,12 @@ const CREATE_GPS_POINTS = `
 
 export async function initSessionDb() {
   const db = await getDb();
-  await db.execAsync(`PRAGMA journal_mode = WAL;${CREATE_SESSION_RUNS}${CREATE_EXERCISE_SETS}${CREATE_GPS_POINTS}`);
+  // `foreign_keys` es OFF por default en SQLite, por conexión -- sin esto,
+  // el ON DELETE CASCADE de exercise_sets/gps_points (declarado arriba) nunca
+  // se aplica: pruneSyncedRuns() borraría la fila de session_runs pero
+  // dejaría sets/puntos huérfanos para siempre (sin padre al que apuntar un
+  // futuro intento de limpieza, serían un leak peor que no limpiar nada).
+  await db.execAsync(`PRAGMA journal_mode = WAL;PRAGMA foreign_keys = ON;${CREATE_SESSION_RUNS}${CREATE_EXERCISE_SETS}${CREATE_GPS_POINTS}`);
   for (const statement of RUNNER_SESSION_COLUMN_MIGRATIONS) {
     try {
       await db.execAsync(statement);
@@ -295,5 +300,51 @@ export async function getSetsForSync(runId) {
      WHERE run_id = ? AND synced = 0 AND status IN (?, ?)
      ORDER BY display_order ASC`,
     [runId, SET_STATUS.FINISHED, SET_STATUS.SKIPPED]
+  );
+}
+
+// Runs que todavía le deben algo al backend -- barrido de resiliencia
+// (services/session-sync.js#syncPendingRuns), no solo el run de la sesión
+// que el usuario tiene abierta ahora. Un run entra acá si falta CUALQUIERA
+// de los 3 pasos que syncRun sabe hacer: el upsert inicial, alguna serie
+// terminada/salteada sin subir, o (si ya es terminal) el cierre remoto.
+// Un run `in_progress` sin ningún set pendiente no entra -- todavía no hay
+// nada que sincronizar, syncRun no tiene ningún paso más que dar ahí hasta
+// que termine o se salteen series.
+export async function getRunsPendingSync() {
+  const db = await getDb();
+  return await db.getAllAsync(
+    `SELECT * FROM session_runs
+     WHERE runner_session_created = 0
+        OR (status IN (?, ?) AND runner_session_finished = 0)
+        OR id IN (SELECT run_id FROM exercise_sets WHERE synced = 0 AND status IN (?, ?))`,
+    [RUN_STATUS.COMPLETED, RUN_STATUS.CANCELLED, SET_STATUS.FINISHED, SET_STATUS.SKIPPED]
+  );
+}
+
+// 1 mes: mismo criterio que acordó el usuario para no crecer sin límite --
+// un run que nunca logró sincronizar del todo en ese tiempo (ej. una
+// instancia/ejercicio borrado del lado backend, algo que syncRun no puede
+// resolver solo) se abandona en vez de quedar reintentando para siempre.
+const PRUNE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Dos motivos de borrado, independientes entre sí (CASCADE se lleva sets y
+// puntos, ver PRAGMA foreign_keys arriba):
+// - Ya no le debe nada al backend (mismo criterio NEGADO de
+//   getRunsPendingSync, pero limitado a runs terminales -- uno in_progress
+//   nunca está "completo" por más que no tenga nada pendiente todavía).
+// - Pasó PRUNE_MAX_AGE_MS sin importar el estado -- red de seguridad para
+//   lo que quedó permanentemente atascado (ver comentario de la constante).
+export async function pruneSyncedRuns() {
+  const db = await getDb();
+  const cutoffIso = toIsoUtc(new Date(Date.now() - PRUNE_MAX_AGE_MS));
+  await db.runAsync(
+    `DELETE FROM session_runs
+     WHERE (
+       status IN (?, ?) AND runner_session_finished = 1
+       AND id NOT IN (SELECT run_id FROM exercise_sets WHERE synced = 0 AND status IN (?, ?))
+     )
+     OR created_at < ?`,
+    [RUN_STATUS.COMPLETED, RUN_STATUS.CANCELLED, SET_STATUS.FINISHED, SET_STATUS.SKIPPED, cutoffIso]
   );
 }

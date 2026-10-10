@@ -9,7 +9,12 @@ import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
+import { useAuthStore } from '../../store/auth-store.js';
+import { useTeam } from '../../hooks/use-teams.js';
+import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useLiveSessionRuntime } from '../../hooks/use-live-session-runtime.js';
+import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
+import { SessionMessagesModal } from './session-messages-modal.jsx';
 import { formatStopwatch } from '../../utils/time.js';
 import { formatMeters } from '../../utils/distance.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
@@ -342,7 +347,7 @@ function FinishSummaryModal({ summary, onClose, visible }) {
   );
 }
 
-function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCancel, router }) {
+function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCancel, onOpenMessages, router }) {
   const colors = useThemeColors();
   const [cancelVisible, setCancelVisible] = useState(false);
 
@@ -369,7 +374,17 @@ function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCa
         <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="training-session-live-overview-header-label" testID="training-session-live-overview-header-label">
           Sesión presencial
         </Text>
-        <AttendanceQuickAccessButton idPrefix="training-session-live-overview" router={router} />
+        <View className="flex-row items-center gap-1" nativeID="training-session-live-overview-header-actions" testID="training-session-live-overview-header-actions">
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+            nativeID="training-session-live-overview-messages-button"
+            onPress={onOpenMessages}
+            testID="training-session-live-overview-messages-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="message-text-outline" size={20} />
+          </Pressable>
+          <AttendanceQuickAccessButton idPrefix="training-session-live-overview" router={router} />
+        </View>
       </View>
       <ScrollView contentContainerClassName="p-4" nativeID="training-session-live-overview-scroll" testID="training-session-live-overview-scroll">
         <View className="mb-3" nativeID="training-session-live-overview-title-block" testID="training-session-live-overview-title-block">
@@ -673,12 +688,14 @@ function LiveSeriesView({
 function TrainingSessionLiveScreenContent() {
   const router = useRouter();
   const clearLiveSession = useLiveSessionStore((s) => s.clearLiveSession);
+  const myUserId = useAuthStore((s) => s.userId);
   const {
     booted,
     bootError,
     run,
     sets,
     connectionStatus,
+    connectedPeerIds,
     pendingControl,
     clearPendingControl,
     distanceBySetId,
@@ -698,6 +715,23 @@ function TrainingSessionLiveScreenContent() {
   const [currentSetId, setCurrentSetId] = useState(null);
   const [finishing, setFinishing] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
+
+  // `run` recién existe después del bootstrap -- antes de eso, `teamId` es
+  // null y los dos hooks de abajo simplemente no piden nada todavía (su
+  // propio `enabled` interno por id, mismo patrón que el resto del repo).
+  const teamId = run?.team_id ?? null;
+  const { team } = useTeam(teamId);
+  const { members: rosterMembers } = useTeamRoster(teamId);
+  const trainerUserId = team?.ownerId ?? null;
+  const trainerName = rosterMembers.find((m) => String(m.userId) === String(trainerUserId))?.name ?? null;
+  const peerMembers = rosterMembers.filter((m) => String(m.userId) !== String(myUserId) && String(m.userId) !== String(trainerUserId));
+
+  const [messagesVisible, setMessagesVisible] = useState(false);
+  // String(...) -- misma key que usa la invalidación por WS en
+  // use-live-session-runtime.js, ver el comentario ahí.
+  const sessionInstanceId = run?.session_instance_id != null ? String(run.session_instance_id) : null;
+  const { messages } = useSessionMessages(sessionInstanceId);
+  const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
   const finalizeTriggeredRef = useRef(false);
 
   // Detecta que no queda ninguna serie pendiente y finaliza -- reacciona a
@@ -868,6 +902,7 @@ function TrainingSessionLiveScreenContent() {
             activePhase={activePhase}
             activeSetId={activeSetId}
             onCancel={handleCancelConfirmed}
+            onOpenMessages={() => setMessagesVisible(true)}
             onOpenSet={handleOpenSet}
             router={router}
             run={run}
@@ -899,6 +934,21 @@ function TrainingSessionLiveScreenContent() {
             </Pressable>
           </Pressable>
         </Modal>
+
+        <SessionMessagesModal
+          connectedPeerIds={connectedPeerIds}
+          idPrefix="training-session-live-messages-modal"
+          isSending={isSending}
+          myUserId={myUserId}
+          onClose={() => setMessagesVisible(false)}
+          onSend={sendMessage}
+          messages={messages}
+          role="runner"
+          rosterMembers={peerMembers}
+          trainerName={trainerName}
+          trainerUserId={trainerUserId != null ? String(trainerUserId) : null}
+          visible={messagesVisible}
+        />
       </SafeAreaView>
     </MobileOnlyRoute>
   );

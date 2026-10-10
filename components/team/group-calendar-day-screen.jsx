@@ -16,6 +16,7 @@ import { InputField } from '../forms/fields.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { RequireRole } from '../guards/require-role.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
@@ -383,7 +384,9 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
 export function GroupCalendarDayScreen({ teamId, groupId, date, action }) {
   return (
     <RequireAuth>
-      <GroupCalendarDayScreenContent action={action} date={date} groupId={groupId} teamId={teamId} />
+      <RequireRole redirectHref="/calendar" role="trainer">
+        <GroupCalendarDayScreenContent action={action} date={date} groupId={groupId} teamId={teamId} />
+      </RequireRole>
     </RequireAuth>
   );
 }

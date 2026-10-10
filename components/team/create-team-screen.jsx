@@ -21,6 +21,7 @@ import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.j
 import { useTeamConfiguration } from '../../hooks/use-team-configuration.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };
 const TOTAL_STEPS = 3;
@@ -237,15 +238,17 @@ function CreateTeamScreenContent() {
           <>
             <SectionCard
               headerRight={(
-                <Pressable
-                  accessibilityLabel="Invitar corredor"
-                  className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-                  nativeID="create-team-invite-add-button"
-                  onPress={() => setInviteModalVisible(true)}
-                  testID="create-team-invite-add-button"
-                >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
-                </Pressable>
+                <IconTooltip idPrefix="create-team-invite-add-button-tooltip" label="Invitar corredor">
+                  <Pressable
+                    accessibilityLabel="Invitar corredor"
+                    className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                    nativeID="create-team-invite-add-button"
+                    onPress={() => setInviteModalVisible(true)}
+                    testID="create-team-invite-add-button"
+                  >
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+                  </Pressable>
+                </IconTooltip>
               )}
               icon="account-multiple-check"
               title="Corredores a invitar"

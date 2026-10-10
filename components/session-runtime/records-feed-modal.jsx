@@ -6,6 +6,7 @@ import { isWeb } from '../../utils/platform.js';
 import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Feed de registros (completado/salteado por serie), filtrable por corredor
 // -- compartido entre la pantalla en vivo del entrenador
@@ -40,15 +41,17 @@ export function RecordsFeedModal({ visible, onClose, feed, feedOptions, feedFilt
                 value={feedFilterAthleteId}
               />
               {feedFilterAthleteId != null && (
-                <Pressable
-                  accessibilityLabel="Quitar filtro"
-                  className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 active:opacity-70 dark:border-slate-700"
-                  nativeID={`${idPrefix}-filter-clear`}
-                  onPress={() => onChangeFeedFilter(null)}
-                  testID={`${idPrefix}-filter-clear`}
-                >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={20} />
-                </Pressable>
+                <IconTooltip idPrefix={`${idPrefix}-filter-clear-tooltip`} label="Quitar filtro">
+                  <Pressable
+                    accessibilityLabel="Quitar filtro"
+                    className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 active:opacity-70 dark:border-slate-700"
+                    nativeID={`${idPrefix}-filter-clear`}
+                    onPress={() => onChangeFeedFilter(null)}
+                    testID={`${idPrefix}-filter-clear`}
+                  >
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={20} />
+                  </Pressable>
+                </IconTooltip>
               )}
             </View>
             <ScrollView className="flex-1" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>

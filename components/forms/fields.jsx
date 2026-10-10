@@ -8,6 +8,7 @@ import { isWeb } from '../../utils/platform.js';
 import { formatDurationInput } from '../../utils/time.js';
 import { formatDateInput } from '../../utils/date-field-format.js';
 import { BREAKPOINTS } from '../../theme/tokens.js';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Primitivos de formulario compartidos por register y edit de perfil.
 
@@ -895,14 +896,16 @@ export function InvitedEmailsList({ value = [], onChange, groups = [] }) {
             >
               {groups.length > 0 ? `${invite.email} · ${groupName}` : invite.email}
             </Text>
-            <Pressable
-              accessibilityLabel={`Quitar ${invite.email}`}
-              onPress={() => handleRemove(invite.email)}
-              nativeID={`invited-emails-list-chip-${chipSlug}-remove-button`}
-              testID={`invited-emails-list-chip-${chipSlug}-remove-button`}
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
-            </Pressable>
+            <IconTooltip idPrefix={`invited-emails-list-chip-${chipSlug}-remove-button-tooltip`} label={`Quitar ${invite.email}`}>
+              <Pressable
+                accessibilityLabel={`Quitar ${invite.email}`}
+                onPress={() => handleRemove(invite.email)}
+                nativeID={`invited-emails-list-chip-${chipSlug}-remove-button`}
+                testID={`invited-emails-list-chip-${chipSlug}-remove-button`}
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={14} />
+              </Pressable>
+            </IconTooltip>
           </View>
         );
       })}

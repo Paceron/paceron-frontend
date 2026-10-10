@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -11,6 +12,8 @@ import { useSession, useSessionMutations } from '../../hooks/use-sessions.js';
 import { useSessionForm } from '../../hooks/use-session-form.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { isMobile } from '../../utils/platform.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
@@ -66,6 +69,12 @@ function EditSessionForm({ session }) {
   const isDirty = useFormDirty({ name: form.name, description: form.description, exercises: form.exercises });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['session', session.id] }),
+    queryClient.invalidateQueries({ queryKey: ['exercises', userId] }),
+  ]));
+
   const handleSubmit = async () => {
     if (submitting) return;
     if (!form.validate()) return;
@@ -117,6 +126,7 @@ function EditSessionForm({ session }) {
             onReorder={form.onReorder}
             onSetDescription={form.setDescription}
             onSetName={form.setName}
+            refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
             visible={false}
           />
 

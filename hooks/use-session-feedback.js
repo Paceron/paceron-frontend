@@ -23,6 +23,10 @@ export function useSessionFeedback(sessionInstanceId, athleteUserId, enabled = t
       return toSessionFeedbackListModel(res?.data ?? []);
     },
     enabled: enabled && Boolean(sessionInstanceId && athleteUserId),
+    // staleTime 0 -- mismo motivo que hooks/use-runner-session.js: este
+    // feedback puede quedar desactualizado por una edición del entrenador
+    // o, en dev, por un `make demo-restore` que lo vacía en el backend.
+    staleTime: 0,
   });
   return { groups: query.data ?? [], loading: query.isFetching, refetch: query.refetch };
 }

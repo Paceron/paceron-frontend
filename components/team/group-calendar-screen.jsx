@@ -27,6 +27,7 @@ import { CalendarMonthYearHeader } from '../calendar/calendar-month-year-header.
 import { CalendarFadeIn } from '../calendar/calendar-fade-in.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
@@ -310,35 +311,41 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
               <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="group-calendar-screen-selection-count" testID="group-calendar-screen-selection-count">
                 {selectedDates.size} seleccionado{selectedDates.size === 1 ? '' : 's'}
               </Text>
-              <Pressable
-                accessibilityLabel="Vaciar en lote"
-                className={`h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 ${selectionClosedClass === true ? 'opacity-40' : ''}`}
-                disabled={selectionClosedClass === true || isBulkClearing}
-                nativeID="group-calendar-screen-bulk-clear-button"
-                onPress={handleBulkClear}
-                testID="group-calendar-screen-bulk-clear-button"
-              >
-                <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Editar en lote"
-                className={`h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 ${selectionClosedClass === true ? 'opacity-40' : ''}`}
-                disabled={selectionClosedClass === true}
-                nativeID="group-calendar-screen-bulk-edit-button"
-                onPress={() => setBulkEditModalVisible(true)}
-                testID="group-calendar-screen-bulk-edit-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Salir de selección"
-                className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                nativeID="group-calendar-screen-selection-exit-button"
-                onPress={handleExitSelection}
-                testID="group-calendar-screen-selection-exit-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-              </Pressable>
+              <IconTooltip idPrefix="group-calendar-screen-bulk-clear-button-tooltip" label="Vaciar en lote">
+                <Pressable
+                  accessibilityLabel="Vaciar en lote"
+                  className={`h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 ${selectionClosedClass === true ? 'opacity-40' : ''}`}
+                  disabled={selectionClosedClass === true || isBulkClearing}
+                  nativeID="group-calendar-screen-bulk-clear-button"
+                  onPress={handleBulkClear}
+                  testID="group-calendar-screen-bulk-clear-button"
+                >
+                  <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
+                </Pressable>
+              </IconTooltip>
+              <IconTooltip idPrefix="group-calendar-screen-bulk-edit-button-tooltip" label="Editar en lote">
+                <Pressable
+                  accessibilityLabel="Editar en lote"
+                  className={`h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 ${selectionClosedClass === true ? 'opacity-40' : ''}`}
+                  disabled={selectionClosedClass === true}
+                  nativeID="group-calendar-screen-bulk-edit-button"
+                  onPress={() => setBulkEditModalVisible(true)}
+                  testID="group-calendar-screen-bulk-edit-button"
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+                </Pressable>
+              </IconTooltip>
+              <IconTooltip idPrefix="group-calendar-screen-selection-exit-button-tooltip" label="Salir de selección">
+                <Pressable
+                  accessibilityLabel="Salir de selección"
+                  className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                  nativeID="group-calendar-screen-selection-exit-button"
+                  onPress={handleExitSelection}
+                  testID="group-calendar-screen-selection-exit-button"
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
+                </Pressable>
+              </IconTooltip>
             </View>
           ) : null}
         </View>

@@ -21,6 +21,7 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 function PendingInviteRow({ groupName, invite }) {
   const slug = invite.email.replace(/[^a-z0-9]+/gi, '-');
@@ -159,15 +160,17 @@ function InviteTeamMembersScreenContent({ teamId }) {
 
         <SectionCard
           headerRight={(
-            <Pressable
-              accessibilityLabel="Invitar corredor"
-              className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-              nativeID="invite-team-invite-add-button"
-              onPress={() => setInviteModalVisible(true)}
-              testID="invite-team-invite-add-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
-            </Pressable>
+            <IconTooltip idPrefix="invite-team-invite-add-button-tooltip" label="Invitar corredor">
+              <Pressable
+                accessibilityLabel="Invitar corredor"
+                className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                nativeID="invite-team-invite-add-button"
+                onPress={() => setInviteModalVisible(true)}
+                testID="invite-team-invite-add-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+              </Pressable>
+            </IconTooltip>
           )}
           icon="account-multiple-check"
           title="Corredores a invitar"

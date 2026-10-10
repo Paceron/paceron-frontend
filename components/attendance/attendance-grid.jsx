@@ -5,6 +5,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { filterAndSortRows } from '../../utils/attendance-rows.js';
 import { AttendanceMetricCards } from './attendance-metric-cards.jsx';
 import { AttendanceRow } from './attendance-row.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Grilla de asistencia de la sesión elegida: las tres tarjetas de métricas, el
 // buscador, el orden, la barra de guardado masivo y las filas.
@@ -161,14 +162,16 @@ export function AttendanceGrid({
             value={query}
           />
           {isFiltering ? (
-            <Pressable
-              accessibilityLabel="Limpiar el filtro"
-              nativeID={`${idPrefix}-search-clear`}
-              onPress={() => setQuery('')}
-              testID={`${idPrefix}-search-clear`}
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={16} />
-            </Pressable>
+            <IconTooltip idPrefix={`${idPrefix}-search-clear-tooltip`} label="Limpiar el filtro">
+              <Pressable
+                accessibilityLabel="Limpiar el filtro"
+                nativeID={`${idPrefix}-search-clear`}
+                onPress={() => setQuery('')}
+                testID={`${idPrefix}-search-clear`}
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={16} />
+              </Pressable>
+            </IconTooltip>
           ) : null}
         </View>
 
@@ -220,23 +223,25 @@ export function AttendanceGrid({
             `w-11` porque no tiene texto: solo el ícono, así que el
             `accessibilityLabel` es lo que le da nombre a los lectores de
             pantalla, y `busy` hace que "está actualizando" sea anunciable. */}
-        <Pressable
-          accessibilityLabel="Actualizar la asistencia de la sesión"
-          accessibilityRole="button"
-          accessibilityState={{ busy: Boolean(isRefetching), disabled: Boolean(isRefetching) }}
-          className="h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary active:opacity-80"
-          disabled={isRefetching}
-          hitSlop={6}
-          nativeID={`${idPrefix}-refresh-button`}
-          onPress={onRefresh}
-          testID={`${idPrefix}-refresh-button`}
-        >
-          {isRefetching ? (
-            <ActivityIndicator color="#ffffff" size="small" />
-          ) : (
-            <MaterialCommunityIcons color="#ffffff" name="refresh" size={20} />
-          )}
-        </Pressable>
+        <IconTooltip idPrefix={`${idPrefix}-refresh-button-tooltip`} label="Actualizar la asistencia de la sesión">
+          <Pressable
+            accessibilityLabel="Actualizar la asistencia de la sesión"
+            accessibilityRole="button"
+            accessibilityState={{ busy: Boolean(isRefetching), disabled: Boolean(isRefetching) }}
+            className="h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary active:opacity-80"
+            disabled={isRefetching}
+            hitSlop={6}
+            nativeID={`${idPrefix}-refresh-button`}
+            onPress={onRefresh}
+            testID={`${idPrefix}-refresh-button`}
+          >
+            {isRefetching ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <MaterialCommunityIcons color="#ffffff" name="refresh" size={20} />
+            )}
+          </Pressable>
+        </IconTooltip>
       </View>
 
       <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-rows-count`} testID={`${idPrefix}-rows-count`}>

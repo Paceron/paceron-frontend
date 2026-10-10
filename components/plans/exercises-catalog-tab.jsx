@@ -15,6 +15,7 @@ import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
 import { BulkDeleteExercisesModal } from './bulk-delete-exercises-modal.jsx';
 import { AttachToSessionPicker } from './attach-to-session-picker.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Sesiones (deduplicadas) que referencian este ejercicio en cualquiera
 // de sus ejercicios (lista libre, cualquier rol) — uso directo, no
@@ -51,16 +52,18 @@ function ExerciseMenuButton({ exercise, onOpenMenu, containerRef }) {
   };
 
   return (
-    <Pressable
-      ref={ref}
-      accessibilityLabel="Más opciones"
-      className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-      nativeID={`exercise-catalog-row-${exercise.id}-menu-toggle`}
-      onPress={handlePress}
-      testID={`exercise-catalog-row-${exercise.id}-menu-toggle`}
-    >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
-    </Pressable>
+    <IconTooltip idPrefix={`exercise-catalog-row-${exercise.id}-menu-toggle-tooltip`} label="Más opciones">
+      <Pressable
+        ref={ref}
+        accessibilityLabel="Más opciones"
+        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+        nativeID={`exercise-catalog-row-${exercise.id}-menu-toggle`}
+        onPress={handlePress}
+        testID={`exercise-catalog-row-${exercise.id}-menu-toggle`}
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
+      </Pressable>
+    </IconTooltip>
   );
 }
 
@@ -125,16 +128,18 @@ function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, 
           <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
         </View>
         {selectionMode ? (
-          <Pressable
-            accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: selected }}
-            nativeID={`${idPrefix}-checkbox`}
-            onPress={() => onToggleSelected(exercise.id)}
-            testID={`${idPrefix}-checkbox`}
-          >
-            <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} />
-          </Pressable>
+          <IconTooltip idPrefix={`${idPrefix}-checkbox-tooltip`} label={selected ? 'Quitar de la selección' : 'Agregar a la selección'}>
+            <Pressable
+              accessibilityLabel={selected ? 'Quitar de la selección' : 'Agregar a la selección'}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected }}
+              nativeID={`${idPrefix}-checkbox`}
+              onPress={() => onToggleSelected(exercise.id)}
+              testID={`${idPrefix}-checkbox`}
+            >
+              <MaterialCommunityIcons color={selected ? '#8cc63e' : '#94a3b8'} name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} />
+            </Pressable>
+          </IconTooltip>
         ) : (
           <ExerciseMenuButton containerRef={containerRef} exercise={exercise} onOpenMenu={onOpenMenu} />
         )}
@@ -316,15 +321,17 @@ export function ExercisesCatalogTab() {
             >
               <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400" nativeID="exercises-catalog-select-button-label" testID="exercises-catalog-select-button-label">Seleccionar</Text>
             </Pressable>
-            <Pressable
-              accessibilityLabel="Crear ejercicio"
-              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="exercises-catalog-create-button"
-              onPress={() => setModalExercise(null)}
-              testID="exercises-catalog-create-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
-            </Pressable>
+            <IconTooltip idPrefix="exercises-catalog-create-button-tooltip" label="Crear ejercicio">
+              <Pressable
+                accessibilityLabel="Crear ejercicio"
+                className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                nativeID="exercises-catalog-create-button"
+                onPress={() => setModalExercise(null)}
+                testID="exercises-catalog-create-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
+              </Pressable>
+            </IconTooltip>
           </View>
         )}
         icon="dumbbell"

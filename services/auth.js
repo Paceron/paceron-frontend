@@ -25,9 +25,20 @@ export async function getUser({ id, email }) {
 // auth.RefreshResponse {access_token, refresh_token, expires_in}. Rota el
 // refresh token: el que se manda queda revocado, el que vuelve es el
 // vigente a partir de ahora.
+// skipAuthRefresh obligatorio acá: este mismo endpoint es el que llama el
+// interceptor de 401 de services/api.js cuando CUALQUIER OTRA request
+// vence. Si /auth/refresh devuelve 401 (refresh token vencido/revocado,
+// ej. tras un reset de backend) y este call NO pasa skipAuthRefresh, esa
+// respuesta vuelve a entrar al MISMO interceptor -- que ve el
+// `refreshPromise` module-level ya seteado (es justo la llamada en curso
+// que disparó este request) y se queda esperando esa misma promesa
+// resolver a sí misma: deadlock real, la app queda colgada sin loguear
+// nunca el error ni cerrar sesión (bug real reportado, 2026-10-08, "el
+// sistema me dejaba en un limbo" -- requería cerrar sesión a mano porque
+// ningún código después de ese await llegaba a correr nunca).
 export async function refresh(refreshToken) {
   if (USE_MOCKS) return await mockRefresh(refreshToken);
-  return await api.post('/auth/refresh', { refresh_token: refreshToken });
+  return await api.post('/auth/refresh', { refresh_token: refreshToken }, { skipAuthRefresh: true });
 }
 
 // POST /api/v1/auth/logout — auth.LogoutRequest {refresh_token}. Revoca el

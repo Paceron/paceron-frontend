@@ -14,6 +14,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 function TeamRow({ team, onPress, hasPendingRequests }) {
   const colors = useThemeColors();
@@ -85,26 +86,30 @@ function TeamsListScreenContent() {
             Mis equipos
           </Text>
           {activeRole === 'runner' && (
-            <Pressable
-              accessibilityLabel="Buscar equipos"
-              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="teams-list-search-button"
-              onPress={() => router.push('/teams/search')}
-              testID="teams-list-search-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={22} />
-            </Pressable>
+            <IconTooltip idPrefix="teams-list-search-button-tooltip" label="Buscar equipos">
+              <Pressable
+                accessibilityLabel="Buscar equipos"
+                className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                nativeID="teams-list-search-button"
+                onPress={() => router.push('/teams/search')}
+                testID="teams-list-search-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={22} />
+              </Pressable>
+            </IconTooltip>
           )}
           {canCreateTeam && (
-            <Pressable
-              accessibilityLabel="Crear equipo"
-              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="teams-list-create-button"
-              onPress={() => router.push('/teams/create')}
-              testID="teams-list-create-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
-            </Pressable>
+            <IconTooltip idPrefix="teams-list-create-button-tooltip" label="Crear equipo">
+              <Pressable
+                accessibilityLabel="Crear equipo"
+                className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                nativeID="teams-list-create-button"
+                onPress={() => router.push('/teams/create')}
+                testID="teams-list-create-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
+              </Pressable>
+            </IconTooltip>
           )}
         </View>
 

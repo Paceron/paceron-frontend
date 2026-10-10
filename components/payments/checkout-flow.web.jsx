@@ -2,6 +2,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { CheckoutBrick } from './checkout-brick.web.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Wrapper de chrome para CheckoutBrick — modal centrado (no fullscreen,
 // a diferencia de la rama nativa) porque en web hay más ancho disponible
@@ -26,15 +27,17 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, m
             <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="checkout-flow-modal-title" testID="checkout-flow-modal-title">
               Checkout
             </Text>
-            <Pressable
-              accessibilityLabel="Cerrar"
-              className="p-1 hover:opacity-70 active:opacity-70"
-              nativeID="checkout-flow-modal-close-button"
-              onPress={onCancel}
-              testID="checkout-flow-modal-close-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
-            </Pressable>
+            <IconTooltip idPrefix="checkout-flow-modal-close-button-tooltip" label="Cerrar">
+              <Pressable
+                accessibilityLabel="Cerrar"
+                className="p-1 hover:opacity-70 active:opacity-70"
+                nativeID="checkout-flow-modal-close-button"
+                onPress={onCancel}
+                testID="checkout-flow-modal-close-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
+              </Pressable>
+            </IconTooltip>
           </View>
           <ScrollView nativeID="checkout-flow-modal-scroll" showsVerticalScrollIndicator={false} testID="checkout-flow-modal-scroll">
             <CheckoutBrick

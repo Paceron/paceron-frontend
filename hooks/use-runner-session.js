@@ -22,6 +22,16 @@ export function useRunnerSession(sessionInstanceId, athleteUserId) {
       }
     },
     enabled: Boolean(sessionInstanceId && athleteUserId),
+    // staleTime 0 (no el default global de 60s) -- este estado decide la
+    // rama review/manual del pre-start (`alreadyStarted`) y puede cambiar
+    // por fuera de este dispositivo (el entrenador edita el feedback, o en
+    // dev un `make demo-restore` reabre la sesión en el backend). Con el
+    // default, volver a este mismo sessionInstanceId sin pasar por
+    // foreground/background (ver ForegroundRefetch en app-providers.jsx)
+    // podía quedarse mostrando "Sesión completada" ya vencido -- bug real
+    // reportado, 2026-10-08: el corredor seguía viendo el registro de una
+    // sesión que el backend ya había vuelto a abrir.
+    staleTime: 0,
   });
   return { runnerSession: query.data ?? null, loading: query.isFetching, refetch: query.refetch };
 }
