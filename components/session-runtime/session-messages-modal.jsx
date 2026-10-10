@@ -14,15 +14,6 @@ import { groupMessagesByThread } from '../../utils/session-message-threads.js';
 // checkboxes + "Todos"; el corredor elige UNO ("Entrenador" o un compañero
 // conectado). Ver docs/superpowers/specs/2026-10-09-live-session-messaging-design.md.
 
-// Logging temporal (gateado __DEV__) para diagnosticar el bug real reportado
-// en dispositivo -- 2026-10-09 -- de scroll que solo responde a un swipe
-// brusco, nunca a uno lento, en la lista de mensajes/pickers de destinatario.
-// Sacar una vez resuelto y confirmado en dispositivo.
-function logScroll(role, idPrefix, event, data) {
-  if (!__DEV__) return;
-  console.log(`[session-messages:scroll][${role}][${idPrefix}]`, event, data ?? '');
-}
-
 const TYPE_META = {
   info: {
     label: 'Info', icon: 'information-outline', iconColor: '#0284c7',
@@ -267,7 +258,6 @@ function TrainerRecipientPicker({ idPrefix, rosterMembers, allSelected, setAllSe
         keyboardShouldPersistTaps="handled"
         nativeID={`${idPrefix}-trainer-picker-list`}
         nestedScrollEnabled
-        onScrollBeginDrag={() => logScroll('trainer', idPrefix, 'trainer-picker-list:onScrollBeginDrag')}
         overScrollMode="never"
         testID={`${idPrefix}-trainer-picker-list`}
       >
@@ -300,7 +290,6 @@ function RunnerRecipientPicker({ idPrefix, trainerName, peerMembers, selectedUse
       keyboardShouldPersistTaps="handled"
       nativeID={`${idPrefix}-runner-picker`}
       nestedScrollEnabled
-      onScrollBeginDrag={() => logScroll('runner', idPrefix, 'runner-picker-list:onScrollBeginDrag')}
       overScrollMode="never"
       testID={`${idPrefix}-runner-picker`}
     >
@@ -459,7 +448,6 @@ export function SessionMessagesModal({
         <View
           className="absolute bottom-0 right-0 top-0 w-full max-w-lg bg-white dark:bg-surface"
           nativeID={`${idPrefix}-card`}
-          onTouchStart={() => logScroll(role, idPrefix, 'card:onTouchStart (raw)')}
           testID={`${idPrefix}-card`}
         >
           <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} style={{ paddingBottom: keyboardHeight }} testID={`${idPrefix}-card-safe-area`}>
@@ -506,11 +494,6 @@ export function SessionMessagesModal({
                     keyboardShouldPersistTaps="handled"
                     nativeID={`${idPrefix}-list`}
                     nestedScrollEnabled
-                    onContentSizeChange={(w, h) => logScroll(role, idPrefix, 'list:onContentSizeChange', { w, h })}
-                    onLayout={(e) => logScroll(role, idPrefix, 'list:onLayout', e.nativeEvent.layout)}
-                    onMomentumScrollBegin={() => logScroll(role, idPrefix, 'list:onMomentumScrollBegin')}
-                    onScrollBeginDrag={() => logScroll(role, idPrefix, 'list:onScrollBeginDrag')}
-                    onTouchStart={() => logScroll(role, idPrefix, 'list:onTouchStart (raw)')}
                     overScrollMode="never"
                     testID={`${idPrefix}-list`}
                   >
