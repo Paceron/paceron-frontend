@@ -14,6 +14,15 @@ import { groupMessagesByThread } from '../../utils/session-message-threads.js';
 // checkboxes + "Todos"; el corredor elige UNO ("Entrenador" o un compañero
 // conectado). Ver docs/superpowers/specs/2026-10-09-live-session-messaging-design.md.
 
+// Logging temporal (gateado __DEV__) para diagnosticar el bug real reportado
+// en dispositivo -- 2026-10-09 -- de scroll que solo responde a un swipe
+// brusco, nunca a uno lento, en la lista de mensajes/pickers de destinatario.
+// Sacar una vez resuelto y confirmado en dispositivo.
+function logScroll(role, idPrefix, event, data) {
+  if (!__DEV__) return;
+  console.log(`[session-messages:scroll][${role}][${idPrefix}]`, event, data ?? '');
+}
+
 const TYPE_META = {
   info: {
     label: 'Info', icon: 'information-outline', iconColor: '#0284c7',
@@ -253,7 +262,15 @@ function TrainerRecipientPicker({ idPrefix, rosterMembers, allSelected, setAllSe
         <MaterialCommunityIcons color={allSelected ? colors.primary : colors.onSurfaceVariant} name={allSelected ? 'check-circle' : 'checkbox-blank-circle-outline'} size={24} />
         <Text className="text-base font-semibold text-slate-800 dark:text-white" nativeID={`${idPrefix}-trainer-picker-all-label`} testID={`${idPrefix}-trainer-picker-all-label`}>Todos</Text>
       </Pressable>
-      <ScrollView className="max-h-52" keyboardShouldPersistTaps="handled" nativeID={`${idPrefix}-trainer-picker-list`} testID={`${idPrefix}-trainer-picker-list`}>
+      <ScrollView
+        className="max-h-52"
+        keyboardShouldPersistTaps="handled"
+        nativeID={`${idPrefix}-trainer-picker-list`}
+        nestedScrollEnabled
+        onScrollBeginDrag={() => logScroll('trainer', idPrefix, 'trainer-picker-list:onScrollBeginDrag')}
+        overScrollMode="never"
+        testID={`${idPrefix}-trainer-picker-list`}
+      >
         {visibleMembers.map((member) => {
           const checked = !allSelected && selectedUserIds.has(String(member.userId));
           return (
@@ -278,7 +295,15 @@ function TrainerRecipientPicker({ idPrefix, rosterMembers, allSelected, setAllSe
 function RunnerRecipientPicker({ idPrefix, trainerName, peerMembers, selectedUserId, setSelectedUserId }) {
   const colors = useThemeColors();
   return (
-    <ScrollView className="max-h-52" keyboardShouldPersistTaps="handled" nativeID={`${idPrefix}-runner-picker`} testID={`${idPrefix}-runner-picker`}>
+    <ScrollView
+      className="max-h-52"
+      keyboardShouldPersistTaps="handled"
+      nativeID={`${idPrefix}-runner-picker`}
+      nestedScrollEnabled
+      onScrollBeginDrag={() => logScroll('runner', idPrefix, 'runner-picker-list:onScrollBeginDrag')}
+      overScrollMode="never"
+      testID={`${idPrefix}-runner-picker`}
+    >
       <Pressable
         className={`flex-row items-center gap-2.5 p-3 ${selectedUserId === 'trainer' ? 'bg-primary-tint-subtle dark:bg-primary/10' : ''}`}
         nativeID={`${idPrefix}-runner-picker-trainer`}
@@ -432,8 +457,12 @@ export function SessionMessagesModal({
         <View
           className="h-full w-full max-w-lg bg-white dark:bg-surface"
           nativeID={`${idPrefix}-card`}
-          onResponderTerminationRequest={() => true}
-          onStartShouldSetResponder={() => true}
+          onResponderGrant={() => logScroll(role, idPrefix, 'card:onResponderGrant')}
+          onResponderReject={() => logScroll(role, idPrefix, 'card:onResponderReject')}
+          onResponderTerminate={() => logScroll(role, idPrefix, 'card:onResponderTerminate')}
+          onResponderTerminationRequest={() => { logScroll(role, idPrefix, 'card:onResponderTerminationRequest -> true'); return true; }}
+          onStartShouldSetResponder={() => { logScroll(role, idPrefix, 'card:onStartShouldSetResponder -> true'); return true; }}
+          onTouchStart={() => logScroll(role, idPrefix, 'card:onTouchStart (raw)')}
           testID={`${idPrefix}-card`}
         >
           <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} style={{ paddingBottom: keyboardHeight }} testID={`${idPrefix}-card-safe-area`}>
@@ -475,7 +504,19 @@ export function SessionMessagesModal({
                 </View>
               ) : (
                 <>
-                  <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
+                  <ScrollView
+                    className="flex-1"
+                    keyboardShouldPersistTaps="handled"
+                    nativeID={`${idPrefix}-list`}
+                    nestedScrollEnabled
+                    onContentSizeChange={(w, h) => logScroll(role, idPrefix, 'list:onContentSizeChange', { w, h })}
+                    onLayout={(e) => logScroll(role, idPrefix, 'list:onLayout', e.nativeEvent.layout)}
+                    onMomentumScrollBegin={() => logScroll(role, idPrefix, 'list:onMomentumScrollBegin')}
+                    onScrollBeginDrag={() => logScroll(role, idPrefix, 'list:onScrollBeginDrag')}
+                    onTouchStart={() => logScroll(role, idPrefix, 'list:onTouchStart (raw)')}
+                    overScrollMode="never"
+                    testID={`${idPrefix}-list`}
+                  >
                     {threads.map((thread) => (
                       <ThreadCard
                         hidden={hiddenThreadIds.has(thread.rootId)}
