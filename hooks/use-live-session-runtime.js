@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSessionRuntimeStore } from '../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../store/live-session-store.js';
 import { useAuthStore } from '../store/auth-store.js';
@@ -22,6 +23,7 @@ import {
 import { syncRun } from '../services/session-sync.js';
 import { send as sendRaw } from '../services/realtime-client.js';
 import { acceptGpsLeg } from '../utils/distance.js';
+import { applyPeerPresence } from '../utils/connected-peers.js';
 import { toIsoUtc } from '../utils/time.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
 import { useRealtimeChannel } from './use-realtime-channel.js';
@@ -44,6 +46,7 @@ export function useLiveSessionRuntime() {
   const gpsEnabled = useLiveSessionStore((s) => s.gpsEnabled);
   const setSessionStarted = useLiveSessionStore((s) => s.setSessionStarted);
   const userId = useAuthStore((s) => s.userId);
+  const queryClient = useQueryClient();
 
   const [booted, setBooted] = useState(false);
   const [bootError, setBootError] = useState(null);
@@ -51,6 +54,10 @@ export function useLiveSessionRuntime() {
   const [sets, setSets] = useState([]);
   const [distanceBySetId, setDistanceBySetId] = useState(new Map());
   const [pendingControl, setPendingControl] = useState(null);
+  // Roster liviano de "quién está conectado" para el selector de
+  // destinatario de mensajería (Gap 27) -- nunca incluye mi propio userId
+  // (nunca recibo mis propios broadcasts de presence de vuelta).
+  const [connectedPeerIds, setConnectedPeerIds] = useState(() => new Set());
   const [activeSetId, setActiveSetIdState] = useState(null);
   const [activePhase, setActivePhaseState] = useState('idle'); // 'idle' | 'running' | 'paused'
 
@@ -103,6 +110,25 @@ export function useLiveSessionRuntime() {
   };
 
   const handleChannelMessage = (msg) => {
+    setConnectedPeerIds((current) => applyPeerPresence(current, msg));
+
+    // Gap 27: aviso de mensaje nuevo -- `run` ya está seteado en este punto
+    // (el canal solo se habilita cuando `run` existe, ver `channel` abajo),
+    // así que `run.session_instance_id` es seguro de leer acá.
+    if (msg.type === 'control:message_created') {
+      // String(...) -- `run.session_instance_id` sale de SQLite como number
+      // crudo, pero la query key de useSessionMessages en la pantalla (y en
+      // session-messages-delivery.jsx, montado a nivel app) se arma con
+      // pendingSession.sessionInstance.id, que ya es string (normalizers.js
+      // siempre stringifica ids). Sin este cast, TanStack Query las trata
+      // como DOS keys distintas (['session-messages', 123] !=
+      // ['session-messages', '123']) y esta invalidación nunca llegaba a
+      // ningún observer -- bug real: el corredor solo recibía avisos/alertas
+      // al salir y reentrar (remonte = fetch fresco), nunca en vivo.
+      queryClient.invalidateQueries({ queryKey: ['session-messages', String(run.session_instance_id)] });
+      return;
+    }
+
     if (msg.type !== 'control') return;
     setPendingControl({ event: msg.event, payload: msg.payload });
     // El entrenador pausa remotamente pausando la serie que esté corriendo
@@ -210,6 +236,26 @@ export function useLiveSessionRuntime() {
     return () => { gps.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booted]);
+
+  // Heartbeat de presencia -- bug real reportado: el entrenador no veía a un
+  // corredor en el mapa/lista hasta que ese corredor salía y volvía a entrar
+  // (resuscribe -> nuevo `presence:joined` vía onSubscribed) o arrancaba una
+  // serie (primer `presence:set_status`). El `joined` de onSubscribed es UN
+  // SOLO tiro -- si el entrenador no estaba conectado en ese instante exacto
+  // (o el mensaje se perdió), nunca se repite por su cuenta. Si además el
+  // corredor tiene el GPS apagado (gpsEnabled=false o sin permiso), tampoco
+  // hay `position` continuo que lo salve -- quedaba invisible hasta una
+  // acción manual. Reenviar `joined` cada 15s mientras el canal esté activo
+  // autocura cualquier mensaje perdido sin esperar ninguna acción del
+  // corredor -- el reducer del entrenador (applyParticipantMessage) ya trata
+  // `joined` repetido como no-op seguro.
+  useEffect(() => {
+    if (!channel) return undefined;
+    const heartbeat = setInterval(() => {
+      send('presence', undefined, { event: 'joined', payload: {} });
+    }, 15000);
+    return () => clearInterval(heartbeat);
+  }, [channel, send]);
 
   const syncIncrementally = () => {
     if (!run) return;
@@ -333,6 +379,7 @@ export function useLiveSessionRuntime() {
     run,
     sets,
     connectionStatus,
+    connectedPeerIds,
     pendingControl,
     clearPendingControl: () => setPendingControl(null),
     distanceBySetId,

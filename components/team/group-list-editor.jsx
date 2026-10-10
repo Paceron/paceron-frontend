@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { CreateGroupModal } from './create-group-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // Lista de grupos de un equipo en el paso "Grupos" del wizard de creación
 // (create-team-screen.jsx, sobre datos en borrador — el equipo todavía no
@@ -27,15 +28,17 @@ export function GroupListEditor({ groups, onChange, onRemove }) {
         <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="group-list-editor-header-label" testID="group-list-editor-header-label">
           Grupos agregados
         </Text>
-        <Pressable
-          accessibilityLabel="Agregar grupo"
-          className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-          nativeID="group-list-editor-add-button"
-          onPress={() => setModalVisible(true)}
-          testID="group-list-editor-add-button"
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
-        </Pressable>
+        <IconTooltip idPrefix="group-list-editor-add-button-tooltip" label="Agregar grupo">
+          <Pressable
+            accessibilityLabel="Agregar grupo"
+            className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+            nativeID="group-list-editor-add-button"
+            onPress={() => setModalVisible(true)}
+            testID="group-list-editor-add-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+          </Pressable>
+        </IconTooltip>
       </View>
 
       <View className="gap-2" nativeID="group-list-editor-list" testID="group-list-editor-list">
@@ -97,15 +100,17 @@ export function GroupListEditor({ groups, onChange, onRemove }) {
                   </Text>
                 )}
               </View>
-              <Pressable
-                accessibilityLabel={`Quitar grupo ${group.name}`}
-                className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-                nativeID={`group-list-editor-row-${group.id}-remove-button`}
-                onPress={() => handleRemove(group.id)}
-                testID={`group-list-editor-row-${group.id}-remove-button`}
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
-              </Pressable>
+              <IconTooltip idPrefix={`group-list-editor-row-${group.id}-remove-button-tooltip`} label={`Quitar grupo ${group.name}`}>
+                <Pressable
+                  accessibilityLabel={`Quitar grupo ${group.name}`}
+                  className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                  nativeID={`group-list-editor-row-${group.id}-remove-button`}
+                  onPress={() => handleRemove(group.id)}
+                  testID={`group-list-editor-row-${group.id}-remove-button`}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
+                </Pressable>
+              </IconTooltip>
             </View>
         ))}
       </View>

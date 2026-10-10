@@ -9,6 +9,7 @@ import {
   toRunnerSessionModel, toSessionFeedbackModel, toSessionFeedbackListModel, buildSessionReviewModel,
   toRunnerSessionStartPayload, toFeedbackEditPayload,
   toTeamSubscriptionModel, toTeamConfigurationModel,
+  toSessionMessageModel, toSessionMessagePayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -1070,5 +1071,69 @@ describe('toFeedbackEditPayload', () => {
   test('annotations vacío (string) se manda para borrar la nota; undefined se omite', () => {
     expect(toFeedbackEditPayload({ annotations: '' })).toEqual({ annotations: '' });
     expect(toFeedbackEditPayload({ annotations: undefined })).toEqual({});
+  });
+});
+
+describe('toSessionMessageModel', () => {
+  test('mapea snake_case a camelCase, ids a string', () => {
+    const dto = {
+      id: 501,
+      session_instance_id: 88,
+      sender_user_id: 12,
+      sender_role: 'trainer',
+      type: 'aviso',
+      recipient_mode: 'direct',
+      recipient_user_ids: [34],
+      body: 'Bajen el ritmo',
+      reply_to_message_id: null,
+      created_at: '2026-10-09T10:00:00Z',
+    };
+    expect(toSessionMessageModel(dto)).toEqual({
+      id: '501',
+      sessionInstanceId: '88',
+      senderUserId: '12',
+      senderRole: 'trainer',
+      type: 'aviso',
+      recipientMode: 'direct',
+      recipientUserIds: ['34'],
+      body: 'Bajen el ritmo',
+      replyToMessageId: null,
+      createdAt: '2026-10-09T10:00:00Z',
+    });
+  });
+
+  test('recipient_user_ids vacío cuando recipient_mode es all', () => {
+    const dto = {
+      id: 502, session_instance_id: 88, sender_user_id: 12, sender_role: 'trainer',
+      type: 'info', recipient_mode: 'all', recipient_user_ids: [], body: 'Hola a todos',
+      reply_to_message_id: null, created_at: '2026-10-09T10:01:00Z',
+    };
+    expect(toSessionMessageModel(dto).recipientUserIds).toEqual([]);
+  });
+
+  test('null da null', () => {
+    expect(toSessionMessageModel(null)).toBeNull();
+  });
+});
+
+describe('toSessionMessagePayload', () => {
+  test('arma el body snake_case, sin reply_to_message_id si no viene', () => {
+    expect(toSessionMessagePayload({
+      type: 'info', recipientMode: 'all', recipientUserIds: [], body: 'Hola',
+    })).toEqual({ type: 'info', recipient_mode: 'all', recipient_user_ids: [], body: 'Hola' });
+  });
+
+  test('incluye reply_to_message_id como número cuando viene', () => {
+    expect(toSessionMessagePayload({
+      type: 'info', recipientMode: 'direct', recipientUserIds: ['12'], body: 'Dale', replyToMessageId: '501',
+    })).toEqual({
+      type: 'info', recipient_mode: 'direct', recipient_user_ids: [12], body: 'Dale', reply_to_message_id: 501,
+    });
+  });
+
+  test('recipient_user_ids siempre sale numérico, aunque entre como string', () => {
+    expect(toSessionMessagePayload({
+      type: 'info', recipientMode: 'multiple', recipientUserIds: ['7', '8'], body: 'Hola',
+    }).recipient_user_ids).toEqual([7, 8]);
   });
 });

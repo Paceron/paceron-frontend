@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
+import { isWeb, isMobile } from '../../utils/platform.js';
+import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
@@ -96,6 +98,16 @@ function TrainerSessionReviewScreenContent() {
   const feedOptions = runnerMembers.map((m) => ({ id: m.userId, name: m.name }));
   const attendedCount = sortedParticipants.filter((p) => p.runnerStatus === 'finished' || p.runnerStatus === 'interrupted' || p.runnerStatus === 'wip').length;
 
+  // useTrainerSessionSummary no expone refetch propio (son varios useQueries
+  // por roster, uno por corredor) -- invalidar por prefijo alcanza, sin
+  // necesidad de armar la key exacta de cada corredor.
+  const queryClient = useQueryClient();
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['session-feedback'] }),
+    queryClient.invalidateQueries({ queryKey: ['runner-session'] }),
+    queryClient.invalidateQueries({ queryKey: ['team-users', teamId] }),
+  ]));
+
   if (!pendingSession) return <Redirect href="/" />;
 
   // router.replace, no router.back(): esta pantalla se llega siempre por
@@ -133,7 +145,7 @@ function TrainerSessionReviewScreenContent() {
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-review-screen-root" testID="trainer-session-review-screen-root">
-      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="trainer-session-review-screen-scroll" testID="trainer-session-review-screen-scroll">
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="trainer-session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="trainer-session-review-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-review-screen-header-row" testID="trainer-session-review-screen-header-row">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="trainer-session-review-screen-back-button" onPress={handleDone} testID="trainer-session-review-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />

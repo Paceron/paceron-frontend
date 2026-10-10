@@ -978,3 +978,40 @@ export function toWorkoutFeedbackHistoryResponseModel(dto) {
     availableExercises: (dto.available_exercises ?? []).map((e) => ({ id: String(e.id), name: e.name })),
   };
 }
+
+// Mensajería en sesión presencial en vivo (Gap 27). `recipientUserIds`
+// siempre array de strings (nunca null) -- el backend ya lo normaliza a `[]`
+// cuando recipient_mode es 'all'.
+export function toSessionMessageModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    sessionInstanceId: String(dto.session_instance_id),
+    senderUserId: String(dto.sender_user_id),
+    senderRole: dto.sender_role,
+    type: dto.type,
+    recipientMode: dto.recipient_mode,
+    recipientUserIds: (dto.recipient_user_ids ?? []).map((id) => String(id)),
+    body: dto.body,
+    replyToMessageId: dto.reply_to_message_id != null ? String(dto.reply_to_message_id) : null,
+    createdAt: dto.created_at,
+  };
+}
+
+// Payload del POST -- `sender_user_id`/`sender_role` NUNCA van en el body (el
+// backend los deriva del token, ver Gap 27); si algún caller los pasara por
+// error, esta función los descarta a propósito. `recipient_user_ids` entra
+// como strings (todo id en el modal/hooks de esta feature es string, mismo
+// criterio que el resto del repo) pero el backend espera `int[]` -- sin el
+// Number() acá, el mismo bug ya documentado en CLAUDE.md ("IDs numéricos en
+// bodies de request") se repetiría.
+export function toSessionMessagePayload({ type, recipientMode, recipientUserIds, body, replyToMessageId }) {
+  const payload = {
+    type,
+    recipient_mode: recipientMode,
+    recipient_user_ids: (recipientUserIds ?? []).map((id) => Number(id)),
+    body,
+  };
+  if (replyToMessageId != null) payload.reply_to_message_id = Number(replyToMessageId);
+  return payload;
+}

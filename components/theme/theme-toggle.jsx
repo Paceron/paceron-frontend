@@ -3,6 +3,7 @@ import { Platform, Pressable } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 const TRACK_WIDTH = 64;
 const TRACK_HEIGHT = 32;
@@ -41,6 +42,7 @@ export function ThemeToggle() {
   }));
 
   return (
+    <IconTooltip idPrefix="theme-toggle-tooltip" label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}>
     <Pressable
       accessibilityLabel={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       accessibilityRole="switch"
@@ -79,5 +81,6 @@ export function ThemeToggle() {
         />
       </Animated.View>
     </Pressable>
+    </IconTooltip>
   );
 }

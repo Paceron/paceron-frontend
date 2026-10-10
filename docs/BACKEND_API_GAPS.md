@@ -48,7 +48,14 @@ Sin gap abierto de foto de equipo — sigue deliberadamente excluido hasta que e
 `docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md`) —
 se abre un gap propio detectado en el camino:
 
-## Gap 5 — sin endpoint para listar los permisos de un tier ajeno
+## Gap 5 — sin endpoint para listar los permisos de un tier ajeno [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** `GET /api/v1/tiers/{id}/permissions` — autenticado, sin ownership. `200
+{"permissions":[{"permission_id","permission_name"}]}` ordenado ASC; `200 []` si el tier no tiene
+permisos activos (los soft-deleted se omiten); `404` tier inexistente. Sin acción de frontend
+pendiente todavía — integrarlo a la pantalla "Mejorar tier" (reemplazar/enriquecer el
+`description` de texto libre) queda como mejora futura, no bloqueante.
 
 `POST /api/v1/tiers/{id}/permissions` (asignar un permiso a un tier)
 existe, pero no hay `GET /api/v1/tiers/{id}/permissions` (listar). El
@@ -162,7 +169,14 @@ del flujo de estampado (sub-pieza 3 de la serie de gestión avanzada del
 calendario — menú de día y selección múltiple ya implementados y
 probados), se abre un gap propio:
 
-## Gap 8 — `stamp` no permite excluir fechas puntuales del rango
+## Gap 8 — `stamp` no permite excluir fechas puntuales del rango [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, confirmado por backend.** `exclude_dates` (array de fechas
+`YYYY-MM-DD`) ya existe en el body de `POST /groups/{id}/calendar/stamp` -- formato inválido da
+`422`; fechas fuera del rango se ignoran; un rango totalmente excluido devuelve `201 {"days":[]}`.
+Semántica tal cual se pidió originalmente (ver detalle abajo). Sin acción de frontend pendiente más
+allá de integrar el campo en `stamp-plan-modal.jsx` cuando se retome "evitar pisar selectivo".
+
 
 Hoy `POST /groups/{id}/calendar/stamp {plan_id, start_date, force}` es
 atómico y todo-o-nada sobre el rango completo del plan: si `force` es
@@ -611,7 +625,14 @@ Frontend: `services/sessionInstances.js#getSessionInstance`, `hooks/use-session-
 consumido por `session-review-screen.jsx#ReviewFlow` (fetch solo si `slot.sessionInstance` no vino
 ya en memoria — el resto de los flujos existentes no cambia).
 
-## Gap 15 — `membership_fee` no viene en el listado de búsqueda ni en las invitaciones
+## Gap 15 — `membership_fee` no viene en el listado de búsqueda ni en las invitaciones [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** `membership_fee` agregado a `TeamSearchResult` (`GET /teams/search`) y a las respuestas
+de invitación — es la fee VIGENTE del equipo (puede cambiar después; lo único congelado sigue
+siendo `init_amount` al momento de pagar, sin cambios ahí). **Pendiente de frontend:** borrar
+`hooks/use-team-fees.js` y leer el precio directo del listado/invitación, sin el fan-out de
+`useQueries` contra `['team', id]` por equipo.
 
 Detectado al cablear el pago de membresía de equipo
 (`docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md`). El requisito de
@@ -631,9 +652,19 @@ extra por página de búsqueda.
 **Pedido:** agregar `membership_fee` a los dos DTOs. **Impacto en frontend cuando exista:** se borra
 `hooks/use-team-fees.js` y el precio sale del listado directo, sin fan-out.
 
-## Gap 16 — `POST /payments/preference` colapsa todos sus errores a 500
+## Gap 16 — `POST /payments/preference` colapsa todos sus errores a 500 [RESUELTO]
 
-`payment_controller.go` responde `500 "Error al crear la preferencia"` para **cualquier** fallo del
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** Ahora devuelve errores reales: `409` con `code: "SELLER_NOT_CONNECTED"` en el body JSON
+(mismo patrón de `error.data` que ya usamos con `utils/mp-connect-messages.js`; incluye también el
+caso "trainer conectado pero sin public key", mensaje de reconectar), `404` equipo/cuota
+inexistente, `400` datos inválidos; cualquier otro error sigue `500` genérico (se descartó un 502
+explícito, no aporta nada distinto del lado UI). **Pendiente de frontend:** reemplazar el mensaje
+vago fijo de `team-subscription-screen.jsx` (`components/team/team-subscription-screen.jsx:106-117`)
+por un branch sobre `error.status`/`error.data?.code`, mapeando `SELLER_NOT_CONNECTED` a un mensaje
+concreto en vez del genérico "puede que el equipo todavía no esté listo para cobrar".
+
+`payment_controller.go` respondía `500 "Error al crear la preferencia"` para **cualquier** fallo del
 service. En particular, cuando el entrenador del equipo no conectó su cuenta de Mercado Pago, el
 service devuelve `SELLER_NOT_CONNECTED` (`"el entrenador debe conectar su cuenta de Mercado Pago"`)
 y su propia documentación (`docs/CU/02-pago-participacion-equipo.md`) promete un **409** — pero el
@@ -644,7 +675,17 @@ entrenador sin MP conectado, `POST /payments/preference` responde 500 con el men
 un mensaje deliberadamente vago ("puede que el equipo todavía no esté listo para cobrar") en vez de
 afirmar una causa que no podemos verificar. **Pedido:** propagar el código/status real.
 
-## Gap 17 — no hay forma de saber si un entrenador *ajeno* tiene Mercado Pago conectado
+## Gap 17 — no hay forma de saber si un entrenador *ajeno* tiene Mercado Pago conectado [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** `can_receive_payments` (bool) agregado a TODAS las respuestas de equipo (`GET
+/teams/search`, el GetAll de pantalla, `GetByID`, `Create`, `Update`, `UpdateAddress`) y también a
+`InvitationResponse` (pedido explícitamente para simetría con `membership_fee` del Gap 15 — unirse
+por invitación es la otra vía de entrar a un equipo, misma necesidad de avisar antes). Derivado
+server-side; si el lookup de MP falla devuelve `false` honesto, nunca bloquea la respuesta.
+**Pendiente de frontend:** mostrar el aviso antes de unirse/pagar — todavía sin UI que lo consuma
+(ni en `team-search-screen.jsx`, ni en la pantalla de invitaciones), queda para cuando se retome
+esta pantalla.
 
 `GET /mercadopago/connect/status` es self-only: saca el usuario del JWT y no acepta `user_id` ni
 `team_id`. `TeamResponse`/`TeamSearchResult` tampoco exponen nada sobre la conexión del dueño.
@@ -807,7 +848,15 @@ haya sincronizado antes contra ese backend, o resetear la base entre pruebas. Si
 quisiera que una actualización (PATCH) también notifique en vivo, es un cambio de backend (el
 `Notifier.Emit` del controller solo se dispara en el branch de `Create`).
 
-## Gap 23 — `GET /users?ids=` (batch lookup) no trae `photo_url`
+## Gap 23 — `GET /users?ids=` (batch lookup) no trae `photo_url` [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, confirmado por backend contra swagger actual.** `GET
+/users?ids=` y `GET /users/search` ya incluyen `photo_url` (nullable). Si en la práctica algún
+corredor sigue viéndose con iniciales en el mapa/listas del entrenador, ya no es por falta del
+campo -- revisar el fallback de imagen solo para 404s reales (URL rota), no asumir que el dato no
+llega. Sin acción de frontend pendiente -- `hooks/use-team-roster.js` ya estaba listo para
+consumirlo sin cambios.
+
 
 El roster de equipo/grupo (`hooks/use-team-roster.js`, usado por la pantalla en vivo del
 entrenador para los marcadores/listas con foto+color) resuelve nombre vía
@@ -845,7 +894,12 @@ de la sesión (`utils/trainer-participant-progress.js#exerciseNameById`, ya disp
 sin request extra) -- documentado acá solo para que quien toque este código de nuevo no asuma que
 `exercise_name` puede llegar algún día del lado de `workout_feedback` y lo lea directo del DTO.
 
-## Gap 25 — asistencia en vivo (`GET /attendance/session/{id}`) no refleja a todos los corredores sin confirmar
+## Gap 25 — asistencia en vivo (`GET /attendance/session/{id}`) no refleja a todos los corredores sin confirmar [RESUELTO]
+
+**Actualización 2026-10-09 — RESUELTO, confirmado por backend.** Era la hipótesis 1: la ventana de
+membresía ahora compara por FECHA (no por timestamp) -- corredores con alta el mismo día de la
+sesión ya aparecen en el roster y son elegibles para registrar asistencia. Mergeado en PR #93 del
+backend. Sin acción de frontend pendiente.
 
 Detectado probando la asistencia durante una sesión presencial en vivo (2026-10-03): con 3
 corredores del grupo, el modal mostró "1 confirmada, 0 sin confirmar" cuando en realidad faltaban
@@ -952,7 +1006,86 @@ confirmación del entrenador.** Ya no queda roadmap pendiente de este gap:
   thumb del slider a su posición inicial (`DragToFinishButton` pasó a `forwardRef` con un `reset()`
   imperativo).
 
-## Gap 27 — WebSocket no soporta mensajes dirigidos ni persistentes (para broadcast/mensajería del entrenador)
+## Gap 27 — mensajería en sesión en vivo: persistencia + evento liviano de aviso [RESUELTO]
+
+**Actualización 2026-10-09 (2) — RESUELTO, mergeado a `develop` del backend y corriendo en stage
+local.** Contrato final confirmado (rama backend `feature/tiers-fees-pagos-y-mensajeria`):
+
+- `POST /api/v1/session-instances/{id}/messages` → `201` con el mensaje creado completo: `{id,
+  session_instance_id, sender_user_id, sender_role, type, recipient_mode, recipient_user_ids,
+  body, reply_to_message_id, created_at}` (`recipient_user_ids: []` cuando `recipient_mode: all`).
+  `body` trim no vacío, tope 2000 caracteres. `reply_to_message_id`, si viene, debe ser `>0`, existir,
+  ser de la misma sesión y visible para el emisor — cualquiera de las 4 violaciones (inexistente,
+  otra sesión, no visible, `<=0`) da `400` (`ErrSessionMessageInvalid`, body `{code:"Bad request",
+  message:"..."}`, mensaje específico por caso). Destinatarios duplicados en `recipient_user_ids` →
+  `400`. Destinatario que no es participante de la sesión → `400` (distinto del 403 de abajo: este
+  es "tenés acceso pero nombraste a alguien que no está en la tabla").
+- `GET /api/v1/session-instances/{id}/messages?since=<messageId>` → `{"messages": [...]}` (objeto
+  envolvente, no array crudo — ojo al normalizar), id ASC, sin paginación (`since` omitido o `0` =
+  desde el primero). Visibilidad aplicada server-side: ves lo tuyo, lo `all`, y lo que tengas en
+  `recipient_user_ids` — un DM corredor-corredor no lo ve el entrenador, sin caso especial.
+- **Autorización (POST y GET, idéntica para los dos):** `404` primero si `session_instance_id` no
+  existe. `403` (`code:"Forbidden"`, message `"no autorizado"`) si la instancia existe pero el
+  usuario autenticado no tiene acceso a ELLA — mismo guard dual que ya protege `POST
+  /workout-feedback` y `GET /session-instances/{id}` (miembro activo del grupo, owner del team, o
+  atleta/reportante con feedback activo). El `sender_user_id` siempre sale del token — nunca hay un
+  403 por "intentar mandar siendo otro", eso no es un vector posible acá. Con acceso confirmado, el
+  usuario SIEMPRE puede escribir; todo lo de contenido/destinatarios/reply cae en `400`, nunca `403`.
+- Al persistir, el backend emite al canal `session:{id}`: `{"type":"control:message_created",
+  "channel":"session:{id}","payload":{"sessionMessageId":N}}` — literal único (no `type:"control"`
+  + `event` separado), igual que `update:set_event`. Sin contenido, confirma la nota de privacidad
+  de abajo.
+- Sin edición ni borrado (fuera de alcance, ver spec).
+
+**Pendiente de frontend:** arrancar la implementación en `feature/live-session-messaging` sobre la
+spec ya aprobada (`docs/superpowers/specs/2026-10-09-live-session-messaging-design.md`) — era lo
+único que bloqueaba este gap, ya resuelto.
+
+---
+
+**Actualización 2026-10-09 (1) — de roadmap a pedido concreto (histórico, superado por la
+actualización de arriba).** Spec de frontend ya escrita:
+`docs/superpowers/specs/2026-10-09-live-session-messaging-design.md` (branch
+`feature/live-session-messaging`, implementación todavía no arrancada). El diseño descartó
+resolver esto ampliando el relay de WS genérico (lo que pedía la versión anterior de este gap,
+abajo como referencia histórica) -- en cambio el WS no lleva contenido, solo avisa "hay algo
+nuevo, pedilo por REST". Esto evita pedirle al backend un cambio de alcance mayor al gateway
+genérico (filtrado por destinatario a nivel de conexión), aprovechando que la privacidad de un
+mensaje dirigido ya la puede aplicar el backend en el mismo lugar que aplica cualquier filtro de
+autorización: una query REST autenticada.
+
+**Pedido concreto:**
+
+1. Tabla nueva `session_messages` (nombre sugerido, backend ajusta si prefiere): `id`,
+   `session_instance_id`, `sender_user_id`, `sender_role` (`trainer`|`runner`), `type`
+   (`info`|`aviso`|`alerta`), `recipient_mode` (`all`|`multiple`|`direct`), `recipient_user_ids`
+   (array o tabla join -- decisión interna de backend, no cambia el contrato que ve el frontend),
+   `body`, `reply_to_message_id` (nullable, FK a otro `session_messages.id`), `created_at`.
+2. `POST /session-instances/:id/messages` -- body `{type, recipient_mode, recipient_user_ids,
+   body, reply_to_message_id}`. `403` si el emisor no es participante de esa sesión (misma regla
+   de autorización que ya protege el resto de los endpoints de la sesión).
+3. `GET /session-instances/:id/messages?since=<id>` -- devuelve los mensajes visibles para el
+   usuario autenticado posteriores a `since` (omitido o `0` = todo el historial). Visibilidad: un
+   usuario ve un mensaje si es el emisor, O `recipient_mode = 'all'`, O su `userId` está en
+   `recipient_user_ids` -- el backend filtra, el frontend no vuelve a filtrar nada.
+4. Al persistir un `POST` exitoso, el backend reenvía por el canal `session:{id}` (ya existente,
+   Gap 18) un `control: message_created` con payload mínimo `{sessionMessageId}` -- SIN contenido,
+   a propósito (ver nota de privacidad abajo). Mismo patrón ya usado para `update:set_event`.
+
+**Nota de privacidad, por qué el aviso de WS no lleva contenido:** confirmado en Gap 21, el relay
+actual reenvía `presence`/`control` a TODOS los suscriptores del canal sin filtrar por
+destinatario. Mandar el cuerpo de un mensaje privado (ej. un DM corredor-a-corredor) por ese canal
+rompería su privacidad apenas hubiera un tercer suscriptor conectado. Por eso el WS solo avisa
+"revisá" -- el contenido siempre sale del `GET` autenticado del punto 3, que es el único lugar que
+aplica el filtro de verdad.
+
+**Impacto en frontend (histórico, ya resuelto — ver actualización 2026-10-09 (2) arriba):** este
+bloqueo ya no aplica.
+
+---
+
+<details>
+<summary>Versión anterior de este gap (roadmap, antes de la spec de 2026-10-09) -- dejada como referencia histórica, ya no vigente</summary>
 
 Mejora futura (roadmap, no se empieza sin confirmación explícita) -- necesaria para el próximo
 feature de "el entrenador manda mensajes (info/advertencia/alerta/crítico) a todos los corredores
@@ -975,21 +1108,26 @@ falta:
   (ej. guardar el mensaje y reenviarlo si el corredor se reconecta durante la sesión, o degradar a
   una notificación push si ya existe infraestructura de push -- a definir con backend).
 
-**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía.
+Resuelto en el diseño final (ver pedido concreto arriba): no se necesita tocar el relay genérico ni
+decidir persistencia especial por severidad -- todo mensaje persiste igual en `session_messages`
+(no solo los críticos), y el WS nunca lleva contenido, así que el problema de "filtrar por
+destinatario en el relay" no llega a existir.
 
-## Gap 28 — sin evento de WebSocket para asistencia registrada (QR o manual)
+</details>
 
-Mejora futura (roadmap, no se empieza sin confirmación explícita) -- hoy el modal de asistencia
-del entrenador durante la sesión en vivo (`AttendanceSessionModal`) resuelve "casi en vivo" con
-polling (`refetchInterval: 6000` sobre `useSessionAttendance`), decisión tomada explícitamente
-como solución temporal (ver ronda de feedback 2026-10-02) mientras no exista un evento real.
+## Gap 28 — sin evento de WebSocket para asistencia registrada (QR o manual) [RESUELTO del lado backend, pendiente de cablear en frontend]
 
-**Pedido:** cuando se registra una asistencia (por lectura de QR del corredor, o input manual del
-entrenador), el backend emite un mensaje al canal `session:{sessionInstanceId}` (mismo canal que ya
-usa el resto de la sesión en vivo) con el registro nuevo/actualizado -- mismo patrón que
-`update:set_event` (Gap 18), un `update:attendance_event` o similar, con el `athlete_user_id` y el
-nuevo estado de asistencia. El frontend reemplazaría el polling de 6s por escuchar este evento y
-listo.
+**Actualización 2026-10-09 — backend RESUELTO, confirmado.** El backend emite
+`update:attendance_event` al canal `session:{id}` en los 3 casos: alta por QR (`source:"qr"`, SOLO
+si se creó -- el `200` idempotente de un QR repetido no emite nada), carga manual (UN evento por
+corredor creado O actualizado, `source:"manual"`), y borrado (fila de baja: `status:"not_confirmed"`,
+resto de campos `null`). El payload es exactamente la fila de la grilla: `{user_id, status, source,
+registered_at, attendance_id}`. No excluye al emisor (si el propio entrenador carga manualmente,
+también le llega su propio evento).
 
-**Impacto en frontend:** sin acción pendiente -- esto es roadmap, no entra en esta rama todavía. El
-polling actual sigue funcionando mientras tanto, solo con el delay de hasta 6s ya conocido.
+**Pendiente en frontend:** reemplazar el `refetchInterval: 6000` de `AttendanceSessionModal` (vía
+`useSessionAttendance`) por un listener del evento en el canal de la sesión ya suscripto (mismo
+patrón que `update:set_event`, Gap 18) -- al recibirlo, invalidar/refetchear la query de asistencia
+en vez de esperar el próximo tick del polling. Mapa de resolución entre backend-dicho (`Gap
+28`) y cómo cablearlo: ver `hooks/use-trainer-session-runtime.js`'s `handleChannelMessage` existente
+como referencia del dispatch pattern ya usado para `update:set_event`.
