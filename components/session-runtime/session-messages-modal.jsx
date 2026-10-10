@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Keyboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isAndroid } from '../../utils/platform.js';
 import { filterByName } from '../../utils/attendance-filter.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { deriveRecipients } from '../../utils/session-message-recipients.js';
@@ -158,13 +157,41 @@ function MessageRow({ message, idPrefix, myUserId, rosterMembers, trainerName, o
   );
 }
 
-function ThreadCard({ thread, idPrefix, myUserId, rosterMembers, trainerName, onReply, replyDisabled, onHide }) {
+// Ocultar colapsa a una fila mínima (no borra de la lista) -- "Mostrar" la
+// vuelve a expandir. Nunca desaparece del todo: no hay backend para borrar
+// un mensaje (Gap 27 sin delete), así que esto es solo una preferencia de
+// vista, no se pierde información.
+function CollapsedThreadRow({ thread, idPrefix, onToggle }) {
+  return (
+    <Pressable
+      className="mb-3 flex-row items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3 active:opacity-70 dark:border-slate-800 dark:bg-slate-900/40"
+      nativeID={`${idPrefix}-thread-${thread.rootId}-collapsed`}
+      onPress={onToggle}
+      testID={`${idPrefix}-thread-${thread.rootId}-collapsed`}
+    >
+      <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-thread-${thread.rootId}-collapsed-label`} testID={`${idPrefix}-thread-${thread.rootId}-collapsed-label`}>
+        {thread.messages.length} mensaje{thread.messages.length === 1 ? '' : 's'} oculto{thread.messages.length === 1 ? '' : 's'}
+      </Text>
+      <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-thread-${thread.rootId}-show-button`} testID={`${idPrefix}-thread-${thread.rootId}-show-button`}>
+        <MaterialCommunityIcons color="#64748b" name="eye-outline" size={16} />
+        <Text className="text-sm font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-thread-${thread.rootId}-show-label`} testID={`${idPrefix}-thread-${thread.rootId}-show-label`}>
+          Mostrar
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function ThreadCard({ thread, idPrefix, myUserId, rosterMembers, trainerName, onReply, replyDisabled, hidden, onToggleHidden }) {
+  if (hidden) {
+    return <CollapsedThreadRow idPrefix={idPrefix} onToggle={onToggleHidden} thread={thread} />;
+  }
   return (
     <View className="mb-3 gap-2.5 rounded-xl border border-slate-100 p-2.5 dark:border-slate-800" nativeID={`${idPrefix}-thread-${thread.rootId}`} testID={`${idPrefix}-thread-${thread.rootId}`}>
       <Pressable
         className="flex-row items-center gap-1 self-end active:opacity-70"
         nativeID={`${idPrefix}-thread-${thread.rootId}-hide-button`}
-        onPress={onHide}
+        onPress={onToggleHidden}
         testID={`${idPrefix}-thread-${thread.rootId}-hide-button`}
       >
         <MaterialCommunityIcons color="#94a3b8" name="eye-off-outline" size={16} />
@@ -288,11 +315,36 @@ function RunnerRecipientPicker({ idPrefix, trainerName, peerMembers, selectedUse
   );
 }
 
+// Reemplaza a KeyboardAvoidingView -- con `behavior="height"` en Android, el
+// compose quedaba bien posicionado mientras el teclado estaba arriba, pero
+// al CERRARSE el teclado el View no volvía a su altura completa (bug real:
+// franja transparente abajo que dejaba ver la pantalla de atrás, se
+// "arreglaba" solo cerrando y reabriendo el modal -- o sea, un remount, no
+// un resize real). Esto probablemente también explicaba el scroll roto sin
+// teclado: un layout/hit-test desactualizado por la misma causa. Control
+// manual del alto del teclado via eventos nativos -- sin ninguna animación
+// de alto que se pueda quedar a mitad de camino.
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => setHeight(e.endCoordinates?.height ?? 0));
+    const hideSub = Keyboard.addListener(hideEvent, () => setHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+  return height;
+}
+
 export function SessionMessagesModal({
   visible, onClose, role, myUserId, messages, onSend, isSending,
   rosterMembers, trainerName, trainerUserId, connectedPeerIds, idPrefix,
 }) {
   const colors = useThemeColors();
+  const keyboardHeight = useKeyboardHeight();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [type, setType] = useState('info');
   const [body, setBody] = useState('');
@@ -353,30 +405,22 @@ export function SessionMessagesModal({
     ? (allSelected ? 'Todos' : `${selectedUserIds.size} seleccionado(s)`)
     : (runnerRecipientId === 'trainer' ? (trainerName ?? 'Entrenador') : rosterMembers.find((m) => String(m.userId) === runnerRecipientId)?.name ?? 'Elegí destinatario');
 
-  const threads = groupMessagesByThread(messages).filter((thread) => !hiddenThreadIds.has(thread.rootId));
+  const threads = groupMessagesByThread(messages);
 
-  const hideThread = (rootId) => {
-    setHiddenThreadIds((current) => new Set(current).add(rootId));
+  const toggleThreadHidden = (rootId) => {
+    setHiddenThreadIds((current) => {
+      const next = new Set(current);
+      if (next.has(rootId)) next.delete(rootId);
+      else next.add(rootId);
+      return next;
+    });
   };
 
   return (
     <Modal animationType="fade" nativeID={idPrefix} onRequestClose={onClose} testID={idPrefix} transparent visible={visible}>
-      {/* `behavior="height"` en Android (no `undefined`, a diferencia de
-        searchable-picker-field.jsx): ahí el input vive arriba de una card
-        chica centrada (max-h-85%), así que el `adjustResize` nativo nunca
-        necesitaba mover nada para mantenerlo visible -- "undefined" ahí
-        "funcionaba" por suerte de layout, no porque el Modal de RN herede
-        de verdad el resize de la ventana de la Activity. Acá el compose
-        vive pegado ABAJO de una card h-full -- el caso real que expone que
-        el Modal de Android no participa del adjustResize (bug real
-        reportado: el teclado seguía tapando el input aun con el
-        KeyboardAvoidingView puesto). `height` fuerza al KeyboardAvoidingView
-        a encogerse por su cuenta, sin depender de que la ventana nativa lo
-        haga. */}
-      <KeyboardAvoidingView behavior={isAndroid ? 'height' : 'padding'} nativeID={`${idPrefix}-keyboard-avoiding`} style={{ flex: 1 }} testID={`${idPrefix}-keyboard-avoiding`}>
-        <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
-          <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
-            <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} testID={`${idPrefix}-card-safe-area`}>
+      <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
+        <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
+          <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} style={{ paddingBottom: keyboardHeight }} testID={`${idPrefix}-card-safe-area`}>
               <View className="mb-3 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
                 <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>Mensajes</Text>
                 <Pressable className="h-10 w-10 items-center justify-center rounded-full active:opacity-70" nativeID={`${idPrefix}-close-button`} onPress={onClose} testID={`${idPrefix}-close-button`}>
@@ -418,11 +462,12 @@ export function SessionMessagesModal({
                   <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
                     {threads.map((thread) => (
                       <ThreadCard
+                        hidden={hiddenThreadIds.has(thread.rootId)}
                         idPrefix={idPrefix}
                         key={thread.rootId}
                         myUserId={myUserId}
-                        onHide={() => hideThread(thread.rootId)}
                         onReply={handleReply}
+                        onToggleHidden={() => toggleThreadHidden(thread.rootId)}
                         replyDisabled={isSending}
                         rosterMembers={rosterMembers}
                         thread={thread}
@@ -431,7 +476,7 @@ export function SessionMessagesModal({
                     ))}
                     {threads.length === 0 && (
                       <Text className="p-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
-                        {messages.length === 0 ? 'Todavía no hay mensajes en esta sesión.' : 'Ocultaste todos los mensajes.'}
+                        Todavía no hay mensajes en esta sesión.
                       </Text>
                     )}
                   </ScrollView>
@@ -490,10 +535,9 @@ export function SessionMessagesModal({
                   </View>
                 </>
               )}
-            </SafeAreaView>
-          </Pressable>
+          </SafeAreaView>
         </Pressable>
-      </KeyboardAvoidingView>
+      </Pressable>
     </Modal>
   );
 }

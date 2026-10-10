@@ -727,7 +727,9 @@ function TrainingSessionLiveScreenContent() {
   const peerMembers = rosterMembers.filter((m) => String(m.userId) !== String(myUserId) && String(m.userId) !== String(trainerUserId));
 
   const [messagesVisible, setMessagesVisible] = useState(false);
-  const sessionInstanceId = run?.session_instance_id ?? null;
+  // String(...) -- misma key que usa la invalidación por WS en
+  // use-live-session-runtime.js, ver el comentario ahí.
+  const sessionInstanceId = run?.session_instance_id != null ? String(run.session_instance_id) : null;
   const { messages } = useSessionMessages(sessionInstanceId);
   const { sendMessage, isSending } = useSendSessionMessage(sessionInstanceId);
   const finalizeTriggeredRef = useRef(false);

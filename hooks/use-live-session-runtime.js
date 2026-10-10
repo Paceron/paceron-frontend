@@ -116,7 +116,16 @@ export function useLiveSessionRuntime() {
     // (el canal solo se habilita cuando `run` existe, ver `channel` abajo),
     // así que `run.session_instance_id` es seguro de leer acá.
     if (msg.type === 'control:message_created') {
-      queryClient.invalidateQueries({ queryKey: ['session-messages', run.session_instance_id] });
+      // String(...) -- `run.session_instance_id` sale de SQLite como number
+      // crudo, pero la query key de useSessionMessages en la pantalla (y en
+      // session-messages-delivery.jsx, montado a nivel app) se arma con
+      // pendingSession.sessionInstance.id, que ya es string (normalizers.js
+      // siempre stringifica ids). Sin este cast, TanStack Query las trata
+      // como DOS keys distintas (['session-messages', 123] !=
+      // ['session-messages', '123']) y esta invalidación nunca llegaba a
+      // ningún observer -- bug real: el corredor solo recibía avisos/alertas
+      // al salir y reentrar (remonte = fetch fresco), nunca en vivo.
+      queryClient.invalidateQueries({ queryKey: ['session-messages', String(run.session_instance_id)] });
       return;
     }
 

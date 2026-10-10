@@ -20,6 +20,7 @@ import { createRunnerSession } from '../../services/runnerSession.js';
 import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
+import { ParticipantAvatar } from './participant-avatar.jsx';
 
 // Mismo criterio que session-pre-start-screen.jsx (URL universal de Google
 // Maps, coordenadas no label) -- copiado, no importado: esa función no está
@@ -49,26 +50,15 @@ function ParticipantRow({ member, idPrefix }) {
   const rowId = `${idPrefix}-participant-${member.userId}`;
   return (
     <View className="flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={rowId} testID={rowId}>
-      {member.photoUrl ? (
-        <View className="h-9 w-9 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" nativeID={`${rowId}-photo`} testID={`${rowId}-photo`}>
-          <Text className="sr-only" nativeID={`${rowId}-photo-placeholder`} testID={`${rowId}-photo-placeholder`}>{member.name}</Text>
-        </View>
-      ) : (
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/20" nativeID={`${rowId}-initials`} testID={`${rowId}-initials`}>
-          <Text className="text-xs font-bold text-primary" nativeID={`${rowId}-initials-label`} testID={`${rowId}-initials-label`}>
-            {member.name.slice(0, 2).toUpperCase()}
-          </Text>
-        </View>
-      )}
-      {/* Mismo color que va de borde en el marcador del mapa en vivo
-          (colorForUserId) -- acá como puntito, para reconocer de un vistazo
-          a quién corresponde cada corredor entre el pre-start y la sesión. */}
-      <View
-        className="h-2.5 w-2.5 rounded-full"
-        nativeID={`${rowId}-dot`}
-        style={{ backgroundColor: colorForUserId(member.userId) }}
-        testID={`${rowId}-dot`}
-      />
+      {/* Mismo componente que los marcadores del mapa en vivo
+          (trainer-session-live-screen.jsx) -- la versión hand-rolled que
+          tenía esta fila antes nunca llegó a tener un <Image> real en la
+          rama "con foto" (quedaba un círculo vacío siempre que photoUrl
+          estaba seteado mirando a un archivo que no existe, como en
+          storage local sin fotos subidas -- bug real reportado). Acá ya
+          viene resuelto: onError cae a iniciales, el borde de color
+          reemplaza el puntito separado que tenía esta fila. */}
+      <ParticipantAvatar color={colorForUserId(member.userId)} idPrefix={rowId} name={member.name} photoUrl={member.photoUrl} size={36} />
       <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${rowId}-name`} numberOfLines={1} testID={`${rowId}-name`}>
         {member.name}
       </Text>

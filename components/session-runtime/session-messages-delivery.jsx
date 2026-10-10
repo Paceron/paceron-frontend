@@ -74,7 +74,14 @@ function SessionMessagesDeliveryContent({ sessionInstanceId, teamId, myUserId })
 export function SessionMessagesDelivery() {
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const myUserId = useAuthStore((s) => s.userId);
-  const sessionInstanceId = pendingSession?.sessionInstance?.id ?? null;
+  // String(...) -- pendingSession.sessionInstance.id ya sale normalizado como
+  // string (ver services/normalizers.js#toSessionInstanceModel), pero se
+  // fuerza explícito acá para no depender de que eso se mantenga así para
+  // siempre -- la query key tiene que calzar EXACTO con la que invalida
+  // hooks/use-live-session-runtime.js (corredor, String(run.session_instance_id))
+  // y hooks/use-trainer-session-runtime.js (entrenador), o TanStack Query las
+  // trata como keys distintas y esta entrega nunca se refresca sola.
+  const sessionInstanceId = pendingSession?.sessionInstance?.id != null ? String(pendingSession.sessionInstance.id) : null;
   const teamId = pendingSession?.teamId ?? null;
 
   if (!sessionInstanceId || !myUserId) return null;
