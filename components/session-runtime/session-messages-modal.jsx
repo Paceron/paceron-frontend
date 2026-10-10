@@ -419,7 +419,23 @@ export function SessionMessagesModal({
   return (
     <Modal animationType="fade" nativeID={idPrefix} onRequestClose={onClose} testID={idPrefix} transparent visible={visible}>
       <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
-        <Pressable className="h-full w-full max-w-lg bg-white dark:bg-surface" nativeID={`${idPrefix}-card`} onPress={() => {}} testID={`${idPrefix}-card`}>
+        {/* View con responder manual, no Pressable -- frena la propagación del
+            click al backdrop igual que un Pressable no-op, pero sin la lógica
+            interna de Pressability (retención de press, sonido de toque de
+            Android) que compite con el ScrollView hijo por el gesto. Bug real:
+            un swipe lento sobre contenido no interactivo quedaba "retenido"
+            como press por ese Pressable ancestro en vez de cederlo al scroll
+            (sonaba el click de toque de Android), y solo un flick brusco
+            alcanzaba a robarle el gesto a tiempo. onResponderTerminationRequest
+            siempre en true para no resistirse nunca a cederle el gesto a un
+            hijo (ScrollView o un botón Pressable interno). */}
+        <View
+          className="h-full w-full max-w-lg bg-white dark:bg-surface"
+          nativeID={`${idPrefix}-card`}
+          onResponderTerminationRequest={() => true}
+          onStartShouldSetResponder={() => true}
+          testID={`${idPrefix}-card`}
+        >
           <SafeAreaView className="flex-1 p-4" edges={['top', 'bottom']} nativeID={`${idPrefix}-card-safe-area`} style={{ paddingBottom: keyboardHeight }} testID={`${idPrefix}-card-safe-area`}>
               <View className="mb-3 flex-row items-center justify-between" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
                 <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>Mensajes</Text>
@@ -536,7 +552,7 @@ export function SessionMessagesModal({
                 </>
               )}
           </SafeAreaView>
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );
