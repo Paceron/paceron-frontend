@@ -443,25 +443,22 @@ export function SessionMessagesModal({
 
   return (
     <Modal animationType="fade" nativeID={idPrefix} onRequestClose={onClose} testID={idPrefix} transparent visible={visible}>
-      <Pressable className="flex-1 items-end bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
-        {/* View con responder manual, no Pressable -- frena la propagación del
-            click al backdrop igual que un Pressable no-op, pero sin la lógica
-            interna de Pressability (retención de press, sonido de toque de
-            Android) que compite con el ScrollView hijo por el gesto. Bug real:
-            un swipe lento sobre contenido no interactivo quedaba "retenido"
-            como press por ese Pressable ancestro en vez de cederlo al scroll
-            (sonaba el click de toque de Android), y solo un flick brusco
-            alcanzaba a robarle el gesto a tiempo. onResponderTerminationRequest
-            siempre en true para no resistirse nunca a cederle el gesto a un
-            hijo (ScrollView o un botón Pressable interno). */}
+      {/* Backdrop y card como HERMANOS (no backdrop envolviendo card) -- con
+          card como descendiente, cualquier Pressable/View con responder
+          manual en el medio para "frenar" el click de cierre terminaba
+          reclamando el responder en touch-down ANTES de que el ScrollView
+          nativo tuviera chance de interceptar el pan (confirmado con logs de
+          dispositivo real: card:onResponderGrant disparaba en TODOS los
+          touches, list:onScrollBeginDrag casi nunca). Con hermanos +
+          posición absoluta, un touch sobre el card nunca llega al backdrop
+          (gana por z-order nativo, el card está dibujado encima) -- sin
+          ningún reclamo de responder de por medio, el ScrollView queda sin
+          ancestro que le compita el gesto. */}
+      <View className="flex-1" nativeID={`${idPrefix}-overlay`} testID={`${idPrefix}-overlay`}>
+        <Pressable className="absolute inset-0 bg-black/50" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`} />
         <View
-          className="h-full w-full max-w-lg bg-white dark:bg-surface"
+          className="absolute bottom-0 right-0 top-0 w-full max-w-lg bg-white dark:bg-surface"
           nativeID={`${idPrefix}-card`}
-          onResponderGrant={() => logScroll(role, idPrefix, 'card:onResponderGrant')}
-          onResponderReject={() => logScroll(role, idPrefix, 'card:onResponderReject')}
-          onResponderTerminate={() => logScroll(role, idPrefix, 'card:onResponderTerminate')}
-          onResponderTerminationRequest={() => { logScroll(role, idPrefix, 'card:onResponderTerminationRequest -> true'); return true; }}
-          onStartShouldSetResponder={() => { logScroll(role, idPrefix, 'card:onStartShouldSetResponder -> true'); return true; }}
           onTouchStart={() => logScroll(role, idPrefix, 'card:onTouchStart (raw)')}
           testID={`${idPrefix}-card`}
         >
@@ -594,7 +591,7 @@ export function SessionMessagesModal({
               )}
           </SafeAreaView>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
