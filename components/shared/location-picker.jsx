@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
@@ -6,11 +6,53 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
 import { useLocationPicker } from '../../hooks/use-location-picker.js';
+import { formatAddressLines, getAddressDetailRows } from '../../utils/location-address-format.js';
+
+function LocationDetailModal({ visible, onClose, value }) {
+  const colors = useThemeColors();
+  const rows = getAddressDetailRows(value);
+
+  return (
+    <Modal animationType="fade" nativeID="location-picker-detail-modal" onRequestClose={onClose} testID="location-picker-detail-modal" transparent visible={visible}>
+      <View className="flex-1" nativeID="location-picker-detail-modal-overlay" testID="location-picker-detail-modal-overlay">
+        <Pressable className="absolute inset-0 bg-black/50" nativeID="location-picker-detail-modal-backdrop" onPress={onClose} testID="location-picker-detail-modal-backdrop" />
+        <View className="flex-1 items-center justify-center px-4" nativeID="location-picker-detail-modal-center" pointerEvents="box-none" testID="location-picker-detail-modal-center">
+          <View
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
+            nativeID="location-picker-detail-modal-card"
+            testID="location-picker-detail-modal-card"
+          >
+            <View className="mb-2 flex-row items-center justify-between" nativeID="location-picker-detail-modal-header" testID="location-picker-detail-modal-header">
+              <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID="location-picker-detail-modal-title" testID="location-picker-detail-modal-title">
+                Detalle de la ubicación
+              </Text>
+              <Pressable nativeID="location-picker-detail-modal-close-button" onPress={onClose} testID="location-picker-detail-modal-close-button">
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={22} />
+              </Pressable>
+            </View>
+            <Text className="mb-3 text-sm text-slate-600 dark:text-slate-300" nativeID="location-picker-detail-modal-full-label" testID="location-picker-detail-modal-full-label">
+              {value?.label || 'Sin dirección resuelta.'}
+            </Text>
+            {rows.map((row) => (
+              <View className="flex-row justify-between py-1" key={row.label} nativeID={`location-picker-detail-modal-row-${row.label}`} testID={`location-picker-detail-modal-row-${row.label}`}>
+                <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`location-picker-detail-modal-row-${row.label}-key`} testID={`location-picker-detail-modal-row-${row.label}-key`}>{row.label}</Text>
+                <Text className="text-xs text-slate-700 dark:text-slate-200" nativeID={`location-picker-detail-modal-row-${row.label}-value`} testID={`location-picker-detail-modal-row-${row.label}-value`}>{row.value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export function LocationPicker({ value, onChange }) {
   const colors = useThemeColors();
   const cameraRef = useRef(null);
   const picker = useLocationPicker({ value, onChange });
+  const [detailVisible, setDetailVisible] = useState(false);
+  const addressLines = formatAddressLines(value);
+  const hasDetail = getAddressDetailRows(value).length > 0;
 
   useEffect(() => {
     if (!picker.visible || !picker.pin || !cameraRef.current) return;
@@ -65,16 +107,39 @@ export function LocationPicker({ value, onChange }) {
           </View>
           <View className="flex-1" nativeID="location-picker-preview-info" testID="location-picker-preview-info">
             <Text
-              className="text-sm text-slate-900 dark:text-white"
-              nativeID="location-picker-preview-label"
-              numberOfLines={2}
-              testID="location-picker-preview-label"
+              className="text-sm font-medium text-slate-900 dark:text-white"
+              nativeID="location-picker-preview-primary"
+              numberOfLines={1}
+              testID="location-picker-preview-primary"
             >
-              {value.label || `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}`}
+              {addressLines.primary}
             </Text>
-            <Text className="text-xs font-semibold text-primary" nativeID="location-picker-preview-change" testID="location-picker-preview-change">
-              Cambiar
-            </Text>
+            {addressLines.secondary && (
+              <Text
+                className="text-xs text-slate-500 dark:text-slate-400"
+                nativeID="location-picker-preview-secondary"
+                numberOfLines={1}
+                testID="location-picker-preview-secondary"
+              >
+                {addressLines.secondary}
+              </Text>
+            )}
+            <View className="mt-0.5 flex-row items-center gap-3" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
+              <Text className="text-xs font-semibold text-primary" nativeID="location-picker-preview-change" testID="location-picker-preview-change">
+                Cambiar
+              </Text>
+              {hasDetail && (
+                <Pressable
+                  nativeID="location-picker-preview-detail-button"
+                  onPress={(e) => { e.stopPropagation?.(); setDetailVisible(true); }}
+                  testID="location-picker-preview-detail-button"
+                >
+                  <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="location-picker-preview-detail-button-label" testID="location-picker-preview-detail-button-label">
+                    Ver detalle
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         </Pressable>
       ) : (
@@ -196,6 +261,8 @@ export function LocationPicker({ value, onChange }) {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
+
+      <LocationDetailModal onClose={() => setDetailVisible(false)} value={value} visible={detailVisible} />
     </>
   );
 }
