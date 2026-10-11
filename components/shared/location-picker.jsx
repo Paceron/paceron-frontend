@@ -87,25 +87,26 @@ export function LocationPicker({ value, onChange }) {
                 {addressLines.secondary}
               </Text>
             )}
-            {hasDetail && (
-              <Pressable
-                className="mt-0.5 self-start"
-                nativeID="location-picker-preview-detail-button"
-                onPress={() => setDetailVisible(true)}
-                testID="location-picker-preview-detail-button"
-              >
-                <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="location-picker-preview-detail-button-label" testID="location-picker-preview-detail-button-label">
-                  Ver detalle
-                </Text>
-              </Pressable>
-            )}
           </View>
           {/* Botón explícito en vez del texto "Cambiar" -- antes toda la
               fila disparaba picker.open, lo que hacía que tocar en
               cualquier lado (el mapa, el texto) reabriera el picker sin
-              querer. Ahora la fila es un View inerte, solo estos dos
-              botones actúan. */}
+              querer. Ahora la fila es un View inerte, solo estos botones
+              actúan. */}
           <View className="flex-row items-center gap-1" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
+            {hasDetail && (
+              <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle">
+                <Pressable
+                  accessibilityLabel="Ver detalle"
+                  className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+                  nativeID="location-picker-preview-detail-button"
+                  onPress={() => setDetailVisible(true)}
+                  testID="location-picker-preview-detail-button"
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={18} />
+                </Pressable>
+              </IconTooltip>
+            )}
             <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación">
               <Pressable
                 accessibilityLabel="Cambiar ubicación"
