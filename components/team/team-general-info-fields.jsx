@@ -1,4 +1,4 @@
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { InputField, Row, Col, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { LocationPicker } from '../shared/location-picker';
@@ -28,15 +28,17 @@ export function TeamGeneralInfoFields({ form, maxAllowed, minimumFee, idPrefix, 
     <>
       <InputField autoFocus={autoFocusName} dense error={form.errors.name} label="Nombre del equipo" onChange={form.setName} placeholder="Ej. Corredores del Sur" value={form.name} />
 
-      <Text className={FIELD_LABEL} nativeID="team-general-info-fields-location-label" testID="team-general-info-fields-location-label">Ubicación del equipo</Text>
-      {form.isLegacyAddress && (
-        <Text className="mb-1.5 text-xs text-slate-500 dark:text-slate-400" nativeID="team-general-info-fields-legacy-address-hint" testID="team-general-info-fields-legacy-address-hint">
-          Dirección actual: {form.legacyAddressLabel}. Elegí un punto en el mapa para actualizarla con mayor precisión.
-        </Text>
-      )}
-      <LocationPicker onChange={form.setLocationValue} value={form.locationValue} variant="card" />
-
       <InputField dense label="Descripción del equipo (opcional)" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Contales a los corredores de qué se trata este equipo." value={form.description} />
+
+      <View className="mb-5 mt-2" nativeID="team-general-info-fields-location-section" testID="team-general-info-fields-location-section">
+        <Text className={FIELD_LABEL} nativeID="team-general-info-fields-location-label" testID="team-general-info-fields-location-label">Ubicación del equipo</Text>
+        {form.isLegacyAddress && (
+          <Text className="mb-1.5 text-xs text-slate-500 dark:text-slate-400" nativeID="team-general-info-fields-legacy-address-hint" testID="team-general-info-fields-legacy-address-hint">
+            Dirección actual: {form.legacyAddressLabel}. Elegí un punto en el mapa para actualizarla con mayor precisión.
+          </Text>
+        )}
+        <LocationPicker onChange={form.setLocationValue} value={form.locationValue} variant="card" />
+      </View>
 
       <Row>
         <Col>
