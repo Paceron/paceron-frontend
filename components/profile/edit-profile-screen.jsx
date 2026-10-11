@@ -11,14 +11,15 @@ import { validateBirthDate } from '../../utils/date-validators.js';
 import { validateDNI } from '../../utils/dni-validators.js';
 import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
+import { toAddressFormFields } from '../../utils/location-to-address-fields.js';
+import { toLocationPickerValue, hasLegacyAddressWithoutCoordinates, formatLegacyAddressLabel } from '../../utils/address-fields-to-location.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions, useUserMutations } from '../../hooks/use-user.js';
-import { useAddressCascade } from '../../hooks/use-address-cascade.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { Row, Col, InputField, DateField } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
+import { LocationPicker } from '../shared/location-picker';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
@@ -112,17 +113,33 @@ function EditProfileForm({ user }) {
   const [activeTab, setActiveTab] = useState('personal');
   const touch = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
 
-  const address = useAddressCascade({
-    country: user.country,
-    province: user.province,
-    city: user.city,
-    street: user.street,
-    number: user.number,
+  const [locationValue, setLocationValue] = useState(() => toLocationPickerValue({
+    lat: user.lat, lng: user.lng, country: user.country, province: user.province, city: user.city, street: user.street, number: user.number,
+  }));
+  // Distinto de `locationValue === null` -- eso también pasa si el usuario
+  // usa el botón "Quitar ubicación" a propósito (ver location-picker.jsx),
+  // y ahí SÍ hay que mandar los campos vacíos/null. Sin tocar nada (caso
+  // legacy sin lat/lng, el picker arranca vacío porque no hay punto real
+  // que mostrar), hay que preservar lo que ya estaba guardado.
+  const [locationTouched, setLocationTouched] = useState(false);
+  const handleLocationChange = (value) => { setLocationValue(value); setLocationTouched(true); };
+  const isLegacyAddress = hasLegacyAddressWithoutCoordinates({
+    lat: user.lat, lng: user.lng, country: user.country, province: user.province, city: user.city,
   });
+  const legacyAddressLabel = isLegacyAddress
+    ? formatLegacyAddressLabel({ country: user.country, province: user.province, city: user.city })
+    : null;
+  // toUpdatePayload manda el set completo (a diferencia de toAddressPayload
+  // de equipos, que omite lo vacío) -- sin tocar el picker hay que seguir
+  // mandando lo que YA estaba guardado, o un simple "guardar cambios" en
+  // otro campo (nombre, teléfono) borraría la dirección existente sin que
+  // el usuario lo haya pedido.
+  const addressFieldsToSubmit = locationTouched
+    ? toAddressFormFields(locationValue)
+    : { country: user.country, province: user.province, city: user.city, street: user.street, number: user.number, lat: user.lat, lng: user.lng };
 
   const isDirty = useFormDirty({
-    firstName, lastName, dni, birthDate, email, phone, phoneContact, trainerAlias,
-    country: address.country, province: address.province, city: address.city, street: address.street, number: address.number,
+    firstName, lastName, dni, birthDate, email, phone, phoneContact, trainerAlias, locationValue,
   });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
@@ -176,11 +193,7 @@ function EditProfileForm({ user }) {
         email,
         phone,
         phoneContact,
-        country: address.country,
-        province: address.province,
-        city: address.city,
-        street: address.street,
-        number: address.number,
+        ...addressFieldsToSubmit,
         bankAlias: hasTrainerRole ? trainerAlias : user.bankAlias,
       });
       const result = await updateUser({
@@ -353,40 +366,12 @@ function EditProfileForm({ user }) {
         </SectionCard>
 
         <SectionCard icon="map-marker" title="Dirección">
-        <Row>
-          <Col>
-            <ResponsiveSelectField label="País" onChange={address.handleCountryChange} options={address.countryOptions} placeholder="Seleccioná un país" value={address.country} />
-          </Col>
-          <Col>
-            <ResponsiveSelectField disabled={!address.country} label="Provincia" onChange={address.handleProvinceChange} options={address.provinceOptions} placeholder={address.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={address.province} />
-          </Col>
-          <Col>
-            <ResponsiveSelectField disabled={!address.province} label="Localidad" onChange={address.handleCityChange} options={address.cityOptions} placeholder={address.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={address.city} />
-          </Col>
-        </Row>
-        <Row>
-          <Col flex={3}>
-            <InputField
-              autoCapitalize="words"
-              disabled={!address.city}
-              label="Calle"
-              onChange={address.setStreet}
-              placeholder={address.city ? 'Nombre de la calle' : 'Elegí una localidad primero'}
-              value={address.street}
-            />
-          </Col>
-          <Col flex={1}>
-            <InputField
-              autoCapitalize="none"
-              disabled={!address.city}
-              keyboardType="number-pad"
-              label="Altura"
-              onChange={(v) => address.setNumber(v.replace(/\D/g, ''))}
-              placeholder={address.city ? '1234' : '—'}
-              value={address.number}
-            />
-          </Col>
-        </Row>
+        {isLegacyAddress && (
+          <Text className="mb-3 text-xs text-slate-500 dark:text-slate-400" nativeID="edit-profile-screen-legacy-address-hint" testID="edit-profile-screen-legacy-address-hint">
+            Dirección actual: {legacyAddressLabel}. Elegí un punto en el mapa para actualizarla con mayor precisión.
+          </Text>
+        )}
+        <LocationPicker onChange={handleLocationChange} value={locationValue} variant="card" />
         </SectionCard>
 
         {hasTrainerRole && (
