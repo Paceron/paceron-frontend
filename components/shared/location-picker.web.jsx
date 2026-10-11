@@ -39,11 +39,11 @@ function MiniMap({ lat, lng }) {
 // Ver el comentario de la misma función en location-picker.jsx -- se repite
 // acá porque es la contraparte web, no hay forma de compartir el bloque
 // sin romper el split de plataforma.
-function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear }) {
+function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear, alignEnd, tooltipPosition = 'bottom' }) {
   return (
-    <View className="flex-row items-center gap-1" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
+    <View className={`flex-row items-center gap-1 ${alignEnd ? 'justify-end' : ''}`} nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
       {hasDetail && (
-        <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle">
+        <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle" position={tooltipPosition}>
           <Pressable
             accessibilityLabel="Ver detalle"
             className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
@@ -55,7 +55,7 @@ function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear }) {
           </Pressable>
         </IconTooltip>
       )}
-      <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación">
+      <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación" position={tooltipPosition}>
         <Pressable
           accessibilityLabel="Cambiar ubicación"
           className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
@@ -66,7 +66,7 @@ function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear }) {
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
         </Pressable>
       </IconTooltip>
-      <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación">
+      <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación" position={tooltipPosition}>
         <Pressable
           accessibilityLabel="Quitar ubicación"
           className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
@@ -156,7 +156,7 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
           nativeID="location-picker-preview"
           testID="location-picker-preview"
         >
-          <View className={isCard ? 'h-full w-36 overflow-hidden' : 'h-16 w-16 overflow-hidden rounded-lg'} nativeID="location-picker-preview-map" testID="location-picker-preview-map">
+          <View className={isCard ? 'h-full flex-1 overflow-hidden' : 'h-16 w-16 overflow-hidden rounded-lg'} nativeID="location-picker-preview-map" testID="location-picker-preview-map">
             <MiniMap lat={value.lat} lng={value.lng} />
           </View>
           <View className={isCard ? 'flex-1 justify-between p-3' : 'flex-1'} nativeID="location-picker-preview-info" testID="location-picker-preview-info">
@@ -182,7 +182,7 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
               )}
             </Text>
             {isCard && (
-              <PreviewActions colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} />
+              <PreviewActions alignEnd colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} tooltipPosition="top" />
             )}
           </View>
           {!isCard && (

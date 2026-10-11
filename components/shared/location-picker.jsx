@@ -15,11 +15,11 @@ import { LocationDetailModal } from './location-detail-modal.jsx';
 // alrededor. Centralizados acá para no triplicar el bloque de ícono+tooltip
 // dentro de este mismo archivo (la duplicación CON location-picker.web.jsx
 // es aparte, inherente al split de plataforma).
-function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear }) {
+function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear, alignEnd, tooltipPosition = 'bottom' }) {
   return (
-    <View className="flex-row items-center gap-1" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
+    <View className={`flex-row items-center gap-1 ${alignEnd ? 'justify-end' : ''}`} nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
       {hasDetail && (
-        <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle">
+        <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle" position={tooltipPosition}>
           <Pressable
             accessibilityLabel="Ver detalle"
             className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
@@ -31,7 +31,7 @@ function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear }) {
           </Pressable>
         </IconTooltip>
       )}
-      <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación">
+      <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación" position={tooltipPosition}>
         <Pressable
           accessibilityLabel="Cambiar ubicación"
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
@@ -42,7 +42,7 @@ function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear }) {
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
         </Pressable>
       </IconTooltip>
-      <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación">
+      <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación" position={tooltipPosition}>
         <Pressable
           accessibilityLabel="Quitar ubicación"
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
@@ -95,7 +95,7 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
           testID="location-picker-preview"
         >
           <View
-            className={isCard ? 'h-full w-36 overflow-hidden' : 'h-16 w-16 overflow-hidden rounded-lg'}
+            className={isCard ? 'h-full flex-1 overflow-hidden' : 'h-16 w-16 overflow-hidden rounded-lg'}
             nativeID="location-picker-preview-map"
             pointerEvents="none"
             testID="location-picker-preview-map"
@@ -147,7 +147,7 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
               )}
             </Text>
             {isCard && (
-              <PreviewActions colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} />
+              <PreviewActions alignEnd colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} tooltipPosition="top" />
             )}
           </View>
           {/* Compacta: los botones quedan afuera de la columna de info, a
