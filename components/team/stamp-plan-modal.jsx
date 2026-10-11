@@ -8,10 +8,13 @@ import { useSessions } from '../../hooks/use-sessions.js';
 import { useGroupCalendar, useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
+import { useEstimatedProgress } from '../../hooks/use-estimated-progress.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { ProgressFillOverlay } from '../shared/progress-fill-overlay.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { buildStampDraft, addDaysISO } from '../../utils/build-stamp-draft.js';
+import { estimateBulkDurationMs } from '../../utils/estimated-progress.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
@@ -109,6 +112,7 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
   // cuenta real de "cuántos van". El stampPlan en sí es una sola request
   // atómica del lado del backend, sin granularidad que mostrar.
   const [touchedProgress, setTouchedProgress] = useState(null);
+  const progressFraction = useEstimatedProgress(saving || isStamping, estimateBulkDurationMs(draftDays.length));
 
   const plan = plans.find((p) => p.id === planId) ?? null;
   const rangeEnd = plan && startDate ? addDaysISO(startDate, plan.days.length - 1) : null;
@@ -248,12 +252,13 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
                     </Text>
                   </Pressable>
                   <Pressable
-                    className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${saving || isStamping ? 'opacity-60' : ''}`}
+                    className={`h-11 flex-1 flex-row items-center justify-center gap-2 overflow-hidden rounded-full bg-primary hover:opacity-90 active:opacity-80 ${saving || isStamping ? 'opacity-60' : ''}`}
                     disabled={saving || isStamping}
                     nativeID="stamp-plan-modal-save-button"
                     onPress={handleSave}
                     testID="stamp-plan-modal-save-button"
                   >
+                    <ProgressFillOverlay fraction={progressFraction} idPrefix="stamp-plan-modal-save-button" />
                     {saving || isStamping ? (
                       <ActivityIndicator color={colors.onPrimary} size="small" />
                     ) : (

@@ -8,8 +8,12 @@ const REQUEST_TIMEOUT_MS = 30000;
 // una serie larga) -- el procesamiento server-side escala con N, así que el
 // timeout fijo de arriba corta requests legítimas antes de que el backend
 // termine. No hay progreso parcial que reportar (es una request, no N), por
-// eso el margen es generoso en vez de medirse por ítem.
-export const BULK_REQUEST_TIMEOUT_MS = 90000;
+// eso el margen es generoso en vez de medirse por ítem. Subido de 90s a 10
+// minutos (2026-10-10): un repro real de 38 días de calendario superó los
+// 90s y el backend terminó de procesar igual del otro lado (confirmado
+// recargando) -- el cliente cortó una request que de hecho iba a terminar
+// bien, solo que no a tiempo para enterarse.
+export const BULK_REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
 
 function buildUrl(path) {
   if (/^https?:\/\//i.test(path)) {

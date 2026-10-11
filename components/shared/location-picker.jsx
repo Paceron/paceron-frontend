@@ -31,7 +31,7 @@ function LocationDetailModal({ visible, onClose, value }) {
               </Pressable>
             </View>
             <Text className="mb-3 text-sm text-slate-600 dark:text-slate-300" nativeID="location-picker-detail-modal-full-label" testID="location-picker-detail-modal-full-label">
-              {value?.label || 'Sin dirección resuelta.'}
+              {value?.rawLabel || value?.label || 'Sin dirección resuelta.'}
             </Text>
             {rows.map((row) => (
               <View className="flex-row justify-between py-1" key={row.label} nativeID={`location-picker-detail-modal-row-${row.label}`} testID={`location-picker-detail-modal-row-${row.label}`}>

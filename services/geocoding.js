@@ -18,16 +18,28 @@ async function nominatimFetch(path) {
 // propio porque el nombre del campo de "localidad" varía según la zona
 // (city/town/village/municipality, nunca más de uno presente a la vez).
 function toStructuredAddress(address, displayName) {
-  if (!address) return { label: displayName ?? null };
-  return {
-    label: displayName ?? null,
-    street: address.road ?? null,
-    number: address.house_number ?? null,
-    city: address.city ?? address.town ?? address.village ?? address.municipality ?? null,
-    province: address.state ?? null,
-    country: address.country ?? null,
-    extra: address,
-  };
+  if (!address) return { label: displayName ?? null, rawLabel: displayName ?? null };
+
+  const street = address.road ?? null;
+  const number = address.house_number ?? null;
+  const city = address.city ?? address.town ?? address.village ?? address.municipality ?? null;
+  const province = address.state ?? null;
+  const country = address.country ?? null;
+
+  // `display_name` de Nominatim mete TODA la jerarquía administrativa
+  // (barrio, municipio, partido, departamento...) en una sola cadena larga
+  // y a veces repetitiva -- ilegible para mostrar como dirección principal.
+  // Con los 5 datos clave presentes se arma un label propio y legible; si
+  // falta alguno (ej. sin altura en una zona rural, o un punto que no cae
+  // sobre una calle real) se cae al label crudo -- mejor eso que un string
+  // armado con huecos. `rawLabel` conserva siempre el original para el
+  // detalle ("Ver detalle"), incluso cuando `label` ya está limpio.
+  const hasAllPrimaryFields = street && number && city && province && country;
+  const label = hasAllPrimaryFields
+    ? `${street} ${number}, ${city}, ${province}, ${country}`
+    : (displayName ?? null);
+
+  return { label, rawLabel: displayName ?? null, street, number, city, province, country, extra: address };
 }
 
 export async function reverseGeocode(lat, lng) {
