@@ -1162,22 +1162,32 @@ el resumen visual del picker).
    dataset hardcodeado en el cliente. `city` sí es más libre (nombre desde un dataset por
    provincia). El picker nuevo, en cambio, resuelve estos 3 campos desde Nominatim como **nombre
    legible** (`"Argentina"`, `"Buenos Aires"`, no códigos) — un formato distinto al que hoy vive en
-   la base. Si se empieza a guardar en formato nuevo sin más, las filas viejas (código) y las
-   nuevas (nombre) convivirían en la misma columna con dos formatos — **ya hay un consumidor real
-   que se rompería con esto:** `team-search-screen.jsx` manda `country`/`province`/`city` como
-   filtro de `GET /teams/search` tal cual los eligió el usuario en sus propios `<select>` (que van a
-   seguir en código mientras no se decida lo mismo del lado del buscador) — un equipo guardado con
-   el nombre nuevo nunca matchearía ese filtro, y viceversa. Antes de tocar cualquier form, decidir
-   con el equipo de backend: ¿se migra todo a nombre legible (requiere backfill de las filas
-   existentes + actualizar el buscador también) o el frontend sigue mandando el código interno de
-   `data/locations.js` resuelto a partir del nombre que devuelve Nominatim (con el riesgo de que un
-   nombre de Nominatim no mapee 1:1 a una fila del dataset interno, ej. variantes de escritura)?
+   la base.
+
+   **Decidido (2026-10-11) — opción (a), confirmado contra backend.** El backend no valida
+   `country`/`province` contra ningún enum (acepta cualquier string) — el único acoplamiento real
+   es el filtro exacto de `GET /teams/search` (`teams.country = ?`). Con eso confirmado: **el
+   frontend sigue mandando los códigos internos de `data/locations.js`** (resueltos a partir del
+   nombre que devuelve Nominatim), **el backend solo suma `lat`/`lng`** — sin backfill, cero riesgo
+   para el search existente. Se descarta la opción (b) (migrar todo a nombre legible) por ahora:
+   suma backfill + mapa de traducción server-side + tocar el buscador, sin beneficio claro hoy.
+   Caso borde aceptado: si el nombre de Nominatim no matchea ninguna fila del dataset interno (ej.
+   variante de escritura), esa fila puntual queda con el nombre crudo en vez del código — formato
+   mixto aislado, no afecta al resto.
+
+   Con esto resuelto, el reemplazo de los 4 forms queda habilitado para arrancar: cada confirmación
+   del picker necesita, además de `lat`/`lng`/`label`, resolver `addressLines`/`province`/`country`
+   (ya vienen como nombre de `services/geocoding.js`) contra `COUNTRIES`/`PROVINCES` de
+   `data/locations.js` para obtener el código a mandar — función nueva a sumar ahí mismo (algo como
+   `resolveCountryCode(name)`/`resolveProvinceCode(countryCode, name)`, con fallback al nombre crudo
+   si no hay match, según lo aceptado arriba).
 
 3. **Equipos no tienen `street`/`number` hoy** (solo usuarios) — a confirmar si conviene sumarlos
    al mismo tiempo que se resuelve el punto 1, dado que el picker ya los resuelve para ambos casos
    por igual.
 
 **No bloquea lo que ya se mergeó en esta rama** — la mejora del propio `LocationPicker` (resumen
-estructurado, botón "ver detalle") es 100% frontend y ya está, sin esperar nada de esto. Lo que
-queda pendiente es el reemplazo de los 4 forms en sí, que no arranca hasta que el punto 2 esté
-resuelto.
+estructurado, botón "ver detalle", variante `card`) es 100% frontend y ya está, sin esperar nada de
+esto. Lo que queda pendiente es el reemplazo de los 4 forms en sí — con el punto 2 ya resuelto,
+solo falta que el backend sume `lat`/`lng` (punto 1) antes de cablear el envío de esos campos (el
+resto del swap de UI no depende de esto y podría arrancar antes si se prefiere).
