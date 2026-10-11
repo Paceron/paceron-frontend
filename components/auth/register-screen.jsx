@@ -7,12 +7,12 @@ import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from 
 import { validateBirthDate } from '../../utils/date-validators.js';
 import { validateDNI } from '../../utils/dni-validators.js';
 import { toRegisterPayload } from '../../services/normalizers.js';
+import { toAddressFormFields } from '../../utils/location-to-address-fields.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { isWeb } from '../../utils/platform.js';
 import { Row, Col, DateField, InputField } from '../forms/fields.jsx';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
-import { useAddressCascade } from '../../hooks/use-address-cascade.js';
+import { LocationPicker } from '../shared/location-picker';
 import { AuthCardShell } from './auth-card-shell.jsx';
 import { StrengthBar, PasswordRequirementsList } from '../forms/password-strength.jsx';
 import { CheckboxField } from '../forms/checkbox-field.jsx';
@@ -35,21 +35,7 @@ export function RegisterScreen() {
     setOpenSection((prev) => (prev === id ? null : id));
   };
 
-  const {
-    country,
-    province,
-    city,
-    street,
-    number,
-    setStreet,
-    setNumber,
-    provinceOptions,
-    cityOptions,
-    countryOptions,
-    handleCountryChange,
-    handleProvinceChange,
-    handleCityChange,
-  } = useAddressCascade();
+  const [locationValue, setLocationValue] = useState(null);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -118,11 +104,7 @@ export function RegisterScreen() {
           email,
           phone,
           phoneContact,
-          country,
-          province,
-          city,
-          street,
-          number,
+          ...toAddressFormFields(locationValue),
           password,
         }),
       );
@@ -260,63 +242,7 @@ export function RegisterScreen() {
       </SectionCard>
 
       <SectionCard collapsible collapsed={openSection !== 'address'} icon="map-marker" onToggle={() => toggleSection('address')} scope="register-address-section" title="Dirección">
-        <Row>
-          <Col>
-            <ResponsiveSelectField
-              label="País"
-              onChange={handleCountryChange}
-              options={countryOptions}
-              placeholder="Seleccioná un país"
-              value={country}
-            />
-          </Col>
-          <Col>
-            <ResponsiveSelectField
-              disabled={!country}
-              label="Provincia"
-              onChange={handleProvinceChange}
-              options={provinceOptions}
-              placeholder={country ? 'Seleccioná una provincia' : 'Elegí un país'}
-              value={province}
-            />
-          </Col>
-          <Col>
-            <ResponsiveSelectField
-              disabled={!province}
-              label="Localidad"
-              onChange={handleCityChange}
-              options={cityOptions}
-              placeholder={province ? 'Seleccioná una localidad' : 'Elegí una provincia'}
-              value={city}
-            />
-          </Col>
-        </Row>
-
-        <Row>
-          <Col flex={3}>
-            <InputField
-              autoCapitalize="words"
-              disabled={!city}
-              label="Calle"
-              onChange={setStreet}
-              placeholder={city ? 'Nombre de la calle' : 'Elegí una localidad primero'}
-              returnKeyType="next"
-              value={street}
-            />
-          </Col>
-          <Col flex={1}>
-            <InputField
-              autoCapitalize="none"
-              disabled={!city}
-              keyboardType="number-pad"
-              label="Altura"
-              onChange={(v) => setNumber(v.replace(/\D/g, ''))}
-              placeholder={city ? '1234' : '—'}
-              returnKeyType="next"
-              value={number}
-            />
-          </Col>
-        </Row>
+        <LocationPicker onChange={setLocationValue} value={locationValue} variant="card" />
       </SectionCard>
 
       <SectionCard collapsible collapsed={openSection !== 'password'} icon="lock-outline" onToggle={() => toggleSection('password')} scope="register-password-section" title="Contraseña">
