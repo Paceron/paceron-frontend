@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useAddressCascade } from './use-address-cascade.js';
+import { toLocationPickerValue, hasLegacyAddressWithoutCoordinates, formatLegacyAddressLabel } from '../utils/address-fields-to-location.js';
+import { toAddressFormFields } from '../utils/location-to-address-fields.js';
 import { validateMembershipFee } from '../utils/membership-fee-validators.js';
 
 // Estado + validación de los "datos generales" de un equipo (nombre,
@@ -11,17 +12,15 @@ import { validateMembershipFee } from '../utils/membership-fee-validators.js';
 // puede cobrar (ambos derivados de su tier, ver hooks/use-team-configuration.js).
 export function useTeamGeneralInfoForm({ initial, maxAllowed, minimumFee }) {
   const [name, setName] = useState(initial?.name ?? '');
-  const {
-    country,
-    province,
-    city,
-    provinceOptions,
-    cityOptions,
-    countryOptions,
-    handleCountryChange,
-    handleProvinceChange,
-    handleCityChange,
-  } = useAddressCascade({ country: initial?.country, province: initial?.province, city: initial?.city });
+  const [locationValue, setLocationValue] = useState(() => toLocationPickerValue({
+    lat: initial?.lat, lng: initial?.lng, country: initial?.country, province: initial?.province, city: initial?.city,
+  }));
+  const isLegacyAddress = hasLegacyAddressWithoutCoordinates({
+    lat: initial?.lat, lng: initial?.lng, country: initial?.country, province: initial?.province, city: initial?.city,
+  });
+  const legacyAddressLabel = isLegacyAddress
+    ? formatLegacyAddressLabel({ country: initial?.country, province: initial?.province, city: initial?.city })
+    : null;
   const [description, setDescription] = useState(initial?.description ?? '');
   const [level, setLevel] = useState(initial?.level ?? '');
   const [maxMembers, setMaxMembers] = useState(initial?.maxMembers != null ? String(initial.maxMembers) : '');
@@ -55,9 +54,7 @@ export function useTeamGeneralInfoForm({ initial, maxAllowed, minimumFee }) {
 
   const getValues = () => ({
     name: name.trim(),
-    country,
-    province,
-    city,
+    ...toAddressFormFields(locationValue),
     description: description.trim(),
     level,
     maxMembers: Number(maxMembers),
@@ -70,15 +67,10 @@ export function useTeamGeneralInfoForm({ initial, maxAllowed, minimumFee }) {
   return {
     name,
     setName,
-    country,
-    province,
-    city,
-    provinceOptions,
-    cityOptions,
-    countryOptions,
-    handleCountryChange,
-    handleProvinceChange,
-    handleCityChange,
+    locationValue,
+    setLocationValue,
+    isLegacyAddress,
+    legacyAddressLabel,
     description,
     setDescription,
     level,
