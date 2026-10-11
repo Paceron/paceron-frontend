@@ -3,6 +3,13 @@ import { useAuthStore } from '../store/auth-store.js';
 import { mapNetworkError, mapHttpErrorMessage } from '../utils/network-errors.js';
 
 const REQUEST_TIMEOUT_MS = 30000;
+// Para endpoints que envuelven N ítems en una sola request atómica (asignar
+// un rango de días al calendario, carga masiva de asistencia, puntos GPS de
+// una serie larga) -- el procesamiento server-side escala con N, así que el
+// timeout fijo de arriba corta requests legítimas antes de que el backend
+// termine. No hay progreso parcial que reportar (es una request, no N), por
+// eso el margen es generoso en vez de medirse por ítem.
+export const BULK_REQUEST_TIMEOUT_MS = 90000;
 
 function buildUrl(path) {
   if (/^https?:\/\//i.test(path)) {
@@ -17,7 +24,7 @@ function buildUrl(path) {
 // disparar uno cada una.
 let refreshPromise = null;
 
-async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, ...fetchOptions } = {}) {
+async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, timeout, ...fetchOptions } = {}) {
   const { token } = useAuthStore.getState();
   const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
   const headers = {
@@ -30,7 +37,7 @@ async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, ...fetch
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeout ?? REQUEST_TIMEOUT_MS);
   let response;
   try {
     response = await fetch(buildUrl(path), {
@@ -59,7 +66,7 @@ async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, ...fetch
         });
       }
       await refreshPromise;
-      return await request(path, { ...fetchOptions, _isRetry: true, exposeStatus });
+      return await request(path, { ...fetchOptions, _isRetry: true, exposeStatus, timeout });
     } catch (refreshErr) {
       // Solo cerrar sesión si el refresh FALLÓ CON UNA RESPUESTA (status
       // presente -- el backend de verdad rechazó el refresh token, ej.

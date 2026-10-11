@@ -1,4 +1,4 @@
-import api from './api.js';
+import api, { BULK_REQUEST_TIMEOUT_MS } from './api.js';
 import { USE_MOCKS } from '../config/env.js';
 import {
   mockListAttendanceSessions,
@@ -56,7 +56,7 @@ export async function getSessionAttendance(sessionInstanceId, teamId, groupId) {
 // y valida presencial + equipo). Es el mismo valor que hay que mandarle.
 export async function bulkSaveAttendance({ teamId, trainingSessionId, userIds }) {
   if (USE_MOCKS) return await mockBulkSaveAttendance({ teamId, trainingSessionId, userIds });
-  return await api.post('/attendance/bulk', toBulkAttendancePayload({ teamId, trainingSessionId, userIds }));
+  return await api.post('/attendance/bulk', toBulkAttendancePayload({ teamId, trainingSessionId, userIds }), { timeout: BULK_REQUEST_TIMEOUT_MS });
 }
 
 // GET /api/v1/attendance/qr?team_id=&training_session_id=
