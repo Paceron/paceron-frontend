@@ -7,6 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
 import { useLocationPicker } from '../../hooks/use-location-picker.js';
 import { formatAddressLines, getAddressDetailRows } from '../../utils/location-address-format.js';
+import { IconTooltip } from './icon-tooltip.jsx';
 import { LocationDetailModal } from './location-detail-modal.jsx';
 
 export function LocationPicker({ value, onChange }) {
@@ -34,10 +35,9 @@ export function LocationPicker({ value, onChange }) {
   return (
     <>
       {value ? (
-        <Pressable
+        <View
           className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
           nativeID="location-picker-preview"
-          onPress={picker.open}
           testID="location-picker-preview"
         >
           <View
@@ -91,7 +91,7 @@ export function LocationPicker({ value, onChange }) {
               <Pressable
                 className="mt-0.5 self-start"
                 nativeID="location-picker-preview-detail-button"
-                onPress={(e) => { e.stopPropagation?.(); setDetailVisible(true); }}
+                onPress={() => setDetailVisible(true)}
                 testID="location-picker-preview-detail-button"
               >
                 <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="location-picker-preview-detail-button-label" testID="location-picker-preview-detail-button-label">
@@ -100,19 +100,36 @@ export function LocationPicker({ value, onChange }) {
               </Pressable>
             )}
           </View>
-          {/* Botón explícito en vez del texto "Cambiar" -- toda la fila ya
-              dispara picker.open, pero el texto sugería que SOLO él era
-              clickeable. Un ícono a la derecha es un affordance de botón
-              real sin esa ambigüedad. */}
-          <Pressable
-            className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
-            nativeID="location-picker-preview-edit-button"
-            onPress={picker.open}
-            testID="location-picker-preview-edit-button"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
-          </Pressable>
-        </Pressable>
+          {/* Botón explícito en vez del texto "Cambiar" -- antes toda la
+              fila disparaba picker.open, lo que hacía que tocar en
+              cualquier lado (el mapa, el texto) reabriera el picker sin
+              querer. Ahora la fila es un View inerte, solo estos dos
+              botones actúan. */}
+          <View className="flex-row items-center gap-1" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
+            <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación">
+              <Pressable
+                accessibilityLabel="Cambiar ubicación"
+                className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+                nativeID="location-picker-preview-edit-button"
+                onPress={picker.open}
+                testID="location-picker-preview-edit-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+              </Pressable>
+            </IconTooltip>
+            <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación">
+              <Pressable
+                accessibilityLabel="Quitar ubicación"
+                className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+                nativeID="location-picker-preview-clear-button"
+                onPress={() => onChange(null)}
+                testID="location-picker-preview-clear-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
+              </Pressable>
+            </IconTooltip>
+          </View>
+        </View>
       ) : (
         <Pressable
           className="h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 dark:border-slate-600"
