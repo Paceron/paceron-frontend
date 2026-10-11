@@ -1131,3 +1131,53 @@ patrón que `update:set_event`, Gap 18) -- al recibirlo, invalidar/refetchear la
 en vez de esperar el próximo tick del polling. Mapa de resolución entre backend-dicho (`Gap
 28`) y cómo cablearlo: ver `hooks/use-trainer-session-runtime.js`'s `handleChannelMessage` existente
 como referencia del dispatch pattern ya usado para `update:set_event`.
+
+## Gap 29 — reemplazar los selects anidados de país/provincia/localidad por `LocationPicker` en registro y equipos: guardar lat/lng, definir representación de país/provincia
+
+**Contexto.** Hoy registro de usuario (`register-screen.jsx`), edición de perfil
+(`edit-profile-screen.jsx`) y creación/edición de equipo (`create-team-screen.jsx`/
+`edit-team-screen.jsx`) capturan la dirección con 3 `<select>` en cascada (país → provincia →
+localidad, `hooks/use-address-cascade.js`) sobre un dataset hardcodeado en el frontend
+(`data/locations.js`) + inputs de texto libre para calle/altura (solo usuario, equipos no los
+tiene). El usuario pidió reemplazar esto por `LocationPicker` (mapa + buscador de dirección, ya
+usado para la ubicación de sesiones presenciales) en los 4 forms — más preciso, y en su defecto
+(cuando el geocoder no resuelve bien) se puede buscar por dirección en el picker en vez de tipear a
+mano. `LocationPicker` ya devuelve, además de `lat`/`lng`, un desglose de Nominatim (calle, altura,
+localidad, provincia, país — ver `services/geocoding.js`, agregado en esta misma rama para mejorar
+el resumen visual del picker).
+
+**Lo que falta para que esto sea sostenible, no solo un cambio de UI:**
+
+1. **Guardar `lat`/`lng`.** Ni `users` ni `teams` tienen columnas para esto hoy — el frontend
+   calcula el pin pero no hay dónde persistirlo. Sin esto, cada vez que se necesite el punto exacto
+   (mapas, "equipos cerca de mí" a futuro) hay que re-geocodificar la dirección guardada, con el
+   riesgo de que no dé el mismo punto. Propuesta: `lat double precision null`, `lng double
+   precision null` en ambas tablas, devueltos en `GET`/aceptados en `POST`/`PUT` igual que
+   `country`/`province`/`city` hoy.
+
+2. **Decidir qué pasa con `country`/`province` — esto es lo que más importa confirmar antes de
+   tocar la UI de los 4 forms.** Revisando el código: hoy esos campos NO son texto libre del lado
+   del frontend — `country` manda el código ISO-3 interno (`"ARG"`, de `data/locations.js`, no el
+   nombre) y `province` manda un id interno de 2-3 letras (`"BA"`, `"CABA"`, etc.), ambos de un
+   dataset hardcodeado en el cliente. `city` sí es más libre (nombre desde un dataset por
+   provincia). El picker nuevo, en cambio, resuelve estos 3 campos desde Nominatim como **nombre
+   legible** (`"Argentina"`, `"Buenos Aires"`, no códigos) — un formato distinto al que hoy vive en
+   la base. Si se empieza a guardar en formato nuevo sin más, las filas viejas (código) y las
+   nuevas (nombre) convivirían en la misma columna con dos formatos — **ya hay un consumidor real
+   que se rompería con esto:** `team-search-screen.jsx` manda `country`/`province`/`city` como
+   filtro de `GET /teams/search` tal cual los eligió el usuario en sus propios `<select>` (que van a
+   seguir en código mientras no se decida lo mismo del lado del buscador) — un equipo guardado con
+   el nombre nuevo nunca matchearía ese filtro, y viceversa. Antes de tocar cualquier form, decidir
+   con el equipo de backend: ¿se migra todo a nombre legible (requiere backfill de las filas
+   existentes + actualizar el buscador también) o el frontend sigue mandando el código interno de
+   `data/locations.js` resuelto a partir del nombre que devuelve Nominatim (con el riesgo de que un
+   nombre de Nominatim no mapee 1:1 a una fila del dataset interno, ej. variantes de escritura)?
+
+3. **Equipos no tienen `street`/`number` hoy** (solo usuarios) — a confirmar si conviene sumarlos
+   al mismo tiempo que se resuelve el punto 1, dado que el picker ya los resuelve para ambos casos
+   por igual.
+
+**No bloquea lo que ya se mergeó en esta rama** — la mejora del propio `LocationPicker` (resumen
+estructurado, botón "ver detalle") es 100% frontend y ya está, sin esperar nada de esto. Lo que
+queda pendiente es el reemplazo de los 4 forms en sí, que no arranca hasta que el punto 2 esté
+resuelto.
