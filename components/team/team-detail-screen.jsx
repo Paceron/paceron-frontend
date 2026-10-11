@@ -546,11 +546,18 @@ function TeamDetailScreenContent({ teamId }) {
     console.log('[team-icon] canDeleteTeam recompute', {
       teamId: team?.id, teamIdType: typeof team?.id,
       ownerId: team?.ownerId, ownerIdType: typeof team?.ownerId,
+      // userId: lo que devolvió useAuthStore((s) => s.userId) EN ESTE
+      // render (vía el hook reactivo, arriba) -- rawStoreUserId: lectura
+      // imperativa directa de useAuthStore.getState() en este mismo
+      // instante, para descartar que el hook esté devolviendo algo
+      // distinto de lo que el store realmente tiene guardado.
       userId: user?.userId, userIdType: typeof user?.userId,
+      hookUserId: userId, hookUserIdType: typeof userId,
+      rawStoreUserId: useAuthStore.getState().userId,
       canManageTeam, canDeleteTeam,
       iconUrl: team?.iconUrl,
     });
-  }, [team, user, canManageTeam, canDeleteTeam]);
+  }, [team, user, userId, canManageTeam, canDeleteTeam]);
 
   const handlePickIcon = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
