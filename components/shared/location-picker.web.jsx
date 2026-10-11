@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -6,6 +6,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
 import { useLocationPicker } from '../../hooks/use-location-picker.js';
+import { formatAddressLines, getAddressDetailRows } from '../../utils/location-address-format.js';
+import { LocationDetailModal } from './location-detail-modal.jsx';
 
 function MiniMap({ lat, lng }) {
   const containerRef = useRef(null);
@@ -32,6 +34,9 @@ export function LocationPicker({ value, onChange }) {
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const picker = useLocationPicker({ value, onChange });
+  const [detailVisible, setDetailVisible] = useState(false);
+  const addressLines = formatAddressLines(value);
+  const hasDetail = getAddressDetailRows(value).length > 0;
 
   useEffect(() => {
     if (!picker.visible || mapRef.current) return;
@@ -101,17 +106,44 @@ export function LocationPicker({ value, onChange }) {
           </View>
           <View className="flex-1" nativeID="location-picker-preview-info" testID="location-picker-preview-info">
             <Text
-              className="text-sm text-slate-900 dark:text-white"
-              nativeID="location-picker-preview-label"
-              numberOfLines={2}
-              testID="location-picker-preview-label"
+              className="text-sm font-medium text-slate-900 dark:text-white"
+              nativeID="location-picker-preview-primary"
+              numberOfLines={1}
+              testID="location-picker-preview-primary"
             >
-              {value.label || `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}`}
+              {addressLines.primary}
             </Text>
-            <Text className="text-xs font-semibold text-primary" nativeID="location-picker-preview-change" testID="location-picker-preview-change">
-              Cambiar
-            </Text>
+            {addressLines.secondary && (
+              <Text
+                className="text-xs text-slate-500 dark:text-slate-400"
+                nativeID="location-picker-preview-secondary"
+                numberOfLines={1}
+                testID="location-picker-preview-secondary"
+              >
+                {addressLines.secondary}
+              </Text>
+            )}
+            {hasDetail && (
+              <Pressable
+                className="mt-0.5 self-start"
+                nativeID="location-picker-preview-detail-button"
+                onPress={(e) => { e.stopPropagation?.(); setDetailVisible(true); }}
+                testID="location-picker-preview-detail-button"
+              >
+                <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="location-picker-preview-detail-button-label" testID="location-picker-preview-detail-button-label">
+                  Ver detalle
+                </Text>
+              </Pressable>
+            )}
           </View>
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
+            nativeID="location-picker-preview-edit-button"
+            onPress={picker.open}
+            testID="location-picker-preview-edit-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+          </Pressable>
         </Pressable>
       ) : (
         <Pressable
@@ -211,6 +243,8 @@ export function LocationPicker({ value, onChange }) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <LocationDetailModal onClose={() => setDetailVisible(false)} value={value} visible={detailVisible} />
     </>
   );
 }
