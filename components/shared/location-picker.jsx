@@ -89,13 +89,18 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
       {value ? (
         <View
           className={isCard
-            ? 'max-h-36 flex-row overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+            ? 'max-h-36 flex-row rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
             : 'flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900'}
           nativeID="location-picker-preview"
           testID="location-picker-preview"
         >
+          {/* overflow-hidden en el mapa solo, no en toda la fila -- clipaba
+              el tooltip de los botones de la derecha contra el borde de la
+              card (aunque position="top"), ya que el bubble absoluto queda
+              anidado dentro del mismo contenedor recortado. El mapa es lo
+              único con bordes duros que necesita el recorte. */}
           <View
-            className={isCard ? 'h-full flex-1 overflow-hidden' : 'h-16 w-16 overflow-hidden rounded-lg'}
+            className={isCard ? 'h-full flex-1 overflow-hidden rounded-l-xl' : 'h-16 w-16 overflow-hidden rounded-lg'}
             nativeID="location-picker-preview-map"
             pointerEvents="none"
             testID="location-picker-preview-map"

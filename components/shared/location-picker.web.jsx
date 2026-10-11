@@ -151,12 +151,14 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
       {value ? (
         <View
           className={isCard
-            ? 'max-h-36 flex-row overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+            ? 'max-h-36 flex-row rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
             : 'flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900'}
           nativeID="location-picker-preview"
           testID="location-picker-preview"
         >
-          <View className={isCard ? 'h-full flex-1 overflow-hidden' : 'h-16 w-16 overflow-hidden rounded-lg'} nativeID="location-picker-preview-map" testID="location-picker-preview-map">
+          {/* overflow-hidden en el mapa solo -- ver comentario en
+              location-picker.jsx (misma causa de fondo). */}
+          <View className={isCard ? 'h-full flex-1 overflow-hidden rounded-l-xl' : 'h-16 w-16 overflow-hidden rounded-lg'} nativeID="location-picker-preview-map" testID="location-picker-preview-map">
             <MiniMap lat={value.lat} lng={value.lng} />
           </View>
           <View className={isCard ? 'flex-1 justify-between p-3' : 'flex-1'} nativeID="location-picker-preview-info" testID="location-picker-preview-info">
