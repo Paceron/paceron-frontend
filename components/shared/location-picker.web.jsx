@@ -160,11 +160,13 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
             <MiniMap lat={value.lat} lng={value.lng} />
           </View>
           <View className={isCard ? 'flex-1 justify-between p-3' : 'flex-1'} nativeID="location-picker-preview-info" testID="location-picker-preview-info">
-            <View nativeID="location-picker-preview-text" testID="location-picker-preview-text">
+            {/* Un solo Text con hijos Text anidados -- fluye y comparte
+                línea cuando el ancho alcanza (caso típico en web ancho),
+                solo baja a una segunda línea cuando no entra. */}
+            <Text className="text-sm" nativeID="location-picker-preview-text" numberOfLines={2} testID="location-picker-preview-text">
               <Text
-                className="text-sm font-medium text-slate-900 dark:text-white"
+                className="font-medium text-slate-900 dark:text-white"
                 nativeID="location-picker-preview-primary"
-                numberOfLines={1}
                 testID="location-picker-preview-primary"
               >
                 {addressLines.primary}
@@ -175,10 +177,10 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
                   nativeID="location-picker-preview-secondary"
                   testID="location-picker-preview-secondary"
                 >
-                  {addressLines.secondary}
+                  {`, ${addressLines.secondary}`}
                 </Text>
               )}
-            </View>
+            </Text>
             {isCard && (
               <PreviewActions colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} />
             )}
@@ -259,16 +261,27 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
                 {picker.error}
               </Text>
             )}
-            <TextInput
-              className="h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-              editable={!picker.resolving}
-              nativeID="location-picker-label-input"
-              onChangeText={picker.setLabel}
-              placeholder={picker.resolving ? 'Resolviendo dirección...' : 'Descripción del lugar (opcional)'}
-              placeholderTextColor={colors.onSurfaceVariant}
-              testID="location-picker-label-input"
-              value={picker.label}
-            />
+            {/* Antes solo el placeholder decía "Resolviendo..." -- invisible
+                si `label` ya tenía texto de antes (ej. editar un punto ya
+                confirmado). Esta fila es visible siempre. */}
+            {picker.resolving ? (
+              <View className="h-11 flex-row items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="location-picker-resolving-indicator" testID="location-picker-resolving-indicator">
+                <ActivityIndicator color={colors.primary} size="small" />
+                <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="location-picker-resolving-indicator-label" testID="location-picker-resolving-indicator-label">
+                  Resolviendo dirección…
+                </Text>
+              </View>
+            ) : (
+              <TextInput
+                className="h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                nativeID="location-picker-label-input"
+                onChangeText={picker.setLabel}
+                placeholder="Descripción del lugar (opcional)"
+                placeholderTextColor={colors.onSurfaceVariant}
+                testID="location-picker-label-input"
+                value={picker.label}
+              />
+            )}
             <Pressable
               className={`h-12 items-center justify-center rounded-full bg-primary hover:opacity-90 ${!picker.pin ? 'opacity-40' : ''}`}
               disabled={!picker.pin}
