@@ -95,7 +95,11 @@ export function useTeamMutations() {
         if (hasAddress) {
           try {
             await updateTeamAddressService(teamId, toAddressPayload(payload));
-            team = { ...team, country: payload.country || null, province: payload.province || null, city: payload.city || null };
+            team = {
+              ...team,
+              country: payload.country || null, province: payload.province || null, city: payload.city || null,
+              lat: Number.isFinite(payload.lat) ? payload.lat : null, lng: Number.isFinite(payload.lng) ? payload.lng : null,
+            };
           } catch {
             addressWarning = true;
           }
@@ -147,7 +151,11 @@ export function useTeamMutations() {
 
         try {
           await updateTeamAddressService(teamId, toAddressPayload(updates));
-          merged = { ...merged, country: updates.country || null, province: updates.province || null, city: updates.city || null };
+          merged = {
+            ...merged,
+            country: updates.country || null, province: updates.province || null, city: updates.city || null,
+            lat: Number.isFinite(updates.lat) ? updates.lat : null, lng: Number.isFinite(updates.lng) ? updates.lng : null,
+          };
           return { success: true, team: merged };
         } catch {
           return { success: true, team: merged, addressWarning: true };
