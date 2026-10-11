@@ -14,7 +14,10 @@ import { useAuthStore } from '../store/auth-store.js';
 export function useUser(userId) {
   const query = useQuery({
     queryKey: ['user', userId],
-    queryFn: () => getUserService({ id: userId }).then((dto) => toUserModel(dto)),
+    queryFn: () => getUserService({ id: userId }).then((dto) => {
+      if (__DEV__) console.log('[team-icon] useUser queryFn resolved', { requestedUserId: userId, dtoKeys: dto ? Object.keys(dto) : null, dtoUserId: dto?.user_id, dtoId: dto?.id });
+      return toUserModel(dto);
+    }),
     enabled: Boolean(userId),
   });
   return { user: query.data ?? null, loading: query.isLoading };

@@ -238,7 +238,14 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const handleBulkClear = async () => {
     const dates = Array.from(selectedDates);
     handleExitSelection();
+    // handleExitSelection ya cerró el modo selección -- sin este toast
+    // persistente, una operación de varios minutos (vaciar muchos días)
+    // queda sin NINGÚN indicio visible de que sigue en curso (bug real
+    // reportado, 2026-10-10). autoHide:false + Toast.hide() manual en vez
+    // de un timeout fijo, porque no sabemos cuánto va a tardar.
+    Toast.show({ type: 'info', text1: `Vaciando ${dates.length} día${dates.length === 1 ? '' : 's'}…`, text2: 'Puede demorar unos minutos.', autoHide: false });
     const result = await bulkClear({ dates });
+    Toast.hide();
     if (!result.success) {
       notifyError();
       Toast.show({ type: 'error', text1: 'No pudimos vaciar los días', text2: result.error });

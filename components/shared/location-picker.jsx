@@ -124,23 +124,31 @@ export function LocationPicker({ value, onChange }) {
                 {addressLines.secondary}
               </Text>
             )}
-            <View className="mt-0.5 flex-row items-center gap-3" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
-              <Text className="text-xs font-semibold text-primary" nativeID="location-picker-preview-change" testID="location-picker-preview-change">
-                Cambiar
-              </Text>
-              {hasDetail && (
-                <Pressable
-                  nativeID="location-picker-preview-detail-button"
-                  onPress={(e) => { e.stopPropagation?.(); setDetailVisible(true); }}
-                  testID="location-picker-preview-detail-button"
-                >
-                  <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="location-picker-preview-detail-button-label" testID="location-picker-preview-detail-button-label">
-                    Ver detalle
-                  </Text>
-                </Pressable>
-              )}
-            </View>
+            {hasDetail && (
+              <Pressable
+                className="mt-0.5 self-start"
+                nativeID="location-picker-preview-detail-button"
+                onPress={(e) => { e.stopPropagation?.(); setDetailVisible(true); }}
+                testID="location-picker-preview-detail-button"
+              >
+                <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="location-picker-preview-detail-button-label" testID="location-picker-preview-detail-button-label">
+                  Ver detalle
+                </Text>
+              </Pressable>
+            )}
           </View>
+          {/* Botón explícito en vez del texto "Cambiar" -- toda la fila ya
+              dispara picker.open, pero el texto sugería que SOLO él era
+              clickeable. Un ícono a la derecha es un affordance de botón
+              real sin esa ambigüedad. */}
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+            nativeID="location-picker-preview-edit-button"
+            onPress={picker.open}
+            testID="location-picker-preview-edit-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+          </Pressable>
         </Pressable>
       ) : (
         <Pressable
