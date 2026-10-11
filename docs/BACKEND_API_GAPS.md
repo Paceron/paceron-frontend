@@ -1132,7 +1132,7 @@ en vez de esperar el próximo tick del polling. Mapa de resolución entre backen
 28`) y cómo cablearlo: ver `hooks/use-trainer-session-runtime.js`'s `handleChannelMessage` existente
 como referencia del dispatch pattern ya usado para `update:set_event`.
 
-## Gap 29 — reemplazar los selects anidados de país/provincia/localidad por `LocationPicker` en registro y equipos: guardar lat/lng, definir representación de país/provincia
+## Gap 29 — reemplazar los selects anidados de país/provincia/localidad por `LocationPicker` en registro y equipos: guardar lat/lng, definir representación de país/provincia [RESUELTO]
 
 **Contexto.** Hoy registro de usuario (`register-screen.jsx`), edición de perfil
 (`edit-profile-screen.jsx`) y creación/edición de equipo (`create-team-screen.jsx`/
@@ -1182,12 +1182,24 @@ el resumen visual del picker).
    `resolveCountryCode(name)`/`resolveProvinceCode(countryCode, name)`, con fallback al nombre crudo
    si no hay match, según lo aceptado arriba).
 
-3. **Equipos no tienen `street`/`number` hoy** (solo usuarios) — a confirmar si conviene sumarlos
-   al mismo tiempo que se resuelve el punto 1, dado que el picker ya los resuelve para ambos casos
-   por igual.
+3. **Equipos no tienen `street`/`number` hoy** (solo usuarios) — se decidió NO sumarlos junto con
+   esto (el backend no los mencionó al cerrar el punto 1, y el picker ya resuelve calle/altura solo
+   para usuarios sin que haga falta tocar equipos). Queda abierto para una decisión futura aparte si
+   hace falta.
 
-**No bloquea lo que ya se mergeó en esta rama** — la mejora del propio `LocationPicker` (resumen
-estructurado, botón "ver detalle", variante `card`) es 100% frontend y ya está, sin esperar nada de
-esto. Lo que queda pendiente es el reemplazo de los 4 forms en sí — con el punto 2 ya resuelto,
-solo falta que el backend sume `lat`/`lng` (punto 1) antes de cablear el envío de esos campos (el
-resto del swap de UI no depende de esto y podría arrancar antes si se prefiere).
+**Resuelto (2026-10-11).** Backend entregó el punto 1 (`lat`/`lng` aditivo y nullable en
+usuario/equipo, charset de dirección relajado para nombres de Nominatim) en la rama
+`latlng-optimizaciones-y-endurecimiento`. Con eso, se completó el swap de los 4 forms
+(`register-screen.jsx`, `edit-profile-screen.jsx`, `create-team-screen.jsx`/`edit-team-screen.jsx`
+vía `team-general-info-fields.jsx` compartido) de los selects en cascada a `LocationPicker`
+(variante `card`). Piezas nuevas: `utils/location-to-address-fields.js` (picker → payload, resuelve
+nombre→código vía `resolveCountryCode`/`resolveProvinceCode` de `data/locations.js`),
+`utils/address-fields-to-location.js` (inverso, para precargar el picker al editar) +
+`hasLegacyAddressWithoutCoordinates`/`formatLegacyAddressLabel` para las filas existentes sin
+`lat`/`lng` (sin backfill) — no se inventa un punto en el mapa para esas filas: se muestra la
+dirección guardada como texto informativo y el picker arranca vacío, listo para precisarla la
+próxima vez que se edite. `edit-profile-screen.jsx` necesitó un flag `locationTouched` aparte (no
+alcanza con `locationValue === null`, que también es el resultado de un "Quitar ubicación"
+deliberado) porque `toUpdatePayload` manda el set completo y sin eso un simple cambio de nombre
+hubiera borrado la dirección existente; `toAddressPayload` (equipos) ya omite campos vacíos por su
+cuenta, así que ese caso no necesitó el mismo tracking.
