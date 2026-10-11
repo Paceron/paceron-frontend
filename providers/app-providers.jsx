@@ -15,6 +15,7 @@ function AuthEffects() {
   const { user } = useUser(userId);
 
   useEffect(() => {
+    if (__DEV__) console.log('[team-icon] AuthEffects mounted -> calling hydrate()');
     hydrate();
   }, [hydrate]);
 
@@ -49,6 +50,7 @@ function AuthEffects() {
 function ForegroundRefetch() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (status) => {
+      if (__DEV__) console.log('[team-icon] ForegroundRefetch AppState change', { status, willInvalidateAll: status === 'active' });
       if (status === 'active') queryClient.invalidateQueries();
     });
     return () => subscription.remove();

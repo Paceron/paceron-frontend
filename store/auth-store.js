@@ -37,10 +37,12 @@ export const useAuthStore = create((set, get) => ({
   roleSwitchAnimating: null,
 
   hydrate: async () => {
+    if (__DEV__) console.log('[team-icon] auth-store.hydrate() called', { currentUserId: get().userId, hydrated: get().hydrated });
     try {
       const raw = await getItem(STORAGE_KEY);
       if (raw) {
         const data = JSON.parse(raw);
+        if (__DEV__) console.log('[team-icon] auth-store.hydrate() read storage', { storedUserId: data.userId ?? data.user?.userId ?? null });
         set({
           token: data.token ?? null,
           refreshToken: data.refreshToken ?? null,
@@ -53,6 +55,8 @@ export const useAuthStore = create((set, get) => ({
           // el primer hydrate() tras el deploy de esta rama.
           userId: data.userId ?? data.user?.userId ?? null,
         });
+      } else if (__DEV__) {
+        console.log('[team-icon] auth-store.hydrate() found no stored session');
       }
     } catch {
       // sesión corrupta — se ignora y se arranca sin sesión
@@ -127,6 +131,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   logout: async () => {
+    if (__DEV__) console.log('[team-icon] auth-store.logout() called', { currentUserId: get().userId, stack: new Error().stack });
     const { refreshToken } = get();
     try {
       if (refreshToken) await logoutService(refreshToken);
