@@ -6,10 +6,7 @@ import { useSessions } from '../../hooks/use-sessions.js';
 import { useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
-import { useEstimatedProgress } from '../../hooks/use-estimated-progress.js';
-import { estimateBulkDurationMs } from '../../utils/estimated-progress.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
-import { ProgressFillOverlay } from '../shared/progress-fill-overlay.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
@@ -23,7 +20,6 @@ export function BulkEditDaysModal({ visible, onClose, onSuccess, groupId, ownerI
   const colors = useThemeColors();
   const { sessions } = useSessions(ownerId);
   const { bulkAssign, isBulkAssigning } = useGroupCalendarMutations(groupId);
-  const progressFraction = useEstimatedProgress(isBulkAssigning, estimateBulkDurationMs(dates.length));
 
   const [kind, setKind] = useState('rest');
   const [otherName, setOtherName] = useState('');
@@ -137,13 +133,12 @@ export function BulkEditDaysModal({ visible, onClose, onSuccess, groupId, ownerI
             />
 
             <Pressable
-              className={`mt-2 h-11 flex-row items-center justify-center gap-2 overflow-hidden rounded-full bg-primary hover:opacity-90 active:opacity-80 ${isBulkAssigning ? 'opacity-60' : ''}`}
+              className={`mt-2 h-11 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${isBulkAssigning ? 'opacity-60' : ''}`}
               disabled={isBulkAssigning}
               nativeID="bulk-edit-days-modal-save-button"
               onPress={handleSubmit}
               testID="bulk-edit-days-modal-save-button"
             >
-              <ProgressFillOverlay fraction={progressFraction} idPrefix="bulk-edit-days-modal-save-button" />
               {isBulkAssigning ? (
                 <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (

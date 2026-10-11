@@ -4,13 +4,10 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useGroupCalendarMutations } from '../../hooks/use-group-calendar.js';
-import { useEstimatedProgress } from '../../hooks/use-estimated-progress.js';
 import { addDaysISO } from '../../utils/build-stamp-draft.js';
-import { estimateBulkDurationMs } from '../../utils/estimated-progress.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
-import { ProgressFillOverlay } from '../shared/progress-fill-overlay.jsx';
 
 // Desplaza TODO lo que sigue desde `fromDate` (inclusive) N días adelante
 // — no es "mover este día puntual", el backend corre todas las filas con
@@ -22,7 +19,6 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
   const { shiftCalendar, isShifting } = useGroupCalendarMutations(groupId);
 
   const [days, setDays] = useState(1);
-  const progressFraction = useEstimatedProgress(isShifting, estimateBulkDurationMs(days));
 
   const resetKey = visible;
   const prevResetKeyRef = useRef(resetKey);
@@ -113,13 +109,12 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
               </Text>
             </Pressable>
             <Pressable
-              className={`h-11 flex-1 flex-row items-center justify-center gap-2 overflow-hidden rounded-full bg-primary hover:opacity-90 active:opacity-80 ${isShifting ? 'opacity-60' : ''}`}
+              className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${isShifting ? 'opacity-60' : ''}`}
               disabled={isShifting}
               nativeID="shift-day-modal-confirm-button"
               onPress={handleSubmit}
               testID="shift-day-modal-confirm-button"
             >
-              <ProgressFillOverlay fraction={progressFraction} idPrefix="shift-day-modal-confirm-button" />
               {isShifting ? (
                 <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
