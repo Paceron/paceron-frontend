@@ -10,6 +10,7 @@ export function useLocationPicker({ value, onChange }) {
   const [visible, setVisible] = useState(false);
   const [pin, setPin] = useState(null);
   const [label, setLabel] = useState('');
+  const [structured, setStructured] = useState(null);
   const [resolving, setResolving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -21,7 +22,8 @@ export function useLocationPicker({ value, onChange }) {
     setResolving(true);
     try {
       const address = await reverseGeocode(lat, lng);
-      setLabel(address ?? '');
+      setLabel(address?.label ?? '');
+      setStructured(address ?? null);
     } catch {
       setError('No pudimos resolver la dirección, podés escribirla a mano.');
     } finally {
@@ -75,6 +77,7 @@ export function useLocationPicker({ value, onChange }) {
     const hasValue = Boolean(value);
     setPin(hasValue ? { lat: value.lat, lng: value.lng } : null);
     setLabel(value?.label ?? '');
+    setStructured(hasValue ? value : null);
     setSearchQuery('');
     setError(null);
     setVisible(true);
@@ -106,14 +109,20 @@ export function useLocationPicker({ value, onChange }) {
 
   const confirm = useCallback(() => {
     if (!pin) return;
-    onChange({ lat: pin.lat, lng: pin.lng, label: label.trim() || null });
+    onChange({
+      ...structured,
+      lat: pin.lat,
+      lng: pin.lng,
+      label: label.trim() || null,
+    });
     setVisible(false);
-  }, [pin, label, onChange]);
+  }, [pin, label, structured, onChange]);
 
   return {
     visible, open, close,
     pin, selectPoint,
     label, setLabel,
+    structured,
     resolving,
     searchQuery, setSearchQuery, searching, runSearch,
     error,

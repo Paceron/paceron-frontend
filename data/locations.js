@@ -11,6 +11,35 @@ export function getProvinceName(countryCode, provinceId) {
   return province ? province.name : provinceId || '';
 }
 
+// Sin acentos ni mayúsculas, para comparar el nombre que devuelve Nominatim
+// (que puede variar en capitalización/acentuación) contra este dataset sin
+// pedirle una coincidencia exacta carácter por carácter.
+function normalize(value) {
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+// Inverso de getCountryName/getProvinceName -- resuelve el nombre legible
+// que devuelve Nominatim (services/geocoding.js) al código interno de este
+// dataset, para seguir mandando al backend el mismo formato de siempre
+// (decisión Gap 29 punto 2, docs/BACKEND_API_GAPS.md: el backend no valida
+// el código, pero el buscador de equipos sí filtra por él, así que cambiar
+// de formato rompería ese filtro). Si Nominatim devuelve una variante que
+// no matchea ningún nombre del dataset (ej. "Ciudad Autónoma de Buenos
+// Aires" vs. nuestro "Capital Federal"), se acepta el caso borde: queda el
+// nombre crudo en vez del código, aislado a esa fila puntual.
+export function resolveCountryCode(name) {
+  if (!name) return '';
+  const match = COUNTRIES.find((c) => normalize(c.name) === normalize(name));
+  return match ? match.code : name;
+}
+
+export function resolveProvinceCode(countryCode, name) {
+  if (!name) return '';
+  const list = PROVINCES[countryCode] || [];
+  const match = list.find((p) => normalize(p.name) === normalize(name));
+  return match ? match.id : name;
+}
+
 export const COUNTRIES = [
   { code: 'ARG', name: 'Argentina' },
   { code: 'URY', name: 'Uruguay' },

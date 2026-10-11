@@ -124,6 +124,12 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
               )}
             </Pressable>
           </View>
+
+          {isShifting && (
+            <Text className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500" nativeID="shift-day-modal-processing-hint" testID="shift-day-modal-processing-hint">
+              Desplazando el calendario… puede demorar unos segundos.
+            </Text>
+          )}
         </Pressable>
       </Pressable>
     </Modal>

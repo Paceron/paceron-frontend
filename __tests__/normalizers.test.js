@@ -79,6 +79,22 @@ describe('toUpdatePayload — default_theme / allow_team_invitations', () => {
     const payload = toUpdatePayload(BASE_FORM);
     expect(payload.allow_team_invitations).toBeUndefined();
   });
+
+  test('manda lat/lng cuando son números finitos, incluso 0', () => {
+    const payload = toUpdatePayload({ ...BASE_FORM, lat: 0, lng: -58.38 });
+    expect(payload.lat).toBe(0);
+    expect(payload.lng).toBe(-58.38);
+  });
+
+  // A diferencia de toRegisterPayload (que omite lat/lng si no vienen), acá
+  // siempre van explícitos -- es un PUT con el set completo, no un alta.
+  // Si el usuario borró la ubicación elegida, hay que mandar null para
+  // limpiarla de verdad, no simplemente omitir el campo.
+  test('manda lat/lng como null (no los omite) cuando no vienen', () => {
+    const payload = toUpdatePayload(BASE_FORM);
+    expect(payload.lat).toBeNull();
+    expect(payload.lng).toBeNull();
+  });
 });
 
 describe('toRegisterPayload', () => {
@@ -110,6 +126,18 @@ describe('toRegisterPayload', () => {
     expect(out).not.toHaveProperty('province');
     expect(out).not.toHaveProperty('city');
   });
+
+  test('includes lat/lng when they are finite numbers, including 0', () => {
+    const out = toRegisterPayload({ ...base, birthDate: '01/01/1988', lat: 0, lng: -58.38 });
+    expect(out.lat).toBe(0);
+    expect(out.lng).toBe(-58.38);
+  });
+
+  test('omits lat/lng when not provided', () => {
+    const out = toRegisterPayload({ ...base, birthDate: '01/01/1988' });
+    expect(out).not.toHaveProperty('lat');
+    expect(out).not.toHaveProperty('lng');
+  });
 });
 
 describe('toTeamModel', () => {
@@ -125,6 +153,7 @@ describe('toTeamModel', () => {
       id: '1', name: 'Corredores del Sur', description: 'desc', level: 'amateur',
       maxMembers: 20, ownerId: 7, requirements: 'req', status: 'activo',
       country: 'ARG', province: 'BA', city: 'La Plata', street: null, number: null,
+      lat: null, lng: null,
       showGroupsToRunners: true, visible: true, isPublic: true,
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z',
       iconUrl: null, membershipFee: 25000,
@@ -245,6 +274,17 @@ describe('toAddressPayload', () => {
   test('omits empty fields', () => {
     const out = toAddressPayload({ country: 'ARG', province: '', city: '  ' });
     expect(out).toEqual({ country: 'ARG' });
+  });
+
+  test('includes lat/lng when they are finite numbers, including 0', () => {
+    const out = toAddressPayload({ country: 'ARG', lat: 0, lng: -64.18 });
+    expect(out).toEqual({ country: 'ARG', lat: 0, lng: -64.18 });
+  });
+
+  test('omits lat/lng when not provided', () => {
+    const out = toAddressPayload({ country: 'ARG' });
+    expect(out).not.toHaveProperty('lat');
+    expect(out).not.toHaveProperty('lng');
   });
 });
 

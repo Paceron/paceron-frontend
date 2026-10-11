@@ -16,6 +16,7 @@ function LocationPickerTestbedScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const [value, setValue] = useState(null);
+  const [cardValue, setCardValue] = useState(null);
 
   return (
     <ScrollView
@@ -45,6 +46,9 @@ function LocationPickerTestbedScreenContent() {
           </Text>
         </View>
 
+        <Text className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="location-picker-testbed-compact-label" testID="location-picker-testbed-compact-label">
+          variant=&quot;compact&quot; (uso real hoy: ubicación de sesión presencial)
+        </Text>
         <LocationPicker onChange={setValue} value={value} />
 
         <Text
@@ -53,6 +57,19 @@ function LocationPickerTestbedScreenContent() {
           testID="location-picker-testbed-value"
         >
           {JSON.stringify(value, null, 2)}
+        </Text>
+
+        <Text className="mb-2 mt-8 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="location-picker-testbed-card-label" testID="location-picker-testbed-card-label">
+          variant=&quot;card&quot; (sin cablear todavía: pensado para registro/equipo)
+        </Text>
+        <LocationPicker onChange={setCardValue} value={cardValue} variant="card" />
+
+        <Text
+          className="mt-4 text-xs text-slate-600 dark:text-slate-300"
+          nativeID="location-picker-testbed-card-value"
+          testID="location-picker-testbed-card-value"
+        >
+          {JSON.stringify(cardValue, null, 2)}
         </Text>
       </View>
     </ScrollView>

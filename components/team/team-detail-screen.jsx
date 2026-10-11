@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -16,8 +16,6 @@ import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { removeTeamUser } from '../../services/teams.js';
 import { removeGroupUser, addGroupUser } from '../../services/groups.js';
-import { getUser } from '../../services/auth.js';
-import { toUserModel } from '../../services/normalizers.js';
 import { getCountryName, getProvinceName } from '../../data/locations.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -580,12 +578,21 @@ function TeamDetailScreenContent({ teamId }) {
     () => allMembers.filter((m) => m.userId !== String(team?.ownerId)),
     [allMembers, team?.ownerId],
   );
-  const ownerQuery = useQuery({
-    queryKey: ['user', team?.ownerId],
-    queryFn: () => getUser({ id: team.ownerId }),
-    enabled: Boolean(team?.ownerId),
-  });
-  const ownerUser = ownerQuery.data ? toUserModel(ownerQuery.data) : null;
+  // Bug real encontrado 2026-10-11: esto era antes su propia useQuery con
+  // queryFn: () => getUser({id}) (dto crudo, sin pasar por toUserModel) --
+  // misma queryKey ['user', id] que usa useUser abajo, así que cuando el
+  // dueño del equipo ES el usuario logueado (visitar tu propio equipo,
+  // el caso normal) las dos competían por el mismo slot de caché. Cada
+  // invalidateQueries() app-wide (ForegroundRefetch) disparaba un refetch
+  // de ambas a la vez, y la que terminaba última pisaba la caché con su
+  // propio shape -- si ganaba esta, `userId` (camelCase) desaparecía
+  // porque el dto crudo solo tiene `user_id` (snake_case), rompiendo
+  // `canDeleteTeam` en cualquier otro componente que leyera ese mismo
+  // user vía useUser. Reusar useUser (mismo hook, misma normalización)
+  // en vez de una query manual con shape distinto resuelve la carrera de
+  // raíz -- ambos casos comparten la misma queryFn, no hay dos formas
+  // distintas de resolver el mismo id.
+  const { user: ownerUser } = useUser(team?.ownerId);
   const ownerName = ownerUser ? `${ownerUser.name ?? ''} ${ownerUser.surname ?? ''}`.trim() || ownerUser.email : null;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [createGroupModalVisible, setCreateGroupModalVisible] = useState(false);

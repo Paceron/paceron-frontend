@@ -96,7 +96,7 @@ function CreateTeamScreenContent() {
   // entrenador si ya la cargó al registrarse, asumiendo que el equipo suele
   // estar donde está él.
   const generalForm = useTeamGeneralInfoForm({
-    initial: { country: user?.country, province: user?.province, city: user?.city },
+    initial: { country: user?.country, province: user?.province, city: user?.city, lat: user?.lat, lng: user?.lng },
     maxAllowed,
     minimumFee,
   });

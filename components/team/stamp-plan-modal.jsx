@@ -104,6 +104,11 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
   const [expandedSeq, setExpandedSeq] = useState(null);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  // Progreso real (no inventado) solo para el loop de días tocados a mano
+  // abajo -- cada uno es su propia request secuencial, así que hay una
+  // cuenta real de "cuántos van". El stampPlan en sí es una sola request
+  // atómica del lado del backend, sin granularidad que mostrar.
+  const [touchedProgress, setTouchedProgress] = useState(null);
 
   const plan = plans.find((p) => p.id === planId) ?? null;
   const rangeEnd = plan && startDate ? addDaysISO(startDate, plan.days.length - 1) : null;
@@ -165,13 +170,17 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
     }
 
     const touchedDays = draftDays.filter((d) => d.touched && !d.excluded);
-    for (const day of touchedDays) {
+    if (touchedDays.length > 0) setTouchedProgress({ done: 0, total: touchedDays.length });
+    for (let i = 0; i < touchedDays.length; i += 1) {
+      const day = touchedDays[i];
       const result = await upsertDay({ date: day.date, day });
       if (!result.success) {
         notifyError();
         Toast.show({ type: 'error', text1: `No pudimos ajustar el día ${day.date}`, text2: result.error });
       }
+      setTouchedProgress({ done: i + 1, total: touchedDays.length });
     }
+    setTouchedProgress(null);
 
     setSaving(false);
     notifySuccess();
@@ -254,6 +263,14 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
                     )}
                   </Pressable>
                 </View>
+
+                {(saving || isStamping) && (
+                  <Text className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500" nativeID="stamp-plan-modal-processing-hint" testID="stamp-plan-modal-processing-hint">
+                    {touchedProgress
+                      ? `Ajustando día ${touchedProgress.done} de ${touchedProgress.total}…`
+                      : `Estampando ${draftDays.length} día${draftDays.length === 1 ? '' : 's'}… puede demorar unos segundos.`}
+                  </Text>
+                )}
               </>
             ) : (
               <Text className="mt-4 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="stamp-plan-modal-empty-hint" testID="stamp-plan-modal-empty-hint">
