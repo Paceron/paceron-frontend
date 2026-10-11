@@ -23,13 +23,65 @@ function MiniMap({ lat, lng }) {
       attributionControl: false,
     });
     new maplibregl.Marker({ color: '#8cc63e' }).setLngLat([lng, lat]).addTo(map);
+    // maplibre-gl mide el contenedor en el momento exacto de la
+    // construcción -- si el layout flex todavía no terminó de asentar el
+    // tamaño final (64px o 144px según variant) en ESE instante, el mapa
+    // queda inicializado con un canvas de tamaño incorrecto (a veces 0),
+    // vacío hasta que algo más fuerce un resize. `resize()` en el próximo
+    // frame lo corrige sin esperar ningún evento de layout externo.
+    requestAnimationFrame(() => map.resize());
     return () => map.remove();
   }, [lat, lng]);
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }
 
-export function LocationPicker({ value, onChange }) {
+// Ver el comentario de la misma función en location-picker.jsx -- se repite
+// acá porque es la contraparte web, no hay forma de compartir el bloque
+// sin romper el split de plataforma.
+function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear }) {
+  return (
+    <View className="flex-row items-center gap-1" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
+      {hasDetail && (
+        <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle">
+          <Pressable
+            accessibilityLabel="Ver detalle"
+            className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
+            nativeID="location-picker-preview-detail-button"
+            onPress={onShowDetail}
+            testID="location-picker-preview-detail-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={18} />
+          </Pressable>
+        </IconTooltip>
+      )}
+      <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación">
+        <Pressable
+          accessibilityLabel="Cambiar ubicación"
+          className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
+          nativeID="location-picker-preview-edit-button"
+          onPress={onEdit}
+          testID="location-picker-preview-edit-button"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+        </Pressable>
+      </IconTooltip>
+      <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación">
+        <Pressable
+          accessibilityLabel="Quitar ubicación"
+          className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
+          nativeID="location-picker-preview-clear-button"
+          onPress={onClear}
+          testID="location-picker-preview-clear-button"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
+        </Pressable>
+      </IconTooltip>
+    </View>
+  );
+}
+
+export function LocationPicker({ value, onChange, variant = 'compact' }) {
   const colors = useThemeColors();
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -38,6 +90,7 @@ export function LocationPicker({ value, onChange }) {
   const [detailVisible, setDetailVisible] = useState(false);
   const addressLines = formatAddressLines(value);
   const hasDetail = getAddressDetailRows(value).length > 0;
+  const isCard = variant === 'card';
 
   useEffect(() => {
     if (!picker.visible || mapRef.current) return;
@@ -97,79 +150,53 @@ export function LocationPicker({ value, onChange }) {
     <>
       {value ? (
         <View
-          className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
+          className={isCard
+            ? 'max-h-36 flex-row overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+            : 'flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900'}
           nativeID="location-picker-preview"
           testID="location-picker-preview"
         >
-          <View className="h-16 w-16 overflow-hidden rounded-lg" nativeID="location-picker-preview-map" testID="location-picker-preview-map">
+          <View className={isCard ? 'h-full w-36 overflow-hidden' : 'h-16 w-16 overflow-hidden rounded-lg'} nativeID="location-picker-preview-map" testID="location-picker-preview-map">
             <MiniMap lat={value.lat} lng={value.lng} />
           </View>
-          <View className="flex-1" nativeID="location-picker-preview-info" testID="location-picker-preview-info">
-            <Text
-              className="text-sm font-medium text-slate-900 dark:text-white"
-              nativeID="location-picker-preview-primary"
-              numberOfLines={1}
-              testID="location-picker-preview-primary"
-            >
-              {addressLines.primary}
-            </Text>
-            {addressLines.secondary && (
+          <View className={isCard ? 'flex-1 justify-between p-3' : 'flex-1'} nativeID="location-picker-preview-info" testID="location-picker-preview-info">
+            <View nativeID="location-picker-preview-text" testID="location-picker-preview-text">
               <Text
-                className="text-xs text-slate-500 dark:text-slate-400"
-                nativeID="location-picker-preview-secondary"
+                className="text-sm font-medium text-slate-900 dark:text-white"
+                nativeID="location-picker-preview-primary"
                 numberOfLines={1}
-                testID="location-picker-preview-secondary"
+                testID="location-picker-preview-primary"
               >
-                {addressLines.secondary}
+                {addressLines.primary}
               </Text>
-            )}
-          </View>
-          <View className="flex-row items-center gap-1" nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
-            {hasDetail && (
-              <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle">
-                <Pressable
-                  accessibilityLabel="Ver detalle"
-                  className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
-                  nativeID="location-picker-preview-detail-button"
-                  onPress={() => setDetailVisible(true)}
-                  testID="location-picker-preview-detail-button"
+              {addressLines.secondary && (
+                <Text
+                  className="text-xs text-slate-500 dark:text-slate-400"
+                  nativeID="location-picker-preview-secondary"
+                  testID="location-picker-preview-secondary"
                 >
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={18} />
-                </Pressable>
-              </IconTooltip>
+                  {addressLines.secondary}
+                </Text>
+              )}
+            </View>
+            {isCard && (
+              <PreviewActions colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} />
             )}
-            <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación">
-              <Pressable
-                accessibilityLabel="Cambiar ubicación"
-                className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
-                nativeID="location-picker-preview-edit-button"
-                onPress={picker.open}
-                testID="location-picker-preview-edit-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
-              </Pressable>
-            </IconTooltip>
-            <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación">
-              <Pressable
-                accessibilityLabel="Quitar ubicación"
-                className="h-9 w-9 items-center justify-center rounded-full hover:bg-slate-200 active:opacity-60 dark:hover:bg-slate-700"
-                nativeID="location-picker-preview-clear-button"
-                onPress={() => onChange(null)}
-                testID="location-picker-preview-clear-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
-              </Pressable>
-            </IconTooltip>
           </View>
+          {!isCard && (
+            <PreviewActions colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} />
+          )}
         </View>
       ) : (
         <Pressable
-          className="h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
+          className={isCard
+            ? 'h-36 items-center justify-center gap-2 rounded-xl border border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800'
+            : 'h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800'}
           nativeID="location-picker-open-button"
           onPress={picker.open}
           testID="location-picker-open-button"
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-outline" size={18} />
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-outline" size={isCard ? 28 : 18} />
           <Text
             className="text-sm font-semibold text-slate-700 dark:text-slate-200"
             nativeID="location-picker-open-button-label"
