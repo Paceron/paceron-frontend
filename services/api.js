@@ -63,7 +63,6 @@ async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, timeout,
   // por otra razón. El caller que conoce la semántica de su propio 401 lo
   // pasa explícito (ver services/roles.js#activateTrainerRole).
   if (response.status === 401 && !_isRetry && !skipAuthRefresh && useAuthStore.getState().refreshToken) {
-    if (__DEV__) console.log('[team-icon] api.js 401 -> refresh triggered', { path, sharedRefreshInFlight: Boolean(refreshPromise) });
     try {
       if (!refreshPromise) {
         refreshPromise = useAuthStore.getState().refreshSession().finally(() => {
@@ -73,7 +72,6 @@ async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, timeout,
       await refreshPromise;
       return await request(path, { ...fetchOptions, _isRetry: true, exposeStatus, timeout });
     } catch (refreshErr) {
-      if (__DEV__) console.log('[team-icon] api.js refresh failed', { path, status: refreshErr?.status, message: refreshErr?.message });
       // Solo cerrar sesión si el refresh FALLÓ CON UNA RESPUESTA (status
       // presente -- el backend de verdad rechazó el refresh token, ej.
       // vencido/revocado). Un error de red (mapNetworkError, sin

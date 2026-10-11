@@ -174,13 +174,6 @@ export function useTeamMutations() {
       }
     },
     onSuccess: (result, variables) => {
-      if (__DEV__) {
-        console.log('[team-icon] uploadTeamIconMutation.onSuccess', {
-          teamId: variables.teamId, teamIdType: typeof variables.teamId,
-          newIconUrl: result.iconUrl,
-          cachedBefore: queryClient.getQueryData(['team', variables.teamId]),
-        });
-      }
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ['team', variables.teamId] });
         queryClient.invalidateQueries({ queryKey: ['teams'] });

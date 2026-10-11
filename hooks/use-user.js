@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUser as getUserService } from '../services/auth.js';
 import { updateUser as updateUserService, changeStatus as changeStatusService, uploadUserPhoto as uploadUserPhotoService, deleteUserPhoto as deleteUserPhotoService } from '../services/user.js';
@@ -10,30 +9,25 @@ import { useAuthStore } from '../store/auth-store.js';
 // (ver CLAUDE.md). Sesión (token/refreshToken/activeRole/userId) sigue en
 // store/auth-store.js — services/api.js la lee sincrónica fuera de React
 // en cada request, no encaja con el modelo de hooks de Query.
-
+//
+// Única forma de pedir un `['user', id]` en toda la app -- no hand-rollear
+// otra useQuery con la misma key para resolver "el perfil de otro user_id"
+// (ej. el dueño de un equipo) en otro componente. Bug real encontrado
+// 2026-10-11 en team-detail-screen.jsx: una query paralela ahí usaba la
+// MISMA key pero devolvía el dto crudo (sin pasar por toUserModel) --
+// cuando el id coincidía con el usuario logueado (visitar tu propio
+// equipo), las dos competían por el mismo slot de caché, y la que perdía
+// la carrera pisaba la caché con un objeto sin `userId` (camelCase),
+// rompiendo cualquier otro componente que leyera ese mismo user vía este
+// hook. Si en algún momento hace falta pedir el perfil de otro usuario,
+// usar este hook con ese id -- nunca una query propia contra el mismo
+// endpoint.
 export function useUser(userId) {
   const query = useQuery({
     queryKey: ['user', userId],
-    queryFn: () => getUserService({ id: userId }).then((dto) => {
-      if (__DEV__) console.log('[team-icon] useUser queryFn resolved', { requestedUserId: userId, dtoKeys: dto ? Object.keys(dto) : null, dtoUserId: dto?.user_id, dtoId: dto?.id });
-      return toUserModel(dto);
-    }),
+    queryFn: () => getUserService({ id: userId }).then((dto) => toUserModel(dto)),
     enabled: Boolean(userId),
   });
-  // Lifecycle completo de la query -- status/fetchStatus/isStale/error
-  // para ver si invalidateQueries() (app-wide, ForegroundRefetch) de
-  // verdad borra `data` o si lo que cambia es otra cosa (key, enabled,
-  // error silencioso). Ningún cambio funcional, solo observabilidad.
-  useEffect(() => {
-    if (!__DEV__) return;
-    console.log('[team-icon] useUser query state', {
-      requestedUserId: userId,
-      status: query.status, fetchStatus: query.fetchStatus,
-      isStale: query.isStale, hasData: query.data !== undefined,
-      dataUserId: query.data?.userId, errorMessage: query.error?.message,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, query.status, query.fetchStatus, query.isStale, query.data, query.error]);
   return { user: query.data ?? null, loading: query.isLoading };
 }
 
