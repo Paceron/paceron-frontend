@@ -537,6 +537,21 @@ function TeamDetailScreenContent({ teamId }) {
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
   const [iconUploading, setIconUploading] = useState(false);
 
+  // Logging temporal (__DEV__) para diagnosticar el bug real reportado en
+  // dispositivo -- 2026-10-10 -- los controles de editar/borrar el ícono
+  // desaparecen después de cambiar la foto. Sacar una vez resuelto y
+  // confirmado en dispositivo.
+  useEffect(() => {
+    if (!__DEV__) return;
+    console.log('[team-icon] canDeleteTeam recompute', {
+      teamId: team?.id, teamIdType: typeof team?.id,
+      ownerId: team?.ownerId, ownerIdType: typeof team?.ownerId,
+      userId: user?.userId, userIdType: typeof user?.userId,
+      canManageTeam, canDeleteTeam,
+      iconUrl: team?.iconUrl,
+    });
+  }, [team, user, canManageTeam, canDeleteTeam]);
+
   const handlePickIcon = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -556,7 +571,9 @@ function TeamDetailScreenContent({ teamId }) {
       return;
     }
     setIconUploading(true);
+    if (__DEV__) console.log('[team-icon] handlePickIcon -> uploadTeamIcon', { teamId: team.id, teamIdType: typeof team.id, iconUrlBefore: team.iconUrl });
     const uploadResult = await uploadTeamIcon({ teamId: team.id, uri: asset.uri, mimeType: asset.mimeType });
+    if (__DEV__) console.log('[team-icon] uploadTeamIcon result', uploadResult);
     setIconUploading(false);
     if (!uploadResult.success) {
       Toast.show({ type: 'error', text1: 'No pudimos subir el ícono', text2: uploadResult.error });
