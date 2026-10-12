@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
@@ -6,11 +6,69 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
 import { useLocationPicker } from '../../hooks/use-location-picker.js';
+import { formatAddressLines, getAddressDetailRows } from '../../utils/location-address-format.js';
+import { IconTooltip } from './icon-tooltip.jsx';
+import { LocationDetailModal } from './location-detail-modal.jsx';
 
-export function LocationPicker({ value, onChange }) {
+// Botones de acción del preview (ver detalle / cambiar / quitar) -- iguales
+// entre la variante compacta y la variante "card", solo cambia el espacio
+// alrededor. Centralizados acá para no triplicar el bloque de ícono+tooltip
+// dentro de este mismo archivo (la duplicación CON location-picker.web.jsx
+// es aparte, inherente al split de plataforma).
+function PreviewActions({ colors, hasDetail, onShowDetail, onEdit, onClear, alignEnd, tooltipPosition = 'bottom' }) {
+  return (
+    <View className={`flex-row items-center gap-1 ${alignEnd ? 'justify-end' : ''}`} nativeID="location-picker-preview-actions" testID="location-picker-preview-actions">
+      {hasDetail && (
+        <IconTooltip idPrefix="location-picker-preview-detail-button-tooltip" label="Ver detalle" position={tooltipPosition}>
+          <Pressable
+            accessibilityLabel="Ver detalle"
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+            nativeID="location-picker-preview-detail-button"
+            onPress={onShowDetail}
+            testID="location-picker-preview-detail-button"
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={18} />
+          </Pressable>
+        </IconTooltip>
+      )}
+      <IconTooltip idPrefix="location-picker-preview-edit-button-tooltip" label="Cambiar ubicación" position={tooltipPosition}>
+        <Pressable
+          accessibilityLabel="Cambiar ubicación"
+          className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+          nativeID="location-picker-preview-edit-button"
+          onPress={onEdit}
+          testID="location-picker-preview-edit-button"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={18} />
+        </Pressable>
+      </IconTooltip>
+      <IconTooltip idPrefix="location-picker-preview-clear-button-tooltip" label="Quitar ubicación" position={tooltipPosition}>
+        <Pressable
+          accessibilityLabel="Quitar ubicación"
+          className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+          nativeID="location-picker-preview-clear-button"
+          onPress={onClear}
+          testID="location-picker-preview-clear-button"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trash-can-outline" size={18} />
+        </Pressable>
+      </IconTooltip>
+    </View>
+  );
+}
+
+// `variant`: 'compact' (fila angosta, usada hoy en la ubicación de sesión
+// presencial) o 'card' (más alto, mapa a la izquierda más grande, pensado
+// para registro de usuario / creación de equipo -- todavía sin cablear en
+// esos forms, ver docs/BACKEND_API_GAPS.md Gap 29).
+export function LocationPicker({ value, onChange, variant = 'compact' }) {
   const colors = useThemeColors();
   const cameraRef = useRef(null);
   const picker = useLocationPicker({ value, onChange });
+  const [detailVisible, setDetailVisible] = useState(false);
+  const addressLines = formatAddressLines(value);
+  const hasDetail = getAddressDetailRows(value).length > 0;
+  const isCard = variant === 'card';
 
   useEffect(() => {
     if (!picker.visible || !picker.pin || !cameraRef.current) return;
@@ -29,14 +87,20 @@ export function LocationPicker({ value, onChange }) {
   return (
     <>
       {value ? (
-        <Pressable
-          className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
+        <View
+          className={isCard
+            ? 'max-h-36 flex-row rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+            : 'flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900'}
           nativeID="location-picker-preview"
-          onPress={picker.open}
           testID="location-picker-preview"
         >
+          {/* overflow-hidden en el mapa solo, no en toda la fila -- clipaba
+              el tooltip de los botones de la derecha contra el borde de la
+              card (aunque position="top"), ya que el bubble absoluto queda
+              anidado dentro del mismo contenedor recortado. El mapa es lo
+              único con bordes duros que necesita el recorte. */}
           <View
-            className="h-16 w-16 overflow-hidden rounded-lg"
+            className={isCard ? 'h-full flex-1 overflow-hidden rounded-l-xl' : 'h-16 w-16 overflow-hidden rounded-lg'}
             nativeID="location-picker-preview-map"
             pointerEvents="none"
             testID="location-picker-preview-map"
@@ -59,32 +123,56 @@ export function LocationPicker({ value, onChange }) {
             >
               <Camera initialViewState={{ center: [value.lng, value.lat], zoom: 14 }} />
               <Marker anchor="bottom" lngLat={[value.lng, value.lat]}>
-                <MaterialCommunityIcons color="#8cc63e" name="map-marker" size={22} />
+                <MaterialCommunityIcons color="#8cc63e" name="map-marker" size={isCard ? 28 : 22} />
               </Marker>
             </Map>
           </View>
-          <View className="flex-1" nativeID="location-picker-preview-info" testID="location-picker-preview-info">
-            <Text
-              className="text-sm text-slate-900 dark:text-white"
-              nativeID="location-picker-preview-label"
-              numberOfLines={2}
-              testID="location-picker-preview-label"
-            >
-              {value.label || `${value.lat.toFixed(5)}, ${value.lng.toFixed(5)}`}
+          <View className={isCard ? 'flex-1 justify-between p-3' : 'flex-1'} nativeID="location-picker-preview-info" testID="location-picker-preview-info">
+            {/* Un solo Text con hijos Text anidados (no dos bloques
+                separados) -- así el texto completo fluye y comparte línea
+                cuando el ancho alcanza (web ancho), y solo baja a una
+                segunda línea cuando no entra, en vez de forzar siempre el
+                salto aunque sobre espacio horizontal. */}
+            <Text className="text-sm" nativeID="location-picker-preview-text" numberOfLines={2} testID="location-picker-preview-text">
+              <Text
+                className="font-medium text-slate-900 dark:text-white"
+                nativeID="location-picker-preview-primary"
+                testID="location-picker-preview-primary"
+              >
+                {addressLines.primary}
+              </Text>
+              {addressLines.secondary && (
+                <Text
+                  className="text-xs text-slate-500 dark:text-slate-400"
+                  nativeID="location-picker-preview-secondary"
+                  testID="location-picker-preview-secondary"
+                >
+                  {`, ${addressLines.secondary}`}
+                </Text>
+              )}
             </Text>
-            <Text className="text-xs font-semibold text-primary" nativeID="location-picker-preview-change" testID="location-picker-preview-change">
-              Cambiar
-            </Text>
+            {isCard && (
+              <PreviewActions alignEnd colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} tooltipPosition="top" />
+            )}
           </View>
-        </Pressable>
+          {/* Compacta: los botones quedan afuera de la columna de info, a
+              la derecha de la fila -- antes esa fila entera disparaba
+              picker.open (tocar el mapa o el texto reabría el picker sin
+              querer), ahora es un View inerte y solo estos botones actúan. */}
+          {!isCard && (
+            <PreviewActions colors={colors} hasDetail={hasDetail} onClear={() => onChange(null)} onEdit={picker.open} onShowDetail={() => setDetailVisible(true)} />
+          )}
+        </View>
       ) : (
         <Pressable
-          className="h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 dark:border-slate-600"
+          className={isCard
+            ? 'h-36 items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-600'
+            : 'h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 dark:border-slate-600'}
           nativeID="location-picker-open-button"
           onPress={picker.open}
           testID="location-picker-open-button"
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-outline" size={18} />
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-outline" size={isCard ? 28 : 18} />
           <Text
             className="text-sm font-semibold text-slate-700 dark:text-slate-200"
             nativeID="location-picker-open-button-label"
@@ -167,16 +255,29 @@ export function LocationPicker({ value, onChange }) {
                   {picker.error}
                 </Text>
               )}
-              <TextInput
-                className="h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                editable={!picker.resolving}
-                nativeID="location-picker-label-input"
-                onChangeText={picker.setLabel}
-                placeholder={picker.resolving ? 'Resolviendo dirección...' : 'Descripción del lugar (opcional)'}
-                placeholderTextColor={colors.onSurfaceVariant}
-                testID="location-picker-label-input"
-                value={picker.label}
-              />
+              {/* Antes solo el placeholder decía "Resolviendo..." -- invisible
+                  si `label` ya tenía texto de antes (ej. editar un punto ya
+                  confirmado), que es justo cuando más hace falta la señal.
+                  Esta fila es visible siempre, sin depender de si el campo
+                  está vacío. */}
+              {picker.resolving ? (
+                <View className="h-11 flex-row items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="location-picker-resolving-indicator" testID="location-picker-resolving-indicator">
+                  <ActivityIndicator color={colors.primary} size="small" />
+                  <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="location-picker-resolving-indicator-label" testID="location-picker-resolving-indicator-label">
+                    Resolviendo dirección…
+                  </Text>
+                </View>
+              ) : (
+                <TextInput
+                  className="h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  nativeID="location-picker-label-input"
+                  onChangeText={picker.setLabel}
+                  placeholder="Descripción del lugar (opcional)"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  testID="location-picker-label-input"
+                  value={picker.label}
+                />
+              )}
               <Pressable
                 className={`h-12 items-center justify-center rounded-full bg-primary ${!picker.pin ? 'opacity-40' : ''}`}
                 disabled={!picker.pin}
@@ -196,6 +297,8 @@ export function LocationPicker({ value, onChange }) {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
+
+      <LocationDetailModal onClose={() => setDetailVisible(false)} value={value} visible={detailVisible} />
     </>
   );
 }

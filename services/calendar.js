@@ -1,4 +1,4 @@
-import api from './api.js';
+import api, { BULK_REQUEST_TIMEOUT_MS } from './api.js';
 import { USE_MOCKS } from '../config/env.js';
 import {
   mockGetGroupCalendar,
@@ -47,7 +47,7 @@ export async function deleteCalendarDay(groupId, date) {
 export async function stampPlan(groupId, payload) {
   if (USE_MOCKS) return await mockStampPlan(groupId, payload);
   try {
-    const response = await api.post(`/groups/${groupId}/calendar/stamp`, payload);
+    const response = await api.post(`/groups/${groupId}/calendar/stamp`, payload, { timeout: BULK_REQUEST_TIMEOUT_MS });
     return { conflict: false, days: response.days, sameTeamWarnings: response.same_team_warnings ?? [] };
   } catch (error) {
     if (error.status === 409 && error.data?.dates) return { conflict: true, dates: error.data.dates };
@@ -65,14 +65,14 @@ export async function stampPlan(groupId, payload) {
 // legible, el caller lo muestra genérico).
 export async function bulkAssignDays(groupId, payload) {
   if (USE_MOCKS) return await mockBulkAssignDays(groupId, payload);
-  const response = await api.post(`/groups/${groupId}/calendar/bulk`, payload);
+  const response = await api.post(`/groups/${groupId}/calendar/bulk`, payload, { timeout: BULK_REQUEST_TIMEOUT_MS });
   return { days: response.days, sameTeamWarnings: response.same_team_warnings ?? [] };
 }
 
 // POST /api/v1/groups/{id}/calendar/bulk-clear.
 export async function bulkClearDays(groupId, dates) {
   if (USE_MOCKS) return await mockBulkClearDays(groupId, dates);
-  return await api.post(`/groups/${groupId}/calendar/bulk-clear`, { dates });
+  return await api.post(`/groups/${groupId}/calendar/bulk-clear`, { dates }, { timeout: BULK_REQUEST_TIMEOUT_MS });
 }
 
 // POST /api/v1/groups/{id}/calendar/shift. Responde { days, same_team_warnings }
@@ -84,7 +84,7 @@ export async function bulkClearDays(groupId, dates) {
 export async function shiftCalendar(groupId, payload) {
   if (USE_MOCKS) return await mockShiftCalendar(groupId, payload);
   try {
-    const response = await api.post(`/groups/${groupId}/calendar/shift`, payload);
+    const response = await api.post(`/groups/${groupId}/calendar/shift`, payload, { timeout: BULK_REQUEST_TIMEOUT_MS });
     return { conflict: false, days: response.days, sameTeamWarnings: response.same_team_warnings ?? [] };
   } catch (error) {
     if (error.status === 409) {

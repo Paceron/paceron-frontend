@@ -1131,3 +1131,75 @@ patrón que `update:set_event`, Gap 18) -- al recibirlo, invalidar/refetchear la
 en vez de esperar el próximo tick del polling. Mapa de resolución entre backend-dicho (`Gap
 28`) y cómo cablearlo: ver `hooks/use-trainer-session-runtime.js`'s `handleChannelMessage` existente
 como referencia del dispatch pattern ya usado para `update:set_event`.
+
+## Gap 29 — reemplazar los selects anidados de país/provincia/localidad por `LocationPicker` en registro y equipos: guardar lat/lng, definir representación de país/provincia [RESUELTO]
+
+**Contexto.** Hoy registro de usuario (`register-screen.jsx`), edición de perfil
+(`edit-profile-screen.jsx`) y creación/edición de equipo (`create-team-screen.jsx`/
+`edit-team-screen.jsx`) capturan la dirección con 3 `<select>` en cascada (país → provincia →
+localidad, `hooks/use-address-cascade.js`) sobre un dataset hardcodeado en el frontend
+(`data/locations.js`) + inputs de texto libre para calle/altura (solo usuario, equipos no los
+tiene). El usuario pidió reemplazar esto por `LocationPicker` (mapa + buscador de dirección, ya
+usado para la ubicación de sesiones presenciales) en los 4 forms — más preciso, y en su defecto
+(cuando el geocoder no resuelve bien) se puede buscar por dirección en el picker en vez de tipear a
+mano. `LocationPicker` ya devuelve, además de `lat`/`lng`, un desglose de Nominatim (calle, altura,
+localidad, provincia, país — ver `services/geocoding.js`, agregado en esta misma rama para mejorar
+el resumen visual del picker).
+
+**Lo que falta para que esto sea sostenible, no solo un cambio de UI:**
+
+1. **Guardar `lat`/`lng`.** Ni `users` ni `teams` tienen columnas para esto hoy — el frontend
+   calcula el pin pero no hay dónde persistirlo. Sin esto, cada vez que se necesite el punto exacto
+   (mapas, "equipos cerca de mí" a futuro) hay que re-geocodificar la dirección guardada, con el
+   riesgo de que no dé el mismo punto. Propuesta: `lat double precision null`, `lng double
+   precision null` en ambas tablas, devueltos en `GET`/aceptados en `POST`/`PUT` igual que
+   `country`/`province`/`city` hoy.
+
+2. **Decidir qué pasa con `country`/`province` — esto es lo que más importa confirmar antes de
+   tocar la UI de los 4 forms.** Revisando el código: hoy esos campos NO son texto libre del lado
+   del frontend — `country` manda el código ISO-3 interno (`"ARG"`, de `data/locations.js`, no el
+   nombre) y `province` manda un id interno de 2-3 letras (`"BA"`, `"CABA"`, etc.), ambos de un
+   dataset hardcodeado en el cliente. `city` sí es más libre (nombre desde un dataset por
+   provincia). El picker nuevo, en cambio, resuelve estos 3 campos desde Nominatim como **nombre
+   legible** (`"Argentina"`, `"Buenos Aires"`, no códigos) — un formato distinto al que hoy vive en
+   la base.
+
+   **Decidido (2026-10-11) — opción (a), confirmado contra backend.** El backend no valida
+   `country`/`province` contra ningún enum (acepta cualquier string) — el único acoplamiento real
+   es el filtro exacto de `GET /teams/search` (`teams.country = ?`). Con eso confirmado: **el
+   frontend sigue mandando los códigos internos de `data/locations.js`** (resueltos a partir del
+   nombre que devuelve Nominatim), **el backend solo suma `lat`/`lng`** — sin backfill, cero riesgo
+   para el search existente. Se descarta la opción (b) (migrar todo a nombre legible) por ahora:
+   suma backfill + mapa de traducción server-side + tocar el buscador, sin beneficio claro hoy.
+   Caso borde aceptado: si el nombre de Nominatim no matchea ninguna fila del dataset interno (ej.
+   variante de escritura), esa fila puntual queda con el nombre crudo en vez del código — formato
+   mixto aislado, no afecta al resto.
+
+   Con esto resuelto, el reemplazo de los 4 forms queda habilitado para arrancar: cada confirmación
+   del picker necesita, además de `lat`/`lng`/`label`, resolver `addressLines`/`province`/`country`
+   (ya vienen como nombre de `services/geocoding.js`) contra `COUNTRIES`/`PROVINCES` de
+   `data/locations.js` para obtener el código a mandar — función nueva a sumar ahí mismo (algo como
+   `resolveCountryCode(name)`/`resolveProvinceCode(countryCode, name)`, con fallback al nombre crudo
+   si no hay match, según lo aceptado arriba).
+
+3. **Equipos no tienen `street`/`number` hoy** (solo usuarios) — se decidió NO sumarlos junto con
+   esto (el backend no los mencionó al cerrar el punto 1, y el picker ya resuelve calle/altura solo
+   para usuarios sin que haga falta tocar equipos). Queda abierto para una decisión futura aparte si
+   hace falta.
+
+**Resuelto (2026-10-11).** Backend entregó el punto 1 (`lat`/`lng` aditivo y nullable en
+usuario/equipo, charset de dirección relajado para nombres de Nominatim) en la rama
+`latlng-optimizaciones-y-endurecimiento`. Con eso, se completó el swap de los 4 forms
+(`register-screen.jsx`, `edit-profile-screen.jsx`, `create-team-screen.jsx`/`edit-team-screen.jsx`
+vía `team-general-info-fields.jsx` compartido) de los selects en cascada a `LocationPicker`
+(variante `card`). Piezas nuevas: `utils/location-to-address-fields.js` (picker → payload, resuelve
+nombre→código vía `resolveCountryCode`/`resolveProvinceCode` de `data/locations.js`),
+`utils/address-fields-to-location.js` (inverso, para precargar el picker al editar) +
+`hasLegacyAddressWithoutCoordinates`/`formatLegacyAddressLabel` para las filas existentes sin
+`lat`/`lng` (sin backfill) — no se inventa un punto en el mapa para esas filas: se muestra la
+dirección guardada como texto informativo y el picker arranca vacío, listo para precisarla la
+próxima vez que se edite. `edit-profile-screen.jsx` necesitó un flag `locationTouched` aparte (no
+alcanza con `locationValue === null`, que también es el resultado de un "Quitar ubicación"
+deliberado) porque `toUpdatePayload` manda el set completo y sin eso un simple cambio de nombre
+hubiera borrado la dirección existente; `toAddressPayload` (equipos) ya omite campos vacíos por su
+cuenta, así que ese caso no necesitó el mismo tracking.

@@ -12,6 +12,7 @@ import { toUpdatePayload } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { TermsModal } from '../legal/terms-modal.jsx';
 
 const THEME_OPTIONS = [
   { id: 'light', name: 'Claro' },
@@ -53,6 +54,7 @@ function SettingsScreenContent() {
 
   const [savingTheme, setSavingTheme] = useState(false);
   const [savingInvitations, setSavingInvitations] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // user (perfil) puede tardar en cargar — mismo guard que
   // edit-profile-screen.jsx, evita leer user.defaultTheme/etc contra null.
@@ -153,7 +155,23 @@ function SettingsScreenContent() {
             </View>
           </Pressable>
         </SectionCard>
+
+        <SectionCard icon="file-document-outline" title="Legal">
+          <Pressable
+            className="flex-row items-center justify-between py-1 active:opacity-70"
+            nativeID="settings-screen-terms-row"
+            onPress={() => setShowTerms(true)}
+            testID="settings-screen-terms-row"
+          >
+            <Text className="text-sm font-medium text-slate-900 dark:text-white" nativeID="settings-screen-terms-row-label" testID="settings-screen-terms-row-label">
+              Términos y condiciones
+            </Text>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
+          </Pressable>
+        </SectionCard>
       </View>
+
+      <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
     </ScrollView>
   );
 }

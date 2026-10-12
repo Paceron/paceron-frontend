@@ -1,5 +1,7 @@
-import { InputField, Row, Col } from '../forms/fields.jsx';
+import { Text, View } from 'react-native';
+import { InputField, Row, Col, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { LocationPicker } from '../shared/location-picker';
 import { formatArs } from '../../utils/currency.js';
 
 export const LEVEL_OPTIONS = [
@@ -26,19 +28,17 @@ export function TeamGeneralInfoFields({ form, maxAllowed, minimumFee, idPrefix, 
     <>
       <InputField autoFocus={autoFocusName} dense error={form.errors.name} label="Nombre del equipo" onChange={form.setName} placeholder="Ej. Corredores del Sur" value={form.name} />
 
-      <Row>
-        <Col>
-          <ResponsiveSelectField dense label="País" onChange={form.handleCountryChange} options={form.countryOptions} placeholder="Seleccioná un país" value={form.country} />
-        </Col>
-        <Col>
-          <ResponsiveSelectField dense disabled={!form.country} label="Provincia" onChange={form.handleProvinceChange} options={form.provinceOptions} placeholder={form.country ? 'Seleccioná una provincia' : 'Elegí un país'} value={form.province} />
-        </Col>
-        <Col>
-          <ResponsiveSelectField dense disabled={!form.province} label="Localidad" onChange={form.handleCityChange} options={form.cityOptions} placeholder={form.province ? 'Seleccioná una localidad' : 'Elegí una provincia'} value={form.city} />
-        </Col>
-      </Row>
-
       <InputField dense label="Descripción del equipo (opcional)" multiline numberOfLines={3} onChange={form.setDescription} placeholder="Contales a los corredores de qué se trata este equipo." value={form.description} />
+
+      <View className="mb-5 mt-2" nativeID="team-general-info-fields-location-section" testID="team-general-info-fields-location-section">
+        <Text className={FIELD_LABEL} nativeID="team-general-info-fields-location-label" testID="team-general-info-fields-location-label">Ubicación del equipo</Text>
+        {form.isLegacyAddress && (
+          <Text className="mb-1.5 text-xs text-slate-500 dark:text-slate-400" nativeID="team-general-info-fields-legacy-address-hint" testID="team-general-info-fields-legacy-address-hint">
+            Dirección actual: {form.legacyAddressLabel}. Elegí un punto en el mapa para actualizarla con mayor precisión.
+          </Text>
+        )}
+        <LocationPicker onChange={form.setLocationValue} value={form.locationValue} variant="card" />
+      </View>
 
       <Row>
         <Col>

@@ -12,14 +12,48 @@ async function nominatimFetch(path) {
   return response.json();
 }
 
+// Nominatim ya devuelve un objeto `address` desglosado (calle, altura,
+// localidad, provincia, país, y datos situacionales como municipio/código
+// postal) -- hasta ahora se descartaba todo menos `display_name`. Mapeo
+// propio porque el nombre del campo de "localidad" varía según la zona
+// (city/town/village/municipality, nunca más de uno presente a la vez).
+function toStructuredAddress(address, displayName) {
+  if (!address) return { label: displayName ?? null, rawLabel: displayName ?? null };
+
+  const street = address.road ?? null;
+  const number = address.house_number ?? null;
+  const city = address.city ?? address.town ?? address.village ?? address.municipality ?? null;
+  const province = address.state ?? null;
+  const country = address.country ?? null;
+
+  // `display_name` de Nominatim mete TODA la jerarquía administrativa
+  // (barrio, municipio, partido, departamento...) en una sola cadena larga
+  // y a veces repetitiva -- ilegible para mostrar como dirección principal.
+  // Con los 5 datos clave presentes se arma un label propio y legible; si
+  // falta alguno (ej. sin altura en una zona rural, o un punto que no cae
+  // sobre una calle real) se cae al label crudo -- mejor eso que un string
+  // armado con huecos. `rawLabel` conserva siempre el original para el
+  // detalle ("Ver detalle"), incluso cuando `label` ya está limpio.
+  const hasAllPrimaryFields = street && number && city && province && country;
+  const label = hasAllPrimaryFields
+    ? `${street} ${number}, ${city}, ${province}, ${country}`
+    : (displayName ?? null);
+
+  return { label, rawLabel: displayName ?? null, street, number, city, province, country, extra: address };
+}
+
 export async function reverseGeocode(lat, lng) {
-  const data = await nominatimFetch(`/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
-  return data?.display_name ?? null;
+  const data = await nominatimFetch(`/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`);
+  return toStructuredAddress(data?.address, data?.display_name ?? null);
 }
 
 export async function searchAddress(query) {
-  const data = await nominatimFetch(`/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`);
+  const data = await nominatimFetch(`/search?format=jsonv2&addressdetails=1&limit=1&q=${encodeURIComponent(query)}`);
   const first = data?.[0];
   if (!first) return null;
-  return { lat: Number(first.lat), lng: Number(first.lon), label: first.display_name };
+  return {
+    lat: Number(first.lat),
+    lng: Number(first.lon),
+    ...toStructuredAddress(first.address, first.display_name),
+  };
 }

@@ -23,6 +23,8 @@ export function toUserModel(dto) {
     province: dto.province,
     street: dto.street,
     number: dto.number,
+    lat: dto.lat ?? null,
+    lng: dto.lng ?? null,
     bankAlias: dto.bank_alias,
     photoUrl: dto.photo_url ?? null,
     defaultTheme: dto.default_theme ?? null,
@@ -54,6 +56,13 @@ export function toRegisterPayload(form) {
     if (value && String(value).trim()) payload[key] = value;
   }
 
+  // lat/lng aparte del whitelist de arriba -- son float y 0 (ecuador/meridiano
+  // de Greenwich) es un valor válido que el chequeo `value && ...` de arriba
+  // descartaría por falsy (mismo motivo que membership_fee en los payloads
+  // de equipo). Gap 29 (docs/BACKEND_API_GAPS.md): aditivo, nullable.
+  if (Number.isFinite(form.lat)) payload.lat = form.lat;
+  if (Number.isFinite(form.lng)) payload.lng = form.lng;
+
   return payload;
 }
 
@@ -74,6 +83,11 @@ export function toUpdatePayload(form) {
     province: form.province ?? '',
     street: form.street ?? '',
     bank_alias: form.bankAlias ?? '',
+    // null explícito (no se omite) -- si el usuario borra la ubicación
+    // elegida, PUT manda null para limpiarla, igual que el resto de este
+    // payload que siempre manda el set completo.
+    lat: Number.isFinite(form.lat) ? form.lat : null,
+    lng: Number.isFinite(form.lng) ? form.lng : null,
   };
   if (form.defaultTheme !== undefined) payload.default_theme = form.defaultTheme;
   if (form.allowTeamInvitations !== undefined) payload.allow_team_invitations = form.allowTeamInvitations;
@@ -96,6 +110,8 @@ export function toTeamModel(dto) {
     city: dto.city,
     street: dto.street,
     number: dto.number,
+    lat: dto.lat ?? null,
+    lng: dto.lng ?? null,
     showGroupsToRunners: dto.show_groups_to_runners ?? false,
     visible: dto.visible ?? true,
     isPublic: dto.is_public ?? true,
@@ -175,6 +191,11 @@ export function toAddressPayload(form) {
   for (const [key, value] of Object.entries(optional)) {
     if (value && String(value).trim()) payload[key] = value;
   }
+
+  // lat/lng aparte -- ver la misma nota en toRegisterPayload/toUpdatePayload
+  // (0 es una coordenada válida, el whitelist de arriba la descartaría).
+  if (Number.isFinite(form.lat)) payload.lat = form.lat;
+  if (Number.isFinite(form.lng)) payload.lng = form.lng;
 
   return payload;
 }

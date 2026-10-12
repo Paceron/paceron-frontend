@@ -1,4 +1,4 @@
-import api from './api.js';
+import api, { BULK_REQUEST_TIMEOUT_MS } from './api.js';
 import { USE_MOCKS } from '../config/env.js';
 import { mockCreateWorkoutFeedback, mockCreateWorkoutFeedbackPoints } from './__mocks__/workoutFeedback-mock.js';
 
@@ -18,5 +18,5 @@ export async function createWorkoutFeedback(payload) {
 // Idempotente server-side (ON CONFLICT (feedback_id, order) DO NOTHING).
 export async function createWorkoutFeedbackPoints(feedbackId, payload) {
   if (USE_MOCKS) return await mockCreateWorkoutFeedbackPoints(feedbackId, payload);
-  return await api.post(`/workout-feedback/${feedbackId}/points`, payload);
+  return await api.post(`/workout-feedback/${feedbackId}/points`, payload, { timeout: BULK_REQUEST_TIMEOUT_MS });
 }
