@@ -36,7 +36,12 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom' }) 
       {trigger}
       {hovered && (
         <View
-          className={`absolute left-1/2 z-50 -translate-x-1/2 rounded-md bg-slate-800 px-2 py-1 dark:bg-slate-700 ${positionClass}`}
+          // z-[70] = Z_INDEX.tooltip de theme/tokens.js (Tailwind no lee ese
+          // objeto, así que el número va acá; si se cambia el token, se cambia
+          // acá). Va por encima del drawer (60) a propósito: el tooltip es la
+          // única capa que puede aparecer sobre contenido que ya está en su
+          // propia superficie — dentro de un Modal, por ejemplo, que es z-50.
+          className={`absolute left-1/2 z-[70] -translate-x-1/2 rounded-md bg-slate-800 px-2 py-1 shadow-lg dark:bg-slate-700 ${positionClass}`}
           nativeID={`${idPrefix}-bubble`}
           pointerEvents="none"
           testID={`${idPrefix}-bubble`}

@@ -36,7 +36,11 @@ export const SPACING = {
 };
 
 // --- z-index ---
+// `tooltip` va arriba de todo a propósito, incluido el drawer: es la única capa
+// que puede aparecer sobre contenido que ya está en su propia superficie (por
+// ejemplo dentro de un Modal), así que tiene que ganarle a `drawer`.
 export const Z_INDEX = {
+  tooltip: 70,
   drawer: 60,
   drawerBackdrop: 55,
   modal: 50,

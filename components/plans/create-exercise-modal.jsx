@@ -72,8 +72,12 @@ function KindIconPicker({ idPrefix, value, onChange }) {
         // exactamente los que son indistinguibles de un vistazo (5 íconos
         // chicos en fila). IconTooltip es web-only por diseño; en nativo el
         // accessibilityLabel de arriba es la pista.
+        //
+        // `position="top"`: la fila de tipos es lo primero del form, así que
+        // abajo está ocupado por el info box y los labels de los otros campos.
+        // Arriba no hay nada y la burbuja tiene aire de sobra.
         return active ? pill : (
-          <IconTooltip idPrefix={`${segId}-tooltip`} key={kind} label={meta.label}>
+          <IconTooltip idPrefix={`${segId}-tooltip`} key={kind} label={meta.label} position="top">
             {pill}
           </IconTooltip>
         );
@@ -310,7 +314,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
             <InputField autoFocus={!isWeb && visible} className="mb-0" dense error={errors.name} label="Nombre" onChange={setName} placeholder="Ej. Fartlek de martes" required value={name} />
             <InputField className="mb-0" dense hideErrorRow label="Descripción (opcional)" onChange={setDescription} placeholder="Para qué sirve, cómo se hace." value={description} />
 
-            <View nativeID="create-exercise-modal-kind" testID="create-exercise-modal-kind">
+            <View className="mb-2" nativeID="create-exercise-modal-kind" testID="create-exercise-modal-kind">
               <Text className={FIELD_LABEL} nativeID="create-exercise-modal-kind-label" testID="create-exercise-modal-kind-label">Tipo</Text>
               <KindIconPicker idPrefix="create-exercise-modal" onChange={setKind} value={kind} />
             </View>

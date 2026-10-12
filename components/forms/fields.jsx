@@ -562,10 +562,16 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
-          // Con stepper el padding horizontal baja a px-3: los dos botones
-          // consumen ~56px de la fila y, en una columna angosta (dos campos en
-          // el mismo renglón), px-4 los empujaba fuera de la caja.
-          className={stepper ? 'flex-1 px-3 text-sm text-slate-900 outline-none dark:text-white' : INPUT_CLASS}
+          // Con stepper: px-3 en vez de px-4, y `min-w-0`.
+          //
+          // El min-w-0 es lo que hace que los botones se vean. Un flex item
+          // tiene `min-width: auto` por defecto, o sea NUNCA baja de su ancho
+          // intrínseco — y el <input> de react-native-web trae un `size`
+          // default de ~20 caracteres. Sin min-w-0, el input pedía ~170px,
+          // empujaba el stepper fuera de la caja y los botones quedaban
+          // ocultos detrás. Con min-w-0 el input se encoge a lo que sobra,
+          // que es lo que necesita: estos campos son de 3 a 6 dígitos.
+          className={stepper ? 'min-w-0 flex-1 px-3 text-sm text-slate-900 outline-none dark:text-white' : INPUT_CLASS}
           editable={!disabled}
           keyboardType={keyboardType}
           multiline={multiline}
