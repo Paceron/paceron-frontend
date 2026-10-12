@@ -6,7 +6,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseMutations, MUSCLE_GROUP_OPTIONS } from '../../hooks/use-exercises.js';
-import { FIELD_LABEL, InputField } from '../forms/fields.jsx';
+import { FIELD_LABEL, InputField, Row, Col } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
@@ -15,6 +15,7 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
 import { EXERCISE_KINDS, getFieldRules } from '../../utils/exercise-field-matrix.js';
 import { calculateSpeedKph } from '../../utils/exercise-speed.js';
+import { sanitizeNumericInput, stepNumeric } from '../../utils/exercise-numeric.js';
 import { validateExerciseForm, hasErrors } from '../../utils/exercise-validators.js';
 import { readInfoBoxDismissed, writeInfoBoxDismissed } from '../../utils/exercise-info-box-preference.js';
 
@@ -101,16 +102,7 @@ function ExerciseInfoBox({ idPrefix, onDismiss, onNeverShow }) {
   );
 }
 
-// Deja pasar solo dígitos y un único punto decimal — minutos, distancia
-// y velocidad son datos numéricos; keyboardType solo cambia el teclado
-// virtual en mobile, no restringe lo que puede tipearse con teclado
-// físico/en web.
-const sanitizeNumericInput = (text) => {
-  const cleaned = text.replace(/[^0-9.]/g, '');
-  const firstDot = cleaned.indexOf('.');
-  if (firstDot === -1) return cleaned;
-  return `${cleaned.slice(0, firstDot + 1)}${cleaned.slice(firstDot + 1).replace(/\./g, '')}`;
-};
+
 
 // ¿El ejercicio tiene algún dato en el bloque de métricas? Decide si el acordeón
 // arranca abierto en edición. Solo mira los campos que SU tipo puede tener — con
@@ -261,6 +253,11 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
     if (kph !== null) setSpeedKph(String(kph));
   };
 
+  // El stepper pasa por los mismos handlers que el tecleo, así que recalcula la
+  // velocidad igual — si no, tocar +1 en distancia dejaría la velocidad vieja.
+  const stepDistance = (delta) => handleDistanceChange(stepNumeric(distanceM, delta));
+  const stepMinutes = (delta) => handleMinutesChange(stepNumeric(minutes, delta));
+
   const handleClose = () => {
     if (submitting) return;
     guardedClose(onClose);
@@ -344,32 +341,54 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                 que esconderlos detrás de un acordeón cerraría la única forma de
                 completar el form. El acordeón es solo para lo genuinamente
                 opcional. */}
-            {showTimeRequired && (
-              <InputField
-                className="mb-0"
-                dense
-                error={errors.minutes}
-                hint={SPEED_HINT}
-                keyboardType="number-pad"
-                label="Tiempo Objetivo"
-                onChange={handleMinutesChange}
-                required
-                value={minutes}
-              />
+            {/* Tiempo y distancia van en el mismo renglón: son el mismo
+                concepto visto desde dos unidades (cuánto y a qué ritmo), y
+                ponerlos apilados hacía el form más largo sin ganar claridad.
+                Row/Col decide por ancho real: se apilan solos en mobile
+                (components/forms/fields.jsx:48-56). La unidad va en el
+                placeholder — el label se llama "Tiempo Objetivo" y no
+                "Tiempo Objetivo (minutos, opcional)", que es un revoltijo.
+                El "(opcional)" se mantiene porque el asterisco ya marca lo
+                obligatorio y son las dos señales que conviven. */}
+            {(showTimeRequired || showDistanceRequired || (rules.showTime && !showTimeRequired) || (rules.showDistance && !showDistanceRequired)) && (
+              <Row narrowClassName="gap-3">
+                {rules.showTime && (
+                  <Col>
+                    <InputField
+                      className="mb-0"
+                      dense
+                      error={errors.minutes}
+                      keyboardType="number-pad"
+                      label={showTimeRequired ? 'Tiempo Objetivo' : 'Tiempo Objetivo (opcional)'}
+                      onChange={handleMinutesChange}
+                      onStepper={stepMinutes}
+                      placeholder="minutos"
+                      required={showTimeRequired}
+                      stepper
+                      value={minutes}
+                    />
+                  </Col>
+                )}
+                {rules.showDistance && (
+                  <Col>
+                    <InputField
+                      className="mb-0"
+                      dense
+                      error={errors.distanceM}
+                      keyboardType="number-pad"
+                      label={showDistanceRequired ? 'Distancia Objetivo' : 'Distancia Objetivo (opcional)'}
+                      onChange={handleDistanceChange}
+                      onStepper={stepDistance}
+                      placeholder="metros"
+                      required={showDistanceRequired}
+                      stepper
+                      value={distanceM}
+                    />
+                  </Col>
+                )}
+              </Row>
             )}
-            {showDistanceRequired && (
-              <InputField
-                className="mb-0"
-                dense
-                error={errors.distanceM}
-                hint={SPEED_HINT}
-                keyboardType="number-pad"
-                label="Distancia Objetivo"
-                onChange={handleDistanceChange}
-                required
-                value={distanceM}
-              />
-            )}
+
             {rules.showMuscleGroup && rules.muscleGroupRequired && (
               <ResponsiveSelectField
                 className="mb-0"
@@ -402,29 +421,11 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
 
                 {showOptional && (
                   <View className="gap-3 border-t border-slate-200 p-3 dark:border-slate-700" nativeID="create-exercise-modal-optional" testID="create-exercise-modal-optional">
-                    {rules.showTime && !showTimeRequired && (
-                      <InputField
-                        className="mb-0"
-                        dense
-                        error={errors.minutes}
-                        hint={SPEED_HINT}
-                        keyboardType="number-pad"
-                        label="Tiempo Objetivo (opcional)"
-                        onChange={handleMinutesChange}
-                        value={minutes}
-                      />
-                    )}
-                    {rules.showDistance && !showDistanceRequired && (
-                      <InputField
-                        className="mb-0"
-                        dense
-                        error={errors.distanceM}
-                        keyboardType="number-pad"
-                        label="Distancia Objetivo (opcional)"
-                        onChange={handleDistanceChange}
-                        value={distanceM}
-                      />
-                    )}
+                    {/* El hint va SOLO acá. En tiempo y distancia no dice nada
+                        útil — quien edita la distancia no necesita que le
+                        recuerden que la velocidad se recalcula; quien edita la
+                        velocidad sí, porque el valor puede haber quedado viejo
+                        si antes editó a mano. */}
                     {rules.showSpeed && (
                       <InputField
                         className="mb-0"
