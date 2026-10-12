@@ -603,23 +603,23 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
             nativeID={`input-field-${slug}-stepper`}
             testID={`input-field-${slug}-stepper`}
           >
-            {/* Colores con significado: + es el mismo verde del botón de
-                crear (bg-primary, #8cc63e, con el ícono en #111518 porque es un
-                verde claro) y − es rojo pastel. No es decoración — el par
-                más/menos se lee mejor con color, y el rojo del − evita que
-                alguien lo confunda con el + en un toque apurado. La divisoria
-                se deja porque separa los dos gestos opuestos. */}
+            {/* Colores con significado: + es el mismo verde del botón de crear
+                (bg-primary, #8cc63e, con el ícono en #111518 porque es un
+                verde claro) y − es un gris un paso más oscuro que la caja de
+                texto (slate-200 sobre slate-50, slate-700 sobre slate-900), que
+                es lo que lo separa del input sin gritar. La divisoria separa
+                los dos gestos opuestos. */}
             <Pressable
               accessibilityLabel={`Restar 1 a ${label}`}
               accessibilityRole="button"
-              className="h-8 w-8 items-center justify-center rounded-l-lg bg-red-100 active:bg-red-200 dark:bg-red-950/60 dark:active:bg-red-900/70"
+              className="h-8 w-8 items-center justify-center rounded-l-lg bg-slate-200 active:bg-slate-300 dark:bg-slate-700 dark:active:bg-slate-600"
               disabled={disabled}
               hitSlop={6}
               onPress={() => onStepper?.(-1)}
               nativeID={`input-field-${slug}-stepper-minus`}
               testID={`input-field-${slug}-stepper-minus`}
             >
-              <MaterialCommunityIcons color="#dc2626" name="minus" size={16} />
+              <MaterialCommunityIcons color="#475569" name="minus" size={16} />
             </Pressable>
             <View
               className="h-4 w-px bg-slate-200 dark:bg-slate-700"
