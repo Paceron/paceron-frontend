@@ -562,7 +562,10 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
-          className={INPUT_CLASS}
+          // Con stepper el padding horizontal baja a px-3: los dos botones
+          // consumen ~56px de la fila y, en una columna angosta (dos campos en
+          // el mismo renglón), px-4 los empujaba fuera de la caja.
+          className={stepper ? 'flex-1 px-3 text-sm text-slate-900 outline-none dark:text-white' : INPUT_CLASS}
           editable={!disabled}
           keyboardType={keyboardType}
           multiline={multiline}
@@ -585,31 +588,43 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           // del input, por el mismo motivo que el toggle de contraseña: tipear
           // "3000" con teclado numérico es lento, y ajustar de a uno es el
           // gesto más común una vez que el orden de magnitud está cerca.
-          // `stepper` es opt-in: los demás campos del repo no cambian.
-          <View className="flex-row items-center" nativeID={`input-field-${slug}-stepper`} testID={`input-field-${slug}-stepper`}>
+          // Se lee como UN control (fondo propio + divisoria entre los dos) en
+          // vez de dos botones flotando sueltos. `stepper` es opt-in: los
+          // demás campos del repo no cambian.
+          <View
+            accessibilityRole="adjustable"
+            className="mr-1.5 flex-row items-center self-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
+            nativeID={`input-field-${slug}-stepper`}
+            testID={`input-field-${slug}-stepper`}
+          >
             <Pressable
               accessibilityLabel={`Restar 1 a ${label}`}
               accessibilityRole="button"
-              className="h-9 w-9 items-center justify-center rounded-lg active:bg-slate-200 disabled:opacity-40 dark:active:bg-slate-700"
+              className="h-8 w-8 items-center justify-center active:bg-slate-200 dark:active:bg-slate-700"
               disabled={disabled}
-              hitSlop={4}
+              hitSlop={6}
               onPress={() => onStepper?.(-1)}
               nativeID={`input-field-${slug}-stepper-minus`}
               testID={`input-field-${slug}-stepper-minus`}
             >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="minus" size={18} />
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="minus" size={16} />
             </Pressable>
+            <View
+              className="h-4 w-px bg-slate-200 dark:bg-slate-600"
+              nativeID={`input-field-${slug}-stepper-divider`}
+              testID={`input-field-${slug}-stepper-divider`}
+            />
             <Pressable
               accessibilityLabel={`Sumar 1 a ${label}`}
               accessibilityRole="button"
-              className="h-9 w-9 items-center justify-center rounded-lg active:bg-slate-200 disabled:opacity-40 dark:active:bg-slate-700"
+              className="h-8 w-8 items-center justify-center active:bg-slate-200 dark:active:bg-slate-700"
               disabled={disabled}
-              hitSlop={4}
+              hitSlop={6}
               onPress={() => onStepper?.(1)}
               nativeID={`input-field-${slug}-stepper-plus`}
               testID={`input-field-${slug}-stepper-plus`}
             >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={18} />
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={16} />
             </Pressable>
           </View>
         )}

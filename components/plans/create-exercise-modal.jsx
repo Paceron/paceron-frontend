@@ -11,6 +11,7 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
 import { EXERCISE_KINDS, getFieldRules } from '../../utils/exercise-field-matrix.js';
@@ -47,7 +48,7 @@ function KindIconPicker({ idPrefix, value, onChange }) {
         const meta = EXERCISE_KIND_META[kind];
         const active = value === kind;
         const segId = `${idPrefix}-kind-${kind}`;
-        return (
+        const pill = (
           <Pressable
             accessibilityLabel={meta.label}
             accessibilityRole="radio"
@@ -65,6 +66,16 @@ function KindIconPicker({ idPrefix, value, onChange }) {
               </Text>
             )}
           </Pressable>
+        );
+        // El tipo activo ya muestra su label al lado del ícono, así que el
+        // tooltip solo hace falta en los que están en reposo — que son
+        // exactamente los que son indistinguibles de un vistazo (5 íconos
+        // chicos en fila). IconTooltip es web-only por diseño; en nativo el
+        // accessibilityLabel de arriba es la pista.
+        return active ? pill : (
+          <IconTooltip idPrefix={`${segId}-tooltip`} key={kind} label={meta.label}>
+            {pill}
+          </IconTooltip>
         );
       })}
     </View>
@@ -104,20 +115,6 @@ function ExerciseInfoBox({ idPrefix, onDismiss, onNeverShow }) {
 
 
 
-// ¿El ejercicio tiene algún dato en el bloque de métricas? Decide si el acordeón
-// arranca abierto en edición. Solo mira los campos que SU tipo puede tener — con
-// la matriz, un elongación guardado nunca tiene distancia, y mirarla haría que
-// el acordeón se abriera al vacío.
-const hasOptionalData = (exercise) => {
-  if (!exercise) return false;
-  const rules = getFieldRules(exercise.kind);
-  return Boolean(
-    (rules.showTime && exercise.minutes != null)
-    || (rules.showDistance && exercise.distanceM != null)
-    || (rules.showSpeed && exercise.speedKph != null)
-    || (rules.showMuscleGroup && exercise.muscleGroup != null),
-  );
-};
 
 // Alta rápida de un ejercicio nuevo, sin salir de donde se lo pidió (ej.
 // desde adentro de CreateSessionModal) — "un botón para acceder al
@@ -145,7 +142,6 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const [distanceM, setDistanceM] = useState('');
   const [speedKph, setSpeedKph] = useState('');
   const [muscleGroup, setMuscleGroup] = useState('');
-  const [showOptional, setShowOptional] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [infoBoxVisible, setInfoBoxVisible] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -160,12 +156,6 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const showTimeRequired = rules.showTime && (rules.timeRequired || rules.requiresDistanceOrTime);
   const showDistanceRequired = rules.showDistance && (rules.distanceRequired || rules.requiresDistanceOrTime);
 
-  // El acordeón solo se monta si queda algún campo opcional real — si no, es un
-  // botón que abre un cuerpo vacío.
-  const hasOptionalFields = (rules.showTime && !showTimeRequired)
-    || (rules.showDistance && !showDistanceRequired)
-    || rules.showSpeed
-    || (rules.showMuscleGroup && !rules.muscleGroupRequired);
 
   // La preferencia del info box se lee una vez al abrir, no en cada render. Va
   // en un efecto y no en el reset porque es una preferencia del dispositivo, no
@@ -217,7 +207,6 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
     setDistanceM(resetValues.distanceM);
     setSpeedKph(resetValues.speedKph);
     setMuscleGroup(resetValues.muscleGroup);
-    setShowOptional(hasOptionalData(exercise));
     setAttempted(false);
   } else if (!visible) {
     prevResetKeyRef.current = null;
@@ -345,12 +334,14 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                 concepto visto desde dos unidades (cuánto y a qué ritmo), y
                 ponerlos apilados hacía el form más largo sin ganar claridad.
                 Row/Col decide por ancho real: se apilan solos en mobile
-                (components/forms/fields.jsx:48-56). La unidad va en el
-                placeholder — el label se llama "Tiempo Objetivo" y no
-                "Tiempo Objetivo (minutos, opcional)", que es un revoltijo.
-                El "(opcional)" se mantiene porque el asterisco ya marca lo
-                obligatorio y son las dos señales que conviven. */}
-            {(showTimeRequired || showDistanceRequired || (rules.showTime && !showTimeRequired) || (rules.showDistance && !showDistanceRequired)) && (
+                (components/forms/fields.jsx:48-56).
+
+                La unidad va en el LABEL, no en el placeholder: el label siempre
+                se lee, el placeholder desaparece apenas se empieza a tipear.
+                El "(opcional)" se mantiene porque el asterisco marca lo
+                obligatorio y son las dos señales que conviven — pero separado
+                por "·" para que no se lea como parte de la unidad. */}
+            {(rules.showTime || rules.showDistance) && (
               <Row narrowClassName="gap-3">
                 {rules.showTime && (
                   <Col>
@@ -359,10 +350,9 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                       dense
                       error={errors.minutes}
                       keyboardType="number-pad"
-                      label={showTimeRequired ? 'Tiempo Objetivo' : 'Tiempo Objetivo (opcional)'}
+                      label={showTimeRequired ? 'Tiempo Objetivo · min' : 'Tiempo Objetivo · min (opcional)'}
                       onChange={handleMinutesChange}
                       onStepper={stepMinutes}
-                      placeholder="minutos"
                       required={showTimeRequired}
                       stepper
                       value={minutes}
@@ -376,10 +366,9 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                       dense
                       error={errors.distanceM}
                       keyboardType="number-pad"
-                      label={showDistanceRequired ? 'Distancia Objetivo' : 'Distancia Objetivo (opcional)'}
+                      label={showDistanceRequired ? 'Distancia Objetivo · m' : 'Distancia Objetivo · m (opcional)'}
                       onChange={handleDistanceChange}
                       onStepper={stepDistance}
-                      placeholder="metros"
                       required={showDistanceRequired}
                       stepper
                       value={distanceM}
@@ -403,56 +392,30 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
               />
             )}
 
-            {hasOptionalFields && (
-              <View className="rounded-xl border border-slate-200 dark:border-slate-700" nativeID="create-exercise-modal-optional-section" testID="create-exercise-modal-optional-section">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: showOptional }}
-                  className="h-11 flex-row items-center justify-between px-3 active:opacity-70"
-                  nativeID="create-exercise-modal-optional-toggle"
-                  onPress={() => setShowOptional((v) => !v)}
-                  testID="create-exercise-modal-optional-toggle"
-                >
-                  <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="create-exercise-modal-optional-toggle-label" testID="create-exercise-modal-optional-toggle-label">
-                    Detalles opcionales
-                  </Text>
-                  <MaterialCommunityIcons color="#8cc63e" name={showOptional ? 'chevron-up' : 'chevron-down'} size={20} />
-                </Pressable>
+            {/* Velocidad Promedio va SIEMPRE visible, debajo de los otros
+                campos, y NO dentro del acordeón: es el resultado que el usuario
+                viene a ver, no un dato accesorio. Esconderlo detrás de un botón
+                hacía que el valor que se acaba de calcular no se viera.
 
-                {showOptional && (
-                  <View className="gap-3 border-t border-slate-200 p-3 dark:border-slate-700" nativeID="create-exercise-modal-optional" testID="create-exercise-modal-optional">
-                    {/* El hint va SOLO acá. En tiempo y distancia no dice nada
-                        útil — quien edita la distancia no necesita que le
-                        recuerden que la velocidad se recalcula; quien edita la
-                        velocidad sí, porque el valor puede haber quedado viejo
-                        si antes editó a mano. */}
-                    {rules.showSpeed && (
-                      <InputField
-                        className="mb-0"
-                        dense
-                        error={errors.speedKph}
-                        hint={SPEED_HINT}
-                        keyboardType="decimal-pad"
-                        label="Velocidad Promedio (opcional)"
-                        onChange={(v) => setSpeedKph(sanitizeNumericInput(v))}
-                        value={speedKph}
-                      />
-                    )}
-                    {rules.showMuscleGroup && !rules.muscleGroupRequired && (
-                      <ResponsiveSelectField
-                        className="mb-0"
-                        dense
-                        hideErrorRow
-                        label="Grupo muscular (opcional)"
-                        onChange={setMuscleGroup}
-                        options={MUSCLE_GROUP_OPTIONS}
-                        placeholder="Ninguno"
-                        value={muscleGroup}
-                      />
-                    )}
-                  </View>
-                )}
-              </View>
+                Con esto el acordeón "Detalles opcionales" queda VACÍO en los 5
+                tipos y se eliminó: tiempo y distancia ya están en el renglón de
+                arriba (obligatorios u opcionales), la velocidad está siempre
+                visible, y el grupo muscular es obligatorio en elongacion y
+                oculto en los otros cuatro. No queda ningún campo opcional que
+                lo justifique — antes escondía datos que el usuario necesitaba
+                para completar el form. */}
+
+            {rules.showSpeed && (
+              <InputField
+                className="mb-0"
+                dense
+                error={errors.speedKph}
+                hint={SPEED_HINT}
+                keyboardType="decimal-pad"
+                label="Velocidad Promedio · km/h (opcional)"
+                onChange={(v) => setSpeedKph(sanitizeNumericInput(v))}
+                value={speedKph}
+              />
             )}
           </View>
           </ScrollView>
