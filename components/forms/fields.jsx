@@ -599,38 +599,44 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           // demás campos del repo no cambian.
           <View
             accessibilityRole="adjustable"
-            className="mr-1.5 flex-row items-center self-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
+            className="mr-1.5 flex-row items-center self-center overflow-hidden rounded-lg"
             nativeID={`input-field-${slug}-stepper`}
             testID={`input-field-${slug}-stepper`}
           >
+            {/* Colores con significado: + es el mismo verde del botón de
+                crear (bg-primary, #8cc63e, con el ícono en #111518 porque es un
+                verde claro) y − es rojo pastel. No es decoración — el par
+                más/menos se lee mejor con color, y el rojo del − evita que
+                alguien lo confunda con el + en un toque apurado. La divisoria
+                se deja porque separa los dos gestos opuestos. */}
             <Pressable
               accessibilityLabel={`Restar 1 a ${label}`}
               accessibilityRole="button"
-              className="h-8 w-8 items-center justify-center active:bg-slate-200 dark:active:bg-slate-700"
+              className="h-8 w-8 items-center justify-center rounded-l-lg bg-red-100 active:bg-red-200 dark:bg-red-950/60 dark:active:bg-red-900/70"
               disabled={disabled}
               hitSlop={6}
               onPress={() => onStepper?.(-1)}
               nativeID={`input-field-${slug}-stepper-minus`}
               testID={`input-field-${slug}-stepper-minus`}
             >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="minus" size={16} />
+              <MaterialCommunityIcons color="#dc2626" name="minus" size={16} />
             </Pressable>
             <View
-              className="h-4 w-px bg-slate-200 dark:bg-slate-600"
+              className="h-4 w-px bg-slate-200 dark:bg-slate-700"
               nativeID={`input-field-${slug}-stepper-divider`}
               testID={`input-field-${slug}-stepper-divider`}
             />
             <Pressable
               accessibilityLabel={`Sumar 1 a ${label}`}
               accessibilityRole="button"
-              className="h-8 w-8 items-center justify-center active:bg-slate-200 dark:active:bg-slate-700"
+              className="h-8 w-8 items-center justify-center rounded-r-lg bg-primary active:opacity-80"
               disabled={disabled}
               hitSlop={6}
               onPress={() => onStepper?.(1)}
               nativeID={`input-field-${slug}-stepper-plus`}
               testID={`input-field-${slug}-stepper-plus`}
             >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={16} />
+              <MaterialCommunityIcons color="#111518" name="plus" size={16} />
             </Pressable>
           </View>
         )}
