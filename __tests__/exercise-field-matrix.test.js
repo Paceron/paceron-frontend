@@ -6,13 +6,13 @@ import {
 } from '../utils/exercise-field-matrix';
 
 describe('EXERCISE_KINDS', () => {
-  it('son los 5 tipos del dominio, en orden de lectura', () => {
+  it('son los 5 tipos del dominio, en orden de lectura (los de velocidad primero)', () => {
     expect(EXERCISE_KINDS).toEqual([
+      'velocidad_tiempo',
+      'velocidad_distancia',
       'liviano',
       'elongacion',
       'ritmo_continuo',
-      'velocidad_tiempo',
-      'velocidad_distancia',
     ]);
   });
 

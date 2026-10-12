@@ -8,9 +8,11 @@
 // y el commit 3831fcf que lo revirtió). Ahora el tipo declara qué datos lo
 // definen — ver docs/superpowers/specs/ para el porqué.
 
-// Los 5 tipos, en orden de lectura. El form itera esto para el selector, así que
-// el orden ES el orden en que se ven.
-export const EXERCISE_KINDS = ['liviano', 'elongacion', 'ritmo_continuo', 'velocidad_tiempo', 'velocidad_distancia'];
+// Los 5 tipos, en orden de lectura — el form itera esto para el selector, así
+// que el orden ES el que se ve. Los dos de velocidad van primero (pedido del
+// usuario): son los de label más largo, y al abrir la fila es donde más se
+// nota el espacio que deja el pill activo expandido.
+export const EXERCISE_KINDS = ['velocidad_tiempo', 'velocidad_distancia', 'liviano', 'elongacion', 'ritmo_continuo'];
 
 // Reglas por tipo. Los `show*` controlan visibilidad; los `required*` controlan
 // obligatoriedad (solo tiene sentido mirar un required* si el show* es true).

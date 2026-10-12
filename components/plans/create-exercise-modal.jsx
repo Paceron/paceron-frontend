@@ -11,6 +11,7 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
 import { EXERCISE_KINDS, getFieldRules } from '../../utils/exercise-field-matrix.js';
@@ -34,67 +35,61 @@ const SPEED_HINT = 'Se recalcula automáticamente al modificar Distancia Objetiv
 // EXERCISE_KINDS, que es la misma fuente que usa la matriz de campos — antes
 // salía de las claves de EXERCISE_KIND_META y eran dos listas que podían
 // desincronizarse en silencio.
-// Selector de tipo.
-//
-// Decisión de diseño: los 5 pills son del MISMO tamaño fijo y el nombre del
-// tipo va en una línea DEBAJO, no dentro del activo. Antes el activo crecía
-// para mostrar su label, y eso rompía dos cosas a la vez: "Velocidad en
-// distancia" no entraba en el ancho del modal (se pasaba 30px), y el tipo
-// elegido se corría de lugar cada vez que se cambiaba. Con tamaños fijos no
-// hay nada que desbordar ni que saltar, para ningún label y ningún ancho.
-//
-// La línea de abajo sigue el mouse y, en touch, muestra el tipo elegido —
-// que es justo para qué servía el tooltip, sin necesitar uno. El tooltip
-// además no podía vivir acá: dentro de un ScrollView horizontal,
-// react-native-web fuerza `overflowY: hidden` (baseHorizontal en
-// ScrollView/index.js) y recortaba la burbuja. Con esto no hay nada que
-// recortar.
 function KindIconPicker({ idPrefix, value, onChange }) {
-  const [hovered, setHovered] = useState(null);
-  const caption = EXERCISE_KIND_META[hovered || value]?.label ?? '';
-
   return (
-    <View nativeID={`${idPrefix}-kind-wrapper`} testID={`${idPrefix}-kind-wrapper`}>
-      <View
-        accessibilityLabel="Tipo"
-        accessibilityRole="radiogroup"
-        className="flex-row items-center justify-between"
-        nativeID={`${idPrefix}-kind-picker`}
-        testID={`${idPrefix}-kind-picker`}
-      >
-        {EXERCISE_KINDS.map((kind) => {
-          const meta = EXERCISE_KIND_META[kind];
-          const active = value === kind;
-          const segId = `${idPrefix}-kind-${kind}`;
-          return (
-            <Pressable
-              accessibilityLabel={meta.label}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: active }}
-              className={`h-10 w-10 items-center justify-center rounded-full ${active ? meta.bg : 'bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
-              key={kind}
-              nativeID={segId}
-              onHoverIn={isWeb ? () => setHovered(kind) : undefined}
-              onHoverOut={isWeb ? () => setHovered(null) : undefined}
-              onPress={() => onChange(kind)}
-              testID={segId}
-            >
-              <MaterialCommunityIcons color={active ? meta.iconColor : '#94a3b8'} name={meta.icon} size={20} />
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* aria-hidden: el nombre ya está en el accessibilityLabel de cada pill,
-          que es lo que lee el lector de pantalla. Esto es refuerzo visual. */}
-      <Text
-        aria-hidden
-        className="mt-1.5 h-4 text-center text-sm font-semibold text-slate-600 dark:text-slate-300"
-        nativeID={`${idPrefix}-kind-caption`}
-        testID={`${idPrefix}-kind-caption`}
-      >
-        {caption}
-      </Text>
+    // flex-wrap, NO ScrollView horizontal. El ScrollView resolvía el desborde
+    // pero MATABA los tooltips: react-native-web le fuerza `overflowY: hidden`
+    // a los ScrollView horizontales (baseHorizontal en ScrollView/index.js) y
+    // recortaba la burbuja. Con flex-wrap + los tamaños chicos de abajo, los 5
+    // entran igual y no hay nada que recortar.
+    <View
+      accessibilityLabel="Tipo"
+      accessibilityRole="radiogroup"
+      className="flex-row flex-wrap gap-1.5"
+      nativeID={`${idPrefix}-kind-picker`}
+      testID={`${idPrefix}-kind-picker`}
+    >
+      {EXERCISE_KINDS.map((kind) => {
+        const meta = EXERCISE_KIND_META[kind];
+        const active = value === kind;
+        const segId = `${idPrefix}-kind-${kind}`;
+        const pill = (
+          <Pressable
+            accessibilityLabel={meta.label}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: active }}
+            // El activo crece (w-auto) para mostrar su label; el resto queda en
+            // un cuadrado chico con el ícono solo. Los tamaños están calculados
+            // para que los 5 entren en los 400px útiles del modal: con los
+            // inactivos a w-11 el caso más largo —"Velocidad en distancia"—
+            // se pasaba 30px y la fila se partía en dos.
+            className={`flex-row items-center justify-center gap-1.5 rounded-full ${active ? `h-10 px-3 ${meta.bg}` : 'h-9 w-9 bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
+            key={kind}
+            nativeID={segId}
+            onPress={() => onChange(kind)}
+            testID={segId}
+          >
+            <MaterialCommunityIcons
+              color={active ? meta.iconColor : '#94a3b8'}
+              name={meta.icon}
+              size={active ? 20 : 16}
+            />
+            {active && (
+              <Text className={`text-sm font-semibold ${meta.text}`} nativeID={`${segId}-label`} numberOfLines={1} testID={`${segId}-label`}>
+                {meta.label}
+              </Text>
+            )}
+          </Pressable>
+        );
+        // Solo en los que están en reposo: el activo ya muestra su label al
+        // lado del ícono. `position="top"` porque abajo está el info box y los
+        // labels de los otros campos; arriba hay aire.
+        return active ? pill : (
+          <IconTooltip idPrefix={`${segId}-tooltip`} key={kind} label={meta.label} position="top">
+            {pill}
+          </IconTooltip>
+        );
+      })}
     </View>
   );
 }
