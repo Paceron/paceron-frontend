@@ -16,7 +16,13 @@ function ToastCard({ type, text1, text2 }) {
   const variant = VARIANTS[type] ?? VARIANTS.info;
 
   return (
-    <View className="w-full items-center px-4" nativeID="paceron-toast" testID="paceron-toast">
+    // z-toast vive acá y no en el contenedor de react-native-toast-message
+    // porque la librería no expone style para el AnimatedContainer (su style
+    // es [styles.base, styles[position], animationStyles], sin slot para el
+    // caller). El contenedor es `position: absolute` sin z-index, o sea que NO
+    // crea stacking context — el z-index de esta card compite directamente
+    // contra el Modal de react-native-web, que va con 9999 fijo.
+    <View className="z-toast w-full items-center px-4" nativeID="paceron-toast" testID="paceron-toast">
       <Pressable
         accessibilityRole="button"
         className="w-full max-w-md flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-surface"

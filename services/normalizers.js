@@ -309,7 +309,6 @@ export function toExerciseModel(dto) {
     name: dto.name,
     description: dto.description ?? null,
     kind: dto.kind,
-    intensity: dto.intensity ?? null,
     minutes: dto.minutes ?? null,
     distanceM: dto.distance_m ?? null,
     speedKph: dto.speed_kph ?? null,
@@ -322,11 +321,14 @@ export function toExerciseModel(dto) {
 
 export function toCreateExercisePayload(form) {
   const payload = { owner_id: form.ownerId, name: form.name, description: form.description || null, kind: form.kind };
-  if (form.intensity != null) payload.intensity = form.intensity;
-  if (form.minutes != null) payload.minutes = form.minutes;
-  if (form.distanceM != null) payload.distance_m = form.distanceM;
-  if (form.speedKph != null) payload.speed_kph = form.speedKph;
-  if (form.muscleGroup != null) payload.muscle_group = form.muscleGroup;
+  // Los campos numéricos llegan ya coercionados a Number|null desde el form, pero
+  // el que escribe el string vacío es un input en blanco — mandarlo tal cual
+  // mandaría '' a una columna `int` de Postgres. Se omite acá también por eso:
+  // este es el borde con la API y no debería depender de que el caller se acuerde.
+  if (form.minutes !== null && form.minutes !== undefined && form.minutes !== '') payload.minutes = form.minutes;
+  if (form.distanceM !== null && form.distanceM !== undefined && form.distanceM !== '') payload.distance_m = form.distanceM;
+  if (form.speedKph !== null && form.speedKph !== undefined && form.speedKph !== '') payload.speed_kph = form.speedKph;
+  if (form.muscleGroup) payload.muscle_group = form.muscleGroup;
   return payload;
 }
 

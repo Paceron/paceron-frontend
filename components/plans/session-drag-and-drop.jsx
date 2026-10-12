@@ -609,7 +609,7 @@ function DragGhost() {
   }));
 
   if (!draggedExercise) return null;
-  const meta = EXERCISE_KIND_META[draggedExercise.kind] ?? EXERCISE_KIND_META.walking;
+  const meta = EXERCISE_KIND_META[draggedExercise.kind] ?? EXERCISE_KIND_META.liviano;
   const statLine = buildExerciseStatLine(draggedExercise);
   return (
     <View

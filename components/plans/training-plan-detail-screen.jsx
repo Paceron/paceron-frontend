@@ -23,7 +23,7 @@ import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_MET
 // "N ×" al nombre y se suma el descanso entre repeticiones.
 function ExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restMinutes = 0 }) {
   if (!exercise) return null;
-  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
+  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const statLine = buildExerciseStatLine(exercise, { repeatCount, restMinutes });
 
   return (

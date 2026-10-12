@@ -25,7 +25,7 @@ import { IconTooltip } from '../shared/icon-tooltip.jsx';
 // sin acciones de editar/eliminar (esto no es el catálogo real, es un
 // selector para arrastrar a la sesión).
 function PanelExerciseCard({ exercise }) {
-  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
+  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const statLine = buildExerciseStatLine(exercise);
   const idPrefix = `session-exercise-panel-card-${exercise.id}`;
 
@@ -54,7 +54,7 @@ function PanelExerciseCard({ exercise }) {
 // parejas) — justify-center además centra el contenido cuando el
 // nombre entra en 1 sola línea.
 function PanelExerciseCardCompact({ exercise }) {
-  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
+  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const idPrefix = `session-exercise-panel-card-compact-${exercise.id}`;
 
   return (

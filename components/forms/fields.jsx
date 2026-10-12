@@ -13,6 +13,9 @@ import { IconTooltip } from '../shared/icon-tooltip.jsx';
 // Primitivos de formulario compartidos por register y edit de perfil.
 
 export const INPUT_CLASS = 'flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none';
+// `mb-1.5` vive acá y no en el wrapper de cada label porque 24 call sites lo
+// usan directamente. Dentro de InputField el margen se corre al subtext
+// (ver abajo) para que la fila de label ocupe siempre el mismo alto.
 export const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200';
 // min-h-12, no h-12: en web, Chrome ignora `height` en <select>/<input
 // type="date"> (controles de formulario "reemplazados" con su propio
@@ -77,7 +80,22 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>{label}</Text>
+        <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>
+          {label}
+          {required && (
+            <>
+              {' '}
+              <Text
+                accessibilityRole="text"
+                className="text-red-500 dark:text-red-400"
+                nativeID={`select-field-${slug}-required`}
+                testID={`select-field-${slug}-required`}
+              >
+                *
+              </Text>
+            </>
+          )}
+        </Text>
       )}
       <View
         className="flex-row items-center gap-2"
@@ -502,7 +520,7 @@ export function DurationField({ label, value, onChange, error, touched, disabled
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel }) {
+export function InputField({ label, value, onChange, onBlur, onSelectionChange, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel, required, labelSubtext, stepper, onStepper }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -519,7 +537,46 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
+        <View nativeID={`input-field-${slug}-label-row`} testID={`input-field-${slug}-label-row`}>
+          <Text
+            className={labelSubtext ? 'text-sm font-semibold text-slate-700 dark:text-slate-200' : FIELD_LABEL}
+            nativeID={`input-field-${slug}-label`}
+            testID={`input-field-${slug}-label`}
+          >
+            {label}
+            {required && (
+              // El asterisco va pegado al label, no en otro lado: el lector de
+              // pantalla lee el Text entero, así que "Nombre *" se anuncia junto.
+              <>
+                {' '}
+                <Text
+                  accessibilityRole="text"
+                  className="text-red-500 dark:text-red-400"
+                  nativeID={`input-field-${slug}-required`}
+                  testID={`input-field-${slug}-required`}
+                >
+                  *
+                </Text>
+              </>
+            )}
+          </Text>
+          {/* Unidad y "(opcional)" van en una línea propia, SIEMPRE presente.
+              No es estética: si el "(opcional)" fuera parte del label, un
+              label más largo que otro partiría en dos líneas y desalinearía
+              los inputs de al lado, que es justo lo que pasa en dos campos
+              en el mismo renglón. Con la línea siempre reservada, los boxes
+              quedan a la misma altura sin importar el contenido. */}
+          {labelSubtext ? (
+            <Text
+              className="mb-1.5 mt-0.5 text-xs font-normal text-slate-500 dark:text-slate-400"
+              nativeID={`input-field-${slug}-subtext`}
+              numberOfLines={1}
+              testID={`input-field-${slug}-subtext`}
+            >
+              {labelSubtext}
+            </Text>
+          ) : null}
+        </View>
       )}
       <View
         className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
@@ -530,13 +587,23 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
-          className={INPUT_CLASS}
+          // Con stepper: px-3 en vez de px-4, y `min-w-0`.
+          //
+          // El min-w-0 es lo que hace que los botones se vean. Un flex item
+          // tiene `min-width: auto` por defecto, o sea NUNCA baja de su ancho
+          // intrínseco — y el <input> de react-native-web trae un `size`
+          // default de ~20 caracteres. Sin min-w-0, el input pedía ~170px,
+          // empujaba el stepper fuera de la caja y los botones quedaban
+          // ocultos detrás. Con min-w-0 el input se encoge a lo que sobra,
+          // que es lo que necesita: estos campos son de 3 a 6 dígitos.
+          className={stepper ? 'min-w-0 flex-1 px-3 text-sm text-slate-900 outline-none dark:text-white' : INPUT_CLASS}
           editable={!disabled}
           keyboardType={keyboardType}
           multiline={multiline}
           numberOfLines={numberOfLines}
           onBlur={onBlur}
           onChangeText={onChange}
+          onSelectionChange={onSelectionChange}
           onSubmitEditing={onSubmitEditing}
           placeholder={placeholder}
           placeholderTextColor={colors.onSurfaceVariant}
@@ -548,6 +615,57 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           nativeID={`input-field-${slug}-input`}
           testID={`input-field-${slug}-input`}
         />
+        {stepper && (
+          // Stepper −/+ para campos numéricos. Va adentro de la caja, al lado
+          // del input, por el mismo motivo que el toggle de contraseña: tipear
+          // "3000" con teclado numérico es lento, y ajustar de a uno es el
+          // gesto más común una vez que el orden de magnitud está cerca.
+          // Se lee como UN control (fondo propio + divisoria entre los dos) en
+          // vez de dos botones flotando sueltos. `stepper` es opt-in: los
+          // demás campos del repo no cambian.
+          <View
+            accessibilityRole="adjustable"
+            className="mr-1.5 flex-row items-center self-center overflow-hidden rounded-lg"
+            nativeID={`input-field-${slug}-stepper`}
+            testID={`input-field-${slug}-stepper`}
+          >
+            {/* Colores con significado: + es el mismo verde del botón de crear
+                (bg-primary, #8cc63e, con el ícono en #111518 porque es un
+                verde claro) y − es un gris un paso más oscuro que la caja de
+                texto (slate-200 sobre slate-50, slate-700 sobre slate-900), que
+                es lo que lo separa del input sin gritar. La divisoria separa
+                los dos gestos opuestos. */}
+            <Pressable
+              accessibilityLabel={`Restar 1 a ${label}`}
+              accessibilityRole="button"
+              className="h-8 w-8 items-center justify-center rounded-l-lg bg-slate-200 active:bg-slate-300 dark:bg-slate-700 dark:active:bg-slate-600"
+              disabled={disabled}
+              hitSlop={6}
+              onPress={() => onStepper?.(-1)}
+              nativeID={`input-field-${slug}-stepper-minus`}
+              testID={`input-field-${slug}-stepper-minus`}
+            >
+              <MaterialCommunityIcons color="#475569" name="minus" size={16} />
+            </Pressable>
+            <View
+              className="h-4 w-px bg-slate-200 dark:bg-slate-700"
+              nativeID={`input-field-${slug}-stepper-divider`}
+              testID={`input-field-${slug}-stepper-divider`}
+            />
+            <Pressable
+              accessibilityLabel={`Sumar 1 a ${label}`}
+              accessibilityRole="button"
+              className="h-8 w-8 items-center justify-center rounded-r-lg bg-primary active:opacity-80"
+              disabled={disabled}
+              hitSlop={6}
+              onPress={() => onStepper?.(1)}
+              nativeID={`input-field-${slug}-stepper-plus`}
+              testID={`input-field-${slug}-stepper-plus`}
+            >
+              <MaterialCommunityIcons color="#111518" name="plus" size={16} />
+            </Pressable>
+          </View>
+        )}
         {onToggleSecure && (
           <Pressable
             className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -599,7 +717,22 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
+        <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>
+          {label}
+          {required && (
+            <>
+              {' '}
+              <Text
+                accessibilityRole="text"
+                className="text-red-500 dark:text-red-400"
+                nativeID={`picker-field-${slug}-required`}
+                testID={`picker-field-${slug}-required`}
+              >
+                *
+              </Text>
+            </>
+          )}
+        </Text>
       )}
       <Pressable
         className={triggerClass}

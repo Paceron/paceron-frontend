@@ -10,6 +10,7 @@ import {
   toRunnerSessionStartPayload, toFeedbackEditPayload,
   toTeamSubscriptionModel, toTeamConfigurationModel,
   toSessionMessageModel, toSessionMessagePayload,
+  toExerciseModel, toCreateExercisePayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -1175,5 +1176,147 @@ describe('toSessionMessagePayload', () => {
     expect(toSessionMessagePayload({
       type: 'info', recipientMode: 'multiple', recipientUserIds: ['7', '8'], body: 'Hola',
     }).recipient_user_ids).toEqual([7, 8]);
+  });
+});
+
+// ─── Ejercicios ───────────────────────────────────────────────────────────
+// Estos dos normalizers no tenían cobertura antes de este branch, y el payload
+// cambia con el reemplazo del enum de tipos (ver utils/exercise-field-matrix.js).
+describe('toExerciseModel', () => {
+  const dto = {
+    id: 7,
+    owner_id: 3,
+    name: 'Tempo 12 minutos',
+    description: 'Intervalo a tempo fuerte.',
+    kind: 'velocidad_tiempo',
+    minutes: 12,
+    distance_m: null,
+    speed_kph: 14,
+    muscle_group: null,
+    video_url: null,
+    created_at: '2026-10-01T00:00:00Z',
+    updated_at: '2026-10-02T00:00:00Z',
+  };
+
+  test('mapea el DTO a camelCase', () => {
+    expect(toExerciseModel(dto)).toMatchObject({
+      id: '7',
+      ownerId: 3,
+      name: 'Tempo 12 minutos',
+      description: 'Intervalo a tempo fuerte.',
+      kind: 'velocidad_tiempo',
+      minutes: 12,
+      distanceM: null,
+      speedKph: 14,
+      muscleGroup: null,
+    });
+  });
+
+  test('el id se normaliza a string (es lo que compara el resto de la app)', () => {
+    expect(toExerciseModel(dto).id).toBe('7');
+  });
+
+  test('preserva el kind tal cual — no lo mapea ni lo valida', () => {
+    // El normalizer es tonto a propósito: si el backend manda un tipo que el
+    // front no conoce, es la matriz (no el normalizer) la que no muestra nada.
+    expect(toExerciseModel({ ...dto, kind: 'velocidad_tiempo' }).kind).toBe('velocidad_tiempo');
+    expect(toExerciseModel({ ...dto, kind: 'algo_nuevo' }).kind).toBe('algo_nuevo');
+  });
+
+  test('los ausentes pasan por ?? null (no undefined)', () => {
+    const model = toExerciseModel({ id: 1, name: 'X' });
+    expect(model.description).toBeNull();
+    expect(model.minutes).toBeNull();
+    expect(model.distanceM).toBeNull();
+    expect(model.speedKph).toBeNull();
+    expect(model.muscleGroup).toBeNull();
+  });
+
+  test('conserva description vacío como cadena, no null (distingue "" de ausente)', () => {
+    expect(toExerciseModel({ ...dto, description: '' }).description).toBe('');
+  });
+
+  test('no expone intensity (columna eliminada del dominio)', () => {
+    const model = toExerciseModel({ ...dto, intensity: 'light' });
+    expect(model.intensity).toBeUndefined();
+    expect(model).not.toHaveProperty('intensity');
+  });
+
+  test('devuelve null si no hay dto', () => {
+    expect(toExerciseModel(null)).toBeNull();
+    expect(toExerciseModel(undefined)).toBeNull();
+  });
+});
+
+describe('toCreateExercisePayload', () => {
+  // El form YA coerciona a Number|null antes de llamar (los inputs son strings):
+  // `minutes ? Number(minutes) : null`. Acá se respeta esa forma, que es la real.
+  const form = {
+    ownerId: 3,
+    name: 'Tempo 12 minutos',
+    description: 'Intervalo a tempo fuerte.',
+    kind: 'velocidad_tiempo',
+    minutes: 12,
+    distanceM: null,
+    speedKph: 14,
+    muscleGroup: null,
+  };
+
+  test('mapea a snake_case', () => {
+    expect(toCreateExercisePayload(form)).toEqual({
+      owner_id: 3,
+      name: 'Tempo 12 minutos',
+      description: 'Intervalo a tempo fuerte.',
+      kind: 'velocidad_tiempo',
+      minutes: 12,
+      speed_kph: 14,
+    });
+  });
+
+  test('omite las claves cuyo valor es null (no manda basura)', () => {
+    const payload = toCreateExercisePayload(form);
+    expect(payload).not.toHaveProperty('distance_m');
+    expect(payload).not.toHaveProperty('muscle_group');
+  });
+
+  test('description vacío se manda como null (columna nullable)', () => {
+    expect(toCreateExercisePayload({ ...form, description: '' }).description).toBeNull();
+  });
+
+  test('description ausente se manda como null', () => {
+    expect(toCreateExercisePayload({ ...form, description: undefined }).description).toBeNull();
+  });
+
+  test('0 es un valor válido y se manda — no se confunde con "vacío"', () => {
+    const payload = toCreateExercisePayload({ ...form, distanceM: 0, minutes: 0 });
+    expect(payload.distance_m).toBe(0);
+    expect(payload.minutes).toBe(0);
+  });
+
+  test('omite el string vacío si el caller lo pasa sin coercionar', () => {
+    // El form nunca lo hace, pero mandarle '' a una columna int de Postgres es
+    // un 400. El borde con la API no debería depender de la memoria del caller.
+    const payload = toCreateExercisePayload({ ...form, distanceM: '', minutes: '' });
+    expect(payload).not.toHaveProperty('distance_m');
+    expect(payload).not.toHaveProperty('minutes');
+  });
+
+  test('no manda intensity aunque el form lo traiga (columna eliminada)', () => {
+    const payload = toCreateExercisePayload({ ...form, intensity: 'vigorous' });
+    expect(payload).not.toHaveProperty('intensity');
+  });
+
+  test('el kind viaja siempre, incluso siendo desconocido', () => {
+    expect(toCreateExercisePayload({ ...form, kind: 'algo_nuevo' }).kind).toBe('algo_nuevo');
+  });
+
+  test('el mismo normalizer sirve para create y update (PUT reemplaza completo)', () => {
+    // Documenta una arista conocida del dominio: PUT /exercises/{id} es
+    // reemplazo completo, pero acá las claves ausentes se OMITEN en vez de
+    // mandarse como null. Borrar un campo opcional en una edición puede no
+    // persistir si el backend conserva lo que no viene. Reportado como pendiente
+    // para el repo Go — no se "arregla" acá sin cambiar el contrato.
+    const payload = toCreateExercisePayload({ ...form, minutes: null });
+    expect(payload).not.toHaveProperty('minutes');
   });
 });

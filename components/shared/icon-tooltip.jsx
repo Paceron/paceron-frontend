@@ -19,7 +19,12 @@ import { isWeb } from '../../utils/platform.js';
 // `children` tiene que ser un único elemento Pressable (el botón de
 // ícono ya existente en el call site) -- se le inyectan los handlers de
 // hover sin que el caller tenga que reescribir su botón.
-export function IconTooltip({ label, children, idPrefix, position = 'bottom' }) {
+// `position` elige la vertical (bottom = abajo, top = arriba) y `align` la
+// horizontal. El horizontal importa en los extremos de una fila: centrado, el
+// pill de la izquierda saca media burbuja fuera de la pantalla. `start` la
+// ancla a la izquierda del trigger (se abre hacia la derecha) y `end` a la
+// derecha (se abre hacia la izquierda) — para una fila, "hacia adentro".
+export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center' }) {
   const [hovered, setHovered] = useState(false);
 
   if (!isWeb) return children;
@@ -30,13 +35,18 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom' }) 
   });
 
   const positionClass = position === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5';
+  const alignClass = align === 'start' ? 'left-0' : align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2';
 
   return (
     <View className="relative" nativeID={idPrefix} testID={idPrefix}>
       {trigger}
       {hovered && (
         <View
-          className={`absolute left-1/2 z-50 -translate-x-1/2 rounded-md bg-slate-800 px-2 py-1 dark:bg-slate-700 ${positionClass}`}
+          // z-tooltip = 70 (tailwind.config.js, espejo de Z_INDEX.tooltip).
+          // Va por encima del drawer y del modal a propósito: el tooltip es la
+          // única capa que puede aparecer sobre contenido que ya está en su
+          // propia superficie — por ejemplo dentro de un Modal, que es z-50.
+          className={`absolute ${alignClass} z-tooltip rounded-md bg-slate-800 px-2 py-1 shadow-lg dark:bg-slate-700 ${positionClass}`}
           nativeID={`${idPrefix}-bubble`}
           pointerEvents="none"
           testID={`${idPrefix}-bubble`}
