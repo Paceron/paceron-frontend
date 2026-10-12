@@ -49,10 +49,13 @@ function KindIconPicker({ idPrefix, value, onChange }) {
       nativeID={`${idPrefix}-kind-picker`}
       testID={`${idPrefix}-kind-picker`}
     >
-      {EXERCISE_KINDS.map((kind) => {
+      {EXERCISE_KINDS.map((kind, index) => {
         const meta = EXERCISE_KIND_META[kind];
         const active = value === kind;
         const segId = `${idPrefix}-kind-${kind}`;
+        // Los extremos abren la burbuja hacia adentro. Centrada, la del primer
+        // pill saca media burbuja fuera del modal por la izquierda.
+        const align = index === 0 ? 'start' : index === EXERCISE_KINDS.length - 1 ? 'end' : 'center';
         const pill = (
           <Pressable
             accessibilityLabel={meta.label}
@@ -85,7 +88,7 @@ function KindIconPicker({ idPrefix, value, onChange }) {
         // lado del ícono. `position="top"` porque abajo está el info box y los
         // labels de los otros campos; arriba hay aire.
         return active ? pill : (
-          <IconTooltip idPrefix={`${segId}-tooltip`} key={kind} label={meta.label} position="top">
+          <IconTooltip align={align} idPrefix={`${segId}-tooltip`} key={kind} label={meta.label} position="top">
             {pill}
           </IconTooltip>
         );
