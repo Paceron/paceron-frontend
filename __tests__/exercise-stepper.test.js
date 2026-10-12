@@ -1,4 +1,4 @@
-import { sanitizeNumericInput, stepNumeric } from '../utils/exercise-numeric';
+import { sanitizeNumericInput, stepNumeric, stepSpeed } from '../utils/exercise-numeric';
 import { calculateSpeedKph } from '../utils/exercise-speed';
 import { getFieldRules } from '../utils/exercise-field-matrix';
 
@@ -142,5 +142,108 @@ describe('qué campos tienen stepper', () => {
     const r = getFieldRules('elongacion');
     expect(r.showTime).toBe(true);
     expect(r.showDistance).toBe(false);
+  });
+});
+
+describe('stepSpeed — el paso depende de dónde está el cursor', () => {
+  // selectionStart es el índice del caracter donde está el cursor.
+  // "10.4" →  indices: 0='1' 1='0' 2='.' 3='4'
+
+  describe('cursor sobre la parte decimal', () => {
+    it('suma 0.1, no 1', () => {
+      expect(stepSpeed('10.4', 1, 3)).toBe('10.5');
+    });
+
+    it('resta 0.1', () => {
+      expect(stepSpeed('10.4', -1, 3)).toBe('10.3');
+    });
+
+    it('arrastra a la entera cuando desborda el decimal', () => {
+      expect(stepSpeed('10.9', 1, 3)).toBe('11.0');
+      expect(stepSpeed('19.9', 1, 3)).toBe('20.0');
+    });
+
+    it('pide un prestado a la entera al restar', () => {
+      expect(stepSpeed('11.0', -1, 3)).toBe('10.9');
+    });
+
+    it('respeta la cantidad de decimales que tiene el valor', () => {
+      // "10.45" → 2 decimales → el paso es 0.01
+      expect(stepSpeed('10.45', 1, 4)).toBe('10.46');
+      expect(stepSpeed('10.45', 1, 5)).toBe('10.46');
+      // "10.5" → 1 decimal → el paso es 0.1
+      expect(stepSpeed('10.5', 1, 3)).toBe('10.6');
+    });
+
+    it('arrastra bien con varios decimales', () => {
+      expect(stepSpeed('10.99', 1, 4)).toBe('11.00');
+    });
+
+    it('no baja de 0', () => {
+      expect(stepSpeed('0.1', -1, 3)).toBe('0');
+    });
+  });
+
+  describe('cursor sobre la parte entera', () => {
+    it('suma 1 a la entera', () => {
+      expect(stepSpeed('10.4', 1, 0)).toBe('11.4');
+      expect(stepSpeed('10.4', 1, 1)).toBe('11.4');
+    });
+
+    it('resta 1 a la entera', () => {
+      expect(stepSpeed('10.4', -1, 0)).toBe('9.4');
+    });
+
+    it('funciona igual sin decimales', () => {
+      expect(stepSpeed('10', 1, 0)).toBe('11');
+      expect(stepSpeed('10', -1, 0)).toBe('9');
+    });
+  });
+
+  describe('sin selección (campo recién enfocado o sin tocar)', () => {
+    it('cae en el comportamiento de la entera', () => {
+      expect(stepSpeed('10.4', 1, null)).toBe('11.4');
+      expect(stepSpeed('10.4', 1, undefined)).toBe('11.4');
+    });
+
+    it('omite el argumento también funciona', () => {
+      expect(stepSpeed('10.4', 1)).toBe('11.4');
+    });
+  });
+
+  describe('campo vacío o inválido', () => {
+    it('parte de 0', () => {
+      expect(stepSpeed('', 1, null)).toBe('1');
+      expect(stepSpeed('', 1, 0)).toBe('1');
+    });
+
+    it('trata texto no numérico como 0 sin romper', () => {
+      expect(stepSpeed('abc', 1, null)).toBe('1');
+      expect(stepSpeed(NaN, 1, null)).toBe('1');
+    });
+
+    it('arranca en 0.0 si el campo ya tiene formato decimal vacío', () => {
+      expect(stepSpeed('0.', 1, 2)).toBe('0.1');
+    });
+  });
+
+  describe('preservación de formato', () => {
+    it('mantiene los decimales que tenía el usuario', () => {
+      // "10.50" sigue con 2 decimales: no se le reformatea a "10.5" mientras
+      // edita, que lo haría ver como un cambio que él no hizo.
+      expect(stepSpeed('10.50', 1, 4)).toBe('10.51');
+    });
+
+    it('sin decimales no inventa decimales', () => {
+      expect(stepSpeed('10', 1, 0)).toBe('11');
+    });
+  });
+
+  it('el resultado siempre pasa el sanitizer', () => {
+    for (const v of ['10.4', '10', '', '0.1', '99.9']) {
+      for (const d of [1, -1]) {
+        expect(sanitizeNumericInput(stepSpeed(v, d, 3))).toBe(stepSpeed(v, d, 3));
+      }
+    }
   });
 });

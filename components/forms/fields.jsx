@@ -517,7 +517,7 @@ export function DurationField({ label, value, onChange, error, touched, disabled
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel, required, stepper, onStepper }) {
+export function InputField({ label, value, onChange, onBlur, onSelectionChange, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel, required, stepper, onStepper }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -578,6 +578,7 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
           numberOfLines={numberOfLines}
           onBlur={onBlur}
           onChangeText={onChange}
+          onSelectionChange={onSelectionChange}
           onSubmitEditing={onSubmitEditing}
           placeholder={placeholder}
           placeholderTextColor={colors.onSurfaceVariant}

@@ -16,7 +16,7 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
 import { EXERCISE_KINDS, getFieldRules } from '../../utils/exercise-field-matrix.js';
 import { calculateSpeedKph } from '../../utils/exercise-speed.js';
-import { sanitizeNumericInput, stepNumeric } from '../../utils/exercise-numeric.js';
+import { sanitizeNumericInput, stepNumeric, stepSpeed } from '../../utils/exercise-numeric.js';
 import { validateExerciseForm, hasErrors } from '../../utils/exercise-validators.js';
 import { readInfoBoxDismissed, writeInfoBoxDismissed } from '../../utils/exercise-info-box-preference.js';
 
@@ -145,6 +145,9 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const [minutes, setMinutes] = useState('');
   const [distanceM, setDistanceM] = useState('');
   const [speedKph, setSpeedKph] = useState('');
+  // Dónde está el cursor en el campo de velocidad. El stepper lo necesita: si
+  // el cursor está sobre los decimales, +1 mueve 0.1 y no 1 (utils/exercise-numeric.js).
+  const [speedSelection, setSpeedSelection] = useState(null);
   const [muscleGroup, setMuscleGroup] = useState('');
   const [attempted, setAttempted] = useState(false);
   const [infoBoxVisible, setInfoBoxVisible] = useState(true);
@@ -210,6 +213,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
     setMinutes(resetValues.minutes);
     setDistanceM(resetValues.distanceM);
     setSpeedKph(resetValues.speedKph);
+    setSpeedSelection(null);
     setMuscleGroup(resetValues.muscleGroup);
     setAttempted(false);
   } else if (!visible) {
@@ -250,6 +254,11 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   // velocidad igual — si no, tocar +1 en distancia dejaría la velocidad vieja.
   const stepDistance = (delta) => handleDistanceChange(stepNumeric(distanceM, delta));
   const stepMinutes = (delta) => handleMinutesChange(stepNumeric(minutes, delta));
+
+  // La velocidad NO recalcula desde el stepper: ya es el resultado del cálculo,
+  // no un insumo. Steppearla solo cambia ese valor (y no vuelve a disparar el
+  // cálculo, que se dispara desde distancia/tiempo).
+  const stepSpeedValue = (delta) => setSpeedKph(stepSpeed(speedKph, delta, speedSelection));
 
   const handleClose = () => {
     if (submitting) return;
@@ -411,13 +420,19 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
 
             {rules.showSpeed && (
               <InputField
-                className="mb-0"
+                // Más angosta que el resto a propósito: el valor real tiene 3-4
+                // dígitos ("12.4"), no hace falta el ancho completo del modal y
+                // una caja de 400px para 4 caracteres se ve desproporcionada.
+                className="mb-0 w-52"
                 dense
                 error={errors.speedKph}
                 hint={SPEED_HINT}
                 keyboardType="decimal-pad"
                 label="Velocidad Promedio · km/h (opcional)"
                 onChange={(v) => setSpeedKph(sanitizeNumericInput(v))}
+                onSelectionChange={(e) => setSpeedSelection(e.nativeEvent.selection.start)}
+                onStepper={stepSpeedValue}
+                stepper
                 value={speedKph}
               />
             )}
