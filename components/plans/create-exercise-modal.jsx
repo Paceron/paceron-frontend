@@ -46,7 +46,7 @@ function KindIconPicker({ idPrefix, value, onChange }) {
       accessibilityLabel="Tipo"
       accessibilityRole="radiogroup"
       className="-mx-1"
-      contentContainerClassName="flex-row gap-2 px-1"
+      contentContainerClassName="flex-row items-center gap-1.5 px-1"
       horizontal
       nativeID={`${idPrefix}-kind-picker`}
       showsHorizontalScrollIndicator={false}
@@ -61,15 +61,25 @@ function KindIconPicker({ idPrefix, value, onChange }) {
             accessibilityLabel={meta.label}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            className={`h-11 flex-row items-center justify-center gap-1.5 rounded-full ${active ? `px-3.5 ${meta.bg}` : 'w-11 bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
+            // El activo crece (w-auto) para mostrar su label; los otros se
+            // quedan en un cuadrado chico con el ícono solo. Los tamaños están
+            // calculados para que los 5 quepan en el ancho del modal (400px):
+            // con los inactivos a w-11 el caso más largo —"Velocidad en
+            // distancia"— se pasaba 30px y había que scrollear para ver el
+            // último ícono.
+            className={`flex-row items-center justify-center gap-1.5 rounded-full ${active ? `h-10 px-3 ${meta.bg}` : 'h-9 w-9 bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
             key={kind}
             nativeID={segId}
             onPress={() => onChange(kind)}
             testID={segId}
           >
-            <MaterialCommunityIcons color={active ? meta.iconColor : '#94a3b8'} name={meta.icon} size={22} />
+            <MaterialCommunityIcons
+              color={active ? meta.iconColor : '#94a3b8'}
+              name={meta.icon}
+              size={active ? 20 : 16}
+            />
             {active && (
-              <Text className={`text-sm font-semibold ${meta.text}`} nativeID={`${segId}-label`} testID={`${segId}-label`}>
+              <Text className={`text-sm font-semibold ${meta.text}`} nativeID={`${segId}-label`} numberOfLines={1} testID={`${segId}-label`}>
                 {meta.label}
               </Text>
             )}
