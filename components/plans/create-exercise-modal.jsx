@@ -37,11 +37,19 @@ const SPEED_HINT = 'Se recalcula automáticamente al modificar Distancia Objetiv
 // desincronizarse en silencio.
 function KindIconPicker({ idPrefix, value, onChange }) {
   return (
-    <View
+    // ScrollView horizontal y NO flex-wrap: el pill activo se despliega para
+    // mostrar su label, y "Velocidad en distancia" no entra junto a los otros
+    // cuatro en el ancho del modal — con wrap, elegir ese tipo partía la fila
+    // en dos y el último icono saltaba de línea. Scrollear es el patrón que ya
+    // usan TabBar y SearchablePickerField para el mismo problema.
+    <ScrollView
       accessibilityLabel="Tipo"
       accessibilityRole="radiogroup"
-      className="flex-row flex-wrap gap-2"
+      className="-mx-1"
+      contentContainerClassName="flex-row gap-2 px-1"
+      horizontal
       nativeID={`${idPrefix}-kind-picker`}
+      showsHorizontalScrollIndicator={false}
       testID={`${idPrefix}-kind-picker`}
     >
       {EXERCISE_KINDS.map((kind) => {
@@ -82,7 +90,7 @@ function KindIconPicker({ idPrefix, value, onChange }) {
           </IconTooltip>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -355,15 +363,21 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                 obligatorio y son las dos señales que conviven — pero separado
                 por "·" para que no se lea como parte de la unidad. */}
             {(rules.showTime || rules.showDistance) && (
+              // Siempre dos columnas, aunque solo haya un campo: en elongacion
+              // (que no tiene distancia) el Col vacío mantiene la caja de
+              // tiempo en la mitad del ancho, igual que en ritmo_continuo. Sin
+              // él, el único campo estirado ocupaba todo el renglón y el form
+              // "saltaba" de ancho al cambiar de tipo.
               <Row narrowClassName="gap-3">
-                {rules.showTime && (
+                {rules.showTime ? (
                   <Col>
                     <InputField
                       className="mb-0"
                       dense
                       error={errors.minutes}
                       keyboardType="number-pad"
-                      label={showTimeRequired ? 'Tiempo Objetivo · min' : 'Tiempo Objetivo · min (opcional)'}
+                      label="Tiempo Objetivo"
+                      labelSubtext={showTimeRequired ? 'min' : 'min · opcional'}
                       onChange={handleMinutesChange}
                       onStepper={stepMinutes}
                       required={showTimeRequired}
@@ -371,15 +385,16 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                       value={minutes}
                     />
                   </Col>
-                )}
-                {rules.showDistance && (
+                ) : <Col />}
+                {rules.showDistance ? (
                   <Col>
                     <InputField
                       className="mb-0"
                       dense
                       error={errors.distanceM}
                       keyboardType="number-pad"
-                      label={showDistanceRequired ? 'Distancia Objetivo · m' : 'Distancia Objetivo · m (opcional)'}
+                      label="Distancia Objetivo"
+                      labelSubtext={showDistanceRequired ? 'm' : 'm · opcional'}
                       onChange={handleDistanceChange}
                       onStepper={stepDistance}
                       required={showDistanceRequired}
@@ -387,7 +402,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                       value={distanceM}
                     />
                   </Col>
-                )}
+                ) : <Col />}
               </Row>
             )}
 
@@ -428,7 +443,8 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
                 error={errors.speedKph}
                 hint={SPEED_HINT}
                 keyboardType="decimal-pad"
-                label="Velocidad Promedio · km/h (opcional)"
+                label="Velocidad Promedio"
+                labelSubtext="km/h · opcional"
                 onChange={(v) => setSpeedKph(sanitizeNumericInput(v))}
                 onSelectionChange={(e) => setSpeedSelection(e.nativeEvent.selection.start)}
                 onStepper={stepSpeedValue}

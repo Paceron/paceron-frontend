@@ -13,6 +13,9 @@ import { IconTooltip } from '../shared/icon-tooltip.jsx';
 // Primitivos de formulario compartidos por register y edit de perfil.
 
 export const INPUT_CLASS = 'flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none';
+// `mb-1.5` vive acá y no en el wrapper de cada label porque 24 call sites lo
+// usan directamente. Dentro de InputField el margen se corre al subtext
+// (ver abajo) para que la fila de label ocupe siempre el mismo alto.
 export const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200';
 // min-h-12, no h-12: en web, Chrome ignora `height` en <select>/<input
 // type="date"> (controles de formulario "reemplazados" con su propio
@@ -517,7 +520,7 @@ export function DurationField({ label, value, onChange, error, touched, disabled
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, onSelectionChange, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel, required, stepper, onStepper }) {
+export function InputField({ label, value, onChange, onBlur, onSelectionChange, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel, required, labelSubtext, stepper, onStepper }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -534,24 +537,46 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>
-          {label}
-          {required && (
-            // El asterisco va pegado al label, no en otro lado: el lector de
-            // pantalla lee el Text entero, así que "Nombre *" se anuncia junto.
-            <>
-              {' '}
-              <Text
-                accessibilityRole="text"
-                className="text-red-500 dark:text-red-400"
-                nativeID={`input-field-${slug}-required`}
-                testID={`input-field-${slug}-required`}
-              >
-                *
-              </Text>
-            </>
-          )}
-        </Text>
+        <View nativeID={`input-field-${slug}-label-row`} testID={`input-field-${slug}-label-row`}>
+          <Text
+            className={labelSubtext ? 'text-sm font-semibold text-slate-700 dark:text-slate-200' : FIELD_LABEL}
+            nativeID={`input-field-${slug}-label`}
+            testID={`input-field-${slug}-label`}
+          >
+            {label}
+            {required && (
+              // El asterisco va pegado al label, no en otro lado: el lector de
+              // pantalla lee el Text entero, así que "Nombre *" se anuncia junto.
+              <>
+                {' '}
+                <Text
+                  accessibilityRole="text"
+                  className="text-red-500 dark:text-red-400"
+                  nativeID={`input-field-${slug}-required`}
+                  testID={`input-field-${slug}-required`}
+                >
+                  *
+                </Text>
+              </>
+            )}
+          </Text>
+          {/* Unidad y "(opcional)" van en una línea propia, SIEMPRE presente.
+              No es estética: si el "(opcional)" fuera parte del label, un
+              label más largo que otro partiría en dos líneas y desalinearía
+              los inputs de al lado, que es justo lo que pasa en dos campos
+              en el mismo renglón. Con la línea siempre reservada, los boxes
+              quedan a la misma altura sin importar el contenido. */}
+          {labelSubtext ? (
+            <Text
+              className="mb-1.5 mt-0.5 text-xs font-normal text-slate-500 dark:text-slate-400"
+              nativeID={`input-field-${slug}-subtext`}
+              numberOfLines={1}
+              testID={`input-field-${slug}-subtext`}
+            >
+              {labelSubtext}
+            </Text>
+          ) : null}
+        </View>
       )}
       <View
         className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
