@@ -77,7 +77,22 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`select-field-${slug}`} testID={`select-field-${slug}`}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>{label}</Text>
+        <Text className={FIELD_LABEL} nativeID={`select-field-${slug}-label`} testID={`select-field-${slug}-label`}>
+          {label}
+          {required && (
+            <>
+              {' '}
+              <Text
+                accessibilityRole="text"
+                className="text-red-500 dark:text-red-400"
+                nativeID={`select-field-${slug}-required`}
+                testID={`select-field-${slug}-required`}
+              >
+                *
+              </Text>
+            </>
+          )}
+        </Text>
       )}
       <View
         className="flex-row items-center gap-2"
@@ -502,7 +517,7 @@ export function DurationField({ label, value, onChange, error, touched, disabled
   );
 }
 
-export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel }) {
+export function InputField({ label, value, onChange, onBlur, error, hint, touched, placeholder, secureTextEntry, keyboardType, autoComplete, textContentType, autoCapitalize, onSubmitEditing, returnKeyType, onToggleSecure, showSecure, disabled, multiline, numberOfLines, dense, className, hideErrorRow, autoFocus, hideLabel, required }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -519,7 +534,24 @@ export function InputField({ label, value, onChange, onBlur, error, hint, touche
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`input-field-${slug}`} testID={`input-field-${slug}`}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>{label}</Text>
+        <Text className={FIELD_LABEL} nativeID={`input-field-${slug}-label`} testID={`input-field-${slug}-label`}>
+          {label}
+          {required && (
+            // El asterisco va pegado al label, no en otro lado: el lector de
+            // pantalla lee el Text entero, así que "Nombre *" se anuncia junto.
+            <>
+              {' '}
+              <Text
+                accessibilityRole="text"
+                className="text-red-500 dark:text-red-400"
+                nativeID={`input-field-${slug}-required`}
+                testID={`input-field-${slug}-required`}
+              >
+                *
+              </Text>
+            </>
+          )}
+        </Text>
       )}
       <View
         className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
@@ -599,7 +631,22 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>{label}</Text>
+        <Text className={FIELD_LABEL} nativeID={`picker-field-${slug}-label`} testID={`picker-field-${slug}-label`}>
+          {label}
+          {required && (
+            <>
+              {' '}
+              <Text
+                accessibilityRole="text"
+                className="text-red-500 dark:text-red-400"
+                nativeID={`picker-field-${slug}-required`}
+                testID={`picker-field-${slug}-required`}
+              >
+                *
+              </Text>
+            </>
+          )}
+        </Text>
       )}
       <Pressable
         className={triggerClass}

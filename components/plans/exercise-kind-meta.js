@@ -1,28 +1,41 @@
-// "Personalidad" visual del módulo de planes — cada tipo de ejercicio
-// tiene su propio ícono y color (antes todo era gris neutro). El color no
-// es decorativo nomás: comunica intensidad/tipo de esfuerzo de un
-// vistazo, mismo criterio de "semáforo con intención" que ya usa el
-// resto de la app (SUBSCRIPTION_META, TEAM_STATUS_META) pero acá el
-// significado es el tipo de ejercicio, no un estado de urgencia.
+import { getFieldRules } from '../../utils/exercise-field-matrix';
+
+// "Personalidad" visual del módulo de planes — cada tipo de ejercicio tiene su
+// propio ícono y color (antes todo era gris neutro). El color no es decorativo
+// nomás: comunica el tipo de esfuerzo de un vistazo, mismo criterio de "semáforo
+// con intención" que ya usa el resto de la app (SESSION_ROLE_META,
+// DAY_KIND_META) pero acá el significado es el tipo de ejercicio, no un estado
+// de urgencia.
+//
+// REEMPLAZA el enum anterior (`walking`/`jogging`/`elongation`/`cruising`/
+// `running`), donde nada dependía del tipo y todos los campos eran opcionales
+// para cualquiera. Ver utils/exercise-field-matrix.js para la matriz de campos.
 export const EXERCISE_KIND_META = {
-  walking: { label: 'Caminata', icon: 'walk', iconColor: '#0284c7', bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-700 dark:text-sky-400' },
-  jogging: { label: 'Trote', icon: 'run', iconColor: '#d97706', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
-  elongation: { label: 'Elongación', icon: 'yoga', iconColor: '#9333ea', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
-  cruising: { label: 'Ritmo continuo', icon: 'speedometer', iconColor: '#0d9488', bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-400' },
-  running: { label: 'Corrida', icon: 'run-fast', iconColor: '#ea580c', bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400' },
+  // Calentamiento o recuperación. Tono frío: es esfuerzo bajo.
+  liviano: { label: 'Liviano', hint: 'Calentamiento o recuperación', icon: 'walk', iconColor: '#0284c7', bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-700 dark:text-sky-400' },
+  // Estiramiento. Violeta, el color que ya tenía y que no colisiona con los
+  // tonos de esfuerzo de los otros cuatro.
+  elongacion: { label: 'Elongación', icon: 'yoga', iconColor: '#9333ea', bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
+  // Ritmo continuo: effort sostenido. Ícono de cronómetro MEDIO — el de
+  // velocidad_distancia es el rápido y el de velocidad_tiempo el lento, así que
+  // los tres se distinguen de un vistazo sin leer el label.
+  ritmo_continuo: { label: 'Ritmo continuo', icon: 'speedometer', iconColor: '#0d9488', bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-400' },
+  // Velocidad en tiempo: esfuerzo definido por el reloj. Ícono lento.
+  velocidad_tiempo: { label: 'Velocidad en tiempo', icon: 'speedometer-slow', iconColor: '#ca8a04', bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400' },
+  // Velocidad en distancia: esfuerzo definido por la recorrida. Ícono rápido.
+  velocidad_distancia: { label: 'Velocidad en distancia', icon: 'speedometer-medium', iconColor: '#ea580c', bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400' },
 };
 
-// Intensidad de esfuerzo — campo propio y opcional, sin atar a un tipo en
-// particular (cualquier ejercicio puede tener una, o ninguna) — ver
-// enmienda 2026-09-06 de docs/superpowers/specs/2026-08-26-training-plans-design.md.
-export const INTENSITY_ORDER = ['light', 'moderate', 'vigorous'];
+// Kinds que pueden asignarse a un rol restringido (warmup/cooldown). Con el enum
+// anterior eran `walking`/`jogging`/`elongation`; ahora es lo mismo que "calentamiento
+// o recuperación", que es literalmente lo que define a `liviano` y `elongacion`.
+// warmup/main/cooldown restringen QUÉ ejercicio se puede elegir, no cualquier
+// EXERCISE_KIND_META sirve fuera del rol "main".
+export const WARMCOOL_KINDS = ['liviano', 'elongacion'];
 
-export const INTENSITY_META = {
-  light: { label: 'Suave', icon: 'speedometer-slow', iconColor: '#059669', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400' },
-  moderate: { label: 'Moderado', icon: 'speedometer-medium', iconColor: '#d97706', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
-  vigorous: { label: 'Fuerte', icon: 'speedometer', iconColor: '#e11d48', bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-400' },
-};
-
+// Tipo de un DÍA del plan de entrenamiento. No tiene nada que ver con el enum de
+// ejercicios (vive acá porque comparte archivo y pantalla), pero es el mismo
+// patrón "cada valor tiene ícono y color con intención".
 export const DAY_KIND_META = {
   rest: { label: 'Descanso', icon: 'sleep', iconColor: '#64748b', bg: 'bg-slate-200 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-300' },
   other: { label: 'Otra actividad', icon: 'star-four-points-outline', iconColor: '#0284c7', bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-700 dark:text-sky-400' },
@@ -30,13 +43,12 @@ export const DAY_KIND_META = {
 };
 
 // Rol de un ejercicio DENTRO de una sesión — antes eran 3 columnas fijas
-// (warmup/main/cooldown), ahora una sesión es una lista libre de
-// ejercicios y cada uno lleva su propio rol (cualquiera admite más de
-// uno) — ver enmienda 2026-09-05 de
-// docs/superpowers/specs/2026-08-26-training-plans-design.md.
-// SESSION_ROLE_ORDER es el orden de lectura (agrupado por rol) que usan
-// todas las pantallas que muestran una sesión ya armada, sin importar el
-// orden en que se hayan cargado/agregado los ejercicios.
+// (warmup/main/cooldown), ahora una sesión es una lista libre de ejercicios y
+// cada uno lleva su propio rol (cualquiera admite más de uno) — ver enmienda
+// 2026-09-05 de docs/superpowers/specs/2026-08-26-training-plans-design.md.
+// SESSION_ROLE_ORDER es el orden de lectura (agrupado por rol) que usan todas
+// las pantallas que muestran una sesión ya armada, sin importar el orden en el
+// que se hayan cargado/agregado los ejercicios.
 export const SESSION_ROLE_ORDER = ['warmup', 'main', 'cooldown'];
 
 export const SESSION_ROLE_META = {
@@ -45,19 +57,13 @@ export const SESSION_ROLE_META = {
   cooldown: { label: 'Vuelta a la calma', icon: 'snowflake', iconColor: '#0891b2', bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-400' },
 };
 
-// Kinds de ejercicio válidos para un rol restringido (warmup/cooldown) —
-// warmup/main/cooldown restringen QUÉ ejercicio se puede elegir, no
-// cualquier EXERCISE_KIND_META sirve fuera del rol "main".
-export const WARMCOOL_KINDS = ['walking', 'jogging', 'elongation'];
-
 // Labels de grupo muscular — duplica a propósito los ids de
-// MUSCLE_GROUP_OPTIONS (store/exercise-store.js, fuente real para el
-// picker del form) en vez de importarlo: ese store arrastra la cadena
-// services/exercises.js → services/api.js → store/auth-store.js →
-// services/storage.js → expo-secure-store (solo nativo), que rompe bajo
-// Jest — este archivo se importa desde tests puros de
-// buildExerciseStatLine y necesita quedar sin esa dependencia. 8 pares
-// id→label, bajo riesgo de desincronizarse.
+// MUSCLE_GROUP_OPTIONS (hooks/use-exercises.js, fuente real para el picker del
+// form) en vez de importarlo: ese módulo arrastra la cadena
+// services/exercises.js → api.js → auth-store.js → storage.js →
+// expo-secure-store (solo nativo), que rompe bajo Jest — este archivo se importa
+// desde tests puros de buildExerciseStatLine y necesita quedar sin esa
+// dependencia. 8 pares, bajo riesgo de desincronizarse.
 const MUSCLE_GROUP_LABELS = {
   cuadriceps: 'Cuádriceps',
   isquiotibiales: 'Isquiotibiales',
@@ -69,25 +75,20 @@ const MUSCLE_GROUP_LABELS = {
   core: 'Core / abdominales',
 };
 
-// Línea de "stat" de un ejercicio (debajo del nombre: intensidad,
-// minutos, distancia, ritmo, grupo muscular, repeticiones) — todos
-// campos opcionales, cualquier combinación puede faltar; cada uno se
-// suma si está cargado, sin atarlo a un tipo en particular (ver enmienda
-// 2026-09-06 de docs/superpowers/specs/2026-08-26-training-plans-design.md
-// — antes esto dependía del tipo, ahora un ejercicio de cualquier tipo
-// puede tener cualquier combinación de estos datos). Compartida por
-// ExercisesCatalogTab, TrainingPlanDetailScreen y TodaySessionCard (antes
-// triplicada). Devuelve '' (falsy) si no hay nada para mostrar — cada
-// caller decide su propio fallback (mostrar meta.label, u ocultar la
-// línea entera).
+// Línea de "stat" de un ejercicio (debajo del nombre: minutos, distancia, ritmo,
+// grupo muscular) — cada campo se suma si está cargado, y solo los que el tipo
+// puede tener (ej. elongacion nunca muestra distancia ni velocidad, porque la
+// matriz no las permite). Devuelve '' (falsy) si no hay nada que mostrar — cada
+// caller decide su propio fallback (mostrar meta.label, u ocultar la línea).
+// Compartida por ExercisesCatalogTab, TrainingPlanDetailScreen y
+// SessionExerciseRow — antes triplicada.
 export function buildExerciseStatLine(exercise, { repeatCount = 1, restMinutes = 0 } = {}) {
+  const rules = getFieldRules(exercise.kind);
   const parts = [];
-  const intensityMeta = INTENSITY_META[exercise.intensity];
-  if (intensityMeta) parts.push(intensityMeta.label);
-  if (exercise.minutes != null) parts.push(`${exercise.minutes} min`);
-  if (exercise.distanceM != null) parts.push(`${exercise.distanceM} m`);
-  if (exercise.speedKph != null) parts.push(`${exercise.speedKph} km/h`);
-  if (exercise.muscleGroup && MUSCLE_GROUP_LABELS[exercise.muscleGroup]) {
+  if (rules.showTime && exercise.minutes != null) parts.push(`${exercise.minutes} min`);
+  if (rules.showDistance && exercise.distanceM != null) parts.push(`${exercise.distanceM} m`);
+  if (rules.showSpeed && exercise.speedKph != null) parts.push(`${exercise.speedKph} km/h`);
+  if (rules.showMuscleGroup && exercise.muscleGroup && MUSCLE_GROUP_LABELS[exercise.muscleGroup]) {
     parts.push(MUSCLE_GROUP_LABELS[exercise.muscleGroup]);
   }
   if (repeatCount > 1) parts.push(`descanso ${restMinutes} min entre series`);

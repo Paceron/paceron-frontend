@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,22 +6,33 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useExerciseMutations, MUSCLE_GROUP_OPTIONS } from '../../hooks/use-exercises.js';
-import { FIELD_LABEL, InputField, Row, Col } from '../forms/fields.jsx';
+import { FIELD_LABEL, InputField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
-import { EXERCISE_KIND_META, INTENSITY_ORDER, INTENSITY_META } from './exercise-kind-meta.js';
+import { EXERCISE_KIND_META } from './exercise-kind-meta.js';
+import { EXERCISE_KINDS, getFieldRules } from '../../utils/exercise-field-matrix.js';
+import { calculateSpeedKph } from '../../utils/exercise-speed.js';
+import { validateExerciseForm, hasErrors } from '../../utils/exercise-validators.js';
+import { readInfoBoxDismissed, writeInfoBoxDismissed } from '../../utils/exercise-info-box-preference.js';
 
-// Selector de tipo — ícono solo en reposo (mostrar el nombre de los 5
-// tipos a la vez sería mucho texto uno al lado del otro); el
-// seleccionado se despliega para mostrar su label, así queda claro qué
-// tipo es más allá del ícono sin recargar los que no están activos.
-// Mismos íconos/colores que ya identifican cada tipo en el resto de la
-// app (catálogo, sesiones, plan). El orden sale de las propias claves de
-// EXERCISE_KIND_META (ya es estable) en vez de mantener un array de
-// orden aparte.
+const DEFAULT_KIND = 'liviano';
+
+// Helper de la velocidad. Va por `hint` y no como texto fijo porque `InputField`
+// muestra `error` y `hint` en el MISMO slot (fields.jsx:568) — cuando hay error
+// desaparece el helper, que es el comportamiento deseado.
+const SPEED_HINT = 'Se recalcula automáticamente al modificar Distancia Objetivo o Tiempo Objetivo.';
+
+// Selector de tipo — ícono solo en reposo (mostrar el nombre de los 5 tipos a
+// la vez sería mucho texto uno al lado del otro); el seleccionado se despliega
+// para mostrar su label, así queda claro qué tipo es más allá del ícono sin
+// recargar los que no están activos. Mismos íconos/colores que ya identifican
+// cada tipo en el resto de la app (catálogo, sesiones, plan). El orden sale de
+// EXERCISE_KINDS, que es la misma fuente que usa la matriz de campos — antes
+// salía de las claves de EXERCISE_KIND_META y eran dos listas que podían
+// desincronizarse en silencio.
 function KindIconPicker({ idPrefix, value, onChange }) {
   return (
     <View
@@ -31,7 +42,7 @@ function KindIconPicker({ idPrefix, value, onChange }) {
       nativeID={`${idPrefix}-kind-picker`}
       testID={`${idPrefix}-kind-picker`}
     >
-      {Object.keys(EXERCISE_KIND_META).map((kind) => {
+      {EXERCISE_KINDS.map((kind) => {
         const meta = EXERCISE_KIND_META[kind];
         const active = value === kind;
         const segId = `${idPrefix}-kind-${kind}`;
@@ -59,43 +70,33 @@ function KindIconPicker({ idPrefix, value, onChange }) {
   );
 }
 
-// Selector de intensidad — a diferencia de un segmented picker "cerrado"
-// (Tipo de día, Rol de ejercicio en una sesión), acá la intensidad es
-// opcional: tocar el segmento ya activo lo vuelve a dejar sin elegir
-// (`value` puede ser null, con los 3 segmentos en gris neutro). Standalone
-// en su propia fila, no convive con otro control de altura fija al lado,
-// así que el alto queda orgánico.
-function IntensitySegmentedPicker({ idPrefix, value, onChange }) {
+// Recuadro explicativo del bloque de datos. Se puede ocultar para esta sesión
+// ("x" en la esquina) y para siempre ("No volver a mostrar") — la segunda
+// preferencia persiste por utils/exercise-info-box-preference.js. Es
+// informativo, no una acción pendiente: azul/slate, no ámbar (en este repo ámbar
+// significa "te falta hacer algo", ver team-subscription-pending-banner.jsx).
+function ExerciseInfoBox({ idPrefix, onDismiss, onNeverShow }) {
   return (
-    <View
-      accessibilityLabel="Intensidad"
-      accessibilityRole="radiogroup"
-      className="flex-row items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800"
-      nativeID={`${idPrefix}-intensity-pill`}
-      testID={`${idPrefix}-intensity-pill`}
-    >
-      {INTENSITY_ORDER.map((level) => {
-        const meta = INTENSITY_META[level];
-        const active = value === level;
-        const segId = `${idPrefix}-intensity-${level}`;
-        return (
-          <Pressable
-            accessibilityLabel={meta.label}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: active }}
-            className={`flex-1 flex-row items-center justify-center gap-1 rounded-full px-2.5 py-1.5 ${active ? meta.bg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
-            key={level}
-            nativeID={segId}
-            onPress={() => onChange(active ? null : level)}
-            testID={segId}
-          >
-            <MaterialCommunityIcons color={active ? meta.iconColor : '#94a3b8'} name={meta.icon} size={16} />
-            <Text className={`text-xs font-semibold ${active ? meta.text : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${segId}-label`} testID={`${segId}-label`}>
-              {meta.label}
+    <View className="mb-1 flex-row items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 p-3 dark:border-sky-900/50 dark:bg-sky-950/30" nativeID={`${idPrefix}-info-box`} testID={`${idPrefix}-info-box`}>
+      <MaterialCommunityIcons color="#0284c7" name="information-outline" size={18} />
+      <View className="flex-1" nativeID={`${idPrefix}-info-box-body`} testID={`${idPrefix}-info-box-body`}>
+        <Text className="text-xs leading-4 text-sky-900 dark:text-sky-200" nativeID={`${idPrefix}-info-box-text`} testID={`${idPrefix}-info-box-text`}>
+          Completá Tiempo Objetivo y Distancia Objetivo con precisión. Estos datos se usan para calcular
+          métricas de rendimiento.
+        </Text>
+        <View className="mt-2 flex-row items-center gap-3" nativeID={`${idPrefix}-info-box-actions`} testID={`${idPrefix}-info-box-actions`}>
+          <Pressable accessibilityRole="button" hitSlop={8} nativeID={`${idPrefix}-info-box-never`} onPress={onNeverShow} testID={`${idPrefix}-info-box-never`}>
+            <Text className="text-xs font-semibold text-sky-700 underline dark:text-sky-300" nativeID={`${idPrefix}-info-box-never-label`} testID={`${idPrefix}-info-box-never-label`}>
+              No volver a mostrar
             </Text>
           </Pressable>
-        );
-      })}
+          <Pressable accessibilityRole="button" hitSlop={8} nativeID={`${idPrefix}-info-box-dismiss`} onPress={onDismiss} testID={`${idPrefix}-info-box-dismiss`}>
+            <Text className="text-xs text-sky-700 dark:text-sky-300" nativeID={`${idPrefix}-info-box-dismiss-label`} testID={`${idPrefix}-info-box-dismiss-label`}>
+              Ocultar
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -111,15 +112,20 @@ const sanitizeNumericInput = (text) => {
   return `${cleaned.slice(0, firstDot + 1)}${cleaned.slice(firstDot + 1).replace(/\./g, '')}`;
 };
 
-const hasOptionalData = (exercise) => Boolean(
-  exercise && (
-    exercise.intensity != null
-    || exercise.minutes != null
-    || exercise.distanceM != null
-    || exercise.speedKph != null
-    || exercise.muscleGroup != null
-  ),
-);
+// ¿El ejercicio tiene algún dato en el bloque de métricas? Decide si el acordeón
+// arranca abierto en edición. Solo mira los campos que SU tipo puede tener — con
+// la matriz, un elongación guardado nunca tiene distancia, y mirarla haría que
+// el acordeón se abriera al vacío.
+const hasOptionalData = (exercise) => {
+  if (!exercise) return false;
+  const rules = getFieldRules(exercise.kind);
+  return Boolean(
+    (rules.showTime && exercise.minutes != null)
+    || (rules.showDistance && exercise.distanceM != null)
+    || (rules.showSpeed && exercise.speedKph != null)
+    || (rules.showMuscleGroup && exercise.muscleGroup != null),
+  );
+};
 
 // Alta rápida de un ejercicio nuevo, sin salir de donde se lo pidió (ej.
 // desde adentro de CreateSessionModal) — "un botón para acceder al
@@ -128,14 +134,12 @@ const hasOptionalData = (exercise) => Boolean(
 // prop opcional `exercise` (ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md)
 // dobla como edición: precarga los valores, cambia título/botón y llama
 // updateExercise en vez de createExercise — mismo modal, no un
-// componente aparte, para no duplicar el formulario. Único obligatorio
-// además del tipo: nombre y descripción — intensidad/minutos/distancia/
-// velocidad/grupo muscular son todos opcionales, sin atarlos a un tipo
-// en particular, y quedan detrás de un botón para no abrumar el
-// formulario (ver enmienda 2026-09-06 de
-// docs/superpowers/specs/2026-08-26-training-plans-design.md, tercera
-// vuelta: Tipo pasa a ser solo ícono — repetirlo como texto al lado del
-// nombre libre era información duplicada).
+// componente aparte, para no duplicar el formulario.
+//
+// Qué campos aparecen y cuáles son obligatorios lo decide el tipo, vía
+// utils/exercise-field-matrix.js. Antes nada dependía del tipo (todo opcional
+// salvo nombre), pero dejaba burden al usuario y dejaba campos sin sentido
+// (velocidad en una elongación).
 export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
@@ -144,15 +148,45 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [kind, setKind] = useState('walking');
-  const [intensity, setIntensity] = useState(null);
+  const [kind, setKind] = useState(DEFAULT_KIND);
   const [minutes, setMinutes] = useState('');
   const [distanceM, setDistanceM] = useState('');
   const [speedKph, setSpeedKph] = useState('');
   const [muscleGroup, setMuscleGroup] = useState('');
   const [showOptional, setShowOptional] = useState(false);
-  const [error, setError] = useState(null);
+  const [attempted, setAttempted] = useState(false);
+  const [infoBoxVisible, setInfoBoxVisible] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const rules = getFieldRules(kind);
+
+  // Derivados de la matriz, para el JSX. `showTimeRequired` NO es lo mismo que
+  // `rules.timeRequired`: en `liviano` el campo se considera necesario aunque la
+  // matriz lo marque opcional, porque la regla cruzada lo vuelve condición de
+  // guardado. Sin esto, `liviano` escondería sus dos únicos campos detrás del
+  // acordeón y el form sería imposible de completar.
+  const showTimeRequired = rules.showTime && (rules.timeRequired || rules.requiresDistanceOrTime);
+  const showDistanceRequired = rules.showDistance && (rules.distanceRequired || rules.requiresDistanceOrTime);
+
+  // El acordeón solo se monta si queda algún campo opcional real — si no, es un
+  // botón que abre un cuerpo vacío.
+  const hasOptionalFields = (rules.showTime && !showTimeRequired)
+    || (rules.showDistance && !showDistanceRequired)
+    || rules.showSpeed
+    || (rules.showMuscleGroup && !rules.muscleGroupRequired);
+
+  // La preferencia del info box se lee una vez al abrir, no en cada render. Va
+  // en un efecto y no en el reset porque es una preferencia del dispositivo, no
+  // del registro que se está editando — reabrir el modal para otro ejercicio
+  // tiene que respetar la misma elección.
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    readInfoBoxDismissed().then((dismissed) => {
+      if (!cancelled) setInfoBoxVisible(!dismissed);
+    });
+    return () => { cancelled = true; };
+  }, [visible]);
 
   const resetKey = `${visible}-${exercise?.id ?? 'new'}`;
   const prevResetKeyRef = useRef(null);
@@ -175,8 +209,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
   const resetValues = {
     name: exercise?.name ?? '',
     description: exercise?.description ?? '',
-    kind: exercise?.kind ?? 'walking',
-    intensity: exercise?.intensity ?? null,
+    kind: exercise?.kind ?? DEFAULT_KIND,
     minutes: exercise?.minutes != null ? String(exercise.minutes) : '',
     distanceM: exercise?.distanceM != null ? String(exercise.distanceM) : '',
     speedKph: exercise?.speedKph != null ? String(exercise.speedKph) : '',
@@ -188,40 +221,67 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
     setName(resetValues.name);
     setDescription(resetValues.description);
     setKind(resetValues.kind);
-    setIntensity(resetValues.intensity);
     setMinutes(resetValues.minutes);
     setDistanceM(resetValues.distanceM);
     setSpeedKph(resetValues.speedKph);
     setMuscleGroup(resetValues.muscleGroup);
     setShowOptional(hasOptionalData(exercise));
-    setError(null);
+    setAttempted(false);
   } else if (!visible) {
     prevResetKeyRef.current = null;
   }
 
-  const dirtyValues = isResetting ? resetValues : { name, description, kind, intensity, minutes, distanceM, speedKph, muscleGroup };
+  const dirtyValues = isResetting ? resetValues : { name, description, kind, minutes, distanceM, speedKph, muscleGroup };
   const formDirty = useFormDirty(dirtyValues, exercise?.id ?? 'new');
   const isDirty = visible && formDirty;
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
+
+  // Errores DERIVADOS, no en state: se recalculan en cada render a partir del
+  // form y del flag `attempted`. Es lo que permite que al cambiar de tipo los
+  // errores de campos que quedaron ocultos desaparezcan solos, sin acordarse de
+  // limpiar nada (mismo criterio que hooks/use-session-form.js).
+  const errors = validateExerciseForm({ name, kind, minutes, distanceM, speedKph, muscleGroup }, { attempted });
+
+  // Al tocar distancia o tiempo se recalcula la velocidad y PISA cualquier
+  // valor manual que hubiera — no hay flag de "override manual" que inhiba esto,
+  // es la decisión de negocio explícita. Si no hay dato suficiente el valor
+  // anterior se conserva (el usuario puede estar tipeando la velocidad a mano
+  // mientras deja el tiempo en blanco).
+  const handleDistanceChange = (text) => {
+    const next = sanitizeNumericInput(text);
+    setDistanceM(next);
+    const kph = calculateSpeedKph(next || null, minutes || null);
+    if (kph !== null) setSpeedKph(String(kph));
+  };
+
+  const handleMinutesChange = (text) => {
+    const next = sanitizeNumericInput(text);
+    setMinutes(next);
+    const kph = calculateSpeedKph(distanceM || null, next || null);
+    if (kph !== null) setSpeedKph(String(kph));
+  };
 
   const handleClose = () => {
     if (submitting) return;
     guardedClose(onClose);
   };
 
+  const handleNeverShowInfoBox = async () => {
+    setInfoBoxVisible(false);
+    await writeInfoBoxDismissed(true);
+  };
+
   const handleSubmit = async () => {
     if (submitting) return;
-    if (!name.trim()) {
-      setError('Completá el nombre.');
-      return;
-    }
+    setAttempted(true);
+    const currentErrors = validateExerciseForm({ name, kind, minutes, distanceM, speedKph, muscleGroup }, { attempted: true });
+    if (hasErrors(currentErrors)) return;
     setSubmitting(true);
     const form = {
       ownerId: userId,
       name: name.trim(),
       description: description.trim(),
       kind,
-      intensity,
       minutes: minutes ? Number(minutes) : null,
       distanceM: distanceM ? Number(distanceM) : null,
       speedKph: speedKph ? Number(speedKph) : null,
@@ -261,7 +321,7 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
               una View sola no scrollea, por más que el padre la recorte. */}
           <ScrollView nativeID="create-exercise-modal-scroll" showsVerticalScrollIndicator={false} testID="create-exercise-modal-scroll">
           <View className="gap-3" nativeID="create-exercise-modal-fields" testID="create-exercise-modal-fields">
-            <InputField autoFocus={!isWeb && visible} className="mb-0" dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Fartlek de martes" value={name} />
+            <InputField autoFocus={!isWeb && visible} className="mb-0" dense error={errors.name} label="Nombre" onChange={setName} placeholder="Ej. Fartlek de martes" required value={name} />
             <InputField className="mb-0" dense hideErrorRow label="Descripción (opcional)" onChange={setDescription} placeholder="Para qué sirve, cómo se hace." value={description} />
 
             <View nativeID="create-exercise-modal-kind" testID="create-exercise-modal-kind">
@@ -269,39 +329,130 @@ export function CreateExerciseModal({ visible, onClose, onCreated, exercise }) {
               <KindIconPicker idPrefix="create-exercise-modal" onChange={setKind} value={kind} />
             </View>
 
-            <View className="rounded-xl border border-slate-200 dark:border-slate-700" nativeID="create-exercise-modal-optional-section" testID="create-exercise-modal-optional-section">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ expanded: showOptional }}
-                className="h-11 flex-row items-center justify-between px-3 active:opacity-70"
-                nativeID="create-exercise-modal-optional-toggle"
-                onPress={() => setShowOptional((v) => !v)}
-                testID="create-exercise-modal-optional-toggle"
-              >
-                <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="create-exercise-modal-optional-toggle-label" testID="create-exercise-modal-optional-toggle-label">
-                  Detalles opcionales
-                </Text>
-                <MaterialCommunityIcons color="#8cc63e" name={showOptional ? 'chevron-up' : 'chevron-down'} size={20} />
-              </Pressable>
+            {infoBoxVisible && (rules.showTime || rules.showDistance) && (
+              <ExerciseInfoBox
+                idPrefix="create-exercise-modal"
+                onDismiss={() => setInfoBoxVisible(false)}
+                onNeverShow={handleNeverShowInfoBox}
+              />
+            )}
 
-              {showOptional && (
-                <View className="gap-3 border-t border-slate-200 p-3 dark:border-slate-700" nativeID="create-exercise-modal-optional" testID="create-exercise-modal-optional">
-                  <View nativeID="create-exercise-modal-intensity" testID="create-exercise-modal-intensity">
-                    <Text className={FIELD_LABEL} nativeID="create-exercise-modal-intensity-label" testID="create-exercise-modal-intensity-label">Intensidad</Text>
-                    <IntensitySegmentedPicker idPrefix="create-exercise-modal" onChange={setIntensity} value={intensity} />
+            {/* Reparto entre "siempre a la vista" y "dentro del acordeón".
+                La regla: un campo va arriba si el usuario NO PUEDE guardar sin él.
+                Eso incluye el caso cruzado de `liviano` — distancia y tiempo son
+                opcionales por separado, pero sin uno de los dos no se guarda, así
+                que esconderlos detrás de un acordeón cerraría la única forma de
+                completar el form. El acordeón es solo para lo genuinamente
+                opcional. */}
+            {showTimeRequired && (
+              <InputField
+                className="mb-0"
+                dense
+                error={errors.minutes}
+                hint={SPEED_HINT}
+                keyboardType="number-pad"
+                label="Tiempo Objetivo"
+                onChange={handleMinutesChange}
+                required
+                value={minutes}
+              />
+            )}
+            {showDistanceRequired && (
+              <InputField
+                className="mb-0"
+                dense
+                error={errors.distanceM}
+                hint={SPEED_HINT}
+                keyboardType="number-pad"
+                label="Distancia Objetivo"
+                onChange={handleDistanceChange}
+                required
+                value={distanceM}
+              />
+            )}
+            {rules.showMuscleGroup && rules.muscleGroupRequired && (
+              <ResponsiveSelectField
+                className="mb-0"
+                dense
+                error={errors.muscleGroup}
+                label="Grupo muscular"
+                onChange={setMuscleGroup}
+                options={MUSCLE_GROUP_OPTIONS}
+                placeholder="Elegí un grupo"
+                required
+                value={muscleGroup}
+              />
+            )}
+
+            {hasOptionalFields && (
+              <View className="rounded-xl border border-slate-200 dark:border-slate-700" nativeID="create-exercise-modal-optional-section" testID="create-exercise-modal-optional-section">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: showOptional }}
+                  className="h-11 flex-row items-center justify-between px-3 active:opacity-70"
+                  nativeID="create-exercise-modal-optional-toggle"
+                  onPress={() => setShowOptional((v) => !v)}
+                  testID="create-exercise-modal-optional-toggle"
+                >
+                  <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="create-exercise-modal-optional-toggle-label" testID="create-exercise-modal-optional-toggle-label">
+                    Detalles opcionales
+                  </Text>
+                  <MaterialCommunityIcons color="#8cc63e" name={showOptional ? 'chevron-up' : 'chevron-down'} size={20} />
+                </Pressable>
+
+                {showOptional && (
+                  <View className="gap-3 border-t border-slate-200 p-3 dark:border-slate-700" nativeID="create-exercise-modal-optional" testID="create-exercise-modal-optional">
+                    {rules.showTime && !showTimeRequired && (
+                      <InputField
+                        className="mb-0"
+                        dense
+                        error={errors.minutes}
+                        hint={SPEED_HINT}
+                        keyboardType="number-pad"
+                        label="Tiempo Objetivo (opcional)"
+                        onChange={handleMinutesChange}
+                        value={minutes}
+                      />
+                    )}
+                    {rules.showDistance && !showDistanceRequired && (
+                      <InputField
+                        className="mb-0"
+                        dense
+                        error={errors.distanceM}
+                        keyboardType="number-pad"
+                        label="Distancia Objetivo (opcional)"
+                        onChange={handleDistanceChange}
+                        value={distanceM}
+                      />
+                    )}
+                    {rules.showSpeed && (
+                      <InputField
+                        className="mb-0"
+                        dense
+                        error={errors.speedKph}
+                        hint={SPEED_HINT}
+                        keyboardType="decimal-pad"
+                        label="Velocidad Promedio (opcional)"
+                        onChange={(v) => setSpeedKph(sanitizeNumericInput(v))}
+                        value={speedKph}
+                      />
+                    )}
+                    {rules.showMuscleGroup && !rules.muscleGroupRequired && (
+                      <ResponsiveSelectField
+                        className="mb-0"
+                        dense
+                        hideErrorRow
+                        label="Grupo muscular (opcional)"
+                        onChange={setMuscleGroup}
+                        options={MUSCLE_GROUP_OPTIONS}
+                        placeholder="Ninguno"
+                        value={muscleGroup}
+                      />
+                    )}
                   </View>
-
-                  <Row narrowClassName="gap-3">
-                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Minutos" onChange={(v) => setMinutes(sanitizeNumericInput(v))} value={minutes} /></Col>
-                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="number-pad" label="Distancia (m)" onChange={(v) => setDistanceM(sanitizeNumericInput(v))} value={distanceM} /></Col>
-                  </Row>
-                  <Row narrowClassName="gap-3">
-                    <Col><InputField className="mb-0" dense hideErrorRow keyboardType="decimal-pad" label="Velocidad (km/h)" onChange={(v) => setSpeedKph(sanitizeNumericInput(v))} value={speedKph} /></Col>
-                    <Col><ResponsiveSelectField className="mb-0" dense hideErrorRow label="Grupo muscular" onChange={setMuscleGroup} options={MUSCLE_GROUP_OPTIONS} placeholder="Ninguno" value={muscleGroup} /></Col>
-                  </Row>
-                </View>
-              )}
-            </View>
+                )}
+              </View>
+            )}
           </View>
           </ScrollView>
 

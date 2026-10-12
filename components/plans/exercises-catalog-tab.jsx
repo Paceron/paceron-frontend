@@ -113,7 +113,7 @@ function ExerciseActionsMenu({ exercise, onEdit, onClone, onDelete }) {
 // (w-[48%]) para forzar exactamente 2 columnas, la opción preferida por
 // el usuario en vez de 1 columna a ancho completo.
 function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, selectionMode, selected, onToggleSelected, narrow }) {
-  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.walking;
+  const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const idPrefix = `exercise-catalog-row-${exercise.id}`;
   const statLine = buildExerciseStatLine(exercise);
 

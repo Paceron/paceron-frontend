@@ -12,12 +12,18 @@ import { toExerciseModel, toCreateExercisePayload } from '../services/normalizer
 // CLAUDE.md). Sin backend real todavía (services/exercises.js tiene
 // FORCE_MOCKS=true, ver docs/BACKEND_API_GAPS.md gap 4) — esta migración
 // no cambia esa capa, solo el estado que la envuelve.
+
+// Opciones de tipo para selects. El form NO usa esta constante — itera
+// EXERCISE_KINDS (utils/exercise-field-matrix.js) con el label de
+// EXERCISE_KIND_META (components/plans/exercise-kind-meta.js), así que el
+// selector de tipo y esta lista pueden desincronizarse sin que nada falle.
+// Queda para selects simples que no necesiten ícono/color.
 export const EXERCISE_KIND_OPTIONS = [
-  { id: 'walking', name: 'Caminata' },
-  { id: 'jogging', name: 'Trote' },
-  { id: 'elongation', name: 'Elongación' },
-  { id: 'cruising', name: 'Ritmo continuo' },
-  { id: 'running', name: 'Corrida' },
+  { id: 'liviano', name: 'Liviano' },
+  { id: 'elongacion', name: 'Elongación' },
+  { id: 'ritmo_continuo', name: 'Ritmo continuo' },
+  { id: 'velocidad_tiempo', name: 'Velocidad en tiempo' },
+  { id: 'velocidad_distancia', name: 'Velocidad en distancia' },
 ];
 
 export const MUSCLE_GROUP_OPTIONS = [

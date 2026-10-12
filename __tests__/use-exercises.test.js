@@ -16,10 +16,20 @@ jest.mock('../lib/query-client.js', () => ({
 }));
 
 import { EXERCISE_KIND_OPTIONS, MUSCLE_GROUP_OPTIONS } from '../hooks/use-exercises.js';
+import { EXERCISE_KINDS } from '../utils/exercise-field-matrix.js';
 
 describe('EXERCISE_KIND_OPTIONS', () => {
   test('cubre los 5 tipos hoja', () => {
-    expect(EXERCISE_KIND_OPTIONS.map((o) => o.id).sort()).toEqual(['cruising', 'elongation', 'jogging', 'running', 'walking']);
+    expect(EXERCISE_KIND_OPTIONS.map((o) => o.id).sort()).toEqual([
+      'elongacion', 'liviano', 'ritmo_continuo', 'velocidad_distancia', 'velocidad_tiempo',
+    ]);
+  });
+
+  // Esta constante NO es la que usa el selector de tipo (ese itera
+  // EXERCISE_KINDS), pero si se desincroniza el form igual no falla — solo
+  // muestra otra lista. Este test es la red que detecta que se desincronizó.
+  test('está en sync con EXERCISE_KINDS, la fuente del selector de tipo', () => {
+    expect(EXERCISE_KIND_OPTIONS.map((o) => o.id).sort()).toEqual([...EXERCISE_KINDS].sort());
   });
 });
 
