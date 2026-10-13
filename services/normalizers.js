@@ -1038,3 +1038,105 @@ export function toSessionMessagePayload({ type, recipientMode, recipientUserIds,
   if (replyToMessageId != null) payload.reply_to_message_id = Number(replyToMessageId);
   return payload;
 }
+
+// --- Comparación planificado vs realizado (Gap 35) ---------------------------
+// Contrato del change comparacion-planificado-realizado del backend. Los
+// objetivos y desviaciones que no aplican vienen null y se conservan null: el
+// front los muestra como "sin objetivo", nunca como 0.
+
+const idOrNull = (value) => (value == null ? null : String(value));
+const numOrNull = (value) => (value == null ? null : Number(value));
+
+function toComparisonTotals(dto) {
+  return {
+    plannedSets: dto?.planned_sets ?? 0,
+    completedSets: dto?.completed_sets ?? 0,
+    skippedSets: dto?.skipped_sets ?? 0,
+    unregisteredSets: dto?.unregistered_sets ?? 0,
+    plannedDurationMs: numOrNull(dto?.planned_duration_ms),
+    actualDurationMs: dto?.actual_duration_ms ?? 0,
+    plannedDistanceM: numOrNull(dto?.planned_distance_m),
+    actualDistanceM: dto?.actual_distance_m ?? 0,
+  };
+}
+
+function toComparisonHeader(dto) {
+  return {
+    sessionInstanceId: String(dto.session_instance_id),
+    date: dto.date,
+    sessionName: dto.session_name ?? '',
+    teamId: idOrNull(dto.team_id),
+    teamName: dto.team_name ?? null,
+    groupId: idOrNull(dto.group_id),
+    groupName: dto.group_name ?? null,
+    isPresencial: Boolean(dto.is_presencial),
+    kinds: dto.kinds ?? [],
+    status: dto.status ?? 'none',
+    compliancePct: dto.compliance_pct ?? 0,
+  };
+}
+
+function toComparisonSetModel(dto) {
+  return {
+    setNumber: dto.set_number,
+    status: dto.status,
+    extra: Boolean(dto.extra),
+    feedbackId: idOrNull(dto.feedback_id),
+    durationMs: numOrNull(dto.duration_ms),
+    distanceMeters: numOrNull(dto.distance_meters),
+    paceSecPerKm: numOrNull(dto.pace_sec_per_km),
+    rpe: numOrNull(dto.rpe),
+    compliancePct: numOrNull(dto.compliance_pct),
+    deviationDurationMs: numOrNull(dto.deviation_duration_ms),
+    deviationDistanceM: numOrNull(dto.deviation_distance_m),
+  };
+}
+
+function toComparisonExerciseModel(dto) {
+  return {
+    exerciseInstanceId: String(dto.exercise_instance_id),
+    name: dto.name ?? '',
+    role: dto.role ?? null,
+    kind: dto.kind ?? null,
+    intensity: dto.intensity ?? null,
+    hasTarget: Boolean(dto.has_target),
+    planned: {
+      sets: dto.planned?.sets ?? 1,
+      minutes: numOrNull(dto.planned?.minutes),
+      distanceM: numOrNull(dto.planned?.distance_m),
+      speedKph: numOrNull(dto.planned?.speed_kph),
+      paceSecPerKm: numOrNull(dto.planned?.pace_sec_per_km),
+    },
+    sets: (dto.sets ?? []).map(toComparisonSetModel),
+    completedSets: dto.completed_sets ?? 0,
+    skippedSets: dto.skipped_sets ?? 0,
+    compliancePct: dto.compliance_pct ?? 0,
+  };
+}
+
+export function toSessionComparisonModel(dto) {
+  if (!dto) return null;
+  return {
+    ...toComparisonHeader(dto),
+    athleteUserId: idOrNull(dto.athlete_user_id),
+    startedAt: dto.started_at ?? null,
+    endedAt: dto.ended_at ?? null,
+    exercises: (dto.exercises ?? []).map(toComparisonExerciseModel),
+    totals: toComparisonTotals(dto.totals),
+  };
+}
+
+export function toComparisonListModel(dto) {
+  if (!dto) return null;
+  return {
+    dateFrom: dto.date_from,
+    dateTo: dto.date_to,
+    // En la lista los totales vienen aplanados en cada sesión.
+    sessions: (dto.sessions ?? []).map((s) => ({ ...toComparisonHeader(s), totals: toComparisonTotals(s) })),
+    summary: {
+      sessionsPlanned: dto.summary?.sessions_planned ?? 0,
+      sessionsWithActivity: dto.summary?.sessions_with_activity ?? 0,
+      avgCompliancePct: dto.summary?.avg_compliance_pct ?? 0,
+    },
+  };
+}
