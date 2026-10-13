@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
@@ -25,7 +25,7 @@ import { isWeb } from '../../utils/platform.js';
 //
 // Navegación por teclado: solo web, donde tiene sentido (flechas del teclado
 // físico). En nativo el acceso es por touch y las flechas no aplican.
-export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
+export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} }) {
   const colors = useThemeColors();
   const refs = useRef({});
 
@@ -92,7 +92,12 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
             tabIndex={isActive ? 0 : -1}
             testID={`${scope}-${tab.id}`}
           >
-            <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
+            <View className="relative" nativeID={`${scope}-${tab.id}-icon-wrapper`} testID={`${scope}-${tab.id}-icon-wrapper`}>
+              <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
+              {badges[tab.id] && (
+                <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID={`${scope}-${tab.id}-badge`} testID={`${scope}-${tab.id}-badge`} />
+              )}
+            </View>
             <Text
               className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
               nativeID={`${scope}-${tab.id}-label`}
