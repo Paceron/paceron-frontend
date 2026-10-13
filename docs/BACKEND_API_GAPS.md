@@ -1487,6 +1487,72 @@ complete mejor la trayectoria; el ganador se calcula automático y recibe un tro
     `POST /teams/{id}/competitions` del punto 2 — el frontend lo pide en el formulario de
     creación, no lo infiere.
 
+**Actualización 2026-10-14 (2) — implementación real reportada por backend, confirmaciones y
+correcciones antes de construir el frontend de este gap:**
+
+**Confirmado sin cambios:** creación (`trainer`→`active` directo, `runner`→`pending_approval`),
+`PATCH /approve`/`/reject` con `{reason?}`, verificación de ruta 100% server-side sin umbral
+mínimo (Haversine + `acceptance_radius_meters`), `competition_id` opcional en `POST
+/session-instances/:id/runner` (400 con mensaje específico si la competencia no está `active`, el
+caller no es participante, o el instante cae fuera de `[start_at, end_at]`), trofeo + logros al
+cerrar con ganador, `has_unseen` embebido en `GET /teams/{id}/competitions` (por `team_id`, el OR
+entre equipos lo sigue haciendo el frontend — Gap 34).
+
+**Correcciones al contrato de arriba:**
+
+17. **Cancelación — el punto 13 estaba mal.** No es `PATCH .../cancel` con status `'cancelled'`,
+    ni "cualquier rol, también activa". La implementación real: **`DELETE /competitions/{id}/cancel`**,
+    **solo el corredor que propuso** la competencia, **solo mientras está `pending_approval`** —
+    borrado físico, sin fila que quede en `'cancelled'`. **Una competencia `active` NO tiene forma
+    de cancelarse, para ningún rol.** El único camino para terminarla antes de tiempo es que el
+    entrenador la cierre (punto 18) — y el cierre exige que `end_at` ya haya pasado. Se retira
+    `status='cancelled'` del enum del modelo (punto 1) — no existe en la práctica, al cancelar la
+    fila se borra. **Impacto en frontend:** el botón "Cancelar" solo aparece en filas
+    `pending_approval` del propio proponente corredor; no hay ninguna acción de cancelación para
+    una competencia `active`, sea quien sea.
+18. **Cierre — pieza nueva, no estaba en el pedido original.** `PATCH /competitions/{id}/close`
+    — solo el entrenador creador o el owner, solo con `status='active'`, y **solo si `end_at` ya
+    pasó** (400 si no). Es el único mecanismo de cierre — no hay job automático (deuda conocida,
+    aceptada). Al cerrar: `status='finished'`, `finished_at`, y se calculan los ganadores.
+    **Impacto en frontend:** agregar un botón "Cerrar" visible para el entrenador en filas
+    `active` cuya `end_at` ya pasó.
+19. **`winner_user_id` (singular) está mal — es `winner_user_ids: []` (array).** Empate exacto en
+    el valor ganador (métrica) o en el `%` de coincidencia + tiempo (ruta) → **todos los que
+    empataron ganan**, no se desempata más allá de lo ya descripto en los puntos 9 (leaderboard) y
+    12 (ruta) de arriba. Sin intentos finalizados contra la competencia → `finished` con
+    `winner_user_ids: []` (vacío, no `null`). Se corrige el modelo del punto 1:
+    `winner_user_id?` → `winner_user_ids: []`. Cada ganador recibe su propia estampa (plural
+    también en la emisión de trofeos del punto 8).
+20. **WS — casing mixto entre los dos eventos, documentado para no asumir uniformidad.**
+    `update:competition_progress` (al terminar un intento con `competition_id`) → payload
+    `{competition_id, user_id}` **snake_case**. `control:competition_finished` (al cerrarse con
+    ganador) → payload `{competitionId}` **camelCase**. No es un error — es así como quedó
+    implementado — pero quien cablee el listener (Spec 4b, ya que el WS solo importa para
+    `type='route'` corrido como sesión en vivo) tiene que leer cada payload con el casing que le
+    corresponde, no asumir que los dos son iguales.
+21. **Preguntas abiertas, pendientes de confirmar antes de construir la Spec 4b (no bloquean la
+    4a, que es CRUD/moderación sin progreso en vivo):**
+    - El campo de detalle (punto 15 arriba) se llama `progress`, no `participants` como se había
+      pedido — ¿trae el mismo shape de fila que el leaderboard (`user_id, name, avatar_url, value,
+      rank`), o es distinto? El reporte solo confirma el *contenido* (acumulado de la métrica, o
+      % de coincidencia) sin confirmar la forma exacta del array.
+    - ¿El campo `name` (punto 16) ya se implementó, o el backend sigue generando
+      `"Competencia N"` automático para la estampa? El reporte de implementación no lo menciona
+      en la validación de `POST /teams/{id}/competitions`, así que probablemente todavía no —
+      confirmar antes de que el formulario de creación dependa de mandarlo.
+    - ¿`GET /teams/{id}/competitions` envuelve la lista en `{data: [...], has_unseen}`, o
+      `has_unseen` es un campo sibling a otra forma de respuesta? (mismo patrón de envoltura que
+      ya confirmó el Gap 31 para catálogo/estampas — confirmar que acá es igual).
+22. **Alcance de frontend dividido en Spec 4a/4b a partir de este hallazgo:** `competition_id`
+    aplica igual para `type='metric'` que para `type='route']` (punto 10/confirmado arriba) — una
+    competencia por métrica **tampoco** suma progreso sin que el corredor arranque su
+    entrenamiento marcado con ese `competition_id`, y eso requiere tocar el flujo de
+    pre-start/Play del corredor (`session-pre-start-screen.jsx` o equivalente). Por eso esa pieza
+    se mueve entera a la Spec 4b (que ya iba a tocar session-runtime para el tipo ruta) — la Spec
+    4a construye CRUD + aprobación + cancelación + cierre + listado/detalle sin esa integración:
+    una competencia de tipo métrica se puede crear/aprobar/ver en 4a, pero su progreso queda en
+    cero hasta que 4b cablee el intake de sesión. Interinidad aceptada a propósito, no es un bug.
+
 ## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
 
 **Contexto.** Rachas, logros/trofeos y competencias necesitan un **mismo** mecanismo de "hay algo
