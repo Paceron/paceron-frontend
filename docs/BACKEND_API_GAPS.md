@@ -1397,14 +1397,14 @@ complete mejor la trayectoria; el ganador se calcula automático y recibe un tro
 
 **Pedido concreto** (shapes en snake_case):
 
-1. **Modelo** `competition`: `{id, team_id, group_id?, type: 'metric'|'route', metric? (type=metric),
-   start_at, end_at? (type=metric), route? (GeoJSON LineString, type=route),
+1. **Modelo** `competition`: `{id, name, team_id, group_id?, type: 'metric'|'route', metric?
+   (type=metric), start_at, end_at? (type=metric), route? (GeoJSON LineString, type=route),
    acceptance_radius_meters? (type=route), participant_user_ids: [], created_by_user_id,
    created_by_role: 'trainer'|'runner', status:
    'pending_approval'|'active'|'finished'|'rejected'|'cancelled', approved_by_user_id?,
    rejection_reason?, winner_user_id?, finished_at?}`. Definido 100% por backend — el frontend
    consume este shape, no lo diseña. (`status='cancelled'` sumado en la actualización de abajo —
-   ver punto 13.)
+   ver punto 13. `name` sumado en la corrección del punto 16, abajo.)
 2. `POST /teams/{id}/competitions` → crea. `created_by_role='runner'` → `status='pending_approval'`;
    `trainer` → `status='active'` directo.
 3. `PATCH /competitions/{id}/approve` / `/reject` (solo entrenador del equipo) — `reject` con body
@@ -1478,6 +1478,14 @@ complete mejor la trayectoria; el ganador se calcula automático y recibe un tro
       en mapa) — no bloquea el tipo `metric`, que es autosuficiente con esto.
     - Autorización de `GET /competitions/{id}`: mismo criterio dual ya usado en el resto de
       endpoints de equipo (miembro activo del roster, u owner del team) — no solo el creador.
+16. **Corrección 2026-10-14 — falta `name` en el modelo.** El punto 1 no incluía un campo de
+    nombre, pero una estampa de trofeo de competencia (Gap 31, `type='competition'`) necesita un
+    `source_name` mostrable en la vitrina, y la lista/detalle de competencias necesitan un título
+    para cada fila — no alcanza con "competencia de distancia del 1 al 7 de octubre" armado del
+    lado cliente, el creador tiene que poder titularla (ej. "Desafío de octubre", mencionado como
+    ejemplo en el doc fuente). Se agrega `name` (string, obligatorio) al modelo del punto 1 y a
+    `POST /teams/{id}/competitions` del punto 2 — el frontend lo pide en el formulario de
+    creación, no lo infiere.
 
 ## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
 
