@@ -114,13 +114,15 @@ function buildSession(fx) {
     if (ex.minutes) totals.planned_duration_ms = (totals.planned_duration_ms ?? 0) + planned * ex.minutes * 60000;
     if (ex.distance_m) totals.planned_distance_m = (totals.planned_distance_m ?? 0) + planned * ex.distance_m;
     if (ex.kind && !kinds.includes(ex.kind)) kinds.push(ex.kind);
+    // Las extra suman tiempo y distancia, pero no cuentan como completadas ni
+    // salteadas (se comparan contra lo planificado), igual que el backend.
     sets.forEach((s) => {
       if (s.status === 'completed') {
-        totals.completed_sets += 1;
+        if (!s.extra) totals.completed_sets += 1;
         totals.actual_duration_ms += s.duration_ms ?? 0;
         totals.actual_distance_m += s.distance_meters ?? 0;
       } else if (s.status === 'skipped') {
-        totals.skipped_sets += 1;
+        if (!s.extra) totals.skipped_sets += 1;
       } else if (!s.extra) {
         totals.unregistered_sets += 1;
       }
@@ -130,8 +132,8 @@ function buildSession(fx) {
       has_target: Boolean(ex.minutes || ex.distance_m),
       planned: { sets: planned, minutes: ex.minutes, distance_m: ex.distance_m, speed_kph: ex.speed_kph, pace_sec_per_km: ex.speed_kph ? Math.round((3600 / ex.speed_kph) * 10) / 10 : null },
       sets,
-      completed_sets: sets.filter((s) => s.status === 'completed').length,
-      skipped_sets: sets.filter((s) => s.status === 'skipped').length,
+      completed_sets: sets.filter((s) => !s.extra && s.status === 'completed').length,
+      skipped_sets: sets.filter((s) => !s.extra && s.status === 'skipped').length,
       compliance_pct: pct(exRatio / planned),
     };
   });

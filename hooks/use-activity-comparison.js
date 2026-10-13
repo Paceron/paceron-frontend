@@ -6,6 +6,9 @@ import { toComparisonListModel, toSessionComparisonModel } from '../services/nor
 // Estado de servidor de la comparación planificado vs realizado (Gap 35).
 // Rango y filtros van en la key: cada combinación se cachea aparte.
 
+// Un 4xx (rango inválido, sesión ajena o inexistente) no mejora reintentando.
+const retryUnlessClientError = (failureCount, error) => !(error?.status >= 400 && error?.status < 500) && failureCount < 2;
+
 export const ACTIVITY_COMPARISON_KEYS = {
   list: (userId) => ['activity-comparison', 'list', userId],
   session: (userId) => ['activity-comparison', 'session', userId],
@@ -17,6 +20,7 @@ export function useComparisonList({ dateFrom, dateTo, teamId, kind, enabled = tr
     queryKey: [...ACTIVITY_COMPARISON_KEYS.list(userId), dateFrom, dateTo, teamId ?? 'all', kind ?? 'all'],
     queryFn: () => getComparisons({ dateFrom, dateTo, teamId, kind }).then(toComparisonListModel),
     enabled: enabled && Boolean(userId) && Boolean(dateFrom) && Boolean(dateTo),
+    retry: retryUnlessClientError,
   });
   return {
     list: query.data ?? null,
@@ -35,6 +39,7 @@ export function useSessionComparison(sessionInstanceId, { athleteUserId, enabled
     enabled: enabled && Boolean(userId) && Boolean(sessionInstanceId),
     // Al terminar una ejecución se abre con lo recién sincronizado.
     staleTime: 0,
+    retry: retryUnlessClientError,
   });
   return {
     comparison: query.data ?? null,

@@ -63,6 +63,9 @@ describe('activity comparison mock', () => {
     expect(intervals.sets[3].compliancePct).toBeNull();
     expect(intervals.sets[1].compliancePct).toBe(75);
     expect(intervals.compliancePct).toBe(58.3);
+    expect(intervals.completedSets).toBe(2); // la extra no cuenta
+    expect(session.totals.completedSets).toBe(3); // elongación + 2 de 400 m
+    expect(session.totals.actualDurationMs).toBe(240000 + 96000 + 90000 + 95000); // la extra sí suma tiempo
     expect(session.exercises[0].hasTarget).toBe(false);
   });
 
