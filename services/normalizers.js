@@ -1100,3 +1100,15 @@ export function toStampModel(dto) {
     count: dto.count,
   };
 }
+
+// Leaderboard de equipo (Gap 32). `value` siempre número plano -- el
+// formateo por métrica vive en utils/leaderboard-metric-format.js, nunca
+// acá.
+export function toLeaderboardModel(dto) {
+  if (!dto) return null;
+  return {
+    rows: (dto.rows ?? []).map((r) => ({ userId: r.user_id, name: r.name, avatarUrl: r.avatar_url ?? null, value: r.value, rank: r.rank })),
+    viewerRank: dto.viewer_rank ? { userId: dto.viewer_rank.user_id, value: dto.viewer_rank.value, rank: dto.viewer_rank.rank } : null,
+    record: dto.record ? { userId: dto.record.user_id, name: dto.record.name, value: dto.record.value, achievedAt: dto.record.achieved_at } : null,
+  };
+}
