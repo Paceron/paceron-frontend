@@ -1632,6 +1632,46 @@ Spec 4b (`type='route'`), antes de escribir una sola línea de UI. Preguntas nue
     intentos), o si hay algún evento intermedio. Afecta si la pantalla en vivo de ruta muestra solo
     la trayectoria propia, o también la de otros corriendo en simultáneo.
 
+**Actualización 2026-10-14 (5) — resueltos los 7 puntos de arriba, consenso con backend, confirmado
+desde frontend. Ronda backend `competencias-ruta-intake` (3-4 tasks) en curso, frontend construye
+en paralelo contra mocks mientras tanto — no bloquea:**
+
+26. **Resuelto — instancia sintética por competencia (hipótesis a, ganó por reuso).** Al crear una
+    competencia `type='route'`, backend auto-crea **una sola** `session_instance` sintética
+    (sin `group_id`/día de calendario, no aparece en ningún listado de calendario existente),
+    con **un ejercicio sintético** ("Corrida"). Todos los participantes comparten esa instancia.
+    **Intake nuevo: `POST /competitions/{id}/attempts`** — valida `active` + caller participante +
+    sin intento previo, y hace el `POST .../runner` internamente. **Impacto en frontend:** el
+    botón "Correr esta trayectoria" de la pestaña Competencias llama a este único endpoint nuevo;
+    de ahí en adelante reusa el flujo de pre-start/en vivo/resultado **tal cual existe hoy**, sin
+    tocar nada de `session-runtime` salvo el punto de entrada. Canal WS se hereda
+    (`session:{instanceId}`, nueva rama de autorización del lado backend).
+27. **Resuelto — cierre manual sin `end_at`.** Para `type='route'`, `PATCH /competitions/{id}/close`
+    exige solo creador-entrenador/owner + `status=active` (sin el chequeo de fecha que sí aplica a
+    `type='metric'`).
+28. **Resuelto — sin reintentos en v1.** Un intento por corredor por ruta (índice único
+    `(session_instance_id, athlete_user_id)` en `runner_session`), un segundo intento devuelve
+    `400`. **Impacto en frontend:** copy de resultado es "tu intento" (no "tu mejor intento"); el
+    botón "Correr esta trayectoria" desaparece/deshabilita una vez que el corredor ya tiene un
+    intento registrado contra esa competencia. El tie-break por tiempo (punto 12 arriba) sigue
+    vivo entre corredores distintos — solo el caso "mismo corredor, dos intentos" queda sin efecto.
+29. (ya resuelto arriba, sin cambios)
+30. **Resuelto — límites de ruta:** máx **500 vértices** por LineString, máx **100 km** de largo
+    total (Haversine sumado), validados en `Create` → `400` si excede. **Ruta inmutable** una vez
+    creada la competencia — para cambiarla, cancelar la propuesta (solo posible en
+    `pending_approval`, punto 17) y crear otra. **Impacto en frontend:** el picker de mapa de la
+    Spec 4c valida estos dos límites client-side antes de permitir enviar (UX, no reemplaza la
+    validación real del backend).
+31. **Resuelto — radio de aceptación:** rango válido `[5, 500]` metros (`400` fuera de rango).
+    **Default sugerido del formulario: 50m** (decisión de frontend, el backend solo acota el
+    rango).
+32. **Resuelto — sin WS en vivo durante el intento, v1.** Único evento en vivo es
+    `update:competition_progress` al TERMINAR el intento + `control:competition_finished` al
+    cierre. Mientras un corredor corre, el resto no ve su avance (sin leaderboard en vivo
+    intermedio por ruta) — **impacto en frontend:** la pantalla en vivo de un intento de ruta
+    (Spec 4c) muestra solo la trayectoria propia superpuesta a la ruta marcada, no la de otros
+    participantes corriendo en simultáneo. Queda anotado como mejora futura, no se construye ahora.
+
 ## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
 
 **Contexto.** Rachas, logros/trofeos y competencias necesitan un **mismo** mecanismo de "hay algo
