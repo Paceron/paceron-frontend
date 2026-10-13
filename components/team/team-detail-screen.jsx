@@ -36,6 +36,7 @@ import { MoveRunnerModal } from './move-runner-modal.jsx';
 import { LeaveGroupModal } from './leave-group-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TeamRequestsTab } from './team-requests-tab.jsx';
+import { LeaderboardTab } from './leaderboard-tab.jsx';
 import { TeamSubscriptionPendingBanner } from './team-subscription-pending-banner.jsx';
 import { useTeamSubscription } from '../../hooks/use-team-subscription.js';
 
@@ -71,6 +72,7 @@ const TABS = [
   { id: 'general', label: 'Información general y estadísticas', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
   { id: 'grupos', label: 'Grupos', icon: 'account-group' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: 'podium-gold' },
   { id: 'solicitudes', label: 'Solicitudes', icon: 'account-question-outline' },
 ];
 
@@ -779,6 +781,7 @@ function TeamDetailScreenContent({ teamId }) {
     queryClient.invalidateQueries({ queryKey: ['group-users'] }),
     queryClient.invalidateQueries({ queryKey: ['join-requests-team', teamId] }),
     queryClient.invalidateQueries({ queryKey: ['users-batch', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['leaderboard', teamId] }),
   ]));
 
   // Sin la opción sintética "Todos los grupos" — InlinePicker ya resuelve
@@ -992,6 +995,7 @@ function TeamDetailScreenContent({ teamId }) {
 
   const visibleTabs = TABS.filter((tab) => (tab.id !== 'grupos' || isTrainerView) && (tab.id !== 'solicitudes' || canDeleteTeam));
   const solicitudesContent = canDeleteTeam && <TeamRequestsTab teamId={team.id} />;
+  const leaderboardContent = <LeaderboardTab teamId={team.id} />;
 
   return (
     <View className="relative flex-1" nativeID="team-detail-screen-root" ref={runnerMenuContainerRef} testID="team-detail-screen-root">
@@ -1097,6 +1101,7 @@ function TeamDetailScreenContent({ teamId }) {
         {activeTab === 'general' && generalContent}
         {activeTab === 'corredores' && corredoresContent}
         {activeTab === 'grupos' && gruposContent}
+        {activeTab === 'leaderboard' && leaderboardContent}
         {activeTab === 'solicitudes' && solicitudesContent}
       </View>
 
