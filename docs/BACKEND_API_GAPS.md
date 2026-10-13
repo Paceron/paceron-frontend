@@ -1203,3 +1203,51 @@ alcanza con `locationValue === null`, que también es el resultado de un "Quitar
 deliberado) porque `toUpdatePayload` manda el set completo y sin eso un simple cambio de nombre
 hubiera borrado la dirección existente; `toAddressPayload` (equipos) ya omite campos vacíos por su
 cuenta, así que ese caso no necesitó el mismo tracking.
+
+## Gap 35 — comparación planificado vs realizado: objetivos de cada ejercicio y cumplimiento por sesión y por rango [RESUELTO del lado backend, rama `feature/comparacion-planificado-realizado`]
+
+> Numeración: los Gaps 30-34 los usa el backend para gamificación (`docs/CATALOGO_Y_CALENDARIO.md` §8.14 de `paceron-backend`); se saltean acá para no pisarlos.
+
+**Contexto.** HU "Comparar planificado vs realizado": el corredor quiere ver si cumplió lo que tenía planificado, sesión por sesión y en un rango de fechas, con un % de cumplimiento, un gráfico, filtros por tipo y período, y exportación a PDF y CSV. El front no puede armarlo solo:
+
+1. `GET /session-instances/:id` trae de cada ejercicio solo `repeat_count`, `role` y `rest_minutes`. Los objetivos (`minutes`, `distance_m`, `speed_kph`, `kind`, `intensity`) viven en `exercise_instances` y no tienen endpoint para el corredor.
+2. El historial (`/users/{id}/workout-feedback-history`) trae lo realizado pero no lo planificado, y no incluye las sesiones que no se hicieron.
+3. Cruzar las dos cosas tiene trampas de datos: `workout_feedback.assigned_exercise_id` es el `exercise_instance_id` (no el id de `session_exercise_instances`, aunque en 62 de 95 filas coinciden por casualidad), las filas anteriores al 2026-09-30 tienen `set_number` en base 0, y una misma serie puede tener una fila del corredor y otra del entrenador.
+
+**Contrato** (change de OpenSpec `comparacion-planificado-realizado`):
+
+```
+GET /api/v1/activities/comparison/:sessionInstanceId?athlete_user_id=
+→ 200 { session_instance_id, athlete_user_id, date, session_name, team_id, team_name,
+        group_id, group_name, is_presencial, started_at, ended_at,
+        status (finished|wip|interrupted|none), kinds[],
+        exercises: [{ exercise_instance_id, name, role, kind, intensity, has_target,
+                      planned: { sets, minutes, distance_m, speed_kph, pace_sec_per_km },
+                      sets: [{ set_number, status (completed|skipped|unregistered), extra,
+                               feedback_id, duration_ms, distance_meters, pace_sec_per_km,
+                               rpe, compliance_pct, deviation_duration_ms, deviation_distance_m }],
+                      completed_sets, skipped_sets, compliance_pct }],
+        totals: { planned_sets, completed_sets, skipped_sets, unregistered_sets,
+                  planned_duration_ms, actual_duration_ms, planned_distance_m, actual_distance_m },
+        compliance_pct }
+→ 400 INVALID_QUERY · 401 · 403 · 404 · 500 ("error interno")
+
+GET /api/v1/activities/comparison?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&team_id=&group_id=&kind=&athlete_user_id=
+→ 200 { date_from, date_to,
+        sessions: [{ session_instance_id, date, session_name, team_id, team_name, group_id,
+                     group_name, is_presencial, kinds[], status, planned_sets, completed_sets,
+                     skipped_sets, unregistered_sets, planned_duration_ms, actual_duration_ms,
+                     planned_distance_m, actual_distance_m, compliance_pct }],
+        summary: { sessions_planned, sessions_with_activity, avg_compliance_pct } }
+→ 400 INVALID_QUERY (rango faltante, invertido, > 366 días o posterior a hoy; kind desconocido;
+  group_id sin team_id; otro atleta sin team_id) · 401 · 403 · 500
+```
+
+Reglas que importan del lado del front:
+
+- **Cumplimiento por serie, con tope de 100%:** con minutos, duración (activa si existe) / planificada; si no, distancia / planificada; sin objetivo, 100% si se completó. Salteada o sin registro: 0%. Ejercicio y sesión: promedio de sus series planificadas, a 1 decimal. Las series de más vienen con `extra: true` y `compliance_pct: null`.
+- `deviation_*` y `planned_duration_ms`/`planned_distance_m` son `null` cuando no hay objetivo de ese tipo: se muestran como "sin objetivo", nunca como 0.
+- La lista incluye los días de entrenamiento donde el corredor era miembro **en esa fecha** aunque no haya registrado nada (0%, `status: none`), más las sesiones con feedback suyo que no tengan un día así.
+- Sin `athlete_user_id` compara al usuario autenticado. Un entrenador puede pasar el de un corredor suyo (en la lista, con `team_id` de un equipo propio).
+
+**Impacto en frontend:** `services/activity-comparison.js`, `hooks/use-activity-comparison.js`, pantallas `/training-comparison` y `/training-comparison/session` (spec `docs/superpowers/specs/2026-10-13-training-comparison-design.md`). Entradas: botón en el historial, opción en el menú de cada fila y "Ver comparación" al terminar la ejecución.
