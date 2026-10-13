@@ -1,0 +1,96 @@
+// Formato de los KPIs del dashboard. Un solo lugar decide cómo se escribe cada
+// magnitud, porque el mismo número se muestra en varias piezas (tile, tooltip,
+// tabla del radar) y dos copias del formato divergen apenas tocan un borde.
+//
+// Dos reglas del design que se aplican acá:
+//
+// D4 — la unidad NO es un sufijo fijo del componente: viene del bloque `units`
+// de la respuesta, y la misma magnitud se expresa distinto según el período
+// (un tiempo de 4 minutos no se muestra igual que uno de 40). Además el front
+// no inventa ni convierte unidades: los valores crudos llegan en la unidad que
+// el backend declara y el front solo los escribe.
+//
+// D5 — `null` es "—", NUNCA 0. `Number(null) === 0` pasa un `Number.isFinite`,
+// y un 0 de cumplimiento se lee como "no cumplió nada" cuando en realidad no se
+// midió. Mismo criterio que formatArs en utils/currency.js.
+
+import { formatClock } from './time.js';
+
+export const EMPTY_METRIC = '—';
+
+// Typographic minus (U+2212), no el guion: el guion es más corto que el signo
+// más y alinea mal el delta contra el resto de los números del tile.
+const MINUS = '−';
+
+// El descarte explícito de null/undefined/'' es necesario porque Number(null) y
+// Number('') dan 0, que es finito. Un string numérico sí se acepta: el mismo
+// criterio de utils/currency.js, para no perder el dato si un normalizer
+// devolvió texto.
+function toNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+const formatters = new Map();
+function decimal(n, maxFractionDigits, minimumFractionDigits = 0) {
+  const key = `${maxFractionDigits}:${minimumFractionDigits}`;
+  if (!formatters.has(key)) {
+    formatters.set(
+      key,
+      new Intl.NumberFormat('es-AR', {
+        maximumFractionDigits: maxFractionDigits,
+        minimumFractionDigits,
+      })
+    );
+  }
+  const text = formatters.get(key).format(n);
+  // Intl con es-AR usa el guion normal para el negativo; lo cambiamos por el
+  // typográfico para que todos los deltas del app se vean igual.
+  return text.replace('-', MINUS);
+}
+
+// Las únicas unidades del contrato. `time` y `best_time` llegan en
+// milisegundos SIEMPRE y se muestran como reloj (m:ss o h:mm:ss según la
+// duración — de ahí la conversión de D4): no existe una clave `s` ni `min` que
+// el backend pueda declarar, así que no hay nada que convertir a otra unidad.
+const UNIT_FORMATTERS = {
+  'km/h': (n) => `${decimal(n, 1)} km/h`,
+  ms: (n) => formatClock(n),
+  m: (n) => `${decimal(n, 0)} m`,
+  '%': (n) => `${decimal(n, 1)} %`,
+  pp: (n) => `${decimal(n, 1)} pp`,
+};
+
+// Magnitud con su unidad. `null`/undefined/''/NaN → "—", sin importar la
+// unidad. Una unidad que el backend agregue después del contrato cae en el
+// default (número + sufijo crudo): muestra algo honesto en vez de tirar.
+export function formatMetric(value, unit) {
+  const n = toNumber(value);
+  if (n === null) return EMPTY_METRIC;
+  const formatter = UNIT_FORMATTERS[unit];
+  if (formatter) return formatter(n);
+  const suffix = unit == null || unit === '' ? '' : ` ${unit}`;
+  return `${decimal(n, 2)}${suffix}`;
+}
+
+// Igual que formatMetric pero con el signo explícito en los positivos, para
+// donde el signo es parte del dato y no un detalle: el delta de ritmo y la
+// diferencia de cumplimiento (que va en puntos porcentuales, D6 — "−6 pp" y no
+// un "−9,4 %" relativo, que es otro número y confunde).
+export function formatDelta(value, unit) {
+  const n = toNumber(value);
+  if (n === null) return EMPTY_METRIC;
+  const formatted = formatMetric(n, unit);
+  return n > 0 ? `+${formatted}` : formatted;
+}
+
+// ¿El valor es un número que se puede mostrar? Lo usan las piezas que pintan
+// algo en función del dato (flecha de tendencia, gráfico) para no dibujar con
+// un número que en realidad no existe.
+export function hasMetric(value) {
+  return toNumber(value) !== null;
+}
