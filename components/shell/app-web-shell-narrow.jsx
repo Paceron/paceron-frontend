@@ -16,6 +16,7 @@ import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
+import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 
 const ANIMATION_CONFIG = { duration: 280, easing: Easing.out(Easing.cubic) };
 
@@ -68,6 +69,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
   const myInvitationsCount = myInvitations.length;
   const pendingRequestsCount = usePendingRequestsCount(activeRole === 'trainer');
   const notificationsBadgeCount = activeRole === 'trainer' ? pendingRequestsCount : myInvitationsCount;
+  const { hasUnseen: gamificationHasUnseen } = useGamificationBadge();
 
   const translateX = useSharedValue(-width);
 
@@ -165,7 +167,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                   <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-settings-label" testID="web-narrow-drawer-settings-label">Ajustes</Text>
                 </Pressable>
                 <Pressable
-                  className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                  className="flex-1 flex-row items-center justify-center gap-2 border-r border-slate-200 py-2.5 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
                   nativeID="web-narrow-drawer-notifications-row"
                   onPress={() => goTo('/notifications')}
                   testID="web-narrow-drawer-notifications-row"
@@ -177,6 +179,20 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                     )}
                   </View>
                   <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-notifications-label" testID="web-narrow-drawer-notifications-label">Notificaciones</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                  nativeID="web-narrow-drawer-achievements-row"
+                  onPress={() => goTo('/achievements')}
+                  testID="web-narrow-drawer-achievements-row"
+                >
+                  <View className="relative" nativeID="web-narrow-drawer-achievements-icon-wrapper" testID="web-narrow-drawer-achievements-icon-wrapper">
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={18} />
+                    {gamificationHasUnseen && (
+                      <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-narrow-drawer-achievements-badge" testID="web-narrow-drawer-achievements-badge" />
+                    )}
+                  </View>
+                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-achievements-label" testID="web-narrow-drawer-achievements-label">Logros</Text>
                 </Pressable>
               </View>
             )}

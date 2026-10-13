@@ -16,6 +16,7 @@ import { RoleSwitchToggle } from '../profile/role-switch-toggle.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
+import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -77,6 +78,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
   const myInvitationsCount = myInvitations.length;
   const pendingRequestsCount = usePendingRequestsCount(activeRole === 'trainer');
   const notificationsBadgeCount = activeRole === 'trainer' ? pendingRequestsCount : myInvitationsCount;
+  const { hasUnseen: gamificationHasUnseen } = useGamificationBadge();
 
   const translateX = useSharedValue(-DRAWER_WIDTH);
 
@@ -184,7 +186,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                     <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-settings-label" testID="mobile-drawer-settings-label">Ajustes</Text>
                   </Pressable>
                   <Pressable
-                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                    className="flex-1 flex-row items-center justify-center gap-2 border-r border-slate-200 py-2.5 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
                     nativeID="mobile-drawer-notifications-row"
                     onPress={() => goTo('/notifications')}
                     testID="mobile-drawer-notifications-row"
@@ -196,6 +198,20 @@ function NavigationDrawer({ open, pathname, onClose }) {
                       )}
                     </View>
                     <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-notifications-label" testID="mobile-drawer-notifications-label">Notificaciones</Text>
+                  </Pressable>
+                  <Pressable
+                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                    nativeID="mobile-drawer-achievements-row"
+                    onPress={() => goTo('/achievements')}
+                    testID="mobile-drawer-achievements-row"
+                  >
+                    <View className="relative" nativeID="mobile-drawer-achievements-icon-wrapper" testID="mobile-drawer-achievements-icon-wrapper">
+                      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={18} />
+                      {gamificationHasUnseen && (
+                        <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="mobile-drawer-achievements-badge" testID="mobile-drawer-achievements-badge" />
+                      )}
+                    </View>
+                    <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-achievements-label" testID="mobile-drawer-achievements-label">Logros</Text>
                   </Pressable>
                 </View>
               )}
