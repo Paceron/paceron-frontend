@@ -6,6 +6,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useCompetitions, useCompetitionMutations } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
+import { buildCompetitionTitle } from '../../utils/competition-title.js';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
@@ -39,7 +40,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
       <Pressable className="flex-row items-center gap-2" nativeID={`${idPrefix}-header`} onPress={() => setExpanded((v) => !v)} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} />
         <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
-          {competition.name}
+          {competition.name ?? buildCompetitionTitle(competition)}
         </Text>
         <View className={`rounded-full px-2 py-0.5 ${statusMeta.bg}`} nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
           <Text className={`text-xs font-semibold ${statusMeta.text}`} nativeID={`${idPrefix}-status-label`} testID={`${idPrefix}-status-label`}>

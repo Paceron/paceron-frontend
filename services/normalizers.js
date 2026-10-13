@@ -1127,7 +1127,11 @@ export function toCompetitionModel(dto) {
   if (!dto) return null;
   return {
     id: String(dto.id),
-    name: dto.name,
+    // Todavía no existe en backend (confirmado 2026-10-14, decisión D8) --
+    // `?? null` deja que el caller decida el fallback (ver
+    // utils/competition-title.js#buildCompetitionTitle), no inventa nada
+    // acá.
+    name: dto.name ?? null,
     teamId: String(dto.team_id),
     groupId: dto.group_id != null ? String(dto.group_id) : null,
     type: dto.type,
@@ -1148,12 +1152,13 @@ export function toCompetitionModel(dto) {
 }
 
 // Payload de creación (Gap 33) -- SIN created_by_user_id/created_by_role,
-// el backend los deriva del token. IDs de participantes a Number (el
-// roster los trae como string -- ver CLAUDE.md "IDs numéricos en bodies
-// de request").
+// el backend los deriva del token. SIN `name` tampoco -- confirmado
+// 2026-10-14 que el modelo no tiene esa columna todavía (decisión D8),
+// mandarla no hace nada. IDs de participantes a Number (el roster los
+// trae como string -- ver CLAUDE.md "IDs numéricos en bodies de
+// request").
 export function toCreateCompetitionPayload(form) {
   const payload = {
-    name: form.name,
     type: form.type,
     metric: form.metric,
     start_at: form.startAt,

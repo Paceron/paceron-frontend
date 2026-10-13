@@ -3,10 +3,14 @@
 // memoria + __resetMockCompetitions() para tests. 3 competencias seed con
 // 3 estados distintos (active/pending_approval/finished) para poder ver
 // toda la matriz de acciones sin tener que crear nada a mano primero.
+// Sin `name` a propósito -- confirmado 2026-10-14 que el backend real no
+// tiene esa columna (decisión D8); el mock ejercita el mismo fallback de
+// título (utils/competition-title.js) que usará la UI contra datos
+// reales, en vez de inventar un campo que no existe.
 const SEED = [
-  { id: 1, name: 'Desafío de octubre', team_id: 1, group_id: null, type: 'metric', metric: 'distance', start_at: '2026-10-01', end_at: '2026-10-07', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
-  { id: 2, name: 'Propuesta de Martín', team_id: 1, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-15', end_at: '2026-10-22', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 4], created_by_user_id: 2, created_by_role: 'runner', status: 'pending_approval', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
-  { id: 3, name: 'Reto de septiembre', team_id: 1, group_id: null, type: 'metric', metric: 'duration', start_at: '2026-09-01', end_at: '2026-09-30', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'finished', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [2], finished_at: '2026-10-01' },
+  { id: 1, team_id: 1, group_id: null, type: 'metric', metric: 'distance', start_at: '2026-10-01', end_at: '2026-10-07', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
+  { id: 2, team_id: 1, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-15', end_at: '2026-10-22', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 4], created_by_user_id: 2, created_by_role: 'runner', status: 'pending_approval', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
+  { id: 3, team_id: 1, group_id: null, type: 'metric', metric: 'duration', start_at: '2026-09-01', end_at: '2026-09-30', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'finished', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [2], finished_at: '2026-10-01' },
 ];
 
 let mockCompetitions = [];
@@ -28,7 +32,6 @@ export async function mockListCompetitions(teamId, { status, groupId } = {}) {
 export async function mockCreateCompetition(teamId, payload, { isTrainerCreator = true } = {}) {
   const competition = {
     id: nextId++,
-    name: payload.name,
     team_id: Number(teamId),
     group_id: payload.group_id ?? null,
     type: payload.type,

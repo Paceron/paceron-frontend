@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { InputField, Row, Col, DateField } from '../forms/fields.jsx';
+import { Row, Col, DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
 import { toISODate } from '../../utils/date-field-format.js';
@@ -13,11 +13,13 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 // Alta de competencia (Gap 33, tipo 'metric' únicamente -- 'route' es
 // Spec 4b). El checklist de participantes ya viene filtrado (sin el
 // entrenador) por el caller -- el backend lo rechaza igual si llegara,
-// pero no se lo ofrece desde el vamos.
+// pero no se lo ofrece desde el vamos. Sin campo de nombre a propósito --
+// confirmado 2026-10-14 que el backend todavía no tiene esa columna
+// (decisión D8); el título de cada fila se arma solo (ver
+// utils/competition-title.js).
 export function CreateCompetitionModal({ visible, onClose, onSubmit, members, groups }) {
   const colors = useThemeColors();
 
-  const [name, setName] = useState('');
   const [metric, setMetric] = useState('distance');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -32,7 +34,6 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
   if (isResetting) {
     prevResetKeyRef.current = resetKey;
-    setName('');
     setMetric('distance');
     setStartDate('');
     setEndDate('');
@@ -43,7 +44,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
     prevResetKeyRef.current = null;
   }
 
-  const dirtyValues = isResetting ? { name: '', selectedIds: [] } : { name, selectedIds };
+  const dirtyValues = isResetting ? { selectedIds: [] } : { selectedIds };
   const formDirty = useFormDirty(dirtyValues, 'new');
   const isDirty = visible && formDirty;
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
@@ -61,11 +62,6 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
   const handleSubmit = async () => {
     if (submitting) return;
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setError('Ingresá un nombre para la competencia.');
-      return;
-    }
     if (!startDate || !endDate) {
       setError('Elegí la fecha de inicio y de fin.');
       return;
@@ -83,7 +79,6 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
     setSubmitting(true);
     const result = await onSubmit({
-      name: trimmedName,
       type: 'metric',
       metric,
       startAt: startIso,
@@ -112,10 +107,14 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
               </Text>
             </View>
 
+            {error && (
+              <Text className="mb-2 text-xs text-red-600 dark:text-red-400" nativeID="create-competition-modal-error" testID="create-competition-modal-error">
+                {error}
+              </Text>
+            )}
+
             <ScrollView className="max-h-[70vh]" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
               <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
-                <InputField className="mb-0" dense error={error} label="Nombre" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Desafío de octubre" value={name} />
-
                 <ResponsiveSelectField dense label="Métrica" onChange={setMetric} options={METRIC_OPTIONS} value={metric} />
 
                 <Row>
