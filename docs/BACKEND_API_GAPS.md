@@ -1553,6 +1553,29 @@ entre equipos lo sigue haciendo el frontend — Gap 34).
     una competencia de tipo métrica se puede crear/aprobar/ver en 4a, pero su progreso queda en
     cero hasta que 4b cablee el intake de sesión. Interinidad aceptada a propósito, no es un bug.
 
+**Actualización 2026-10-14 (3) — respuestas de backend a las 3 preguntas del punto 21, verificadas
+contra código (`cmd/api/domains/competition/competition.go`):**
+
+23. **`progress` (detalle) confirmado MÁS CHICO que una fila de leaderboard:** `[{user_id,
+    value}]` únicamente — sin `name`/`avatar_url`/`rank`. `value` es `null` para `type='route'`
+    por ahora. El frontend tiene que resolver `name`/`avatar_url` contra el roster ya cargado
+    (mismo patrón ya usado en la Spec 4a para la lista de participantes — `memberName(members,
+    userId)` en `components/team/competitions-tab.jsx`), no esperar que el backend los mande. Si
+    la Spec 4b necesitara el shape completo (con rank, por ejemplo para ordenar a los
+    participantes por progreso), backend ofreció sumarlo como cambio acotado al builder del
+    detalle — pedirlo en el momento si hace falta, no está prometido de antemano.
+24. **`name` confirmado SIN implementar — no es una omisión del reporte, es una decisión real
+    (D8):** el modelo no tiene columna `title`/`name`, no entra por `POST`, y el único nombre que
+    existe hoy es el `source_name: "Competencia N"` autogenerado de la estampa (Gap 31). El
+    frontend (Spec 4a, ya corregido 2026-10-14) dejó de mandarlo y arma un título client-side
+    (métrica + ventana, `utils/competition-title.js#buildCompetitionTitle`) para cada fila.
+    Backend ofreció sumar el campo real (columna + `POST`/DTO + título en el push) "en la próxima
+    ronda" si se pide — no está en el roadmap sin pedirlo explícitamente.
+25. **Envoltura confirmada — coincide con lo ya implementado en el frontend, sin cambios:**
+    `GET /teams/{id}/competitions` → `{data: [...], has_unseen}` (mismo patrón `{data}` que
+    catálogo/estampas del Gap 31). `GET /competitions/{id}` → `{data: {...}}` (objeto único, no
+    lista) — relevante recién para la Spec 4b, que todavía no construye esa llamada.
+
 ## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
 
 **Contexto.** Rachas, logros/trofeos y competencias necesitan un **mismo** mecanismo de "hay algo
