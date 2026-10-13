@@ -6,6 +6,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { NextTrainingBanner } from './next-training-banner.jsx';
+import { StreakBanner } from './streak-banner.jsx';
 
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
@@ -40,6 +41,7 @@ export function AuthenticatedHomeScreen() {
           {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
         </Text>
         <NextTrainingBanner />
+        <StreakBanner />
       </View>
     </ScrollView>
   );
