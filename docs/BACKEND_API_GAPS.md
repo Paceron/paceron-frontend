@@ -1272,7 +1272,14 @@ vivir como config/seed en backend, no en el cliente.
    ocurrencias extra por encima del umbral máximo, o N del contador si la familia es counter sin
    nivel)}`.
 2. `GET /users/{id}/achievements` → progreso real: `{achievement_id, current_level? (leveled),
-   count? (counter), unlocked_at, last_unlocked_at}`.
+   count, unlocked_at, last_unlocked_at}` — **corrección 2026-10-14, antes de empezar el frontend
+   de este gap:** `count` tiene que viajar SIEMPRE, también para `family=leveled`, no solo para
+   `counter`. El doc fuente pide una barra de progreso al siguiente nivel ("barra/porcentaje de
+   progreso al siguiente nivel si aplica") — sin el contador crudo detrás del nivel actual, el
+   frontend no tiene con qué calcular ese porcentaje (`count / levels[nextLevel].threshold`), solo
+   podría mostrar el nivel ya alcanzado. Es el mismo contador interno que ya hace subir de nivel,
+   así que no debería ser trabajo nuevo del lado backend, solo no omitirlo cuando la familia es
+   `leveled`.
 3. `GET /users/{id}/stamps` → estampas y trofeos emitidos, entidad transversal (sección "estampas y
    trofeos" del doc fuente): `{id, type: 'achievement_counter'|'post_legend'|'competition',
    source_id, source_name, icon_key, granted_at, count}` — ver punto 4 de la actualización de abajo
