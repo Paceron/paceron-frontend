@@ -16,6 +16,8 @@ import { colorForUserId } from '../../utils/participant-color.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { buildSessionReviewModel } from '../../services/normalizers.js';
+import { useCompetitions } from '../../hooks/use-competitions.js';
+import { findActiveMetricCompetitionId } from '../../utils/competition-match.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
@@ -762,6 +764,10 @@ function ReviewFlow({ slot }) {
   const sessionInstance = slot.sessionInstance ?? fetchedSessionInstance;
   const { groups, loading, refetch: refetchFeedback } = useSessionFeedback(sessionInstanceId, slot.athleteUserId);
   const { refreshing, onRefresh } = usePullToRefresh(refetchFeedback);
+  // Spec 4b (Gap 33 punto 29) -- mismo criterio que session-pre-start-screen.jsx:
+  // un ingreso manual (retroactivo) también cuenta si cae dentro de la ventana
+  // de una competencia type='metric' activa del atleta en cuestión.
+  const { competitions: activeMetricCompetitions } = useCompetitions(slot.teamId, { status: 'active' });
 
   // Primer ingreso al modo manual → upsert idempotente de runner_session
   // (wip). Fire-and-forget: si falla (offline), el pipeline de sync del
@@ -770,8 +776,9 @@ function ReviewFlow({ slot }) {
   useEffect(() => {
     if (slot.mode !== 'manual' || manualFiredRef.current) return;
     manualFiredRef.current = true;
-    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), athleteUserId: slot.athleteUserId }).catch(() => {});
-  }, [slot.mode, sessionInstanceId, slot.athleteUserId]);
+    const competitionId = findActiveMetricCompetitionId(activeMetricCompetitions, slot.athleteUserId, slot.date);
+    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), athleteUserId: slot.athleteUserId, competitionId }).catch(() => {});
+  }, [slot.mode, sessionInstanceId, slot.athleteUserId, slot.date, activeMetricCompetitions]);
 
   // Completar la sesión (PATCH finished) vive ACÁ y no en el detalle: al
   // guardar una serie se vuelve al listado, el detalle se desmonta, y el

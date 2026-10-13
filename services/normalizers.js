@@ -943,9 +943,14 @@ export function buildSessionReviewModel(sessionInstance, feedbackGroups = []) {
 
 // Body de POST /api/v1/session-instances/:id/runner — start_date siempre
 // presente (yo entro cuando toca Play/primer ingreso manual), ids a Number.
-export function toRunnerSessionStartPayload({ startDate, athleteUserId }) {
+// competitionId (Gap 33 punto 29, Spec 4b) es opcional -- solo viaja cuando
+// el entrenamiento arranca dentro de la ventana de una competencia type=
+// 'metric' activa (ver utils/competition-match.js); una sesión normal no lo
+// manda.
+export function toRunnerSessionStartPayload({ startDate, athleteUserId, competitionId }) {
   const payload = { start_date: startDate };
   if (athleteUserId != null) payload.athlete_user_id = Number(athleteUserId);
+  if (competitionId != null) payload.competition_id = Number(competitionId);
   return payload;
 }
 

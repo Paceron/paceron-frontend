@@ -30,14 +30,18 @@ function findRow(sessionInstanceId, athleteUserId) {
   );
 }
 
-const toResponse = (row) => ({
-  id: row.id,
-  session_instance_id: row.session_instance_id,
-  athlete_user_id: row.athlete_user_id,
-  status: row.status,
-  start_date: row.start_date,
-  end_date: row.end_date ?? null,
-});
+const toResponse = (row) => {
+  const response = {
+    id: row.id,
+    session_instance_id: row.session_instance_id,
+    athlete_user_id: row.athlete_user_id,
+    status: row.status,
+    start_date: row.start_date,
+    end_date: row.end_date ?? null,
+  };
+  if (row.competition_id != null) response.competition_id = row.competition_id;
+  return response;
+};
 
 export async function mockCreateRunnerSession(sessionInstanceId, body) {
   const athleteUserId = body.athlete_user_id ?? 0;
@@ -52,6 +56,7 @@ export async function mockCreateRunnerSession(sessionInstanceId, body) {
     status: 'wip',
     start_date: body.start_date,
     end_date: null,
+    competition_id: body.competition_id ?? null,
   };
   runnerSessions.push(row);
   return { message: 'estado de sesión creado', data: toResponse(row) };
