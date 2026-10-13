@@ -16,9 +16,12 @@ export function useGamificationBadge() {
 
   const hasUnseen = Boolean(streaks?.hasUnseen) || achievementsHasUnseen;
 
-  const ackSection = async (section) => {
+  // `teamId` solo tiene efecto (y solo lo acepta el backend) con
+  // `section: 'competitions'` -- Spec 4 lo pasa al marcar como vista la
+  // pestaña de un equipo puntual; 'streaks'/'achievements' lo ignoran.
+  const ackSection = async (section, teamId) => {
     if (!userId) return;
-    await ackGamificationSeen(userId, section);
+    await ackGamificationSeen(userId, section, teamId);
     queryClient.invalidateQueries({ queryKey: ['streaks', userId] });
     queryClient.invalidateQueries({ queryKey: ['achievements', userId] });
   };

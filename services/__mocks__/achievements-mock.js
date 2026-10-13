@@ -10,7 +10,8 @@ const MOCK_CATALOG = [
     name: 'Primera vez',
     description: 'Completaste tu primer entrenamiento.',
     icon_key: 'star-outline',
-    once_threshold: 1,
+    threshold: 1,
+    unit: 'sessions',
   },
   {
     id: 'consecutive_trainings',

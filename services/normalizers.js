@@ -1064,7 +1064,13 @@ export function toAchievementCatalogItemModel(dto) {
     name: dto.name,
     description: dto.description,
     iconKey: dto.icon_key,
-    onceThreshold: dto.once_threshold ?? null,
+    // `threshold`/`unit` -- confirmado contra la implementación real
+    // (2026-10-14): backend renombró `once_threshold` a `threshold` y
+    // sumó `unit` (v1 es 100% familia `once`, sin `leveled`/`counter`
+    // todavía). `levels`/`counterTrophyEvery` quedan igual, listos para
+    // cuando esas familias existan.
+    threshold: dto.threshold ?? null,
+    unit: dto.unit ?? null,
     levels: dto.levels ? dto.levels.map((l) => ({ level: l.level, name: l.name, threshold: l.threshold })) : null,
     counterTrophyEvery: dto.counter_trophy_every ?? null,
   };
