@@ -1375,6 +1375,16 @@ agregar client-side el historial completo de un equipo por período.
    filas de asistencia, el criterio análogo queda a elección de backend entre "menos asistencias
    usadas para llegar al valor" o "quién llegó primero a ese valor" — el frontend no tiene
    preferencia fuerte ahí, cualquiera de las dos es un desempate razonable.
+10. **Corrección 2026-10-14, antes de empezar el frontend de este gap — encoding exacto de
+    `value`.** El punto 7 fija la unidad de cada métrica en prosa (min/km, km/h) pero no el
+    encoding JSON — necesario para que el frontend formatee sin adivinar. `value` (en `rows[]`,
+    `viewer_rank` y `record`) es siempre un **número plano**, nunca un string formateado, en la
+    unidad que corresponda: `distance` → metros (entero), `duration` → milisegundos (entero,
+    mismo criterio que `duration_ms` en el resto de la API), `pace` → **minutos por km, decimal**
+    (ej. `5.4167` para un ritmo de 5:25/km — `(duration_ms/60000) / (distance_meters/1000)`),
+    `peak_speed` → km/h (decimal), `sessions_count`/`attendance_count` → entero. El frontend
+    formatea cada unidad a texto legible (`mm:ss/km` para `pace`, etc.) — el backend nunca manda
+    el string ya formateado.
 
 ## Gap 33 — módulo de gamificación: competencias entre corredores (CRUD, aprobación, cierre automático, trayectoria en mapa)
 
