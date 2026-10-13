@@ -1038,3 +1038,19 @@ export function toSessionMessagePayload({ type, recipientMode, recipientUserIds,
   if (replyToMessageId != null) payload.reply_to_message_id = Number(replyToMessageId);
   return payload;
 }
+
+// Rachas del corredor (Gap 30). `hasUnseen` alimenta el punto rojo
+// transversal (Gap 34) -- hooks/use-gamification-badge.js lo lee de acá.
+export function toStreaksModel(dto) {
+  if (!dto) return null;
+  return {
+    strict: { current: dto.strict.current, best: dto.strict.best },
+    flexible: { current: dto.flexible.current, best: dto.flexible.best },
+    days: dto.days.map((d) => ({
+      date: d.date,
+      strictStatus: d.strict_status,
+      flexibleStatus: d.flexible_status,
+    })),
+    hasUnseen: dto.has_unseen ?? false,
+  };
+}
