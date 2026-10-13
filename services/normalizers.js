@@ -1054,3 +1054,49 @@ export function toStreaksModel(dto) {
     hasUnseen: dto.has_unseen ?? false,
   };
 }
+
+// Catálogo de logros (Gap 31) -- config estática, no cambia por usuario.
+export function toAchievementCatalogItemModel(dto) {
+  if (!dto) return null;
+  return {
+    id: dto.id,
+    family: dto.family,
+    name: dto.name,
+    description: dto.description,
+    iconKey: dto.icon_key,
+    onceThreshold: dto.once_threshold ?? null,
+    levels: dto.levels ? dto.levels.map((l) => ({ level: l.level, name: l.name, threshold: l.threshold })) : null,
+    counterTrophyEvery: dto.counter_trophy_every ?? null,
+  };
+}
+
+// Progreso real de un usuario para un logro puntual (Gap 31). `count`
+// siempre presente (corrección 2026-10-14) -- `?? null` es defensivo para
+// mientras el backend no tenga el fix desplegado, no para el caso normal.
+export function toUserAchievementModel(dto) {
+  if (!dto) return null;
+  return {
+    achievementId: dto.achievement_id,
+    currentLevel: dto.current_level ?? 0,
+    count: dto.count ?? null,
+    unlockedAt: dto.unlocked_at ?? null,
+    lastUnlockedAt: dto.last_unlocked_at ?? null,
+    hasUnseen: dto.has_unseen ?? false,
+  };
+}
+
+// Estampa o trofeo de la vitrina (Gap 31) -- entidad transversal, compartida
+// entre logros contador y competencias (Spec 4 emitirá las de tipo
+// 'competition', acá solo se consumen).
+export function toStampModel(dto) {
+  if (!dto) return null;
+  return {
+    id: dto.id,
+    type: dto.type,
+    sourceId: dto.source_id,
+    sourceName: dto.source_name,
+    iconKey: dto.icon_key,
+    grantedAt: dto.granted_at,
+    count: dto.count,
+  };
+}
