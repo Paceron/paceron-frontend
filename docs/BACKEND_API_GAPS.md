@@ -1203,3 +1203,293 @@ alcanza con `locationValue === null`, que también es el resultado de un "Quitar
 deliberado) porque `toUpdatePayload` manda el set completo y sin eso un simple cambio de nombre
 hubiera borrado la dirección existente; `toAddressPayload` (equipos) ya omite campos vacíos por su
 cuenta, así que ese caso no necesitó el mismo tracking.
+
+## Gap 30 — módulo de gamificación: rachas del corredor (cálculo server-side, dos métricas independientes)
+
+**Contexto.** Primer bloque del módulo de gamificación (rachas, logros/trofeos, leaderboards,
+competencias — doc fuente: prompt maestro de gamificación compartido por el usuario, 2026-10-12).
+Dos rachas por usuario (no por equipo), suman entrenamientos en **todos** sus equipos, calculadas
+sobre `runner_session`/calendario ya existentes. El frontend nunca recalcula ni lleva contador
+local — solo consulta y muestra.
+
+- **Racha A (constancia estricta):** días de calendario consecutivos donde **todas** las sesiones
+  asignadas (`GroupCalendarDay.kind='training'`) de ese día terminaron con `runner_session.status
+  = 'finished'` (series salteadas no importan — alivianado a propósito, decisión del usuario
+  2026-10-12: la racha premia terminar, no la perfección). Días `rest`/`other`/`cancelled`, o sin
+  fila asignada, se **saltan** (no cuentan ni cortan). Cualquier día con sesión training que no
+  haya quedado `finished` (incluye `interrupted`, Gap 19, o nunca iniciada) corta la racha a 0.
+- **Racha B (constancia flexible):** días consecutivos con **al menos una** sesión `finished` ese
+  día. Cualquier día sin ninguna completada (incluye `rest`/`other`/`cancelled`/sin sesión/hoy sin
+  entrenar todavía) corta a 0.
+- Ambas devuelven: racha actual, mejor racha histórica (récord personal), e historial de estado
+  por día (`completed`/`failed`/`skipped`) para los últimos N días.
+
+**Pedido concreto** (shapes en snake_case, como el resto de los DTOs del backend — ver
+`services/normalizers.js`, que ya convierte todo a camelCase del lado cliente):
+
+1. `GET /users/{id}/streaks` (nombre a criterio de backend) → `{strict: {current, best},
+   flexible: {current, best}, days: [{date, strict_status, flexible_status}, ...]}`, con `days`
+   parametrizable (`?days=42`, default a definir) y "día" = fecha date-only del
+   `GroupCalendarDay`, agnóstico a zona horaria (no una ventana relativa de 24h). `strict_status`/
+   `flexible_status` son un enum nuevo (`completed`/`failed`/`skipped`) — no existen hoy, los
+   introduce este gap.
+2. Cálculo y persistencia 100% server-side, recalculado en cada mutación relevante:
+   `runner_session.status` pasa a `finished`/`interrupted` (únicos 3 valores reales hoy, junto con
+   el implícito `wip` inicial — ver `services/runnerSession.js`), un día de calendario se cancela
+   (`kind='cancelled'`), o cambia de `kind` (`training`/`rest`/`other`/`cancelled`, enum ya
+   existente en `GroupCalendarDay`, sin variantes) estando ya en el pasado.
+3. El logro con nivel "Entrenamientos Consecutivos" (Gap 31) comparte la misma noción de racha A —
+   backend decide si reusa este mismo cálculo internamente o lo deriva aparte.
+
+**Actualización 2026-10-13 — consenso con backend, habilita trabajo en paralelo:**
+
+1. **"Hoy" en la racha actual — confirmado (a):** el cálculo corre hasta **ayer** inclusive; hoy
+   nunca corta por sí solo. El día de hoy aparece en `days` con un cuarto estado, `pending` (no
+   `completed`/`failed`/`skipped`), hasta que termine. La racha recién se corta si el día ya
+   cerrado no se cumplió — evita el falso positivo de "racha rota" mientras el corredor todavía
+   tiene el día por delante. `?days=42` confirmado como default.
+2. **Persistencia — confirmado cálculo bajo demanda en cada `GET`,** sin tabla de rachas ni
+   recálculo disparado por mutación. El resultado observable es idéntico (lectura exacta por
+   construcción) y evita el riesgo de deriva entre una tabla cacheada y la realidad — se retira el
+   punto 2 original de este gap ("recalculado en cada mutación") como requisito; no lo era.
+
+## Gap 31 — módulo de gamificación: logros con niveles, logros únicos, logros contador y vitrina de estampas/trofeos
+
+**Contexto.** Catálogo 100% server-side — el frontend no hardcodea logros ni progreso. Tres
+familias excluyentes: **únicos** (se desbloquean una vez, sin nivel), **con niveles** (5 niveles
+fijos con nombre propio — Chispa/Fuego/Imparable/Máquina/Leyenda — que no se pierden al dejar de
+cumplirse la condición), y **contador** (cada ocurrencia suma una estampa, sin nivel). Post-Leyenda
+el contador sigue creciendo y cada N ocurrencias extra por encima del umbral máximo otorga un
+**trofeo acumulable**. Los umbrales de cada nivel ya están confirmados por el usuario (tabla
+completa en el doc fuente — ej. "Entrenamientos Consecutivos": 5/10/20/40/100) pero tienen que
+vivir como config/seed en backend, no en el cliente.
+
+**Pedido concreto** (shapes en snake_case):
+
+1. `GET /achievements/catalog` → config, no cambia por usuario: `{id, family:
+   'once'|'leveled'|'counter', name, description, icon_key, once_threshold? (family=once), levels?:
+   [{level, name, threshold}] (family=leveled, 5 niveles con nombre), counter_trophy_every? (N de
+   ocurrencias extra por encima del umbral máximo, o N del contador si la familia es counter sin
+   nivel)}`.
+2. `GET /users/{id}/achievements` → progreso real: `{achievement_id, current_level? (leveled),
+   count? (counter), unlocked_at, last_unlocked_at}`.
+3. `GET /users/{id}/stamps` → estampas y trofeos emitidos, entidad transversal (sección "estampas y
+   trofeos" del doc fuente): `{id, type: 'achievement_counter'|'post_legend'|'competition',
+   source_id, source_name, icon_key, granted_at, count}` — ver punto 4 de la actualización de abajo
+   sobre por qué `icon_key` y no `logo_url`.
+4. Marcador de "novedad por ver" → mecanismo transversal, ver Gap 34 (no uno aparte por logro).
+5. Recalculado en cada mutación relevante (sesión finalizada, racha actualizada — Gap 30 —,
+   competencia ganada — Gap 33). Depende de datos que ya existen: `runner_session`,
+   `workout_feedback` (`distance_meters`/`duration_ms`/`active_duration_ms` — confirmado que hoy no
+   persiste pace/velocidad, solo distancia y duración), asistencia, rachas.
+6. **Push notifications:** el payload de push ya viaja con `data.route` para deep-link
+   (`hooks/use-push-notifications.js`) — si el backend ya dispara pushes, confirmar que pueda
+   emitir uno al desbloquear un logro/trofeo con `data.route` apuntando a la sección de Logros
+   (el frontend ya sabe navegar con ese campo, no hace falta infraestructura nueva de ese lado).
+
+**Actualización 2026-10-13 — consenso con backend, habilita trabajo en paralelo:**
+
+3. Catálogo como constants seeded en Go vs. tabla + seed idempotente: decisión 100% backend, sin
+   impacto en el contrato que consume el frontend — sin objeción.
+4. **`icon_key` en vez de `logo_url` — confirmado.** Las vitrinas las dibuja la app (assets del
+   bundle, mismo patrón que `components/plans/exercise-kind-meta.js`); no hace falta URL de
+   storage. El shape de `GET /users/{id}/stamps` del punto 3 arriba queda con `icon_key` en vez de
+   `logo_url` (ya corregido ahí). Si una estampa de competencia en el futuro quisiera mostrar el
+   ícono del equipo en vez de uno genérico, el frontend ya tiene el `team_id` por otro lado — no
+   hace falta un campo de imagen en la estampa para eso.
+5. **Push confirmado** para: logro desbloqueado, trofeo otorgado, y (ver Gap 33) competencia
+   aprobada/rechazada/ganada. `data.route` propuesto — **a confirmar con el valor real recién
+   cuando la ruta exista** (las pantallas de este módulo todavía no están construidas), pero como
+   referencia de formato esperado: `/achievements` para logros/trofeos/rachas (hub único con
+   pestañas internas), `/teams/{team_id}/competitions/{competition_id}` para eventos de una
+   competencia puntual. Si el backend necesita el valor antes de que el frontend tenga las rutas
+   listas, usar un placeholder (`/achievements`, sin query) — es un string libre, de bajo costo
+   ajustar después.
+
+## Gap 32 — módulo de gamificación: leaderboards por equipo (métricas, períodos, récords históricos)
+
+**Contexto.** Ranking por equipo (alcanza a corredores de cualquier grupo + entrenador viendo sin
+fila propia), server-side, recalculado bajo demanda (no tiempo real). Sin esto no es viable
+agregar client-side el historial completo de un equipo por período.
+
+**Pedido concreto** (shapes en snake_case):
+
+1. `GET /teams/{id}/leaderboard?metric=distance|duration|pace|peak_speed|sessions_count|attendance_count&period=week|month|year|custom|all&from=&to=`
+   → `{rows: [{user_id, name, avatar_url, value, rank}], viewer_rank: {user_id, value, rank} |
+   null, record?: {user_id, name, value, achieved_at}}`. `rows` = top 5. `viewer_rank` = posición
+   del usuario autenticado aunque no esté en el top 5 (`null` si el viewer es entrenador, que no
+   participa). `record` solo con `period=all` (histórico = récord del equipo para esa métrica).
+2. **Desempate:** a igual valor, gana quien usó **menos entrenamientos** para alcanzarlo — se
+   resuelve server-side, el frontend no reimplementa el criterio.
+3. Métricas dependientes de GPS (`pace`, `peak_speed`) solo tienen datos reales en sesiones con
+   tracking real (presenciales en vivo, Gap 20 — `utils/distance.js#acceptGpsLeg` calcula
+   velocidad instantánea solo para filtrar ruido, hoy no la persiste como métrica). **Pregunta
+   para backend:** ¿las sesiones asíncronas también generan puntos GPS utilizables para estas dos
+   métricas, o quedan `null`/excluidas de esas dos métricas para ese tipo de sesión? Si la
+   respuesta es sí, confirmar también si `pace`/`peak_speed` se van a empezar a persistir en
+   `workout_feedback` (hoy solo tiene `distance_meters`) o se calculan aparte para el leaderboard.
+
+**Actualización 2026-10-13 — consenso con backend, habilita trabajo en paralelo:**
+
+6. **Confirmado desde el frontend:** hoy las sesiones asíncronas **no suben puntos GPS** — el
+   tracking en vivo (`acceptGpsLeg`, `training-session-active-screen.jsx`) solo corre en
+   presenciales en vivo (Gap 20); una sesión asíncrona se completa con feedback manual/editado,
+   sin captura de GPS. Esto es comportamiento actual de frontend, no una limitación de la tabla de
+   `workout_feedback_point` del lado backend (que sí la soporta por feedback sin importar el tipo
+   de sesión, según confirma backend). Conclusión: `pace`/`peak_speed` quedan **excluidas para
+   sesiones asíncronas** por ahora (el usuario que solo entrena async ve esas dos métricas sin
+   datos, nunca en 0) — reabrir si alguna vez se suma tracking a sesiones asíncronas.
+7. **Definiciones confirmadas:**
+   - `distance` = suma de `distance_meters` del período.
+   - `duration` = suma de `duration_ms` (reloj total de la sesión, **no** `active_duration_ms`) —
+     elegido porque es lo que el corredor ya ve en su propio historial; tiempo pausado incluido,
+     sin segunda definición de "duración" compitiendo en la UI.
+   - `pace` = ritmo agregado del período en **min/km**, calculado como
+     `suma(duration_ms) / suma(distance_meters)` del período completo — **no** el promedio de los
+     ritmos por sesión, para no desvirtuar el resultado con sesiones muy cortas. Menor valor =
+     mejor ritmo.
+   - `peak_speed` = velocidad máxima en km/h, el máximo entre los máximos por sesión del período
+     (de ahí la sugerencia del punto 8 de persistir un máximo por sesión en vez de rebarrer puntos
+     crudos en cada consulta).
+   - `sessions_count` = cantidad de `runner_session` en `finished`, acotadas a sesiones de grupos
+     de ese equipo, en el período.
+   - `attendance_count` = filas de asistencia confirmadas (QR o manual) de ese equipo, en el
+     período.
+   - Ninguna métrica adicional por ahora — "mejor racha del período"/"constancia" quedan como
+     futuro explícito, ya señalado así en el doc fuente, no hace falta agregarlas a esta primera
+     versión.
+8. **Persistir `pace`/`peak_speed` en `workout_feedback`** (2 columnas nullable, calculadas al
+   recibir los points): sin objeción — es decisión interna de backend, no cambia el contrato de
+   `GET /teams/{id}/leaderboard`.
+9. **Desempate — criterio confirmado:** cantidad de entrenamientos **que contribuyeron al valor**
+   de esa métrica en el período (ej. para `distance`/`duration`/`pace`/`peak_speed`: sesiones
+   `finished` con `workout_feedback` registrado; para `sessions_count` el desempate no aplica —
+   mismo valor implica mismo conteo). Para `attendance_count`, al no ser "entrenamientos" sino
+   filas de asistencia, el criterio análogo queda a elección de backend entre "menos asistencias
+   usadas para llegar al valor" o "quién llegó primero a ese valor" — el frontend no tiene
+   preferencia fuerte ahí, cualquiera de las dos es un desempate razonable.
+
+## Gap 33 — módulo de gamificación: competencias entre corredores (CRUD, aprobación, cierre automático, trayectoria en mapa)
+
+**Contexto.** Desafíos dentro de un equipo (todos-contra-todos por defecto, 1v1 o N,
+cross-grupo o acotado a un grupo). El entrenador crea directo; el corredor propone y queda
+pendiente de aprobación del entrenador. El entrenador nunca participa. Dos tipos: **por métrica**
+en una ventana de tiempo, o **por trayectoria** dibujada en el mapa (el que la corre pasa por
+pre-start → en vivo → resultado, igual que un entrenamiento). Gana quien maximice la métrica o
+complete mejor la trayectoria; el ganador se calcula automático y recibe un trofeo (Gap 31).
+
+**Pedido concreto** (shapes en snake_case):
+
+1. **Modelo** `competition`: `{id, team_id, group_id?, type: 'metric'|'route', metric? (type=metric),
+   start_at, end_at? (type=metric), route? (GeoJSON LineString, type=route),
+   acceptance_radius_meters? (type=route), participant_user_ids: [], created_by_user_id,
+   created_by_role: 'trainer'|'runner', status:
+   'pending_approval'|'active'|'finished'|'rejected'|'cancelled', approved_by_user_id?,
+   rejection_reason?, winner_user_id?, finished_at?}`. Definido 100% por backend — el frontend
+   consume este shape, no lo diseña. (`status='cancelled'` sumado en la actualización de abajo —
+   ver punto 13.)
+2. `POST /teams/{id}/competitions` → crea. `created_by_role='runner'` → `status='pending_approval'`;
+   `trainer` → `status='active'` directo.
+3. `PATCH /competitions/{id}/approve` / `/reject` (solo entrenador del equipo) — `reject` con body
+   `{reason?}`. Notifica al creador el resultado.
+4. `GET /teams/{id}/competitions?status=&group_id=` → listado (filtro por grupo para "iniciar desde
+   las opciones de un grupo").
+5. `GET /competitions/{id}` → detalle + progreso en vivo por participante (valor actual de la
+   métrica, o % de trayectoria completada).
+6. **Cierre automático:** backend decide si usa job programado por fecha o evaluación a demanda al
+   consultar — el frontend es agnóstico, solo necesita que `status`/`winner_user_id` reflejen el
+   estado real al pedirlo.
+7. **Verificación de ruta** (`type='route'`): matching de los puntos GPS del intento contra la
+   polilínea, con `acceptance_radius_meters`, resultado = `% de coincidencia` + métrica lograda
+   (tiempo/velocidad). **Pregunta para backend:** ¿se resuelve server-side (recomendado — mismo
+   criterio que leaderboards: no es viable mandar el historial completo a comparar client-side) o
+   el frontend manda los puntos crudos y el backend hace el match bajo demanda?
+8. Al cerrar con ganador: emite trofeo (`stamps` del Gap 31, `type='competition'`) + dispara los
+   logros relacionados (participar/ganar, general y por tipo).
+9. **WS:** si la trayectoria se corre como una `runner_session` normal, reusar el canal
+   `session:{id}` ya existente (Gap 18/20) para el progreso en vivo, con el mismo formato de
+   envelope `{type, channel, payload}` y `type` en el estilo colon-separado ya usado
+   (`update:set_event`, `control:message_created`) — ej. `update:competition_progress` /
+   `control:competition_finished`, payload mínimo (solo IDs, no contenido — mismo criterio de
+   privacidad del Gap 27). No se pide canal nuevo.
+10. Los intentos cuentan solo entrenamientos completados **dentro de la app** (mismo criterio que
+    rachas/logros). **Pregunta para backend:** ¿la asociación entrenamiento↔competencia se hace
+    con un `competition_id` explícito en `runner_session`, o se infiere por rango de fecha +
+    participante + equipo/grupo?
+11. **Push notifications:** igual que Gap 31 — si el backend ya dispara pushes, que "competencia
+    ganada"/"competencia aprobada" use `data.route` para que el frontend navegue directo al
+    detalle de la competencia sin infraestructura nueva.
+
+**Actualización 2026-10-13 — consenso con backend, habilita trabajo en paralelo:**
+
+10. **Confirmado — `competition_id` explícito.** Campo nullable en `runner_session`, mandado por
+    el frontend en `POST /session-instances/{id}/runner` cuando el Play arranca desde una
+    competencia (si no viene, es una sesión normal). Evita la inferencia frágil por rango de
+    fecha + participante cuando dos competencias se solapan en el tiempo para el mismo corredor.
+11. **Confirmado — verificación de ruta 100% server-side:** matching Haversine de los puntos del
+    intento contra el `route` (GeoJSON LineString) + `acceptance_radius_meters`, resultado
+    `% de coincidencia` + tiempo/velocidad lograda. El frontend solo manda la ruta objetivo una
+    vez, al crear la competencia, y sube los puntos GPS del intento con el mecanismo ya existente
+    (sesión en vivo normal, con `competition_id` seteado).
+12. **Tie-break y umbral mínimo de ruta — decidido:** a igual `% de coincidencia`, gana menor
+    tiempo (confirmado). **Sin umbral mínimo de coincidencia** — se descarta un piso tipo "70%"
+    porque no estaba en el diseño original y agrega un parámetro configurable sin necesidad clara:
+    gana quien tenga el `%` más alto entre los que completaron un intento, sea alto o bajo. Único
+    caso sin ganador: **cero intentos finalizados** contra esa competencia → `status='finished'`,
+    `winner_user_id=null`.
+13. **Cancelación — confirmado por backend, se suma al contrato:** el corredor puede cancelar su
+    propia propuesta en `pending_approval`, y el creador de una competencia (cualquier rol) puede
+    cancelar la suya ya activa. Nuevo endpoint `PATCH /competitions/{id}/cancel` → `status=
+    'cancelled'` (agregado al enum del modelo, punto 1 arriba). Además, confirmado: quien crea una
+    competencia puede excluirse a sí mismo de la lista de participantes al crearla (relevante para
+    un entrenador que arranque el flujo — aunque nunca participa, esto cubre también al corredor
+    creador que quiera armar el desafío sin anotarse).
+14. **Push de propuesta pendiente — confirmado por backend:** al crear una competencia con
+    `created_by_role='runner'` (queda `pending_approval`), el entrenador del equipo recibe push
+    además del punto rojo/inbox — mismo `data.route` del punto 11 de la sección anterior.
+
+## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
+
+**Contexto.** Rachas, logros/trofeos y competencias necesitan un **mismo** mecanismo de "hay algo
+nuevo" para alimentar el punto rojo del header/sidebar/home — no 3 implementaciones ad hoc por
+sección. No existe hoy un precedente genérico: el único mecanismo de "novedad" parecido en el repo
+es `usePendingRequestsCount`/`useTeamsJoinRequestsMap` (`hooks/use-join-requests.js`), que es
+específico de solicitudes de ingreso, no transversal.
+
+**Pedido concreto — preferir embeber el flag en los 3 endpoints existentes antes que sumar un
+endpoint umbrella nuevo** (menos superficie nueva, mismo espíritu que el precedente de arriba: el
+dato de "novedad" vive junto al recurso que la genera, no en un servicio aparte):
+
+1. `GET /users/{id}/streaks` (Gap 30), `GET /users/{id}/achievements` (Gap 31) y la futura consulta
+   de competencias del usuario (Gap 33) devuelven, cada uno, su propio `has_unseen: boolean` —
+   el frontend hace el OR de los 3 para pintar el punto rojo del header/sidebar/home, y cada
+   sección interna (pestaña Rachas/Logros/Competencias) puede mostrar su propio punto individual
+   con el mismo campo.
+2. Un único `POST /users/{id}/gamification/seen` — body `{section: 'streaks'|'achievements'|
+   'competitions'}` — marca como visto al abrir esa sección (este sí conviene compartido: es
+   un simple "update timestamp", no necesita vivir en 3 endpoints distintos).
+3. Dispara con: racha rota, racha que cruza un hito (10/20/50/100...), logro nuevo, trofeo nuevo,
+   competencia próxima a cerrar.
+4. Si el backend prefiere el endpoint umbrella (`GET /users/{id}/gamification/unseen` →
+   `{streaks, achievements, competitions}`) en vez de embeber el flag en cada recurso, también
+   sirve — es una decisión de ergonomía de API del lado backend, el frontend se adapta a
+   cualquiera de las dos.
+
+**Actualización 2026-10-13 — consenso con backend, habilita trabajo en paralelo:**
+
+15. **Triggers confirmados y corregidos:**
+    - **"Competencia próxima a cerrar"** = dentro de las **24hs** antes de `end_at`. Solo aplica a
+      competencias `type='metric'` (las únicas con `end_at`) — las de `type='route'` no tienen
+      ventana de cierre por fecha, así que no disparan este trigger puntual (sí disparan por
+      "trofeo nuevo" al cerrarse con ganador, eso ya está cubierto).
+    - **Rachas — corrección respecto al doc fuente original: solo 2 triggers, no 3.** El doc
+      original mencionaba también "día marcado nuevo" como disparador — se retira acá: marcaría
+      el punto rojo casi todos los días (progreso normal, no una novedad real) y le quita sentido
+      a la señal. Quedan **racha rota** y **racha que cruza un hito** (10/20/50/100...) únicamente.
+16. **Punto rojo de Competencias — confirmado: no hace falta endpoint nuevo.** El punto rojo
+    GLOBAL (header/sidebar/home, que combina rachas+logros+competencias según el doc fuente) lo
+    resuelve el frontend haciendo el OR del `has_unseen` que ya devuelve `GET
+    /teams/{id}/competitions` (punto 1 de este gap) sobre la lista de equipos que el usuario ya
+    tiene cargada (`useTeams`/`useMyMemberTeams`, hooks existentes) — sin pedir un endpoint
+    cross-team aparte. El punto rojo de la pestaña Competencias DENTRO de un equipo puntual usa
+    directamente el `has_unseen` de ESE equipo, sin agregación.
