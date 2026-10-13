@@ -9,15 +9,7 @@ import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { rankMeta } from '../../utils/leaderboard-rank-meta.js';
 import { toISODate } from '../../utils/date-field-format.js';
 import { getUserInitials } from '../../utils/user-initials.js';
-
-const METRIC_OPTIONS = [
-  { id: 'distance', name: 'Distancia' },
-  { id: 'duration', name: 'Tiempo de entrenamiento' },
-  { id: 'pace', name: 'Mejor ritmo' },
-  { id: 'peak_speed', name: 'Velocidad pico' },
-  { id: 'sessions_count', name: 'Entrenamientos realizados' },
-  { id: 'attendance_count', name: 'Asistencias' },
-];
+import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
 
 const PERIOD_OPTIONS = [
   { id: 'week', name: 'Última semana' },
