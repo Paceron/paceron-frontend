@@ -7,6 +7,7 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { NextTrainingBanner } from './next-training-banner.jsx';
 import { StreakBanner } from './streak-banner.jsx';
+import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
 
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
@@ -42,6 +43,7 @@ export function AuthenticatedHomeScreen() {
         </Text>
         <NextTrainingBanner />
         <StreakBanner />
+        <AchievementHighlightCard />
       </View>
     </ScrollView>
   );
