@@ -1576,6 +1576,62 @@ contra código (`cmd/api/domains/competition/competition.go`):**
     catálogo/estampas del Gap 31). `GET /competitions/{id}` → `{data: {...}}` (objeto único, no
     lista) — relevante recién para la Spec 4b, que todavía no construye esa llamada.
 
+**Actualización 2026-10-14 (4) — hueco de arquitectura encontrado al arrancar el diseño de la
+Spec 4b (`type='route'`), antes de escribir una sola línea de UI. Preguntas nuevas, no bloquean
+`type='metric'` (ver punto 29):**
+
+26. **No existe hoy ningún `session_instance` "libre"/ad-hoc.** Todo `session_instance` nace de un
+    día de calendario de grupo (`PUT /groups/{id}/calendar/{date}`, ver
+    `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md`) — atado a un plan/grupo, con fecha fija. El
+    contrato confirmado (punto 10/22 arriba) dice que `competition_id` viaja en
+    `POST /session-instances/{id}/runner`, es decir el intento de una competencia **usa ese mismo
+    mecanismo** — para `type='metric'` esto encaja perfecto (cualquier entrenamiento programado
+    normal, dentro de la ventana, cuenta). Para `type='route'` no hay ningún día de calendario al
+    que atar el intento — una competencia por trayectoria no vive en el calendario de ningún
+    grupo. **Pregunta para backend:** ¿cómo arranca un intento de ruta? Tres hipótesis, a elegir o
+    corregir:
+    - (a) Backend suma un endpoint nuevo para crear un `session_instance` ad-hoc/standalone (sin
+      `group_id`/`plan_day_id`), pensado para este caso — el frontend lo crea al tocar "Correr
+      esta trayectoria" y recién ahí hace el `POST .../runner` con `competition_id`.
+    - (b) El intento de ruta NO pasa por `session_instance`/`runner_session` en absoluto — tiene su
+      propio endpoint de intake (ej. `POST /competitions/{id}/attempts`) con su propio ciclo de
+      vida, y el frontend solo reusa la UI de pre-start/en vivo/resultado, no el backend de
+      sesiones.
+    - (c) Otra idea del lado backend que no contemplamos.
+27. **Competencias `type='route'` no tienen `end_at` (confirmado, Gap 34 punto 15) — ¿entonces
+    cómo se cierran?** `PATCH /competitions/{id}/close` (punto 18 arriba) exige `end_at` ya pasado,
+    así que tal como está no aplica a ruta. **Pregunta para backend:** ¿el cierre de una
+    competencia de ruta es manual sin ese requisito (el entrenador cierra cuando quiere, sin
+    validar fecha), automático al primer intento finalizado (le ganás a quien sea que compita
+    después), o algún otro criterio? Afecta directo si la pestaña de Competencias necesita un
+    botón de cierre distinto para ruta.
+28. **¿Un corredor puede reintentar una ruta más de una vez?** Si sí, ¿el resultado final usa el
+    mejor intento (mayor % de coincidencia, o menor tiempo entre los que llegaron al mismo %) o
+    solo el primero/último? Afecta el copy de la pantalla de resultado ("tu mejor intento" vs "tu
+    intento") y si hace falta mostrar historial de intentos en el detalle.
+29. **Alcance de la Spec 4b dividido en dos a partir de este hallazgo (26-28 no bloquean esto):**
+    el wiring de `competition_id` en el Play/pre-start del corredor (`session-pre-start-screen.jsx`
+    o equivalente) para que una competencia `type='metric'` ya activa sume progreso real **no
+    depende de ninguna de las preguntas de arriba** — usa el mismo `session_instance` de siempre,
+    solo había que agregar el campo al body. Esa pieza puede construirse ya, en paralelo mientras
+    se espera la respuesta de 26-28. El dibujo de ruta en el mapa + el flujo de "correr una
+    trayectoria" + la verificación/cierre de ruta quedan en una Spec 4c separada, bloqueada hasta
+    tener respuesta.
+30. **Dibujo de ruta — límites a confirmar antes de construir el picker de mapa (no bloquea nada
+    de arriba, pero hace falta antes de la 4c):** ¿hay un máximo de puntos/vértices que acepta el
+    `route` (GeoJSON LineString), o longitud máxima de la ruta? ¿El creador puede editar la ruta de
+    una competencia ya creada, o es inmutable una vez creada (como el resto de los campos del
+    modelo)?
+31. **`acceptance_radius_meters` — rango/default.** ¿Hay un mínimo/máximo que el backend valide, o
+    el frontend puede mandar cualquier entero positivo? ¿Hay un valor sugerido por default en el
+    formulario, o el backend no opina?
+32. **WS en vivo durante un intento de ruta — ¿progreso de OTROS participantes llega en tiempo
+    real, o solo al finalizar?** `update:competition_progress` (punto 20 arriba) se dispara "al
+    terminar un intento" — confirmar si eso significa que mientras un corredor corre la ruta, el
+    resto NO ve su avance hasta que termina (ningún leaderboard en vivo durante la ventana de
+    intentos), o si hay algún evento intermedio. Afecta si la pantalla en vivo de ruta muestra solo
+    la trayectoria propia, o también la de otros corriendo en simultáneo.
+
 ## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
 
 **Contexto.** Rachas, logros/trofeos y competencias necesitan un **mismo** mecanismo de "hay algo
