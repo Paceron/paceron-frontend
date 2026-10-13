@@ -48,7 +48,7 @@ export function TrainingsHistoryTab({ role }) {
   const dateToInput = useTrainingsHistoryFiltersStore((s) => s.dateToInput);
   const setDateToInput = useTrainingsHistoryFiltersStore((s) => s.setDateToInput);
   const order = useTrainingsHistoryFiltersStore((s) => s.order);
-  const setOrder = useTrainingsHistoryFiltersStore((s) => s.setOrder);
+  const toggleOrder = useTrainingsHistoryFiltersStore((s) => s.toggleOrder);
   const filterExerciseId = useTrainingsHistoryFiltersStore((s) => s.exerciseId);
   const setFilterExerciseId = useTrainingsHistoryFiltersStore((s) => s.setExerciseId);
   const filterAthleteId = useTrainingsHistoryFiltersStore((s) => s.athleteId);
@@ -220,7 +220,7 @@ export function TrainingsHistoryTab({ role }) {
           <Pressable
             className="h-11 w-full flex-row items-center justify-center gap-2 rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
             nativeID="trainings-history-tab-order-toggle"
-            onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+            onPress={toggleOrder}
             testID="trainings-history-tab-order-toggle"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
