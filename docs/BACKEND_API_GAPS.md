@@ -1464,6 +1464,20 @@ complete mejor la trayectoria; el ganador se calcula automático y recibe un tro
 14. **Push de propuesta pendiente — confirmado por backend:** al crear una competencia con
     `created_by_role='runner'` (queda `pending_approval`), el entrenador del equipo recibe push
     además del punto rojo/inbox — mismo `data.route` del punto 11 de la sección anterior.
+15. **Corrección 2026-10-14, antes de empezar el frontend de este gap — forma exacta de listado
+    vs. detalle.** El punto 4/5 no distinguían qué trae cada uno:
+    - `GET /teams/{id}/competitions?status=&group_id=` → lista de competencias con **todos los
+      campos del modelo del punto 1, sin progreso por participante** (liviano — el frontend solo
+      necesita id/tipo/métrica/ventana/estado/ganador para la lista, no recalcular progreso de
+      cada una en cada fetch).
+    - `GET /competitions/{id}` → los mismos campos del modelo **más** `participants:
+      [{user_id, name, avatar_url, value, rank}]` — mismo shape de fila que usa el leaderboard
+      (Gap 32), con `value` en la unidad de la `metric` de la competencia (mismo encoding del Gap
+      32, corrección 2026-10-14: número plano, nunca string formateado). Para `type='route'`
+      este shape de `participants` queda pendiente de definir en el gap de la Spec 4b (trayectoria
+      en mapa) — no bloquea el tipo `metric`, que es autosuficiente con esto.
+    - Autorización de `GET /competitions/{id}`: mismo criterio dual ya usado en el resto de
+      endpoints de equipo (miembro activo del roster, u owner del team) — no solo el creador.
 
 ## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
 
