@@ -1118,3 +1118,48 @@ export function toLeaderboardModel(dto) {
     record: dto.record ? { userId: dto.record.user_id, name: dto.record.name, value: dto.record.value, achievedAt: dto.record.achieved_at } : null,
   };
 }
+
+// Competencias (Gap 33). `winnerUserIds`/`participantUserIds` siempre
+// arrays de strings (mismo criterio que el resto del repo para ids) --
+// `winner_user_ids` es plural de verdad (empate exacto = todos ganan, no
+// hay desempate adicional).
+export function toCompetitionModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    teamId: String(dto.team_id),
+    groupId: dto.group_id != null ? String(dto.group_id) : null,
+    type: dto.type,
+    metric: dto.metric ?? null,
+    startAt: dto.start_at,
+    endAt: dto.end_at ?? null,
+    route: dto.route ?? null,
+    acceptanceRadiusMeters: dto.acceptance_radius_meters ?? null,
+    participantUserIds: (dto.participant_user_ids ?? []).map((id) => String(id)),
+    createdByUserId: String(dto.created_by_user_id),
+    createdByRole: dto.created_by_role,
+    status: dto.status,
+    approvedByUserId: dto.approved_by_user_id != null ? String(dto.approved_by_user_id) : null,
+    rejectionReason: dto.rejection_reason ?? null,
+    winnerUserIds: (dto.winner_user_ids ?? []).map((id) => String(id)),
+    finishedAt: dto.finished_at ?? null,
+  };
+}
+
+// Payload de creación (Gap 33) -- SIN created_by_user_id/created_by_role,
+// el backend los deriva del token. IDs de participantes a Number (el
+// roster los trae como string -- ver CLAUDE.md "IDs numéricos en bodies
+// de request").
+export function toCreateCompetitionPayload(form) {
+  const payload = {
+    name: form.name,
+    type: form.type,
+    metric: form.metric,
+    start_at: form.startAt,
+    end_at: form.endAt,
+    participant_user_ids: (form.participantUserIds ?? []).map((id) => Number(id)),
+  };
+  if (form.groupId) payload.group_id = Number(form.groupId);
+  return payload;
+}
