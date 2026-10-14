@@ -3,10 +3,12 @@ import {
   BAND_LABELS,
   barPath,
   boxPlotStats,
+  bulletBar,
   dotPoints,
   extent,
   gaugeArc,
   linePath,
+  lineSeries,
   quantile,
   scaleLinear,
   stackedBar100,
@@ -456,6 +458,109 @@ describe('gaugeArc', () => {
   });
 });
 
+describe('lineSeries', () => {
+  test('mapea los índices al eje X y los valores al eje Y', () => {
+    const series = lineSeries([10, 20, 30], { width: 100, height: 100, minimumRange: 0 });
+    expect(series.points.map((point) => point.x)).toEqual([0, 50, 100]);
+    expect(series.points.map((point) => point.y)).toEqual([100, 50, 0]);
+    expect(series.path).toBe('M0 100 L50 50 L100 0');
+  });
+
+  test('acepta objetos { value } igual que números sueltos', () => {
+    const series = lineSeries([{ label: 'a', value: 10 }, { label: 'b', value: 20 }], { width: 100, height: 100, minimumRange: 0 });
+    expect(series.points.map((point) => point.value)).toEqual([10, 20]);
+  });
+
+  test('un valor ausente deja y en null, no en 0: el trazo se corta en vez de caer al piso', () => {
+    // round(null) da 0, y un punto pegado al piso se lee como "esa sesión dio 0".
+    const series = lineSeries([10, 20, null, 30, 40], { width: 100, height: 100, minimumRange: 0 });
+    expect(series.points[2].y).toBeNull();
+    // Dos tramos separados, no una pendiente que puentea el hueco.
+    expect(series.path).toBe('M0 100 L25 66.67 M75 33.33 L100 0');
+  });
+
+  test('un único punto válido rodeado de huecos no inventa un segmento', () => {
+    expect(lineSeries([10, null, 30], { width: 100, height: 100, minimumRange: 0 }).path).toBeNull();
+  });
+
+  test('un solo punto no inventa un segmento', () => {
+    const series = lineSeries([12], { width: 100, height: 100, minimumRange: 0 });
+    expect(series.points).toHaveLength(1);
+    expect(series.path).toBeNull();
+  });
+
+  test('todos los valores iguales no rompen la escala (dominio de rango cero)', () => {
+    const series = lineSeries([12, 12, 12], { width: 100, height: 100, minimumRange: 1 });
+    expect(series.points.every((point) => point.y === 50)).toBe(true);
+    expect(series.path).toBe('M0 50 L50 50 L100 50');
+  });
+
+  test('un dominio explícito es compartido: dos series se comparan en la misma escala', () => {
+    const shared = lineSeries([10, 20], { width: 100, height: 100, domain: [0, 20], minimumRange: 0 });
+    const other = lineSeries([5, 10], { width: 100, height: 100, domain: [0, 20], minimumRange: 0 });
+    expect(shared.domain).toEqual([0, 20]);
+    expect(other.domain).toEqual([0, 20]);
+    expect(shared.points[1].y).toBe(0);
+    expect(other.points[1].y).toBe(50);
+  });
+
+  test('el inset deja aire para el radio del punto', () => {
+    const series = lineSeries([1, 2], { width: 100, height: 100, inset: 10, minimumRange: 0 });
+    expect(series.points[0].x).toBe(10);
+    expect(series.points[1].x).toBe(90);
+  });
+
+  test('sin ancho o sin alto no devuelve coordenadas', () => {
+    expect(lineSeries([1, 2], { width: 0, height: 100 }).points).toEqual([]);
+    expect(lineSeries([1, 2], { width: 100, height: 0 }).path).toBeNull();
+  });
+});
+
+describe('bulletBar', () => {
+  test('la barra crece desde cero y el marcador queda en la posición del objetivo', () => {
+    const geometry = bulletBar(50, 100, { width: 300, height: 20, maxRatio: 1.5 });
+    expect(geometry.hasValue).toBe(true);
+    expect(geometry.hasTarget).toBe(true);
+    // El dominio va de 0 a 1,5 × el objetivo, así que el objetivo cae en 2/3.
+    expect(geometry.valueWidth).toBeCloseTo(100, 2);
+    expect(geometry.targetX).toBeCloseTo(200, 2);
+    expect(geometry.clamped).toBe(false);
+  });
+
+  test('un valor por encima del tope se recorta y avisa', () => {
+    const geometry = bulletBar(400, 100, { width: 300, height: 20, maxRatio: 1.5 });
+    expect(geometry.clamped).toBe(true);
+    expect(geometry.valueWidth).toBe(300);
+  });
+
+  test('sin objetivo la barra se dibuja contra su propio valor, sin marcador', () => {
+    const geometry = bulletBar(40, null, { width: 200, height: 20 });
+    expect(geometry.hasTarget).toBe(false);
+    expect(geometry.targetX).toBeNull();
+    expect(geometry.valueWidth).toBe(200);
+  });
+
+  test('sin dato la barra conserva su lugar (largo 0) en vez de no existir', () => {
+    const geometry = bulletBar(null, 100, { width: 300, height: 20 });
+    expect(geometry.hasValue).toBe(false);
+    expect(geometry.valueWidth).toBe(0);
+  });
+
+  test('un objetivo de cero no es un objetivo', () => {
+    expect(bulletBar(50, 0, { width: 300, height: 20 }).hasTarget).toBe(false);
+  });
+
+  test('las bandas de fondo son fracciones del eje y se recortan a la caja', () => {
+    const geometry = bulletBar(50, 100, { width: 200, height: 20, bands: [{ from: 0, to: 0.5 }, { from: 1.4, to: 2 }] });
+    expect(geometry.bands[0]).toMatchObject({ x: 0, width: 100 });
+    expect(geometry.bands[1]).toMatchObject({ x: 200, width: 0 });
+  });
+
+  test('sin dimensiones devuelve null en vez de NaN', () => {
+    expect(bulletBar(1, 1, { width: 0, height: 20 })).toBeNull();
+  });
+});
+
 describe('ningún helper devuelve NaN', () => {
   const HOSTILE = [null, undefined, NaN, Infinity, -Infinity, '', 'x', {}, [], 0, -1, 1e12];
 
@@ -487,6 +592,10 @@ describe('ningún helper devuelve NaN', () => {
       walk(boxPlotStats(v));
       walk(boxPlotStats([v, v, v]));
       walk(gaugeArc(v, v, { radius: 100 }));
+      walk(lineSeries(v, { width: v, height: v, inset: v, minimumRange: v }));
+      walk(lineSeries([v, v, v], { width: 100, height: 100 }));
+      walk(bulletBar(v, v, { width: 100, height: v, maxRatio: v, bands: [{ from: v, to: v }] }));
+      walk(bulletBar([v, v], [v, v], { width: 100, height: 100 }));
       walk(extent(v));
     });
   });

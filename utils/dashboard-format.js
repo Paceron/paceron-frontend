@@ -95,6 +95,81 @@ export function hasMetric(value) {
   return toNumber(value) !== null;
 }
 
+// ---------- enums del contrato, traducidos para mostrar ----------
+//
+// Los enums llegan en inglés de la API (`improving`/`stable`/`regressing`,
+// `alta`/`degraded`) y en pantalla se muestran traducidos: el veredicto es lo
+// que lee una persona, no lo que reconcilia una response. El CSV es la
+// excepción y los deja crudos a propósito — ver utils/dashboard-export.js.
+// `BAND_LABELS` (met/near/missed/unknown) vive en utils/dashboard-chart.js,
+// junto a la geometría que las dibuja.
+
+export const VERDICT_LABELS = {
+  improving: 'Mejoró',
+  stable: 'Estable',
+  regressing: 'Retrocedió',
+};
+
+// El ícono va con el texto y no en lugar de él: la spec exige que ninguna señal
+// se comunique solo por color (WCAG 1.4.1), y el mismo par color+ícono es lo que
+// distingue "mejoró" de "retrocedió" sin depender del tono.
+export const VERDICT_ICONS = {
+  improving: 'trending-up',
+  stable: 'minus',
+  regressing: 'trending-down',
+};
+
+// Un veredicto que no sea del contrato no se muestra crudo: se muestra como
+// ausencia de dato. Un slug desconocido en pantalla no le dice nada a nadie.
+export function formatVerdict(value) {
+  return VERDICT_LABELS[value] ?? 'Sin veredicto';
+}
+
+export function verdictIcon(value) {
+  return VERDICT_ICONS[value] ?? 'help-circle-outline';
+}
+
+export const TIME_QUALITY_LABELS = {
+  alta: 'Alta',
+  degraded: 'Degradada',
+};
+
+export function formatTimeQuality(value) {
+  return TIME_QUALITY_LABELS[value] ?? 'Sin dato';
+}
+
+// Los cinco tipos vigentes, con el texto que se muestra en el filtro. El orden
+// es el de utils/exercise-field-matrix.js (los dos de velocidad primero).
+export const KIND_LABELS = {
+  velocidad_tiempo: 'Velocidad en tiempo',
+  velocidad_distancia: 'Velocidad en distancia',
+  liviano: 'Liviano',
+  elongacion: 'Elongación',
+  ritmo_continuo: 'Ritmo continuo',
+};
+
+export function formatKind(value) {
+  return KIND_LABELS[value] ?? String(value ?? EMPTY_METRIC);
+}
+
+// ---------- calidad de los datos ----------
+
+// ¿El backend marcó el período como insuficiente? Cuando es `true`, la pantalla
+// oculta los indicadores de tendencia y muestra el motivo en vez de pintar un
+// porcentaje calculado sobre muy pocos datos (spec, "estado de calidad de los
+// datos"). Vive acá porque lo consultan la banner y las paletas, y duplicar la
+// condición en dos JSX es la forma de que una se olvide del caso.
+export function hasInsufficientData(quality) {
+  return Boolean(quality?.insufficient_data);
+}
+
+// `legacy_sessions` NO es un defecto: son series válidas sin fila en
+// `runner_session` que igual entran a los KPI (quality.go del backend). La
+// banner lo muestra como nota al pie con esa aclaración, nunca como advertencia.
+export function isLegacyNote(quality) {
+  return Number(quality?.legacy_sessions) > 0;
+}
+
 // ---------- tolerancia de cumplimiento ----------
 //
 // Las cotas son las del backend (dashboardMinTolerance/dashboardMaxTolerance en

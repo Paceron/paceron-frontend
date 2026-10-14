@@ -1,12 +1,20 @@
 import {
   DEFAULT_TOLERANCE,
   EMPTY_METRIC,
+  KIND_LABELS,
   TOLERANCE_MAX,
   TOLERANCE_MIN,
+  VERDICT_LABELS,
   formatDelta,
+  formatKind,
   formatMetric,
+  formatTimeQuality,
+  formatVerdict,
+  hasInsufficientData,
   hasMetric,
+  isLegacyNote,
   resolveTolerance,
+  verdictIcon,
 } from '../utils/dashboard-format.js';
 
 describe('formatMetric', () => {
@@ -133,5 +141,60 @@ describe('resolveTolerance', () => {
   test('las cotas coinciden con las del backend', () => {
     expect(TOLERANCE_MIN).toBe(0.01);
     expect(TOLERANCE_MAX).toBe(0.2);
+  });
+});
+
+describe('enums del contrato traducidos para pantalla', () => {
+  test('el veredicto se muestra traducido, no como el slug de la API', () => {
+    expect(formatVerdict('improving')).toBe('Mejoró');
+    expect(formatVerdict('stable')).toBe('Estable');
+    expect(formatVerdict('regressing')).toBe('Retrocedió');
+    Object.entries(VERDICT_LABELS).forEach(([slug, label]) => expect(formatVerdict(slug)).toBe(label));
+  });
+
+  test('un enum desconocido o ausente NO se muestra crudo', () => {
+    // Un slug en pantalla no le dice nada a nadie, y un null tampoco: los dos
+    // son "no hay veredicto".
+    expect(formatVerdict('improvingg')).toBe('Sin veredicto');
+    expect(formatVerdict(null)).toBe('Sin veredicto');
+    expect(formatVerdict(undefined)).toBe('Sin veredicto');
+    expect(formatVerdict('improvingg')).not.toContain('improving');
+  });
+
+  test('cada veredicto tiene su ícono: el color nunca es el único portador del significado', () => {
+    expect(verdictIcon('improving')).not.toBe(verdictIcon('regressing'));
+    expect(verdictIcon('improving')).not.toBe(verdictIcon('stable'));
+    expect(verdictIcon('nope')).toBe('help-circle-outline');
+  });
+
+  test('la calidad del tiempo también se traduce', () => {
+    expect(formatTimeQuality('alta')).toBe('Alta');
+    expect(formatTimeQuality('degraded')).toBe('Degradada');
+    expect(formatTimeQuality(undefined)).toBe('Sin dato');
+  });
+
+  test('los cinco tipos vigentes tienen etiqueta en español', () => {
+    expect(Object.keys(KIND_LABELS).sort()).toEqual(
+      ['elongacion', 'liviano', 'ritmo_continuo', 'velocidad_distancia', 'velocidad_tiempo'],
+    );
+    expect(formatKind('velocidad_distancia')).toBe('Velocidad en distancia');
+    // Un tipo desconocido vuelve crudo, no undefined: es dato viejo del backend
+    // y aunque no sepamos qué es, hay que poder mostrarlo.
+    expect(formatKind('ritmo_antiguo')).toBe('ritmo_antiguo');
+    expect(formatKind(null)).toBe(EMPTY_METRIC);
+  });
+});
+
+describe('calidad de los datos', () => {
+  test('insufficient_data ordena ocultar las tendencias', () => {
+    expect(hasInsufficientData({ insufficient_data: true })).toBe(true);
+    expect(hasInsufficientData({ insufficient_data: false })).toBe(false);
+    expect(hasInsufficientData(null)).toBe(false);
+  });
+
+  test('legacy_sessions es una nota informativa, no un defecto', () => {
+    expect(isLegacyNote({ legacy_sessions: 3 })).toBe(true);
+    expect(isLegacyNote({ legacy_sessions: 0 })).toBe(false);
+    expect(isLegacyNote(undefined)).toBe(false);
   });
 });

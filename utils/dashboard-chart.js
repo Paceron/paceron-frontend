@@ -241,7 +241,7 @@ export function stackedBar100(segments, { width, height, gap = 0, horizontal = f
 // El eje Y crece hacia arriba: el valor más alto, más arriba. Sin `xDomain` /
 // `yDomain` explícitos, el dominio se deriva de los puntos con `minimumRange`
 // para que un único punto no produzca un dominio de rango cero.
-export function dotPoints(items, { width, height, xDomain, yDomain, minimumRange = 1 } = {}) {
+export function dotPoints(items, { width, height, xDomain: xDomain_, yDomain: yDomain_, minimumRange = 1 } = {}) {
   const list = Array.isArray(items) ? items : [];
   const w = positiveOrZero(Number(width));
   const h = positiveOrZero(Number(height));
@@ -260,8 +260,11 @@ export function dotPoints(items, { width, height, xDomain, yDomain, minimumRange
     return [found[0] - pad, found[1] + pad];
   };
 
-  const x = scaleLinear(domainOf(xDomain, 'x'), [0, w]);
-  const y = scaleLinear(domainOf(yDomain, 'y'), [h, 0]);
+  const xDomain = domainOf(xDomain_, 'x');
+  const yDomain = domainOf(yDomain_, 'y');
+
+  const x = scaleLinear(xDomain, [0, w]);
+  const y = scaleLinear(yDomain, [h, 0]);
 
   const points = valid.map(({ item, index, x: vx, y: vy }) => ({
     index,
@@ -270,7 +273,10 @@ export function dotPoints(items, { width, height, xDomain, yDomain, minimumRange
     cy: round(y(vy)),
   }));
 
-  return { points, x, y };
+  // Los dominios vuelven explícitos para que el componente rotule los ejes con
+  // los MISMOS extremos que se usaron para escalar, en vez de volver a derivar
+  // un `Math.min` sobre los puntos (que omitiría el padding y daría otro número).
+  return { points, x, y, xDomain, yDomain };
 }
 
 // Cuantil por interpolación lineal (método R-7, el de d3 y numpy): la posición
@@ -335,6 +341,210 @@ export function boxPlotStats(values, { k = 1.5 } = {}) {
     whiskerHigh: inside.length ? round(inside[inside.length - 1]) : q3,
     outliers: outliers.map(round),
   };
+}
+
+// Serie temporal: convierte una lista de valores (o de `{ value }`) en puntos de
+// pantalla con su path. El eje X es de CATEGORÍAS —los índices—, no de tiempo:
+// el backend ya devuelve los buckets ordenados con su `period_start`, y volver a
+// interpretar esa fecha como coordenada abriría la puerta a que el gráfico y las
+// etiquetas del eje se corrieran entre sí.
+//
+// Un valor ausente (null) deja el punto con `y: null` en vez de `0`: `round(null)`
+// da 0 y dibujaría un punto pegado al piso, que es un dato que no existe.
+export function lineSeries(values, { width, height, domain, minimumRange = 1, inset = 0 } = {}) {
+  const list = Array.isArray(values) ? values : [];
+  const w = positiveOrZero(Number(width));
+  const h = positiveOrZero(Number(height));
+  if (w <= 0 || h <= 0) return { points: [], path: null, x: scaleLinear([], []), y: scaleLinear([], []), domain: null };
+
+  const nums = list.map((item) => finite(typeof item === 'object' && item !== null ? item?.value : item));
+  const margin = Number(minimumRange) > 0 ? Number(minimumRange) : 0;
+  const found = Array.isArray(domain) && domain.length === 2 && domain.every((v) => finite(v) !== null)
+    ? [finite(domain[0]), finite(domain[1])]
+    : extent(nums);
+  const resolvedDomain = found ? [found[0] - margin, found[1] + margin] : [0, 1];
+
+  const pad = positiveOrZero(Number(inset));
+  const x = scaleLinear([0, Math.max(1, list.length - 1)], [pad, Math.max(pad, w - pad)]);
+  const y = scaleLinear(resolvedDomain, [h, 0]);
+
+  const points = nums.map((value, index) => {
+    const py = y(value);
+    return { index, value, x: round(x(index)), y: py === null ? null : round(py) };
+  });
+
+  return { points, path: linePath(points), x, y, domain: resolvedDomain };
+}
+
+// ---------- radar ----------
+
+// Máximo FIJO del eje Volumen: 100 km por período. No sale de la respuesta
+// porque ningún endpoint del contrato expone el volumen máximo del scope, y
+// pedirlo agregaría un campo al contrato solo para pintar un radar. El eje se
+// rotula con su valor absoluto al lado justamente por eso: el 0,7 del polígono no
+// es comparable entre corredores (ver spec, "Radar").
+export const RADAR_VOLUME_MAX_KM = 100;
+const RADAR_VOLUME_MAX_M = RADAR_VOLUME_MAX_KM * 1000;
+
+// Los cinco ejes, en el orden en que se dibujan. `unitKey` es la clave del
+// bloque `units` de la respuesta de la que sale la unidad que se rotula — el
+// front no inventa ni convierte unidades (D4). Consistencia no tiene `unitKey`:
+// el contrato no declara ninguna clave para el coeficiente de variación, así que
+// se escribe sin sufijo en vez de inventar una.
+export const RADAR_AXES = [
+  { id: 'speed', label: 'Ritmo', unitKey: 'speed' },
+  { id: 'volume', label: 'Volumen', unitKey: 'distance' },
+  { id: 'consistency', label: 'Consistencia', unitKey: null },
+  { id: 'compliance', label: 'Cumplimiento', unitKey: 'compliance' },
+  { id: 'trend', label: 'Progresión', unitKey: 'delta' },
+];
+
+// Normaliza los cinco ejes del radar a [0, 100] desde la respuesta del resumen,
+// con SU contenedor real: `totals.*`, `trend.*` y `consistency.*` no están al
+// mismo nivel.
+//
+// Un eje sin dato queda `value: null` y `available: false` — FUERA del
+// polígono. Los `null` son el estado normal, no la excepción: `cv` es null con
+// menos de 2 series, `trend_pct` con menos de 3, y `target_speed_kph` es null
+// justamente en A reducido. En JavaScript `100 − (null × 100)` da 100, así que
+// sin esta regla un corredor con una sola serie vería "consistencia perfecta"
+// sobre un punto que nunca se midió.
+//
+// Los cinco se recortan a [0, 100] sin excepción: `100 − cv × 100` con cv = 1,2
+// daría −20 y `50 + trend_pct × 5` con trend_pct = +12 daría 110; un vértice
+// fuera del círculo se lee como "más que el máximo", que el eje no puede tener.
+export function normalizeRadarAxes({ totals, trend, consistency } = {}) {
+  const t = totals ?? {};
+  const tr = trend ?? {};
+  const cs = consistency ?? {};
+
+  const achieved = finite(t.achieved_speed_kph);
+  const target = finite(t.target_speed_kph);
+  const distanceM = finite(t.distance_m);
+  const cv = finite(cs.cv);
+  const compliance = finite(t.compliance_rate);
+  const trendPct = finite(tr.trend_pct);
+
+  const values = {
+    speed: achieved !== null && target !== null && target > 0 ? clip100((achieved / target) * 100) : null,
+    volume: distanceM !== null ? clip100((distanceM / RADAR_VOLUME_MAX_M) * 100) : null,
+    // Invertido: menos dispersión es mejor. cv = 0 → 100.
+    consistency: cv !== null ? clip100(100 - (cv * 100)) : null,
+    compliance: compliance !== null ? clip100(compliance) : null,
+    // Centrado en 50: "sin cambio" queda en el centro del eje.
+    trend: trendPct !== null ? clip100(50 + (trendPct * 5)) : null,
+  };
+
+  const raws = { speed: achieved, volume: distanceM, consistency: cv, compliance: compliance, trend: trendPct };
+  const references = { speed: target };
+
+  return RADAR_AXES.map((axis) => ({
+    ...axis,
+    value: values[axis.id],
+    raw: raws[axis.id],
+    reference: references[axis.id] ?? null,
+    available: values[axis.id] !== null,
+  }));
+}
+
+// Polígono del radar. Los vértices sin dato (`available: false`) NO entran en el
+// path: la arista los SALTA en vez de cerrar por el centro, que es lo que
+// distingue "no medido" de "medido en cero".
+//
+// Con menos de 2 vértices con dato no hay polígono que cerrar (un punto solo no
+// es un área); con exactamente 2 se devuelve el segmento abierto en vez de
+// inventar el resto.
+export function radarPolygon(axes, { cx = 0, cy = 0, radius = 100, startAngle = -90 } = {}) {
+  const list = Array.isArray(axes) ? axes : [];
+  const r = positiveOrZero(Number(radius));
+  const count = list.length;
+  const step = count > 0 ? 360 / count : 0;
+
+  const points = list.map((axis, index) => {
+    const value = finite(axis?.value);
+    const rad = ((startAngle + (step * index)) * Math.PI) / 180;
+    const factor = value === null ? 0 : clamp(value, 0, 100) / 100;
+    return {
+      id: axis?.id ?? String(index),
+      label: typeof axis?.label === 'string' ? axis.label : '',
+      value,
+      available: value !== null,
+      // Un vértice sin dato se ubica en el centro: es donde el path NO pasa,
+      // pero hace falta una coordenada válida para el texto "s/d" del rótulo.
+      x: round(cx + (r * Math.cos(rad) * factor)),
+      y: round(cy + (r * Math.sin(rad) * factor)),
+      outerX: round(cx + r * Math.cos(rad)),
+      outerY: round(cy + r * Math.sin(rad)),
+    };
+  });
+
+  const present = points.filter((point) => point.available);
+  const closed = present.length >= 3;
+  const path = present.length >= 2
+    ? `M${present.map((point) => `${point.x} ${point.y}`).join(' L')}${closed ? ' Z' : ''}`
+    : null;
+
+  return { points, path, closed, present: present.length, missing: count - present.length };
+}
+
+// Bullet chart: barra de logro contra un marcador de objetivo, con bandas
+// cualitativas de fondo. Es la pieza de cumplimiento — el gauge es la de ritmo,
+// y las dos se complementan en vez de repetir el mismo número.
+//
+// `maxRatio` decide cuánta escala hay por encima del objetivo: con 1,5 un 120 %
+// de cumplimiento se dibuja completo (dentro de la banda "superó") y un 400 %
+// se recorta con `clamped`. Sin objetivo (`target` null) la barra se dibuja
+// contra su propio valor: es una barra de progreso sin referencia, no un bullet.
+export function bulletBar(value, target, { width, height, maxRatio = 1.5, bands = [] } = {}) {
+  const w = positiveOrZero(Number(width));
+  const h = positiveOrZero(Number(height));
+  if (w <= 0 || h <= 0) return null;
+
+  const v = finite(value);
+  const t = finite(target);
+  const hasValue = v !== null;
+  const hasTarget = t !== null && t > 0;
+  const ratio = finiteOrZero(maxRatio) > 0 ? finiteOrZero(maxRatio) : 1.5;
+  const max = hasTarget ? t * ratio : (hasValue && v > 0 ? v : 1);
+
+  const scale = scaleLinear([0, max], [0, w]);
+  const valueX = scale(v);
+  const targetX = scale(hasTarget ? t : null);
+  // El largo se recorta a la caja: sin esto un 400 % de cumplimiento se
+  // dibujaría 266 px más allá del borde derecho, fuera del SVG, como si el eje
+  // no tuviera tope.
+  const valueWidth = valueX === null ? 0 : round(clamp(valueX, 0, w));
+
+  return {
+    width: round(w),
+    height: round(h),
+    max: round(max),
+    ratio,
+    hasValue,
+    hasTarget,
+    // Sin dato la barra no se dibuja pero conserva su lugar (largo 0 desde el
+    // origen): el track es el mismo para todas las filas.
+    valueWidth,
+    targetX: targetX === null ? null : round(targetX),
+    clamped: hasValue && v > max,
+    bands: (Array.isArray(bands) ? bands : [])
+      .map((band) => {
+        const from = finite(band?.from);
+        const to = finite(band?.to);
+        if (from === null || to === null) return null;
+        return {
+          from,
+          to,
+          x: round(clamp(from, 0, 1) * w),
+          width: round((clamp(to, 0, 1) - clamp(from, 0, 1)) * w),
+        };
+      })
+      .filter(Boolean),
+  };
+}
+
+function clip100(n) {
+  return round(clamp(n, 0, 100));
 }
 
 // Arco SVG entre dos ángulos. Ángulos en grados con la convención de pantalla

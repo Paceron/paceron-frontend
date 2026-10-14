@@ -30,46 +30,46 @@
 
 ## 3. Geometría visual (SVG)
 
-- [ ] 3.1 `components/dashboard/charts/line-chart.jsx` — evolución de ritmo o de mejor marca, con dos series cuando el tipo lo permite.
-- [ ] 3.2 `components/dashboard/charts/bar-chart.jsx` — ranking horizontal, con inversión en paleta B (menor tiempo arriba) y los tres primeros destacados.
-- [ ] 3.3 `components/dashboard/charts/stacked-bar.jsx` — 100 % con las cuatro bandas que **llegan calculadas** del backend: `band_counts` por bucket y `band` por serie. El front NO las recalcula: los umbrales de `near` y el signo invertido del eje temporal viven en el backend, y duplicarlos acá es la vía directa a que el gráfico y el KPI se contradigan. Con `has_target: false` las cuatro llegan en cero.
-- [ ] 3.4 `components/dashboard/charts/dot-plot.jsx` — dispersión de series del corredor.
-- [ ] 3.5 `components/dashboard/charts/box-plot.jsx` — consistencia, con outliers marcados.
-- [ ] 3.6 `components/dashboard/charts/gauge.jsx` — ritmo logrado contra objetivo.
-- [ ] 3.7 `components/dashboard/charts/bullet-chart.jsx` — cumplimiento de objetivo.
-- [ ] 3.10 `components/dashboard/charts/radar-chart.jsx` — SVG con `react-native-svg`, mismo `onLayout` que el resto (task 3.1). `accessibilityRole="image"` + `accessibilityLabel` con los cinco valores, y la tabla de valores crudos debajo.
-- [ ] 3.11 `normalizeRadarAxes({ totals, trend, consistency })` en `utils/dashboard-chart.js` — pura y testeable, como el resto de la geometría. **El eje Volumen se normaliza contra un máximo fijo declarado en el front (100 km por período)**, no contra un máximo del scope: ningún endpoint del contrato expone el volumen máximo del scope, y pedirlo sería agregar un campo al contrato solo para pintar un radar. El eje Volumen se rotula con su valor absoluto al lado, así que el 0,7 del polígono no se lee como si fuera un dato comparable entre corredores.
-- [ ] 3.12 `__tests__/dashboard-radar.test.js` — normalización de los 5 ejes; en particular que consistencia se **invierte** (más `cv` = menor valor) y que un `cv` de 0 dé 100; y que **todos los ejes quedan dentro de `[0, 100]`** con valores extremos (`trend_pct = +12` → 110 sin recortar, `cv = 1,2` → −20 sin recortar).
-- [ ] 3.8 Todos consumen la geometría de `utils/dashboard-chart.js`, no calculan coordenadas adentro.
-- [ ] 3.9 Todos aceptan **solo** transform/opacity para animación (design.md, spec de movimiento reducido).
+- [x] 3.1 `components/dashboard/charts/line-chart.jsx` — evolución de ritmo o de mejor marca, con dos series cuando el tipo lo permite.
+- [x] 3.2 `components/dashboard/charts/bar-chart.jsx` — ranking horizontal, con inversión en paleta B (menor tiempo arriba) y los tres primeros destacados.
+- [x] 3.3 `components/dashboard/charts/stacked-bar.jsx` — 100 % con las cuatro bandas que **llegan calculadas** del backend: `band_counts` por bucket y `band` por serie. El front NO las recalcula: los umbrales de `near` y el signo invertido del eje temporal viven en el backend, y duplicarlos acá es la vía directa a que el gráfico y el KPI se contradigan. Con `has_target: false` las cuatro llegan en cero.
+- [x] 3.4 `components/dashboard/charts/dot-plot.jsx` — dispersión de series del corredor.
+- [x] 3.5 `components/dashboard/charts/box-plot.jsx` — consistencia, con outliers marcados.
+- [x] 3.6 `components/dashboard/charts/gauge.jsx` — ritmo logrado contra objetivo.
+- [x] 3.7 `components/dashboard/charts/bullet-chart.jsx` — cumplimiento de objetivo.
+- [x] 3.10 `components/dashboard/charts/radar-chart.jsx` — SVG con `react-native-svg`, mismo `onLayout` que el resto (task 3.1). `accessibilityRole="image"` + `accessibilityLabel` con los cinco valores, y la tabla de valores crudos debajo.
+- [x] 3.11 `normalizeRadarAxes({ totals, trend, consistency })` en `utils/dashboard-chart.js` — pura y testeable, como el resto de la geometría. **El eje Volumen se normaliza contra un máximo fijo declarado en el front (100 km por período)**, no contra un máximo del scope: ningún endpoint del contrato expone el volumen máximo del scope, y pedirlo sería agregar un campo al contrato solo para pintar un radar. El eje Volumen se rotula con su valor absoluto al lado, así que el 0,7 del polígono no se lee como si fuera un dato comparable entre corredores.
+- [x] 3.12 `__tests__/dashboard-radar.test.js` — normalización de los 5 ejes; en particular que consistencia se **invierte** (más `cv` = menor valor) y que un `cv` de 0 dé 100; y que **todos los ejes quedan dentro de `[0, 100]`** con valores extremos (`trend_pct = +12` → 110 sin recortar, `cv = 1,2` → −20 sin recortar).
+- [x] 3.8 Todos consumen la geometría de `utils/dashboard-chart.js`, no calculan coordenadas adentro.
+- [x] 3.9 Todos aceptan **solo** transform/opacity para animación (design.md, spec de movimiento reducido).
 
 ## 4. Las tres paletas
 
-- [ ] 4.0 `components/dashboard/palette-reduced-target.jsx` — **tercer caso**, el que faltaba: envuelve `palette-with-target.jsx` y oculta las piezas de ritmo (gauge y velocidad esperada), con la distancia como numero principal. No es un contenedor nuevo con estructura duplicada: las piezas compartidas con A completo (cumplimiento, delta, evolucion) son las mismas, y duplicarlas es la via directa a que se desincronicen. Aplica a Velocidad Maxima 100/200 m y a `elongacion` cuando `target_speed_kph` sea `null`.
-- [ ] 4.1 `components/dashboard/palette-with-target.jsx` — ritmo, delta semántico, cumplimiento, consistencia, ranking, evolución.
-- [ ] 4.2 `components/dashboard/palette-without-target.jsx` — mejor tiempo como número grande, ranking, dispersión, evolución de marca, comparación.
-- [ ] 4.3 Conmutación por la **tupla `(has_target, axis, target_speed_kph != null)`** de la respuesta, no por `kind`, en un contenedor estable, con **tres** casos y no dos: A completo, **A reducido** (eje `distance`: número principal = distancia, sin gauge de ritmo ni velocidad esperada) y B. A reducido aplica a 2 de los 12 ejercicios del seed (Velocidad Máxima 100 y 200 m); Pasadas 1000/2000 sí llevan `minutes`, así que son A completo. `elongacion` (eje `time`, sin distancia) entra en A completo salvo que `target_speed_kph` venga `null`, caso en el que cae a A reducido: **no** desmonta los KPIs ni pierde scroll (design.md D3).
-- [ ] 4.4 `liviano` muestra **volumen** como número principal, nunca ritmo: el tipo se define por volumen (`utils/exercise-field-matrix.js:24-31`, `showSpeed: false`). Para `elongacion` (eje `time`) el número principal es el tiempo, y las piezas de ritmo no se pintan si no hay velocidad objetivo.
+- [x] 4.0 `components/dashboard/palette-reduced-target.jsx` — **tercer caso**, el que faltaba: envuelve `palette-with-target.jsx` y oculta las piezas de ritmo (gauge y velocidad esperada), con la distancia como numero principal. No es un contenedor nuevo con estructura duplicada: las piezas compartidas con A completo (cumplimiento, delta, evolucion) son las mismas, y duplicarlas es la via directa a que se desincronicen. Aplica a Velocidad Maxima 100/200 m y a `elongacion` cuando `target_speed_kph` sea `null`.
+- [x] 4.1 `components/dashboard/palette-with-target.jsx` — ritmo, delta semántico, cumplimiento, consistencia, ranking, evolución.
+- [x] 4.2 `components/dashboard/palette-without-target.jsx` — mejor tiempo como número grande, ranking, dispersión, evolución de marca, comparación.
+- [x] 4.3 Conmutación por la **tupla `(has_target, axis, target_speed_kph != null)`** de la respuesta, no por `kind`, en un contenedor estable, con **tres** casos y no dos: A completo, **A reducido** (eje `distance`: número principal = distancia, sin gauge de ritmo ni velocidad esperada) y B. A reducido aplica a 2 de los 12 ejercicios del seed (Velocidad Máxima 100 y 200 m); Pasadas 1000/2000 sí llevan `minutes`, así que son A completo. `elongacion` (eje `time`, sin distancia) entra en A completo salvo que `target_speed_kph` venga `null`, caso en el que cae a A reducido: **no** desmonta los KPIs ni pierde scroll (design.md D3).
+- [x] 4.4 `liviano` muestra **volumen** como número principal, nunca ritmo: el tipo se define por volumen (`utils/exercise-field-matrix.js:24-31`, `showSpeed: false`). Para `elongacion` (eje `time`) el número principal es el tiempo, y las piezas de ritmo no se pintan si no hay velocidad objetivo.
 
 ## 4b. Tooltips de KPI
 
-- [ ] 4b.1 `components/dashboard/kpi-tooltip.jsx` — muestra la fórmula del KPI, `tolerance_applied` y `series_count`.
-- [ ] 4b.2 Abre con hover y con foco de teclado (no solo hover). En touch, al primer tap.
-- [ ] 4b.3 Accessible: el trigger lleva `accessibilityHint` con el valor y la unidad, y el contenido del tooltip se anuncia.
+- [x] 4b.1 `components/dashboard/kpi-tooltip.jsx` — muestra la fórmula del KPI, `tolerance_applied` y `series_count`.
+- [x] 4b.2 Abre con hover y con foco de teclado (no solo hover). En touch, al primer tap.
+- [x] 4b.3 Accessible: el trigger lleva `accessibilityHint` con el valor y la unidad, y el contenido del tooltip se anuncia.
 
 ## 5. Filtros y layout
 
-- [ ] 5.1 `components/dashboard/kind-filter.jsx` — tablist real: `accessibilityRole="tab"` + `aria-selected` + roving `tabIndex` + flechas/`Home`/`End` (design.md D9). **No usar `accessibilityRole="tabpanel"`** — no existe en TalkBack.
-- [ ] 5.2 `components/dashboard/filters-bar.jsx` — equipo, grupo, **corredor**, rango de fechas, tipo de ejercicio. El corredor solo aparece en la vista de entrenador; en la de corredor la pantalla lo toma del scope.
-- [ ] 5.2b Todos los selects por `ResponsiveSelectField` (obligatorio por `local/no-direct-select-field`), con precedente en `components/profile/payments-filters.jsx:4`. El rango de fechas usa dos `DateField`, como `components/calendar/trainings-history-tab.jsx:176-179`. **Decisión, no propuesta: ejercicios con `SearchablePickerField` porque se distinguen por tipo (dato secundario, criterio de `CLAUDE.md`); corredores con el select normal, porque con 12 ejercicios del seed la lista no es larga y el criterio de "decenas de sesiones" de `CLAUDE.md` no aplica.
-- [ ] 5.2c `utils/date-field-format.js#fromISODate` + test — el **inverso** de `toISODate`, que ya existe (`utils/date-field-format.js:10`). `DateField` emite `DD/MM/YYYY` en todas las plataformas desde el 2026-10-04 (`CLAUDE.md`) y la API habla ISO: sin el inverso, `date_range.min` sembrado en un `DateField` muestra `01-09-2026` sobre un placeholder `DD/MM/AAAA` y el picker nativo lee basura. Ojo: `format-date-display.js:5` devuelve `DD-MM-YYYY` con guiones, que `parseDDMMYYYY` (`fields.jsx:261`) **no** parsea: no sirve como inverso.
-- [ ] 5.3 `components/dashboard/kpi-tile.jsx` — número grande, unidad, delta, veredicto, y "—" ante `null`.
-- [ ] 5.4 `components/dashboard/quality-banner.jsx` — los cinco contadores de defecto como advertencia, y `legacy_sessions` como nota al pie informativa con su aclaración — `data_quality`, y oculta las tendencias cuando `insufficient_data`.
-- [ ] 5.4b `components/dashboard/runner-progress.jsx` — la variante del corredor: reusa `palette-with-target.jsx` y los KPIs, y **no** importa `leaderboard-table.jsx` ni `comparison-strip.jsx`.
-- [ ] 5.5 `components/dashboard/leaderboard-table.jsx` — paginado, ordenable solo por las 4 columnas de la whitelist del backend, con la fila propia marcada por `is_self` y la posición tomada del `position` de la respuesta, para poder mostrar "vas 14°" sin traer todas las páginas.
-- [ ] 5.6 `components/dashboard/comparison-strip.jsx` — período actual vs anterior, con la diferencia en **puntos porcentuales**.
+- [x] 5.1 `components/dashboard/kind-filter.jsx` — tablist real: `accessibilityRole="tab"` + `aria-selected` + roving `tabIndex` + flechas/`Home`/`End` (design.md D9). **No usar `accessibilityRole="tabpanel"`** — no existe en TalkBack.
+- [x] 5.2 `components/dashboard/filters-bar.jsx` — equipo, grupo, **corredor**, rango de fechas, tipo de ejercicio. El corredor solo aparece en la vista de entrenador; en la de corredor la pantalla lo toma del scope.
+- [x] 5.2b Todos los selects por `ResponsiveSelectField` (obligatorio por `local/no-direct-select-field`), con precedente en `components/profile/payments-filters.jsx:4`. El rango de fechas usa dos `DateField`, como `components/calendar/trainings-history-tab.jsx:176-179`. **Decisión, no propuesta: ejercicios con `SearchablePickerField` porque se distinguen por tipo (dato secundario, criterio de `CLAUDE.md`); corredores con el select normal, porque con 12 ejercicios del seed la lista no es larga y el criterio de "decenas de sesiones" de `CLAUDE.md` no aplica.
+- [x] 5.2c `utils/date-field-format.js#fromISODate` + test — el **inverso** de `toISODate`, que ya existe (`utils/date-field-format.js:10`). `DateField` emite `DD/MM/YYYY` en todas las plataformas desde el 2026-10-04 (`CLAUDE.md`) y la API habla ISO: sin el inverso, `date_range.min` sembrado en un `DateField` muestra `01-09-2026` sobre un placeholder `DD/MM/AAAA` y el picker nativo lee basura. Ojo: `format-date-display.js:5` devuelve `DD-MM-YYYY` con guiones, que `parseDDMMYYYY` (`fields.jsx:261`) **no** parsea: no sirve como inverso.
+- [x] 5.3 `components/dashboard/kpi-tile.jsx` — número grande, unidad, delta, veredicto, y "—" ante `null`.
+- [x] 5.4 `components/dashboard/quality-banner.jsx` — los cinco contadores de defecto como advertencia, y `legacy_sessions` como nota al pie informativa con su aclaración — `data_quality`, y oculta las tendencias cuando `insufficient_data`.
+- [x] 5.4b `components/dashboard/runner-progress.jsx` — la variante del corredor: reusa `palette-with-target.jsx` y los KPIs, y **no** importa `leaderboard-table.jsx` ni `comparison-strip.jsx`.
+- [x] 5.5 `components/dashboard/leaderboard-table.jsx` — paginado, ordenable solo por las 4 columnas de la whitelist del backend, con la fila propia marcada por `is_self` y la posición tomada del `position` de la respuesta, para poder mostrar "vas 14°" sin traer todas las páginas.
+- [x] 5.6 `components/dashboard/comparison-strip.jsx` — período actual vs anterior, con la diferencia en **puntos porcentuales**.
 
-- [ ] 5.9 `utils/dashboard-error-codes.js` — mapa literal de códigos, sin strings sueltos. El backend responde con códigos **UPPER_SNAKE** (convención ya existente en `constants/error_code.go`). El front SHALL tener un mapa literal en `utils/dashboard-error-codes.js`, sin strings sueltos:
+- [x] 5.9 `utils/dashboard-error-codes.js` — mapa literal de códigos, sin strings sueltos. El backend responde con códigos **UPPER_SNAKE** (convención ya existente en `constants/error_code.go`). El front SHALL tener un mapa literal en `utils/dashboard-error-codes.js`, sin strings sueltos:
 
 | `code` | Cuándo | Qué hace la pantalla |
 |---|---|---|
