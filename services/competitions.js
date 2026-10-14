@@ -7,6 +7,8 @@ import {
   mockRejectCompetition,
   mockCancelCompetition,
   mockCloseCompetition,
+  mockCreateCompetitionAttempt,
+  mockGetCompetition,
 } from './__mocks__/competitions-mock.js';
 
 // GET /api/v1/teams/{id}/competitions -- Gap 33.
@@ -48,4 +50,18 @@ export async function cancelCompetition(id) {
 export async function closeCompetition(id) {
   if (USE_MOCKS) return await mockCloseCompetition(id);
   return await api.patch(`/competitions/${id}/close`, {});
+}
+
+// GET /api/v1/competitions/{id} -- detalle + progreso (Gap 33 punto 23).
+export async function getCompetition(id) {
+  if (USE_MOCKS) return await mockGetCompetition(id);
+  return await api.get(`/competitions/${id}`);
+}
+
+// POST /api/v1/competitions/{id}/attempts -- intake del intento (Gap 33
+// punto 26, pieza nueva). `athleteUserId` solo lo usa el mock (no hay token
+// real que simular en modo mock) -- la llamada real lo ignora.
+export async function createCompetitionAttempt(id, athleteUserId) {
+  if (USE_MOCKS) return await mockCreateCompetitionAttempt(id, athleteUserId);
+  return await api.post(`/competitions/${id}/attempts`, {});
 }

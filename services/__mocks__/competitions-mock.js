@@ -15,10 +15,16 @@ const SEED = [
 
 let mockCompetitions = [];
 let nextId = 4;
+let nextSyntheticInstanceId = 9000;
+// (competition_id, athlete_user_id) ya intentados -- Gap 33 punto 28, sin
+// reintentos en v1.
+const mockAttempts = new Set();
 
 function resetSeed() {
   mockCompetitions = SEED.map((c) => ({ ...c }));
   nextId = SEED.length + 1;
+  nextSyntheticInstanceId = 9000;
+  mockAttempts.clear();
 }
 resetSeed();
 
@@ -38,8 +44,8 @@ export async function mockCreateCompetition(teamId, payload, { isTrainerCreator 
     metric: payload.metric ?? null,
     start_at: payload.start_at,
     end_at: payload.end_at ?? null,
-    route: null,
-    acceptance_radius_meters: null,
+    route: payload.route ?? null,
+    acceptance_radius_meters: payload.acceptance_radius_meters ?? null,
     participant_user_ids: payload.participant_user_ids ?? [],
     created_by_user_id: 1,
     created_by_role: isTrainerCreator ? 'trainer' : 'runner',
@@ -48,6 +54,9 @@ export async function mockCreateCompetition(teamId, payload, { isTrainerCreator 
     rejection_reason: null,
     winner_user_ids: [],
     finished_at: null,
+    // Instancia sintética (Gap 33 punto 26) -- una sola por competencia,
+    // compartida por todos los participantes, generada al crear.
+    synthetic_session_instance_id: payload.type === 'route' ? nextSyntheticInstanceId++ : null,
   };
   mockCompetitions.push(competition);
   return competition;
@@ -84,4 +93,36 @@ export async function mockCloseCompetition(id) {
 
 export function __resetMockCompetitions() {
   resetSeed();
+}
+
+// POST /competitions/{id}/attempts (Gap 33 punto 26) -- valida active +
+// participante + sin intento previo, devuelve la instancia sintética.
+export async function mockCreateCompetitionAttempt(competitionId, athleteUserId) {
+  const competition = mockCompetitions.find((c) => c.id === Number(competitionId));
+  if (!competition) throw new Error('Competencia no encontrada');
+  if (competition.status !== 'active') throw new Error('La competencia no está activa');
+  if (!competition.participant_user_ids.includes(Number(athleteUserId))) throw new Error('No participás de esta competencia');
+  const key = `${competitionId}:${athleteUserId}`;
+  if (mockAttempts.has(key)) throw new Error('Ya tenés un intento registrado para esta competencia');
+  mockAttempts.add(key);
+  return {
+    session_instance_id: competition.synthetic_session_instance_id,
+    session_instance: {
+      id: competition.synthetic_session_instance_id,
+      name: 'Corrida',
+      exercises: [{ id: competition.synthetic_session_instance_id * 10, name: 'Corrida', role: 'main', repeat_count: 1, rest_minutes: 0 }],
+    },
+  };
+}
+
+// GET /competitions/{id} (detalle, Gap 33 punto 23) -- `progress` siempre
+// `[{user_id, value}]`, `value` null para type='route' en v1.
+export async function mockGetCompetition(id) {
+  const competition = mockCompetitions.find((c) => c.id === Number(id));
+  if (!competition) throw new Error('Competencia no encontrada');
+  const progress = competition.participant_user_ids.map((userId) => ({
+    user_id: userId,
+    value: competition.type === 'route' ? null : 0,
+  }));
+  return { data: { ...competition, progress } };
 }

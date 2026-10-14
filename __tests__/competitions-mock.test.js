@@ -5,6 +5,8 @@ import {
   mockRejectCompetition,
   mockCancelCompetition,
   mockCloseCompetition,
+  mockCreateCompetitionAttempt,
+  mockGetCompetition,
   __resetMockCompetitions,
 } from '../services/__mocks__/competitions-mock.js';
 
@@ -63,5 +65,59 @@ describe('competitions-mock', () => {
     const competition = await mockCloseCompetition(1);
     expect(competition.status).toBe('finished');
     expect(competition.winner_user_ids.length).toBeGreaterThan(0);
+  });
+});
+
+describe('mockCreateCompetitionAttempt', () => {
+  beforeEach(() => {
+    __resetMockCompetitions();
+  });
+
+  test('crear type=route y correr un intento devuelve la instancia sintética', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: true });
+    const attempt = await mockCreateCompetitionAttempt(competition.id, 2);
+    expect(attempt.session_instance_id).toBe(competition.synthetic_session_instance_id);
+    expect(attempt.session_instance.exercises).toHaveLength(1);
+  });
+
+  test('segundo intento del mismo atleta -> error', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: true });
+    await mockCreateCompetitionAttempt(competition.id, 2);
+    await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('Ya tenés un intento');
+  });
+
+  test('atleta no participante -> error', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: true });
+    await expect(mockCreateCompetitionAttempt(competition.id, 9)).rejects.toThrow('No participás');
+  });
+
+  test('competencia pending_approval -> error', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: false });
+    await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('no está activa');
+  });
+});
+
+describe('mockGetCompetition', () => {
+  beforeEach(() => {
+    __resetMockCompetitions();
+  });
+
+  test('devuelve progress con un valor por participante', async () => {
+    const { data } = await mockGetCompetition(1);
+    expect(data.progress).toHaveLength(data.participant_user_ids.length);
+    expect(data.progress[0]).toHaveProperty('user_id');
+    expect(data.progress[0]).toHaveProperty('value');
   });
 });

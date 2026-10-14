@@ -1165,11 +1165,16 @@ export function toCompetitionModel(dto) {
 export function toCreateCompetitionPayload(form) {
   const payload = {
     type: form.type,
-    metric: form.metric,
     start_at: form.startAt,
-    end_at: form.endAt,
     participant_user_ids: (form.participantUserIds ?? []).map((id) => Number(id)),
   };
+  if (form.type === 'route') {
+    payload.route = form.route;
+    payload.acceptance_radius_meters = Number(form.acceptanceRadiusMeters);
+  } else {
+    payload.metric = form.metric;
+    payload.end_at = form.endAt;
+  }
   if (form.groupId) payload.group_id = Number(form.groupId);
   return payload;
 }
