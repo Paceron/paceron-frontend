@@ -7,6 +7,7 @@ import {
   rejectCompetition as rejectCompetitionService,
   cancelCompetition as cancelCompetitionService,
   closeCompetition as closeCompetitionService,
+  createCompetitionAttempt as createCompetitionAttemptService,
 } from '../services/competitions.js';
 import { toCompetitionModel, toCreateCompetitionPayload } from '../services/normalizers.js';
 
@@ -48,11 +49,14 @@ export function useCompetitionMutations(teamId) {
   const rejectMutation = useMutation({ mutationFn: ({ id, reason }) => rejectCompetitionService(id, reason), onSuccess: invalidate });
   const cancelMutation = useMutation({ mutationFn: cancelCompetitionService, onSuccess: invalidate });
   const closeMutation = useMutation({ mutationFn: closeCompetitionService, onSuccess: invalidate });
+  // Sin invalidate -- correr un intento no cambia el status/listado de la
+  // competencia, solo crea el runner_session sintético del lado backend.
+  const attemptMutation = useMutation({ mutationFn: ({ id, athleteUserId }) => createCompetitionAttemptService(id, athleteUserId) });
 
   const wrap = (mutateAsync) => async (...args) => {
     try {
-      await mutateAsync(...args);
-      return { success: true };
+      const data = await mutateAsync(...args);
+      return { success: true, data };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -64,10 +68,12 @@ export function useCompetitionMutations(teamId) {
     rejectCompetition: (id, reason) => wrap(rejectMutation.mutateAsync)({ id, reason }),
     cancelCompetition: wrap(cancelMutation.mutateAsync),
     closeCompetition: wrap(closeMutation.mutateAsync),
+    createCompetitionAttempt: (id, athleteUserId) => wrap(attemptMutation.mutateAsync)({ id, athleteUserId }),
     isCreating: createMutation.isPending,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
     isCancelling: cancelMutation.isPending,
     isClosing: closeMutation.isPending,
+    isStartingAttempt: attemptMutation.isPending,
   };
 }

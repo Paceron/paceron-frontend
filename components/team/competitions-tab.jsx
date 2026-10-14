@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
+import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useCompetitions, useCompetitionMutations } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
@@ -26,7 +29,7 @@ function memberName(members, userId) {
   return members.find((m) => m.userId === userId)?.name ?? 'Corredor';
 }
 
-function CompetitionRow({ competition, members, isTrainerView, currentUserId, onApprove, onReject, onCancel, onClose, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, onApprove, onReject, onCancel, onClose, onRun, attemptBlocked, busy }) {
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
@@ -34,6 +37,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
 
   const isOwnPendingProposal = competition.status === 'pending_approval' && competition.createdByRole === 'runner' && competition.createdByUserId === currentUserId;
   const canClose = isTrainerView && competition.status === 'active' && competition.endAt && competition.endAt < new Date().toISOString().slice(0, 10);
+  const canRun = !isTrainerView && competition.type === 'route' && competition.status === 'active' && competition.participantUserIds.includes(currentUserId);
 
   return (
     <View className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
@@ -95,6 +99,18 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
             <Text className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-close-label`} testID={`${idPrefix}-close-label`}>Cerrar</Text>
           </Pressable>
         )}
+        {canRun && isWeb && (
+          <Text className="flex-1 rounded-full bg-emerald-50 px-3 py-2 text-center text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
+            Correr una trayectoria solo está disponible en la app nativa
+          </Text>
+        )}
+        {canRun && !isWeb && (
+          <Pressable className="h-9 flex-1 items-center justify-center rounded-full bg-primary active:opacity-80 disabled:opacity-60" disabled={busy || attemptBlocked} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
+            <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-run-label`} testID={`${idPrefix}-run-label`}>
+              {attemptBlocked ? 'Ya corriste esta trayectoria' : 'Correr esta trayectoria'}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -102,11 +118,18 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
 
 export function CompetitionsTab({ teamId, members, groups, isTrainerView, currentUserId }) {
   const colors = useThemeColors();
+  const router = useRouter();
+  const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
   const { competitions, loading, error } = useCompetitions(teamId);
   const mutations = useCompetitionMutations(teamId);
   const { ackSection } = useGamificationBadge();
   const [createVisible, setCreateVisible] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState(null);
+  // Sin intento previo barato de consultar en v1 (Gap 33 punto 26, spec
+  // "Entry point") -- el 400 del backend es la fuente de verdad, esto solo
+  // deshabilita el botón localmente DESPUÉS de un primer intento exitoso o
+  // fallido por "ya tenés intento", para esta sesión de la app.
+  const [blockedCompetitionIds, setBlockedCompetitionIds] = useState([]);
 
   useEffect(() => {
     ackSection('competitions', teamId);
@@ -136,6 +159,23 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
     const result = await mutations.closeCompetition(id);
     if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Competencia cerrada' }); }
     else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos cerrar la competencia', text2: result.error }); }
+  };
+
+  const handleRun = async (competition) => {
+    const result = await mutations.createCompetitionAttempt(competition.id, currentUserId);
+    if (!result.success) {
+      setBlockedCompetitionIds((prev) => [...prev, competition.id]);
+      notifyError();
+      Toast.show({ type: 'error', text1: 'No pudimos arrancar el intento', text2: result.error });
+      return;
+    }
+    setPendingSession({
+      teamId,
+      date: new Date().toISOString().slice(0, 10),
+      sessionInstance: result.data.session_instance,
+      routeAttempt: { route: competition.route, acceptanceRadiusMeters: competition.acceptanceRadiusMeters, competitionId: competition.id },
+    });
+    router.push('/training-session');
   };
 
   const busy = mutations.isApproving || mutations.isRejecting || mutations.isCancelling || mutations.isClosing;
@@ -169,6 +209,7 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
         <View className="gap-3" nativeID="competitions-tab-list" testID="competitions-tab-list">
           {competitions.map((competition) => (
             <CompetitionRow
+              attemptBlocked={blockedCompetitionIds.includes(competition.id)}
               busy={busy}
               competition={competition}
               currentUserId={currentUserId}
@@ -178,6 +219,7 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
               onApprove={handleApprove}
               onCancel={handleCancel}
               onClose={handleClose}
+              onRun={handleRun}
               onReject={setRejectTargetId}
             />
           ))}
