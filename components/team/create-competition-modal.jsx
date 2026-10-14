@@ -2,9 +2,10 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { Row, Col, DateField } from '../forms/fields.jsx';
+import { InputField, Row, Col, DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
+import { RouteDrawPicker } from './route-draw-picker';
 import { toISODate } from '../../utils/date-field-format.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
@@ -17,12 +18,21 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 // confirmado 2026-10-14 que el backend todavía no tiene esa columna
 // (decisión D8); el título de cada fila se arma solo (ver
 // utils/competition-title.js).
+const TYPE_OPTIONS = [
+  { id: 'metric', name: 'Por métrica' },
+  { id: 'route', name: 'Por trayectoria' },
+];
+const DEFAULT_ACCEPTANCE_RADIUS = 50;
+
 export function CreateCompetitionModal({ visible, onClose, onSubmit, members, groups }) {
   const colors = useThemeColors();
 
+  const [type, setType] = useState('metric');
   const [metric, setMetric] = useState('distance');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [route, setRoute] = useState(null);
+  const [acceptanceRadius, setAcceptanceRadius] = useState(String(DEFAULT_ACCEPTANCE_RADIUS));
   const [groupFilter, setGroupFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [error, setError] = useState(null);
@@ -34,9 +44,12 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
   if (isResetting) {
     prevResetKeyRef.current = resetKey;
+    setType('metric');
     setMetric('distance');
     setStartDate('');
     setEndDate('');
+    setRoute(null);
+    setAcceptanceRadius(String(DEFAULT_ACCEPTANCE_RADIUS));
     setGroupFilter('');
     setSelectedIds([]);
     setError(null);
@@ -62,15 +75,28 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
   const handleSubmit = async () => {
     if (submitting) return;
-    if (!startDate || !endDate) {
-      setError('Elegí la fecha de inicio y de fin.');
+    if (!startDate || (type === 'metric' && !endDate)) {
+      setError(type === 'metric' ? 'Elegí la fecha de inicio y de fin.' : 'Elegí la fecha de inicio.');
       return;
     }
     const startIso = toISODate(startDate);
-    const endIso = toISODate(endDate);
-    if (!(endIso > startIso)) {
-      setError('La fecha de fin tiene que ser posterior a la de inicio.');
-      return;
+    let endIso = null;
+    if (type === 'metric') {
+      endIso = toISODate(endDate);
+      if (!(endIso > startIso)) {
+        setError('La fecha de fin tiene que ser posterior a la de inicio.');
+        return;
+      }
+    } else {
+      if (!route || route.coordinates.length < 2) {
+        setError('Dibujá una ruta de al menos 2 puntos en el mapa.');
+        return;
+      }
+      const radius = Number(acceptanceRadius);
+      if (!Number.isFinite(radius) || radius < 5 || radius > 500) {
+        setError('El radio de aceptación tiene que estar entre 5 y 500 metros.');
+        return;
+      }
     }
     if (selectedIds.length < 2) {
       setError('Elegí al menos 2 participantes.');
@@ -79,10 +105,11 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
     setSubmitting(true);
     const result = await onSubmit({
-      type: 'metric',
-      metric,
+      type,
       startAt: startIso,
-      endAt: endIso,
+      ...(type === 'metric'
+        ? { metric, endAt: endIso }
+        : { route, acceptanceRadiusMeters: Number(acceptanceRadius) }),
       participantUserIds: selectedIds,
       groupId: groupFilter || null,
     });
@@ -115,16 +142,27 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
             <ScrollView className="max-h-[70vh]" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
               <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
-                <ResponsiveSelectField dense label="Métrica" onChange={setMetric} options={METRIC_OPTIONS} value={metric} />
+                <ResponsiveSelectField dense label="Tipo de competencia" onChange={setType} options={TYPE_OPTIONS} value={type} />
 
-                <Row>
-                  <Col>
+                {type === 'metric' ? (
+                  <>
+                    <ResponsiveSelectField dense label="Métrica" onChange={setMetric} options={METRIC_OPTIONS} value={metric} />
+                    <Row>
+                      <Col>
+                        <DateField label="Desde" onChange={setStartDate} value={startDate} />
+                      </Col>
+                      <Col>
+                        <DateField label="Hasta" onChange={setEndDate} value={endDate} />
+                      </Col>
+                    </Row>
+                  </>
+                ) : (
+                  <>
                     <DateField label="Desde" onChange={setStartDate} value={startDate} />
-                  </Col>
-                  <Col>
-                    <DateField label="Hasta" onChange={setEndDate} value={endDate} />
-                  </Col>
-                </Row>
+                    <RouteDrawPicker onChange={setRoute} value={route} />
+                    <InputField className="mb-0" dense keyboardType="numeric" label="Radio de aceptación (metros)" onChange={setAcceptanceRadius} value={acceptanceRadius} />
+                  </>
+                )}
 
                 {groups.length > 0 && (
                   <ResponsiveSelectField
