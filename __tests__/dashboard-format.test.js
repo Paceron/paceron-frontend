@@ -1,4 +1,13 @@
-import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric } from '../utils/dashboard-format.js';
+import {
+  DEFAULT_TOLERANCE,
+  EMPTY_METRIC,
+  TOLERANCE_MAX,
+  TOLERANCE_MIN,
+  formatDelta,
+  formatMetric,
+  hasMetric,
+  resolveTolerance,
+} from '../utils/dashboard-format.js';
 
 describe('formatMetric', () => {
   test('un null muestra un guion, no un cero (design.md D5)', () => {
@@ -93,5 +102,36 @@ describe('hasMetric', () => {
     expect(hasMetric('')).toBe(false);
     expect(hasMetric(NaN)).toBe(false);
     expect(hasMetric('hola')).toBe(false);
+  });
+});
+describe('resolveTolerance', () => {
+  test('sin valor, usa la default del backend', () => {
+    expect(DEFAULT_TOLERANCE).toBe(0.05);
+    [undefined, null, ''].forEach((value) => {
+      expect(resolveTolerance(value)).toBe(0.05);
+    });
+  });
+
+  test('una tolerancia dentro del rango se respeta tal cual', () => {
+    expect(resolveTolerance(0.01)).toBe(0.01);
+    expect(resolveTolerance(0.1)).toBe(0.1);
+    expect(resolveTolerance(0.2)).toBe(0.2);
+    expect(resolveTolerance('0.08')).toBe(0.08);
+  });
+
+  test('fuera del rango [0,01 – 0,20] vuelve a la default sin tirar', () => {
+    // No hay control de UI para la tolerancia, así que un valor inválido
+    // vendría de código: gastar un 400 del backend no le aporta nada a nadie.
+    expect(resolveTolerance(0)).toBe(0.05);
+    expect(resolveTolerance(0.009)).toBe(0.05);
+    expect(resolveTolerance(0.21)).toBe(0.05);
+    expect(resolveTolerance(5)).toBe(0.05);
+    expect(resolveTolerance('mucho')).toBe(0.05);
+    expect(resolveTolerance(NaN)).toBe(0.05);
+  });
+
+  test('las cotas coinciden con las del backend', () => {
+    expect(TOLERANCE_MIN).toBe(0.01);
+    expect(TOLERANCE_MAX).toBe(0.2);
   });
 });

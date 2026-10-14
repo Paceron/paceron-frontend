@@ -94,3 +94,29 @@ export function formatDelta(value, unit) {
 export function hasMetric(value) {
   return toNumber(value) !== null;
 }
+
+// ---------- tolerancia de cumplimiento ----------
+//
+// Las cotas son las del backend (dashboardMinTolerance/dashboardMaxTolerance en
+// paceron-backend, services/dashboard_service.go), replicadas acá solo para no
+// gastar un 400 en un valor que el usuario no puede cambiar: hoy no hay control
+// de UI para la tolerancia, así que la request la arma el código. El backend
+// sigue siendo la validación real —esto no reemplaza su whitelist, la evita.
+//
+// `config/env.js` queda fuera a propósito: dos tests lo mockean completo con su
+// propia factory (attendance-delete.test.js, checkin-service.test.js), así que
+// una constante exportada de ahí llega `undefined` bajo Jest — y el módulo que
+// la importa revienta sin que se entienda por qué.
+export const DEFAULT_TOLERANCE = 0.05;
+export const TOLERANCE_MIN = 0.01;
+export const TOLERANCE_MAX = 0.2;
+
+// La tolerancia efectiva de una request. Sin valor, o con uno fuera de rango,
+// vuelve a la default: mandar la default explícita deja `tolerance_applied` de
+// la respuesta diciendo la verdad, que es lo que el tooltip del KPI muestra.
+export function resolveTolerance(value) {
+  const n = toNumber(value);
+  if (n === null) return DEFAULT_TOLERANCE;
+  if (n < TOLERANCE_MIN || n > TOLERANCE_MAX) return DEFAULT_TOLERANCE;
+  return n;
+}

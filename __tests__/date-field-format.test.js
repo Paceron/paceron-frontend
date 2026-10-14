@@ -1,4 +1,4 @@
-import { toISODate, formatDateInput } from '../utils/date-field-format.js';
+import { toISODate, formatDateInput, fromISODate } from '../utils/date-field-format.js';
 
 describe('toISODate', () => {
   test('convierte DD/MM/YYYY (valor de DateField en cualquier plataforma) a YYYY-MM-DD', () => {
@@ -45,5 +45,28 @@ describe('formatDateInput', () => {
   test('descarta cualquier caracter que no sea dígito antes de formatear', () => {
     expect(formatDateInput('15/03/2026')).toBe('15/03/2026');
     expect(formatDateInput('15-03-2026')).toBe('15/03/2026');
+  });
+});
+
+describe('fromISODate', () => {
+  test('convierte el YYYY-MM-DD de la API al DD/MM/YYYY que muestra DateField', () => {
+    expect(fromISODate('2026-03-15')).toBe('15/03/2026');
+  });
+
+  test('deja DD/MM/YYYY sin cambios (red de seguridad)', () => {
+    expect(fromISODate('15/03/2026')).toBe('15/03/2026');
+  });
+
+  test('devuelve string vacío si el valor está vacío o no es una fecha', () => {
+    expect(fromISODate('')).toBe('');
+    expect(fromISODate(null)).toBe('');
+    expect(fromISODate(undefined)).toBe('');
+    expect(fromISODate('01-09-2026')).toBe('');
+    expect(fromISODate('2026/03/15')).toBe('');
+  });
+
+  test('es el inverso exacto de toISODate para una fecha completa', () => {
+    expect(toISODate(fromISODate('2026-09-01'))).toBe('2026-09-01');
+    expect(fromISODate(toISODate('01/09/2026'))).toBe('01/09/2026');
   });
 });

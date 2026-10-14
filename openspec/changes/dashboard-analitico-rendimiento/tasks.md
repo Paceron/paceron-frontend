@@ -15,16 +15,18 @@
 
 ## 2. Capa de datos
 
-- [ ] 2.1 `services/__mocks__/dashboard-mock.js` — en `services/__mocks__/`, **no** en `utils/`: un mock en `utils/` entra al bundle de la app. Branch `if (USE_MOCKS)` en `services/dashboard.js`, igual que `services/exercises.js:1-22` lee `config/env.js:5`. — mocks derivados de las specs del change backend, con los 5 tipos de ejercicio y al menos un caso de cada estado (con datos, vacío, sin permisos).
-- [ ] 2.2 `hooks/use-dashboard-filters.js` — `GET /dashboard/filters` vía TanStack Query.
-- [ ] 2.3 `hooks/use-dashboard-summary.js` — `GET /metrics/summary`.
-- [ ] 2.4 `hooks/use-dashboard-timeseries.js` — `GET /metrics/timeseries`, con `granularity` parametrizable.
-- [ ] 2.5 `hooks/use-dashboard-comparisons.js` — `POST /comparisons` y `POST /comparisons/periods`.
-- [ ] 2.6 `hooks/use-dashboard-leaderboard.js` — `GET /leaderboard` paginado y ordenable.
-- [ ] 2.7 `refetchInterval` de 60–120 s en el summary y el timeseries. **La actualización no debe volver al estado de carga** (design.md D7).
-- [ ] 2.8 `hooks/use-dashboard-series.js` — `GET /exercises/{id}/series`, paginado. Es la fuente del detalle por serie y de la exportación.
-- [ ] 2.9 `services/dashboard.js` — los 7 endpoints, siguiendo el patrón de `services/exercises.js`.
-- [ ] 2.10 `DEFAULT_TOLERANCE = 0.05` en `config/env.js` (no hardcodeado en el componente), y enviar `tolerance` explícito en cada request, para que `tolerance_applied` de la respuesta sea el que el tooltip muestra y no un default invisible. Hoy la tolerancia no es configurable por el usuario: no hay control de UI ni requirement para uno, así que la constante queda en un solo lugar y el rango válido (`0.01`–`0.20`) se valida en el cliente antes de mandar, para no gastar un `400` en un valor que el usuario no puede cambiar.
+- [x] 2.1 `services/__mocks__/dashboard-mock.js` — en `services/__mocks__/`, **no** en `utils/`: un mock en `utils/` entra al bundle de la app. Branch `if (USE_MOCKS)` en `services/dashboard.js`, igual que `services/exercises.js:1-22` lee `config/env.js:5`. — mock derivado del **código del backend** (no de esta prosa): siembra filas de feedback y corre las mismas agregaciones de `domains/dashboard/*.go`, con los 5 tipos de ejercicio y al menos un caso de cada estado (con datos, vacío, sin permisos, `has_target: false`).
+- [x] 2.2 `hooks/use-dashboard-filters.js` — `GET /dashboard/filters` vía TanStack Query.
+- [x] 2.3 `hooks/use-dashboard-summary.js` — `GET /metrics/summary`.
+- [x] 2.4 `hooks/use-dashboard-timeseries.js` — `GET /dashboard/metrics/timeseries`, con `granularity` parametrizable.
+- [x] 2.5 `hooks/use-dashboard-comparisons.js` — `POST /dashboard/comparisons` y `POST /dashboard/comparisons/periods`.
+- [x] 2.6 `hooks/use-dashboard-leaderboard.js` — `GET /dashboard/leaderboard` paginado y ordenable.
+- [x] 2.7 `refetchInterval` de 60–120 s (90 s) en el summary y el timeseries. **La actualización no vuelve al estado de carga** (design.md D7): `loading` sale de `isLoading`, que en TanStack Query v5 es `isPending && isFetching`.
+- [x] 2.8 `hooks/use-dashboard-series.js` — `GET /dashboard/exercises/{id}/series`, paginado. Es la fuente del detalle por serie y de la exportación.
+- [x] 2.9 `services/dashboard.js` — los 7 endpoints, siguiendo el patrón de `services/exercises.js`.
+- [x] 2.10 `DEFAULT_TOLERANCE = 0.05` en **`utils/dashboard-format.js`** y no en `config/env.js` (corregido al implementarlo): dos tests mockean `config/env.js` completo con su propia factory (`attendance-delete.test.js`, `checkin-service.test.js`), así que una constante exportada de ahí llega `undefined` bajo Jest. El `tolerance` se manda explícito en cada request —para que `tolerance_applied` de la respuesta sea el que el tooltip muestra y no un default invisible— y el rango válido (`0.01`–`0.20`) se valida en el cliente antes de mandar, para no gastar un `400` en un valor que el usuario no puede cambiar.
+
+**Agregado al implementar §2 (no estaba en el plan):** `utils/date-field-format.js#fromISODate`, que era de la task 5.2c. La capa de datos lo necesita en el borde de la request: `DateField` emite `DD/MM/YYYY` y la API habla ISO, así que la normalización vive en `services/dashboard.js` y 5.2c solo tiene que sembrar `date_range` en el `DateField` sin convertirlo otra vez.
 
 ## 3. Geometría visual (SVG)
 

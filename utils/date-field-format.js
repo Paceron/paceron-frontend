@@ -16,6 +16,23 @@ export function toISODate(value) {
   return '';
 }
 
+// El inverso de toISODate. La API del dashboard habla ISO (`DateLayoutISO` en
+// paceron-backend, domains/dashboard/aggregate.go) y se siembra directo en un
+// DateField: sin convertir, `date_range.min` muestra "01-09-2026" sobre un
+// placeholder 'DD/MM/AAAA' y el picker nativo lee basura.
+//
+// NO sirve formatDisplayDate (utils/format-date-display.js): esa devuelve
+// 'DD-MM-AAAA' con guiones y parseDDMMYYYY (components/forms/fields.jsx) no la
+// parsea.
+export function fromISODate(value) {
+  if (!value) return '';
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  if (dmy) return value;
+  return '';
+}
+
 // Formatea dígitos crudos en 'DD/MM/AAAA' a medida que se escriben, insertando
 // las barras solas — mismo criterio que formatDurationInput (utils/time.js):
 // el usuario nunca escribe '/', así que el cursor no salta.
