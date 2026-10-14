@@ -85,13 +85,13 @@
 
 ## 6. Estados
 
-- [ ] 6.1 `components/dashboard/state-skeleton.jsx` — reusar `components/shared/skeleton.jsx` (usado por 5 pantallas) **agregándole el guard de movimiento reducido que hoy no tiene**: su shimmer es `withRepeat(withTiming(...))` infinito (`skeleton.jsx:7-9`). Reanimated exporta `useReducedMotion`, y el repo tiene **cero** ocurrencias de `prefers-reduced-motion`. Sin ese guard, un skeleton animado durante 60–120 s de sondeo es exactamente el caso donde el movimiento reducido molesta. — misma disposición que el contenido final, sin salto de layout.
-- [ ] 6.2 `components/dashboard/state-empty.jsx` — "No hay estadísticas disponibles aún" + CTA que amplía el rango.
-- [ ] 6.3 `components/dashboard/state-error.jsx` — error transitorio: mensaje + botón de reintento.
-- [ ] 6.3b `components/dashboard/state-invalid-request.jsx` — `400`: explica qué filtro corregir según el `code`, **sin** botón de reintento.
-- [ ] 6.3c `components/dashboard/state-not-found.jsx` — `404`: mensaje + volver al listado, sin reintento.
-- [ ] 6.4 `components/dashboard/state-forbidden.jsx` — sin revelar si el recurso existe.
-- [ ] 6.5 `components/dashboard/state-onboarding.jsx` — primer uso, guiando a elegir grupo y tipo.
+- [x] 6.1 `components/dashboard/state-skeleton.jsx` — reusar `components/shared/skeleton.jsx` (usado por 5 pantallas) **agregándole el guard de movimiento reducido que hoy no tiene**: su shimmer es `withRepeat(withTiming(...))` infinito (`skeleton.jsx:7-9`). Reanimated exporta `useReducedMotion`, y el repo tiene **cero** ocurrencias de `prefers-reduced-motion`. Sin ese guard, un skeleton animado durante 60–120 s de sondeo es exactamente el caso donde el movimiento reducido molesta. — misma disposición que el contenido final, sin salto de layout.
+- [x] 6.2 `components/dashboard/state-empty.jsx` — "No hay estadísticas disponibles aún" + CTA que amplía el rango.
+- [x] 6.3 `components/dashboard/state-error.jsx` — error transitorio: mensaje + botón de reintento.
+- [x] 6.3b `components/dashboard/state-invalid-request.jsx` — `400`: explica qué filtro corregir según el `code`, **sin** botón de reintento.
+- [x] 6.3c `components/dashboard/state-not-found.jsx` — `404`: mensaje + volver al listado, sin reintento.
+- [x] 6.4 `components/dashboard/state-forbidden.jsx` — sin revelar si el recurso existe.
+- [x] 6.5 `components/dashboard/state-onboarding.jsx` — primer uso, guiando a elegir grupo y tipo.
 
 ## 7. Exportación
 
