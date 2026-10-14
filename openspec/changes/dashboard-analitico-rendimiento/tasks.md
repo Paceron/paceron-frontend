@@ -6,12 +6,12 @@
 
 ## 1. Geometría de gráficos (pura, testeable)
 
-- [ ] 1.1 `utils/dashboard-chart.js` — `scaleLinear(dominio, rango)` que maneja rango cero y valores `null` sin devolver `NaN`.
-- [ ] 1.2 `utils/dashboard-chart.js` — `linePath(puntos)`, `barPath()`, `stackedBar100()`, `dotPoints()`.
-- [ ] 1.3 `utils/dashboard-chart.js` — `boxPlotStats(valores)` para el gráfico de consistencia, con el criterio de outliers explícito. La consistencia mostrada en el KPI viene de `consistency.cv` de la API; esta función es solo la geometría del box plot.
-- [ ] 1.4 `utils/dashboard-chart.js` — `gaugeArc(valor, objetivo)`.
-- [ ] 1.5 `utils/dashboard-format.js` — `formatMetric(valor, unidad)` que devuelve `"—"` ante `null` y **nunca** `0` (design.md D5). La unidad viene del bloque `units` de la respuesta, no de un sufijo fijo en el componente.
-- [ ] 1.6 Tests de `utils/dashboard-*.test.js`: todos los valores iguales, un solo punto, rango cero, `null` intercalado, negativos, decimales, y que ningún helper devuelva `NaN`. **Incluido `utils/dashboard-error-codes.js`**: ese mapa decide qué estado se pinta en cada `400`, y una typo en `'INVALID_TOLERANCE'` muestra el mensaje genérico sin ningún error visible. El repo tiene 8 mocks testeados, así que el precedente existe.
+- [x] 1.1 `utils/dashboard-chart.js` — `scaleLinear(dominio, rango)` que maneja rango cero y valores `null` sin devolver `NaN`.
+- [x] 1.2 `utils/dashboard-chart.js` — `linePath(puntos)`, `barPath()`, `stackedBar100()`, `dotPoints()`.
+- [x] 1.3 `utils/dashboard-chart.js` — `boxPlotStats(valores)` para el gráfico de consistencia, con el criterio de outliers explícito. La consistencia mostrada en el KPI viene de `consistency.cv` de la API; esta función es solo la geometría del box plot.
+- [x] 1.4 `utils/dashboard-chart.js` — `gaugeArc(valor, objetivo)`.
+- [x] 1.5 `utils/dashboard-format.js` — `formatMetric(valor, unidad)` que devuelve `"—"` ante `null` y **nunca** `0` (design.md D5). La unidad viene del bloque `units` de la respuesta, no de un sufijo fijo en el componente.
+- [x] 1.6 Tests de `utils/dashboard-*.test.js`: todos los valores iguales, un solo punto, rango cero, `null` intercalado, negativos, decimales, y que ningún helper devuelva `NaN`. **Incluido `utils/dashboard-error-codes.js`**: ese mapa decide qué estado se pinta en cada `400`, y una typo en `'INVALID_TOLERANCE'` muestra el mensaje genérico sin ningún error visible. El repo tiene 8 mocks testeados, así que el precedente existe.
 
 ## 2. Capa de datos
 
@@ -93,7 +93,7 @@
 
 ## 7. Exportación
 
-- [ ] 7.1 `utils/dashboard-export.js` — `toCsv(series)` con encabezados en español y la unidad de `units` en el nombre de columna, **incluyendo `athlete_user_id` y `feedback_owner_user_id`**: un CSV exportado por el entrenador tiene que distinguir quién ejecutó de quién reportó, porque el leaderboard agrupa por ejecutor y un CSV que no lo diga no se puede reconciliar con la pantalla. (`Velocidad (km/h)`). Separador `;` y BOM UTF-8, porque el destino real es una planilla en español, donde la coma es separador decimal. Parte **pura y sin dependencias de plataforma**: es lo único testeable con Jest.
+- [x] 7.1 `utils/dashboard-export.js` — `toCsv(series)` con encabezados en español y la unidad de `units` en el nombre de columna, **incluyendo `athlete_user_id` y `feedback_owner_user_id`**: un CSV exportado por el entrenador tiene que distinguir quién ejecutó de quién reportó, porque el leaderboard agrupa por ejecutor y un CSV que no lo diga no se puede reconciliar con la pantalla. (`Velocidad (km/h)`). Separador `;` y BOM UTF-8, porque el destino real es una planilla en español, donde la coma es separador decimal. Parte **pura y sin dependencias de plataforma**: es lo único testeable con Jest.
 - [ ] 7.1b `services/dashboard-csv.js` — entrega **nativa**: `new File(Paths.cache, nombre).write(texto)` + `expo-sharing`. **No usar `writeAsStringAsync`**: `expo-file-system@19` no lo expone en el export raíz (solo existe en `/legacy`, y en la raíz hay un shim que es un `console.warn` de migración). Escribirlos a mano rompe el build; heredarlo de la doc vieja rompe en runtime.
 - [ ] 7.1c `services/dashboard-csv.web.js` — entrega **web**: `Blob` + `URL.createObjectURL` + `<a download>` clickeado **sincrónicamente dentro del `onPress`**, antes de cualquier `await`; un click de descarga emitido después de un `await` lo bloquea el navegador. El `import` desde el call site va **sin extensión** (`from '../../services/dashboard-csv'`): con extensión explícita Metro carga el archivo nativo en web, sin error pero con el camino equivocado.
 - [ ] 7.2 `services/dashboard-pdf.js` — camino nativo con `expo-print` + `expo-sharing`.
