@@ -147,10 +147,10 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
           {period === 'custom' && (
             <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-custom-range`} testID={`${idPrefix}-custom-range`}>
               <View nativeID={`${idPrefix}-from-wrap`} style={{ width: 128 }} testID={`${idPrefix}-from-wrap`}>
-                <DateField className="mb-0" hideErrorRow hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
+                <DateField className="mb-0" dense hideErrorRow hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
               </View>
               <View nativeID={`${idPrefix}-to-wrap`} style={{ width: 128 }} testID={`${idPrefix}-to-wrap`}>
-                <DateField className="mb-0" hideErrorRow hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
+                <DateField className="mb-0" dense hideErrorRow hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
               </View>
             </View>
           )}

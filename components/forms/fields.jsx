@@ -42,6 +42,12 @@ export const SELECT_CLASS = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 da
 // genérico.
 const SELECT_CLASS_PLAIN = 'bg-white dark:bg-surface border-0 pl-0 pr-4 py-1 text-sm font-semibold text-slate-900 dark:text-white outline-none appearance-none cursor-pointer';
 const DATE_BASE = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
+// Variante compacta de DATE_BASE -- `dense` de DateField (no de TimeField,
+// que sigue usando DATE_BASE sin tocar). Pensada para selects incrustados
+// en una fila angosta (ej. rango personalizado del leaderboard): el
+// min-h-12 normal hacía crecer esa fila al aparecer, salto real pedido
+// 2026-10-15.
+const DATE_BASE_DENSE = 'min-h-8 flex-1 px-3 py-1 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 
 // Slugifica un label para usarlo como parte de un id estable y legible.
 function slugify(label) {
@@ -169,7 +175,7 @@ function formatDDMMYYYY(date) {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false, hideLabel = false, hideErrorRow = false, className }) {
+export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false, hideLabel = false, hideErrorRow = false, className, dense = false }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -210,7 +216,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
               inputMode="numeric"
               placeholder="DD/MM/AAAA"
               maxLength={10}
-              className={`${DATE_BASE} ${borderClass}`}
+              className={`${dense ? DATE_BASE_DENSE : DATE_BASE} ${borderClass}`}
               value={value}
               onChange={handleWebChange}
               onBlur={onBlur}
@@ -246,7 +252,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
     <View className={className ?? 'mb-5'} nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
       {!hideLabel && <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>}
       <Pressable
-        className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
+        className={`${dense ? 'h-8 px-3' : 'h-12 px-4'} flex-row items-center rounded-xl border hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
         disabled={disabled}
         onPress={() => setPickerVisible(true)}
         nativeID={`date-field-${slug}-trigger`}
