@@ -20,7 +20,7 @@ function StreakCard({ icon, title, current, best, idPrefix, selected, onPress })
   const colors = useThemeColors();
   return (
     <Pressable
-      className={`flex-1 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-50 active:bg-slate-100 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${selected ? 'border-2 border-primary' : ''}`}
+      className={`flex-1 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${selected ? 'border-2 border-primary' : ''}`}
       nativeID={idPrefix}
       onPress={onPress}
       testID={idPrefix}
