@@ -71,7 +71,7 @@ const MOCK_TEAM_METRICS = { trainingsCompleted: 210, goalsCompleted: 96 };
 // 4 secciones en una sola pantalla sin navegación por pestañas -- misma
 // pieza de TabBar que ya usaba web, solo se sacó el gate de isWeb).
 const TABS = [
-  { id: 'general', label: 'Información general y estadísticas', icon: 'information-outline' },
+  { id: 'general', label: 'General', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
   { id: 'grupos', label: 'Grupos', icon: 'account-group' },
   { id: 'leaderboard', label: 'Leaderboard', icon: 'podium-gold' },

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
@@ -56,15 +56,17 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} 
   };
 
   return (
-    <ScrollView
-      accessibilityRole="tablist"
-      className="mb-5"
-      contentContainerClassName="flex-row gap-2"
-      horizontal
-      nativeID={scope}
-      showsHorizontalScrollIndicator={false}
-      testID={scope}
-    >
+    // Antes era un ScrollView horizontal (ancho natural por tab + scroll si
+    // no entraban) -- con 6 tabs (ej. team-detail-screen.jsx del lado
+    // entrenador) eso dejaba tabs cortados sin pista visual de que había
+    // más para el costado (pedido real, 2026-10-15). Ahora cada tab es
+    // `flex-1` (ancho repartido en partes iguales, sin scroll) y su
+    // contenido interno es `flex-row flex-wrap` -- si ícono+texto no entran
+    // en una sola línea al ancho que le tocó, el texto baja solo a una
+    // segunda línea (mismo mecanismo de flexbox en web y nativo, sin medir
+    // nada a mano); `numberOfLines={1}` en el texto corta con "…" como
+    // último recurso si ni así entra.
+    <View accessibilityRole="tablist" className="mb-5 flex-row flex-wrap gap-2" nativeID={scope} testID={scope}>
       {tabs.map((tab, index) => {
         const isActive = tab.id === active;
         return (
@@ -73,7 +75,7 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} 
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             aria-selected={isActive}
-            className={`flex-row items-center gap-1.5 rounded-lg px-3.5 py-2.5 ${
+            className={`flex-1 flex-row flex-wrap items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 ${
               isActive
                 ? 'bg-primary-tint-subtle dark:bg-primary/10'
                 : 'hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -87,6 +89,7 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} 
             onPress={() => onChange(tab.id)}
             ref={(node) => { refs.current[tab.id] = node; }}
             role="tab"
+            style={{ minWidth: 72 }}
             // Solo la tab activa entra en el orden de tabulación: las flechas
             // hacen el resto del recorrido. Es el patrón de roving tabindex.
             tabIndex={isActive ? 0 : -1}
@@ -99,8 +102,9 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} 
               )}
             </View>
             <Text
-              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
+              className={`text-center text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
               nativeID={`${scope}-${tab.id}-label`}
+              numberOfLines={1}
               testID={`${scope}-${tab.id}-label`}
             >
               {tab.label}
@@ -108,6 +112,6 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} 
           </Pressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }

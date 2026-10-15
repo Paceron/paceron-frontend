@@ -16,4 +16,14 @@ describe('leaderboard-mock', () => {
     expect(dto.record).toBeTruthy();
     expect(dto.record.value).toBeGreaterThan(0);
   });
+
+  test('el valor varía según la métrica, en la unidad que le corresponde (Gap 32) -- no siempre el mismo número con forma de metros', async () => {
+    const distance = await mockGetTeamLeaderboard('distance');
+    const pace = await mockGetTeamLeaderboard('pace');
+    const peakSpeed = await mockGetTeamLeaderboard('peak_speed');
+    expect(distance.rows[0].value).toBeGreaterThan(1000); // metros, plausible
+    expect(pace.rows[0].value).toBeLessThan(15); // min/km, nunca miles
+    expect(peakSpeed.rows[0].value).toBeLessThan(50); // km/h, nunca miles
+    expect(distance.rows[0].value).not.toBe(pace.rows[0].value);
+  });
 });

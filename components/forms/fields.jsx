@@ -156,7 +156,7 @@ function formatDDMMYYYY(date) {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false }) {
+export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false, hideLabel = false }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -185,7 +185,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
 
     return (
       <View className="mb-5" nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
-        <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>
+        {!hideLabel && <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>}
         <View
           className="flex-row items-center gap-2"
           nativeID={`date-field-${slug}-row`}
@@ -229,7 +229,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
 
   return (
     <View className="mb-5" nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
-      <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>
+      {!hideLabel && <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>}
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
         disabled={disabled}
