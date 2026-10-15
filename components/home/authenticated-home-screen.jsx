@@ -12,20 +12,23 @@ import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
+  const activeRole = useAuthStore((s) => s.activeRole);
   const { user } = useUser(userId);
   const firstName = user?.name || '';
 
   const queryClient = useQueryClient();
-  // Invalida los dos (no solo el del rol activo) -- barato, y evita tener
-  // que importar/leer activeRole acá solo para elegir una de las dos.
-  // `streaks`/`achievements` sumados acá (bug real, 2026-10-14: las cards de
-  // gamificación de este mismo Home no se refrescaban con pull-to-refresh).
+  // Invalida calendario/user siempre; streaks/achievements solo tienen
+  // sentido si la card de gamificación está montada (ver guard de
+  // `activeRole === 'runner'` más abajo) -- invalidar esas queries para un
+  // entrenador sería trabajo sin efecto visible, nadie las lee.
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
     queryClient.invalidateQueries({ queryKey: ['member-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['administered-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['user', userId] }),
-    queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
-    queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
+    ...(activeRole === 'runner' ? [
+      queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
+    ] : []),
   ]));
 
   return (
@@ -46,8 +49,15 @@ export function AuthenticatedHomeScreen() {
           {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
         </Text>
         <NextTrainingBanner />
-        <StreakBanner />
-        <AchievementHighlightCard />
+        {/* Gamificación es un módulo pensado para corredores -- oculto
+            para entrenador a propósito (pedido real, 2026-10-15),
+            reversible: solo este guard de `activeRole`. */}
+        {activeRole === 'runner' && (
+          <>
+            <StreakBanner />
+            <AchievementHighlightCard />
+          </>
+        )}
       </View>
     </ScrollView>
   );

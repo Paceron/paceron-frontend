@@ -217,20 +217,27 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
                 )}
               </Pressable>
             </IconTooltip>
-            <IconTooltip idPrefix="web-shell-topbar-achievements-button-tooltip" label="Logros">
-              <Pressable
-                accessibilityLabel="Logros"
-                className="relative rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-                nativeID="web-shell-topbar-achievements-button"
-                onPress={() => router.push('/achievements')}
-                testID="web-shell-topbar-achievements-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={20} />
-                {gamificationHasUnseen && (
-                  <View className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-topbar-achievements-badge" testID="web-shell-topbar-achievements-badge" />
-                )}
-              </Pressable>
-            </IconTooltip>
+            {/* Gamificación (rachas/logros/competencias) es un módulo pensado
+                para corredores -- oculto para entrenador a propósito
+                (pedido real, 2026-10-15), reversible: solo este guard de
+                `activeRole`, el resto del módulo queda intacto si más
+                adelante se decide mostrar algo también del lado entrenador. */}
+            {activeRole === 'runner' && (
+              <IconTooltip idPrefix="web-shell-topbar-achievements-button-tooltip" label="Logros">
+                <Pressable
+                  accessibilityLabel="Logros"
+                  className="relative rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                  nativeID="web-shell-topbar-achievements-button"
+                  onPress={() => router.push('/achievements')}
+                  testID="web-shell-topbar-achievements-button"
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={20} />
+                  {gamificationHasUnseen && (
+                    <View className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" nativeID="web-shell-topbar-achievements-badge" testID="web-shell-topbar-achievements-badge" />
+                  )}
+                </Pressable>
+              </IconTooltip>
+            )}
             <Pressable
               className={`ml-1 flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
                 dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'

@@ -167,7 +167,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                   <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-settings-label" testID="web-narrow-drawer-settings-label">Ajustes</Text>
                 </Pressable>
                 <Pressable
-                  className="flex-1 flex-row items-center justify-center gap-2 border-r border-slate-200 py-2.5 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                  className={`flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800 ${activeRole === 'runner' ? 'border-r border-slate-200 dark:border-slate-800' : ''}`}
                   nativeID="web-narrow-drawer-notifications-row"
                   onPress={() => goTo('/notifications')}
                   testID="web-narrow-drawer-notifications-row"
@@ -180,20 +180,25 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
                   </View>
                   <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-notifications-label" testID="web-narrow-drawer-notifications-label">Notificaciones</Text>
                 </Pressable>
-                <Pressable
-                  className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-                  nativeID="web-narrow-drawer-achievements-row"
-                  onPress={() => goTo('/achievements')}
-                  testID="web-narrow-drawer-achievements-row"
-                >
-                  <View className="relative" nativeID="web-narrow-drawer-achievements-icon-wrapper" testID="web-narrow-drawer-achievements-icon-wrapper">
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={18} />
-                    {gamificationHasUnseen && (
-                      <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-narrow-drawer-achievements-badge" testID="web-narrow-drawer-achievements-badge" />
-                    )}
-                  </View>
-                  <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-achievements-label" testID="web-narrow-drawer-achievements-label">Logros</Text>
-                </Pressable>
+                {/* Gamificación es un módulo pensado para corredores --
+                    oculto para entrenador a propósito (pedido real,
+                    2026-10-15), reversible: solo este guard de `activeRole`. */}
+                {activeRole === 'runner' && (
+                  <Pressable
+                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                    nativeID="web-narrow-drawer-achievements-row"
+                    onPress={() => goTo('/achievements')}
+                    testID="web-narrow-drawer-achievements-row"
+                  >
+                    <View className="relative" nativeID="web-narrow-drawer-achievements-icon-wrapper" testID="web-narrow-drawer-achievements-icon-wrapper">
+                      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={18} />
+                      {gamificationHasUnseen && (
+                        <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="web-narrow-drawer-achievements-badge" testID="web-narrow-drawer-achievements-badge" />
+                      )}
+                    </View>
+                    <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="web-narrow-drawer-achievements-label" testID="web-narrow-drawer-achievements-label">Logros</Text>
+                  </Pressable>
+                )}
               </View>
             )}
 

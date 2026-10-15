@@ -186,7 +186,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                     <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-settings-label" testID="mobile-drawer-settings-label">Ajustes</Text>
                   </Pressable>
                   <Pressable
-                    className="flex-1 flex-row items-center justify-center gap-2 border-r border-slate-200 py-2.5 hover:bg-slate-100 active:opacity-70 dark:border-slate-800 dark:hover:bg-slate-800"
+                    className={`flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800 ${activeRole === 'runner' ? 'border-r border-slate-200 dark:border-slate-800' : ''}`}
                     nativeID="mobile-drawer-notifications-row"
                     onPress={() => goTo('/notifications')}
                     testID="mobile-drawer-notifications-row"
@@ -199,20 +199,25 @@ function NavigationDrawer({ open, pathname, onClose }) {
                     </View>
                     <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-notifications-label" testID="mobile-drawer-notifications-label">Notificaciones</Text>
                   </Pressable>
-                  <Pressable
-                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-                    nativeID="mobile-drawer-achievements-row"
-                    onPress={() => goTo('/achievements')}
-                    testID="mobile-drawer-achievements-row"
-                  >
-                    <View className="relative" nativeID="mobile-drawer-achievements-icon-wrapper" testID="mobile-drawer-achievements-icon-wrapper">
-                      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={18} />
-                      {gamificationHasUnseen && (
-                        <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="mobile-drawer-achievements-badge" testID="mobile-drawer-achievements-badge" />
-                      )}
-                    </View>
-                    <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-achievements-label" testID="mobile-drawer-achievements-label">Logros</Text>
-                  </Pressable>
+                  {/* Gamificación es un módulo pensado para corredores --
+                      oculto para entrenador a propósito (pedido real,
+                      2026-10-15), reversible: solo este guard de `activeRole`. */}
+                  {activeRole === 'runner' && (
+                    <Pressable
+                      className="flex-1 flex-row items-center justify-center gap-2 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                      nativeID="mobile-drawer-achievements-row"
+                      onPress={() => goTo('/achievements')}
+                      testID="mobile-drawer-achievements-row"
+                    >
+                      <View className="relative" nativeID="mobile-drawer-achievements-icon-wrapper" testID="mobile-drawer-achievements-icon-wrapper">
+                        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="trophy-outline" size={18} />
+                        {gamificationHasUnseen && (
+                          <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID="mobile-drawer-achievements-badge" testID="mobile-drawer-achievements-badge" />
+                        )}
+                      </View>
+                      <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID="mobile-drawer-achievements-label" testID="mobile-drawer-achievements-label">Logros</Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
 
