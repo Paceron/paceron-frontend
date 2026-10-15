@@ -4,6 +4,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { LevelPips } from './level-pips.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 
 // Detalle de un logro al tocarlo (pedido 2026-10-14) -- sirve igual para
@@ -31,9 +32,16 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
             {/* Ícono chico en vez del botón de ancho completo de abajo --
                 pedido real 2026-10-15, "no veo necesario un botón tan
                 grande de cerrar". */}
-            <Pressable nativeID="achievement-detail-modal-close-button" onPress={onClose} testID="achievement-detail-modal-close-button">
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={20} />
-            </Pressable>
+            <IconTooltip idPrefix="achievement-detail-modal-close-button-tooltip" label="Cerrar" position="bottom">
+              <Pressable
+                className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-800"
+                nativeID="achievement-detail-modal-close-button"
+                onPress={onClose}
+                testID="achievement-detail-modal-close-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={20} />
+              </Pressable>
+            </IconTooltip>
           </View>
 
           <Text className="mt-3 text-sm text-slate-600 dark:text-slate-300" nativeID="achievement-detail-modal-description" testID="achievement-detail-modal-description">

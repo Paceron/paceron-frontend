@@ -41,7 +41,7 @@ export function AchievementHighlightCard() {
   };
 
   return (
-    <Pressable className="mb-6 rounded-2xl bg-white p-4 shadow-sm active:opacity-80 dark:bg-surface" nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
+    <Pressable className="mb-6 rounded-2xl bg-white p-4 shadow-sm hover:opacity-90 active:opacity-80 dark:bg-surface" nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
         {/* Kicker "Logro" -- sin esto se confundía con la card de Racha
             justo arriba (mismo estilo blanco/ícono+texto+barra), pedido
             real 2026-10-14. */}
