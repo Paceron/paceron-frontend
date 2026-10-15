@@ -136,16 +136,21 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
                 campo reserva siempre para un error (nunca aplica acá, el
                 período no se valida) -- sin esto esa caja quedaba más alta
                 que el título de al lado y el `items-center` del header los
-                centraba mal entre sí (bug real, mismo pedido). */}
-            <ResponsiveSelectField dense hideErrorRow hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} plain required value={period} />
+                centraba mal entre sí (bug real, mismo pedido). `className="mb-0"`
+                cancela el margen inferior que trae por default (`mb-3`
+                con `dense`) -- es el espaciado normal entre campos
+                apilados de un formulario, no aplica acá (mismo override
+                que ya usa `calendar-month-year-header.jsx` para el mismo
+                caso de uso: select incrustado en una fila, no un form). */}
+            <ResponsiveSelectField className="mb-0" dense hideErrorRow hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} plain required value={period} />
           </View>
           {period === 'custom' && (
             <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-custom-range`} testID={`${idPrefix}-custom-range`}>
               <View nativeID={`${idPrefix}-from-wrap`} style={{ width: 128 }} testID={`${idPrefix}-from-wrap`}>
-                <DateField hideErrorRow hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
+                <DateField className="mb-0" hideErrorRow hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
               </View>
               <View nativeID={`${idPrefix}-to-wrap`} style={{ width: 128 }} testID={`${idPrefix}-to-wrap`}>
-                <DateField hideErrorRow hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
+                <DateField className="mb-0" hideErrorRow hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
               </View>
             </View>
           )}

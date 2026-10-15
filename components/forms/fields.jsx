@@ -27,7 +27,20 @@ export const SELECT_CLASS = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 da
 // Variante sin caja para selects incrustados en contextos que ya tienen
 // su propio fondo/borde (ej. el header de mes/año del calendario) — solo
 // texto + la flechita propia que se agrega al lado, sin duplicar chrome.
-const SELECT_CLASS_PLAIN = 'bg-transparent border-0 pl-0 pr-4 py-1 text-sm font-semibold text-slate-900 dark:text-white outline-none appearance-none cursor-pointer';
+// `bg-white dark:bg-surface` (NO `bg-transparent`, a pesar del nombre) --
+// bug real 2026-10-15: con fondo transparente, el navegador igual pinta
+// el popup de opciones con SU propio fondo por defecto (blanco, sin
+// seguir nuestro tema) pero sí hereda el `color` que declaramos acá
+// (`dark:text-white`) -- en tema oscuro, texto blanco sobre ese fondo
+// blanco del navegador, opciones ilegibles salvo al pasar el mouse (el
+// hover trae su propio contraste). La variante no-plain (`SELECT_CLASS`
+// arriba) nunca tuvo este bug porque SÍ declara un fondo sólido
+// (`bg-white dark:bg-slate-900`) -- el navegador propaga fondo Y color
+// juntos al popup cuando el `<select>` tiene un `background-color` real.
+// `bg-white dark:bg-surface` (en vez de `dark:bg-slate-900`) para que
+// combine con el fondo de la card que lo contiene en vez de un gris
+// genérico.
+const SELECT_CLASS_PLAIN = 'bg-white dark:bg-surface border-0 pl-0 pr-4 py-1 text-sm font-semibold text-slate-900 dark:text-white outline-none appearance-none cursor-pointer';
 const DATE_BASE = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 
 // Slugifica un label para usarlo como parte de un id estable y legible.
@@ -156,7 +169,7 @@ function formatDDMMYYYY(date) {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false, hideLabel = false, hideErrorRow = false }) {
+export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false, hideLabel = false, hideErrorRow = false, className }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -184,7 +197,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
     };
 
     return (
-      <View className="mb-5" nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
+      <View className={className ?? 'mb-5'} nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
         {!hideLabel && <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>}
         <View
           className="flex-row items-center gap-2"
@@ -230,7 +243,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
   };
 
   return (
-    <View className="mb-5" nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
+    <View className={className ?? 'mb-5'} nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
       {!hideLabel && <Text className={FIELD_LABEL} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>}
       <Pressable
         className={`h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`}
