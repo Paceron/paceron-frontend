@@ -52,7 +52,7 @@ function LeaderboardRow({ row, metric, idPrefix, accent = false, isRecord = fals
     : 'bg-white dark:bg-surface';
 
   return (
-    <View className={`flex-row items-center gap-3 rounded-xl p-3 ${containerClass}`} nativeID={idPrefix} testID={idPrefix}>
+    <View className={`flex-row items-center gap-3 rounded-xl p-2 ${containerClass}`} nativeID={idPrefix} testID={idPrefix}>
       <RankBadge rank={row.rank} />
       <AvatarPicker accessibilityLabel={`Foto de ${row.name}`} idPrefix={`${idPrefix}-avatar`} initials={getUserInitials(row.name)} size={32} uri={row.avatarUrl} />
       <View className="flex-1" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
@@ -122,7 +122,7 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
           <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
             {metricOption.name}
           </Text>
-          <View className="ml-1" nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
+          <View className="ml-4" nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
             {/* `label` único por sección aunque quede oculto (`hideLabel`) --
                 SelectField/PickerField derivan su nativeID del label
                 (`slugify`), sin esto las 6 secciones generarían el mismo id
