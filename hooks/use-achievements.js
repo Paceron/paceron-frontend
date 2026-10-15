@@ -22,6 +22,13 @@ function joinAchievements(catalog, progressList) {
       name: item.name,
       description: item.description,
       iconKey: item.iconKey,
+      threshold: item.threshold,
+      unit: item.unit,
+      counterTrophyEvery: item.counterTrophyEvery,
+      // `levels` completo (no solo el nivel actual) -- lo necesita la
+      // escala de puntitos (LevelPips) y el modal de detalle, para mostrar
+      // "nivel 2 de 5" aunque el usuario todavía no llegó a ninguno.
+      levels: item.levels,
       count: progress?.count ?? null,
       currentLevel,
       levelName: currentLevelDef?.name ?? null,
