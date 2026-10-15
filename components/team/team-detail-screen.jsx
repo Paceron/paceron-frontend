@@ -1002,7 +1002,7 @@ function TeamDetailScreenContent({ teamId }) {
   const solicitudesContent = canDeleteTeam && <TeamRequestsTab teamId={team.id} />;
   const leaderboardContent = <LeaderboardTab teamId={team.id} />;
   const competitionsContent = (
-    <CompetitionsTab currentUserId={user?.userId} groups={groupOptions} isTrainerView={isTrainerView} members={members} teamId={team.id} />
+    <CompetitionsTab currentUserId={String(user?.userId)} groups={groupOptions} isTrainerView={isTrainerView} members={members} teamId={team.id} />
   );
 
   return (

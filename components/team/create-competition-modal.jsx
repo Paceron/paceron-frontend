@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { InputField, Row, Col, DateField } from '../forms/fields.jsx';
+import { InputField, DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
 import { RouteDrawPicker } from './route-draw-picker';
@@ -126,8 +126,8 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
     <>
       <Modal animationType="fade" nativeID="create-competition-modal" onRequestClose={handleClose} testID="create-competition-modal" transparent visible={visible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-competition-modal-backdrop" onPress={handleClose} testID="create-competition-modal-backdrop">
-          <Pressable className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-competition-modal-card" onPress={() => {}} testID="create-competition-modal-card">
-            <View className="mb-4 flex-row items-center gap-2" nativeID="create-competition-modal-header" testID="create-competition-modal-header">
+          <Pressable className="max-h-[90vh] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-competition-modal-card" onPress={() => {}} testID="create-competition-modal-card">
+            <View className="mb-4 shrink-0 flex-row items-center gap-2" nativeID="create-competition-modal-header" testID="create-competition-modal-header">
               <MaterialCommunityIcons color={colors.primary} name="sword-cross" size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-competition-modal-title" testID="create-competition-modal-title">
                 Nueva competencia
@@ -135,38 +135,49 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
             </View>
 
             {error && (
-              <Text className="mb-2 text-xs text-red-600 dark:text-red-400" nativeID="create-competition-modal-error" testID="create-competition-modal-error">
+              <Text className="mb-2 shrink-0 text-xs text-red-600 dark:text-red-400" nativeID="create-competition-modal-error" testID="create-competition-modal-error">
                 {error}
               </Text>
             )}
 
-            <ScrollView className="max-h-[70vh]" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
+            {/* `flex-1` (no `max-h-*`) -- la card entera tiene `max-h-[90vh]`;
+                este ScrollView se encoge para llenar lo que sobra ahí
+                después del header/error/acciones, en vez de un tope fijo
+                que no garantizaba que la card completa entrara en pantalla
+                (pedido real, 2026-10-15: "que el modal sea scrollable si no
+                entra en pantalla"). */}
+            <ScrollView className="flex-1" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
               <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
-                <ResponsiveSelectField dense label="Tipo de competencia" onChange={setType} options={TYPE_OPTIONS} value={type} />
+                <ResponsiveSelectField dense hideErrorRow label="Tipo de competencia" onChange={setType} options={TYPE_OPTIONS} required value={type} />
 
                 {type === 'metric' ? (
                   <>
-                    <ResponsiveSelectField dense label="Métrica" onChange={setMetric} options={METRIC_OPTIONS} value={metric} />
-                    <Row>
-                      <Col>
-                        <DateField label="Desde" onChange={setStartDate} value={startDate} />
-                      </Col>
-                      <Col>
-                        <DateField label="Hasta" onChange={setEndDate} value={endDate} />
-                      </Col>
-                    </Row>
+                    <ResponsiveSelectField dense hideErrorRow label="Métrica" onChange={setMetric} options={METRIC_OPTIONS} required value={metric} />
+                    {/* Fila SIEMPRE (no solo web, a diferencia de Row/Col) --
+                        pedido real: ahorrar espacio también en mobile para
+                        este par puntual. `dense` achica cada DateField para
+                        que los dos entren en una fila angosta. */}
+                    <View className="flex-row gap-3" nativeID="create-competition-modal-dates-row" testID="create-competition-modal-dates-row">
+                      <View className="flex-1" nativeID="create-competition-modal-dates-from-wrap" testID="create-competition-modal-dates-from-wrap">
+                        <DateField dense hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
+                      </View>
+                      <View className="flex-1" nativeID="create-competition-modal-dates-to-wrap" testID="create-competition-modal-dates-to-wrap">
+                        <DateField dense hideErrorRow label="Hasta" onChange={setEndDate} value={endDate} />
+                      </View>
+                    </View>
                   </>
                 ) : (
                   <>
-                    <DateField label="Desde" onChange={setStartDate} value={startDate} />
+                    <DateField dense hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
                     <RouteDrawPicker onChange={setRoute} value={route} />
-                    <InputField className="mb-0" dense keyboardType="numeric" label="Radio de aceptación (metros)" onChange={setAcceptanceRadius} value={acceptanceRadius} />
+                    <InputField className="mb-0" dense hideErrorRow keyboardType="numeric" label="Radio de aceptación (metros)" onChange={setAcceptanceRadius} value={acceptanceRadius} />
                   </>
                 )}
 
                 {groups.length > 0 && (
                   <ResponsiveSelectField
                     dense
+                    hideErrorRow
                     label="Acotar a un grupo (opcional)"
                     onChange={setGroupFilter}
                     options={groups}
@@ -200,7 +211,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
               </View>
             </ScrollView>
 
-            <View className="mt-3 flex-row gap-3" nativeID="create-competition-modal-actions" testID="create-competition-modal-actions">
+            <View className="mt-3 shrink-0 flex-row gap-3" nativeID="create-competition-modal-actions" testID="create-competition-modal-actions">
               <Pressable
                 className="h-11 flex-1 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
                 disabled={submitting}
