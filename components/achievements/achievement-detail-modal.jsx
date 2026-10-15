@@ -1,5 +1,6 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useThemeColors } from '../../theme/colors.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { LevelPips } from './level-pips.jsx';
@@ -12,6 +13,7 @@ import { formatDisplayDate } from '../../utils/format-date-display.js';
 // achievement-highlight-card.jsx (Home) -- mismo patrón de modal
 // autocontenido que reject-competition-modal.jsx.
 export function AchievementDetailModal({ achievement, visible, onClose }) {
+  const colors = useThemeColors();
   if (!achievement) return null;
 
   const meta = levelMeta(achievement.currentLevel || 1);
@@ -26,6 +28,12 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
             <Text className="flex-1 text-lg font-bold text-slate-900 dark:text-white" nativeID="achievement-detail-modal-title" testID="achievement-detail-modal-title">
               {achievement.name}
             </Text>
+            {/* Ícono chico en vez del botón de ancho completo de abajo --
+                pedido real 2026-10-15, "no veo necesario un botón tan
+                grande de cerrar". */}
+            <Pressable nativeID="achievement-detail-modal-close-button" onPress={onClose} testID="achievement-detail-modal-close-button">
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={20} />
+            </Pressable>
           </View>
 
           <Text className="mt-3 text-sm text-slate-600 dark:text-slate-300" nativeID="achievement-detail-modal-description" testID="achievement-detail-modal-description">
@@ -81,15 +89,6 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
               )}
             </View>
           )}
-
-          <Pressable
-            className="mt-5 h-11 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
-            nativeID="achievement-detail-modal-close-button"
-            onPress={onClose}
-            testID="achievement-detail-modal-close-button"
-          >
-            <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="achievement-detail-modal-close-label" testID="achievement-detail-modal-close-label">Cerrar</Text>
-          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>

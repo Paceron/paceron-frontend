@@ -10,13 +10,18 @@ import { notifyWarning } from '../utils/haptics.js';
 // Rachas del corredor (Gap 30) -- estado de servidor, TanStack Query (ver
 // CLAUDE.md "Estado de aplicación vs. de servidor"). Una sola query,
 // reusada por la card del Home y la pestaña de detalle (ambas piden los
-// mismos 30 días; el Home recorta a los últimos 14 client-side, ver
-// components/home/streak-banner.jsx) -- mismo cache, sin fetch duplicado.
+// mismos 90 días; el Home recorta a los últimos 14 client-side, ver
+// components/home/streak-banner.jsx). 90 en vez de 30 desde que la grilla
+// de la pestaña Rachas pasó a vista semanal navegable (2026-10-15) -- la
+// navegación hacia semanas previas necesita más historial que una
+// ventana de 30 días; 90 alcanza para ~12 semanas atrás sin pedirle al
+// backend un parámetro de rango nuevo (sigue siendo `?days=N`, Gap 30).
+// Mismo cache, sin fetch duplicado entre Home y la pestaña.
 export function useStreaks() {
   const userId = useAuthStore((s) => s.userId);
   const query = useQuery({
     queryKey: ['streaks', userId],
-    queryFn: () => getStreaks(userId, 30).then(toStreaksModel),
+    queryFn: () => getStreaks(userId, 90).then(toStreaksModel),
     enabled: Boolean(userId),
   });
 

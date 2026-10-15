@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { Pressable, View, Text } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
-import { AchievementDetailModal } from '../achievements/achievement-detail-modal.jsx';
+import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 
 // El logro con más progreso pendiente (más cerca de subir de nivel), o si
 // ninguno tiene progreso fraccional, el desbloqueado más recientemente.
@@ -20,8 +20,9 @@ function pickHighlight(achievements) {
 }
 
 export function AchievementHighlightCard() {
+  const router = useRouter();
   const { achievements, loading, error } = useAchievements();
-  const [detailVisible, setDetailVisible] = useState(false);
+  const setActiveTab = useAchievementsTabStore((s) => s.setActiveTab);
 
   if (loading || error || !achievements.length) return null;
 
@@ -30,9 +31,17 @@ export function AchievementHighlightCard() {
 
   const meta = levelMeta(highlight.currentLevel || 1);
 
+  // Va directo a la pestaña Logros del hub -- antes abría el modal de
+  // detalle acá mismo, pedido 2026-10-15: "en lugar de mostrar el modal,
+  // solo para ese caso" (el modal de detalle queda para dentro de
+  // /achievements, no para el acceso rápido del Home).
+  const goToAchievementsTab = () => {
+    setActiveTab('achievements');
+    router.push('/achievements');
+  };
+
   return (
-    <>
-      <Pressable className="mb-6 rounded-2xl bg-white p-4 shadow-sm active:opacity-80 dark:bg-surface" nativeID="achievement-highlight-card-root" onPress={() => setDetailVisible(true)} testID="achievement-highlight-card-root">
+    <Pressable className="mb-6 rounded-2xl bg-white p-4 shadow-sm active:opacity-80 dark:bg-surface" nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
         {/* Kicker "Logro" -- sin esto se confundía con la card de Racha
             justo arriba (mismo estilo blanco/ícono+texto+barra), pedido
             real 2026-10-14. */}
@@ -58,7 +67,5 @@ export function AchievementHighlightCard() {
           </Text>
         )}
       </Pressable>
-      <AchievementDetailModal achievement={highlight} onClose={() => setDetailVisible(false)} visible={detailVisible} />
-    </>
   );
 }

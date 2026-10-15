@@ -1,9 +1,11 @@
-import { View, Text } from 'react-native';
+import { Pressable, View, Text } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { useStreaks } from '../../hooks/use-streaks.js';
 import { streakDayVisual } from '../../utils/streak-day-status.js';
+import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 
@@ -23,9 +25,18 @@ function useFirePulse() {
 }
 
 export function StreakBanner() {
+  const router = useRouter();
   const colors = useThemeColors();
   const { streaks, loading, error } = useStreaks();
   const pulseStyle = useFirePulse();
+  const setActiveTab = useAchievementsTabStore((s) => s.setActiveTab);
+
+  // Tocar la card va directo a la pestaña Rachas del hub -- pedido
+  // 2026-10-15, mismo criterio que el logro destacado (abajo).
+  const goToStreaksTab = () => {
+    setActiveTab('streaks');
+    router.push('/achievements');
+  };
 
   if (loading) {
     return (
@@ -46,7 +57,7 @@ export function StreakBanner() {
   const lastDays = streaks.days.slice(-14);
 
   return (
-    <View className="mb-6 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="streak-banner-root" testID="streak-banner-root">
+    <Pressable className="mb-6 rounded-2xl bg-white p-4 shadow-sm active:opacity-80 dark:bg-surface" nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
       <View className="flex-row items-center gap-3" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
         <Animated.View nativeID="streak-banner-fire-icon" style={pulseStyle} testID="streak-banner-fire-icon">
           <MaterialCommunityIcons color={colors.primary} name="fire" size={28} />
@@ -75,6 +86,6 @@ export function StreakBanner() {
           );
         })}
       </View>
-    </View>
+    </Pressable>
   );
 }

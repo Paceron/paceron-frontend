@@ -60,7 +60,7 @@ function buildMockDays(days) {
   return result;
 }
 
-export async function mockGetStreaks(days = 30) {
+export async function mockGetStreaks(days = 90) {
   return {
     strict: { current: CURRENT_STREAK, best: BEST_STREAK },
     flexible: { current: 9, best: 20 },
