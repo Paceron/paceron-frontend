@@ -12,8 +12,14 @@ function AchievementCard({ achievement, columnClass }) {
 
   return (
     <View className={`${columnClass} rounded-2xl bg-white p-3 shadow-sm dark:bg-surface`} nativeID={idPrefix} testID={idPrefix}>
+      {/* `achievement.iconKey` (del catálogo) identifica AL LOGRO en sí
+          (medalla, llama, estrella, según cada uno) -- antes se mostraba el
+          ícono del NIVEL (meta.icon, genérico por nivel 1-5), así que todos
+          los logros "leveled" se veían iguales entre sí. El color de nivel
+          se mantiene, tiñe el ícono propio del logro en vez de reemplazarlo
+          (bug/pedido real, 2026-10-14). */}
       <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-        <MaterialCommunityIcons color={meta.color} name={meta.icon} size={22} />
+        <MaterialCommunityIcons color={meta.color} name={achievement.iconKey} size={22} />
         <Text className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
           {achievement.name}
         </Text>

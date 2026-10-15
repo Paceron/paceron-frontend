@@ -38,11 +38,22 @@ const MOCK_CATALOG = [
   },
 ];
 
-const MOCK_PROGRESS = [
+const PROGRESS_SEED = [
   { achievement_id: 'first_training', count: 1, unlocked_at: '2026-09-01', last_unlocked_at: '2026-09-01', has_unseen: false },
   { achievement_id: 'consecutive_trainings', current_level: 2, count: 15, unlocked_at: '2026-09-15', last_unlocked_at: '2026-10-01', has_unseen: true },
   { achievement_id: 'total_trainings', count: 7, unlocked_at: '2026-09-01', last_unlocked_at: '2026-10-05', has_unseen: false },
 ];
+
+// Mutable (no un const plano) para poder apagar `has_unseen` desde
+// `mockAckAchievements` -- bug real, 2026-10-14: el punto rojo nunca se
+// apagaba en modo mock porque `services/gamification.js#ackGamificationSeen`
+// hacía early-return sin tocar nada cuando `USE_MOCKS` (no había ningún
+// estado mutable al que avisarle).
+let MOCK_PROGRESS = PROGRESS_SEED.map((p) => ({ ...p }));
+
+export function mockAckAchievements() {
+  MOCK_PROGRESS = MOCK_PROGRESS.map((p) => ({ ...p, has_unseen: false }));
+}
 
 const MOCK_STAMPS = [
   { id: 1, type: 'achievement_counter', source_id: 'total_trainings', source_name: 'Entrenamientos totales', icon_key: 'medal-outline', granted_at: '2026-10-05', count: 7 },

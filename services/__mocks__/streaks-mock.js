@@ -19,6 +19,16 @@ const FORCE_STREAK_BROKEN = false;
 const CURRENT_STREAK = FORCE_STREAK_BROKEN ? 0 : 6;
 const BEST_STREAK = 14;
 
+// Mutable para poder apagar `has_unseen` desde `mockAckStreaks` -- mismo bug
+// y mismo fix que `achievements-mock.js#mockAckAchievements` (2026-10-14):
+// el punto rojo nunca se apagaba en modo mock, `ackGamificationSeen` no
+// tenía ningún estado al que avisarle.
+let hasUnseen = true;
+
+export function mockAckStreaks() {
+  hasUnseen = false;
+}
+
 function buildMockDays(days) {
   const today = new Date();
   const result = [];
@@ -55,6 +65,6 @@ export async function mockGetStreaks(days = 30) {
     strict: { current: CURRENT_STREAK, best: BEST_STREAK },
     flexible: { current: 9, best: 20 },
     days: buildMockDays(days),
-    has_unseen: true,
+    has_unseen: hasUnseen,
   };
 }

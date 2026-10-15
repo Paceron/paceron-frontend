@@ -30,7 +30,7 @@ export function AchievementHighlightCard() {
   return (
     <View className="mb-6 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="achievement-highlight-card-root" testID="achievement-highlight-card-root">
       <View className="flex-row items-center gap-3" nativeID="achievement-highlight-card-header" testID="achievement-highlight-card-header">
-        <MaterialCommunityIcons color={meta.color} name={meta.icon} size={26} />
+        <MaterialCommunityIcons color={meta.color} name={highlight.iconKey} size={26} />
         <Text className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="achievement-highlight-card-name" testID="achievement-highlight-card-name">
           {highlight.name}
         </Text>
