@@ -63,15 +63,25 @@ function buildSeedTeams() {
   const advancedGroup = __seedGroup(4, 'Avanzado', { description: 'Corredores con mayor volumen y ritmo.' });
   const generalGroupId = defaultGroupByTeamId.get(4).id;
   const teamUsers = {
-    4: FICTITIOUS_RUNNER_IDS.map((userId, i) => ({
-      id: 1000 + userId,
-      user_id: userId,
-      team_id: 4,
-      role_in_team: 'corredor',
-      status: 'active',
-      assignment_date: daysAgoIso((i + 1) * 30),
-    })),
+    // user_id 1 (demo@paceron.com, mockLogin siempre devuelve ese id) era
+    // owner_id de los equipos 1/4 pero nunca corredor de NINGUNO -- con
+    // rol corredor activo, "mis equipos" (memberId) venía vacío sin forma
+    // de probar nada con grupo (leaderboard, competencias, roster) contra
+    // la cuenta demo (bug real, 2026-10-15). Sembrado en el grupo general
+    // de team 4 junto a los 6 ficticios.
+    4: [
+      { id: 1001, user_id: 1, team_id: 4, role_in_team: 'corredor', status: 'active', assignment_date: daysAgoIso(200) },
+      ...FICTITIOUS_RUNNER_IDS.map((userId, i) => ({
+        id: 1000 + userId,
+        user_id: userId,
+        team_id: 4,
+        role_in_team: 'corredor',
+        status: 'active',
+        assignment_date: daysAgoIso((i + 1) * 30),
+      })),
+    ],
   };
+  __seedGroupUser(generalGroupId, 1);
   FICTITIOUS_RUNNER_IDS.forEach((userId, i) => {
     __seedGroupUser(i < 4 ? generalGroupId : advancedGroup.id, userId);
   });

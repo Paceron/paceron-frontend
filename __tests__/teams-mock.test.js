@@ -58,7 +58,10 @@ describe('teams mock adapter', () => {
 
   test('team 4 roster is split across "General" and "Avanzado" groups, with staggered assignment dates', async () => {
     const users = await mockGetTeamUsers(4);
-    expect(users).toHaveLength(6);
+    // 6 ficticios + user_id 1 (demo@paceron.com) sembrado como corredor
+    // además de owner -- sin esto "mis equipos" venía vacío logueado como
+    // corredor (bug real, 2026-10-15).
+    expect(users).toHaveLength(7);
     const dates = users.map((u) => new Date(u.assignment_date).getTime());
     expect(new Set(dates).size).toBe(dates.length); // todas distintas, ninguna pisa a otra
 
@@ -67,7 +70,7 @@ describe('teams mock adapter', () => {
 
     const usersByGroup = await Promise.all(groups.map((g) => mockGetGroupUsers(g.id)));
     const totalGroupedUsers = usersByGroup.reduce((sum, list) => sum + list.length, 0);
-    expect(totalGroupedUsers).toBe(6);
+    expect(totalGroupedUsers).toBe(7);
   });
 
   describe('mockUploadTeamIcon / mockDeleteTeamIcon', () => {
