@@ -41,6 +41,8 @@ export function StreaksTab() {
     return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streaks-tab-error" testID="streaks-tab-error">No pudimos cargar tus rachas.</Text>;
   }
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   return (
     <View nativeID="streaks-tab-root" testID="streaks-tab-root">
       <View className="flex-row gap-3" nativeID="streaks-tab-cards-row" testID="streaks-tab-cards-row">
@@ -52,23 +54,34 @@ export function StreaksTab() {
       </Text>
       {/* Cada día es clickeable -- navega a ese día en el calendario propio
           (mismo destino que ya usa next-training-banner.jsx para el
-          corredor). En web, el ícono-tooltip muestra la fecha al pasar el
-          mouse (patrón ya establecido en IconTooltip, no-op en mobile --
-          ahí la única pista sigue siendo accessibilityLabel). */}
-      <View className="flex-row flex-wrap gap-1" nativeID="streaks-tab-grid" testID="streaks-tab-grid">
+          corredor). Celda grande con el número de día adentro (mobile no
+          tiene hover, así que la fecha tiene que leerse directo en la
+          celda, no solo en un tooltip) -- el tooltip de IconTooltip sigue
+          sumando la fecha completa en web al pasar el mouse. El día de hoy
+          lleva un anillo propio (además de su color 'pending', que puede
+          confundirse con 'skipped' a primera vista) para que se identifique
+          sin ambigüedad. `active:opacity-70`/`hover:opacity-80` dan el
+          feedback mínimo de toque/hover pedido. */}
+      <View className="flex-row flex-wrap gap-1.5" nativeID="streaks-tab-grid" testID="streaks-tab-grid">
         {streaks.days.map((day) => {
           const visual = streakDayVisual(day.strictStatus);
           const dayIdPrefix = `streaks-tab-grid-day-${day.date}`;
+          const isToday = day.date === todayIso;
+          const dayNumber = Number(day.date.slice(-2));
           return (
             <IconTooltip idPrefix={`${dayIdPrefix}-tooltip`} key={day.date} label={formatDisplayDate(day.date)} position="top">
               <Pressable
-                accessibilityLabel={`${formatDisplayDate(day.date)}: ${visual.label}`}
-                className="h-4 w-4 rounded-sm"
+                accessibilityLabel={`${formatDisplayDate(day.date)}${isToday ? ' (hoy)' : ''}: ${visual.label}`}
+                className={`h-9 w-9 items-center justify-center rounded-lg active:opacity-70 hover:opacity-80 ${isToday ? 'border-2 border-primary' : ''}`}
                 nativeID={dayIdPrefix}
                 onPress={() => router.push(`/calendar?date=${day.date}`)}
                 style={{ backgroundColor: visual.color }}
                 testID={dayIdPrefix}
-              />
+              >
+                <Text className="text-xs font-semibold" nativeID={`${dayIdPrefix}-number`} style={{ color: visual.textColor }} testID={`${dayIdPrefix}-number`}>
+                  {dayNumber}
+                </Text>
+              </Pressable>
             </IconTooltip>
           );
         })}

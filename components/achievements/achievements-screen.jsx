@@ -36,7 +36,7 @@ export function AchievementsScreen() {
   return (
     <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="achievements-screen-root" testID="achievements-screen-root">
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="achievements-screen-container" testID="achievements-screen-container">
-        <Text className="mb-6 text-2xl text-slate-900 dark:text-white" nativeID="achievements-screen-title" testID="achievements-screen-title">
+        <Text className="mb-6 text-2xl text-slate-900 dark:text-white" nativeID="achievements-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="achievements-screen-title">
           Logros
         </Text>
         <TabBar active={activeTab} onChange={setActiveTab} scope="achievements-tab-bar" tabs={TABS} />

@@ -2,7 +2,11 @@ import { streakDayVisual } from '../utils/streak-day-status.js';
 
 describe('streakDayVisual', () => {
   test('completed -> verde', () => {
-    expect(streakDayVisual('completed')).toEqual({ color: '#22c55e', label: 'Completado' });
+    expect(streakDayVisual('completed')).toEqual({ color: '#22c55e', textColor: '#ffffff', label: 'Completado' });
+  });
+
+  test('pending -> texto oscuro (fondo claro)', () => {
+    expect(streakDayVisual('pending').textColor).toBe('#475569');
   });
 
   test('failed -> rojo', () => {
