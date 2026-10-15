@@ -134,12 +134,6 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
               </Text>
             </View>
 
-            {error && (
-              <Text className="mb-2 shrink-0 text-xs text-red-600 dark:text-red-400" nativeID="create-competition-modal-error" testID="create-competition-modal-error">
-                {error}
-              </Text>
-            )}
-
             {/* `flex-1` (no `max-h-*`) -- la card entera tiene `max-h-[90vh]`;
                 este ScrollView se encoge para llenar lo que sobra ahí
                 después del header/error/acciones, en vez de un tope fijo
@@ -210,6 +204,15 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                 </View>
               </View>
             </ScrollView>
+
+            {/* Movido al fondo, pegado a las acciones -- pedido real,
+                2026-10-15: "mueve el espacio reservado a errores abajo de
+                todo del form por encima de los botones de cancelar/crear". */}
+            {error && (
+              <Text className="mt-3 shrink-0 text-xs text-red-600 dark:text-red-400" nativeID="create-competition-modal-error" testID="create-competition-modal-error">
+                {error}
+              </Text>
+            )}
 
             <View className="mt-3 shrink-0 flex-row gap-3" nativeID="create-competition-modal-actions" testID="create-competition-modal-actions">
               <Pressable

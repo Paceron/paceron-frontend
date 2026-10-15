@@ -90,7 +90,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
   });
 
   return (
-    <View className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
       <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={() => setExpanded((v) => !v)} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} />
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
@@ -108,10 +108,15 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
           tapado por los botones (pedido real: "manejar bien el caso de
           mobile que el badge se vea encima del botón"). */}
       <View className="ml-6 mt-2 flex-row flex-wrap items-center justify-between gap-2" nativeID={`${idPrefix}-status-row`} testID={`${idPrefix}-status-row`}>
-        <View className={`rounded-full px-2 py-0.5 ${statusMeta.bg}`} nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
-          <Text className={`text-xs font-semibold ${statusMeta.text}`} nativeID={`${idPrefix}-status-label`} testID={`${idPrefix}-status-label`}>
-            {statusMeta.label}
+        <View className="flex-row items-center gap-1.5" nativeID={`${idPrefix}-status-group`} testID={`${idPrefix}-status-group`}>
+          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-status-caption`} testID={`${idPrefix}-status-caption`}>
+            Estado:
           </Text>
+          <View className={`rounded-full px-2 py-0.5 ${statusMeta.bg}`} nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
+            <Text className={`text-xs font-semibold ${statusMeta.text}`} nativeID={`${idPrefix}-status-label`} testID={`${idPrefix}-status-label`}>
+              {statusMeta.label}
+            </Text>
+          </View>
         </View>
 
         {hasActions && (
@@ -149,7 +154,10 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
       </View>
 
       {expanded && (
-        <View className="ml-6 mt-3 flex-row flex-wrap gap-1.5" nativeID={`${idPrefix}-participants`} testID={`${idPrefix}-participants`}>
+        <View className="ml-6 mt-3 flex-row flex-wrap items-center gap-1.5" nativeID={`${idPrefix}-participants`} testID={`${idPrefix}-participants`}>
+          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-participants-caption`} testID={`${idPrefix}-participants-caption`}>
+            Participantes:
+          </Text>
           {sortedParticipantIds.map((userId) => (
             <ParticipantPill idPrefix={`${idPrefix}-participant-${userId}`} isWinner={competition.winnerUserIds.includes(userId)} key={userId} name={memberName(members, userId)} />
           ))}
@@ -253,19 +261,27 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
   const visibleList = listByTab[subTab];
 
   return (
-    <View nativeID="competitions-tab-root" testID="competitions-tab-root">
-      <View className="mb-4 flex-row items-center justify-between" nativeID="competitions-tab-header" testID="competitions-tab-header">
-        <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID="competitions-tab-title" testID="competitions-tab-title">
-          Competencias
-        </Text>
+    // Card única envolviendo todo -- mismas clases que SectionCard
+    // (components/forms/section-card.jsx, usado por Corredores/Solicitudes/
+    // etc.) para unificar estilos, pero SIN el componente en sí: éste
+    // fuerza un título+ícono de header que acá es redundante (la pestaña
+    // de arriba ya dice "Competencias") -- pedido real, 2026-10-15.
+    <View className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="competitions-tab-root" testID="competitions-tab-root">
+      {/* `items-start` (no `items-center`) -- TabBar trae su propio
+          margin-bottom (separación respecto a la lista de abajo), que al
+          centrarse por cross-axis junto al botón corriría la fila de tabs
+          visualmente más arriba que el botón. Con `items-start` ambos
+          arrancan parejos en el techo de la fila. */}
+      <View className="mb-4 flex-row items-start justify-between gap-3" nativeID="competitions-tab-header" testID="competitions-tab-header">
+        <View className="flex-1" nativeID="competitions-tab-subtabs-wrap" testID="competitions-tab-subtabs-wrap">
+          <TabBar active={subTab} badges={{ pending: listByTab.pending.length > 0 }} onChange={setSubTab} scope="competitions-tab-subtabs" tabs={SUB_TABS} variant="compact" />
+        </View>
         <IconTooltip align="end" idPrefix="competitions-tab-create-tooltip" label="Nueva competencia" position="bottom">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-80" nativeID="competitions-tab-create-button" onPress={() => setCreateVisible(true)} testID="competitions-tab-create-button">
             <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
           </Pressable>
         </IconTooltip>
       </View>
-
-      <TabBar active={subTab} badges={{ pending: listByTab.pending.length > 0 }} onChange={setSubTab} scope="competitions-tab-subtabs" tabs={SUB_TABS} />
 
       {loading && (
         <View className="items-center py-6" nativeID="competitions-tab-loading" testID="competitions-tab-loading">
