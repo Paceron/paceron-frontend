@@ -24,7 +24,7 @@ import { isWeb } from '../../utils/platform.js';
 // pill de la izquierda saca media burbuja fuera de la pantalla. `start` la
 // ancla a la izquierda del trigger (se abre hacia la derecha) y `end` a la
 // derecha (se abre hacia la izquierda) — para una fila, "hacia adentro".
-export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center' }) {
+export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center', wrapperClassName = '' }) {
   const [hovered, setHovered] = useState(false);
 
   if (!isWeb) return children;
@@ -37,8 +37,13 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom', al
   const positionClass = position === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5';
   const alignClass = align === 'start' ? 'left-0' : align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2';
 
+  // `wrapperClassName` opcional -- por default este wrapper no declara
+  // `flexShrink`/ancho propio, así que en una fila flex que necesita que
+  // sus hijos se encojan (ej. tab-bar.jsx con `shrink` en el trigger), el
+  // wrapper de acá rompía la cadena (bug real, 2026-10-15): el hijo pedía
+  // encogerse pero el wrapper, sin esa misma clase, no lo dejaba.
   return (
-    <View className="relative" nativeID={idPrefix} testID={idPrefix}>
+    <View className={`relative ${wrapperClassName}`} nativeID={idPrefix} testID={idPrefix}>
       {trigger}
       {hovered && (
         <View

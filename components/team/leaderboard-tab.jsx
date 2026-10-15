@@ -38,33 +38,35 @@ function RankBadge({ rank }) {
   );
 }
 
-function LeaderboardRow({ row, metric, idPrefix, accent = false }) {
+// `isRecord` (puesto 1 en modo Histórico) reusa el estilo ámbar que antes
+// vivía en una card aparte, debajo de las 5 filas -- mezclado acá para que
+// el puesto 1 sea LA MISMA fila que el récord, no dos números distintos
+// para la misma persona compitiendo por atención (bug/pedido real,
+// 2026-10-15: antes la card de récord y la fila 1 podían mostrar valores
+// diferentes del mismo ganador, confuso).
+function LeaderboardRow({ row, metric, idPrefix, accent = false, isRecord = false }) {
+  const containerClass = isRecord
+    ? 'border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/10'
+    : accent
+    ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10'
+    : 'bg-white dark:bg-surface';
+
   return (
-    <View
-      className={`flex-row items-center gap-3 rounded-xl p-3 ${accent ? 'border-l-4 border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'bg-white dark:bg-surface'}`}
-      nativeID={idPrefix}
-      testID={idPrefix}
-    >
+    <View className={`flex-row items-center gap-3 rounded-xl p-3 ${containerClass}`} nativeID={idPrefix} testID={idPrefix}>
       <RankBadge rank={row.rank} />
       <AvatarPicker accessibilityLabel={`Foto de ${row.name}`} idPrefix={`${idPrefix}-avatar`} initials={getUserInitials(row.name)} size={32} uri={row.avatarUrl} />
-      <Text className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
-        {row.name}
-      </Text>
+      <View className="flex-1" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
+        {isRecord && (
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-record-label`} testID={`${idPrefix}-record-label`}>
+            Récord del equipo
+          </Text>
+        )}
+        <Text className="text-sm font-medium text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
+          {row.name}
+        </Text>
+      </View>
       <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-value`} testID={`${idPrefix}-value`}>
         {formatMetricValue(metric, row.value)}
-      </Text>
-    </View>
-  );
-}
-
-function RecordCard({ record, metric, idPrefix }) {
-  return (
-    <View className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/40 dark:bg-amber-900/10" nativeID={idPrefix} testID={idPrefix}>
-      <Text className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
-        Récord del equipo
-      </Text>
-      <Text className="mt-1 text-sm text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-value`} testID={`${idPrefix}-value`}>
-        {record.name} — {formatMetricValue(metric, record.value)}
       </Text>
     </View>
   );
@@ -89,24 +91,38 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
 
   const viewerInTop = Boolean(leaderboard?.rows?.some((row) => String(row.userId) === String(leaderboard?.viewerRank?.userId)));
   const isHistoric = period === 'all';
-  // Histórico: récord primero + 4 filas (no 5) -- 5 cards en total con el
-  // récord incluido, en vez de apilar el récord debajo de las 5 filas del
-  // período normal (pedido real 2026-10-15, antes el récord quedaba
-  // colgado abajo de filas que ni siquiera eran del período histórico).
-  const visibleRows = isHistoric ? (leaderboard?.rows ?? []).slice(0, 4) : (leaderboard?.rows ?? []);
+  // Histórico: mismas 5 filas de siempre + la posición propia si no está
+  // en el top 5 (igual que cualquier otro período) -- el puesto 1 pasa a
+  // ser el récord del equipo (mismo dato, no uno aparte) con estilo ámbar.
+  // Corregido 2026-10-15: la versión anterior mostraba una card de récord
+  // separada (con su propio valor) MÁS 4 filas del top 5 recortado --
+  // confuso cuando el récord y el puesto 1 eran la misma persona con
+  // números distintos.
+  const visibleRows = isHistoric && leaderboard?.record
+    ? [
+        { userId: leaderboard.record.userId, name: leaderboard.record.name, avatarUrl: null, value: leaderboard.record.value, rank: 1 },
+        ...(leaderboard?.rows ?? []).filter((row) => row.rank !== 1),
+      ]
+    : (leaderboard?.rows ?? []);
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-        <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
+        <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
           {metricOption.name}
         </Text>
-        <View className="w-44" nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
+        <View nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
           {/* `label` único por sección aunque quede oculto (`hideLabel`) --
               SelectField/PickerField derivan su nativeID del label
               (`slugify`), sin esto las 6 secciones generarían el mismo id
-              ("Período") y chocarían. */}
-          <ResponsiveSelectField dense hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} value={period} />
+              ("Período") y chocarían. `plain` (variante compacta, sin
+              borde/caja de h-12, ya existía en fields.jsx pero sin ningún
+              call site todavía) + `required` (saca el botón de limpiar Y
+              la opción vacía del <select> -- el período nunca debería
+              poder quedar sin valor) -- antes se veía una caja alta con
+              botón de limpiar, descentrada contra el título (pedido real,
+              2026-10-15). */}
+          <ResponsiveSelectField dense hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} plain required value={period} />
         </View>
         {period === 'custom' && (
           <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-custom-range`} testID={`${idPrefix}-custom-range`}>
@@ -144,19 +160,16 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
             </Text>
           )}
 
-          {!loading && !error && leaderboard && visibleRows.length === 0 && !(isHistoric && leaderboard.record) && (
+          {!loading && !error && leaderboard && visibleRows.length === 0 && (
             <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
               Todavía no hay datos para esta métrica en este período.
             </Text>
           )}
 
-          {!loading && !error && leaderboard && (visibleRows.length > 0 || (isHistoric && leaderboard.record)) && (
+          {!loading && !error && leaderboard && visibleRows.length > 0 && (
             <View className="gap-2" nativeID={`${idPrefix}-rows`} testID={`${idPrefix}-rows`}>
-              {isHistoric && leaderboard.record && (
-                <RecordCard idPrefix={`${idPrefix}-record`} metric={metric} record={leaderboard.record} />
-              )}
               {visibleRows.map((row) => (
-                <LeaderboardRow idPrefix={`${idPrefix}-row-${row.userId}`} key={row.userId} metric={metric} row={row} />
+                <LeaderboardRow idPrefix={`${idPrefix}-row-${row.userId}`} isRecord={isHistoric && row.rank === 1} key={row.userId} metric={metric} row={row} />
               ))}
               {leaderboard.viewerRank && !viewerInTop && (
                 <LeaderboardRow accent idPrefix={`${idPrefix}-viewer-row`} metric={metric} row={{ ...leaderboard.viewerRank, name: viewerName }} />
