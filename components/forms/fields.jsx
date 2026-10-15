@@ -156,7 +156,7 @@ function formatDDMMYYYY(date) {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false, hideLabel = false }) {
+export function DateField({ label, value, onChange, onBlur, error, touched, disabled, minimumDate, disableFutureLimit = false, hideLabel = false, hideErrorRow = false }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -205,9 +205,11 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
             />
           </View>
         </View>
-        <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
-          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
-        </View>
+        {!hideErrorRow && (
+          <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
+            {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
+          </View>
+        )}
       </View>
     );
   }
@@ -246,9 +248,11 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
         </Text>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar" size={20} />
       </Pressable>
-      <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
-        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
-      </View>
+      {!hideErrorRow && (
+        <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
+          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
+        </View>
+      )}
 
       {pickerVisible && Platform.OS === 'android' && (
         <DateTimePicker

@@ -122,7 +122,7 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
           <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
             {metricOption.name}
           </Text>
-          <View nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
+          <View className="ml-1" nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
             {/* `label` único por sección aunque quede oculto (`hideLabel`) --
                 SelectField/PickerField derivan su nativeID del label
                 (`slugify`), sin esto las 6 secciones generarían el mismo id
@@ -132,16 +132,20 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
                 la opción vacía del <select> -- el período nunca debería
                 poder quedar sin valor) -- antes se veía una caja alta con
                 botón de limpiar, descentrada contra el título (pedido real,
-                2026-10-15). */}
-            <ResponsiveSelectField dense hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} plain required value={period} />
+                2026-10-15). `hideErrorRow` saca el renglón de 20px que el
+                campo reserva siempre para un error (nunca aplica acá, el
+                período no se valida) -- sin esto esa caja quedaba más alta
+                que el título de al lado y el `items-center` del header los
+                centraba mal entre sí (bug real, mismo pedido). */}
+            <ResponsiveSelectField dense hideErrorRow hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} plain required value={period} />
           </View>
           {period === 'custom' && (
             <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-custom-range`} testID={`${idPrefix}-custom-range`}>
               <View nativeID={`${idPrefix}-from-wrap`} style={{ width: 128 }} testID={`${idPrefix}-from-wrap`}>
-                <DateField hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
+                <DateField hideErrorRow hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
               </View>
               <View nativeID={`${idPrefix}-to-wrap`} style={{ width: 128 }} testID={`${idPrefix}-to-wrap`}>
-                <DateField hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
+                <DateField hideErrorRow hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
               </View>
             </View>
           )}
@@ -159,7 +163,7 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
       </View>
 
       {expanded && (
-        <View className="mt-3" nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+        <View className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800" nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
           {loading && (
             <View className="items-center py-4" nativeID={`${idPrefix}-loading`} testID={`${idPrefix}-loading`}>
               <ActivityIndicator color={colors.primary} size="small" />
