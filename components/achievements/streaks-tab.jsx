@@ -20,7 +20,7 @@ function StreakCard({ icon, title, current, best, idPrefix, selected, onPress })
   const colors = useThemeColors();
   return (
     <Pressable
-      className={`flex-1 rounded-2xl bg-white p-4 shadow-sm hover:opacity-90 active:opacity-80 dark:bg-surface ${selected ? 'border-2 border-primary' : ''}`}
+      className={`flex-1 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-50 active:bg-slate-100 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${selected ? 'border-2 border-primary' : ''}`}
       nativeID={idPrefix}
       onPress={onPress}
       testID={idPrefix}
@@ -132,7 +132,7 @@ export function StreaksTab() {
         <View className="mb-3 flex-row items-center" nativeID="streaks-tab-week-nav" testID="streaks-tab-week-nav">
           <IconTooltip idPrefix="streaks-tab-week-older-tooltip" label="Semana anterior" position="bottom">
             <Pressable
-              className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-700"
+              className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 transition-colors duration-150 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-50 dark:bg-slate-800 dark:hover:bg-slate-700 dark:active:bg-slate-600"
               disabled={!olderEnabled}
               nativeID="streaks-tab-week-older"
               onPress={() => setWeekOffset((o) => o + 1)}
@@ -148,7 +148,7 @@ export function StreaksTab() {
             </Text>
             <IconTooltip idPrefix="streaks-tab-week-today-tooltip" label="Volver a la semana actual" position="bottom">
               <Pressable
-                className={`h-7 items-center justify-center rounded-full bg-primary-tint px-3 hover:opacity-80 active:opacity-70 dark:bg-primary/15 ${isCurrentWeek ? 'opacity-0' : 'opacity-100'}`}
+                className={`h-7 items-center justify-center rounded-full bg-primary-tint px-3 transition-colors duration-150 hover:bg-primary/30 active:bg-primary/40 dark:bg-primary/15 dark:hover:bg-primary/25 dark:active:bg-primary/35 ${isCurrentWeek ? 'opacity-0' : 'opacity-100'}`}
                 disabled={isCurrentWeek}
                 nativeID="streaks-tab-week-today-button"
                 onPress={() => setWeekOffset(0)}
@@ -161,7 +161,7 @@ export function StreaksTab() {
 
           <IconTooltip idPrefix="streaks-tab-week-newer-tooltip" label="Semana siguiente" position="bottom">
             <Pressable
-              className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-700"
+              className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 transition-colors duration-150 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-50 dark:bg-slate-800 dark:hover:bg-slate-700 dark:active:bg-slate-600"
               disabled={!newerEnabled}
               nativeID="streaks-tab-week-newer"
               onPress={() => setWeekOffset((o) => Math.max(0, o - 1))}
@@ -208,7 +208,7 @@ export function StreaksTab() {
                 <IconTooltip idPrefix={`${dayIdPrefix}-tooltip`} label={formatDisplayDate(date)} position="top">
                   <Pressable
                     accessibilityLabel={`${formatDisplayDate(date)}${isToday ? ' (hoy)' : ''}: ${visual.label}`}
-                    className={`h-11 items-center justify-center rounded-lg active:opacity-60 hover:opacity-70 ${isToday ? 'border-2 border-primary' : ''}`}
+                    className={`h-11 items-center justify-center rounded-lg transition-opacity duration-150 hover:opacity-60 active:opacity-50 ${isToday ? 'border-2 border-primary' : ''}`}
                     nativeID={dayIdPrefix}
                     onPress={() => router.push(`/calendar?date=${date}`)}
                     style={{ backgroundColor: visual.color }}

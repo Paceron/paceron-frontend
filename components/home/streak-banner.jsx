@@ -57,7 +57,7 @@ export function StreakBanner() {
   const lastDays = streaks.days.slice(-14);
 
   return (
-    <Pressable className="mb-6 rounded-2xl bg-white p-4 shadow-sm hover:opacity-90 active:opacity-80 dark:bg-surface" nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
+    <Pressable className="mb-6 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-50 active:bg-slate-100 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3" nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
       <View className="flex-row items-center gap-3" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
         <Animated.View nativeID="streak-banner-fire-icon" style={pulseStyle} testID="streak-banner-fire-icon">
           <MaterialCommunityIcons color={colors.primary} name="fire" size={28} />

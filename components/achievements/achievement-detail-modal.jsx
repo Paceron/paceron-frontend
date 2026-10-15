@@ -34,7 +34,7 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
                 grande de cerrar". */}
             <IconTooltip idPrefix="achievement-detail-modal-close-button-tooltip" label="Cerrar" position="bottom">
               <Pressable
-                className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-800"
+                className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 transition-colors duration-150 hover:bg-slate-200 active:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:active:bg-slate-600"
                 nativeID="achievement-detail-modal-close-button"
                 onPress={onClose}
                 testID="achievement-detail-modal-close-button"

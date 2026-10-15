@@ -19,7 +19,7 @@ function AchievementCard({ achievement, columnClass }) {
 
   return (
     <>
-      <Pressable className={`${columnClass} rounded-2xl bg-white p-3 shadow-sm hover:opacity-90 active:opacity-80 dark:bg-surface`} nativeID={idPrefix} onPress={() => setDetailVisible(true)} testID={idPrefix}>
+      <Pressable className={`${columnClass} rounded-2xl bg-white p-3 shadow-sm transition-colors duration-150 hover:bg-slate-50 active:bg-slate-100 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3`} nativeID={idPrefix} onPress={() => setDetailVisible(true)} testID={idPrefix}>
         {/* `achievement.iconKey` (del catálogo) identifica AL LOGRO en sí
             (medalla, llama, estrella, según cada uno) -- antes se mostraba el
             ícono del NIVEL (meta.icon, genérico por nivel 1-5), así que todos
