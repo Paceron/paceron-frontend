@@ -1,4 +1,5 @@
-import { cloneElement, useState } from 'react';
+import { cloneElement, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Text, View } from 'react-native';
 import { isWeb } from '../../utils/platform.js';
 
@@ -26,16 +27,50 @@ import { isWeb } from '../../utils/platform.js';
 // derecha (se abre hacia la izquierda) — para una fila, "hacia adentro".
 export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center', wrapperClassName = '' }) {
   const [hovered, setHovered] = useState(false);
+  const [coords, setCoords] = useState(null);
+  const wrapperRef = useRef(null);
 
   if (!isWeb) return children;
 
+  // `position:absolute` ataba la burbuja al wrapper -- cualquier ancestro
+  // con `overflow-hidden` (ej. web-shell-dropdown-menu-panel, por sus
+  // bordes redondeados) la recortaba, y dentro de una card sin overflow
+  // igual podía quedar tapada por un hermano posterior en el flujo (ej.
+  // leaderboard-tab's `body` con `border-t`) -- bug real, 2026-10-15,
+  // reportado en ambos lugares a la vez. `position:fixed` solo (medido con
+  // measureInWindow, mismo patrón que AnimatedDropdown) no alcanzó: CUALQUIER
+  // ancestro con `transform` (ej. la propia animación de apertura de
+  // AnimatedDropdown) se vuelve el containing block de un fixed descendiente
+  // -- lo ata a ESE ancestro en vez del viewport, mismo resultado roto que
+  // con absolute. Confirmado en preview: la burbuja del tema aparecía a
+  // cientos de px de su trigger real por este motivo exacto. Fix real:
+  // `createPortal` a `document.body` -- ahí no hay transform/overflow de
+  // ningún ancestro de por medio, nunca, sea cual sea el call site.
+  const handleHoverIn = () => {
+    wrapperRef.current?.measureInWindow?.((x, y, width, height) => {
+      setCoords({ x, y, width, height });
+    });
+    setHovered(true);
+  };
+
   const trigger = cloneElement(children, {
-    onHoverIn: () => setHovered(true),
+    onHoverIn: handleHoverIn,
     onHoverOut: () => setHovered(false),
   });
 
-  const positionClass = position === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5';
-  const alignClass = align === 'start' ? 'left-0' : align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2';
+  const bubbleStyle = coords
+    ? {
+        position: 'fixed',
+        ...(position === 'top'
+          ? { bottom: window.innerHeight - coords.y + 6 }
+          : { top: coords.y + coords.height + 6 }),
+        ...(align === 'start'
+          ? { left: coords.x }
+          : align === 'end'
+            ? { right: window.innerWidth - (coords.x + coords.width) }
+            : { left: coords.x + coords.width / 2, transform: 'translateX(-50%)' }),
+      }
+    : null;
 
   // `wrapperClassName` opcional -- por default este wrapper no declara
   // `flexShrink`/ancho propio, así que en una fila flex que necesita que
@@ -43,23 +78,25 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom', al
   // wrapper de acá rompía la cadena (bug real, 2026-10-15): el hijo pedía
   // encogerse pero el wrapper, sin esa misma clase, no lo dejaba.
   return (
-    <View className={`relative ${wrapperClassName}`} nativeID={idPrefix} testID={idPrefix}>
+    <View className={`relative ${wrapperClassName}`} nativeID={idPrefix} ref={wrapperRef} testID={idPrefix}>
       {trigger}
-      {hovered && (
+      {hovered && coords && createPortal(
         <View
           // z-tooltip = 70 (tailwind.config.js, espejo de Z_INDEX.tooltip).
-          // Va por encima del drawer y del modal a propósito: el tooltip es la
-          // única capa que puede aparecer sobre contenido que ya está en su
-          // propia superficie — por ejemplo dentro de un Modal, que es z-50.
-          className={`absolute ${alignClass} z-tooltip rounded-md bg-slate-800 px-2 py-1 shadow-lg dark:bg-slate-700 ${positionClass}`}
+          // Montada directo en document.body: no hay stacking context de
+          // ningún ancestro real de por medio (el único padre es body), así
+          // que esto es sobre todo defensivo contra otro `fixed` de z propio.
+          className="z-tooltip rounded-md bg-slate-800 px-2 py-1 shadow-lg dark:bg-slate-700"
           nativeID={`${idPrefix}-bubble`}
           pointerEvents="none"
+          style={bubbleStyle}
           testID={`${idPrefix}-bubble`}
         >
           <Text className="text-xs text-white" nativeID={`${idPrefix}-bubble-label`} numberOfLines={1} testID={`${idPrefix}-bubble-label`}>
             {label}
           </Text>
-        </View>
+        </View>,
+        document.body,
       )}
     </View>
   );
