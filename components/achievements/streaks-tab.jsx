@@ -49,7 +49,7 @@ function EmptyDayCell({ idPrefix, label }) {
   return (
     <View
       accessibilityLabel={label}
-      className="h-11 w-full items-center justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-600"
+      className="h-11 items-center justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-600"
       nativeID={idPrefix}
       testID={idPrefix}
     />
@@ -114,95 +114,115 @@ export function StreaksTab() {
           propio. Semanas fuera del rango que trajo el backend, o días
           futuros dentro de la semana actual, se ven como celda vacía
           (EmptyDayCell) en vez de inventar un estado. Pinta la racha
-          seleccionada arriba (`selectedStreak`), no siempre la estricta. */}
-      <Text className="mb-2 mt-5 text-xs text-slate-400 dark:text-slate-500" nativeID="streaks-tab-grid-subtitle" testID="streaks-tab-grid-subtitle">
-        Mostrando: {selectedStreak === 'strict' ? 'Entrenamientos consecutivos' : 'Días entrenando'}
-      </Text>
-      <View className="mb-2 flex-row items-center justify-between" nativeID="streaks-tab-week-nav" testID="streaks-tab-week-nav">
-        <IconTooltip idPrefix="streaks-tab-week-older-tooltip" label="Semana anterior" position="bottom">
-          <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-800"
-            disabled={!olderEnabled}
-            nativeID="streaks-tab-week-older"
-            onPress={() => setWeekOffset((o) => o + 1)}
-            testID="streaks-tab-week-older"
-          >
-            <MaterialCommunityIcons color={olderEnabled ? colors.onSurfaceVariant : '#cbd5e1'} name="chevron-left" size={22} />
-          </Pressable>
-        </IconTooltip>
-
-        {/* Fila única, sin apilar "Volver a hoy" debajo del rango -- antes
-            vivía en una columna aparte y su aparición/desaparición
-            empujaba la grilla de abajo (salto real, pedido 2026-10-15).
-            Siempre montado, solo cambia opacidad/interactividad -- así el
-            layout no se mueve nunca, con o sin el botón visible. */}
-        <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="streaks-tab-week-range" testID="streaks-tab-week-range">
-          {formatShortDate(weekDates[0])} – {formatShortDate(weekDates[6])}
+          seleccionada arriba (`selectedStreak`), no siempre la estricta.
+          Todo dentro de una card (antes flotaba contra el fondo de la
+          pantalla, se perdía -- pedido real 2026-10-15). */}
+      <View className="mt-5 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="streaks-tab-week-card" testID="streaks-tab-week-card">
+        <Text className="mb-3 text-xs text-slate-400 dark:text-slate-500" nativeID="streaks-tab-grid-subtitle" testID="streaks-tab-grid-subtitle">
+          Mostrando: {selectedStreak === 'strict' ? 'Entrenamientos consecutivos' : 'Días entrenando'}
         </Text>
-        <IconTooltip idPrefix="streaks-tab-week-today-tooltip" label="Volver a la semana actual" position="bottom">
-          <Pressable
-            className={`h-7 items-center justify-center rounded-full bg-primary-tint px-3 hover:opacity-80 active:opacity-70 dark:bg-primary/15 ${isCurrentWeek ? 'opacity-0' : 'opacity-100'}`}
-            disabled={isCurrentWeek}
-            nativeID="streaks-tab-week-today-button"
-            onPress={() => setWeekOffset(0)}
-            testID="streaks-tab-week-today-button"
-          >
-            <Text className="text-xs font-semibold text-on-primary-tint dark:text-primary" nativeID="streaks-tab-week-today-label" testID="streaks-tab-week-today-label">Hoy</Text>
-          </Pressable>
-        </IconTooltip>
-        <IconTooltip idPrefix="streaks-tab-week-newer-tooltip" label="Semana siguiente" position="bottom">
-          <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-800"
-            disabled={!newerEnabled}
-            nativeID="streaks-tab-week-newer"
-            onPress={() => setWeekOffset((o) => Math.max(0, o - 1))}
-            testID="streaks-tab-week-newer"
-          >
-            <MaterialCommunityIcons color={newerEnabled ? colors.onSurfaceVariant : '#cbd5e1'} name="chevron-right" size={22} />
-          </Pressable>
-        </IconTooltip>
-      </View>
 
-      <View className="flex-row gap-1.5" nativeID="streaks-tab-grid" testID="streaks-tab-grid">
-        {weekDates.map((date) => {
-          const day = daysByDate.get(date);
-          const dayIdPrefix = `streaks-tab-grid-day-${date}`;
-          const weekdayLabel = formatWeekdayLabel(date, { short: true });
+        {/* Centrado real: ‹ y › quedan fijos en los extremos, el grupo
+            rango+Hoy ocupa el espacio del medio como una sola unidad
+            centrada -- antes (justify-between con 4 hijos sueltos) el
+            rango quedaba más cerca del ‹ que del ›, visiblemente
+            descentrado (pedido real 2026-10-15). "Hoy" sigue siempre
+            montado (solo cambia opacidad/interactividad) para no mover
+            nada al aparecer/desaparecer. */}
+        <View className="mb-3 flex-row items-center" nativeID="streaks-tab-week-nav" testID="streaks-tab-week-nav">
+          <IconTooltip idPrefix="streaks-tab-week-older-tooltip" label="Semana anterior" position="bottom">
+            <Pressable
+              className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-700"
+              disabled={!olderEnabled}
+              nativeID="streaks-tab-week-older"
+              onPress={() => setWeekOffset((o) => o + 1)}
+              testID="streaks-tab-week-older"
+            >
+              <MaterialCommunityIcons color={olderEnabled ? colors.onSurfaceVariant : '#cbd5e1'} name="chevron-left" size={22} />
+            </Pressable>
+          </IconTooltip>
 
-          if (!day) {
+          <View className="flex-1 flex-row items-center justify-center gap-2" nativeID="streaks-tab-week-range-group" testID="streaks-tab-week-range-group">
+            <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="streaks-tab-week-range" testID="streaks-tab-week-range">
+              {formatShortDate(weekDates[0])} – {formatShortDate(weekDates[6])}
+            </Text>
+            <IconTooltip idPrefix="streaks-tab-week-today-tooltip" label="Volver a la semana actual" position="bottom">
+              <Pressable
+                className={`h-7 items-center justify-center rounded-full bg-primary-tint px-3 hover:opacity-80 active:opacity-70 dark:bg-primary/15 ${isCurrentWeek ? 'opacity-0' : 'opacity-100'}`}
+                disabled={isCurrentWeek}
+                nativeID="streaks-tab-week-today-button"
+                onPress={() => setWeekOffset(0)}
+                testID="streaks-tab-week-today-button"
+              >
+                <Text className="text-xs font-semibold text-on-primary-tint dark:text-primary" nativeID="streaks-tab-week-today-label" testID="streaks-tab-week-today-label">Hoy</Text>
+              </Pressable>
+            </IconTooltip>
+          </View>
+
+          <IconTooltip idPrefix="streaks-tab-week-newer-tooltip" label="Semana siguiente" position="bottom">
+            <Pressable
+              className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-60 dark:hover:bg-slate-700"
+              disabled={!newerEnabled}
+              nativeID="streaks-tab-week-newer"
+              onPress={() => setWeekOffset((o) => Math.max(0, o - 1))}
+              testID="streaks-tab-week-newer"
+            >
+              <MaterialCommunityIcons color={newerEnabled ? colors.onSurfaceVariant : '#cbd5e1'} name="chevron-right" size={22} />
+            </Pressable>
+          </IconTooltip>
+        </View>
+
+        {/* Columnas SIN `items-center` -- con eso puesto, el hijo directo
+            (el wrapper `relative` que IconTooltip agrega en web) no
+            estiraba a 100% del ancho de la columna y el `w-full` del
+            Pressable de adentro terminaba resolviendo contra su propio
+            contenido (celdas angostas, bug real 2026-10-15). Sin
+            `items-center`, el stretch default de flexbox hace que cada
+            hijo (el label de día, el wrapper de IconTooltip, el Pressable)
+            ocupe el 100% de la columna en cada nivel -- el centrado del
+            TEXTO lo da `text-center`/`items-center` puntual adentro de
+            cada uno, no la columna entera. */}
+        <View className="flex-row gap-1.5" nativeID="streaks-tab-grid" testID="streaks-tab-grid">
+          {weekDates.map((date) => {
+            const day = daysByDate.get(date);
+            const dayIdPrefix = `streaks-tab-grid-day-${date}`;
+            const weekdayLabel = formatWeekdayLabel(date, { short: true });
+
+            if (!day) {
+              return (
+                <View className="flex-1 gap-1" key={date} nativeID={`${dayIdPrefix}-column`} testID={`${dayIdPrefix}-column`}>
+                  <Text className="text-center text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
+                  <EmptyDayCell idPrefix={dayIdPrefix} label={`${formatDisplayDate(date)}: sin datos`} />
+                </View>
+              );
+            }
+
+            const status = selectedStreak === 'strict' ? day.strictStatus : day.flexibleStatus;
+            const visual = streakDayVisual(status);
+            const isToday = date === todayIso;
+            const dayNumber = Number(date.slice(-2));
+
             return (
-              <View className="flex-1 items-center gap-1" key={date} nativeID={`${dayIdPrefix}-column`} testID={`${dayIdPrefix}-column`}>
-                <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
-                <EmptyDayCell idPrefix={dayIdPrefix} label={`${formatDisplayDate(date)}: sin datos`} />
+              <View className="flex-1 gap-1" key={date} nativeID={`${dayIdPrefix}-column`} testID={`${dayIdPrefix}-column`}>
+                <Text className="text-center text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
+                <IconTooltip idPrefix={`${dayIdPrefix}-tooltip`} label={formatDisplayDate(date)} position="top">
+                  <Pressable
+                    accessibilityLabel={`${formatDisplayDate(date)}${isToday ? ' (hoy)' : ''}: ${visual.label}`}
+                    className={`h-11 items-center justify-center rounded-lg active:opacity-60 hover:opacity-70 ${isToday ? 'border-2 border-primary' : ''}`}
+                    nativeID={dayIdPrefix}
+                    onPress={() => router.push(`/calendar?date=${date}`)}
+                    style={{ backgroundColor: visual.color }}
+                    testID={dayIdPrefix}
+                  >
+                    <Text className="text-xs font-semibold" nativeID={`${dayIdPrefix}-number`} style={{ color: visual.textColor }} testID={`${dayIdPrefix}-number`}>
+                      {dayNumber}
+                    </Text>
+                  </Pressable>
+                </IconTooltip>
               </View>
             );
-          }
-
-          const status = selectedStreak === 'strict' ? day.strictStatus : day.flexibleStatus;
-          const visual = streakDayVisual(status);
-          const isToday = date === todayIso;
-          const dayNumber = Number(date.slice(-2));
-
-          return (
-            <View className="flex-1 items-center gap-1" key={date} nativeID={`${dayIdPrefix}-column`} testID={`${dayIdPrefix}-column`}>
-              <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
-              <IconTooltip idPrefix={`${dayIdPrefix}-tooltip`} label={formatDisplayDate(date)} position="top">
-                <Pressable
-                  accessibilityLabel={`${formatDisplayDate(date)}${isToday ? ' (hoy)' : ''}: ${visual.label}`}
-                  className={`h-11 w-full items-center justify-center rounded-lg active:opacity-70 hover:opacity-80 ${isToday ? 'border-2 border-primary' : ''}`}
-                  nativeID={dayIdPrefix}
-                  onPress={() => router.push(`/calendar?date=${date}`)}
-                  style={{ backgroundColor: visual.color }}
-                  testID={dayIdPrefix}
-                >
-                  <Text className="text-xs font-semibold" nativeID={`${dayIdPrefix}-number`} style={{ color: visual.textColor }} testID={`${dayIdPrefix}-number`}>
-                    {dayNumber}
-                  </Text>
-                </Pressable>
-              </IconTooltip>
-            </View>
-          );
-        })}
+          })}
+        </View>
       </View>
     </View>
   );
