@@ -3,7 +3,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
-import { IconTooltip } from './icon-tooltip.jsx';
 
 // Barra de pestañas horizontal reusada por pantallas con secciones que
 // merecen navegación propia en vez de ir todas apiladas — hoy
@@ -62,11 +61,12 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} 
   // EXACTAMENTE como estaba antes de tocar nada hoy (ScrollView horizontal,
   // sin cambios). Solo WEB suma: cada tab puede encogerse (`shrink`) en vez
   // de desbordar sin límite, el label corta con "…" (`numberOfLines={1}`)
-  // si no entra, y un `IconTooltip` revela el label completo al pasar el
-  // mouse (no-opea solo en mobile, consistente con el resto del repo).
+  // si no entra. Sin tooltip -- a diferencia de un botón solo-ícono, la tab
+  // YA tiene su label visible; repetirlo en un tooltip no aporta nada
+  // (pedido real, 2026-10-15, "no tienen sentido").
   const tabContent = (tab, index) => {
     const isActive = tab.id === active;
-    const pressable = (
+    return (
       <Pressable
         accessibilityLabel={tab.label}
         accessibilityRole="tab"
@@ -106,11 +106,6 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {} 
           {tab.label}
         </Text>
       </Pressable>
-    );
-    return (
-      <IconTooltip idPrefix={`${scope}-${tab.id}-tooltip`} key={tab.id} label={tab.label} position="bottom" wrapperClassName="shrink">
-        {pressable}
-      </IconTooltip>
     );
   };
 

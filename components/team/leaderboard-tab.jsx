@@ -107,33 +107,45 @@ function MetricSection({ teamId, metricOption, viewerName, idPrefix }) {
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
-      <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-        <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
-          {metricOption.name}
-        </Text>
-        <View nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
-          {/* `label` único por sección aunque quede oculto (`hideLabel`) --
-              SelectField/PickerField derivan su nativeID del label
-              (`slugify`), sin esto las 6 secciones generarían el mismo id
-              ("Período") y chocarían. `plain` (variante compacta, sin
-              borde/caja de h-12, ya existía en fields.jsx pero sin ningún
-              call site todavía) + `required` (saca el botón de limpiar Y
-              la opción vacía del <select> -- el período nunca debería
-              poder quedar sin valor) -- antes se veía una caja alta con
-              botón de limpiar, descentrada contra el título (pedido real,
-              2026-10-15). */}
-          <ResponsiveSelectField dense hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} plain required value={period} />
-        </View>
-        {period === 'custom' && (
-          <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-custom-range`} testID={`${idPrefix}-custom-range`}>
-            <View nativeID={`${idPrefix}-from-wrap`} style={{ width: 128 }} testID={`${idPrefix}-from-wrap`}>
-              <DateField hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
-            </View>
-            <View nativeID={`${idPrefix}-to-wrap`} style={{ width: 128 }} testID={`${idPrefix}-to-wrap`}>
-              <DateField hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
-            </View>
+      {/* `items-start justify-between` en la fila exterior -- el botón de
+          colapsar queda SIEMPRE arriba a la derecha, fijo, sin importar si
+          el grupo de la izquierda (título+período+fechas) necesita una
+          segunda línea (pedido real, 2026-10-15: "debe permanecer
+          inamovible arriba a la derecha"). El período va PEGADO al título
+          (mismo grupo `flex-1 flex-wrap`, no empujado al otro extremo) --
+          así el rango personalizado extiende hacia la derecha en vez de
+          crecer la altura del header en el caso común (pedido real:
+          "mostraría los inputs hacia la derecha y no produciría un
+          corrimiento"). */}
+      <View className="flex-row items-start justify-between gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+        <View className="flex-1 flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-header-start`} testID={`${idPrefix}-header-start`}>
+          <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} testID={`${idPrefix}-title`}>
+            {metricOption.name}
+          </Text>
+          <View nativeID={`${idPrefix}-period-wrap`} testID={`${idPrefix}-period-wrap`}>
+            {/* `label` único por sección aunque quede oculto (`hideLabel`) --
+                SelectField/PickerField derivan su nativeID del label
+                (`slugify`), sin esto las 6 secciones generarían el mismo id
+                ("Período") y chocarían. `plain` (variante compacta, sin
+                borde/caja de h-12, ya existía en fields.jsx pero sin ningún
+                call site todavía) + `required` (saca el botón de limpiar Y
+                la opción vacía del <select> -- el período nunca debería
+                poder quedar sin valor) -- antes se veía una caja alta con
+                botón de limpiar, descentrada contra el título (pedido real,
+                2026-10-15). */}
+            <ResponsiveSelectField dense hideLabel label={`Período — ${metricOption.name}`} onChange={setPeriod} options={PERIOD_OPTIONS} plain required value={period} />
           </View>
-        )}
+          {period === 'custom' && (
+            <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-custom-range`} testID={`${idPrefix}-custom-range`}>
+              <View nativeID={`${idPrefix}-from-wrap`} style={{ width: 128 }} testID={`${idPrefix}-from-wrap`}>
+                <DateField hideLabel label={`Desde — ${metricOption.name}`} onChange={setFromDate} value={fromDate} />
+              </View>
+              <View nativeID={`${idPrefix}-to-wrap`} style={{ width: 128 }} testID={`${idPrefix}-to-wrap`}>
+                <DateField hideLabel label={`Hasta — ${metricOption.name}`} onChange={setToDate} value={toDate} />
+              </View>
+            </View>
+          )}
+        </View>
         <IconTooltip idPrefix={`${idPrefix}-toggle-tooltip`} label={expanded ? 'Colapsar' : 'Expandir'} position="bottom">
           <Pressable
             className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 transition-colors duration-150 hover:bg-slate-200 active:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:active:bg-slate-600"
