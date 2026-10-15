@@ -18,10 +18,14 @@ export function AuthenticatedHomeScreen() {
   const queryClient = useQueryClient();
   // Invalida los dos (no solo el del rol activo) -- barato, y evita tener
   // que importar/leer activeRole acá solo para elegir una de las dos.
+  // `streaks`/`achievements` sumados acá (bug real, 2026-10-14: las cards de
+  // gamificación de este mismo Home no se refrescaban con pull-to-refresh).
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([
     queryClient.invalidateQueries({ queryKey: ['member-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['administered-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['user', userId] }),
+    queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
+    queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
   ]));
 
   return (

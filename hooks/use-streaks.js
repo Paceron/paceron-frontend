@@ -10,13 +10,13 @@ import { notifyWarning } from '../utils/haptics.js';
 // Rachas del corredor (Gap 30) -- estado de servidor, TanStack Query (ver
 // CLAUDE.md "Estado de aplicación vs. de servidor"). Una sola query,
 // reusada por la card del Home y la pestaña de detalle (ambas piden los
-// mismos 42 días; el Home recorta a los últimos 14 client-side, ver
+// mismos 30 días; el Home recorta a los últimos 14 client-side, ver
 // components/home/streak-banner.jsx) -- mismo cache, sin fetch duplicado.
 export function useStreaks() {
   const userId = useAuthStore((s) => s.userId);
   const query = useQuery({
     queryKey: ['streaks', userId],
-    queryFn: () => getStreaks(userId, 42).then(toStreaksModel),
+    queryFn: () => getStreaks(userId, 30).then(toStreaksModel),
     enabled: Boolean(userId),
   });
 
