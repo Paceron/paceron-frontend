@@ -44,11 +44,11 @@ describe('teams mock adapter', () => {
     expect(updated.city).toBe('Mendoza Capital');
   });
 
-  test('only "Runners Mendoza" (team 4) ships with a seeded roster — the other 3 stay empty on purpose', async () => {
+  test('only teams 4 ("Runners Mendoza") and 5 ("Atletas del Río") ship with a seeded roster — 1/2/3 stay empty on purpose', async () => {
     const teams = await mockListTeams();
     for (const team of teams) {
       const users = await mockGetTeamUsers(team.id);
-      if (team.id === 4) {
+      if (team.id === 4 || team.id === 5) {
         expect(users.length).toBeGreaterThan(0);
       } else {
         expect(users).toEqual([]);
@@ -58,10 +58,7 @@ describe('teams mock adapter', () => {
 
   test('team 4 roster is split across "General" and "Avanzado" groups, with staggered assignment dates', async () => {
     const users = await mockGetTeamUsers(4);
-    // 6 ficticios + user_id 1 (demo@paceron.com) sembrado como corredor
-    // además de owner -- sin esto "mis equipos" venía vacío logueado como
-    // corredor (bug real, 2026-10-15).
-    expect(users).toHaveLength(7);
+    expect(users).toHaveLength(6);
     const dates = users.map((u) => new Date(u.assignment_date).getTime());
     expect(new Set(dates).size).toBe(dates.length); // todas distintas, ninguna pisa a otra
 
@@ -70,7 +67,25 @@ describe('teams mock adapter', () => {
 
     const usersByGroup = await Promise.all(groups.map((g) => mockGetGroupUsers(g.id)));
     const totalGroupedUsers = usersByGroup.reduce((sum, list) => sum + list.length, 0);
-    expect(totalGroupedUsers).toBe(7);
+    expect(totalGroupedUsers).toBe(6);
+  });
+
+  test('team 5 roster includes user_id 1 (demo@paceron.com) as corredor of a team it does not own', async () => {
+    const team5 = await mockGetTeam(5);
+    expect(team5.owner_id).not.toBe(1);
+
+    const users = await mockGetTeamUsers(5);
+    // user_id 1 (demo) + 3 ficticios reusados -- un corredor puede estar en
+    // más de un equipo. Sin esto, demo@paceron.com (owner de 1/4) no tenía
+    // ningún equipo del que fuera corredor -- useMyMemberTeams excluye los
+    // equipos propios explícitamente (bug real, 2026-10-15).
+    expect(users).toHaveLength(4);
+    expect(users.map((u) => u.user_id)).toContain(1);
+
+    const groups = await mockListGroups(5);
+    expect(groups.map((g) => g.name)).toEqual(['General']);
+    const groupUsers = await mockGetGroupUsers(groups[0].id);
+    expect(groupUsers).toHaveLength(4);
   });
 
   describe('mockUploadTeamIcon / mockDeleteTeamIcon', () => {

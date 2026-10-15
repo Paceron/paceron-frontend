@@ -19,14 +19,15 @@ function daysAgoIso(days) {
 // filtro de "mis equipos" (store/team-store.js#selectAdministeredTeams)
 // tenga algo que mostrar contra el usuario demo.
 //
-// "Runners Mendoza" (id 4) es el único de los cuatro con roster sembrado —
-// los otros tres (incluido "Corredores del Sur") quedan sin corredores a
-// propósito, para poder probar el estado "¡Aún no hay corredores!" de la
-// pestaña Corredores sin tener que vaciar nada a mano. Los 6 corredores
-// ficticios quedan repartidos entre el grupo default ("General", 4) y uno
-// extra ("Avanzado", 2) para poder probar el filtro de grupo también, con
-// antigüedad escalonada (30 días de diferencia entre uno y el siguiente)
-// para que no se vea la misma fecha en todas las filas.
+// "Runners Mendoza" (id 4) y "Atletas del Río" (id 5, nuevo 2026-10-15) son
+// los únicos con roster sembrado — los otros tres (1/2/3, incluido
+// "Corredores del Sur") quedan sin corredores a propósito, para poder
+// probar el estado "¡Aún no hay corredores!" de la pestaña Corredores sin
+// tener que vaciar nada a mano. Los 6 corredores ficticios de team 4 quedan
+// repartidos entre el grupo default ("General", 4) y uno extra ("Avanzado",
+// 2) para poder probar el filtro de grupo también, con antigüedad
+// escalonada (30 días de diferencia entre uno y el siguiente) para que no
+// se vea la misma fecha en todas las filas.
 function buildSeedTeams() {
   const now = new Date().toISOString();
   const teams = [
@@ -56,35 +57,58 @@ function buildSeedTeams() {
       status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'MZ', city: 'Mendoza Capital', street: null, number: null,
       created_at: now, updated_at: now,
     },
+    // user_id 1 (demo@paceron.com, mockLogin siempre devuelve ese id) es
+    // owner_id de los equipos 1/4 (entrenador) -- necesitaba ADEMÁS un
+    // equipo donde sea corredor para poder probar leaderboard/competencias/
+    // gamificación como corredor contra la cuenta demo (pedido real,
+    // 2026-10-15). No puede ser miembro de un equipo que también posee:
+    // hooks/use-teams.js#useMyMemberTeams excluye explícitamente los
+    // equipos propios de "mis equipos" (`team.ownerId !== userId`) -- por
+    // eso es un equipo NUEVO, ajeno (owner_id 99, mismo dueño que 2/3), no
+    // uno de los dos que ya administra.
+    {
+      id: 5, name: 'Atletas del Río', description: 'Equipo mixto de running de ruta, entrenamientos de martes a sábado.',
+      level: 'amateur', max_members: 20, owner_id: 99, requirements: 'Sin requisitos, grupo abierto.',
+      status: 'activo', visible: true, is_public: true, country: 'ARG', province: 'BA', city: 'Avellaneda', street: null, number: null,
+      created_at: now, updated_at: now,
+    },
   ];
 
   const defaultGroupByTeamId = new Map(teams.map((t) => [t.id, __seedDefaultGroup(t.id)]));
 
   const advancedGroup = __seedGroup(4, 'Avanzado', { description: 'Corredores con mayor volumen y ritmo.' });
   const generalGroupId = defaultGroupByTeamId.get(4).id;
+  const team5GroupId = defaultGroupByTeamId.get(5).id;
   const teamUsers = {
-    // user_id 1 (demo@paceron.com, mockLogin siempre devuelve ese id) era
-    // owner_id de los equipos 1/4 pero nunca corredor de NINGUNO -- con
-    // rol corredor activo, "mis equipos" (memberId) venía vacío sin forma
-    // de probar nada con grupo (leaderboard, competencias, roster) contra
-    // la cuenta demo (bug real, 2026-10-15). Sembrado en el grupo general
-    // de team 4 junto a los 6 ficticios.
-    4: [
-      { id: 1001, user_id: 1, team_id: 4, role_in_team: 'corredor', status: 'active', assignment_date: daysAgoIso(200) },
-      ...FICTITIOUS_RUNNER_IDS.map((userId, i) => ({
-        id: 1000 + userId,
+    4: FICTITIOUS_RUNNER_IDS.map((userId, i) => ({
+      id: 1000 + userId,
+      user_id: userId,
+      team_id: 4,
+      role_in_team: 'corredor',
+      status: 'active',
+      assignment_date: daysAgoIso((i + 1) * 30),
+    })),
+    // Roster de team 5 -- user_id 1 (demo) + 3 de los mismos ficticios
+    // reusados (un corredor puede estar en más de un equipo, mismo
+    // criterio real) para que leaderboard/competencias tengan con quién
+    // compararse.
+    5: [
+      { id: 2001, user_id: 1, team_id: 5, role_in_team: 'corredor', status: 'active', assignment_date: daysAgoIso(200) },
+      ...[101, 102, 103].map((userId, i) => ({
+        id: 2000 + userId,
         user_id: userId,
-        team_id: 4,
+        team_id: 5,
         role_in_team: 'corredor',
         status: 'active',
-        assignment_date: daysAgoIso((i + 1) * 30),
+        assignment_date: daysAgoIso((i + 1) * 45),
       })),
     ],
   };
-  __seedGroupUser(generalGroupId, 1);
   FICTITIOUS_RUNNER_IDS.forEach((userId, i) => {
     __seedGroupUser(i < 4 ? generalGroupId : advancedGroup.id, userId);
   });
+  __seedGroupUser(team5GroupId, 1);
+  [101, 102, 103].forEach((userId) => __seedGroupUser(team5GroupId, userId));
 
   return { teams, teamUsers };
 }
