@@ -8,11 +8,11 @@ import { isWeb } from '../../utils/platform.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useCompetitions, useCompetitionMutations, useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
-import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
 import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
+import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
@@ -39,10 +39,6 @@ const EMPTY_MESSAGE = {
   pending: 'No hay solicitudes pendientes de aprobación.',
   history: 'Todavía no hay competencias finalizadas.',
 };
-
-function metricLabel(metric) {
-  return METRIC_OPTIONS.find((m) => m.id === metric)?.name ?? metric;
-}
 
 function memberName(members, userId) {
   return members.find((m) => m.userId === userId)?.name ?? 'Corredor';
@@ -75,7 +71,7 @@ function ParticipantPill({ idPrefix, name, isWinner, progressLabel }) {
   );
 }
 
-function CompetitionRow({ competition, members, isTrainerView, currentUserId, onApprove, onReject, onCancel, onClose, onRun, attemptBlocked, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, attemptBlocked, busy }) {
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
@@ -85,11 +81,15 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
   const canClose = isTrainerView && competition.status === 'active' && competition.endAt && competition.endAt < new Date().toISOString().slice(0, 10);
   const canRun = !isTrainerView && competition.type === 'route' && competition.status === 'active' && competition.participantUserIds.includes(currentUserId);
   const canApproveReject = isTrainerView && competition.status === 'pending_approval';
+  // Ranking: visible para CUALQUIERA que pueda ver la competencia mientras
+  // esté activa -- a diferencia del resto de las acciones de acá, no
+  // depende de rol ni de participación (pedido real, 2026-10-16).
+  const canViewRanking = competition.status === 'active';
   // El botón de Play (canRun) solo entra en el grupo de acciones ícono en
   // nativo -- en web `canRun` sigue true pero no hay botón, solo un aviso
   // informativo (más abajo), así que no cuenta para decidir si el grupo
   // de acciones se renderiza.
-  const hasActions = canApproveReject || isOwnPendingProposal || canClose || (canRun && !isWeb);
+  const hasActions = canApproveReject || isOwnPendingProposal || canClose || canViewRanking || (canRun && !isWeb);
 
   const sortedParticipantIds = [...competition.participantUserIds].sort((a, b) => {
     const aWinner = competition.winnerUserIds.includes(a) ? 0 : 1;
@@ -107,11 +107,11 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
       <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={() => setExpanded((v) => !v)} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} />
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
+          {/* Sin línea de meta aparte -- pedido real, 2026-10-16: duplicaba
+              exactamente la misma info que el título (buildCompetitionTitle
+              ya arma "métrica (desde → hasta)"), solo con otra puntuación. */}
           <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
             {competition.name ?? buildCompetitionTitle(competition)}
-          </Text>
-          <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-meta`} testID={`${idPrefix}-meta`}>
-            {metricLabel(competition.metric)} · {competition.startAt} → {competition.endAt}
           </Text>
         </View>
       </Pressable>
@@ -134,6 +134,13 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
 
         {hasActions && (
           <View className="flex-row items-center gap-1.5" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+            {canViewRanking && (
+              <IconTooltip align="end" idPrefix={`${idPrefix}-ranking-tooltip`} label="Ver ranking" position="bottom">
+                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:opacity-70 dark:bg-slate-800" nativeID={`${idPrefix}-ranking-button`} onPress={() => onOpenRanking(competition)} testID={`${idPrefix}-ranking-button`}>
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="podium" size={18} />
+                </Pressable>
+              </IconTooltip>
+            )}
             {canApproveReject && (
               <>
                 <IconTooltip align="end" idPrefix={`${idPrefix}-approve-tooltip`} label="Aprobar" position="bottom">
@@ -213,6 +220,7 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
   const { ackSection } = useGamificationBadge();
   const [createVisible, setCreateVisible] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState(null);
+  const [rankingCompetition, setRankingCompetition] = useState(null);
   const [subTab, setSubTab] = useState('active');
   // Sin intento previo barato de consultar en v1 (Gap 33 punto 26, spec
   // "Entry point") -- el 400 del backend es la fuente de verdad, esto solo
@@ -333,6 +341,7 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
               onClose={handleClose}
               onRun={handleRun}
               onReject={setRejectTargetId}
+              onOpenRanking={setRankingCompetition}
             />
           ))}
         </View>
@@ -349,6 +358,12 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
         onClose={() => setRejectTargetId(null)}
         onConfirm={handleRejectConfirm}
         visible={rejectTargetId != null}
+      />
+      <CompetitionRankingModal
+        competition={rankingCompetition}
+        members={members}
+        onClose={() => setRankingCompetition(null)}
+        visible={rankingCompetition != null}
       />
     </View>
   );
