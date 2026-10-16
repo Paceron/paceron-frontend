@@ -124,12 +124,38 @@ describe('mockGetCompetition', () => {
 
   test('seeds 4, 5 y 6 son del equipo 5, activas, metric sessions_count, con user_id 1 participando', async () => {
     const { data } = await mockListCompetitions(5);
-    expect(data).toHaveLength(3);
-    data.forEach((c) => {
+    const metricSeeds = data.filter((c) => c.type === 'metric');
+    expect(metricSeeds).toHaveLength(3);
+    metricSeeds.forEach((c) => {
       expect(c.status).toBe('active');
       expect(c.metric).toBe('sessions_count');
       expect(c.participant_user_ids).toContain(1);
     });
+  });
+
+  test('seed 7 es type=route del equipo 5, activa, con instancia sintética e user_id 1 participando (Spec 4c)', async () => {
+    const { data } = await mockListCompetitions(5);
+    const competition = data.find((c) => c.id === 7);
+    expect(competition.type).toBe('route');
+    expect(competition.status).toBe('active');
+    expect(competition.participant_user_ids).toContain(1);
+    expect(competition.route.coordinates.length).toBeGreaterThanOrEqual(2);
+    expect(competition.acceptance_radius_meters).toBeGreaterThanOrEqual(5);
+    expect(competition.acceptance_radius_meters).toBeLessThanOrEqual(500);
+    expect(competition.synthetic_session_instance_id).toEqual(expect.any(Number));
+  });
+
+  test('user_id 1 puede correr un intento contra la seed 7, sin colisionar con instancias creadas en runtime', async () => {
+    const attempt = await mockCreateCompetitionAttempt(7, 1);
+    expect(attempt.session_instance_id).toBe(9000);
+    expect(attempt.session_instance.exercises[0].name).toBe('Corrida');
+
+    // Una competencia nueva creada en runtime no debe reusar el 9000 de la seed.
+    const created = await mockCreateCompetition(5, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.3, -34.6], [-58.31, -34.61]] },
+      acceptance_radius_meters: 50, participant_user_ids: [1, 101],
+    }, { isTrainerCreator: true });
+    expect(created.synthetic_session_instance_id).not.toBe(9000);
   });
 
   test('seed 6 tiene ventana enteramente futura, no cubre hoy', async () => {

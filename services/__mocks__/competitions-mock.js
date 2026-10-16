@@ -43,11 +43,33 @@ const SEED = [
   // toca, y que un entrenamiento fechado hoy+15 (seedTeam5CalendarDays)
   // sí asocia acá.
   { id: 6, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: addDaysISO(TODAY_ISO, 10), end_at: addDaysISO(TODAY_ISO, 20), route: null, acceptance_radius_meters: null, participant_user_ids: [1, 102, 103], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
+  // Seed 7 -- type='route', team 5, para Spec 4c. Necesaria por el mismo
+  // motivo que 4/5/6: cada dispositivo/proceso (web, Expo Go, dev client)
+  // tiene su propia memoria de mock aislada -- una competencia creada en
+  // web durante el script de creación (pasos 1-6) NO existe para un
+  // dispositivo mobile aparte (pedido real, 2026-10-16: "no creo que
+  // usando mocks pueda usar en mobile una competencia creada en web en
+  // otro dispositivo"). Esta queda fija en el seed para que el script de
+  // CORRER (pasos 7-13) tenga algo real sin depender de lo creado en los
+  // pasos 1-6 -- esos siguen sirviendo para probar la UI de creación en
+  // sí, por separado. Loop corto (~400m, caminable) cerca de Avellaneda
+  // (ciudad real de team 5 en teams-mock.js). synthetic_session_instance_id
+  // fijo en 9000 -- nextSyntheticInstanceId arranca en 9001 para no
+  // pisarlo con uno creado en runtime.
+  {
+    id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+    start_at: addDaysISO(TODAY_ISO, -5), end_at: null,
+    route: { type: 'LineString', coordinates: [[-58.365, -34.660], [-58.364, -34.660], [-58.364, -34.661], [-58.365, -34.661], [-58.365, -34.660]] },
+    acceptance_radius_meters: 50,
+    participant_user_ids: [1, 101, 102], created_by_user_id: 99, created_by_role: 'trainer', status: 'active',
+    approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null,
+    synthetic_session_instance_id: 9000,
+  },
 ];
 
 let mockCompetitions = [];
-let nextId = 4;
-let nextSyntheticInstanceId = 9000;
+let nextId = 8;
+let nextSyntheticInstanceId = 9001;
 // (competition_id, athlete_user_id) ya intentados -- Gap 33 punto 28, sin
 // reintentos en v1.
 const mockAttempts = new Set();
@@ -55,7 +77,7 @@ const mockAttempts = new Set();
 function resetSeed() {
   mockCompetitions = SEED.map((c) => ({ ...c }));
   nextId = SEED.length + 1;
-  nextSyntheticInstanceId = 9000;
+  nextSyntheticInstanceId = 9001;
   mockAttempts.clear();
 }
 resetSeed();
