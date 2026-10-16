@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { EMPTY_METRIC, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
 import { isWeb } from '../../utils/platform.js';
@@ -21,11 +21,25 @@ import { isWeb } from '../../utils/platform.js';
 // El `accessibilityHint` del trigger lleva el valor y la unidad: en móvil el
 // tooltip no se abre solo y hace falta que el lector de pantalla lo anuncie sin
 // que el usuario tenga que descubrir que existe.
-export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, value, children }) {
+export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, value, children, onOpenChange }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [tapped, setTapped] = useState(false);
   const open = hovered || focused || tapped;
+
+  // El padre necesita saber si hay ALGUN tooltip abierto para subir la fila de
+  // KPIs por encima de la card hermana de abajo. Sin esto el tooltip se dibuja
+  // debajo de "Cumplimiento del objetivo".
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
+
+  // `hovered` se pasa al hijo para que la card se ponga naranja: el tooltip
+  // abriéndose ya es la señal, pero el color marca el área sensible sin tener
+  // que acertar el punto. Los hijos que no son función siguen recibiendo el
+  // nodo tal cual.
+  const child = typeof children === 'function' ? children(hovered) : children;
+
   const valueLabel = hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC;
 
   return (
@@ -43,7 +57,7 @@ export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, va
         onPress={() => setTapped((current) => !current)}
         testID={`${id}-trigger`}
       >
-        {children}
+        {child}
       </Pressable>
       {open ? (
         <View

@@ -20,13 +20,23 @@ const VERDICT_STYLES = {
   regressing: { text: 'text-red-600 dark:text-red-400', icon: '#ba1a1a' },
 };
 
-export function KpiTile({ id, label, value, unit, delta, deltaUnit, verdict, hint, icon, emphasis = false }) {
+export function KpiTile({ id, label, value, unit, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false }) {
   const colors = useThemeColors();
   const verdictStyle = VERDICT_STYLES[verdict] ?? null;
 
+  // El hover pone la card en ambar: marca el area sensible sin obligar a acertar
+  // el punto exacto para abrir el tooltip. Mismo amber que usa el banner de
+  // calidad —el repo no tiene token `warning`, y publicar otro igual en dos
+  // lugares es como divergen.
+  const surfaceClass = hovered
+    ? 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/30'
+    : emphasis
+      ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10'
+      : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface';
+
   return (
     <View
-      className={`flex-1 rounded-2xl border p-3 ${emphasis ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'}`}
+      className={`flex-1 rounded-2xl border p-3 ${surfaceClass}`}
       nativeID={`${id}-root`}
       testID={`${id}-root`}
     >

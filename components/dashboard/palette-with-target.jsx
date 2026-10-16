@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
 import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
 import { describePalette, resolveRankingMetric, toRankingItems } from '../../utils/dashboard-palette.js';
 import { useThemeColors } from '../../theme/colors.js';
+import { Z_INDEX } from '../../theme/tokens.js';
 import { ChartCard } from './charts/chart-surface.jsx';
 import { BarChart } from './charts/bar-chart.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
@@ -36,6 +38,9 @@ export function PaletteWithTarget({
   onGranularityChange,
 }) {
   const colors = useThemeColors();
+  // Sube la fila entera mientras haya un tooltip abierto: el de cada KPI vive
+  // dentro de la fila y sin esto compite contra la card hermana de abajo.
+  const [anyTooltipOpen, setAnyTooltipOpen] = useState(false);
   const palette = describePalette(summary, kind);
   const rankingMetric = resolveRankingMetric(palette.case);
   const rankingItems = comparisons ? toRankingItems(comparisons, rankingMetric) : null;
@@ -86,7 +91,18 @@ export function PaletteWithTarget({
         ) : null}
       </View>
 
-      <View className="mb-4 flex-row gap-2" nativeID={`${id}-kpis`} testID={`${id}-kpis`}>
+      {/* `relative` + `zIndex` en la fila de KPIs es lo que saca el tooltip de
+          debajo de la card siguiente ("Cumplimiento del objetivo"), que es su
+          HERMANA y se pinta después en el orden del árbol. Sin los dos, el
+          tooltip se dibuja pero queda tapado: se ve un rectángulo negro asomando
+          por el borde. En web el `z-index` solo cuenta si hay `position`, por eso
+          van juntos. */}
+      <View
+        className="mb-4 flex-row gap-2"
+        style={{ position: 'relative', zIndex: anyTooltipOpen ? Z_INDEX.tooltip : 1 }}
+        nativeID={`${id}-kpis`}
+        testID={`${id}-kpis`}
+      >
         {[
           {
             key: 'delta',
@@ -119,6 +135,7 @@ export function PaletteWithTarget({
           },
         ].map((kpi) => (
           <KpiTooltip
+            onOpenChange={setAnyTooltipOpen}
             formula={FORMULAS[kpi.key === 'consistency' ? 'cv' : kpi.key]}
             id={`${id}-kpi-${kpi.key}-tooltip`}
             key={kpi.key}
@@ -127,15 +144,18 @@ export function PaletteWithTarget({
             unit={kpi.unit}
             value={kpi.value}
           >
-            <KpiTile
-              delta={kpi.key === 'delta' ? totals.delta_pct : undefined}
-              deltaUnit={units.delta}
-              icon={kpi.icon}
-              id={`${id}-kpi-${kpi.key}`}
-              label={kpi.label}
-              unit={kpi.unit}
-              value={kpi.value}
-            />
+            {(hovered) => (
+              <KpiTile
+                delta={kpi.key === 'delta' ? totals.delta_pct : undefined}
+                deltaUnit={units.delta}
+                hovered={hovered}
+                icon={kpi.icon}
+                id={`${id}-kpi-${kpi.key}`}
+                label={kpi.label}
+                unit={kpi.unit}
+                value={kpi.value}
+              />
+            )}
           </KpiTooltip>
         ))}
       </View>
