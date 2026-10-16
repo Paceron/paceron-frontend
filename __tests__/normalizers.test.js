@@ -1077,6 +1077,19 @@ describe('toRunnerSessionStartPayload', () => {
       athlete_user_id: 7,
     });
   });
+
+  test('con competitionId, competition_id a Number (Spec 4b)', () => {
+    expect(toRunnerSessionStartPayload({ startDate: 'd', athleteUserId: null, competitionId: '12' })).toEqual({
+      start_date: 'd',
+      competition_id: 12,
+    });
+  });
+
+  test('sin competitionId no manda el campo', () => {
+    expect(toRunnerSessionStartPayload({ startDate: 'd', athleteUserId: null, competitionId: null })).toEqual({
+      start_date: 'd',
+    });
+  });
 });
 
 describe('toFeedbackEditPayload', () => {

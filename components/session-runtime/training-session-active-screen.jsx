@@ -38,6 +38,7 @@ import { useStopwatch } from '../../hooks/use-stopwatch.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { DebugLogPanel } from './debug-log-panel.jsx';
+import { LiveTrajectoryMap } from './live-trajectory-map';
 
 const HOLD_MS = 3000;
 
@@ -644,13 +645,14 @@ function OverviewView({ sets, run, onOpenSet, onCancel }) {
   );
 }
 
-function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance, onBack, onCancelConfirmed, onDataChanged }) {
+function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance, onBack, onCancelConfirmed, onDataChanged, routeAttempt }) {
   const colors = useThemeColors();
   const stopwatch = useStopwatch();
   const gps = useGpsTracker(gpsEnabled);
   const [phase, setPhase] = useState(() => (set.status === 'started' && !set.ended_at ? 'paused' : 'ready'));
   const [countdown, setCountdown] = useState(3);
   const [distance, setDistance] = useState(set.distance_meters ?? null);
+  const [tracePoints, setTracePoints] = useState([]);
   const [skipVisible, setSkipVisible] = useState(false);
   const [summary, setSummary] = useState(null);
   const [cancelVisible, setCancelVisible] = useState(false);
@@ -707,6 +709,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
       distanceRef.current = 0;
       setDistance(0);
       await updateSetDistance(set.id, 0);
+      if (routeAttempt) setTracePoints((prev) => [...prev, { latitude, longitude }]);
       return;
     }
     // Filtro de calidad: si el punto se descarta (accuracy muy pobre o salto
@@ -721,6 +724,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
     lastPointRef.current = point;
     pointOrderRef.current += 1;
     await insertGpsPoint(set.id, pointOrderRef.current, latitude, longitude, timestamp ?? Date.now());
+    if (routeAttempt) setTracePoints((prev) => [...prev, { latitude, longitude }]);
     if (leg > 0) {
       const nextDistance = (distanceRef.current ?? 0) + leg;
       distanceRef.current = nextDistance;
@@ -952,6 +956,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
         </View>
 
         <View className="flex-1 items-center justify-center" nativeID={`${idPrefix}-timer-area`} testID={`${idPrefix}-timer-area`}>
+          {routeAttempt && <LiveTrajectoryMap referenceRoute={routeAttempt.route} traveledPoints={tracePoints} />}
           {distance != null && (
             <View className="mb-4 flex-row items-center gap-2 rounded-full bg-emerald-50 px-5 py-2 dark:bg-emerald-900/20" nativeID={`${idPrefix}-gps-pill`} testID={`${idPrefix}-gps-pill`}>
               <MaterialCommunityIcons color="#16a34a" name="crosshairs-gps" size={24} />
@@ -974,7 +979,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
           </Text>
         </View>
 
-        {phase === 'ready' && (
+        {phase === 'ready' && !routeAttempt && (
           <View className="mb-4" nativeID={`${idPrefix}-skip-hint`} testID={`${idPrefix}-skip-hint`}>
             <Pressable className="h-11 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-skip-label`} testID={`${idPrefix}-skip-label`}>Saltear</Text>
@@ -1007,9 +1012,11 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
                 <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-resume-label`} numberOfLines={1} testID={`${idPrefix}-resume-label`}>Reanudar</Text>
               </Pressable>
               <View className="flex-row gap-3" nativeID={`${idPrefix}-secondary-controls`} testID={`${idPrefix}-secondary-controls`}>
-                <Pressable className="h-12 flex-1 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="skip-next" size={18} />
-                </Pressable>
+                {!routeAttempt && (
+                  <Pressable className="h-12 flex-1 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="skip-next" size={18} />
+                  </Pressable>
+                )}
                 <DragToFinishButton disabled={false} idPrefix={idPrefix} onTrigger={handleFinish} />
               </View>
             </>
@@ -1030,7 +1037,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
 
       {phase === 'countdown' && <CountdownOverlay onCancelCountdown={cancelCountdown} value={countdown} />}
 
-      <SkipMenuModal visible={skipVisible} onCancel={() => setSkipVisible(false)} onSkipSeries={skipSeries} onSkipExercise={skipExercise} busy={busy} />
+      {!routeAttempt && <SkipMenuModal visible={skipVisible} onCancel={() => setSkipVisible(false)} onSkipSeries={skipSeries} onSkipExercise={skipExercise} busy={busy} />}
       <FinishSummaryModal summary={summary ?? { wallMs: 0, activeMs: 0 }} onClose={onAdvance} visible={summary != null && phase === 'finishing'} />
       <ConfirmCancelModal
         visible={cancelVisible}
@@ -1102,6 +1109,13 @@ function TrainingSessionActiveScreenContent() {
         logDebug(`  set id=${s.id} "${s.exercise_name}" #${s.set_number + 1} status="${s.status}" wall=${s.duration_ms} active=${s.active_duration_ms} dist=${s.distance_meters}`);
       }
       setBooted(true);
+      // Spec 4c -- con 1 solo ejercicio/serie (instancia sintética de una
+      // competencia de ruta), salta directo a la vista de serie: el
+      // listado de ejercicios no aporta nada con una sola fila.
+      if (pendingSession.routeAttempt && bootSets.length === 1 && bootSets[0].status === 'pending') {
+        setCurrentSetId(bootSets[0].id);
+        setMode('series');
+      }
     } catch (error) {
       logDebug('bootstrap error', error);
       notifyError();
@@ -1142,6 +1156,18 @@ function TrainingSessionActiveScreenContent() {
       } else {
         await finalizeRun(run.id);
         logDebug('handleAdvance: sin series pendientes — finalizo run');
+        if (pendingSession.routeAttempt) {
+          clearLiveSession();
+          router.replace({
+            pathname: '/route-attempt-result',
+            params: {
+              competitionId: pendingSession.routeAttempt.competitionId,
+              distanceMeters: String(all[0]?.distance_meters ?? 0),
+              durationMs: String(all[0]?.duration_ms ?? 0),
+            },
+          });
+          return;
+        }
         setMode('overview');
         setSessionCompleteVisible(true);
       }
@@ -1223,6 +1249,7 @@ function TrainingSessionActiveScreenContent() {
             onBack={() => setMode('overview')}
             onCancelConfirmed={handleCancelConfirmed}
             onDataChanged={reloadSets}
+            routeAttempt={pendingSession.routeAttempt ?? null}
             runId={run.id}
             set={currentSet}
             totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}

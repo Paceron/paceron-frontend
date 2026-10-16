@@ -15,12 +15,14 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useRunnerSession } from '../../hooks/use-runner-session.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
+import { useCompetitions } from '../../hooks/use-competitions.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
 import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { cancelRun, getLatestRun, initSessionDb, interruptStartedSets, RUN_STATUS } from '../../services/session-db.js';
 import { syncRun } from '../../services/session-sync.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
+import { findActiveMetricCompetitionId } from '../../utils/competition-match.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { logDebug } from '../../utils/debug-log.js';
 
@@ -111,6 +113,10 @@ function SessionPreStartScreenContent() {
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
+  // Spec 4b (Gap 33 punto 29) -- si el Play cae dentro de la ventana de una
+  // competencia type='metric' activa en la que este corredor participa, el
+  // entrenamiento cuenta para el progreso de esa competencia.
+  const { competitions: activeMetricCompetitions } = useCompetitions(pendingSession?.teamId, { status: 'active' });
 
   useFocusEffect(
     useCallback(() => {
@@ -305,7 +311,8 @@ function SessionPreStartScreenContent() {
     // Fire-and-forget del estado runner_session (wip, idempotente): si el Play
     // arranca offline, el pipeline de sync reintenta el mismo upsert antes del
     // primer POST feedback. No se espera acá porque no bloquea la navegación.
-    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString() }).catch(() => {});
+    const competitionId = findActiveMetricCompetitionId(activeMetricCompetitions, userId, pendingSession?.date);
+    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), competitionId }).catch(() => {});
     // Confirmado con logs (2026-09-30): getCurrentPositionAsync no respeta su
     // propio `timeout` -- se observó una resolución real de ~25s contra un
     // timeout de 5s pedido (quirk conocido de expo-location en ciertos

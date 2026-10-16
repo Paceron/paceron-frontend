@@ -943,9 +943,14 @@ export function buildSessionReviewModel(sessionInstance, feedbackGroups = []) {
 
 // Body de POST /api/v1/session-instances/:id/runner — start_date siempre
 // presente (yo entro cuando toca Play/primer ingreso manual), ids a Number.
-export function toRunnerSessionStartPayload({ startDate, athleteUserId }) {
+// competitionId (Gap 33 punto 29, Spec 4b) es opcional -- solo viaja cuando
+// el entrenamiento arranca dentro de la ventana de una competencia type=
+// 'metric' activa (ver utils/competition-match.js); una sesión normal no lo
+// manda.
+export function toRunnerSessionStartPayload({ startDate, athleteUserId, competitionId }) {
   const payload = { start_date: startDate };
   if (athleteUserId != null) payload.athlete_user_id = Number(athleteUserId);
+  if (competitionId != null) payload.competition_id = Number(competitionId);
   return payload;
 }
 
@@ -1036,5 +1041,154 @@ export function toSessionMessagePayload({ type, recipientMode, recipientUserIds,
     body,
   };
   if (replyToMessageId != null) payload.reply_to_message_id = Number(replyToMessageId);
+  return payload;
+}
+
+// Rachas del corredor (Gap 30). `hasUnseen` alimenta el punto rojo
+// transversal (Gap 34) -- hooks/use-gamification-badge.js lo lee de acá.
+export function toStreaksModel(dto) {
+  if (!dto) return null;
+  return {
+    strict: { current: dto.strict.current, best: dto.strict.best },
+    flexible: { current: dto.flexible.current, best: dto.flexible.best },
+    days: dto.days.map((d) => ({
+      date: d.date,
+      strictStatus: d.strict_status,
+      flexibleStatus: d.flexible_status,
+    })),
+    hasUnseen: dto.has_unseen ?? false,
+  };
+}
+
+// Catálogo de logros (Gap 31) -- config estática, no cambia por usuario.
+export function toAchievementCatalogItemModel(dto) {
+  if (!dto) return null;
+  return {
+    id: dto.id,
+    family: dto.family,
+    name: dto.name,
+    description: dto.description,
+    iconKey: dto.icon_key,
+    // `threshold`/`unit` -- confirmado contra la implementación real
+    // (2026-10-14): backend renombró `once_threshold` a `threshold` y
+    // sumó `unit` (v1 es 100% familia `once`, sin `leveled`/`counter`
+    // todavía). `levels`/`counterTrophyEvery` quedan igual, listos para
+    // cuando esas familias existan.
+    threshold: dto.threshold ?? null,
+    unit: dto.unit ?? null,
+    levels: dto.levels ? dto.levels.map((l) => ({ level: l.level, name: l.name, threshold: l.threshold })) : null,
+    counterTrophyEvery: dto.counter_trophy_every ?? null,
+  };
+}
+
+// Progreso real de un usuario para un logro puntual (Gap 31). `count`
+// siempre presente (corrección 2026-10-14) -- `?? null` es defensivo para
+// mientras el backend no tenga el fix desplegado, no para el caso normal.
+export function toUserAchievementModel(dto) {
+  if (!dto) return null;
+  return {
+    achievementId: dto.achievement_id,
+    currentLevel: dto.current_level ?? 0,
+    count: dto.count ?? null,
+    unlockedAt: dto.unlocked_at ?? null,
+    lastUnlockedAt: dto.last_unlocked_at ?? null,
+    hasUnseen: dto.has_unseen ?? false,
+  };
+}
+
+// Estampa o trofeo de la vitrina (Gap 31) -- entidad transversal, compartida
+// entre logros contador y competencias (Spec 4 emitirá las de tipo
+// 'competition', acá solo se consumen).
+export function toStampModel(dto) {
+  if (!dto) return null;
+  return {
+    id: dto.id,
+    type: dto.type,
+    sourceId: dto.source_id,
+    sourceName: dto.source_name,
+    iconKey: dto.icon_key,
+    grantedAt: dto.granted_at,
+    count: dto.count,
+  };
+}
+
+// Leaderboard de equipo (Gap 32). `value` siempre número plano -- el
+// formateo por métrica vive en utils/leaderboard-metric-format.js, nunca
+// acá.
+export function toLeaderboardModel(dto) {
+  if (!dto) return null;
+  return {
+    rows: (dto.rows ?? []).map((r) => ({ userId: r.user_id, name: r.name, avatarUrl: r.avatar_url ?? null, value: r.value, rank: r.rank })),
+    viewerRank: dto.viewer_rank ? { userId: dto.viewer_rank.user_id, value: dto.viewer_rank.value, rank: dto.viewer_rank.rank } : null,
+    record: dto.record ? { userId: dto.record.user_id, name: dto.record.name, value: dto.record.value, achievedAt: dto.record.achieved_at } : null,
+  };
+}
+
+// Competencias (Gap 33). `winnerUserIds`/`participantUserIds` siempre
+// arrays de strings (mismo criterio que el resto del repo para ids) --
+// `winner_user_ids` es plural de verdad (empate exacto = todos ganan, no
+// hay desempate adicional).
+export function toCompetitionModel(dto) {
+  if (!dto) return null;
+  return {
+    id: String(dto.id),
+    // Todavía no existe en backend (confirmado 2026-10-14, decisión D8) --
+    // `?? null` deja que el caller decida el fallback (ver
+    // utils/competition-title.js#buildCompetitionTitle), no inventa nada
+    // acá.
+    name: dto.name ?? null,
+    teamId: String(dto.team_id),
+    groupId: dto.group_id != null ? String(dto.group_id) : null,
+    type: dto.type,
+    metric: dto.metric ?? null,
+    startAt: dto.start_at,
+    endAt: dto.end_at ?? null,
+    route: dto.route ?? null,
+    acceptanceRadiusMeters: dto.acceptance_radius_meters ?? null,
+    participantUserIds: (dto.participant_user_ids ?? []).map((id) => String(id)),
+    createdByUserId: String(dto.created_by_user_id),
+    createdByRole: dto.created_by_role,
+    status: dto.status,
+    approvedByUserId: dto.approved_by_user_id != null ? String(dto.approved_by_user_id) : null,
+    rejectionReason: dto.rejection_reason ?? null,
+    winnerUserIds: (dto.winner_user_ids ?? []).map((id) => String(id)),
+    finishedAt: dto.finished_at ?? null,
+  };
+}
+
+// Detalle de competencia (GET /competitions/{id}, Gap 33 punto 23) -- mismo
+// modelo que toCompetitionModel más `progress`, que el detalle agrega y el
+// listado no trae. `progress` llega como `[{user_id, value}]`, sin
+// name/avatar/rank (más chico que una fila de leaderboard a propósito) --
+// el caller resuelve el nombre contra el roster ya cargado, mismo patrón
+// que memberName() en components/team/competitions-tab.jsx.
+export function toCompetitionDetailModel(dto) {
+  if (!dto) return null;
+  return {
+    ...toCompetitionModel(dto),
+    progress: (dto.progress ?? []).map((p) => ({ userId: String(p.user_id), value: p.value })),
+  };
+}
+
+// Payload de creación (Gap 33) -- SIN created_by_user_id/created_by_role,
+// el backend los deriva del token. SIN `name` tampoco -- confirmado
+// 2026-10-14 que el modelo no tiene esa columna todavía (decisión D8),
+// mandarla no hace nada. IDs de participantes a Number (el roster los
+// trae como string -- ver CLAUDE.md "IDs numéricos en bodies de
+// request").
+export function toCreateCompetitionPayload(form) {
+  const payload = {
+    type: form.type,
+    start_at: form.startAt,
+    participant_user_ids: (form.participantUserIds ?? []).map((id) => Number(id)),
+  };
+  if (form.type === 'route') {
+    payload.route = form.route;
+    payload.acceptance_radius_meters = Number(form.acceptanceRadiusMeters);
+  } else {
+    payload.metric = form.metric;
+    payload.end_at = form.endAt;
+  }
+  if (form.groupId) payload.group_id = Number(form.groupId);
   return payload;
 }

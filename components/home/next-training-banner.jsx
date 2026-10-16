@@ -74,18 +74,22 @@ export function NextTrainingBanner() {
 
   return (
     <View className="mb-6" nativeID="next-training-banner-root" testID="next-training-banner-root">
-      <Text className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="next-training-banner-section-title" testID="next-training-banner-section-title">
-        Próximos entrenamientos
-      </Text>
-
+      {/* Sin label de sección arriba -- el contenido de la card ya se
+          explica solo (fecha/nombre/equipo o el aviso de "no hay nada
+          programado"). Loading/vacío usan el mismo estilo que las cards de
+          Rachas/Logros (bg-white shadow-sm dark:bg-surface, sin borde) para
+          no haber disparidad visual cuando no hay nada para destacar -- el
+          hero CON contenido sigue con su color propio (bg-primary) a
+          propósito, es una card-CTA real que lleva a "Iniciar
+          entrenamiento", no una card informativa más. */}
       {loading && (
-        <View className="items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-surface" nativeID="next-training-banner-loading" testID="next-training-banner-loading">
+        <View className="items-center justify-center rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="next-training-banner-loading" testID="next-training-banner-loading">
           <ActivityIndicator color={colors.primary} nativeID="next-training-banner-loading-indicator" testID="next-training-banner-loading-indicator" />
         </View>
       )}
 
       {!loading && !nextTraining && (
-        <View className="items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="next-training-banner-empty" testID="next-training-banner-empty">
+        <View className="items-center justify-center rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="next-training-banner-empty" testID="next-training-banner-empty">
           <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="next-training-banner-empty-label" testID="next-training-banner-empty-label">
             No tenés entrenamientos programados.
           </Text>
