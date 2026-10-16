@@ -58,6 +58,8 @@ Hacen falta los tres porque `has_target` solo no alcanza. Con `axis: "distance"`
 | **A reducido** | `has_target` y `target_speed_kph == null` (eje `distance`) | **distancia** (m) | cumplimiento por distancia, delta, evolución. **Sin** gauge de ritmo ni velocidad esperada |
 | **B** | `has_target == false` | **mejor tiempo** (s) | ninguna: sin objetivo no hay contra qué comparar |
 
+Los tres tipos con métrica son `ritmo_continuo`, `velocidad_distancia` y `velocidad_tiempo`. `liviano` y `elongacion` **no se ofrecen como filtro**: sus series son `warmup`/`cooldown` y nunca pasarían el filtro `role = 'main'` del backend.
+
 `liviano` es la excepción al número principal: el tipo se define por **volumen, no por ritmo** (`utils/exercise-field-matrix.js:24-31`, `showSpeed: false`, sin ícono de velocidad). Mostrar 7,2 km/h como número principal de un calentamiento de 10 minutos sería medirlo con una vara que el producto no usa para ese tipo. Para `liviano`, el número principal es el **volumen** (distancia o tiempo, el que esté cargado) y las piezas de ritmo no se pintan.
 
 Aplica a **4 de los 12 ejercicios del seed** (Pasadas 1000/2000 m y Velocidad Máxima 100/200 m) el caso A reducido. Ninguno de los 12 llega a la paleta B, así que esa se cubre por robustez —filas previas a la migración de tipos, o un ejercicio que el entrenador dejó incompleto— y no por el seed.
@@ -219,6 +221,69 @@ Toda animación de la pantalla SHALL desactivarse cuando el usuario expresa pref
 
 - **WHEN** el usuario tiene activada la preferencia de movimiento reducido
 - **THEN** las transiciones aparecen de inmediato, sin desplazamiento ni escalado
+
+### Requirement: Los filtros van en cascada y el tipo es el primero
+
+El orden SHALL ser fijo y cada paso SHALL habilitar al siguiente:
+
+1. **Tipo** — desplegable de selección única, con "Todos" como valor **vacío**. Es el primer filtro y el único obligatorio: sin él no se sabe qué ejercicios ofrecer.
+2. **Ejercicio** — se completa con los del tipo elegido. Si el tipo está vacío, ofrece los de los tres tipos métricos.
+3. **Rangos de distancia y tiempo** — escribibles a mano y con valores sugeridos. Se habilitan cuando hay un ejercicio elegido, porque sin ejercicio el rango no tiene contra qué acotar.
+4. **Fechas** — siempre disponibles.
+
+Cambiar el tipo SHALL **deseleccionar el ejercicio** si deja de estar en la nueva lista. Dejarlo puesto produce un estado imposible visible: un filtro que dice "velocidad en distancia" con un ejercicio de ritmo continuo elegido arriba.
+
+El filtro de tipo viaja al backend como `kind` **escalar**, no como el array `kinds[]` que había antes: la UI es de selección única, y el "todos" es la **ausencia** del parámetro.
+
+#### Scenario: Elegir un tipo completa el ejercicio
+
+- **WHEN** el usuario elige `ritmo_continuo`
+- **THEN** el selector de ejercicio ofrece solo los `ritmo_continuo` del grupo
+
+#### Scenario: "Todos" ofrece los tres tipos
+
+- **WHEN** el usuario deja el tipo vacío
+- **THEN** el selector de ejercicio ofrece los ejercicios de los tres tipos métricos
+
+#### Scenario: Cambiar de tipo limpia el ejercicio
+
+- **WHEN** hay "Pasadas 1000 m" elegido y el usuario cambia a `ritmo_continuo`
+- **THEN** el ejercicio se deselcciona, porque no pertenece al tipo nuevo
+
+#### Scenario: El rango espera a un ejercicio
+
+- **WHEN** no hay ningún ejercicio elegido
+- **THEN** los cuatro campos de rango están deshabilitados
+
+### Requirement: Los rangos de distancia y tiempo son escribibles y sugieren valores
+
+Cada rango tiene un campo numérico que acepta **texto libre** y un desplegable con valores frecuentes:
+
+- **Distancia (km):** 1, 2, 3, 5, 7, 10, 15, 21, 42
+- **Tiempo (min):** 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360
+
+El usuario puede escribir un valor que no esté en la lista. La lista es un atajo, no un `select` cerrado: si fuera estricto, quien corrió 3,5 km no podría filtrar por eso.
+
+El campo SHALL mostrar la **unidad** y convertir al serializar el request: km → metros (`× 1000`), minutos → minutos. La conversión ocurre **en el borde**, nunca en el valor que se muestra.
+
+Un valor escrito a mano fuera de la lista SHALL quedar seleccionado igual, para que la pantalla muestre qué se está filtrando en vez de un input aparentemente vacío.
+
+Un rango invertido (desde mayor que hasta) SHALL mostrar el error **antes** de mandar, sin esperar el `400` del backend.
+
+#### Scenario: Escribir un valor fuera de la lista
+
+- **WHEN** el usuario escribe 3,5 en "Distancia desde"
+- **THEN** el campo muestra `3,5 km` y el request manda `distance_from_m=3500`
+
+#### Scenario: Elegir de la lista
+
+- **WHEN** el usuario elige 21 en "Distancia hasta"
+- **THEN** el request manda `distance_to_m=21000`
+
+#### Scenario: El rango invertido se avisa antes de mandar
+
+- **WHEN** el usuario pone 42 en "desde" y 5 en "hasta"
+- **THEN** el campo muestra el error sin necesidad de esperar la respuesta
 
 ### Requirement: La pantalla SHALL adaptarse a mobile sin perder la información principal
 

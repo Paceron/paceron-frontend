@@ -28,7 +28,8 @@ Vista de corredor y vista de entrenador sobre los mismos endpoints. El cálculo,
 ## Capabilities
 
 ### New Capabilities
-- `dashboard-screen`: analítica de rendimiento **en dos variantes por rol, no una filtrada**. El entrenador ve KPIs, evolución, radar, leaderboard y comparaciones; el corredor ve **solo progresión propia** —KPIs, evolución, radar, cumplimiento y detalle de series— sin leaderboard ni comparaciones, que con un solo corredor no significan nada. Mismos endpoints, componentes compartidos, montaje distinto.
+- **Criterios de filtrado, en cascada**: primero el **tipo** (desplegable de selección única, con "todos" como valor vacío), después el **ejercicio** que se completa con los de ese tipo, después los **rangos de distancia y tiempo** (escribibles a mano y con valores sugeridos) y por último las **fechas**. Los dos rangos van al backend: acotan qué series entran al cálculo, no solo qué se puede elegir.
+- `dashboard-screen`: analítica de rendimiento **en dos variantes por rol, no una filtrada**, con el filtro de tipo reducido a los **tres tipos con métrica** (`ritmo_continuo`, `velocidad_distancia`, `velocidad_tiempo`). `liviano` y `elongacion` quedan fuera porque sus series son `warmup`/`cooldown` y el filtro `role = 'main'` las deja todas afuera: ofrecer un filtro que devuelve siempre cero es peor que no ofrecerlo. El entrenador ve KPIs, evolución, radar, leaderboard y comparaciones; el corredor ve **solo progresión propia** —KPIs, evolución, radar, cumplimiento y detalle de series— sin leaderboard ni comparaciones, que con un solo corredor no significan nada. Mismos endpoints, componentes compartidos, montaje distinto.
 
 ### Modified Capabilities
 - ninguna
