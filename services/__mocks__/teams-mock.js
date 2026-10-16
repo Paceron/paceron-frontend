@@ -7,6 +7,8 @@ import { __seedDefaultGroup, __seedGroup, __seedGroupUser, __resetMockGroups } f
 // desconocidos.
 const FICTITIOUS_RUNNER_IDS = [101, 102, 103, 104, 105, 106];
 
+let team5DefaultGroupId = null;
+
 function daysAgoIso(days) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
@@ -79,6 +81,14 @@ function buildSeedTeams() {
   const advancedGroup = __seedGroup(4, 'Avanzado', { description: 'Corredores con mayor volumen y ritmo.' });
   const generalGroupId = defaultGroupByTeamId.get(4).id;
   const team5GroupId = defaultGroupByTeamId.get(5).id;
+  // Expuesto para calendar-mock.js -- necesita sembrar días de calendario
+  // reales en el grupo de team 5 (Spec 4b, pedido real 2026-10-16: demo
+  // como corredor no tenía NINGÚN entrenamiento programado para poder
+  // loguear dentro de la ventana de una competencia). `__seedGroup`/
+  // `__seedDefaultGroup` son síncronos a propósito (mismo motivo acá) --
+  // sin eso, otro módulo de seed no podría leer este id en su propio
+  // self-seed de módulo sin await de nivel superior.
+  team5DefaultGroupId = team5GroupId;
   const teamUsers = {
     4: FICTITIOUS_RUNNER_IDS.map((userId, i) => ({
       id: 1000 + userId,
@@ -228,6 +238,12 @@ export function __getMockTeamMembershipFee(teamId) {
 // caller no pueda mutar mockTeams por accidente vía este atajo.
 export function __getAllMockTeams() {
   return [...mockTeams];
+}
+
+// Usado por calendar-mock.js para sembrar días de calendario reales en el
+// grupo general de team 5 -- ver nota en buildSeedTeams() de más arriba.
+export function __getTeam5DefaultGroupId() {
+  return team5DefaultGroupId;
 }
 
 // Mismo criterio que mockUploadUserPhoto (user-mock.js) — el mock "hace

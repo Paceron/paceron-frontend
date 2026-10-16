@@ -85,7 +85,11 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
   const canClose = isTrainerView && competition.status === 'active' && competition.endAt && competition.endAt < new Date().toISOString().slice(0, 10);
   const canRun = !isTrainerView && competition.type === 'route' && competition.status === 'active' && competition.participantUserIds.includes(currentUserId);
   const canApproveReject = isTrainerView && competition.status === 'pending_approval';
-  const hasActions = canApproveReject || isOwnPendingProposal || canClose;
+  // El botón de Play (canRun) solo entra en el grupo de acciones ícono en
+  // nativo -- en web `canRun` sigue true pero no hay botón, solo un aviso
+  // informativo (más abajo), así que no cuenta para decidir si el grupo
+  // de acciones se renderiza.
+  const hasActions = canApproveReject || isOwnPendingProposal || canClose || (canRun && !isWeb);
 
   const sortedParticipantIds = [...competition.participantUserIds].sort((a, b) => {
     const aWinner = competition.winnerUserIds.includes(a) ? 0 : 1;
@@ -158,6 +162,13 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
                 </Pressable>
               </IconTooltip>
             )}
+            {canRun && !isWeb && (
+              <IconTooltip align="end" idPrefix={`${idPrefix}-run-tooltip`} label={attemptBlocked ? 'Ya corriste esta trayectoria' : 'Correr esta trayectoria'} position="bottom">
+                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15 active:opacity-70 disabled:opacity-60" disabled={busy || attemptBlocked} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
+                  <MaterialCommunityIcons color={colors.primary} name="play" size={18} />
+                </Pressable>
+              </IconTooltip>
+            )}
           </View>
         )}
       </View>
@@ -182,19 +193,11 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
         </View>
       )}
 
-      {canRun && (
+      {canRun && isWeb && (
         <View className="ml-6 mt-3" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
-          {isWeb ? (
-            <Text className="self-start rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
-              Correr una trayectoria solo está disponible en la app nativa
-            </Text>
-          ) : (
-            <Pressable className="h-9 items-center justify-center self-start rounded-full bg-primary px-4 active:opacity-80 disabled:opacity-60" disabled={busy || attemptBlocked} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
-              <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-run-label`} testID={`${idPrefix}-run-label`}>
-                {attemptBlocked ? 'Ya corriste esta trayectoria' : 'Correr esta trayectoria'}
-              </Text>
-            </Pressable>
-          )}
+          <Text className="self-start rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
+            Correr una trayectoria solo está disponible en la app nativa
+          </Text>
         </View>
       )}
     </View>

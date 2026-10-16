@@ -122,14 +122,21 @@ describe('mockGetCompetition', () => {
     expect(data.progress[0]).toHaveProperty('value');
   });
 
-  test('seeds 4 y 5 son del equipo 5, activas, metric sessions_count, con user_id 1 participando', async () => {
+  test('seeds 4, 5 y 6 son del equipo 5, activas, metric sessions_count, con user_id 1 participando', async () => {
     const { data } = await mockListCompetitions(5);
-    expect(data).toHaveLength(2);
+    expect(data).toHaveLength(3);
     data.forEach((c) => {
       expect(c.status).toBe('active');
       expect(c.metric).toBe('sessions_count');
       expect(c.participant_user_ids).toContain(1);
     });
+  });
+
+  test('seed 6 tiene ventana enteramente futura, no cubre hoy', async () => {
+    const { data } = await mockListCompetitions(5);
+    const competition = data.find((c) => c.id === 6);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    expect(competition.start_at > todayIso).toBe(true);
   });
 
   test('metric sessions_count agrega runner_session finished reales por competencia+atleta', async () => {

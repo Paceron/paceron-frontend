@@ -1,4 +1,7 @@
 import { __countFinishedRunnerSessionsByCompetition } from './runner-session-mock.js';
+import { addDaysISO } from '../../utils/build-stamp-draft.js';
+
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 // Fixture CRUD mutable para EXPO_PUBLIC_USE_MOCKS=true (Gap 33) -- mismo
 // patrón que services/__mocks__/team-subscriptions-mock.js: estado en
@@ -9,26 +12,37 @@ import { __countFinishedRunnerSessionsByCompetition } from './runner-session-moc
 // tiene esa columna (decisión D8); el mock ejercita el mismo fallback de
 // título (utils/competition-title.js) que usará la UI contra datos
 // reales, en vez de inventar un campo que no existe.
-// Seeds 4 y 5 -- team_id 5 ("Atletas del Río"), el único equipo donde
+// Seeds 4, 5 y 6 -- team_id 5 ("Atletas del Río"), el único equipo donde
 // user_id 1 (demo@paceron.com) es corredor de verdad y no dueño (ver
 // services/__mocks__/teams-mock.js) -- necesarias para poder probar Spec
 // 4b (wiring de competition_id en Play/ingreso manual) contra la cuenta
-// demo como corredor, pedido real 2026-10-15. Las 3 de arriba (team 1,
+// demo como corredor, pedido real 2026-10-15/16. Las 3 de arriba (team 1,
 // donde demo es entrenador/dueño con roster vacío) alcanzaban para
 // aprobar/rechazar/cerrar (Spec 4a) pero no para loguear un entrenamiento
-// como participante. Ventanas de fecha a propósito solapadas y cubriendo
-// "hoy" (2026-10-15) con endAt distinto (10-17 vs 10-20) para poder
-// probar el desempate de findActiveMetricCompetitionId (gana la que
-// termina antes). metric='sessions_count' a propósito -- es la ÚNICA
-// métrica que el mock agrega de verdad contra runner-session reales (ver
-// computeProgressValue más abajo); el resto queda en 0 sin aggregation,
-// documentado ahí mismo.
+// como participante. Ventanas relativas a HOY (addDaysISO), no fechas
+// fijas -- pedido real 2026-10-16, para que el fixture no quede obsoleto
+// según cuándo se corra. metric='sessions_count' a propósito -- es la
+// ÚNICA métrica que el mock agrega de verdad contra runner-session reales
+// (ver computeProgressValue más abajo); el resto queda en 0 sin
+// aggregation, documentado ahí mismo. calendar-mock.js siembra días de
+// calendario reales en team 5 calzados con estas 3 ventanas (hoy, hoy+7,
+// hoy+15) -- ver seedTeam5CalendarDays() ahí para el detalle de qué
+// prueba cada fecha.
 const SEED = [
   { id: 1, team_id: 1, group_id: null, type: 'metric', metric: 'distance', start_at: '2026-10-01', end_at: '2026-10-07', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
   { id: 2, team_id: 1, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-15', end_at: '2026-10-22', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 4], created_by_user_id: 2, created_by_role: 'runner', status: 'pending_approval', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
   { id: 3, team_id: 1, group_id: null, type: 'metric', metric: 'duration', start_at: '2026-09-01', end_at: '2026-09-30', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'finished', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [2], finished_at: '2026-10-01' },
-  { id: 4, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-10', end_at: '2026-10-20', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 101, 102], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
-  { id: 5, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-12', end_at: '2026-10-17', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 101, 103], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
+  // Cubre "hoy" junto con la 5 (desempate: ésta termina más tarde, hoy+5).
+  { id: 4, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: addDaysISO(TODAY_ISO, -5), end_at: addDaysISO(TODAY_ISO, 5), route: null, acceptance_radius_meters: null, participant_user_ids: [1, 101, 102], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
+  // Cubre "hoy" junto con la 4, pero termina ANTES (hoy+2) -- gana el
+  // desempate de findActiveMetricCompetitionId.
+  { id: 5, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: addDaysISO(TODAY_ISO, -3), end_at: addDaysISO(TODAY_ISO, 2), route: null, acceptance_radius_meters: null, participant_user_ids: [1, 101, 103], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
+  // Ventana enteramente futura -- NO cubre "hoy" a propósito (pedido real
+  // 2026-10-16: "competencias... cuya ventana de fechas esten fuera del
+  // rango de fechas actual"). Sirve para confirmar que loguear hoy no la
+  // toca, y que un entrenamiento fechado hoy+15 (seedTeam5CalendarDays)
+  // sí asocia acá.
+  { id: 6, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: addDaysISO(TODAY_ISO, 10), end_at: addDaysISO(TODAY_ISO, 20), route: null, acceptance_radius_meters: null, participant_user_ids: [1, 102, 103], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
 ];
 
 let mockCompetitions = [];
