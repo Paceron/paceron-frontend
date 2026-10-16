@@ -28,8 +28,8 @@ export function LineChartTooltip({ id, point, unit, formatX, secondary }) {
 
   return (
     <View
-      pointerEvents="none"
       style={{
+        pointerEvents: 'none',
         position: 'absolute',
         top: Math.max(0, point.y - 12),
         left,
@@ -83,8 +83,7 @@ export function LineChartHotspots({ id, points, width, plotHeight, onActive, onD
 
   return (
     <View
-      pointerEvents="box-none"
-      style={{ position: 'absolute', left: 0, top: 0, width, height: plotHeight }}
+      style={{ position: 'absolute', left: 0, top: 0, width, height: plotHeight, pointerEvents: 'box-none' }}
       nativeID={`${id}-hotspots`}
       testID={`${id}-hotspots`}
     >
@@ -114,8 +113,8 @@ export function LineChartHotspots({ id, points, width, plotHeight, onActive, onD
       {/* El punto activo se agranda para que se vea cuál se está leyendo. */}
       {activeIndex !== null && activeIndex !== undefined && points[activeIndex]?.y !== null ? (
         <View
-          pointerEvents="none"
           style={{
+            pointerEvents: 'none',
             position: 'absolute',
             left: points[activeIndex].x - 6,
             top: points[activeIndex].y - 6,

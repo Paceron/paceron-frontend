@@ -24,8 +24,7 @@ const BAND_HEX = {
 export function StackedBarHotspots({ id, columns, width, plotHeight, active, onActive, onDeactivate }) {
   return (
     <View
-      pointerEvents="box-none"
-      style={{ position: 'absolute', left: 0, top: 0, width, height: plotHeight }}
+      style={{ position: 'absolute', left: 0, top: 0, width, height: plotHeight, pointerEvents: 'box-none' }}
       nativeID={`${id}-hotspots`}
       testID={`${id}-hotspots`}
     >
@@ -71,8 +70,8 @@ export function StackedBarHotspots({ id, columns, width, plotHeight, active, onA
           if (!part) return null;
           return (
             <View
-              pointerEvents="none"
               style={{
+                pointerEvents: 'none',
                 position: 'absolute',
                 left: column.x,
                 top: part.y,
@@ -107,8 +106,8 @@ export function StackedBarTooltip({ id, active, columns, buckets, width }) {
 
   return (
     <View
-      pointerEvents="none"
       style={{
+        pointerEvents: 'none',
         position: 'absolute',
         top: Math.max(0, part.y - 8),
         left: flip ? undefined : column.x + column.width + 10,
