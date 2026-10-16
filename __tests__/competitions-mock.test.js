@@ -9,6 +9,7 @@ import {
   mockGetCompetition,
   __resetMockCompetitions,
 } from '../services/__mocks__/competitions-mock.js';
+import { __seedRunnerSession, __resetRunnerSessionMock } from '../services/__mocks__/runner-session-mock.js';
 
 describe('competitions-mock', () => {
   beforeEach(() => {
@@ -119,5 +120,28 @@ describe('mockGetCompetition', () => {
     expect(data.progress).toHaveLength(data.participant_user_ids.length);
     expect(data.progress[0]).toHaveProperty('user_id');
     expect(data.progress[0]).toHaveProperty('value');
+  });
+
+  test('seeds 4 y 5 son del equipo 5, activas, metric sessions_count, con user_id 1 participando', async () => {
+    const { data } = await mockListCompetitions(5);
+    expect(data).toHaveLength(2);
+    data.forEach((c) => {
+      expect(c.status).toBe('active');
+      expect(c.metric).toBe('sessions_count');
+      expect(c.participant_user_ids).toContain(1);
+    });
+  });
+
+  test('metric sessions_count agrega runner_session finished reales por competencia+atleta', async () => {
+    __resetRunnerSessionMock();
+    __seedRunnerSession({ session_instance_id: 1, athlete_user_id: 1, competition_id: 4, status: 'finished', start_date: '2026-10-15T10:00:00Z', end_date: '2026-10-15T11:00:00Z' });
+    __seedRunnerSession({ session_instance_id: 2, athlete_user_id: 1, competition_id: 4, status: 'finished', start_date: '2026-10-16T10:00:00Z', end_date: '2026-10-16T11:00:00Z' });
+    // wip no cuenta, y un competition_id distinto tampoco debe sumar acá.
+    __seedRunnerSession({ session_instance_id: 3, athlete_user_id: 1, competition_id: 4, status: 'wip', start_date: '2026-10-17T10:00:00Z' });
+    __seedRunnerSession({ session_instance_id: 4, athlete_user_id: 1, competition_id: 5, status: 'finished', start_date: '2026-10-13T10:00:00Z', end_date: '2026-10-13T11:00:00Z' });
+
+    const { data } = await mockGetCompetition(4);
+    const own = data.progress.find((p) => p.user_id === 1);
+    expect(own.value).toBe(2);
   });
 });

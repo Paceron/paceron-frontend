@@ -1,3 +1,5 @@
+import { __countFinishedRunnerSessionsByCompetition } from './runner-session-mock.js';
+
 // Fixture CRUD mutable para EXPO_PUBLIC_USE_MOCKS=true (Gap 33) -- mismo
 // patrón que services/__mocks__/team-subscriptions-mock.js: estado en
 // memoria + __resetMockCompetitions() para tests. 3 competencias seed con
@@ -7,10 +9,26 @@
 // tiene esa columna (decisión D8); el mock ejercita el mismo fallback de
 // título (utils/competition-title.js) que usará la UI contra datos
 // reales, en vez de inventar un campo que no existe.
+// Seeds 4 y 5 -- team_id 5 ("Atletas del Río"), el único equipo donde
+// user_id 1 (demo@paceron.com) es corredor de verdad y no dueño (ver
+// services/__mocks__/teams-mock.js) -- necesarias para poder probar Spec
+// 4b (wiring de competition_id en Play/ingreso manual) contra la cuenta
+// demo como corredor, pedido real 2026-10-15. Las 3 de arriba (team 1,
+// donde demo es entrenador/dueño con roster vacío) alcanzaban para
+// aprobar/rechazar/cerrar (Spec 4a) pero no para loguear un entrenamiento
+// como participante. Ventanas de fecha a propósito solapadas y cubriendo
+// "hoy" (2026-10-15) con endAt distinto (10-17 vs 10-20) para poder
+// probar el desempate de findActiveMetricCompetitionId (gana la que
+// termina antes). metric='sessions_count' a propósito -- es la ÚNICA
+// métrica que el mock agrega de verdad contra runner-session reales (ver
+// computeProgressValue más abajo); el resto queda en 0 sin aggregation,
+// documentado ahí mismo.
 const SEED = [
   { id: 1, team_id: 1, group_id: null, type: 'metric', metric: 'distance', start_at: '2026-10-01', end_at: '2026-10-07', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
   { id: 2, team_id: 1, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-15', end_at: '2026-10-22', route: null, acceptance_radius_meters: null, participant_user_ids: [2, 4], created_by_user_id: 2, created_by_role: 'runner', status: 'pending_approval', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
   { id: 3, team_id: 1, group_id: null, type: 'metric', metric: 'duration', start_at: '2026-09-01', end_at: '2026-09-30', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 2, 3], created_by_user_id: 1, created_by_role: 'trainer', status: 'finished', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [2], finished_at: '2026-10-01' },
+  { id: 4, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-10', end_at: '2026-10-20', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 101, 102], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
+  { id: 5, team_id: 5, group_id: null, type: 'metric', metric: 'sessions_count', start_at: '2026-10-12', end_at: '2026-10-17', route: null, acceptance_radius_meters: null, participant_user_ids: [1, 101, 103], created_by_user_id: 99, created_by_role: 'trainer', status: 'active', approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null },
 ];
 
 let mockCompetitions = [];
@@ -115,6 +133,22 @@ export async function mockCreateCompetitionAttempt(competitionId, athleteUserId)
   };
 }
 
+// Único metric que el mock agrega de verdad contra runner_session reales
+// (Spec 4b, Gap 33 punto 29) -- distance/duration/pace/peak_speed/
+// attendance_count se calculan server-side contra datos de GPS/feedback
+// que el mock no replica con fidelidad suficiente para ese cálculo;
+// sessions_count sí (es un conteo simple de runner_session 'finished' con
+// ese competition_id). Devuelve 0, no null -- el contrato real nunca manda
+// null para type='metric' (Gap 33 punto 23), así que el mock no inventa
+// esa rama.
+function computeProgressValue(competition, userId) {
+  if (competition.type === 'route') return null;
+  if (competition.metric === 'sessions_count') {
+    return __countFinishedRunnerSessionsByCompetition(competition.id, userId);
+  }
+  return 0;
+}
+
 // GET /competitions/{id} (detalle, Gap 33 punto 23) -- `progress` siempre
 // `[{user_id, value}]`, `value` null para type='route' en v1.
 export async function mockGetCompetition(id) {
@@ -122,7 +156,7 @@ export async function mockGetCompetition(id) {
   if (!competition) throw new Error('Competencia no encontrada');
   const progress = competition.participant_user_ids.map((userId) => ({
     user_id: userId,
-    value: competition.type === 'route' ? null : 0,
+    value: computeProgressValue(competition, userId),
   }));
   return { data: { ...competition, progress } };
 }

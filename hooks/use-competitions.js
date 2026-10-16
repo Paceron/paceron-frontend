@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth-store.js';
 import {
   listCompetitions,
+  getCompetition,
   createCompetition as createCompetitionService,
   approveCompetition as approveCompetitionService,
   rejectCompetition as rejectCompetitionService,
@@ -9,7 +10,7 @@ import {
   closeCompetition as closeCompetitionService,
   createCompetitionAttempt as createCompetitionAttemptService,
 } from '../services/competitions.js';
-import { toCompetitionModel, toCreateCompetitionPayload } from '../services/normalizers.js';
+import { toCompetitionModel, toCompetitionDetailModel, toCreateCompetitionPayload } from '../services/normalizers.js';
 
 // Listado de competencias de un equipo (Gap 33) -- `hasUnseen` alimenta el
 // punto rojo de la pestaña (ver hooks/use-gamification-badge.js, que NO
@@ -31,6 +32,19 @@ export function useCompetitions(teamId, { status, groupId } = {}) {
     loading: query.isLoading,
     error: query.error ?? null,
   };
+}
+
+// Detalle + progreso (Gap 33 punto 23, Spec 4b) -- lazy por default
+// (`enabled`): CompetitionRow lo pide recién al expandir una fila, no de
+// entrada para las 3-5 competencias de la lista completa.
+export function useCompetitionDetail(id, { enabled = true } = {}) {
+  const query = useQuery({
+    queryKey: ['competition', id],
+    queryFn: () => getCompetition(id).then((response) => toCompetitionDetailModel(response.data ?? response)),
+    enabled: Boolean(id) && enabled,
+  });
+
+  return { detail: query.data ?? null, loading: query.isLoading };
 }
 
 // Las 5 mutaciones del dominio -- todas invalidan la misma queryKey al

@@ -24,6 +24,19 @@ export function __seedRunnerSession(dto) {
   return row;
 }
 
+// Acceso cruzado para Gap 33 Spec 4b -- el progreso de una competencia
+// type='metric' (ver services/__mocks__/competitions-mock.js#mockGetCompetition)
+// necesita saber cuántos runner_session 'finished' quedaron asociados a esa
+// competencia, por atleta -- único agregado que el mock replica de verdad
+// (métrica sessions_count); el resto de las métricas quedan en 0, ver nota
+// en competitions-mock.js. Solo cuenta 'finished' -- un 'wip'/'interrupted'
+// con competition_id asociado todavía no es un entrenamiento completado.
+export function __countFinishedRunnerSessionsByCompetition(competitionId, athleteUserId) {
+  return runnerSessions.filter(
+    (r) => r.competition_id === Number(competitionId) && r.athlete_user_id === Number(athleteUserId) && r.status === 'finished',
+  ).length;
+}
+
 function findRow(sessionInstanceId, athleteUserId) {
   return runnerSessions.find(
     (r) => r.session_instance_id === Number(sessionInstanceId) && r.athlete_user_id === Number(athleteUserId),

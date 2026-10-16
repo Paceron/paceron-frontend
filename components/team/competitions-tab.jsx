@@ -6,10 +6,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
-import { useCompetitions, useCompetitionMutations } from '../../hooks/use-competitions.js';
+import { useCompetitions, useCompetitionMutations, useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
+import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -50,7 +51,10 @@ function memberName(members, userId) {
 // Pill estática (no Pressable, sin hover/active) a propósito -- pedido
 // real: que no se confunda con un botón. Ganador: acento ámbar + trofeo,
 // y el caller la ordena primero en la lista (ver sortedParticipantIds).
-function ParticipantPill({ idPrefix, name, isWinner }) {
+// `progressLabel` (Spec 4b) -- solo llega con algo para type='metric', ya
+// formateado (formatMetricValue), null mientras el detalle no cargó o para
+// type='route'.
+function ParticipantPill({ idPrefix, name, isWinner, progressLabel }) {
   return (
     <View
       className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${
@@ -65,7 +69,7 @@ function ParticipantPill({ idPrefix, name, isWinner }) {
         nativeID={`${idPrefix}-name`}
         testID={`${idPrefix}-name`}
       >
-        {name}
+        {name}{progressLabel ? ` · ${progressLabel}` : ''}
       </Text>
     </View>
   );
@@ -88,6 +92,11 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
     const bWinner = competition.winnerUserIds.includes(b) ? 0 : 1;
     return aWinner - bWinner;
   });
+
+  // Progreso (Spec 4b) -- solo pide el detalle (progress) para type='metric'
+  // y recién al expandir, no de entrada para toda la lista.
+  const { detail } = useCompetitionDetail(competition.id, { enabled: expanded && competition.type === 'metric' });
+  const progressByUserId = new Map((detail?.progress ?? []).map((p) => [p.userId, p.value]));
 
   return (
     <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
@@ -158,9 +167,13 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
           <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-participants-caption`} testID={`${idPrefix}-participants-caption`}>
             Participantes:
           </Text>
-          {sortedParticipantIds.map((userId) => (
-            <ParticipantPill idPrefix={`${idPrefix}-participant-${userId}`} isWinner={competition.winnerUserIds.includes(userId)} key={userId} name={memberName(members, userId)} />
-          ))}
+          {sortedParticipantIds.map((userId) => {
+            const progressValue = progressByUserId.get(userId);
+            const progressLabel = competition.type === 'metric' && progressValue != null ? formatMetricValue(competition.metric, progressValue) : null;
+            return (
+              <ParticipantPill idPrefix={`${idPrefix}-participant-${userId}`} isWinner={competition.winnerUserIds.includes(userId)} key={userId} name={memberName(members, userId)} progressLabel={progressLabel} />
+            );
+          })}
           {competition.status === 'finished' && competition.winnerUserIds.length === 0 && (
             <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-no-winner`} testID={`${idPrefix}-no-winner`}>
               Sin ganador — nadie completó un intento.

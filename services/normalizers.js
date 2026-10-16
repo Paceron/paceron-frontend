@@ -1156,6 +1156,20 @@ export function toCompetitionModel(dto) {
   };
 }
 
+// Detalle de competencia (GET /competitions/{id}, Gap 33 punto 23) -- mismo
+// modelo que toCompetitionModel más `progress`, que el detalle agrega y el
+// listado no trae. `progress` llega como `[{user_id, value}]`, sin
+// name/avatar/rank (más chico que una fila de leaderboard a propósito) --
+// el caller resuelve el nombre contra el roster ya cargado, mismo patrón
+// que memberName() en components/team/competitions-tab.jsx.
+export function toCompetitionDetailModel(dto) {
+  if (!dto) return null;
+  return {
+    ...toCompetitionModel(dto),
+    progress: (dto.progress ?? []).map((p) => ({ userId: String(p.user_id), value: p.value })),
+  };
+}
+
 // Payload de creación (Gap 33) -- SIN created_by_user_id/created_by_role,
 // el backend los deriva del token. SIN `name` tampoco -- confirmado
 // 2026-10-14 que el modelo no tiene esa columna todavía (decisión D8),
