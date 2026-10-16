@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 import { extent, lineSeries } from '../../../utils/dashboard-chart.js';
 import { formatMetric } from '../../../utils/dashboard-format.js';
 import { useThemeColors } from '../../../theme/colors.js';
 import { ChartSurface } from './chart-surface.jsx';
+import { LineChartHotspots, LineChartTooltip } from './line-chart-tooltip.jsx';
 
 const TOP_PADDING = 14;
 const AXIS_LABEL_H = 16;
@@ -31,6 +33,7 @@ export function LineChart({
   emptyMessage = 'Sin datos en el período',
 }) {
   const colors = useThemeColors();
+  const [activeIndex, setActiveIndex] = useState(null);
   const hasValues = [...primary, ...secondary].some((point) => typeof point?.value === 'number');
   const sharedDomain = secondary.length ? extent([...primary, ...secondary].map((point) => point?.value)) : null;
 
@@ -48,7 +51,14 @@ export function LineChart({
           const min = main.domain?.[0] ?? 0;
 
           return (
-            <View nativeID={`${id}-plot`} testID={`${id}-plot`}>
+            <View
+              // `relative` es lo que ancla el overlay de hotspots y tooltip:
+              // sin esto se posicionan contra el ancestro posicionado más
+              // cercano que puede estar a kilometers de la pantalla.
+              style={{ position: 'relative' }}
+              nativeID={`${id}-plot`}
+              testID={`${id}-plot`}
+            >
               <Svg height={plotHeight} nativeID={`${id}-svg`} testID={`${id}-svg`} width={width}>
                 {[0, 0.5, 1].map((fraction) => {
                   const y = plotHeight * fraction;
@@ -117,6 +127,27 @@ export function LineChart({
                   {formatMetric(min, unit)}
                 </SvgText>
               </Svg>
+              {hasValues ? (
+                <>
+                  <LineChartHotspots
+                    activeIndex={activeIndex}
+                    id={id}
+                    onActive={setActiveIndex}
+                    plotHeight={plotHeight}
+                    points={main.points}
+                    width={width}
+                  />
+                  {activeIndex !== null && main.points[activeIndex] ? (
+                    <LineChartTooltip
+                      formatX={formatX}
+                      id={id}
+                      point={{ ...main.points[activeIndex], width }}
+                      secondary={target?.points?.[activeIndex] ?? null}
+                      unit={unit}
+                    />
+                  ) : null}
+                </>
+              ) : null}
               <View className="flex-row justify-between" nativeID={`${id}-x-axis`} testID={`${id}-x-axis`}>
                 {ticks.map((index) => (
                   <Text
