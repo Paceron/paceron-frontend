@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Line, Rect, Text as SvgText } from 'react-native-svg';
 import { BAND_LABELS, DASHBOARD_BANDS, stackedBar100 } from '../../../utils/dashboard-chart.js';
 import { useThemeColors } from '../../../theme/colors.js';
 import { BandLegend, ChartSurface } from './chart-surface.jsx';
+import { StackedBarHotspots, StackedBarTooltip } from './stacked-bar-tooltip.jsx';
 
 const LABEL_H = 18;
 
@@ -31,6 +33,7 @@ const BAND_DOT_CLASSES = {
 
 export function StackedBarChart({ id, height = 170, buckets = [], label, emptyMessage = 'Sin series en el período' }) {
   const colors = useThemeColors();
+  const [active, setActive] = useState(null);
   const totals = DASHBOARD_BANDS.reduce((acc, band) => {
     acc[band] = buckets.reduce((sum, bucket) => sum + (Number(bucket?.counts?.[band]) || 0), 0);
     return acc;
@@ -48,7 +51,12 @@ export function StackedBarChart({ id, height = 170, buckets = [], label, emptyMe
           );
 
           return (
-            <View nativeID={`${id}-plot`} testID={`${id}-plot`}>
+            <View
+              // `relative` ancla el overlay de hotspots y tooltip.
+              style={{ position: 'relative' }}
+              nativeID={`${id}-plot`}
+              testID={`${id}-plot`}
+            >
               <Svg height={plotHeight} nativeID={`${id}-svg`} testID={`${id}-svg`} width={width}>
                 <Line width={width} x1={0} x2={width} y1={0} y2={0} stroke={colors.outlineVariant} nativeID={`${id}-baseline`} testID={`${id}-baseline`} />
                 {columns.map((column, columnIndex) =>
@@ -84,6 +92,28 @@ export function StackedBarChart({ id, height = 170, buckets = [], label, emptyMe
                   ) : null,
                 )}
               </Svg>
+              {hasAny ? (
+                <>
+                  <StackedBarHotspots
+                    active={active}
+                    columns={columns}
+                    id={id}
+                    onActive={(columnIndex, band) => setActive({ columnIndex, band })}
+                    onDeactivate={() => setActive(null)}
+                    plotHeight={plotHeight}
+                    width={width}
+                  />
+                  {active ? (
+                    <StackedBarTooltip
+                      active={active}
+                      buckets={buckets}
+                      columns={columns}
+                      id={id}
+                      width={width}
+                    />
+                  ) : null}
+                </>
+              ) : null}
             </View>
           );
         }}
