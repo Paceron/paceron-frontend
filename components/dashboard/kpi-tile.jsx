@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { EMPTY_METRIC, formatDelta, formatMetric, formatVerdict, hasMetric, verdictIcon } from '../../utils/dashboard-format.js';
+import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric, verdictIcon } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 
 // Tile de un KPI: número grande, delta, veredicto y "—" ante `null`.
@@ -47,33 +47,45 @@ export function KpiTile({ id, label, value, unit, delta, deltaUnit, verdict, hin
     >
       <View className="flex-row items-center gap-1" nativeID={`${id}-header`} testID={`${id}-header`}>
         {icon ? <MaterialCommunityIcons color={colors.warning ?? '#b45309'} name={icon} size={13} /> : null}
-        <Text className="flex-1 text-[11px] leading-4 text-amber-800 dark:text-amber-200" nativeID={`${id}-label`} testID={`${id}-label`}>
+        <Text className="flex-1 text-[11px] leading-4 text-amber-800 dark:text-amber-200" nativeID={`${id}-label`} numberOfLines={1} testID={`${id}-label`}>
           {label}
         </Text>
       </View>
-      <Text className={`mt-1 font-bold text-amber-950 dark:text-amber-50 ${emphasis ? 'text-2xl' : 'text-lg'}`} nativeID={`${id}-value`} numberOfLines={1} testID={`${id}-value`}>
-        {hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC}
-      </Text>
-      {delta !== undefined ? (
-        <View className="mt-0.5 flex-row items-center gap-1" nativeID={`${id}-delta-row`} testID={`${id}-delta-row`}>
-          <Text className="text-xs font-semibold text-amber-900 dark:text-amber-100" nativeID={`${id}-delta`} testID={`${id}-delta`}>
+      {/* Numero y delta en la MISMA linea. Antes el delta era una tercera fila
+          y esa tarjeta quedaba mas alta que las otras cinco, lo que rompia la
+          grilla: el ojo comparaba alturas en vez de compararse las cifras. La
+          diferencia de formato (color, peso, cuerpo chico) ya distinguishes el
+          delta del valor principal, asi que no necesita su propia linea. */}
+      <View
+        className="mt-1 flex-row items-baseline gap-1.5"
+        nativeID={`${id}-value-row`}
+        testID={`${id}-value-row`}
+      >
+        <Text
+          className={`shrink font-bold text-amber-950 dark:text-amber-50 ${emphasis ? 'text-2xl' : 'text-lg'}`}
+          nativeID={`${id}-value`}
+          numberOfLines={1}
+          testID={`${id}-value`}
+        >
+          {hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC}
+        </Text>
+        {delta !== undefined ? (
+          <Text
+            className="shrink text-xs font-semibold text-amber-900 dark:text-amber-100"
+            nativeID={`${id}-delta`}
+            numberOfLines={1}
+            testID={`${id}-delta`}
+          >
             {hasMetric(delta) ? formatDelta(delta, deltaUnit) : EMPTY_METRIC}
           </Text>
-          {verdict ? (
-            <View className="flex-row items-center" nativeID={`${id}-verdict`} testID={`${id}-verdict`}>
-              <MaterialCommunityIcons color={verdictStyle?.icon ?? colors.onSurfaceVariant} name={verdictIcon(verdict)} size={13} />
-              <Text className={`text-[11px] ${verdictStyle?.text ?? 'text-amber-800 dark:text-amber-300'}`} nativeID={`${id}-verdict-label`} testID={`${id}-verdict-label`}>
-                {formatVerdict(verdict)}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-      {hint ? (
-        <Text className="mt-0.5 text-[10px] leading-4 text-amber-700 dark:text-amber-400" nativeID={`${id}-hint`} testID={`${id}-hint`}>
-          {hint}
-        </Text>
-      ) : null}
+        ) : null}
+        {/* Solo la flecha. El texto ("va mejor"/"va peor") vivia en la fila que
+            se fue al compactar el delta, y decia lo mismo que el color del
+            icono. */}
+        {verdict ? (
+          <MaterialCommunityIcons color={verdictStyle?.icon ?? '#b45309'} name={verdictIcon(verdict)} size={12} />
+        ) : null}
+      </View>
     </View>
   );
 }

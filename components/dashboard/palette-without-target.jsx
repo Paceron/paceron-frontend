@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
+import { Z_INDEX } from '../../theme/tokens.js';
 import { describePalette, resolveRankingMetric, toRankingItems } from '../../utils/dashboard-palette.js';
 import { ChartCard } from './charts/chart-surface.jsx';
 import { BarChart } from './charts/bar-chart.jsx';
@@ -19,6 +21,9 @@ import { KpiTooltip } from './kpi-tooltip.jsx';
 // la decisión se toma por el dato, no por el tipo.
 export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = null, comparisons = null, granularity, onGranularityChange }) {
   const palette = describePalette(summary);
+  // Sube la grilla mientras haya un tooltip abierto: sin esto, la card de
+  // gráfico siguiente se pinta encima del tooltip.
+  const [anyTooltipOpen, setAnyTooltipOpen] = useState(false);
   const rankingMetric = resolveRankingMetric(palette.case);
   const rankingItems = comparisons ? toRankingItems(comparisons, rankingMetric) : null;
   const units = summary?.units ?? {};
@@ -33,9 +38,14 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
           con objetivo. En esta paleta no hay velocidad esperada que mostrar, y
           en su lugar aparece la diferencia contra el objetivo: sin objetivo no
           hay contra qué comparar, así que el número que contesta "cuánto me
-          falta" es la brecha. */}
+          falta" es la brecha.
+
+          `relative` + `zIndex`: el tooltip vive acá adentro y la card siguiente
+          es su HERMANA, que se pinta después. Sin los dos queda tapado — y en
+          web el `z-index` no cuenta si no hay `position`, por eso van juntos. */}
       <View
         className="-mx-1 -my-1 flex-row flex-wrap"
+        style={{ position: 'relative', zIndex: anyTooltipOpen ? Z_INDEX.tooltip : 1 }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
       >
@@ -88,6 +98,7 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
           <KpiTooltip
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
+            onOpenChange={setAnyTooltipOpen}
           >
             {(hovered) => (
               <KpiTile
