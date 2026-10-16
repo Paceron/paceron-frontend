@@ -77,25 +77,49 @@ describe('dashboard service — query string', () => {
     expect(queryOf(lastGet()).has('from')).toBe(false);
   });
 
-  test('kinds[] y exercise_ids[] viajan como parámetro repetido, no como CSV', async () => {
-    await getDashboardSummary({ teamId: 4, ...RANGE, kinds: ['ritmo_continuo', 'liviano'], exerciseIds: [3, 5] });
+  test('el tipo viaja como `kind` escalar, y con ejercicio elegido no viaja', async () => {
+    await getDashboardSummary({ teamId: 4, ...RANGE, kind: 'ritmo_continuo' });
+    expect(queryOf(lastGet()).get('kind')).toBe('ritmo_continuo');
+    await getDashboardSummary({ teamId: 4, ...RANGE, kind: '', exerciseId: 5 });
+    const query = queryOf(lastGet());
+    expect(query.get('exercise_id')).toBe('5');
+    expect(query.has('kind')).toBe(false);
+  });
+
+  test('los rangos viajan en la unidad del contrato: metros y minutos enteros', async () => {
+    await getDashboardSummary({ teamId: 4, ...RANGE, distanceFromM: 3500, distanceToM: 21000, timeFromMin: 30, timeToMin: 90 });
+    const query = queryOf(lastGet());
+    expect(query.get('distance_from_m')).toBe('3500');
+    expect(query.get('distance_to_m')).toBe('21000');
+    expect(query.get('time_from_min')).toBe('30');
+    expect(query.get('time_to_min')).toBe('90');
+  });
+
+  test('un rango que no es un entero no viaja: mejor sin filtro que con un 400', async () => {
+    await getDashboardSummary({ teamId: 4, ...RANGE, distanceFromM: 3500.5, timeFromMin: -3 });
+    const query = queryOf(lastGet());
+    expect(query.has('distance_from_m')).toBe(false);
+    expect(query.has('time_from_min')).toBe(false);
+  });
+
+  test('exercise_ids[] viaja como parámetro repetido, no como CSV', async () => {
+    await getDashboardSummary({ teamId: 4, ...RANGE, exerciseIds: [3, 5] });
     const url = lastGet();
-    // El backend los lee con c.QueryArray, que no separa comas: "a,b" llegaría
+    // El backend lo lee con c.QueryArray, que no separa comas: "3,5" llegaría
     // como un único string y no matchearía nada.
-    expect(url).toContain('kinds=ritmo_continuo&kinds=liviano');
     expect(url).toContain('exercise_ids=3&exercise_ids=5');
-    expect(url).not.toContain('kinds=ritmo_continuo%2C');
-    expect(queryOf(url).getAll('kinds')).toEqual(['ritmo_continuo', 'liviano']);
+    expect(url).not.toContain('exercise_ids=3%2C');
     expect(queryOf(url).getAll('exercise_ids')).toEqual(['3', '5']);
   });
 
   test('los filtros vacíos no van: group_id vacío, exercise_id vacío ni listas vacías', async () => {
-    await getDashboardSummary({ teamId: 4, ...RANGE, groupId: '', exerciseId: null, exerciseIds: [], kinds: [] });
+    await getDashboardSummary({ teamId: 4, ...RANGE, groupId: '', exerciseId: null, exerciseIds: [], kind: '' });
     const query = queryOf(lastGet());
     expect(query.has('group_id')).toBe(false);
     expect(query.has('exercise_id')).toBe(false);
     expect(query.has('exercise_ids')).toBe(false);
-    expect(query.has('kinds')).toBe(false);
+    expect(query.has('kind')).toBe(false);
+    expect(query.has('distance_from_m')).toBe(false);
   });
 
   test('la tolerancia se manda siempre, y fuera de rango vuelve a la default', async () => {
@@ -155,6 +179,16 @@ describe('dashboard service — cuerpos de los POST', () => {
     expect(api.post.mock.calls[0][1]).not.toHaveProperty('athlete_user_ids');
   });
 
+  test('los POST llevan los cuatro de rango con el nombre del contrato', async () => {
+    await postDashboardComparisons({ teamId: 4, ...RANGE, kind: 'ritmo_continuo', distanceFromM: 5000, timeToMin: 45 });
+    const body = api.post.mock.calls[0][1];
+    expect(body.kind).toBe('ritmo_continuo');
+    expect(body.distance_from_m).toBe(5000);
+    expect(body.time_to_min).toBe(45);
+    expect(body).not.toHaveProperty('distance_to_m');
+    expect(body).not.toHaveProperty('time_from_min');
+  });
+
   test('los períodos van como current/previous en ISO, y previous es opcional', async () => {
     await postDashboardPeriods({
       teamId: 4,
@@ -183,14 +217,25 @@ describe('dashboard service — cuerpos de los POST', () => {
 describe('dashboard service — rama de mocks', () => {
   test('el mock recibe los MISMOS valores normalizados que se mandarían por wire', async () => {
     env.USE_MOCKS = true;
-    await getDashboardSummary({ teamId: '4', groupId: '41', from: '01/09/2026', kinds: ['liviano'], tolerance: 0.4 });
+    await getDashboardSummary({
+      teamId: '4',
+      groupId: '41',
+      from: '01/09/2026',
+      kind: 'ritmo_continuo',
+      distanceFromM: 3500,
+      tolerance: 0.4,
+    });
     expect(api.get).not.toHaveBeenCalled();
     expect(mockGetDashboardSummary).toHaveBeenCalledWith({
       teamId: 4,
       groupId: 41,
       exerciseId: null,
       exerciseIds: [],
-      kinds: ['liviano'],
+      kind: 'ritmo_continuo',
+      distanceFromM: 3500,
+      distanceToM: null,
+      timeFromMin: null,
+      timeToMin: null,
       from: '2026-09-01',
       to: '',
       tolerance: 0.05,

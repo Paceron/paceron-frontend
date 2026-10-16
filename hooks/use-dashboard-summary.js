@@ -15,13 +15,17 @@ export function useDashboardSummary({
   groupId,
   exerciseId,
   exerciseIds,
-  kinds,
+  kind,
+  distanceFromM,
+  distanceToM,
+  timeFromMin,
+  timeToMin,
   from,
   to,
   tolerance = DEFAULT_TOLERANCE,
   enabled = true,
 } = {}) {
-  const scope = { teamId, groupId, exerciseId, exerciseIds, kinds, from, to, tolerance };
+  const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
   const query = useQuery({
     queryKey: DASHBOARD_KEYS.summary(scope),
     queryFn: () => getDashboardSummary(scope),

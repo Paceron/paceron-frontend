@@ -20,7 +20,11 @@ export function useDashboardComparisons({
   groupId,
   exerciseId,
   exerciseIds,
-  kinds,
+  kind,
+  distanceFromM,
+  distanceToM,
+  timeFromMin,
+  timeToMin,
   from,
   to,
   tolerance = DEFAULT_TOLERANCE,
@@ -28,7 +32,7 @@ export function useDashboardComparisons({
   enabled = true,
 } = {}) {
   const activeRole = useAuthStore((state) => state.activeRole);
-  const scope = { teamId, groupId, exerciseId, exerciseIds, kinds, from, to, tolerance };
+  const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
 
   const query = useQuery({
     queryKey: DASHBOARD_KEYS.comparisons(scope, athleteUserIds),
@@ -55,14 +59,18 @@ export function useDashboardPeriodComparison({
   groupId,
   exerciseId,
   exerciseIds,
-  kinds,
+  kind,
+  distanceFromM,
+  distanceToM,
+  timeFromMin,
+  timeToMin,
   current,
   previous,
   tolerance = DEFAULT_TOLERANCE,
   enabled = true,
 } = {}) {
   const activeRole = useAuthStore((state) => state.activeRole);
-  const scope = { teamId, groupId, exerciseId, exerciseIds, kinds, tolerance };
+  const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, tolerance };
   const ranges = { current, previous };
 
   const query = useQuery({

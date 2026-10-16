@@ -339,8 +339,11 @@ describe('dashboard mock — la tupla (has_target, axis, target_speed_kph) tiene
     expect(data.totals.valid_series).toBeGreaterThan(0);
     expect(data.totals.best_time_ms).not.toBeNull();
 
+    // Por `exercise_id` y no por `kind`: `elongacion` no se puede usar como
+    // filtro de tipo (sus series son warmup/cooldown), pero el ejercicio 2 sí
+    // existe y es el caso de "sin objetivo cargado" que se está probando acá.
     const timeseries = await mockGetDashboardTimeseries({
-      teamId: TEAM_WITH_DATA, callerUserId: TRAINER, tolerance: 0.05, granularity: 'month', ...RANGE, kinds: ['elongacion'],
+      teamId: TEAM_WITH_DATA, callerUserId: TRAINER, tolerance: 0.05, granularity: 'month', ...RANGE, exerciseId: ELONGACION,
     });
     timeseries.buckets.forEach((bucket) => {
       expect(bucket.band_counts).toEqual({ met: 0, near: 0, missed: 0, unknown: 0 });
@@ -667,15 +670,69 @@ describe('dashboard mock — filtros y scope', () => {
     await expect(summary({ groupId: 999 })).rejects.toMatchObject({ status: 404 });
   });
 
-  test('el filtro kinds[] agrega los ejercicios de esos tipos, ya resueltos', async () => {
-    const data = await summary({ kinds: ['velocidad_distancia'] });
+  test('el filtro kind agrega los ejercicios de ese tipo, ya resueltos', async () => {
+    const data = await summary({ kind: 'velocidad_distancia' });
     const rows = scopeRows(RANGE).filter((row) => row.kind === 'velocidad_distancia');
     expect(data.totals.series).toBe(rows.length);
     expect(data.axis).toBe('distance');
   });
 
-  test('exercise_id y kinds son excluyentes entre sí', async () => {
-    await expect(summary({ exerciseId: RITMO_10K, kinds: ['ritmo_continuo'] }))
+  test('exercise_id y kind son excluyentes entre sí', async () => {
+    await expect(summary({ exerciseId: RITMO_10K, kind: 'ritmo_continuo' }))
+      .rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
+  });
+
+  test('un tipo sin métrica se rechaza con 400: sus series son warmup/cooldown', async () => {
+    await expect(summary({ kind: 'liviano' })).rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
+    await expect(summary({ kind: 'elongacion' })).rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
+    await expect(summary({ kind: 'jogging' })).rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
+  });
+
+test('el rango de distancia deja entrar solo las series dentro de la ventana', async () => {
+    // Sobre todos los `ritmo_continuo` del grupo: sus distancias van de ~5 a ~15
+    // km, así que una ventana de 8 a 13 km deja series afuera de un lado y del
+    // otro (con un solo ejercicio, la ventana o lo incluye entero o no lo agarra).
+    const rows = scopeRows(RANGE).filter((row) => row.kind === 'ritmo_continuo');
+    const inRange = rows.filter((row) => row.distance_meters >= 8000 && row.distance_meters <= 13000);
+    expect(inRange.length).toBeGreaterThan(0);
+    expect(inRange.length).toBeLessThan(rows.length);
+
+    const data = await summary({ kind: 'ritmo_continuo', distanceFromM: 8000, distanceToM: 13000 });
+    expect(data.totals.series).toBe(inRange.length);
+    // Una serie que el rango excluye NO es inválida: el filtro es una decisión
+    // del usuario, no un defecto de los datos. `invalid_series` se cuenta sobre
+    // las que quedaron, así que no crece por haber dejado afuera series buenas.
+    expect(data.data_quality.invalid_series).toBe(inRange.filter((row) => !isValid(row)).length);
+  });
+
+  test('el rango de tiempo compara contra el TIEMPO LOGRADO, no contra duration_ms', async () => {
+    const rows = scopeRows({ ...RANGE, exerciseId: RITMO_10K });
+    const degraded = rows.filter((row) => row.active_duration_ms === null && row.duration_ms > 0);
+    expect(degraded.length).toBeGreaterThan(0);
+    const cutoff = Math.ceil(Math.max(...rows.map((row) => achievedTime(row))) / 60_000);
+    const data = await summary({ exerciseId: RITMO_10K, timeToMin: cutoff });
+    const expected = rows.filter((row) => achievedTime(row) <= cutoff * 60_000);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(data.totals.series).toBe(expected.length);
+  });
+
+  test('un rango de un solo lado aplica solo ese lado', async () => {
+    const rows = scopeRows(RANGE);
+    const floor = Math.ceil(Math.min(...rows.map((row) => achievedTime(row))) / 60_000);
+    const data = await summary({ timeFromMin: floor });
+    const expected = rows.filter((row) => achievedTime(row) >= floor * 60_000);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(data.totals.series).toBe(expected.length);
+  });
+
+  test('un rango invertido o no entero es 400, con el code del contrato', async () => {
+    await expect(summary({ distanceFromM: 42000, distanceToM: 5000 }))
+      .rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
+    await expect(summary({ timeFromMin: 90, timeToMin: 30 }))
+      .rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
+    await expect(summary({ distanceFromM: 3500.5 }))
+      .rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
+    await expect(summary({ timeFromMin: -3 }))
       .rejects.toMatchObject({ status: 400, data: { code: 'INVALID_RANGE' } });
   });
 });
@@ -697,7 +754,7 @@ describe('dashboard mock — unidades y códigos de error', () => {
       [{ ...RANGE, from: '2026-10-13', to: '2026-10-01' }, 'INVALID_RANGE'],
       [{ ...RANGE, from: 'no-es-fecha' }, 'INVALID_RANGE'],
       [{ ...RANGE, tolerance: 0.9 }, 'INVALID_TOLERANCE'],
-      [{ ...RANGE, kinds: ['jogging'] }, 'INVALID_RANGE'],
+      [{ ...RANGE, kind: 'jogging' }, 'INVALID_RANGE'],
     ];
     for (const [extra, code] of cases) {
       await expect(summary(extra)).rejects.toMatchObject({ status: 400, data: { code } });

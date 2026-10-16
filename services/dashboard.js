@@ -32,10 +32,18 @@ import {
 //   saber pintar (spec, estado de validación).
 // - Las fechas viajan en ISO 'YYYY-MM-DD'. Los callers pueden pasar 'DD/MM/YYYY'
 //   (lo que emite DateField) y se normalizan acá, en el borde de la request.
-// - `kinds[]` y `exercise_ids[]` son 1:N y excluyentes con `exercise_id`. El
-//   backend los lee con c.QueryArray, que solo entiende el parámetro REPETIDO:
-//   el swagger los anota collectionFormat csv, pero mandarlos "a,b" llega como
-//   un único string "a,b" y no matchea nada (gin no separa comas en QueryArray).
+// - `exercise_ids[]` es 1:N y exclusivo con `exercise_id`. El backend lo lee con
+//   c.QueryArray, que solo entiende el parámetro REPETIDO: el swagger lo anota
+//   collectionFormat csv, pero mandarlo "3,5" llega como un único string "3,5" y
+//   no matchea nada (gin no separa comas en QueryArray).
+// - El filtro de TIPO viaja como `kind` ESCALAR, no como el `kinds[]` que había
+//   antes: la UI es de selección única con una opción "todos", y el "todos" es la
+//   AUSENCIA del parámetro. Como `kind` y `exercise_id` son excluyentes entre sí
+//   (resolveExerciseFilter), la pantalla manda solo el que corresponda — con un
+//   ejercicio elegido manda el ejercicio y el tipo viaja solo en la UI.
+// - Los cuatro de rango viajan en la unidad del CONTRATO —metros enteros y
+//   minutos enteros—, que es la que arma `utils/dashboard-range.js` al resolver
+//   lo que la persona escribió. El front nunca muestra metros: muestra km.
 // - La tolerancia se manda siempre explícita: `tolerance_applied` de la respuesta
 //   es lo que el tooltip del KPI muestra, y sin mandarla sería un default
 //   invisible del backend.
@@ -89,11 +97,45 @@ function normalizeMetricsFilters(filters = {}) {
     groupId: isBlank(filters.groupId) ? null : toId(filters.groupId),
     exerciseId: isBlank(filters.exerciseId) ? null : toId(filters.exerciseId),
     exerciseIds: toIdList(filters.exerciseIds),
-    kinds: (filters.kinds ?? []).filter((kind) => !isBlank(kind)),
+    kind: isBlank(filters.kind) ? null : filters.kind,
+    distanceFromM: wholeNumberOrNull(filters.distanceFromM),
+    distanceToM: wholeNumberOrNull(filters.distanceToM),
+    timeFromMin: wholeNumberOrNull(filters.timeFromMin),
+    timeToMin: wholeNumberOrNull(filters.timeToMin),
     from: toISODate(filters.from),
     to: toISODate(filters.to),
     tolerance: resolveTolerance(filters.tolerance),
   };
+}
+
+// El contrato declara los cuatro de rango como enteros no negativos. La
+// pantalla ya no deja pasar nada que no lo sea (utils/dashboard-range.js), así
+// que esto es la red de seguridad para que un valor raro no salga del front como
+// un `?distance_from_m=NaN`.
+function wholeNumberOrNull(value) {
+  if (isBlank(value)) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+// Los cuatro de rango, con el nombre del contrato. Un valor ausente no se manda:
+// sin ellos el filtro no está puesto.
+function appendRangeParams(params, { distanceFromM, distanceToM, timeFromMin, timeToMin }) {
+  if (distanceFromM !== null) params.set('distance_from_m', distanceFromM);
+  if (distanceToM !== null) params.set('distance_to_m', distanceToM);
+  if (timeFromMin !== null) params.set('time_from_min', timeFromMin);
+  if (timeToMin !== null) params.set('time_to_min', timeToMin);
+  return params;
+}
+
+// Los dos POST llevan los mismos cuatro de rango que los GET, con el mismo
+// nombre del contrato. Es el mismo `appendRangeParams` con otro destino.
+function appendRangeBody(body, scope) {
+  const params = appendRangeParams(new URLSearchParams(), scope);
+  params.forEach((value, key) => {
+    body[key] = Number(value);
+  });
+  return body;
 }
 
 function appendMetricsFilters(params, filters) {
@@ -101,11 +143,11 @@ function appendMetricsFilters(params, filters) {
   if (filters.groupId !== null) params.set('group_id', filters.groupId);
   if (filters.exerciseId !== null) params.set('exercise_id', filters.exerciseId);
   filters.exerciseIds.forEach((id) => params.append('exercise_ids', id));
-  filters.kinds.forEach((kind) => params.append('kinds', kind));
+  if (filters.kind !== null) params.set('kind', filters.kind);
   if (filters.from) params.set('from', filters.from);
   if (filters.to) params.set('to', filters.to);
   params.set('tolerance', filters.tolerance);
-  return params;
+  return appendRangeParams(params, filters);
 }
 
 function queryString(params) {
@@ -123,7 +165,7 @@ export async function getDashboardFilters({ teamId } = {}) {
   return await api.get(`/dashboard/filters?${params.toString()}`);
 }
 
-// GET /api/v1/dashboard/metrics/summary?team_id&group_id&exercise_id&exercise_ids&kinds&from&to&tolerance
+// GET /api/v1/dashboard/metrics/summary?team_id&group_id&exercise_id&exercise_ids&kind&distance_from_m&distance_to_m&time_from_min&time_to_min&from&to&tolerance
 // KPIs del período. `compliance_rate` es porcentaje 0-100 y `delta_pct` va con
 // signo positivo hacia la mejora, incluso en el eje temporal.
 export async function getDashboardSummary(filters = {}) {
@@ -197,10 +239,11 @@ export async function postDashboardComparisons({ athleteUserIds, ...filters } = 
   if (scope.groupId !== null) body.group_id = scope.groupId;
   if (scope.exerciseId !== null) body.exercise_id = scope.exerciseId;
   if (scope.exerciseIds.length) body.exercise_ids = scope.exerciseIds;
-  if (scope.kinds.length) body.kinds = scope.kinds;
+  if (scope.kind !== null) body.kind = scope.kind;
   if (scope.from) body.from = scope.from;
   if (scope.to) body.to = scope.to;
   if (ids.length) body.athlete_user_ids = ids;
+  appendRangeBody(body, scope);
   return await api.post('/dashboard/comparisons', body);
 }
 
@@ -221,6 +264,7 @@ export async function postDashboardPeriods({ current, previous, ...filters } = {
   if (scope.groupId !== null) body.group_id = scope.groupId;
   if (scope.exerciseId !== null) body.exercise_id = scope.exerciseId;
   if (scope.exerciseIds.length) body.exercise_ids = scope.exerciseIds;
-  if (scope.kinds.length) body.kinds = scope.kinds;
+  if (scope.kind !== null) body.kind = scope.kind;
+  appendRangeBody(body, scope);
   return await api.post('/dashboard/comparisons/periods', body);
 }

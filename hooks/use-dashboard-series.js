@@ -16,6 +16,10 @@ import { DASHBOARD_KEYS, dashboardRetry } from './use-dashboard-query.js';
 export function useDashboardSeries({
   exerciseId,
   groupId,
+  distanceFromM,
+  distanceToM,
+  timeFromMin,
+  timeToMin,
   from,
   to,
   tolerance = DEFAULT_TOLERANCE,
@@ -23,7 +27,7 @@ export function useDashboardSeries({
   enabled = true,
 } = {}) {
   const activeRole = useAuthStore((state) => state.activeRole);
-  const scope = { exerciseId, groupId, from, to, tolerance };
+  const scope = { exerciseId, groupId, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
   const paging = { pageSize };
 
   const query = useInfiniteQuery({

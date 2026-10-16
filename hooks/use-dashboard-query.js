@@ -37,13 +37,21 @@ function listPart(values) {
   return (values ?? []).map(keyPart).join(',');
 }
 
+// Los cuatro de rango van en la clave junto con el resto del scope, y no es un
+// detalle: sin ellos, cambiar de "5 a 10 km" a "5 a 20 km" devuelve la respuesta
+// cacheada de la otra combinación de filtros — que es justo lo que el usuario
+// está mirando mientras escribe.
 export function dashboardScopeKey(scope = {}) {
   return [
     keyPart(scope.teamId),
     keyPart(scope.groupId),
     keyPart(scope.exerciseId),
     listPart(scope.exerciseIds),
-    listPart(scope.kinds),
+    keyPart(scope.kind),
+    keyPart(scope.distanceFromM),
+    keyPart(scope.distanceToM),
+    keyPart(scope.timeFromMin),
+    keyPart(scope.timeToMin),
     keyPart(scope.from),
     keyPart(scope.to),
     keyPart(scope.tolerance),

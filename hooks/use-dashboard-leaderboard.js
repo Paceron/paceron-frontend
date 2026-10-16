@@ -21,7 +21,11 @@ export function useDashboardLeaderboard({
   groupId,
   exerciseId,
   exerciseIds,
-  kinds,
+  kind,
+  distanceFromM,
+  distanceToM,
+  timeFromMin,
+  timeToMin,
   from,
   to,
   tolerance = DEFAULT_TOLERANCE,
@@ -31,7 +35,7 @@ export function useDashboardLeaderboard({
   enabled = true,
 } = {}) {
   const activeRole = useAuthStore((state) => state.activeRole);
-  const scope = { teamId, groupId, exerciseId, exerciseIds, kinds, from, to, tolerance };
+  const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
   const paging = { sort, order, pageSize };
 
   const query = useInfiniteQuery({

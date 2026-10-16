@@ -18,12 +18,13 @@ import {
 import { resolveDashboardError } from '../../utils/dashboard-error-codes.js';
 import { DEFAULT_TOLERANCE, formatKind } from '../../utils/dashboard-format.js';
 import { fromISODate } from '../../utils/date-field-format.js';
+import { exercisesForKind, reconcileExercise } from '../../utils/dashboard-filter-cascade.js';
+import { resolveDashboardRange } from '../../utils/dashboard-range.js';
 import { PALETTE_CASES, describePalette } from '../../utils/dashboard-palette.js';
 import { ChartCard } from './charts/chart-surface.jsx';
 import { RadarChart } from './charts/radar-chart.jsx';
 import { ComparisonStrip } from './comparison-strip.jsx';
 import { FiltersBar } from './filters-bar.jsx';
-import { KindFilter, ALL_KINDS } from './kind-filter.jsx';
 import { LeaderboardTable } from './leaderboard-table.jsx';
 import { PaletteSwitch } from './palette-switch.jsx';
 import { QualityBanner } from './quality-banner.jsx';
@@ -47,7 +48,7 @@ import { StateSkeleton } from './state-skeleton.jsx';
 // `/comparisons` para quien no es dueño del equipo, así que la regla no queda
 // solo en la UI.
 //
-// El contenedor y el filtro de tipo están FUERA de la región que conmuta de
+// El contenedor y la barra de filtros están FUERA de la región que conmuta de
 // paleta: cambiar a un ejercicio sin objetivo reemplaza el conjunto de gráficos
 // sin remontar la pantalla ni perder el scroll (design.md D3).
 const GRANULARITY_LABELS = {
@@ -65,7 +66,11 @@ export function DashboardScreen({ teamId }) {
   const [groupId, setGroupId] = useState('');
   const [athleteUserId, setAthleteUserId] = useState('');
   const [exerciseId, setExerciseId] = useState('');
-  const [kind, setKind] = useState(ALL_KINDS);
+  const [kind, setKind] = useState('');
+  const [distanceFrom, setDistanceFrom] = useState('');
+  const [distanceTo, setDistanceTo] = useState('');
+  const [timeFrom, setTimeFrom] = useState('');
+  const [timeTo, setTimeTo] = useState('');
   const [granularity, setGranularity] = useState(DASHBOARD_GRANULARITIES[0]);
   const [sort, setSort] = useState(DASHBOARD_LEADERBOARD_SORTS[0]);
   const [order, setOrder] = useState(DASHBOARD_ORDERS[0]);
@@ -78,6 +83,7 @@ export function DashboardScreen({ teamId }) {
 
   const filtersQuery = useDashboardFilters({ teamId });
   const filtersData = filtersQuery.data;
+  const exercises = useMemo(() => filtersData?.exercises ?? [], [filtersData]);
 
   useEffect(() => {
     if (rangeSeeded.current) return;
@@ -88,17 +94,45 @@ export function DashboardScreen({ teamId }) {
     setTo(fromISODate(range.max));
   }, [filtersData]);
 
+  // Los rangos se escriben en km y minutos, que es lo que se muestra; lo que
+  // viaja al request queda en metros y minutos enteros. Un valor escrito a mano
+  // que no se puede interpretar, o un rango invertido, NO se aplica: el error
+  // va en el campo y el backend nunca llega a responder 400 (spec, rangos).
+  const appliedRange = useMemo(
+    () => resolveDashboardRange({ distanceFrom, distanceTo, timeFrom, timeTo }),
+    [distanceFrom, distanceTo, timeFrom, timeTo],
+  );
+
+  const exerciseOptions = useMemo(() => exercisesForKind(exercises, kind), [exercises, kind]);
+
+  const changeKind = useCallback((nextKind) => {
+    const value = nextKind ?? '';
+    setKind(value);
+    // El ejercicio se deselecciona si deja de estar en la lista del tipo nuevo:
+    // dejarlo puesto es un estado imposible visible (un filtro de distancia de
+    // un tipo con un ejercicio del otro arriba). El id viaja como lo dejó la
+    // lista de `/dashboard/filters`, no como el string del select.
+    setExerciseId(reconcileExercise(exercises, value, exerciseId) ?? '');
+  }, [exercises, exerciseId]);
+
   const scope = useMemo(
     () => ({
       teamId,
       groupId: groupId || null,
       exerciseId: exerciseId || null,
-      kinds: kind === ALL_KINDS ? [] : [kind],
+      // `kind` y `exercise_id` son excluyentes en el backend
+      // (resolveExerciseFilter): con un ejercicio elegido, el tipo ya viene
+      // implícito en él y mandarlo sería un 400.
+      kind: exerciseId ? null : kind || null,
+      distanceFromM: appliedRange.distanceFromM,
+      distanceToM: appliedRange.distanceToM,
+      timeFromMin: appliedRange.timeFromMin,
+      timeToMin: appliedRange.timeToMin,
       from,
       to,
       tolerance: DEFAULT_TOLERANCE,
     }),
-    [teamId, groupId, exerciseId, kind, from, to],
+    [teamId, groupId, exerciseId, kind, appliedRange, from, to],
   );
 
   // `from` es obligatorio en los cinco GET de métricas (MISSING_FROM es uno de los
@@ -113,8 +147,8 @@ export function DashboardScreen({ teamId }) {
   const timeseries = timeseriesQuery.data;
   const metricsLoading = hasRange && (summaryQuery.loading || timeseriesQuery.loading);
   const metricsError = summaryQuery.failed ? summaryQuery.error : timeseriesQuery.failed ? timeseriesQuery.error : null;
-  const selectedExercise = (filtersData?.exercises ?? []).find((exercise) => String(exercise.id) === String(exerciseId));
-  const effectiveKind = kind === ALL_KINDS ? selectedExercise?.kind : kind;
+  const selectedExercise = exercises.find((exercise) => String(exercise.id) === String(exerciseId));
+  const effectiveKind = kind || selectedExercise?.kind || null;
 
   const widenRange = useCallback(() => {
     const range = filtersData?.date_range;
@@ -128,7 +162,11 @@ export function DashboardScreen({ teamId }) {
     setGroupId('');
     setAthleteUserId('');
     setExerciseId('');
-    setKind(ALL_KINDS);
+    setKind('');
+    setDistanceFrom('');
+    setDistanceTo('');
+    setTimeFrom('');
+    setTimeTo('');
     widenRange();
   }, [widenRange]);
 
@@ -183,35 +221,29 @@ export function DashboardScreen({ teamId }) {
           <View nativeID="dashboard-content" testID="dashboard-content">
             <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
 
-            <KindFilter
-              onChange={(next) => {
-                setKind(next);
-                // kinds[] y exercise_id son EXCLUYENTES en el backend
-                // (resolveExerciseFilter): elegir un tipo limpia el ejercicio
-                // elegido, y al revés, si no la request se rechaza con un 400
-                // que la pantalla no puede resolver.
-                setExerciseId('');
-              }}
-              value={kind}
-            />
-
             <FiltersBar
               athleteUserId={athleteUserId}
               athletes={filtersData?.athletes ?? []}
+              distanceFrom={distanceFrom}
+              distanceTo={distanceTo}
               exerciseId={exerciseId}
-              exercises={filtersData?.exercises ?? []}
+              exercises={exerciseOptions}
               from={from}
               groupId={groupId}
               groups={filtersData?.groups ?? []}
+              kind={kind}
               loading={filtersQuery.loading}
               onChangeAthlete={setAthleteUserId}
-              onChangeExercise={(value) => {
-                setExerciseId(value ?? '');
-                setKind(ALL_KINDS);
-              }}
+              onChangeDistanceFrom={setDistanceFrom}
+              onChangeDistanceTo={setDistanceTo}
+              onChangeExercise={(value) => setExerciseId(value ?? '')}
               onChangeFrom={setFrom}
               onChangeGroup={(value) => setGroupId(value ?? '')}
+              onChangeKind={changeKind}
+              onChangeTimeFrom={setTimeFrom}
+              onChangeTimeTo={setTimeTo}
               onChangeTo={setTo}
+              rangeErrors={appliedRange.errors}
               scope={describeScope(filtersData, selectedExercise, kind)}
               showAthlete={isTrainer}
               to={to}
@@ -341,7 +373,7 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
 
 function describeScope(filtersData, selectedExercise, kind) {
   const parts = [];
-  if (kind !== ALL_KINDS) parts.push(formatKind(kind));
+  if (kind) parts.push(formatKind(kind));
   if (selectedExercise) parts.push(selectedExercise.name);
   if (!parts.length) parts.push('Todo el equipo');
   return parts.join(' · ');

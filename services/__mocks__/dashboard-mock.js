@@ -47,6 +47,12 @@ const UNITS = {
 // Mismos cinco valores y en el mismo orden que constants.CurrentExerciseKinds().
 const CURRENT_KINDS = ['liviano', 'elongacion', 'ritmo_continuo', 'velocidad_tiempo', 'velocidad_distancia'];
 
+// Los únicos tres que se aceptan como filtro de tipo (spec dashboard-analytics:
+// "Los tres tipos con métrica"). `liviano` y `elongacion` siguen siendo tipos
+// válidos del modelo, pero como filtro devolverían siempre vacío: sus series son
+// warmup/cooldown y el backend filtra por role = 'main'.
+const METRIC_KINDS = ['ritmo_continuo', 'velocidad_distancia', 'velocidad_tiempo'];
+
 const TREND_MIN_SERIES = 3;
 const TREND_THRESHOLD_PCT = 3;
 const PERIODS_THRESHOLD_PP = 2;
@@ -465,21 +471,23 @@ function resolveRange(from, to) {
   return { fromMs, toMs };
 }
 
-// `exercise_id`, `exercise_ids[]` y `kinds[]` son excluyentes entre sí
-// (resolveExerciseFilter).
+// `exercise_id`, `exercise_ids[]` y `kind` son excluyentes entre sí
+// (resolveExerciseFilter). `kind` es ESCALAR: el filtro de tipo del front es de
+// selección única y el "todos" viaja como ausencia del parámetro.
 function resolveExerciseFilter(filters) {
-  const kinds = filters.kinds ?? [];
+  const kind = filters.kind ?? null;
   const exerciseIds = filters.exerciseIds ?? [];
-  const selected = [filters.exerciseId, exerciseIds, kinds].filter(
+  const selected = [filters.exerciseId, exerciseIds, kind].filter(
     (value) => value !== null && value !== undefined && !(Array.isArray(value) && value.length === 0),
   ).length;
   if (selected > 1) {
-    throw paramError('INVALID_RANGE', 'exercise_id, exercise_ids y kinds son excluyentes: mandá solo uno');
+    throw paramError('INVALID_RANGE', 'exercise_id, exercise_ids y kind son excluyentes: mandá solo uno');
   }
-  if (kinds.length) {
-    const unknown = kinds.filter((kind) => !CURRENT_KINDS.includes(kind));
-    if (unknown.length) throw paramError('INVALID_RANGE', `kind "${unknown[0]}" no es un tipo vigente`);
-    return EXERCISES.filter((exercise) => kinds.includes(exercise.kind)).map((exercise) => exercise.id);
+  if (kind) {
+    if (!METRIC_KINDS.includes(kind)) {
+      throw paramError('INVALID_RANGE', `kind "${kind}" no es uno de los tres tipos con métrica`);
+    }
+    return EXERCISES.filter((exercise) => exercise.kind === kind).map((exercise) => exercise.id);
   }
   const ids = filters.exerciseId !== null && filters.exerciseId !== undefined ? [filters.exerciseId] : exerciseIds;
   if (!ids.length) return null;
@@ -490,15 +498,67 @@ function resolveExerciseFilter(filters) {
   return resolved.map((exercise) => exercise.id);
 }
 
+// Los cuatro filtros de rango, en la unidad del contrato: metros enteros y
+// minutos enteros. Un decimal, un negativo o un rango invertido son 400 acá
+// también — la pantalla los avisa antes de mandar, pero el mock es donde se
+// verifica que el backend los rechazaría.
+function resolveRangeBounds(filters) {
+  const bound = (value, name) => {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0) {
+      throw paramError('INVALID_RANGE', `${name} debe ser un entero igual o mayor a cero`);
+    }
+    return n;
+  };
+  const bounds = {
+    distanceFromM: bound(filters.distanceFromM, 'distance_from_m'),
+    distanceToM: bound(filters.distanceToM, 'distance_to_m'),
+    timeFromMin: bound(filters.timeFromMin, 'time_from_min'),
+    timeToMin: bound(filters.timeToMin, 'time_to_min'),
+  };
+  if (bounds.distanceFromM !== null && bounds.distanceToM !== null && bounds.distanceFromM > bounds.distanceToM) {
+    throw paramError('INVALID_RANGE', 'distance_from_m no puede ser mayor que distance_to_m');
+  }
+  if (bounds.timeFromMin !== null && bounds.timeToMin !== null && bounds.timeFromMin > bounds.timeToMin) {
+    throw paramError('INVALID_RANGE', 'time_from_min no puede ser mayor que time_to_min');
+  }
+  return bounds;
+}
+
+function inDistanceBounds(row, { distanceFromM, distanceToM }) {
+  if (distanceFromM === null && distanceToM === null) return true;
+  const meters = row.distance_meters;
+  if (meters === null || meters === undefined) return false;
+  if (distanceFromM !== null && meters < distanceFromM) return false;
+  if (distanceToM !== null && meters > distanceToM) return false;
+  return true;
+}
+
+// El tiempo se compara sobre el TIEMPO LOGRADO (`achievedTimeMs`, el COALESCE de
+// active y duration), que es la misma magnitud que usan los KPIs: filtrar por
+// `duration_ms` en crudo dejaría fuera series que sí cuentan.
+function inTimeBounds(row, { timeFromMin, timeToMin }) {
+  if (timeFromMin === null && timeToMin === null) return true;
+  const ms = achievedTimeMs(row);
+  if (!ms) return false;
+  const minutes = ms / 60_000;
+  if (timeFromMin !== null && minutes < timeFromMin) return false;
+  if (timeToMin !== null && minutes > timeToMin) return false;
+  return true;
+}
+
 // ---------- filtros de filas ----------
 
 // Recorta el set de series al scope. Es el equivalente del WHERE del DAO: solo
 // sesiones cerradas, del equipo/grupo pedido, dentro del rango y — si quien
-// llama es un corredor — solo las suyas.
-function selectSeries({ teamId, groupId, fromMs, toMs, athleteIds, exerciseIds }) {
+// llama es un corredor — solo las suyas. El rango de distancia y tiempo se
+// aplica AQUÍ, no después de traer la serie.
+function selectSeries({ teamId, groupId, fromMs, toMs, athleteIds, exerciseIds, bounds }) {
   const sessionById = new Map(mockSessions.map((session) => [session.id, session]));
   const wanted = athleteIds ? new Set(athleteIds.map(Number)) : null;
   const wantedExercises = exerciseIds && exerciseIds.length ? new Set(exerciseIds.map(Number)) : null;
+  const { distanceFromM = null, distanceToM = null, timeFromMin = null, timeToMin = null } = bounds ?? {};
   return mockSeries.filter((row) => {
     const session = sessionById.get(row.session_instance_id);
     if (!session || session.status === 'wip') return false;
@@ -509,6 +569,8 @@ function selectSeries({ teamId, groupId, fromMs, toMs, athleteIds, exerciseIds }
     if (dateMs < fromMs || dateMs > toMs) return false;
     if (wanted && !wanted.has(row.athlete_user_id)) return false;
     if (wantedExercises && !wantedExercises.has(row.exercise_id)) return false;
+    if (!inDistanceBounds(row, { distanceFromM, distanceToM })) return false;
+    if (!inTimeBounds(row, { timeFromMin, timeToMin })) return false;
     return true;
   });
 }
@@ -1307,6 +1369,7 @@ function metricsScope(filters) {
   const tolerance = resolveToleranceParam(filters.tolerance);
   const range = resolveRange(filters.from, filters.to);
   const exerciseIds = resolveExerciseFilter(filters);
+  const bounds = resolveRangeBounds(filters);
   const scope = {
     teamId: filters.teamId,
     groupId: filters.groupId,
@@ -1316,7 +1379,7 @@ function metricsScope(filters) {
   return {
     tolerance,
     range,
-    rows: selectSeries({ ...scope, athleteIds: athleteIdsFor(filters), exerciseIds }),
+    rows: selectSeries({ ...scope, athleteIds: athleteIdsFor(filters), exerciseIds, bounds }),
     openSessions: countOpenSessions(scope),
   };
 }
@@ -1340,10 +1403,11 @@ export async function mockGetDashboardLeaderboard(filters = {}) {
   const order = resolveOrder(filters.order);
   const { page, pageSize } = resolvePaging(filters.page, filters.pageSize);
   const exerciseIds = resolveExerciseFilter(filters);
+  const bounds = resolveRangeBounds(filters);
   const scope = { teamId: filters.teamId, groupId: filters.groupId, fromMs: range.fromMs, toMs: range.toMs };
   // El ranking es siempre de todo el equipo, nunca de un recorte por corredor:
   // el DAO no recibe athlete_user_ids en este endpoint.
-  const rows = selectSeries({ ...scope, athleteIds: null, exerciseIds });
+  const rows = selectSeries({ ...scope, athleteIds: null, exerciseIds, bounds });
   return buildLeaderboard(
     rows,
     { sort, order, page, pageSize, callerUserId: filters.callerUserId },
@@ -1369,6 +1433,7 @@ export async function mockGetDashboardExerciseSeries(filters = {}) {
     fromMs: range.fromMs,
     toMs: range.toMs,
     athleteIds: athleteIdsFor(filters),
+    bounds: resolveRangeBounds(filters),
   }).filter((row) => row.exercise_id === exerciseId);
   const quality = dataQualityOf(rows, countOpenSessions({
     teamId: filters.teamId,
@@ -1384,6 +1449,7 @@ export async function mockPostDashboardComparisons(filters = {}) {
   const tolerance = resolveToleranceParam(filters.tolerance);
   const range = resolveRange(filters.from, filters.to);
   const exerciseIds = resolveExerciseFilter(filters);
+  const bounds = resolveRangeBounds(filters);
 
   // Cada athlete_user_id se valida por separado: uno fuera de scope responde 403
   // nombrándolo, sin devolver los datos de los válidos.
@@ -1396,7 +1462,7 @@ export async function mockPostDashboardComparisons(filters = {}) {
   });
 
   const scope = { teamId: filters.teamId, groupId: filters.groupId, fromMs: range.fromMs, toMs: range.toMs };
-  const rows = selectSeries({ ...scope, athleteIds: requested.length ? requested.map(Number) : null, exerciseIds });
+  const rows = selectSeries({ ...scope, athleteIds: requested.length ? requested.map(Number) : null, exerciseIds, bounds });
   return buildComparisons(rows, tolerance, dataQualityOf(rows, countOpenSessions(scope)));
 }
 
@@ -1404,6 +1470,7 @@ export async function mockPostDashboardPeriods(filters = {}) {
   requireOwnership(filters.teamId, filters.callerUserId);
   const tolerance = resolveToleranceParam(filters.tolerance);
   const exerciseIds = resolveExerciseFilter(filters);
+  const bounds = resolveRangeBounds(filters);
 
   const current = resolveRange(filters.current?.from, filters.current?.to);
   // Sin `previous`, el backend lo deriva desplazando `current` hacia atrás
@@ -1419,6 +1486,7 @@ export async function mockPostDashboardPeriods(filters = {}) {
     toMs: range.toMs,
     athleteIds: null,
     exerciseIds,
+    bounds,
   });
   const currentRows = select(current);
   const previousRows = select(previous);
