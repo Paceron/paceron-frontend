@@ -10,6 +10,7 @@ import { BoxPlot } from './charts/box-plot.jsx';
 import { BulletChart } from './charts/bullet-chart.jsx';
 import { Gauge } from './charts/gauge.jsx';
 import { LineChart } from './charts/line-chart.jsx';
+import { GranularitySelect } from './granularity-select.jsx';
 import { StackedBarChart } from './charts/stacked-bar.jsx';
 import { KpiTile } from './kpi-tile.jsx';
 import { KpiTooltip } from './kpi-tooltip.jsx';
@@ -31,6 +32,8 @@ export function PaletteWithTarget({
   pacePieces = true,
   comparisons = null,
   seriesSamples = null,
+  granularity,
+  onGranularityChange,
 }) {
   const colors = useThemeColors();
   const palette = describePalette(summary, kind);
@@ -153,6 +156,9 @@ export function PaletteWithTarget({
       </ChartCard>
 
       <ChartCard
+        action={onGranularityChange ? (
+          <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
+        ) : null}
         id={`${id}-evolution-card`}
         icon="chart-line"
         subtitle={pacePieces ? 'Línea continua: ritmo logrado. Línea punteada: velocidad esperada.' : undefined}

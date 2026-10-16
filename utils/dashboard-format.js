@@ -195,3 +195,13 @@ export function resolveTolerance(value) {
   if (n < TOLERANCE_MIN || n > TOLERANCE_MAX) return DEFAULT_TOLERANCE;
   return n;
 }
+
+// Labels de la granularidad de la línea de evolución. Viven acá y no en la
+// pantalla porque los consume el control que va montado en el ChartCard, que es
+// un componente aparte.
+export const GRANULARITY_LABELS = {
+  session: 'Por sesión',
+  week: 'Por semana',
+  month: 'Por mes',
+  quarter: 'Por trimestre',
+};

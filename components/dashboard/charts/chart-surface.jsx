@@ -39,7 +39,10 @@ export function ChartSurface({ id, height, label, children }) {
 
 // Card con título que envuelve cada gráfico. El ícono acompaña al título, no lo
 // reemplaza: mismo criterio que en el resto de la app.
-export function ChartCard({ id, title, icon = 'chart-line', subtitle, legend, children }) {
+// `action` es el slot para un control que reconfigura ESTE gráfico — por ejemplo
+// la granularidad de la línea de evolución. Va en el header y no en la barra de
+// filtros porque no selecciona datos: cambia cómo se agrupan los que ya están.
+export function ChartCard({ id, title, icon = 'chart-line', subtitle, legend, action, children }) {
   const colors = useThemeColors();
 
   return (
@@ -49,6 +52,7 @@ export function ChartCard({ id, title, icon = 'chart-line', subtitle, legend, ch
         <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" nativeID={`${id}-title`} testID={`${id}-title`}>
           {title}
         </Text>
+        {action ? <View nativeID={`${id}-action`} testID={`${id}-action`}>{action}</View> : null}
       </View>
       {subtitle ? (
         <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} testID={`${id}-subtitle`}>

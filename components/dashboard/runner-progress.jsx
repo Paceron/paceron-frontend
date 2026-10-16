@@ -17,13 +17,15 @@ import { PALETTE_CASES, describePalette } from '../../utils/dashboard-palette.js
 // El radar se muestra acá y no en la pantalla porque su condición (paleta A) es
 // distinta de la del rol: se pinta también en A reducido, donde el eje de Ritmo
 // queda fuera del polígono por `target_speed_kph: null` en vez de inventarse.
-export function RunnerProgress({ id = 'dashboard-runner', summary, timeseries, kind, seriesSamples = null }) {
+export function RunnerProgress({ id = 'dashboard-runner', summary, timeseries, kind, seriesSamples = null, granularity, onGranularityChange }) {
   const palette = describePalette(summary, kind);
   const showRadar = palette.case !== PALETTE_CASES.withoutTarget;
 
   return (
     <View nativeID={id} testID={id}>
       <PaletteSwitch
+        granularity={granularity}
+        onGranularityChange={onGranularityChange}
         id={`${id}-palette`}
         kind={kind}
         seriesSamples={seriesSamples}

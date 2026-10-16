@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useDashboardComparisons, useDashboardPeriodComparison } from '../../hooks/use-dashboard-comparisons.js';
 import { useDashboardFilters } from '../../hooks/use-dashboard-filters.js';
@@ -49,15 +48,6 @@ import { StateSkeleton } from './state-skeleton.jsx';
 // solo en la UI.
 //
 // El contenedor y la barra de filtros están FUERA de la región que conmuta de
-// paleta: cambiar a un ejercicio sin objetivo reemplaza el conjunto de gráficos
-// sin remontar la pantalla ni perder el scroll (design.md D3).
-const GRANULARITY_LABELS = {
-  session: 'Por sesión',
-  week: 'Por semana',
-  month: 'Por mes',
-  quarter: 'Por trimestre',
-};
-
 export function DashboardScreen({ teamId }) {
   const isNarrow = useIsNarrowWeb();
   const activeRole = useAuthStore((state) => state.activeRole);
@@ -193,15 +183,6 @@ export function DashboardScreen({ teamId }) {
           <Text className="flex-1 text-lg font-bold text-slate-900 dark:text-white" nativeID="dashboard-screen-title" testID="dashboard-screen-title">
             Rendimiento
           </Text>
-          <ResponsiveSelectField
-            dense
-            hideLabel
-            idPrefix="dashboard-granularity"
-            label="Granularidad"
-            onChange={setGranularity}
-            options={DASHBOARD_GRANULARITIES.map((value) => ({ id: value, name: GRANULARITY_LABELS[value] ?? value }))}
-            value={granularity}
-          />
         </View>
 
         <ScreenBody
@@ -252,7 +233,9 @@ export function DashboardScreen({ teamId }) {
             {isTrainer ? (
               <TrainerDashboard
                 from={from}
+                granularity={granularity}
                 kind={effectiveKind}
+                onGranularityChange={setGranularity}
                 order={order}
                 scope={scope}
                 sort={sort}
@@ -262,7 +245,13 @@ export function DashboardScreen({ teamId }) {
                 toggleSort={toggleSort}
               />
             ) : (
-              <RunnerProgress kind={effectiveKind} summary={summary} timeseries={timeseries} />
+              <RunnerProgress
+                granularity={granularity}
+                kind={effectiveKind}
+                onGranularityChange={setGranularity}
+                summary={summary}
+                timeseries={timeseries}
+              />
             )}
           </View>
         ) : null}
@@ -324,7 +313,7 @@ function DashboardErrorState({ error, onRetry, onResetFilters }) {
 // Variante del ENTRENADOR: KPIs, evolución, radar, ranking y comparaciones. Los
 // hooks de leaderboard y comparisons viven acá, así que para un corredor no se
 // llaman ni se montan.
-function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, order, toggleSort }) {
+function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, order, toggleSort, granularity, onGranularityChange }) {
   const leaderboard = useDashboardLeaderboard({ ...scope, sort, order });
   const comparisons = useDashboardComparisons({ ...scope });
   const periods = useDashboardPeriodComparison({ ...scope, current: { from, to } });
@@ -336,8 +325,10 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
     <View nativeID="dashboard-trainer" testID="dashboard-trainer">
       <PaletteSwitch
         comparisons={comparisons.series}
+        granularity={granularity}
         id="dashboard-trainer-palette"
         kind={kind}
+        onGranularityChange={onGranularityChange}
         summary={summary}
         timeseries={timeseries}
       />

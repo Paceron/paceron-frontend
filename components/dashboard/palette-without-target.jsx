@@ -5,6 +5,7 @@ import { ChartCard } from './charts/chart-surface.jsx';
 import { BarChart } from './charts/bar-chart.jsx';
 import { DotPlot } from './charts/dot-plot.jsx';
 import { LineChart } from './charts/line-chart.jsx';
+import { GranularitySelect } from './granularity-select.jsx';
 import { KpiTile } from './kpi-tile.jsx';
 
 // Paleta B: NO hay objetivo cargado. El mejor tiempo es el número grande, y
@@ -15,7 +16,7 @@ import { KpiTile } from './kpi-tile.jsx';
 // El `has_target: false` puede venir de un tipo sin objetivo, de una fila previa
 // a la migración de tipos o de un ejercicio que el entrenador dejó incompleto, y
 // la decisión se toma por el dato, no por el tipo.
-export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = null, comparisons = null }) {
+export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = null, comparisons = null, granularity, onGranularityChange }) {
   const palette = describePalette(summary);
   const rankingMetric = resolveRankingMetric(palette.case);
   const rankingItems = comparisons ? toRankingItems(comparisons, rankingMetric) : null;
@@ -56,6 +57,9 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
 
       <ChartCard
         id={`${id}-evolution-card`}
+        action={onGranularityChange ? (
+          <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
+        ) : null}
         icon="chart-line"
         subtitle="Sin objetivo no hay línea de referencia: se muestra la mejor marca de cada período."
         title="Evolución de la mejor marca"
