@@ -7,6 +7,7 @@ import { DotPlot } from './charts/dot-plot.jsx';
 import { LineChart } from './charts/line-chart.jsx';
 import { GranularitySelect } from './granularity-select.jsx';
 import { KpiTile } from './kpi-tile.jsx';
+import { KpiTooltip } from './kpi-tooltip.jsx';
 
 // Paleta B: NO hay objetivo cargado. El mejor tiempo es el número grande, y
 // alrededor van la dispersión de las marcas y la evolución de la mejor marca.
@@ -28,46 +29,78 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
-      {/* Mismo héroe que la paleta con objetivo: una sola card con la cifra
-          grande. Sin velocímetro acá porque `target_speed_kph` es null en esta
-          paleta — no hay contra qué comparar — y meter el gauge en cero sería
-          inventar un objetivo. */}
+      {/* Las SEIS cifras, mismo tamaño, dos filas de tres — igual que la paleta
+          con objetivo. En esta paleta no hay velocidad esperada que mostrar, y
+          en su lugar aparece la diferencia contra el objetivo: sin objetivo no
+          hay contra qué comparar, así que el número que contesta "cuánto me
+          falta" es la brecha. */}
       <View
-        className="mb-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-surface"
-        nativeID={`${id}-headline-card`}
-        testID={`${id}-headline-card`}
-      >
-        <View nativeID={`${id}-headline`} testID={`${id}-headline`}>
-          <Text className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-label`} testID={`${id}-primary-label`}>
-            {primary.label}
-          </Text>
-          <Text className="text-4xl font-bold text-slate-900 dark:text-white" nativeID={`${id}-primary-value`} testID={`${id}-primary-value`}>
-            {hasMetric(primary.value) ? formatMetric(primary.value, primary.unit) : EMPTY_METRIC}
-          </Text>
-        </View>
-      </View>
-
-      {/* Fila de cifras, no cards: mismo criterio que la paleta con objetivo.
-          El `divide-x` hace de separador sin una línea por elemento. */}
-      <View
-        className="mb-4 flex-row divide-x divide-slate-200 dark:divide-slate-700"
+        className="-mx-1 -my-1 flex-row flex-wrap"
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
       >
         {[
-          { key: 'sessions', label: 'Entrenamientos', value: totals.sessions, icon: 'calendar-check-outline' },
-          { key: 'series', label: 'Series', value: totals.series, icon: 'format-list-numbered' },
-          { key: 'volume', label: 'Volumen', value: totals.distance_m, unit: units.distance, icon: 'map-marker-distance' },
-          { key: 'time', label: 'Tiempo total', value: totals.time_ms, unit: units.time, icon: 'timer-outline' },
+          {
+            key: 'best_time',
+            label: primary.label,
+            value: totals.best_time_ms,
+            unit: units.best_time,
+            icon: 'timer-outline',
+          },
+          {
+            key: 'volume',
+            label: 'Volumen',
+            value: totals.distance_m,
+            unit: units.distance,
+            icon: 'map-marker-distance',
+          },
+          {
+            key: 'sessions',
+            label: 'Entrenamientos',
+            value: totals.sessions,
+            icon: 'calendar-check-outline',
+          },
+          {
+            key: 'series',
+            label: 'Series',
+            value: totals.series,
+            icon: 'format-list-numbered',
+          },
+          {
+            key: 'total_time',
+            label: 'Tiempo total',
+            value: totals.time_ms,
+            unit: units.time,
+            icon: 'clock-outline',
+          },
+          {
+            key: 'no_target',
+            label: 'Distancia al objetivo',
+            // En esta paleta el objetivo no está cargado, así que no hay una
+            // "diferencia" calculable: se muestra el guion y el tooltip explica
+            // por qué. Un número inventado sería peor que un hueco honesto.
+            value: null,
+            icon: 'target',
+            hint: 'Este ejercicio no tiene objetivo cargado, así que no hay contra qué comparar.',
+          },
         ].map((kpi) => (
-          <KpiTile
-            icon={kpi.icon}
-            id={`${id}-kpi-${kpi.key}`}
-            key={kpi.key}
-            label={kpi.label}
-            unit={kpi.unit}
-            value={kpi.value}
-          />
+          <View className="w-1/3 p-1" key={kpi.key} nativeID={`${id}-kpi-cell-${kpi.key}`} testID={`${id}-kpi-cell-${kpi.key}`}>
+          <KpiTooltip
+            hint={kpi.hint}
+            id={`${id}-kpi-${kpi.key}-tooltip`}
+          >
+            {(hovered) => (
+              <KpiTile
+                hovered={hovered}
+                icon={kpi.icon}
+                id={`${id}-kpi-${kpi.key}`}
+                label={kpi.label}
+                unit={kpi.unit}
+                value={kpi.value}
+              />
+            )}
+          </KpiTooltip>
+          </View>
         ))}
       </View>
 

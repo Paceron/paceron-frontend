@@ -44,7 +44,12 @@ export function QualityBanner({ id = 'dashboard-quality', quality }) {
   if (!active.length && !insufficient && !isLegacyNote(quality)) return null;
 
   return (
-    <View className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20" nativeID={id} testID={id}>
+    // El `border-l-4` grueso es lo que separa el AVISO de las tarjetas de KPI:
+    // después de teñirlas de ámbar, las dos superficies comparten `bg-amber-50`
+    // y `border-amber-300`, y sin una marca distinta el aviso se lee como una
+    // cifra más. El borde izquierdo dice "mirá esto" sin gritar, y las KPI no lo
+    // tienen.
+    <View className="mb-4 rounded-2xl border border-l-4 border-amber-300 border-l-amber-600 bg-amber-50 p-4 dark:border-amber-900/50 dark:border-l-amber-400 dark:bg-amber-950/20" nativeID={id} testID={id}>
       <View className="mb-2 flex-row items-center gap-2" nativeID={`${id}-header`} testID={`${id}-header`}>
         <MaterialCommunityIcons color="#f59e0b" name="alert-outline" size={16} />
         <Text className="flex-1 text-sm font-bold text-amber-800 dark:text-amber-300" nativeID={`${id}-title`} testID={`${id}-title`}>

@@ -10,7 +10,6 @@ import { ChartCard } from './charts/chart-surface.jsx';
 import { BarChart } from './charts/bar-chart.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
 import { BulletChart } from './charts/bullet-chart.jsx';
-import { Gauge } from './charts/gauge.jsx';
 import { LineChart } from './charts/line-chart.jsx';
 import { GranularitySelect } from './granularity-select.jsx';
 import { StackedBarChart } from './charts/stacked-bar.jsx';
@@ -53,71 +52,49 @@ export function PaletteWithTarget({
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
-      {/* El héroe: cifra y velocímetro son LA MISMA frase — "10,7 contra un
-          objetivo de 11,1" — así que van en una sola card. Estaban partidos en
-          dos tratamientos (la cifra suelta, el gauge en card), que se leía como
-          dos ideas distintas.
+      {/* Las SEIS cifras de la pantalla, del mismo tamaño y en dos filas de tres.
+          Ritmo promedio y Velocidad esperada son dos tarjetas y no un velocímetro:
+          el gauge mostraba exactamente esos dos números en un dial, o sea que la
+          unificación de la cifra con el gauge terminó siendo redundante — el
+          velocímetro queda afuera y con él un widget entero.
 
-          Esta es la única pieza de la pantalla que se gasta la atención. El resto
-          se mantiene deliberadamente más quieto: si nueve widgets gritan a la
-          vez, nada tiene prioridad y el ojo no tiene por dónde entrar. */}
-      <View
-        className="mb-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-surface"
-        nativeID={`${id}-headline-card`}
-        testID={`${id}-headline-card`}
-      >
-        <KpiTooltip
-          formula={FORMULAS[primary.id]}
-          id={`${id}-primary-tooltip`}
-          seriesCount={summary?.series_count ?? null}
-          tolerance={summary?.tolerance_applied}
-          unit={primary.unit}
-          value={primary.value}
-        >
-          <View className="flex-row items-center gap-6" nativeID={`${id}-headline`} testID={`${id}-headline`}>
-            <View className="flex-1" nativeID={`${id}-primary`} testID={`${id}-primary`}>
-              <Text className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-label`} testID={`${id}-primary-label`}>
-                {primary.label}
-              </Text>
-              <Text className="text-4xl font-bold text-slate-900 dark:text-white" nativeID={`${id}-primary-value`} testID={`${id}-primary-value`}>
-                {hasMetric(primary.value) ? formatMetric(primary.value, primary.unit) : EMPTY_METRIC}
-              </Text>
-              {pacePieces ? (
-                <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-target`} testID={`${id}-primary-target`}>
-                  {hasMetric(totals.target_speed_kph)
-                    ? `Velocidad esperada ${formatMetric(totals.target_speed_kph, units.speed)}`
-                    : 'Sin velocidad esperada cargada'}
-                </Text>
-              ) : null}
-            </View>
-            {pacePieces ? (
-              <View className="w-32" nativeID={`${id}-gauge-slot`} testID={`${id}-gauge-slot`}>
-                <Gauge
-                  id={`${id}-gauge`}
-                  label={`Ritmo logrado ${formatMetric(totals.achieved_speed_kph, units.speed)} contra un objetivo de ${formatMetric(totals.target_speed_kph, units.speed)}`}
-                  target={totals.target_speed_kph}
-                  unit={units.speed}
-                  value={totals.achieved_speed_kph}
-                />
-              </View>
-            ) : null}
-          </View>
-        </KpiTooltip>
-      </View>
+          2×3 y no 6 en fila: el contenedor es `max-w-3xl` (768 px), así que seis
+          en fila darían 128 px cada una. Tres por fila dan ~250 px.
 
-      {/* `relative` + `zIndex` en la fila de KPIs es lo que saca el tooltip de
-          debajo de la card siguiente ("Cumplimiento del objetivo"), que es su
-          HERMANA y se pinta después en el orden del árbol. Sin los dos, el
-          tooltip se dibuja pero queda tapado: se ve un rectángulo negro asomando
-          por el borde. En web el `z-index` solo cuenta si hay `position`, por eso
-          van juntos. */}
+          `w-1/3` + `p-1` con márgenes negativos en el padre: los gutters son el
+          padding de cada celda y los márgenes negativos lo cancelan, así el
+          container mide exacto su ancho sin sumar los gaps.
+
+          `relative` + `zIndex` es lo que saca el tooltip de debajo de la card
+          siguiente, que es su HERMANA y se pinta después en el orden del árbol.
+          En web el `z-index` solo cuenta si hay `position`, por eso van juntos. */}
       <View
-        className="mb-4 flex-row divide-x divide-slate-200 dark:divide-slate-700"
+        className="-mx-1 -my-1 flex-row flex-wrap"
         style={{ position: 'relative', zIndex: anyTooltipOpen ? Z_INDEX.tooltip : 1 }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
       >
         {[
+          {
+            key: 'pace',
+            label: 'Ritmo promedio',
+            value: totals.achieved_speed_kph,
+            unit: units.speed,
+            icon: 'speedometer',
+          },
+          {
+            key: 'target_speed',
+            label: 'Velocidad esperada',
+            value: totals.target_speed_kph,
+            unit: units.speed,
+            icon: 'target',
+            // Sin objetivo no hay contra qué comparar: se muestra "—" con su
+            // etiqueta en vez de esconder la tarjeta, para que se entienda que
+            // el número existe pero no está cargado.
+            hint: hasMetric(totals.target_speed_kph)
+              ? 'Velocidad esperada del objetivo congelado de este ejercicio.'
+              : 'Este ejercicio no tiene velocidad esperada cargada.',
+          },
           {
             key: 'delta',
             label: 'Delta contra objetivo',
@@ -148,11 +125,12 @@ export function PaletteWithTarget({
             icon: 'timer-outline',
           },
         ].map((kpi) => (
+          <View className="w-1/3 p-1" key={kpi.key} nativeID={`${id}-kpi-cell-${kpi.key}`} testID={`${id}-kpi-cell-${kpi.key}`}>
           <KpiTooltip
             onOpenChange={setAnyTooltipOpen}
             formula={FORMULAS[kpi.key === 'consistency' ? 'cv' : kpi.key]}
+            hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
-            key={kpi.key}
             seriesCount={summary?.series_count ?? null}
             tolerance={summary?.tolerance_applied}
             unit={kpi.unit}
@@ -171,6 +149,7 @@ export function PaletteWithTarget({
               />
             )}
           </KpiTooltip>
+          </View>
         ))}
       </View>
 
