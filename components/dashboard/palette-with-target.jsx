@@ -78,17 +78,6 @@ export function PaletteWithTarget({
             ) : null}
           </View>
         </KpiTooltip>
-        {pacePieces ? (
-          <View className="w-36" nativeID={`${id}-gauge-slot`} testID={`${id}-gauge-slot`}>
-            <Gauge
-              id={`${id}-gauge`}
-              label={`Ritmo logrado ${formatMetric(totals.achieved_speed_kph, units.speed)} contra un objetivo de ${formatMetric(totals.target_speed_kph, units.speed)}`}
-              target={totals.target_speed_kph}
-              unit={units.speed}
-              value={totals.achieved_speed_kph}
-            />
-          </View>
-        ) : null}
       </View>
 
       {/* `relative` + `zIndex` en la fila de KPIs es lo que saca el tooltip de
@@ -159,6 +148,23 @@ export function PaletteWithTarget({
           </KpiTooltip>
         ))}
       </View>
+
+      {pacePieces ? (
+        <ChartCard
+          icon="gauge"
+          id={`${id}-gauge-card`}
+          subtitle={`Objetivo congelado del ejercicio: ${formatMetric(totals.target_speed_kph, units.speed)}`}
+          title="Ritmo contra objetivo"
+        >
+          <Gauge
+            id={`${id}-gauge`}
+            label={`Ritmo logrado ${formatMetric(totals.achieved_speed_kph, units.speed)} contra un objetivo de ${formatMetric(totals.target_speed_kph, units.speed)}`}
+            target={totals.target_speed_kph}
+            unit={units.speed}
+            value={totals.achieved_speed_kph}
+          />
+        </ChartCard>
+      ) : null}
 
       <ChartCard
         id={`${id}-compliance-card`}

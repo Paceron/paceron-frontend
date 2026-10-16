@@ -24,6 +24,7 @@ import { ChartCard } from './charts/chart-surface.jsx';
 import { RadarChart } from './charts/radar-chart.jsx';
 import { ComparisonStrip } from './comparison-strip.jsx';
 import { FiltersBar } from './filters-bar.jsx';
+import { FilterPanel } from '../shared/filter-panel.jsx';
 import { LeaderboardTable } from './leaderboard-table.jsx';
 import { PaletteSwitch } from './palette-switch.jsx';
 import { QualityBanner } from './quality-banner.jsx';
@@ -148,6 +149,14 @@ export function DashboardScreen({ teamId }) {
     }
   }, [filtersData]);
 
+  // Cuántos filtros hay puestos ahora: el badge del panel colapsado. `granularity`
+  // y `sort` NO cuentan: no son filtros, reconfiguran gráficos que ya están
+  // filtrados, y el panel de filtros no los muestra.
+  const activeFilterCount = [
+    groupId, athleteUserId, kind, exerciseId,
+    distanceFrom, distanceTo, timeFrom, timeTo, from, to,
+  ].filter((value) => value !== '' && value !== null && value !== undefined).length;
+
   const resetFilters = useCallback(() => {
     setGroupId('');
     setAthleteUserId('');
@@ -200,8 +209,27 @@ export function DashboardScreen({ teamId }) {
 
         {summary ? (
           <View nativeID="dashboard-content" testID="dashboard-content">
-            <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
+            {/* Los dos paneles son colapsables con el `FilterPanel` compartido.
+                El badge es lo que los hace útiles cerrados: sin él, un filtro
+                colapsado deja de decir qué hay seleccionado y un aviso de calidad
+                esconde justo lo que había que ver. `quality` va primero porque su
+                contenido explica por qué no hay nada que filtrar. */}
+            <FilterPanel
+              badge={qualityBadge(summary.data_quality)}
+              badgeTone={qualityDefects(summary.data_quality) > 0 ? 'warning' : 'muted'}
+              idPrefix="dashboard-quality-panel"
+              label="Calidad de los datos"
+            >
+              <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
+            </FilterPanel>
 
+            <FilterPanel
+              badge={activeFilterCount > 0 ? `${activeFilterCount} activos` : null}
+              hasActiveFilters={activeFilterCount > 0}
+              idPrefix="dashboard-filters-panel"
+              label="Filtros"
+              onClear={resetFilters}
+            >
             <FiltersBar
               athleteUserId={athleteUserId}
               athletes={filtersData?.athletes ?? []}
@@ -229,6 +257,7 @@ export function DashboardScreen({ teamId }) {
               showAthlete={isTrainer}
               to={to}
             />
+            </FilterPanel>
 
             {isTrainer ? (
               <TrainerDashboard
@@ -376,4 +405,25 @@ function describeScope(filtersData, selectedExercise, kind) {
 function rangeCaption(from, to) {
   if (!from || !to) return '';
   return `${from} → ${to} contra el período anterior de la misma longitud`;
+}
+
+// Los cuatro contadores que son defecto. `legacy_sessions` NO entra: es
+// informativo (histórico sin registro de sesión) y se muestra como nota al pie
+// del banner, no como advertencia.
+const DEFECT_KEYS = ['invalid_series', 'degraded_time', 'unknown_status', 'open_sessions'];
+
+function qualityDefects(quality) {
+  if (!quality) return 0;
+  return DEFECT_KEYS.reduce((sum, key) => sum + (Number(quality[key]) || 0), 0);
+}
+
+// Resumen del panel cuando está cerrado. Sin esto, colapsar esconde el dato que
+// justificaba mirar el panel.
+function qualityBadge(quality) {
+  if (!quality) return 'Sin datos';
+  const defects = qualityDefects(quality);
+  if (defects > 0) return `${defects} ${defects === 1 ? 'aviso' : 'avisos'}`;
+  const legacy = Number(quality.legacy_sessions) || 0;
+  if (legacy > 0) return `${legacy} históricas`;
+  return 'Sin avisos';
 }
