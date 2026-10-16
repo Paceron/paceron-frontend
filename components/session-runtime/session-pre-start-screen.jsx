@@ -311,8 +311,17 @@ function SessionPreStartScreenContent() {
     // Fire-and-forget del estado runner_session (wip, idempotente): si el Play
     // arranca offline, el pipeline de sync reintenta el mismo upsert antes del
     // primer POST feedback. No se espera acá porque no bloquea la navegación.
+    // `athleteUserId` explícito -- bug real, 2026-10-16: sin esto el mock
+    // (sin token real que simular) defaulteaba `athlete_user_id` a 0 acá,
+    // mientras que el create idempotente de session-sync.js#syncRun (el que
+    // corre después, de verdad) sí manda el `userId` real -- como el mock
+    // matchea idempotencia por (session_instance_id, athlete_user_id),
+    // terminaban creando DOS filas distintas en vez de una: una con el
+    // competition_id correcto pero athlete_user_id=0 (nunca se finaliza), y
+    // otra con el athlete_user_id correcto pero sin competition_id (la que sí
+    // se finaliza) -- Spec 4b nunca contaba nada, para ninguna competencia.
     const competitionId = findActiveMetricCompetitionId(activeMetricCompetitions, userId, pendingSession?.date);
-    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), competitionId }).catch(() => {});
+    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), athleteUserId: userId, competitionId }).catch(() => {});
     // Confirmado con logs (2026-09-30): getCurrentPositionAsync no respeta su
     // propio `timeout` -- se observó una resolución real de ~25s contra un
     // timeout de 5s pedido (quirk conocido de expo-location en ciertos
