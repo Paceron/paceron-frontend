@@ -24,19 +24,25 @@ export function KpiTile({ id, label, value, unit, delta, deltaUnit, verdict, hin
   const colors = useThemeColors();
   const verdictStyle = VERDICT_STYLES[verdict] ?? null;
 
-  // El hover pone la card en ambar: marca el area sensible sin obligar a acertar
-  // el punto exacto para abrir el tooltip. Mismo amber que usa el banner de
-  // calidad —el repo no tiene token `warning`, y publicar otro igual en dos
-  // lugares es como divergen.
+  // Esto ya no es una card: son cuatro CIFRAS con un separador fino entre ellas.
+  //
+  // Antes cada KPI era un `rounded-2xl` con borde y fondo, idéntico a las siete
+  // cards de gráficos que hay abajo. Con ocho superficies iguales, el radio
+  // dejó de codificar nada. Ahora el único `rounded-2xl` con contenido importante
+  // es el héroe de arriba, así que el radio volvió a significa "esto es lo
+  // importante" y el resto es texto.
+  //
+  // El hover en ambar se mantiene: marca el área sensible sin obligar a acertar
+  // el punto para abrir el tooltip. Mismo amber que el banner de calidad.
   const surfaceClass = hovered
-    ? 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/30'
+    ? 'bg-amber-50 dark:bg-amber-950/30'
     : emphasis
-      ? 'border-primary bg-primary-tint-subtle dark:bg-primary/10'
-      : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface';
+      ? 'bg-primary-tint-subtle dark:bg-primary/10'
+      : '';
 
   return (
     <View
-      className={`flex-1 rounded-2xl border p-3 ${surfaceClass}`}
+      className={`min-w-0 flex-1 rounded-lg px-2 py-1.5 ${surfaceClass}`}
       nativeID={`${id}-root`}
       testID={`${id}-root`}
     >

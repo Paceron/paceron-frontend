@@ -53,7 +53,19 @@ export function PaletteWithTarget({
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
-      <View className="mb-4 flex-row items-start gap-3" nativeID={`${id}-headline`} testID={`${id}-headline`}>
+      {/* El héroe: cifra y velocímetro son LA MISMA frase — "10,7 contra un
+          objetivo de 11,1" — así que van en una sola card. Estaban partidos en
+          dos tratamientos (la cifra suelta, el gauge en card), que se leía como
+          dos ideas distintas.
+
+          Esta es la única pieza de la pantalla que se gasta la atención. El resto
+          se mantiene deliberadamente más quieto: si nueve widgets gritan a la
+          vez, nada tiene prioridad y el ojo no tiene por dónde entrar. */}
+      <View
+        className="mb-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-surface"
+        nativeID={`${id}-headline-card`}
+        testID={`${id}-headline-card`}
+      >
         <KpiTooltip
           formula={FORMULAS[primary.id]}
           id={`${id}-primary-tooltip`}
@@ -62,19 +74,32 @@ export function PaletteWithTarget({
           unit={primary.unit}
           value={primary.value}
         >
-          <View className="flex-1" nativeID={`${id}-primary`} testID={`${id}-primary`}>
-            <Text className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-label`} testID={`${id}-primary-label`}>
-              {primary.label}
-            </Text>
-            <Text className="text-3xl font-bold text-slate-900 dark:text-white" nativeID={`${id}-primary-value`} testID={`${id}-primary-value`}>
-              {hasMetric(primary.value) ? formatMetric(primary.value, primary.unit) : EMPTY_METRIC}
-            </Text>
-            {pacePieces ? (
-              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-target`} testID={`${id}-primary-target`}>
-                {hasMetric(totals.target_speed_kph)
-                  ? `Velocidad esperada ${formatMetric(totals.target_speed_kph, units.speed)}`
-                  : 'Sin velocidad esperada cargada'}
+          <View className="flex-row items-center gap-6" nativeID={`${id}-headline`} testID={`${id}-headline`}>
+            <View className="flex-1" nativeID={`${id}-primary`} testID={`${id}-primary`}>
+              <Text className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-label`} testID={`${id}-primary-label`}>
+                {primary.label}
               </Text>
+              <Text className="text-4xl font-bold text-slate-900 dark:text-white" nativeID={`${id}-primary-value`} testID={`${id}-primary-value`}>
+                {hasMetric(primary.value) ? formatMetric(primary.value, primary.unit) : EMPTY_METRIC}
+              </Text>
+              {pacePieces ? (
+                <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-target`} testID={`${id}-primary-target`}>
+                  {hasMetric(totals.target_speed_kph)
+                    ? `Velocidad esperada ${formatMetric(totals.target_speed_kph, units.speed)}`
+                    : 'Sin velocidad esperada cargada'}
+                </Text>
+              ) : null}
+            </View>
+            {pacePieces ? (
+              <View className="w-32" nativeID={`${id}-gauge-slot`} testID={`${id}-gauge-slot`}>
+                <Gauge
+                  id={`${id}-gauge`}
+                  label={`Ritmo logrado ${formatMetric(totals.achieved_speed_kph, units.speed)} contra un objetivo de ${formatMetric(totals.target_speed_kph, units.speed)}`}
+                  target={totals.target_speed_kph}
+                  unit={units.speed}
+                  value={totals.achieved_speed_kph}
+                />
+              </View>
             ) : null}
           </View>
         </KpiTooltip>
@@ -87,7 +112,7 @@ export function PaletteWithTarget({
           por el borde. En web el `z-index` solo cuenta si hay `position`, por eso
           van juntos. */}
       <View
-        className="mb-4 flex-row gap-2"
+        className="mb-4 flex-row divide-x divide-slate-200 dark:divide-slate-700"
         style={{ position: 'relative', zIndex: anyTooltipOpen ? Z_INDEX.tooltip : 1 }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
@@ -148,23 +173,6 @@ export function PaletteWithTarget({
           </KpiTooltip>
         ))}
       </View>
-
-      {pacePieces ? (
-        <ChartCard
-          icon="gauge"
-          id={`${id}-gauge-card`}
-          subtitle={`Objetivo congelado del ejercicio: ${formatMetric(totals.target_speed_kph, units.speed)}`}
-          title="Ritmo contra objetivo"
-        >
-          <Gauge
-            id={`${id}-gauge`}
-            label={`Ritmo logrado ${formatMetric(totals.achieved_speed_kph, units.speed)} contra un objetivo de ${formatMetric(totals.target_speed_kph, units.speed)}`}
-            target={totals.target_speed_kph}
-            unit={units.speed}
-            value={totals.achieved_speed_kph}
-          />
-        </ChartCard>
-      ) : null}
 
       <ChartCard
         id={`${id}-compliance-card`}

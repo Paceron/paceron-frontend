@@ -28,16 +28,32 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
-      <View className="mb-4" nativeID={`${id}-headline`} testID={`${id}-headline`}>
-        <Text className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-label`} testID={`${id}-primary-label`}>
-          {primary.label}
-        </Text>
-        <Text className="text-3xl font-bold text-slate-900 dark:text-white" nativeID={`${id}-primary-value`} testID={`${id}-primary-value`}>
-          {hasMetric(primary.value) ? formatMetric(primary.value, primary.unit) : EMPTY_METRIC}
-        </Text>
+      {/* Mismo héroe que la paleta con objetivo: una sola card con la cifra
+          grande. Sin velocímetro acá porque `target_speed_kph` es null en esta
+          paleta — no hay contra qué comparar — y meter el gauge en cero sería
+          inventar un objetivo. */}
+      <View
+        className="mb-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-surface"
+        nativeID={`${id}-headline-card`}
+        testID={`${id}-headline-card`}
+      >
+        <View nativeID={`${id}-headline`} testID={`${id}-headline`}>
+          <Text className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-primary-label`} testID={`${id}-primary-label`}>
+            {primary.label}
+          </Text>
+          <Text className="text-4xl font-bold text-slate-900 dark:text-white" nativeID={`${id}-primary-value`} testID={`${id}-primary-value`}>
+            {hasMetric(primary.value) ? formatMetric(primary.value, primary.unit) : EMPTY_METRIC}
+          </Text>
+        </View>
       </View>
 
-      <View className="mb-4 flex-row gap-2" nativeID={`${id}-kpis`} testID={`${id}-kpis`}>
+      {/* Fila de cifras, no cards: mismo criterio que la paleta con objetivo.
+          El `divide-x` hace de separador sin una línea por elemento. */}
+      <View
+        className="mb-4 flex-row divide-x divide-slate-200 dark:divide-slate-700"
+        nativeID={`${id}-kpis`}
+        testID={`${id}-kpis`}
+      >
         {[
           { key: 'sessions', label: 'Entrenamientos', value: totals.sessions, icon: 'calendar-check-outline' },
           { key: 'series', label: 'Series', value: totals.series, icon: 'format-list-numbered' },
