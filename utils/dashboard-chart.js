@@ -527,19 +527,29 @@ export function bulletBar(value, target, { width, height, maxRatio = 1.5, bands 
     valueWidth,
     targetX: targetX === null ? null : round(targetX),
     clamped: hasValue && v > max,
+    // Las bandas se declaran en MÚLTIPLOS DEL OBJETIVO (0.8 = 80 % del
+    // objetivo), que es el mismo espacio en el que viven `value` y `target`. La
+    // escala del valor llega hasta `target * ratio`, así que hay que dividir por
+    // `ratio` para llevar la banda a fracción del ancho.
+    //
+    // Sin esa división las bandas se dibujaban en el espacio equivocado: con
+    // ratio 1.5, "met" (1 → 1.5) quedaba con ancho CERO y "short" (0 → 0.8)
+    // tapaba hasta el valor 120 en vez de 80.
     bands: (Array.isArray(bands) ? bands : [])
       .map((band) => {
         const from = finite(band?.from);
         const to = finite(band?.to);
         if (from === null || to === null) return null;
+        const fromF = clamp(from / ratio, 0, 1);
+        const toF = clamp(to / ratio, 0, 1);
         return {
           from,
           to,
-          x: round(clamp(from, 0, 1) * w),
-          width: round((clamp(to, 0, 1) - clamp(from, 0, 1)) * w),
+          x: round(fromF * w),
+          width: round((toF - fromF) * w),
         };
       })
-      .filter(Boolean),
+      .filter((band) => band !== null && band.width > 0),
   };
 }
 

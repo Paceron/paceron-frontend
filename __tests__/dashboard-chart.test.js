@@ -550,10 +550,40 @@ describe('bulletBar', () => {
     expect(bulletBar(50, 0, { width: 300, height: 20 }).hasTarget).toBe(false);
   });
 
-  test('las bandas de fondo son fracciones del eje y se recortan a la caja', () => {
-    const geometry = bulletBar(50, 100, { width: 200, height: 20, bands: [{ from: 0, to: 0.5 }, { from: 1.4, to: 2 }] });
-    expect(geometry.bands[0]).toMatchObject({ x: 0, width: 100 });
-    expect(geometry.bands[1]).toMatchObject({ x: 200, width: 0 });
+  test('las bandas viven en múltiplos del objetivo, no en fracción del eje', () => {
+    // Escala del valor = target * ratio = 100 * 1.5 = 150 sobre 200 px.
+    // Una banda "0 → 0.8 del objetivo" tiene que terminar en 0.8/1.5 del ancho,
+    // NO en 0.8: ese era el bug que las dibujaba 20 puntos del objetivo más
+    // lejos, y dejaba "met" (1 → 1.5) con ancho cero.
+    const geometry = bulletBar(50, 100, {
+      width: 200,
+      height: 20,
+      maxRatio: 1.5,
+      bands: [{ from: 0, to: 0.8 }, { from: 1, to: 1.5 }],
+    });
+    expect(geometry.bands[0]).toMatchObject({ x: 0, width: 106.67 });
+    expect(geometry.bands[1]).toMatchObject({ x: 133.33, width: 66.67 });
+  });
+
+  test('una banda más allá del tope del eje se recorta a la caja', () => {
+    const geometry = bulletBar(50, 100, {
+      width: 200,
+      height: 20,
+      maxRatio: 1.5,
+      bands: [{ from: 0, to: 0.5 }, { from: 1.4, to: 3 }],
+    });
+    expect(geometry.bands[1].width).toBeGreaterThan(0);
+    expect(geometry.bands[1].x + geometry.bands[1].width).toBeLessThanOrEqual(200);
+  });
+
+  test('con ratio 1 la banda 0 → 1 ocupa toda la caja', () => {
+    const geometry = bulletBar(50, 100, {
+      width: 200,
+      height: 20,
+      maxRatio: 1,
+      bands: [{ from: 0, to: 1 }],
+    });
+    expect(geometry.bands[0]).toMatchObject({ x: 0, width: 200 });
   });
 
   test('sin dimensiones devuelve null en vez de NaN', () => {

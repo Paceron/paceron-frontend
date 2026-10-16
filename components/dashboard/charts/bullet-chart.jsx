@@ -20,13 +20,24 @@ const MARKER_WIDTH = 3;
 // `near`/`missed` del backend, que se calculan por serie con la tolerancia
 // aplicada y se muestran en el gráfico apilado. Mezclarlas sería mostrar dos
 // veredictos distintos del mismo número.
+// Bandas en múltiplos del OBJETIVO, y con `maxRatio = 1` la escala termina
+// exactamente en 100 %: el gris se acaba donde termina el objetivo.
+//
+// Antes `maxRatio` era 1.5 y el track llegaba al 150 %. Con 58 % de cumplimiento
+// eso llenaba solo el 39 % del ancho, así que la barra se leía como mucho peor
+// de lo que era: el número y la barra contaban cosas distintas. Un cumplimiento es
+// una tasa sobre 100; darle espacio al "sobre-cumplimiento" en la misma barra
+// hace que el ojo lea mal el número.
+//
+// `utils/dashboard-chart.js#bulletBar` convierte las bandas a fracción del ancho
+// dividiendo por `ratio`, así que siguen alineadas con la escala del valor.
 const BANDS = [
   { id: 'short', from: 0, to: 0.8 },
-  { id: 'near', from: 0.8, to: 1 },
-  { id: 'met', from: 1, to: 1.5 },
+  { id: 'near', from: 0.8, to: 0.95 },
+  { id: 'met', from: 0.95, to: 1 },
 ];
 
-export function BulletChart({ id, value, target, unit, label, maxRatio = 1.5 }) {
+export function BulletChart({ id, value, target, unit, label, maxRatio = 1 }) {
   const colors = useThemeColors();
   const ratio = hasMetric(value) && hasMetric(target) && target > 0 ? value / target : null;
 
@@ -99,8 +110,11 @@ export function BulletChart({ id, value, target, unit, label, maxRatio = 1.5 }) 
         </Text>
       </View>
       {exceedsScale(value, target, maxRatio) ? (
+        // Con ratio 1 la escala termina en el objetivo, así que "supera el tope"
+        // ya no habla de un tope artificial: habla del 100 %, que es el número
+        // que el usuario está mirando.
         <Text className="text-[10px] text-amber-600 dark:text-amber-400" nativeID={`${id}-clamped`} testID={`${id}-clamped`}>
-          El valor supera el tope de la escala
+          Supera el 100 % de cumplimiento; la barra queda recortada
         </Text>
       ) : null}
     </View>

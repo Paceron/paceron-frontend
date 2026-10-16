@@ -209,27 +209,26 @@ export function DashboardScreen({ teamId }) {
 
         {summary ? (
           <View nativeID="dashboard-content" testID="dashboard-content">
-            {/* Los dos paneles son colapsables con el `FilterPanel` compartido.
-                El badge es lo que los hace útiles cerrados: sin él, un filtro
-                colapsado deja de decir qué hay seleccionado y un aviso de calidad
-                esconde justo lo que había que ver. `quality` va primero porque su
-                contenido explica por qué no hay nada que filtrar. */}
-            <FilterPanel
-              badge={qualityBadge(summary.data_quality)}
-              badgeTone={qualityDefects(summary.data_quality) > 0 ? 'warning' : 'muted'}
-              idPrefix="dashboard-quality-panel"
-              label="Calidad de los datos"
-            >
-              <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
-            </FilterPanel>
+            {/* Un SOLO panel para filtros y calidad: son la misma pregunta —
+                "qué estoy mirando" — y dos paneles colapsables encima del otro
+                era ruido. `quality` va arriba porque su contenido explica por
+                qué puede no haber nada que filtrar.
 
+                El badge junta los dos porque son las dos cosas que hay que saber
+                con el panel cerrado: cuántos avisos hay y cuántos filtros están
+                puestos. Un panel cerrado que no dice ninguna de las dos dejó de
+                servir. */}
             <FilterPanel
-              badge={activeFilterCount > 0 ? `${activeFilterCount} activos` : null}
+              badge={panelBadge(summary.data_quality, activeFilterCount)}
+              badgeTone={qualityDefects(summary.data_quality) > 0 ? 'warning' : 'muted'}
               hasActiveFilters={activeFilterCount > 0}
               idPrefix="dashboard-filters-panel"
-              label="Filtros"
+              label="Filtros y calidad"
               onClear={resetFilters}
             >
+            <View className="w-full" nativeID="dashboard-quality-slot" testID="dashboard-quality-slot">
+            <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
+            </View>
             <FiltersBar
               athleteUserId={athleteUserId}
               athletes={filtersData?.athletes ?? []}
@@ -417,13 +416,19 @@ function qualityDefects(quality) {
   return DEFECT_KEYS.reduce((sum, key) => sum + (Number(quality[key]) || 0), 0);
 }
 
-// Resumen del panel cuando está cerrado. Sin esto, colapsar esconde el dato que
-// justificaba mirar el panel.
-function qualityBadge(quality) {
-  if (!quality) return 'Sin datos';
+// Resumen del panel cuando está cerrado: avisos de calidad + filtros activos.
+// Sin esto, colapsar esconde los dos datos que justificaban mirar el panel.
+function panelBadge(quality, activeFilterCount) {
+  const parts = [];
   const defects = qualityDefects(quality);
-  if (defects > 0) return `${defects} ${defects === 1 ? 'aviso' : 'avisos'}`;
-  const legacy = Number(quality.legacy_sessions) || 0;
-  if (legacy > 0) return `${legacy} históricas`;
-  return 'Sin avisos';
+  if (defects > 0) {
+    parts.push(`${defects} ${defects === 1 ? 'aviso' : 'avisos'}`);
+  } else if (quality) {
+    const legacy = Number(quality.legacy_sessions) || 0;
+    if (legacy > 0) parts.push(`${legacy} históricas`);
+  }
+  if (activeFilterCount > 0) {
+    parts.push(`${activeFilterCount} ${activeFilterCount === 1 ? 'filtro' : 'filtros'}`);
+  }
+  return parts.length ? parts.join(' · ') : null;
 }
