@@ -6,8 +6,14 @@ const ROLES_CATALOG = [
 // Estado in-memory para simular asignación durante una sesión mock — a
 // diferencia de los demás mocks del proyecto (que son puros), este
 // necesita estado para que el flujo de activación se pueda probar de
-// punta a punta con EXPO_PUBLIC_USE_MOCKS=true.
-let mockAssignedRoles = ['corredor'];
+// punta a punta con EXPO_PUBLIC_USE_MOCKS=true. Arranca con los dos roles
+// activos (antes solo 'corredor') -- pedido real 2026-10-15: la cuenta
+// demo necesita poder cambiar a entrenador sin pasar primero por el flujo
+// de activación (contraseña + alias) cada vez que se reinicia el mock. El
+// flujo de activación/desactivación se sigue pudiendo probar igual
+// (mockDeactivateTrainerRole quita 'entrenador', mockActivateTrainerRole
+// lo vuelve a agregar).
+let mockAssignedRoles = ['corredor', 'entrenador'];
 
 export async function mockGetRoles() {
   return ROLES_CATALOG;

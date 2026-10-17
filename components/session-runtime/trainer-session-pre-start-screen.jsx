@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,19 +16,12 @@ import { filterByName } from '../../utils/attendance-filter.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { logDebug } from '../../utils/debug-log.js';
+import { openLocationInMaps } from '../../utils/maps-link.js';
 import { createRunnerSession } from '../../services/runnerSession.js';
 import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
 import { ParticipantAvatar } from './participant-avatar.jsx';
-
-// Mismo criterio que session-pre-start-screen.jsx (URL universal de Google
-// Maps, coordenadas no label) -- copiado, no importado: esa función no está
-// exportada y ese archivo no se toca.
-function openLocationInMaps(location) {
-  if (!location?.lat || !location?.lng) return;
-  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`);
-}
 
 const PARTICIPANTS_COLLAPSED_COUNT = 5;
 

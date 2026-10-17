@@ -1,4 +1,4 @@
-import { getMockBankAlias } from './user-mock.js';
+import { getMockBankAlias, __lookupCatalogUser } from './user-mock.js';
 
 // Datos fake con la MISMA shape que el backend real, para desarrollar sin backend.
 export async function mockLogin(email, _password) {
@@ -31,9 +31,29 @@ export async function mockRegister(payload) {
   };
 }
 
+// Bug real encontrado 2026-10-16: devolvía "Demo User" sin importar qué
+// `id` se pidiera -- correcto para "mi propio perfil" (id 1, el único uso
+// original), pero useUser(team.ownerId) en team-detail-screen.jsx también
+// pasa por acá para resolver el dueño de OTRO equipo -- con un id != 1
+// mostraba al propio demo como "Entrenador a cargo" de un equipo ajeno
+// (team 5, owner_id 99). Para cualquier id != 1 resuelve contra el mismo
+// catálogo que ya usa el roster (__lookupCatalogUser, user-mock.js), con
+// el mismo placeholder genérico de mockBatchLookupUsers si tampoco está
+// ahí -- nunca el hardcode de Demo/User.
 export async function mockGetUser({ id, email }) {
+  const resolvedId = id ?? 1;
+  if (resolvedId !== 1) {
+    const known = __lookupCatalogUser(resolvedId);
+    return {
+      user_id: resolvedId,
+      name: known?.name ?? 'Corredor',
+      surname: known?.surname ?? String(resolvedId),
+      email: known?.email ?? email ?? `corredor${resolvedId}@mail.com`,
+      status: 'active',
+    };
+  }
   return {
-    user_id: id ?? 1,
+    user_id: 1,
     name: 'Demo',
     surname: 'User',
     email: email ?? 'demo@paceron.com',
