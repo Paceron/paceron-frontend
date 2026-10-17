@@ -27,6 +27,7 @@ import { FiltersBar } from './filters-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { COLUMNS, LeaderboardTable } from './leaderboard-table.jsx';
 import { AxisBars } from './charts/axis-bars.jsx';
+import { BodyScanFigure } from './charts/body-scan-figure.jsx';
 import { BarChart } from './charts/bar-chart.jsx';
 import { PaletteSwitch } from './palette-switch.jsx';
 import { QualityBanner } from './quality-banner.jsx';
@@ -382,7 +383,12 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
           subtitle="Cada eje muestra su valor real al lado: el área del radar es un resumen, no el dato."
           title="Perfil del equipo en cinco ejes"
         >
-          <RadarChart id="dashboard-trainer-radar" summary={summary} units={summary?.units} />
+          {/* Figura y pentagono en fila, al mismo alto: la figura da el "de que
+              es esto" y el radar los cinco valores. En angosto se apilan. */}
+          <View className="mb-4 flex-row items-center justify-center gap-4" nativeID="dashboard-trainer-radar-row" testID="dashboard-trainer-radar-row">
+            <BodyScanFigure id="dashboard-trainer-body-scan" />
+            <RadarChart id="dashboard-trainer-radar" summary={summary} units={summary?.units} />
+          </View>
 
           {/* Los mismos cinco ejes del radar, en barritas. El radar contesta
               "el perfil es equilibrado" y las barras "cuanto vale cada eje":
