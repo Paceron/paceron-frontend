@@ -173,7 +173,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                 ) : (
                   <>
                     <DateField dense hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
-                    <RouteDrawPicker onChange={setRoute} value={route} />
+                    <RouteDrawPicker acceptanceRadiusMeters={Number(acceptanceRadius)} onChange={setRoute} value={route} />
                     <InputField className="mb-0" dense hideErrorRow keyboardType="numeric" label="Radio de aceptación (metros)" onChange={setAcceptanceRadius} value={acceptanceRadius} />
                   </>
                 )}
