@@ -352,7 +352,6 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
   return (
     <View nativeID="dashboard-trainer" testID="dashboard-trainer">
       <PaletteSwitch
-        comparisons={comparisons.series}
         granularity={granularity}
         id="dashboard-trainer-palette"
         kind={kind}

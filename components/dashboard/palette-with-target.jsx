@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
-import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
-import { describePalette, resolveRankingMetric, toRankingItems } from '../../utils/dashboard-palette.js';
+import { formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
+import { describePalette } from '../../utils/dashboard-palette.js';
 import { useThemeColors } from '../../theme/colors.js';
-import { Z_INDEX } from '../../theme/tokens.js';
 import { ChartCard } from './charts/chart-surface.jsx';
 import { BarChart } from './charts/bar-chart.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
@@ -31,7 +29,6 @@ export function PaletteWithTarget({
   timeseries,
   kind,
   pacePieces = true,
-  comparisons = null,
   seriesSamples = null,
   granularity,
   onGranularityChange,
@@ -39,10 +36,7 @@ export function PaletteWithTarget({
   const colors = useThemeColors();
   // Sube la fila entera mientras haya un tooltip abierto: el de cada KPI vive
   // dentro de la fila y sin esto compite contra la card hermana de abajo.
-  const [anyTooltipOpen, setAnyTooltipOpen] = useState(false);
   const palette = describePalette(summary, kind);
-  const rankingMetric = resolveRankingMetric(palette.case);
-  const rankingItems = comparisons ? toRankingItems(comparisons, rankingMetric) : null;
   const units = summary?.units ?? {};
   const totals = summary?.totals ?? {};
   const primary = palette.primary;
@@ -69,7 +63,7 @@ export function PaletteWithTarget({
           siguiente, que es su HERMANA y se pinta después en el orden del árbol.
           En web el `z-index` solo cuenta si hay `position`, por eso van juntos. */}
       <View
-        className="-mx-1 -my-1 flex-row flex-wrap"
+        className="-mx-1 -my-1 mb-6 flex-row flex-wrap"
         style={{ position: 'relative' }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
@@ -127,7 +121,6 @@ export function PaletteWithTarget({
         ].map((kpi) => (
           <View className="w-1/3 p-1" key={kpi.key} nativeID={`${id}-kpi-cell-${kpi.key}`} testID={`${id}-kpi-cell-${kpi.key}`}>
           <KpiTooltip
-            onOpenChange={setAnyTooltipOpen}
             formula={FORMULAS[kpi.key === 'consistency' ? 'cv' : kpi.key]}
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
@@ -213,21 +206,6 @@ export function PaletteWithTarget({
         />
       </ChartCard>
 
-      {rankingItems ? (
-        <ChartCard
-          icon="podium"
-          id={`${id}-ranking-card`}
-          subtitle={`Ordenado por ${rankingLabel(rankingMetric.key)}.`}
-          title="Ranking del equipo"
-        >
-          <BarChart
-            id={`${id}-ranking`}
-            items={rankingItems}
-            sort={rankingMetric.sort}
-            unit={units[rankingMetric.unitKey]}
-          />
-        </ChartCard>
-      ) : null}
 
       <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
         {hasMetric(totals.delta_pct)

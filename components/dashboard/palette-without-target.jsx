@@ -1,10 +1,7 @@
-import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
-import { Z_INDEX } from '../../theme/tokens.js';
-import { describePalette, resolveRankingMetric, toRankingItems } from '../../utils/dashboard-palette.js';
+import { formatDelta, hasMetric } from '../../utils/dashboard-format.js';
+import { describePalette } from '../../utils/dashboard-palette.js';
 import { ChartCard } from './charts/chart-surface.jsx';
-import { BarChart } from './charts/bar-chart.jsx';
 import { DotPlot } from './charts/dot-plot.jsx';
 import { LineChart } from './charts/line-chart.jsx';
 import { GranularitySelect } from './granularity-select.jsx';
@@ -19,13 +16,8 @@ import { KpiTooltip } from './kpi-tooltip.jsx';
 // El `has_target: false` puede venir de un tipo sin objetivo, de una fila previa
 // a la migración de tipos o de un ejercicio que el entrenador dejó incompleto, y
 // la decisión se toma por el dato, no por el tipo.
-export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = null, comparisons = null, granularity, onGranularityChange }) {
+export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = null, granularity, onGranularityChange }) {
   const palette = describePalette(summary);
-  // Sube la grilla mientras haya un tooltip abierto: sin esto, la card de
-  // gráfico siguiente se pinta encima del tooltip.
-  const [anyTooltipOpen, setAnyTooltipOpen] = useState(false);
-  const rankingMetric = resolveRankingMetric(palette.case);
-  const rankingItems = comparisons ? toRankingItems(comparisons, rankingMetric) : null;
   const units = summary?.units ?? {};
   const totals = summary?.totals ?? {};
   const primary = palette.primary;
@@ -44,7 +36,7 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
           es su HERMANA, que se pinta después. Sin los dos queda tapado — y en
           web el `z-index` no cuenta si no hay `position`, por eso van juntos. */}
       <View
-        className="-mx-1 -my-1 flex-row flex-wrap"
+        className="-mx-1 -my-1 mb-6 flex-row flex-wrap"
         style={{ position: 'relative' }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
@@ -98,7 +90,6 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
           <KpiTooltip
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
-            onOpenChange={setAnyTooltipOpen}
           >
             {(hovered) => (
               <KpiTile
@@ -148,16 +139,6 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
         </ChartCard>
       ) : null}
 
-      {rankingItems ? (
-        <ChartCard icon="podium" id={`${id}-ranking-card`} subtitle="Orden ascendente: en esta paleta el mejor valor es el menor." title="Ranking del equipo">
-          <BarChart
-            id={`${id}-ranking`}
-            items={rankingItems}
-            sort={rankingMetric.sort}
-            unit={units[rankingMetric.unitKey]}
-          />
-        </ChartCard>
-      ) : null}
 
       <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
         {hasMetric(totals.delta_pct)

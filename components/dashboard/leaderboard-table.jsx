@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { EMPTY_METRIC, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
+import { BarChart } from './charts/bar-chart.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 
 // Ranking del equipo, paginado y ordenable SOLO por las cuatro columnas de la
@@ -36,8 +37,42 @@ export function LeaderboardTable({
 }) {
   const colors = useThemeColors();
 
+  // Barritas y tabla salen de la MISMA respuesta de /leaderboard y de la MISMA
+  // columna activa. Antes eran dos superficies distintas -esta contra
+  // /leaderboard, el chart de la paleta contra /comparisons- y mostraban dos
+  // rankings que no coincidían. Ahora tocar un encabezado reordena las dos.
+  const activeColumn = COLUMNS.find((column) => column.key === sort) ?? COLUMNS[0];
+  const chartItems = items
+    .filter((item) => hasMetric(item?.[activeColumn.key]))
+    .map((item, index) => ({
+      id: item?.athlete_user_id ?? item?.id ?? String(index),
+      label: `${item?.name ?? ''} ${item?.surname ?? ''}`.trim(),
+      value: item[activeColumn.key],
+    }));
+
   return (
     <View className="mb-4 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-surface" nativeID={id} testID={id}>
+      {chartItems.length ? (
+        <View
+          className="border-b border-slate-200 px-4 pb-4 pt-3 dark:border-slate-700"
+          nativeID={`${id}-bars`}
+          testID={`${id}-bars`}
+        >
+          <Text
+            className="mb-2 text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500"
+            nativeID={`${id}-bars-label`}
+            testID={`${id}-bars-label`}
+          >
+            {`${activeColumn.label} · ${order === 'asc' ? 'menor primero' : 'mayor primero'}`}
+          </Text>
+          <BarChart
+            id={`${id}-bar-chart`}
+            items={chartItems}
+            sort={order === 'asc' ? 'asc' : 'desc'}
+            unit={units?.[activeColumn.unitKey]}
+          />
+        </View>
+      ) : null}
       <View className="flex-row items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800" nativeID={`${id}-header`} testID={`${id}-header`}>
         <MaterialCommunityIcons color={colors.primary} name="podium" size={16} />
         <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" nativeID={`${id}-title`} testID={`${id}-title`}>
