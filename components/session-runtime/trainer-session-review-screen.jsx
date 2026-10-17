@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { filterFeedByAthlete } from '../../utils/trainer-records-feed.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { openLocationInMaps } from '../../utils/maps-link.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { RecordsFeedModal } from './records-feed-modal.jsx';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
@@ -38,10 +39,6 @@ const STATUS_META = {
   interrupted: { label: 'Interrumpido', bg: 'bg-red-500', text: 'text-white' },
 };
 
-function openLocationInMaps(location) {
-  if (!location?.lat || !location?.lng) return;
-  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`);
-}
 
 function ParticipantRow({ participant, idPrefix, onPress }) {
   const meta = STATUS_META[participant.runnerStatus ?? 'none'];

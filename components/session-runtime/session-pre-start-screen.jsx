@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
@@ -25,16 +25,7 @@ import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { findActiveMetricCompetitionId } from '../../utils/competition-match.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { logDebug } from '../../utils/debug-log.js';
-
-// URL universal de Google Maps -- funciona igual en la app nativa (abre la
-// app de mapas instalada si el sistema la asocia a ese link) y en web (nueva
-// pestaña), sin ramificar por plataforma.
-function openLocationInMaps(location) {
-  if (!location?.lat || !location?.lng) return;
-  // Coordenadas, no el label -- el label es solo para mostrar, puede ser
-  // ambiguo (nombre repetido en otro lugar); lat/lng es siempre exacto.
-  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`);
-}
+import { openLocationInMaps } from '../../utils/maps-link.js';
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();

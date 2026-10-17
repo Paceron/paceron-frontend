@@ -24,6 +24,15 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   const picker = useRouteDrawPicker({ value, onChange });
   const cameraRef = useRef(null);
 
+  // TEMP DEBUG 2026-10-17 -- sacar cuando se resuelva el modal vacío en
+  // mobile. Si esto NO aparece en el log, el componente ni siquiera se
+  // está montando (problema más arriba, en el modal/layout). Si aparece
+  // pero el mapa nunca loguea onDidFinishLoadingMap/onDidFailLoadingMap,
+  // el problema es la inicialización nativa de MapLibre en sí.
+  if (__DEV__) {
+    console.log('[DEBUG route-draw-picker] render (nativo)', { pointCount: picker.points.length });
+  }
+
   const handleMapPress = (event) => {
     const [lng, lat] = event.nativeEvent.lngLat;
     picker.addPoint(lat, lng);
@@ -65,20 +74,46 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
         <View
           className={`h-72 overflow-hidden rounded-xl border dark:border-slate-700 ${picker.confirmed ? 'border-2 border-primary' : 'border-slate-200'}`}
           nativeID="route-draw-picker-map-wrapper"
+          onLayout={__DEV__ ? (e) => console.log('[DEBUG route-draw-picker] map-wrapper onLayout', e.nativeEvent.layout) : undefined}
           testID="route-draw-picker-map-wrapper"
         >
-          <Map mapStyle={OPENFREEMAP_STYLE_URL} nativeID="route-draw-picker-map" onPress={handleMapPress} style={{ flex: 1 }} testID="route-draw-picker-map">
+          <Map
+            mapStyle={OPENFREEMAP_STYLE_URL}
+            nativeID="route-draw-picker-map"
+            onDidFailLoadingMap={__DEV__ ? () => console.log('[DEBUG route-draw-picker] onDidFailLoadingMap') : undefined}
+            onDidFinishLoadingMap={__DEV__ ? () => console.log('[DEBUG route-draw-picker] onDidFinishLoadingMap') : undefined}
+            onPress={handleMapPress}
+            style={{ flex: 1 }}
+            testID="route-draw-picker-map"
+          >
             <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
             {picker.points.length > 1 && (
               <GeoJSONSource id="route-draw-picker-line-source" shape={lineGeojson}>
                 {showHalo && (
                   <Layer
                     id="route-draw-picker-halo-layer"
-                    style={{ lineColor: '#8cc63e', lineOpacity: 0.18, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
+                    // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
+                    // que no se intensifique por superposicion". El join por
+                    // default ('miter', punta recta) duplica cobertura en la
+                    // esquina de cada giro filoso del trazado a mano, y una
+                    // línea translúcida ahí se ve más oscura/intensa que en el
+                    // resto del halo. Con join redondeado el solape en los
+                    // vértices se reduce bastante (no es 100% perfecto para
+                    // una ruta que se cruza a sí misma, caso raro para un
+                    // loop corto).
+                    style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: 0.28, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
                     type="line"
                   />
                 )}
-                <Layer id="route-draw-picker-line-layer" style={{ lineColor: '#8cc63e', lineWidth: 4 }} type="line" />
+                <Layer
+                  id="route-draw-picker-line-layer"
+                  // Verde oscuro cuando está confirmada (pedido real,
+                  // 2026-10-17) -- antes el único indicador era el borde del
+                  // contenedor, pedido explícito de sumar color a la propia
+                  // línea.
+                  style={{ lineCap: 'round', lineColor: picker.confirmed ? '#166534' : '#8cc63e', lineJoin: 'round', lineWidth: 4 }}
+                  type="line"
+                />
               </GeoJSONSource>
             )}
           </Map>

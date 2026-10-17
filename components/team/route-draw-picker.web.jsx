@@ -39,9 +39,16 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
     const map = new maplibregl.Map({ container: containerRef.current, style: OPENFREEMAP_STYLE_URL, center: initialCenter, zoom: 13 });
     map.on('load', () => {
       map.addSource('route-draw-picker-halo', { type: 'geojson', data: EMPTY_LINE });
-      map.addLayer({ id: 'route-draw-picker-halo-layer', type: 'line', source: 'route-draw-picker-halo', paint: { 'line-color': '#8cc63e', 'line-opacity': 0.18, 'line-width': 0 } });
+      // `line-cap`/`line-join: 'round'` -- pedido real: "controlemos que no
+      // se intensifique por superposicion". El join por default ('miter')
+      // duplica cobertura en cada giro filoso del trazado a mano, y una
+      // línea translúcida ahí se ve más intensa que en el resto del halo.
+      map.addLayer({ id: 'route-draw-picker-halo-layer', type: 'line', source: 'route-draw-picker-halo', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8cc63e', 'line-opacity': 0.28, 'line-width': 0 } });
       map.addSource('route-draw-picker-line', { type: 'geojson', data: EMPTY_LINE });
-      map.addLayer({ id: 'route-draw-picker-line-layer', type: 'line', source: 'route-draw-picker-line', paint: { 'line-color': '#8cc63e', 'line-width': 4 } });
+      // Verde oscuro cuando está confirmada (pedido real, 2026-10-17) --
+      // arranca con el color sin confirmar, el useEffect de abajo lo
+      // actualiza cuando cambia picker.confirmed.
+      map.addLayer({ id: 'route-draw-picker-line-layer', type: 'line', source: 'route-draw-picker-line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8cc63e', 'line-width': 4 } });
       // Línea fantasma (pedido real, 2026-10-16: "trayectoria fantasma que
       // una el ultimo punto marcado con el posible siguiente punto segun la
       // posicion del mouse... en web es facil de ver y seria util") --
@@ -99,6 +106,12 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acceptanceRadiusMeters]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map?.getLayer('route-draw-picker-line-layer')) return;
+    map.setPaintProperty('route-draw-picker-line-layer', 'line-color', picker.confirmed ? '#166534' : '#8cc63e');
+  }, [picker.confirmed]);
 
   const handleLocateMe = async () => {
     const coords = await picker.locateMe();

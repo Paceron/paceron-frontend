@@ -37,6 +37,13 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   // valor real en las dos plataformas sin depender de CSS.
   const { height: windowHeight } = useWindowDimensions();
 
+  // TEMP DEBUG 2026-10-17 -- sacar cuando se resuelva el modal vacío en
+  // mobile. Confirma si el problema es general (ScrollView/fields no
+  // renderizan ningún tamaño) o puntual de RouteDrawPicker/MapLibre.
+  if (__DEV__ && visible) {
+    console.log('[DEBUG create-competition-modal] render', { windowHeight, maxHeight: windowHeight * 0.9 });
+  }
+
   const [type, setType] = useState('metric');
   const [metric, setMetric] = useState('distance');
   const [startDate, setStartDate] = useState('');
@@ -136,7 +143,14 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
     <>
       <Modal animationType="fade" nativeID="create-competition-modal" onRequestClose={handleClose} testID="create-competition-modal" transparent visible={visible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-competition-modal-backdrop" onPress={handleClose} testID="create-competition-modal-backdrop">
-          <Pressable className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-competition-modal-card" onPress={() => {}} style={{ maxHeight: windowHeight * 0.9 }} testID="create-competition-modal-card">
+          <Pressable
+            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface"
+            nativeID="create-competition-modal-card"
+            onLayout={__DEV__ ? (e) => console.log('[DEBUG create-competition-modal] card onLayout', e.nativeEvent.layout) : undefined}
+            onPress={() => {}}
+            style={{ maxHeight: windowHeight * 0.9 }}
+            testID="create-competition-modal-card"
+          >
             <View className="mb-4 shrink-0 flex-row items-center gap-2" nativeID="create-competition-modal-header" testID="create-competition-modal-header">
               <MaterialCommunityIcons color={colors.primary} name="sword-cross" size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-competition-modal-title" testID="create-competition-modal-title">
@@ -150,8 +164,18 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                 acciones, en vez de un tope fijo que no garantizaba que la
                 card completa entrara en pantalla (pedido real, 2026-10-15:
                 "que el modal sea scrollable si no entra en pantalla"). */}
-            <ScrollView className="flex-1" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
-              <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
+            <ScrollView
+              className="flex-1"
+              nativeID="create-competition-modal-scroll"
+              onLayout={__DEV__ ? (e) => console.log('[DEBUG create-competition-modal] scroll onLayout', e.nativeEvent.layout) : undefined}
+              testID="create-competition-modal-scroll"
+            >
+              <View
+                className="gap-3"
+                nativeID="create-competition-modal-fields"
+                onLayout={__DEV__ ? (e) => console.log('[DEBUG create-competition-modal] fields onLayout', e.nativeEvent.layout, 'type:', type) : undefined}
+                testID="create-competition-modal-fields"
+              >
                 <ResponsiveSelectField dense hideErrorRow label="Tipo de competencia" onChange={setType} options={TYPE_OPTIONS} required value={type} />
 
                 {type === 'metric' ? (

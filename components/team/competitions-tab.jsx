@@ -5,15 +5,18 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useCompetitions, useCompetitionMutations, useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
+import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
 import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
+import { openLocationInMaps } from '../../utils/maps-link.js';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
-import { RouteThumbnail } from './route-thumbnail.jsx';
+import { RouteMapPreview } from './route-map-preview';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
@@ -72,6 +75,71 @@ function ParticipantPill({ idPrefix, name, isWinner, progressLabel }) {
   );
 }
 
+// Bloque de detalle de una competencia type='route' -- pedido real,
+// 2026-10-17: dirección del punto de inicio (clickeable a Google Maps) +
+// participantes a la izquierda, mapa real con el trazado a la derecha, en
+// 2 columnas en web ancho y apilado (mismo orden: dirección, participantes,
+// mapa) en mobile/web angosto. Visible SIEMPRE para type='route' (no detrás
+// del chevron de expandir, a diferencia de los participantes de type=
+// 'metric' -- acá la visual ES el contenido principal de la fila).
+function RouteDetailSection({ idPrefix, competition, members, sortedParticipantIds }) {
+  const colors = useThemeColors();
+  const isNarrowWeb = useIsNarrowWeb();
+  const twoColumns = isWeb && !isNarrowWeb;
+  const coordinates = competition.route?.coordinates ?? [];
+  const startPoint = coordinates[0] ? { lat: coordinates[0][1], lng: coordinates[0][0] } : null;
+  const { address, loading: addressLoading } = useReverseGeocode(startPoint?.lat, startPoint?.lng);
+  const addressLabel = address?.label ?? (addressLoading ? 'Resolviendo dirección…' : 'Punto de inicio');
+
+  const infoColumn = (
+    <View className="gap-2" nativeID={`${idPrefix}-route-info`} testID={`${idPrefix}-route-info`}>
+      {startPoint && (
+        <Pressable
+          className="flex-row items-start gap-1 hover:opacity-80"
+          nativeID={`${idPrefix}-route-start-address`}
+          onPress={() => openLocationInMaps(startPoint)}
+          testID={`${idPrefix}-route-start-address`}
+        >
+          <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} style={{ marginTop: 2 }} />
+          <Text className="flex-1 text-sm font-semibold text-primary underline" nativeID={`${idPrefix}-route-start-address-label`} testID={`${idPrefix}-route-start-address-label`}>
+            {addressLabel}
+          </Text>
+        </Pressable>
+      )}
+      <View className="flex-row flex-wrap items-center gap-1.5" nativeID={`${idPrefix}-route-participants`} testID={`${idPrefix}-route-participants`}>
+        <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-participants-caption`} testID={`${idPrefix}-route-participants-caption`}>
+          Participantes:
+        </Text>
+        {sortedParticipantIds.map((userId) => (
+          <ParticipantPill idPrefix={`${idPrefix}-participant-${userId}`} isWinner={competition.winnerUserIds.includes(userId)} key={userId} name={memberName(members, userId)} progressLabel={null} />
+        ))}
+        {competition.status === 'finished' && competition.winnerUserIds.length === 0 && (
+          <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-route-no-winner`} testID={`${idPrefix}-route-no-winner`}>
+            Sin ganador — nadie completó un intento.
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  // Alto fijo (no `vh`, ver bug real del modal más arriba en este mismo
+  // archivo histórico de commits) -- "mínimo asegurado": en 2 columnas el
+  // ancho sí crece libre vía `flex-1` según lo que sobre al lado de la
+  // dirección/participantes.
+  const mapColumn = (
+    <View nativeID={`${idPrefix}-route-map-wrap`} style={{ height: twoColumns ? 220 : 180 }} testID={`${idPrefix}-route-map-wrap`}>
+      <RouteMapPreview coordinates={coordinates} nativeID={`${idPrefix}-route-map`} testID={`${idPrefix}-route-map`} />
+    </View>
+  );
+
+  return (
+    <View className={twoColumns ? 'ml-6 mt-3 flex-row items-start gap-4' : 'ml-6 mt-3 gap-3'} nativeID={`${idPrefix}-route-detail`} testID={`${idPrefix}-route-detail`}>
+      {twoColumns ? <View className="flex-1" nativeID={`${idPrefix}-route-info-col`} testID={`${idPrefix}-route-info-col`}>{infoColumn}</View> : infoColumn}
+      {twoColumns ? <View className="flex-1" nativeID={`${idPrefix}-route-map-col`} testID={`${idPrefix}-route-map-col`}>{mapColumn}</View> : mapColumn}
+    </View>
+  );
+}
+
 function CompetitionRow({ competition, members, isTrainerView, currentUserId, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, attemptBlocked, busy }) {
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
@@ -116,12 +184,6 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
           </Text>
         </View>
       </Pressable>
-
-      {competition.type === 'route' && (
-        <View className="ml-6 mt-2" nativeID={`${idPrefix}-route-thumbnail-wrap`} testID={`${idPrefix}-route-thumbnail-wrap`}>
-          <RouteThumbnail coordinates={competition.route?.coordinates} nativeID={`${idPrefix}-route-thumbnail`} testID={`${idPrefix}-route-thumbnail`} />
-        </View>
-      )}
 
       {/* `flex-wrap` -- en mobile, si el badge + los botones no entran en
           una línea, el badge baja a su propia línea en vez de quedar
@@ -187,14 +249,18 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
         )}
       </View>
 
-      {expanded && (
+      {/* Participantes de type='metric' siguen detrás del chevron -- acá el
+          número de progreso es el dato principal, no hace falta mostrarlo
+          siempre. type='route' usa RouteDetailSection más abajo, visible
+          sin expandir (ver su comentario). */}
+      {expanded && competition.type === 'metric' && (
         <View className="ml-6 mt-3 flex-row flex-wrap items-center gap-1.5" nativeID={`${idPrefix}-participants`} testID={`${idPrefix}-participants`}>
           <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-participants-caption`} testID={`${idPrefix}-participants-caption`}>
             Participantes:
           </Text>
           {sortedParticipantIds.map((userId) => {
             const progressValue = progressByUserId.get(userId);
-            const progressLabel = competition.type === 'metric' && progressValue != null ? formatMetricValue(competition.metric, progressValue) : null;
+            const progressLabel = progressValue != null ? formatMetricValue(competition.metric, progressValue) : null;
             return (
               <ParticipantPill idPrefix={`${idPrefix}-participant-${userId}`} isWinner={competition.winnerUserIds.includes(userId)} key={userId} name={memberName(members, userId)} progressLabel={progressLabel} />
             );
@@ -205,6 +271,10 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
             </Text>
           )}
         </View>
+      )}
+
+      {competition.type === 'route' && (
+        <RouteDetailSection competition={competition} idPrefix={idPrefix} members={members} sortedParticipantIds={sortedParticipantIds} />
       )}
 
       {canRun && isWeb && (
