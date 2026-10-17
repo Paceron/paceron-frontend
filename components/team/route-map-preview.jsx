@@ -73,6 +73,16 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   // reales" en dos renders distintos, igual que pasa naturalmente en el
   // picker.
   const [shapeReady, setShapeReady] = useState(false);
+  // Aislamiento adicional (2026-10-17, segunda vuelta): con fitBounds ya
+  // sacado, el crash siguió pasando exactamente después del render
+  // {mapReady:true, shapeReady:true} -- ese commit hace DOS cosas juntas
+  // (actualiza el `shape` del source ya existente a datos reales, Y monta
+  // los 2 `Marker` por primera vez). Este tercer flag separa esas dos
+  // cosas en renders distintos para la próxima prueba: si el crash pasa
+  // apenas aparece el render con shapeReady:true pero markersReady:false
+  // todavía, es la actualización del `shape`; si llega a verse un render
+  // con markersReady:true antes de crashear, es el montaje de los Marker.
+  const [markersReady, setMarkersReady] = useState(false);
   const points = coordinates ?? [];
   const lineGeojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} };
   const initialCenter = points[0] ?? [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
@@ -82,12 +92,16 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   // Mismo prefijo `[MAP-DEBUG]` que route-draw-picker.jsx para poder
   // correlacionar ambos componentes en el mismo log de Metro.
   if (__DEV__) {
-    console.log('[MAP-DEBUG route-map-preview] render', { mapReady, nativeID, pointsLen: points.length, shapeReady });
+    console.log('[MAP-DEBUG route-map-preview] render', { mapReady, markersReady, nativeID, pointsLen: points.length, shapeReady });
   }
 
   useEffect(() => {
     if (mapReady) setShapeReady(true);
   }, [mapReady]);
+
+  useEffect(() => {
+    if (shapeReady) setMarkersReady(true);
+  }, [shapeReady]);
 
   return (
     <View className="h-full w-full overflow-hidden rounded-xl" nativeID={nativeID} testID={testID}>
@@ -129,7 +143,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
             <Layer id={`${nativeID}-line-layer`} style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineWidth: 4 }} type="line" />
           </GeoJSONSource>
         )}
-        {shapeReady && points.length >= 1 && (
+        {markersReady && points.length >= 1 && (
           <RouteMarker
             active={activeMarker === 'start'}
             color="#ef4444"
@@ -139,7 +153,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
             point={points[0]}
           />
         )}
-        {shapeReady && points.length >= 2 && (
+        {markersReady && points.length >= 2 && (
           <RouteMarker
             active={activeMarker === 'end'}
             color="#2563eb"
