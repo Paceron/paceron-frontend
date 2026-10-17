@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, InteractionManager, Pressable, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -10,6 +10,19 @@ import { buildRadiusHaloWidthExpression } from '../../utils/map-radius-expressio
 import { FIELD_LABEL } from '../forms/fields.jsx';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
+// Placeholder para los 3 GeoJSONSource de abajo mientras no hay dato real
+// todavía -- causa real del crash (maplibre/maplibre-react-native#594,
+// confirmado 2026-10-17 con logs reales: el commit de React llegaba bien,
+// el crash nativo pasaba recién al montar el source+layer juntos la
+// PRIMERA vez CON datos reales, no por timing de carga -- `mapReady` ya
+// estaba en true). El fix documentado en ese issue (resuelto para el caso
+// de visibilidad en v11.0.0, pero el patrón de origen -- fuente+capa
+// agregados juntos por primera vez con geometría real -- es el mismo que
+// gatilla este crash en Android): el GeoJSONSource NUNCA se monta/desmonta
+// condicionalmente -- se monta UNA SOLA VEZ (gateado solo por `mapReady`,
+// cuando no hay riesgo de carrera con el estilo) con este shape vacío, y
+// después solo cambia el contenido de `shape` en vivo.
+const EMPTY_GEOJSON = { type: 'GeometryCollection', geometries: [] };
 
 // Dibujo de ruta por tap (Spec 4c, type='route') -- cada tap sobre el mapa
 // agrega un vértice; la polilínea se redibuja en vivo vía GeoJSONSource. Sin
@@ -38,52 +51,14 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
 
   // Logs de diagnóstico temporales (2026-10-17) -- pedido real: "sumemos
   // todos los logs posibles... para detectar cada accion o escenario".
-  // El crash de tap persiste pese a que el gate `mapReady` de abajo ya
-  // estaba bien aplicado ACÁ (a diferencia del bug real encontrado en
-  // route-map-preview.jsx) -- sin una causa concreta identificada todavía,
-  // esto da la secuencia exacta de eventos previa al crash nativo (que no
-  // deja stack trace en Metro, solo en logcat) para correlacionar con la
-  // captura de pantalla ya aportada.
   if (__DEV__) {
     console.log('[MAP-DEBUG draw-picker] render', { confirmed: picker.confirmed, mapReady, pointsLen: picker.points.length });
   }
 
-  useEffect(() => {
-    if (__DEV__) console.log('[MAP-DEBUG draw-picker] line-source should render?', mapReady && picker.points.length > 1);
-  }, [mapReady, picker.points.length]);
-  useEffect(() => {
-    if (__DEV__) console.log('[MAP-DEBUG draw-picker] start-source should render?', mapReady && picker.points.length >= 1);
-  }, [mapReady, picker.points.length]);
-  useEffect(() => {
-    if (__DEV__) console.log('[MAP-DEBUG draw-picker] end-source should render?', mapReady && picker.confirmed && picker.points.length >= 2);
-  }, [mapReady, picker.confirmed, picker.points.length]);
-
-  // `InteractionManager.runAfterInteractions` -- intento adicional, NO
-  // confirmado todavía (sin device para probarlo), 2026-10-17. Hipótesis:
-  // el crash (NullPointerException en MLRNSource.addToMap -> getStyle()
-  // null) persiste pese al gate `mapReady` ya correcto -- el mapa ya
-  // estaba interactivo (pan/zoom/locate-me andaban) ANTES del primer tap,
-  // así que el problema no es timing de carga sino que `addPoint` corre
-  // SINCRÓNICAMENTE adentro del propio callback nativo de `onPress` del
-  // Map -- montar un GeoJSONSource nuevo mientras la pila de llamadas
-  // nativa del gesto de tap todavía está activa es una reentrancia
-  // conocida en libs de mapas nativas. Diferir el `setState` a después de
-  // que termine la interacción actual sale del callback nativo antes de
-  // mutar el árbol de sources. Si el log de abajo muestra el tap
-  // (`onPress`) pero el crash sigue pasando igual, esto descarta la
-  // hipótesis -- no tocar de nuevo sin los logs de la próxima prueba.
   const handleMapPress = (event) => {
     const [lng, lat] = event.nativeEvent.lngLat;
     if (__DEV__) console.log('[MAP-DEBUG draw-picker] onPress (tap sobre el mapa)', { lat, lng, mapReady, pointsBefore: picker.points.length, t: Date.now() });
-    InteractionManager.runAfterInteractions(() => {
-      if (__DEV__) console.log('[MAP-DEBUG draw-picker] addPoint diferido, ejecutando ahora', { t: Date.now() });
-      try {
-        picker.addPoint(lat, lng);
-      } catch (err) {
-        if (__DEV__) console.log('[MAP-DEBUG draw-picker] addPoint lanzó un error JS (el crash reportado es nativo, esto es solo por si hay además algo del lado JS)', err);
-        throw err;
-      }
-    });
+    picker.addPoint(lat, lng);
   };
 
   const handleLocateMe = async () => {
@@ -139,30 +114,33 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
             testID="route-draw-picker-map"
           >
             <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
-            {mapReady && picker.points.length > 1 && (
-              <GeoJSONSource id="route-draw-picker-line-source" shape={lineGeojson}>
-                {showHalo && (
-                  <Layer
-                    id="route-draw-picker-halo-layer"
-                    // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
-                    // que no se intensifique por superposicion". El join
-                    // redondeado reduce el solape EN LOS VÉRTICES (giros
-                    // filosos), pero no es la causa completa -- confirmado
-                    // 2026-10-17 que con mucho zigzag siguen apareciendo zonas
-                    // más intensas donde dos TRAMOS no adyacentes del trazado
-                    // quedan geométricamente cerca (no solo en un vértice
-                    // compartido). Eliminar eso del todo necesitaría un
-                    // polígono de buffer real (offset de cada lado de la
-                    // línea + unión de los segmentos en una sola forma
-                    // rellena, sin stacking de opacidad) -- MapLibre no lo
-                    // da gratis vía style spec, haría falta calcular la
-                    // geometría a mano. Fuera de alcance por ahora (el
-                    // usuario lo marcó como "no grave"); esto es una mitigación
-                    // parcial, no la solución estructural.
-                    style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: 0.35, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
-                    type="line"
-                  />
-                )}
+            {/* Los 3 GeoJSONSource de abajo se montan UNA SOLA VEZ (gateados
+                solo por `mapReady`) -- nunca condicionados por
+                points.length/confirmed, eso es justo el patrón que crashea
+                (ver EMPTY_GEOJSON arriba). Solo cambia `shape` en vivo. */}
+            {mapReady && (
+              <GeoJSONSource id="route-draw-picker-line-source" shape={picker.points.length > 1 ? lineGeojson : EMPTY_GEOJSON}>
+                <Layer
+                  id="route-draw-picker-halo-layer"
+                  // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
+                  // que no se intensifique por superposicion". El join
+                  // redondeado reduce el solape EN LOS VÉRTICES (giros
+                  // filosos), pero no es la causa completa -- confirmado
+                  // 2026-10-17 que con mucho zigzag siguen apareciendo zonas
+                  // más intensas donde dos TRAMOS no adyacentes del trazado
+                  // quedan geométricamente cerca (no solo en un vértice
+                  // compartido). Eliminar eso del todo necesitaría un
+                  // polígono de buffer real (offset de cada lado de la
+                  // línea + unión de los segmentos en una sola forma
+                  // rellena, sin stacking de opacidad) -- MapLibre no lo
+                  // da gratis vía style spec, haría falta calcular la
+                  // geometría a mano. Fuera de alcance por ahora (el
+                  // usuario lo marcó como "no grave"); esto es una mitigación
+                  // parcial, no la solución estructural. `lineOpacity` (no
+                  // mount/unmount) decide si se ve.
+                  style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: showHalo ? 0.35 : 0, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
+                  type="line"
+                />
                 <Layer
                   id="route-draw-picker-line-layer"
                   // Verde oscuro cuando está confirmada (pedido real,
@@ -179,13 +157,13 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                 llegada (azul) SOLO tras confirmar -- mientras se dibuja
                 "el último punto" todavía no es definitivo, puede seguir
                 agregando. */}
-            {mapReady && picker.points.length >= 1 && (
-              <GeoJSONSource id="route-draw-picker-start-source" shape={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} }}>
+            {mapReady && (
+              <GeoJSONSource id="route-draw-picker-start-source" shape={picker.points.length >= 1 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} } : EMPTY_GEOJSON}>
                 <Layer id="route-draw-picker-start-layer" style={{ circleColor: '#ef4444', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
-            {mapReady && picker.confirmed && picker.points.length >= 2 && (
-              <GeoJSONSource id="route-draw-picker-end-source" shape={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} }}>
+            {mapReady && (
+              <GeoJSONSource id="route-draw-picker-end-source" shape={picker.confirmed && picker.points.length >= 2 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} } : EMPTY_GEOJSON}>
                 <Layer id="route-draw-picker-end-layer" style={{ circleColor: '#2563eb', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
