@@ -107,9 +107,9 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
             onDidFailLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onDidFailLoadingMap'); }}
             onDidFinishLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onDidFinishLoadingMap', { t: Date.now() }); setMapReady(true); }}
             onPress={handleMapPress}
-            onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionDidChange (fin de pan/pinch)', e); }}
-            onRegionIsChanging={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionIsChanging (pan/pinch en curso -- si NUNCA aparece este log al deslizar/pellizcar, el gesto no está llegando a MapLibre)', e); }}
-            onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionWillChange (arranca pan/pinch)', e); }}
+            onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionDidChange (fin de pan/pinch)', e.nativeEvent); }}
+            onRegionIsChanging={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionIsChanging (pan/pinch en curso -- si NUNCA aparece este log al deslizar/pellizcar, el gesto no está llegando a MapLibre)', e.nativeEvent); }}
+            onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionWillChange (arranca pan/pinch)', e.nativeEvent); }}
             style={{ flex: 1 }}
             testID="route-draw-picker-map"
           >

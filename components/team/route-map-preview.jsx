@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
-import { computeBounds } from '../../utils/map-bounds.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // Ver EMPTY_GEOJSON en route-draw-picker.jsx para el detalle completo del
@@ -47,7 +46,6 @@ function RouteMarker({ point, color, label, idPrefix, active, onToggle }) {
 // Marker de abajo, que necesitan su propio onPress para el tap-to-toggle.
 export function RouteMapPreview({ coordinates, nativeID, testID }) {
   const [activeMarker, setActiveMarker] = useState(null);
-  const cameraRef = useRef(null);
   // Mismo fix que route-draw-picker.jsx -- crash real confirmado
   // (NullPointerException en MLRNSource.addToMap -> getStyle() null) al
   // agregar un GeoJSONSource antes de que el estilo nativo del mapa
@@ -77,7 +75,6 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   const [shapeReady, setShapeReady] = useState(false);
   const points = coordinates ?? [];
   const lineGeojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} };
-  const bounds = computeBounds(points.map(([lng, lat]) => ({ latitude: lat, longitude: lng })));
   const initialCenter = points[0] ?? [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
 
   // Logs de diagnóstico temporales (2026-10-17) -- pedido real: "sumemos
@@ -102,31 +99,31 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         nativeID={`${nativeID}-map`}
         onDidFailLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFailLoadingMap'); }}
         onDidFinishLoadingMap={() => {
-          if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFinishLoadingMap', { bounds, t: Date.now() });
+          if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFinishLoadingMap', { t: Date.now() });
           setMapReady(true);
-          // Imperativo (fitBounds vía ref), no declarativo (prop `bounds`
-          // en Camera) -- BUG REAL encontrado 2026-10-17: `padding` se
-          // pasaba como número crudo (24) pero el tipo real de la lib
-          // (`ViewPadding`) es un objeto `{top,right,bottom,left}` --
-          // mismatch de tipo contra el codegen nativo de Fabric, candidato
-          // fuerte para el crash silencioso (sin ningún log de JS, ~2s
-          // después de montar) reportado al ver una competencia de route
-          // ya registrada. Mismo patrón ya probado y funcionando en
-          // trainer-session-live-screen.jsx -- ESE componente evita el
-          // prop `bounds` declarativo por completo (ver su comentario
-          // sobre la firma real de `fitBounds`) y usa el ref imperativo,
-          // llamado recién cuando hay mapa.
-          if (bounds) cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 24, left: 24, right: 24, top: 24 } });
         }}
-        onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionDidChange (gestos deberían estar deshabilitados acá)', e); }}
-        onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionWillChange (gestos deberían estar deshabilitados acá)', e); }}
+        onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionDidChange (gestos deberían estar deshabilitados acá)', e.nativeEvent); }}
+        onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionWillChange (gestos deberían estar deshabilitados acá)', e.nativeEvent); }}
         style={{ flex: 1 }}
         testID={`${testID}-map`}
         touchPitch={false}
         touchRotate={false}
         touchZoom={false}
       >
-        <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
+        {/* Fijo, sin fitBounds -- sacado 2026-10-17 para aislar una variable:
+            el crash reportado al ver una competencia route (mapReady=true,
+            shapeReady=true, justo cuando el source ya existente recibe la
+            geometría real y los 2 Marker montan por primera vez) pasó
+            siempre inmediatamente después de los eventos onRegionWillChange/
+            onRegionDidChange del fitBounds imperativo que se había agregado
+            la vuelta anterior (para arreglar el bug real de `padding`
+            numérico vs. objeto -- ESO sigue siendo válido si se reintroduce
+            fitBounds más adelante). Hipótesis a confirmar: el fitBounds
+            corriendo en paralelo con el commit que agrega geometría real +
+            nuevos Marker es lo que crashea, no el commit en sí. Sin
+            fitBounds, zoom fijo aproximado al que fitBounds elegía
+            (~16 para esta ruta de ejemplo) en vez de calculado. */}
+        <Camera initialViewState={{ center: initialCenter, zoom: 16 }} />
         {mapReady && (
           <GeoJSONSource id={`${nativeID}-line-source`} shape={shapeReady && points.length > 1 ? lineGeojson : EMPTY_GEOJSON}>
             <Layer id={`${nativeID}-line-layer`} style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineWidth: 4 }} type="line" />
