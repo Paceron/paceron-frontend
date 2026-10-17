@@ -44,6 +44,11 @@ function RouteMarker({ point, color, label, idPrefix, active, onToggle }) {
 // Marker de abajo, que necesitan su propio onPress para el tap-to-toggle.
 export function RouteMapPreview({ coordinates, nativeID, testID }) {
   const [activeMarker, setActiveMarker] = useState(null);
+  // Mismo fix que route-draw-picker.jsx -- crash real confirmado
+  // (NullPointerException en MLRNSource.addToMap -> getStyle() null) al
+  // agregar un GeoJSONSource antes de que el estilo nativo del mapa
+  // termine de cargar.
+  const [mapReady, setMapReady] = useState(false);
   const points = coordinates ?? [];
   const lineGeojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} };
   const bounds = computeBounds(points.map(([lng, lat]) => ({ latitude: lat, longitude: lng })));
@@ -57,6 +62,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         dragPan={false}
         mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL}
         nativeID={`${nativeID}-map`}
+        onDidFinishLoadingMap={() => setMapReady(true)}
         style={{ flex: 1 }}
         testID={`${testID}-map`}
         touchPitch={false}
@@ -64,7 +70,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         touchZoom={false}
       >
         <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 13 }} padding={24} />
-        {points.length > 1 && (
+        {mapReady && points.length > 1 && (
           <GeoJSONSource id={`${nativeID}-line-source`} shape={lineGeojson}>
             <Layer id={`${nativeID}-line-layer`} style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineWidth: 4 }} type="line" />
           </GeoJSONSource>

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +23,18 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   const colors = useThemeColors();
   const picker = useRouteDrawPicker({ value, onChange });
   const cameraRef = useRef(null);
+  // Crash real en Android, 2026-10-17 (NullPointerException en
+  // MLRNSource.addToMap -> MapLibreMap.getStyle(), confirmado por
+  // screenshot del error nativo): agregar un GeoJSONSource ANTES de que
+  // el estilo nativo del mapa termine de cargar deja `getStyle()` en null
+  // adentro de la librería. Pasaba al tocar el mapa para plantar el
+  // primer punto -- el nuevo source del punto de inicio se montaba en el
+  // mismo render que agregaba el punto, sin esperar a que el mapa
+  // avisara que ya estaba listo. Gatear TODOS los GeoJSONSource (no solo
+  // el nuevo) detrás de este flag -- el mismo riesgo existía ya para la
+  // línea/halo, solo que nunca se disparó en la práctica porque esos
+  // necesitan 2+ puntos (más tiempo para que el mapa termine de cargar).
+  const [mapReady, setMapReady] = useState(false);
 
   const handleMapPress = (event) => {
     const [lng, lat] = event.nativeEvent.lngLat;
@@ -67,9 +79,17 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
           nativeID="route-draw-picker-map-wrapper"
           testID="route-draw-picker-map-wrapper"
         >
-          <Map mapStyle={OPENFREEMAP_STYLE_URL} nativeID="route-draw-picker-map" onPress={handleMapPress} style={{ flex: 1 }} testID="route-draw-picker-map">
+          <Map
+            mapStyle={OPENFREEMAP_STYLE_URL}
+            nativeID="route-draw-picker-map"
+            onDidFailLoadingMap={() => { if (__DEV__) console.log('[route-draw-picker] onDidFailLoadingMap'); }}
+            onDidFinishLoadingMap={() => { if (__DEV__) console.log('[route-draw-picker] onDidFinishLoadingMap'); setMapReady(true); }}
+            onPress={handleMapPress}
+            style={{ flex: 1 }}
+            testID="route-draw-picker-map"
+          >
             <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
-            {picker.points.length > 1 && (
+            {mapReady && picker.points.length > 1 && (
               <GeoJSONSource id="route-draw-picker-line-source" shape={lineGeojson}>
                 {showHalo && (
                   <Layer
@@ -109,12 +129,12 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                 llegada (azul) SOLO tras confirmar -- mientras se dibuja
                 "el último punto" todavía no es definitivo, puede seguir
                 agregando. */}
-            {picker.points.length >= 1 && (
+            {mapReady && picker.points.length >= 1 && (
               <GeoJSONSource id="route-draw-picker-start-source" shape={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} }}>
                 <Layer id="route-draw-picker-start-layer" style={{ circleColor: '#ef4444', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
-            {picker.confirmed && picker.points.length >= 2 && (
+            {mapReady && picker.confirmed && picker.points.length >= 2 && (
               <GeoJSONSource id="route-draw-picker-end-source" shape={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} }}>
                 <Layer id="route-draw-picker-end-layer" style={{ circleColor: '#2563eb', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>

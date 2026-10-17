@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { InputField, DateField } from '../forms/fields.jsx';
@@ -139,6 +140,19 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   return (
     <>
       <Modal animationType="fade" nativeID="create-competition-modal" onRequestClose={handleClose} testID="create-competition-modal" transparent visible={visible}>
+        {/* GestureHandlerRootView propio -- react-native Modal monta su
+            contenido en una superficie nativa SEPARADA (fuera del árbol de
+            vistas de la app), y react-native-gesture-handler reemplaza el
+            sistema de touch de RN para TODA la app una vez instalado (no
+            solo para sus propios componentes) -- el root de app/_layout.jsx
+            no llega hasta acá en nativo. Mismo fix ya documentado y
+            probado en create-session-modal.jsx (bug real: scroll y
+            hold-and-drag mudos en Expo Go sin este root). Bug real acá,
+            2026-10-17: un swipe sobre los campos del form se registraba
+            como un tap (con sonido de click de Android) en vez de scroll,
+            salvo arrancando desde un TextInput (que no depende de este
+            sistema de gestos). */}
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-competition-modal-backdrop" onPress={handleClose} testID="create-competition-modal-backdrop">
           <Pressable
             className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface"
@@ -171,16 +185,16 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                         que los dos entren en una fila angosta. */}
                     <View className="flex-row gap-3" nativeID="create-competition-modal-dates-row" testID="create-competition-modal-dates-row">
                       <View className="flex-1" nativeID="create-competition-modal-dates-from-wrap" testID="create-competition-modal-dates-from-wrap">
-                        <DateField dense hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
+                        <DateField dense disableFutureLimit hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
                       </View>
                       <View className="flex-1" nativeID="create-competition-modal-dates-to-wrap" testID="create-competition-modal-dates-to-wrap">
-                        <DateField dense hideErrorRow label="Hasta" onChange={setEndDate} value={endDate} />
+                        <DateField dense disableFutureLimit hideErrorRow label="Hasta" onChange={setEndDate} value={endDate} />
                       </View>
                     </View>
                   </>
                 ) : (
                   <>
-                    <DateField dense hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
+                    <DateField dense disableFutureLimit hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
                     <RouteDrawPicker acceptanceRadiusMeters={Number(acceptanceRadius)} onChange={setRoute} value={route} />
                     <InputField className="mb-0" dense hideErrorRow keyboardType="numeric" label="Radio de aceptación (metros)" onChange={setAcceptanceRadius} value={acceptanceRadius} />
                   </>
@@ -258,6 +272,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
             </View>
           </Pressable>
         </Pressable>
+        </GestureHandlerRootView>
       </Modal>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
