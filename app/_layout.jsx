@@ -29,6 +29,22 @@ import { ErrorBoundary } from '../components/shared/error-boundary.jsx';
 // (diagnóstico dev-only), no cambia comportamiento de animaciones.
 configureReanimatedLogger({ level: ReanimatedLogLevel.warn, strict: false });
 
+// Handler global de errores JS no capturados (2026-10-17, diagnóstico
+// temporal) -- pedido real: "sumemos todos los logs posibles... mensajes
+// en caso de error, warnings". Esto SOLO atrapa excepciones del lado JS
+// (ej. algo que tira dentro de un callback de evento, fuera del árbol de
+// render que ya cubre ErrorBoundary) -- un crash NATIVO real como el de
+// MapLibre (NullPointerException en Java) no pasa por acá, ese solo se ve
+// en logcat. Encadena al handler previo (no lo reemplaza) para no romper
+// el comportamiento normal de redbox/crash-reporting en dev.
+if (__DEV__) {
+  const previousErrorHandler = global.ErrorUtils.getGlobalHandler();
+  global.ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error('[GLOBAL-ERROR]', { isFatal, message: error?.message, stack: error?.stack, t: Date.now() });
+    previousErrorHandler(error, isFatal);
+  });
+}
+
 // Fondo del Stack navigator en sí (no del contenido de cada screen). Sin
 // esto, el navigator usa su fondo por defecto (claro) durante la animación
 // de transición entre pantallas — se ve como un flash/borde blanco en dark

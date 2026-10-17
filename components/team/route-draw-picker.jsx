@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, InteractionManager, Pressable, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -36,9 +36,54 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   // necesitan 2+ puntos (más tiempo para que el mapa termine de cargar).
   const [mapReady, setMapReady] = useState(false);
 
+  // Logs de diagnóstico temporales (2026-10-17) -- pedido real: "sumemos
+  // todos los logs posibles... para detectar cada accion o escenario".
+  // El crash de tap persiste pese a que el gate `mapReady` de abajo ya
+  // estaba bien aplicado ACÁ (a diferencia del bug real encontrado en
+  // route-map-preview.jsx) -- sin una causa concreta identificada todavía,
+  // esto da la secuencia exacta de eventos previa al crash nativo (que no
+  // deja stack trace en Metro, solo en logcat) para correlacionar con la
+  // captura de pantalla ya aportada.
+  if (__DEV__) {
+    console.log('[MAP-DEBUG draw-picker] render', { confirmed: picker.confirmed, mapReady, pointsLen: picker.points.length });
+  }
+
+  useEffect(() => {
+    if (__DEV__) console.log('[MAP-DEBUG draw-picker] line-source should render?', mapReady && picker.points.length > 1);
+  }, [mapReady, picker.points.length]);
+  useEffect(() => {
+    if (__DEV__) console.log('[MAP-DEBUG draw-picker] start-source should render?', mapReady && picker.points.length >= 1);
+  }, [mapReady, picker.points.length]);
+  useEffect(() => {
+    if (__DEV__) console.log('[MAP-DEBUG draw-picker] end-source should render?', mapReady && picker.confirmed && picker.points.length >= 2);
+  }, [mapReady, picker.confirmed, picker.points.length]);
+
+  // `InteractionManager.runAfterInteractions` -- intento adicional, NO
+  // confirmado todavía (sin device para probarlo), 2026-10-17. Hipótesis:
+  // el crash (NullPointerException en MLRNSource.addToMap -> getStyle()
+  // null) persiste pese al gate `mapReady` ya correcto -- el mapa ya
+  // estaba interactivo (pan/zoom/locate-me andaban) ANTES del primer tap,
+  // así que el problema no es timing de carga sino que `addPoint` corre
+  // SINCRÓNICAMENTE adentro del propio callback nativo de `onPress` del
+  // Map -- montar un GeoJSONSource nuevo mientras la pila de llamadas
+  // nativa del gesto de tap todavía está activa es una reentrancia
+  // conocida en libs de mapas nativas. Diferir el `setState` a después de
+  // que termine la interacción actual sale del callback nativo antes de
+  // mutar el árbol de sources. Si el log de abajo muestra el tap
+  // (`onPress`) pero el crash sigue pasando igual, esto descarta la
+  // hipótesis -- no tocar de nuevo sin los logs de la próxima prueba.
   const handleMapPress = (event) => {
     const [lng, lat] = event.nativeEvent.lngLat;
-    picker.addPoint(lat, lng);
+    if (__DEV__) console.log('[MAP-DEBUG draw-picker] onPress (tap sobre el mapa)', { lat, lng, mapReady, pointsBefore: picker.points.length, t: Date.now() });
+    InteractionManager.runAfterInteractions(() => {
+      if (__DEV__) console.log('[MAP-DEBUG draw-picker] addPoint diferido, ejecutando ahora', { t: Date.now() });
+      try {
+        picker.addPoint(lat, lng);
+      } catch (err) {
+        if (__DEV__) console.log('[MAP-DEBUG draw-picker] addPoint lanzó un error JS (el crash reportado es nativo, esto es solo por si hay además algo del lado JS)', err);
+        throw err;
+      }
+    });
   };
 
   const handleLocateMe = async () => {
@@ -77,14 +122,19 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
         <View
           className={`h-72 overflow-hidden rounded-xl border dark:border-slate-700 ${picker.confirmed ? 'border-2 border-primary' : 'border-slate-200'}`}
           nativeID="route-draw-picker-map-wrapper"
+          onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG draw-picker] map-wrapper onTouchEnd (toque crudo llegó hasta acá)', { t: Date.now() }); }}
+          onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG draw-picker] map-wrapper onTouchStart (toque crudo llegó hasta acá)', { t: Date.now() }); }}
           testID="route-draw-picker-map-wrapper"
         >
           <Map
             mapStyle={OPENFREEMAP_STYLE_URL}
             nativeID="route-draw-picker-map"
-            onDidFailLoadingMap={() => { if (__DEV__) console.log('[route-draw-picker] onDidFailLoadingMap'); }}
-            onDidFinishLoadingMap={() => { if (__DEV__) console.log('[route-draw-picker] onDidFinishLoadingMap'); setMapReady(true); }}
+            onDidFailLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onDidFailLoadingMap'); }}
+            onDidFinishLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onDidFinishLoadingMap', { t: Date.now() }); setMapReady(true); }}
             onPress={handleMapPress}
+            onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionDidChange (fin de pan/pinch)', e); }}
+            onRegionIsChanging={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionIsChanging (pan/pinch en curso -- si NUNCA aparece este log al deslizar/pellizcar, el gesto no está llegando a MapLibre)', e); }}
+            onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionWillChange (arranca pan/pinch)', e); }}
             style={{ flex: 1 }}
             testID="route-draw-picker-map"
           >

@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { InputField, DateField } from '../forms/fields.jsx';
@@ -78,6 +77,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
 
   const handleClose = () => {
+    if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] handleClose (backdrop onPress o back nativo)', { t: Date.now() });
     if (submitting) return;
     guardedClose(onClose);
   };
@@ -140,24 +140,25 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   return (
     <>
       <Modal animationType="fade" nativeID="create-competition-modal" onRequestClose={handleClose} testID="create-competition-modal" transparent visible={visible}>
-        {/* GestureHandlerRootView propio -- react-native Modal monta su
-            contenido en una superficie nativa SEPARADA (fuera del árbol de
-            vistas de la app), y react-native-gesture-handler reemplaza el
-            sistema de touch de RN para TODA la app una vez instalado (no
-            solo para sus propios componentes) -- el root de app/_layout.jsx
-            no llega hasta acá en nativo. Mismo fix ya documentado y
-            probado en create-session-modal.jsx (bug real: scroll y
-            hold-and-drag mudos en Expo Go sin este root). Bug real acá,
-            2026-10-17: un swipe sobre los campos del form se registraba
-            como un tap (con sonido de click de Android) en vez de scroll,
-            salvo arrancando desde un TextInput (que no depende de este
-            sistema de gestos). */}
-        <GestureHandlerRootView style={{ flex: 1 }}>
-        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-competition-modal-backdrop" onPress={handleClose} testID="create-competition-modal-backdrop">
+        {/* Se probó envolver esto en un GestureHandlerRootView propio (2026-10-17,
+            mismo patrón que create-session-modal.jsx) para el bug de swipes
+            leídos como tap -- NO cambió el síntoma (confirmado, mismo
+            comportamiento con y sin el root), y no debería haber hecho
+            falta: este modal no usa ninguna primitiva de
+            react-native-gesture-handler (sin GestureDetector, sin el
+            ScrollView re-exportado de esa lib) -- el precedente de
+            create-session-modal.jsx aplica a gestos que SÍ dependen de esa
+            librería quedando mudos sin un root propio dentro del Modal, no
+            a un ScrollView/Pressable nativos de React Native, que no
+            dependen de gesture-handler para nada. Revertido -- quedan los
+            logs de abajo para diagnosticar la causa real. */}
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-competition-modal-backdrop" onPress={handleClose} onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchEnd', { t: Date.now() }); }} onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchStart', { t: Date.now() }); }} testID="create-competition-modal-backdrop">
           <Pressable
             className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface"
             nativeID="create-competition-modal-card"
             onPress={() => {}}
+            onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] card onTouchEnd', { t: Date.now() }); }}
+            onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] card onTouchStart', { t: Date.now() }); }}
             style={{ height: modalHeight, maxHeight: modalHeight }}
             testID="create-competition-modal-card"
           >
@@ -172,7 +173,16 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                 `maxHeight`, ver el comentario de arriba): sin un `height`
                 explícito, Yoga nativo no le da a este ScrollView ningún
                 alto concreto para crecer y colapsa a 0. */}
-            <ScrollView className="flex-1" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
+            <ScrollView
+              className="flex-1"
+              nativeID="create-competition-modal-scroll"
+              onMomentumScrollBegin={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onMomentumScrollBegin', { t: Date.now() }); }}
+              onMomentumScrollEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onMomentumScrollEnd', { t: Date.now() }); }}
+              onScrollBeginDrag={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onScrollBeginDrag (ganó el responder de scroll)', { t: Date.now() }); }}
+              onScrollEndDrag={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onScrollEndDrag', { t: Date.now() }); }}
+              onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onTouchStart', { t: Date.now() }); }}
+              testID="create-competition-modal-scroll"
+            >
               <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
                 <ResponsiveSelectField dense hideErrorRow label="Tipo de competencia" onChange={setType} options={TYPE_OPTIONS} required value={type} />
 
@@ -272,7 +282,6 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
             </View>
           </Pressable>
         </Pressable>
-        </GestureHandlerRootView>
       </Modal>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
@@ -47,12 +47,38 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   // Mismo fix que route-draw-picker.jsx -- crash real confirmado
   // (NullPointerException en MLRNSource.addToMap -> getStyle() null) al
   // agregar un GeoJSONSource antes de que el estilo nativo del mapa
-  // termine de cargar.
+  // termine de cargar. BUG REAL encontrado 2026-10-17 (segunda vuelta):
+  // el gate `mapReady` solo envolvía el GeoJSONSource de la línea -- los
+  // DOS `Marker` de abajo (inicio/llegada) quedaron sin gatear, y en esta
+  // pantalla (a diferencia de route-draw-picker, donde los puntos se
+  // agregan de a uno con un tap) `points` ya tiene todos sus elementos
+  // desde el primer render -- los Marker intentaban montarse ANTES de
+  // que el mapa termine de cargar, siempre, en cualquier competencia por
+  // trayectoria ya registrada. Esto explica el crash reportado al entrar
+  // a la pestaña de Competencias como corredor viendo una de route.
   const [mapReady, setMapReady] = useState(false);
   const points = coordinates ?? [];
   const lineGeojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} };
   const bounds = computeBounds(points.map(([lng, lat]) => ({ latitude: lat, longitude: lng })));
   const initialCenter = points[0] ?? [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
+
+  // Logs de diagnóstico temporales (2026-10-17) -- pedido real: "sumemos
+  // todos los logs posibles... para detectar cada accion o escenario".
+  // Mismo prefijo `[MAP-DEBUG]` que route-draw-picker.jsx para poder
+  // correlacionar ambos componentes en el mismo log de Metro.
+  if (__DEV__) {
+    console.log('[MAP-DEBUG route-map-preview] render', { nativeID, pointsLen: points.length, mapReady });
+  }
+
+  useEffect(() => {
+    if (__DEV__) console.log('[MAP-DEBUG route-map-preview] line-source should render?', mapReady && points.length > 1);
+  }, [mapReady, points.length]);
+  useEffect(() => {
+    if (__DEV__) console.log('[MAP-DEBUG route-map-preview] start-marker should render?', mapReady && points.length >= 1);
+  }, [mapReady, points.length]);
+  useEffect(() => {
+    if (__DEV__) console.log('[MAP-DEBUG route-map-preview] end-marker should render?', mapReady && points.length >= 2);
+  }, [mapReady, points.length]);
 
   return (
     <View className="h-full w-full overflow-hidden rounded-xl" nativeID={nativeID} testID={testID}>
@@ -62,7 +88,10 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         dragPan={false}
         mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL}
         nativeID={`${nativeID}-map`}
-        onDidFinishLoadingMap={() => setMapReady(true)}
+        onDidFailLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFailLoadingMap'); }}
+        onDidFinishLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFinishLoadingMap'); setMapReady(true); }}
+        onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionDidChange (gestos deberían estar deshabilitados acá)', e); }}
+        onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionWillChange (gestos deberían estar deshabilitados acá)', e); }}
         style={{ flex: 1 }}
         testID={`${testID}-map`}
         touchPitch={false}
@@ -75,7 +104,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
             <Layer id={`${nativeID}-line-layer`} style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineWidth: 4 }} type="line" />
           </GeoJSONSource>
         )}
-        {points.length >= 1 && (
+        {mapReady && points.length >= 1 && (
           <RouteMarker
             active={activeMarker === 'start'}
             color="#ef4444"
@@ -85,7 +114,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
             point={points[0]}
           />
         )}
-        {points.length >= 2 && (
+        {mapReady && points.length >= 2 && (
           <RouteMarker
             active={activeMarker === 'end'}
             color="#2563eb"
