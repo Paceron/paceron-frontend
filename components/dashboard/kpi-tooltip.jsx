@@ -64,19 +64,19 @@ export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, va
           // z-tooltip = 70 (tailwind.config.js), el mismo criterio que
           // IconTooltip: es la única capa que puede aparecer sobre contenido con
           // su propia superficie.
-          className="absolute left-0 right-0 top-full z-tooltip mt-1.5 rounded-lg bg-slate-800 p-3 shadow-lg dark:bg-slate-700"
+          className="absolute left-0 right-0 top-full z-tooltip mt-1.5 rounded-lg border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800"
           nativeID={`${id}-bubble`}
           testID={`${id}-bubble`}
         >
           {formula ? (
-            <Text className="text-[11px] leading-4 text-white" nativeID={`${id}-bubble-formula`} testID={`${id}-bubble-formula`}>
+            <Text className="text-[11px] leading-4 text-slate-900 dark:text-white" nativeID={`${id}-bubble-formula`} testID={`${id}-bubble-formula`}>
               {formula}
             </Text>
           ) : null}
-          <Text className="mt-1 text-[11px] leading-4 text-slate-300 dark:text-slate-200" nativeID={`${id}-bubble-tolerance`} testID={`${id}-bubble-tolerance`}>
+          <Text className="mt-1 text-[11px] leading-4 text-slate-600 dark:text-slate-300" nativeID={`${id}-bubble-tolerance`} testID={`${id}-bubble-tolerance`}>
             {`Tolerancia aplicada: ${toleranceLabel(tolerance)}`}
           </Text>
-          <Text className="text-[11px] leading-4 text-slate-300 dark:text-slate-200" nativeID={`${id}-bubble-series`} testID={`${id}-bubble-series`}>
+          <Text className="text-[11px] leading-4 text-slate-600 dark:text-slate-300" nativeID={`${id}-bubble-series`} testID={`${id}-bubble-series`}>
             {seriesCount === null || seriesCount === undefined
               ? 'Series usadas: sin dato'
               : `Series usadas: ${seriesCount}`}
