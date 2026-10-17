@@ -70,7 +70,7 @@ export function PaletteWithTarget({
           En web el `z-index` solo cuenta si hay `position`, por eso van juntos. */}
       <View
         className="-mx-1 -my-1 flex-row flex-wrap"
-        style={{ position: 'relative', zIndex: anyTooltipOpen ? Z_INDEX.tooltip : 1 }}
+        style={{ position: 'relative' }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
       >
