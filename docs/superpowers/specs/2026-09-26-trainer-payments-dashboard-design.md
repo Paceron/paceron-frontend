@@ -37,7 +37,7 @@ este frontend lo consume.
   - dashboard: cobrado este mes, evolución de los últimos 6 meses (barras),
     cobros por equipo, pendientes y rechazados;
   - pestaña **Cobros**: listado paginado con filtros por equipo y estado;
-  - pestaña **Mis pagos**: el mismo historial que ve cualquier usuario.
+  - pestaña **Pagos**: el mismo historial que ve cualquier usuario.
 - Montos: el bruto siempre, y el neto solo cuando Mercado Pago lo informó.
 
 **No** (fuera de esta spec):
@@ -211,3 +211,14 @@ Bump a 0.27.0 en la misma rama. Verificación con los datos sembrados
 (`seed-qa-historial-*`): ítem del navbar en los tres shells, pista en los tiles,
 ‹ › con límite en `earliest_month`, bruto/neto en los cuatro lugares, y mobile sin
 scroll horizontal.
+
+## Ajuste de la revisión con la profesora (2026-10-03)
+
+- Dos pestañas, en este orden: **Cobros** y después **Pagos** ("Mis pagos" pasa a
+  llamarse "Pagos").
+- Las métricas de cobros (tiles, gráfico, cobros por equipo, switch Bruto/Neto) van
+  **solo dentro de la pestaña Cobros**. Antes estaban arriba de las pestañas y se veían
+  también en Pagos, donde no aplican.
+- Las pestañas quedan arriba de todo, debajo del título. El pull-to-refresh vuelve a
+  pedir el resumen solo si la pestaña activa es Cobros.
+

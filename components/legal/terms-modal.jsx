@@ -54,9 +54,14 @@ export function TermsModal({ visible, onClose }) {
             </Pressable>
           </View>
 
+          {/* Sin flex-1: la tarjeta solo tiene max-h, sin altura propia, y en nativo un
+              hijo flex-1 no tiene contra qué crecer y colapsa a 0 (el texto no se veía en
+              mobile; en web el CSS sí lo estira). Crece con su contenido y se achica hasta
+              el máximo de la tarjeta, donde scrollea. */}
           <ScrollView
-            className="flex-1 px-6 py-4"
+            className="px-6 py-4"
             nativeID="terms-modal-scroll"
+            style={{ flexGrow: 0, flexShrink: 1 }}
             testID="terms-modal-scroll"
           >
             <MarkdownView content={termsMarkdown} idPrefix="terms-modal-content" />
