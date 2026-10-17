@@ -66,7 +66,12 @@ export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, va
           // ambar en los dos modos: un bubble claro se perdia sobre amber-50 en
           // modo claro, y las variantes `dark:` lo hacian translucido sobre el
           // fondo oscuro. Sin ramas de tema no hay nada que sincronizar.
-          className="absolute left-0 right-0 top-full z-[9999] mt-1.5 rounded-lg border-2 border-blue-500 bg-slate-800 bg-opacity-100 p-3 opacity-100 shadow-2xl"
+          className="absolute left-0 right-0 top-full mt-1.5 rounded-lg border-2 border-blue-500 bg-slate-800 bg-opacity-100 p-3 opacity-100 shadow-2xl"
+          // z-index max de int32: nada deberia quedar por encima de un tooltip
+          // abierto. Si algo lo tapa, es que ese algo sezio de un modo que no
+          // vamos a ir adivinando — con el max, cualquier card hermana queda
+          // debajo sin importar su posicion en el arbol.
+          style={{ zIndex: 2147483647 }}
           nativeID={`${id}-bubble`}
           testID={`${id}-bubble`}
         >

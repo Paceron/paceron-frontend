@@ -15,7 +15,7 @@ import {
   DASHBOARD_ORDERS,
 } from '../../services/dashboard.js';
 import { resolveDashboardError } from '../../utils/dashboard-error-codes.js';
-import { DEFAULT_TOLERANCE, formatKind } from '../../utils/dashboard-format.js';
+import { DEFAULT_TOLERANCE, formatKind, hasMetric } from '../../utils/dashboard-format.js';
 import { fromISODate } from '../../utils/date-field-format.js';
 import { exercisesForKind, reconcileExercise } from '../../utils/dashboard-filter-cascade.js';
 import { resolveDashboardRange } from '../../utils/dashboard-range.js';
@@ -25,7 +25,8 @@ import { RadarChart } from './charts/radar-chart.jsx';
 import { ComparisonStrip } from './comparison-strip.jsx';
 import { FiltersBar } from './filters-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
-import { LeaderboardTable } from './leaderboard-table.jsx';
+import { COLUMNS, LeaderboardTable } from './leaderboard-table.jsx';
+import { BarChart } from './charts/bar-chart.jsx';
 import { PaletteSwitch } from './palette-switch.jsx';
 import { QualityBanner } from './quality-banner.jsx';
 import { RunnerProgress } from './runner-progress.jsx';
@@ -349,6 +350,19 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
   const units = leaderboard.units ?? summary?.units ?? {};
   const selfPosition = leaderboard.items.find((item) => item.is_self)?.position ?? null;
 
+  // La barrita y la tabla salen de la MISMA respuesta de /leaderboard y de la
+  // misma columna activa, pero en cards separadas: pegadas verticalmente se
+  // leen como dos tablas apiladas. Mismo endpoint evita que el grafico y la
+  // tabla muestren dos rankings distintos.
+  const leaderboardColumn = COLUMNS.find((column) => column.key === leaderboard.sort) ?? COLUMNS[0];
+  const leaderboardBars = leaderboard.items
+    .filter((item) => hasMetric(item?.[leaderboardColumn.key]))
+    .map((item, index) => ({
+      id: item?.athlete_user_id ?? item?.id ?? String(index),
+      label: `${item?.name ?? ''} ${item?.surname ?? ''}`.trim(),
+      value: item[leaderboardColumn.key],
+    }));
+
   return (
     <View nativeID="dashboard-trainer" testID="dashboard-trainer">
       <PaletteSwitch
@@ -368,6 +382,22 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
           title="Perfil del equipo en cinco ejes"
         >
           <RadarChart id="dashboard-trainer-radar" summary={summary} units={summary?.units} />
+        </ChartCard>
+      ) : null}
+
+      {leaderboardBars.length ? (
+        <ChartCard
+          icon="podium"
+          id="dashboard-trainer-ranking-bars"
+          subtitle={`${leaderboardColumn.label}, ${leaderboard.order === 'asc' ? 'menor primero' : 'mayor primero'}.`}
+          title="Ranking del equipo"
+        >
+          <BarChart
+            id="dashboard-trainer-ranking-bar-chart"
+            items={leaderboardBars}
+            sort={leaderboard.order === 'asc' ? 'asc' : 'desc'}
+            unit={units?.[leaderboardColumn.unitKey]}
+          />
         </ChartCard>
       ) : null}
 
