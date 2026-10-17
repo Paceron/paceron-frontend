@@ -53,6 +53,18 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   // reales" en dos renders distintos, igual que pasa naturalmente en el
   // picker. Confirmado con logs: este paso NO crashea.
   const [shapeReady, setShapeReady] = useState(false);
+  // Aislamiento adicional (2026-10-17, post-merge, el fix de Marker->círculos
+  // no resolvió nada -- crasheó exactamente igual, logs idénticos). Con
+  // Marker afuera, quedan 3 GeoJSONSource (línea + 2 círculos de
+  // inicio/llegada) actualizando su `shape` TODOS en el mismo commit
+  // cuando `shapeReady` pasa a true. Este flag separa los círculos de la
+  // línea en un render aparte (un tick después) para la próxima prueba:
+  // si crashea apenas aparece shapeReady:true/pointsReady:false, es la
+  // línea sola (ya se había visto un render con esa combinación sin
+  // crashear antes de este cambio, pero esta vez sin los Marker al lado
+  // -- repetir para confirmar); si aparece un render con pointsReady:true
+  // antes de crashear, son los círculos de Point.
+  const [pointsReady, setPointsReady] = useState(false);
   const points = coordinates ?? [];
   const lineGeojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} };
   const startGeojson = points.length >= 1 ? { type: 'Feature', geometry: { type: 'Point', coordinates: points[0] }, properties: {} } : EMPTY_GEOJSON;
@@ -64,12 +76,16 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   // Mismo prefijo `[MAP-DEBUG]` que route-draw-picker.jsx para poder
   // correlacionar ambos componentes en el mismo log de Metro.
   if (__DEV__) {
-    console.log('[MAP-DEBUG route-map-preview] render', { mapReady, nativeID, pointsLen: points.length, shapeReady });
+    console.log('[MAP-DEBUG route-map-preview] render', { mapReady, nativeID, pointsLen: points.length, pointsReady, shapeReady });
   }
 
   useEffect(() => {
     if (mapReady) setShapeReady(true);
   }, [mapReady]);
+
+  useEffect(() => {
+    if (shapeReady) setPointsReady(true);
+  }, [shapeReady]);
 
   return (
     <View className="h-full w-full overflow-hidden rounded-xl" nativeID={nativeID} testID={testID}>
@@ -102,12 +118,12 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
           </GeoJSONSource>
         )}
         {mapReady && (
-          <GeoJSONSource id={`${nativeID}-start-source`} shape={shapeReady ? startGeojson : EMPTY_GEOJSON}>
+          <GeoJSONSource id={`${nativeID}-start-source`} shape={pointsReady ? startGeojson : EMPTY_GEOJSON}>
             <Layer id={`${nativeID}-start-layer`} style={{ circleColor: '#ef4444', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
           </GeoJSONSource>
         )}
         {mapReady && (
-          <GeoJSONSource id={`${nativeID}-end-source`} shape={shapeReady ? endGeojson : EMPTY_GEOJSON}>
+          <GeoJSONSource id={`${nativeID}-end-source`} shape={pointsReady ? endGeojson : EMPTY_GEOJSON}>
             <Layer id={`${nativeID}-end-layer`} style={{ circleColor: '#2563eb', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
           </GeoJSONSource>
         )}
