@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { InputField, DateField } from '../forms/fields.jsx';
@@ -26,6 +26,16 @@ const DEFAULT_ACCEPTANCE_RADIUS = 50;
 
 export function CreateCompetitionModal({ visible, onClose, onSubmit, members, groups }) {
   const colors = useThemeColors();
+  // `vh` vía Tailwind no resuelve en nativo dentro de un Modal -- monta su
+  // contenido en una superficie nativa separada (mismo motivo por el que
+  // GestureHandlerRootView tampoco alcanza ahí, ver CLAUDE.md), y la
+  // resolución reactiva de NativeWind para unidades de viewport no
+  // participa de ese árbol. Bug real, 2026-10-16: en web `max-h-[90vh]`
+  // andaba perfecto, en mobile colapsaba el ScrollView `flex-1` a 0 --
+  // el modal se veía vacío (solo título + botones). Fix: alto máximo
+  // calculado en JS con useWindowDimensions, aplicado vía style, mismo
+  // valor real en las dos plataformas sin depender de CSS.
+  const { height: windowHeight } = useWindowDimensions();
 
   const [type, setType] = useState('metric');
   const [metric, setMetric] = useState('distance');
@@ -126,7 +136,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
     <>
       <Modal animationType="fade" nativeID="create-competition-modal" onRequestClose={handleClose} testID="create-competition-modal" transparent visible={visible}>
         <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-competition-modal-backdrop" onPress={handleClose} testID="create-competition-modal-backdrop">
-          <Pressable className="max-h-[90vh] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-competition-modal-card" onPress={() => {}} testID="create-competition-modal-card">
+          <Pressable className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="create-competition-modal-card" onPress={() => {}} style={{ maxHeight: windowHeight * 0.9 }} testID="create-competition-modal-card">
             <View className="mb-4 shrink-0 flex-row items-center gap-2" nativeID="create-competition-modal-header" testID="create-competition-modal-header">
               <MaterialCommunityIcons color={colors.primary} name="sword-cross" size={20} />
               <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-competition-modal-title" testID="create-competition-modal-title">
@@ -134,12 +144,12 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
               </Text>
             </View>
 
-            {/* `flex-1` (no `max-h-*`) -- la card entera tiene `max-h-[90vh]`;
-                este ScrollView se encoge para llenar lo que sobra ahí
-                después del header/error/acciones, en vez de un tope fijo
-                que no garantizaba que la card completa entrara en pantalla
-                (pedido real, 2026-10-15: "que el modal sea scrollable si no
-                entra en pantalla"). */}
+            {/* `flex-1` (no `max-h-*`) -- la card entera tiene su `maxHeight`
+                (windowHeight * 0.9, ver arriba); este ScrollView se encoge
+                para llenar lo que sobra ahí después del header/error/
+                acciones, en vez de un tope fijo que no garantizaba que la
+                card completa entrara en pantalla (pedido real, 2026-10-15:
+                "que el modal sea scrollable si no entra en pantalla"). */}
             <ScrollView className="flex-1" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
               <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
                 <ResponsiveSelectField dense hideErrorRow label="Tipo de competencia" onChange={setType} options={TYPE_OPTIONS} required value={type} />

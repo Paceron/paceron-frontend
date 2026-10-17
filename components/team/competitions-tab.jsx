@@ -13,6 +13,7 @@ import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
+import { RouteThumbnail } from './route-thumbnail.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
@@ -115,6 +116,12 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
           </Text>
         </View>
       </Pressable>
+
+      {competition.type === 'route' && (
+        <View className="ml-6 mt-2" nativeID={`${idPrefix}-route-thumbnail-wrap`} testID={`${idPrefix}-route-thumbnail-wrap`}>
+          <RouteThumbnail coordinates={competition.route?.coordinates} nativeID={`${idPrefix}-route-thumbnail`} testID={`${idPrefix}-route-thumbnail`} />
+        </View>
+      )}
 
       {/* `flex-wrap` -- en mobile, si el badge + los botones no entran en
           una línea, el badge baja a su propia línea en vez de quedar
