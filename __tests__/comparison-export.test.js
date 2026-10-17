@@ -41,7 +41,10 @@ describe('comparison export', () => {
     const list = toComparisonListModel(await mockGetComparisons({ dateFrom: '2026-09-13', dateTo: '2026-10-13' }));
     const rows = lines(buildRangeComparisonCsv(list));
     expect(rows).toHaveLength(1 + list.sessions.length + 1);
+    expect(rows[0].endsWith(';En el promedio')).toBe(true);
+    expect(rows[3].endsWith(';No')).toBe(true); // 454: hoy, sin ejecutar
     expect(rows[rows.length - 1]).toContain('Promedio del período');
+    expect(rows[rows.length - 1]).toContain('2 en el promedio');
     expect(rangeComparisonFileName(list, 'pdf')).toBe('comparacion-2026-09-13-a-2026-10-13.pdf');
   });
 
@@ -65,5 +68,7 @@ describe('comparison export', () => {
     const html = buildRangeComparisonHtml(list);
     expect(html).toContain('Cumplimiento del 13-09-2026 al 13-10-2026');
     expect(html.match(/<tr>/g)).toHaveLength(1 + list.sessions.length);
+    expect(html).toContain('Sobre 2 de 3 sesiones');
+    expect(html).toContain('Todavía no cuenta en el promedio');
   });
 });

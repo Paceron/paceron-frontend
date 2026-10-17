@@ -13,10 +13,13 @@ import { EXERCISE_KIND_OPTIONS } from '../../hooks/use-exercises.js';
 import { useComparisonList } from '../../hooks/use-activity-comparison.js';
 import { buildComparisonRange, defaultComparisonRange } from '../../utils/comparison-range.js';
 import {
+  averageBasisLabel,
+  averageValueLabel,
   EMPTY_COMPARISON_MESSAGE,
   formatComparisonDate,
   formatCompliance,
   kindLabel,
+  PENDING_AVERAGE_LABEL,
   sessionStatusLabel,
   totalsDistanceLabel,
   totalsDurationLabel,
@@ -61,6 +64,11 @@ function SessionRow({ session, isWide, onPress }) {
           <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-date`} testID={`${id}-date`}>
             {formatComparisonDate(session.date)} · {sessionStatusLabel(session.status)}
           </Text>
+          {session.countsForAverage === false ? (
+            <Text className="text-xs italic text-slate-500 dark:text-slate-400" nativeID={`${id}-pending-average`} testID={`${id}-pending-average`}>
+              {PENDING_AVERAGE_LABEL}
+            </Text>
+          ) : null}
           <Text className="mt-0.5 text-base font-semibold text-slate-900 dark:text-white" nativeID={`${id}-name`} numberOfLines={1} testID={`${id}-name`}>
             {session.sessionName}
           </Text>
@@ -207,7 +215,7 @@ function TrainingComparisonContent() {
         ) : list ? (
           <View className="gap-4" nativeID="training-comparison-results" testID="training-comparison-results">
             <View className="flex-row gap-3" nativeID="training-comparison-tiles" testID="training-comparison-tiles">
-              <StatTile icon="percent-circle-outline" idPrefix="training-comparison-tile" label="Cumplimiento promedio" value={formatCompliance(list.summary.avgCompliancePct)} />
+              <StatTile icon="percent-circle-outline" idPrefix="training-comparison-tile" hint={averageBasisLabel(list.summary)} label="Cumplimiento promedio" value={averageValueLabel(list.summary)} />
               <StatTile icon="calendar-check-outline" idPrefix="training-comparison-tile" label="Sesiones planificadas" value={String(list.summary.sessionsPlanned)} />
               <StatTile icon="run" idPrefix="training-comparison-tile" label="Con actividad" value={String(list.summary.sessionsWithActivity)} />
             </View>

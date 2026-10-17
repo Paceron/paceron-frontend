@@ -28,7 +28,7 @@ El detalle de una sesión que ya consume el front (`GET /session-instances/:id`)
 ## Contrato (resumen; detalle en el Gap 35)
 
 - `GET /activities/comparison/:sessionInstanceId` → cabecera (fecha, nombre, equipo, grupo, horario, estado, tipos), `exercises[]` con `planned` y `sets[]` (estado, duración, distancia, ritmo, desviación, cumplimiento), `totals` y `compliance_pct`.
-- `GET /activities/comparison?date_from&date_to&team_id&kind` → `sessions[]` con totales y `compliance_pct`, y `summary` (`sessions_planned`, `sessions_with_activity`, `avg_compliance_pct`). Incluye las sesiones planificadas que no se hicieron (0%). El rango es obligatorio, de 366 días como máximo y no puede terminar después de hoy.
+- `GET /activities/comparison?date_from&date_to&team_id&kind` → `sessions[]` con totales y `compliance_pct`, y `summary` (`sessions_planned`, `sessions_with_activity`, `sessions_averaged`, `avg_compliance_pct`). Incluye las sesiones planificadas que no se hicieron (0%). El promedio deja afuera las sesiones de hoy que todavía no terminaron (`counts_for_average: false`): se listan, pero no bajan el promedio mientras el corredor todavía puede hacerlas (ajuste del 2026-10-17). El rango es obligatorio, de 366 días como máximo y no puede terminar después de hoy.
 
 ## Cumplimiento
 

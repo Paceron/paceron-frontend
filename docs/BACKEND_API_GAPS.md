@@ -1237,8 +1237,8 @@ GET /api/v1/activities/comparison?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&team_i
         sessions: [{ session_instance_id, date, session_name, team_id, team_name, group_id,
                      group_name, is_presencial, kinds[], status, planned_sets, completed_sets,
                      skipped_sets, unregistered_sets, planned_duration_ms, actual_duration_ms,
-                     planned_distance_m, actual_distance_m, compliance_pct }],
-        summary: { sessions_planned, sessions_with_activity, avg_compliance_pct } }
+                     planned_distance_m, actual_distance_m, compliance_pct, counts_for_average }],
+        summary: { sessions_planned, sessions_with_activity, sessions_averaged, avg_compliance_pct } }
 → 400 INVALID_QUERY (rango faltante, invertido, > 366 días o posterior a hoy; kind desconocido;
   group_id sin team_id; otro atleta sin team_id) · 401 · 403 · 500
 ```
@@ -1248,6 +1248,7 @@ Reglas que importan del lado del front:
 - **Cumplimiento por serie, con tope de 100%:** con minutos, duración (activa si existe) / planificada; si no, distancia / planificada; sin objetivo, 100% si se completó. Salteada o sin registro: 0%. Ejercicio y sesión: promedio de sus series planificadas, a 1 decimal. Las series de más vienen con `extra: true` y `compliance_pct: null`.
 - `deviation_*` y `planned_duration_ms`/`planned_distance_m` son `null` cuando no hay objetivo de ese tipo: se muestran como "sin objetivo", nunca como 0.
 - La lista incluye los días de entrenamiento donde el corredor era miembro **en esa fecha** aunque no haya registrado nada (0%, `status: none`), más las sesiones con feedback suyo que no tengan un día así.
+- **El promedio del rango no cuenta las sesiones de hoy sin terminar** (2026-10-17, pedido del equipo): una sesión de hoy que no está `finished` viene con `counts_for_average: false` y no entra en `avg_compliance_pct` ni en `sessions_averaged` (el divisor). Las de días anteriores cuentan siempre, aunque no se hayan ejecutado. `sessions_planned` sigue contando todas. Backend: design.md D9.
 - Sin `athlete_user_id` compara al usuario autenticado. Un entrenador puede pasar el de un corredor suyo (en la lista, con `team_id` de un equipo propio).
 
 **Impacto en frontend:** `services/activity-comparison.js`, `hooks/use-activity-comparison.js`, pantallas `/training-comparison` y `/training-comparison/session` (spec `docs/superpowers/specs/2026-10-13-training-comparison-design.md`). Entradas: botón en el historial, opción en el menú de cada fila y "Ver comparación" al terminar la ejecución.

@@ -1,9 +1,12 @@
 import {
+  averageBasisLabel,
+  averageValueLabel,
   formatComparisonDate,
   formatCompliance,
   formatPace,
   formatSchedule,
   kindLabel,
+  PENDING_AVERAGE_LABEL,
   plannedExerciseLabel,
   roleLabel,
   sessionStatusLabel,
@@ -69,15 +72,15 @@ export function buildRangeComparisonHtml(list) {
       <td>${escapeHtml(formatComparisonDate(s.date))}</td>
       <td>${escapeHtml(s.sessionName)}</td>
       <td>${escapeHtml((s.kinds ?? []).map(kindLabel).join(', '))}</td>
-      <td>${escapeHtml(sessionStatusLabel(s.status))}</td>
+      <td>${escapeHtml(sessionStatusLabel(s.status))}${s.countsForAverage === false ? `<br><span class="muted">${escapeHtml(PENDING_AVERAGE_LABEL)}</span>` : ''}</td>
       <td class="num">${escapeHtml(`${s.totals.completedSets}/${s.totals.plannedSets}`)}</td>
       <td class="num">${escapeHtml(formatCompliance(s.compliancePct))}</td>
     </tr>`).join('');
   const summary = l.summary ?? {};
   const body = `<div class="brand">Paceron · planificado vs realizado</div>
     <h1>Cumplimiento del ${escapeHtml(formatComparisonDate(l.dateFrom))} al ${escapeHtml(formatComparisonDate(l.dateTo))}</h1>
-    <div class="pct">${escapeHtml(formatCompliance(summary.avgCompliancePct ?? 0))}</div>
-    <p class="muted">${escapeHtml(summary.sessionsPlanned ?? 0)} sesiones planificadas · ${escapeHtml(summary.sessionsWithActivity ?? 0)} con actividad</p>
+    <div class="pct">${escapeHtml(averageValueLabel(summary))}</div>
+    <p class="muted">${escapeHtml(summary.sessionsPlanned ?? 0)} sesiones planificadas · ${escapeHtml(summary.sessionsWithActivity ?? 0)} con actividad${averageBasisLabel(summary) ? ` · ${escapeHtml(averageBasisLabel(summary))}` : ''}</p>
     <table><thead><tr><th>Fecha</th><th>Sesión</th><th>Tipos</th><th>Estado</th><th class="num">Series</th><th class="num">Cumplimiento</th></tr></thead><tbody>${rows}</tbody></table>`;
   return page('Comparación de entrenamientos', body);
 }

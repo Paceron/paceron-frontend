@@ -8,6 +8,24 @@ import { formatMeters } from './distance.js';
 
 export const NO_TARGET_LABEL = 'Sin objetivo';
 export const EMPTY_COMPARISON_MESSAGE = 'No hay entrenamientos planificados o realizados para comparar';
+// Una sesión de hoy que todavía no terminó se lista, pero no entra al promedio.
+export const PENDING_AVERAGE_LABEL = 'Todavía no cuenta en el promedio';
+
+// Aclara sobre cuántas sesiones sale el promedio del rango, solo cuando no
+// entran todas (hay alguna de hoy sin terminar).
+export function averageBasisLabel(summary) {
+  const planned = summary?.sessionsPlanned ?? 0;
+  const averaged = summary?.sessionsAveraged ?? planned;
+  if (averaged >= planned) return null;
+  if (averaged === 0) return 'Todavía no hay sesiones para promediar';
+  return `Sobre ${averaged} de ${planned} sesiones`;
+}
+
+// Sin sesiones para promediar, el promedio no es 0 %: no existe todavía.
+export function averageValueLabel(summary) {
+  if ((summary?.sessionsAveraged ?? 0) === 0) return '—';
+  return formatCompliance(summary.avgCompliancePct);
+}
 
 export function kindLabel(kind) {
   return EXERCISE_KIND_META[kind]?.label ?? kind ?? '';

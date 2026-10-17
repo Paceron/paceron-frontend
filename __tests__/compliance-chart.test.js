@@ -50,3 +50,13 @@ describe('buildComplianceBars', () => {
     expect(shortDateLabel(null)).toBe('');
   });
 });
+
+describe('buildComplianceBars — sesión de hoy sin terminar', () => {
+  it('pinta en gris la sesión que todavía no cuenta en el promedio', () => {
+    const bars = buildComplianceBars(
+      [session(1, '2026-10-12', 50), { ...session(2, '2026-10-13', 0), countsForAverage: false }],
+      { width: 300, height: 170 },
+    );
+    expect(bars.map((b) => b.tone)).toEqual(['partial', 'pending']);
+  });
+});

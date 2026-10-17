@@ -1,4 +1,6 @@
 import {
+  averageBasisLabel,
+  averageValueLabel,
   complianceTone,
   formatComparisonDate,
   formatCompliance,
@@ -106,5 +108,19 @@ describe('comparison-format', () => {
   it('formats dates as dd-mm-aaaa', () => {
     expect(formatComparisonDate('2026-10-12')).toBe('12-10-2026');
     expect(formatComparisonDate('')).toBe('');
+  });
+});
+
+describe('promedio del rango', () => {
+  it('aclara la base del promedio solo cuando no entran todas las sesiones', () => {
+    expect(averageBasisLabel({ sessionsPlanned: 4, sessionsAveraged: 4 })).toBeNull();
+    expect(averageBasisLabel({ sessionsPlanned: 4, sessionsAveraged: 3 })).toBe('Sobre 3 de 4 sesiones');
+    expect(averageBasisLabel({ sessionsPlanned: 2, sessionsAveraged: 1 })).toBe('Sobre 1 de 2 sesiones');
+    expect(averageBasisLabel({ sessionsPlanned: 1, sessionsAveraged: 0 })).toBe('Todavía no hay sesiones para promediar');
+  });
+
+  it('no muestra 0 % cuando no hay nada para promediar', () => {
+    expect(averageValueLabel({ sessionsAveraged: 0, avgCompliancePct: 0 })).toBe('—');
+    expect(averageValueLabel({ sessionsAveraged: 2, avgCompliancePct: 59.4 })).toBe(formatCompliance(59.4));
   });
 });

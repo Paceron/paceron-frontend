@@ -37,7 +37,9 @@ describe('activity comparison normalizers', () => {
     });
     expect(model.sessions[0].totals.plannedSets).toBe(3);
     expect(model.sessions[0].totals.plannedDurationMs).toBe(1800000);
-    expect(model.summary).toEqual({ sessionsPlanned: 0, sessionsWithActivity: 0, avgCompliancePct: 0 });
+    expect(model.summary).toEqual({ sessionsPlanned: 0, sessionsWithActivity: 0, sessionsAveraged: 0, avgCompliancePct: 0 });
+    // Un backend anterior a counts_for_average: la sesión cuenta.
+    expect(model.sessions[0].countsForAverage).toBe(true);
     expect(toComparisonListModel(null)).toBeNull();
     expect(toSessionComparisonModel(undefined)).toBeNull();
   });
@@ -78,6 +80,10 @@ describe('activity comparison mock', () => {
     expect(all.sessions.map((s) => s.sessionInstanceId)).toEqual(['300', '455', '454']);
     expect(all.summary.sessionsPlanned).toBe(3);
     expect(all.summary.sessionsWithActivity).toBe(2);
+    // La 454 es de hoy y no se ejecutó: se lista, pero no entra al promedio.
+    expect(all.sessions.map((s) => s.countsForAverage)).toEqual([true, true, false]);
+    expect(all.summary.sessionsAveraged).toBe(2);
+    expect(all.summary.avgCompliancePct).toBe(59.4); // (68,8 + 50) / 2
 
     const onlyDistance = toComparisonListModel(await mockGetComparisons({ dateFrom: '2026-09-13', dateTo: '2026-10-13', kind: 'velocidad_distancia' }));
     expect(onlyDistance.sessions.map((s) => s.sessionInstanceId)).toEqual(['300']);

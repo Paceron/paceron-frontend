@@ -1,4 +1,5 @@
 import {
+  averageValueLabel,
   formatComparisonDate,
   formatCompliance,
   formatPace,
@@ -60,7 +61,7 @@ export function buildSessionComparisonCsv(comparison) {
 
 // Una fila por sesión del rango, más el resumen.
 export function buildRangeComparisonCsv(list) {
-  const header = ['Fecha', 'Sesión', 'Equipo', 'Grupo', 'Tipos', 'Estado', 'Series planificadas', 'Completadas', 'Salteadas', 'Sin registro', 'Duración planificada', 'Duración real', 'Distancia planificada (m)', 'Distancia real (m)', 'Cumplimiento'];
+  const header = ['Fecha', 'Sesión', 'Equipo', 'Grupo', 'Tipos', 'Estado', 'Series planificadas', 'Completadas', 'Salteadas', 'Sin registro', 'Duración planificada', 'Duración real', 'Distancia planificada (m)', 'Distancia real (m)', 'Cumplimiento', 'En el promedio'];
   const rows = [header];
   (list?.sessions ?? []).forEach((s) => {
     rows.push([
@@ -79,10 +80,11 @@ export function buildRangeComparisonCsv(list) {
       meters(s.totals.plannedDistanceM),
       meters(s.totals.actualDistanceM),
       formatCompliance(s.compliancePct),
+      s.countsForAverage === false ? 'No' : 'Sí',
     ]);
   });
   const summary = list?.summary ?? {};
-  rows.push(['Promedio del período', `${summary.sessionsPlanned ?? 0} sesiones`, '', '', '', `${summary.sessionsWithActivity ?? 0} con actividad`, '', '', '', '', '', '', '', '', formatCompliance(summary.avgCompliancePct ?? 0)]);
+  rows.push(['Promedio del período', `${summary.sessionsPlanned ?? 0} sesiones`, '', '', '', `${summary.sessionsWithActivity ?? 0} con actividad`, '', '', '', '', '', '', '', '', averageValueLabel(summary), `${summary.sessionsAveraged ?? summary.sessionsPlanned ?? 0} en el promedio`]);
   return toCsv(rows);
 }
 

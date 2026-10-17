@@ -1132,10 +1132,13 @@ export function toComparisonListModel(dto) {
     dateFrom: dto.date_from,
     dateTo: dto.date_to,
     // En la lista los totales vienen aplanados en cada sesión.
-    sessions: (dto.sessions ?? []).map((s) => ({ ...toComparisonHeader(s), totals: toComparisonTotals(s) })),
+    // Una sesión de hoy sin terminar se lista pero no entra al promedio. Sin el
+    // campo (backend anterior), cuenta.
+    sessions: (dto.sessions ?? []).map((s) => ({ ...toComparisonHeader(s), totals: toComparisonTotals(s), countsForAverage: s.counts_for_average ?? true })),
     summary: {
       sessionsPlanned: dto.summary?.sessions_planned ?? 0,
       sessionsWithActivity: dto.summary?.sessions_with_activity ?? 0,
+      sessionsAveraged: dto.summary?.sessions_averaged ?? dto.summary?.sessions_planned ?? 0,
       avgCompliancePct: dto.summary?.avg_compliance_pct ?? 0,
     },
   };

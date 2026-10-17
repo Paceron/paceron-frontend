@@ -163,10 +163,12 @@ export async function mockGetComparisons({ dateFrom, dateTo, kind } = {}) {
     .filter((s) => (!dateFrom || s.date >= dateFrom) && (!dateTo || s.date <= dateTo))
     .filter((s) => !kind || s.kinds.includes(kind))
     .sort((a, b) => (a.date === b.date ? a.session_instance_id - b.session_instance_id : a.date.localeCompare(b.date)))
-    .map(({ exercises, totals, started_at, ended_at, ...rest }) => ({ ...rest, ...totals }));
-  const avg = sessions.length ? Math.round((sessions.reduce((sum, s) => sum + s.compliance_pct, 0) / sessions.length) * 10) / 10 : 0;
+    // Igual que el backend: hoy cuenta para el promedio solo si ya terminó.
+    .map(({ exercises, totals, started_at, ended_at, ...rest }) => ({ ...rest, ...totals, counts_for_average: rest.date < isoDaysAgo(0) || rest.status === 'finished' }));
+  const averaged = sessions.filter((s) => s.counts_for_average);
+  const avg = averaged.length ? Math.round((averaged.reduce((sum, s) => sum + s.compliance_pct, 0) / averaged.length) * 10) / 10 : 0;
   return {
     date_from: dateFrom, date_to: dateTo, sessions,
-    summary: { sessions_planned: sessions.length, sessions_with_activity: sessions.filter((s) => s.completed_sets > 0).length, avg_compliance_pct: avg },
+    summary: { sessions_planned: sessions.length, sessions_with_activity: sessions.filter((s) => s.completed_sets > 0).length, sessions_averaged: averaged.length, avg_compliance_pct: avg },
   };
 }

@@ -11,7 +11,8 @@ export const COMPLIANCE_TONE_CLASSES = {
 };
 
 // Colores del SVG del gráfico, mismo criterio que los chips.
-export const COMPLIANCE_TONE_FILL = { good: '#8cc63e', partial: '#f59e0b', low: '#f43f5e' };
+// pending: sesión de hoy sin terminar, que todavía no cuenta en el promedio.
+export const COMPLIANCE_TONE_FILL = { good: '#8cc63e', partial: '#f59e0b', low: '#f43f5e', pending: '#94a3b8' };
 
 export function ComplianceBadge({ pct, size = 'sm', idPrefix }) {
   const tone = COMPLIANCE_TONE_CLASSES[complianceTone(pct)];

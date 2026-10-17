@@ -31,7 +31,7 @@ export function buildComplianceBars(sessions, { width, height, gap = 6, labelHei
       sessionInstanceId: s.sessionInstanceId,
       date: s.date,
       compliancePct: pct,
-      tone: complianceTone(pct),
+      tone: s.countsForAverage === false ? 'pending' : complianceTone(pct),
       x: i * slot,
       y: valueHeight + (plotHeight - barHeight),
       width: barWidth,
