@@ -12,6 +12,11 @@ const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // hardcodea nada de ese dominio (el caller decide si pasa `referenceRoute`
 // o no). Pensado para reusarse en la mejora futura de "trayectoria de toda
 // la sesión" (sin ruta de referencia, solo lo recorrido).
+//
+// `data` (no `shape`) en GeoJSONSource y `padding` como objeto (no número)
+// en Camera -- ver CLAUDE.md, sección maplibre-react-native, para el crash
+// nativo real que motivó encontrar estos dos bugs en route-map-preview.jsx
+// (mismo componente de librería, nunca antes probado acá).
 export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
   const cameraRef = useRef(null);
 
@@ -33,14 +38,14 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
   return (
     <View className="h-64 overflow-hidden rounded-2xl" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
       <Map mapStyle={OPENFREEMAP_STYLE_URL} nativeID="live-trajectory-map" style={{ flex: 1 }} testID="live-trajectory-map">
-        <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 14 }} padding={40} ref={cameraRef} />
+        <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 14 }} padding={{ bottom: 40, left: 40, right: 40, top: 40 }} ref={cameraRef} />
         {referenceRoute?.coordinates?.length > 1 && (
-          <GeoJSONSource id="live-trajectory-map-reference-source" shape={{ type: 'Feature', geometry: referenceRoute, properties: {} }}>
+          <GeoJSONSource data={{ type: 'Feature', geometry: referenceRoute, properties: {} }} id="live-trajectory-map-reference-source">
             <Layer id="live-trajectory-map-reference-layer" style={{ lineColor: '#94a3b8', lineWidth: 3, lineDasharray: [2, 2] }} type="line" />
           </GeoJSONSource>
         )}
         {traveledPoints?.length > 1 && (
-          <GeoJSONSource id="live-trajectory-map-traveled-source" shape={traveledGeojson}>
+          <GeoJSONSource data={traveledGeojson} id="live-trajectory-map-traveled-source">
             <Layer id="live-trajectory-map-traveled-layer" style={{ lineColor: '#8cc63e', lineWidth: 4 }} type="line" />
           </GeoJSONSource>
         )}
