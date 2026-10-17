@@ -94,19 +94,24 @@ function RouteDetailSection({ idPrefix, competition, members, sortedParticipantI
   const infoColumn = (
     <View className="gap-2" nativeID={`${idPrefix}-route-info`} testID={`${idPrefix}-route-info`}>
       {startPoint && (
-        <Pressable
-          className="flex-row items-start gap-1 hover:opacity-80"
-          nativeID={`${idPrefix}-route-start-address`}
-          onPress={() => openLocationInMaps(startPoint)}
-          testID={`${idPrefix}-route-start-address`}
-        >
-          <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} style={{ marginTop: 2 }} />
-          <Text className="flex-1 text-sm font-semibold text-primary underline" nativeID={`${idPrefix}-route-start-address-label`} testID={`${idPrefix}-route-start-address-label`}>
-            {addressLabel}
+        <>
+          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-start-address-caption`} testID={`${idPrefix}-route-start-address-caption`}>
+            Punto de inicio:
           </Text>
-        </Pressable>
+          <Pressable
+            className="flex-row items-start gap-1 hover:opacity-80"
+            nativeID={`${idPrefix}-route-start-address`}
+            onPress={() => openLocationInMaps(startPoint)}
+            testID={`${idPrefix}-route-start-address`}
+          >
+            <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} style={{ marginTop: 2 }} />
+            <Text className="flex-1 text-sm font-semibold text-primary underline" nativeID={`${idPrefix}-route-start-address-label`} testID={`${idPrefix}-route-start-address-label`}>
+              {addressLabel}
+            </Text>
+          </Pressable>
+        </>
       )}
-      <View className="flex-row flex-wrap items-center gap-1.5" nativeID={`${idPrefix}-route-participants`} testID={`${idPrefix}-route-participants`}>
+      <View className="flex-row flex-wrap items-center gap-1.5 mt-1" nativeID={`${idPrefix}-route-participants`} testID={`${idPrefix}-route-participants`}>
         <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-participants-caption`} testID={`${idPrefix}-route-participants-caption`}>
           Participantes:
         </Text>
