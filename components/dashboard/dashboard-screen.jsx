@@ -385,7 +385,7 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
         >
           {/* Figura y pentagono en fila, al mismo alto: la figura da el "de que
               es esto" y el radar los cinco valores. En angosto se apilan. */}
-          <View className="mb-4 flex-row items-center justify-center gap-4" nativeID="dashboard-trainer-radar-row" testID="dashboard-trainer-radar-row">
+          <View className="mb-4 flex-row items-center justify-center gap-6" nativeID="dashboard-trainer-radar-row" testID="dashboard-trainer-radar-row">
             <BodyScanFigure id="dashboard-trainer-body-scan" />
             <RadarChart id="dashboard-trainer-radar" summary={summary} units={summary?.units} />
           </View>
