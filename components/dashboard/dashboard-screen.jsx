@@ -26,6 +26,7 @@ import { ComparisonStrip } from './comparison-strip.jsx';
 import { FiltersBar } from './filters-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { COLUMNS, LeaderboardTable } from './leaderboard-table.jsx';
+import { AxisBars } from './charts/axis-bars.jsx';
 import { BarChart } from './charts/bar-chart.jsx';
 import { PaletteSwitch } from './palette-switch.jsx';
 import { QualityBanner } from './quality-banner.jsx';
@@ -382,6 +383,14 @@ function TrainerDashboard({ summary, timeseries, scope, kind, from, to, sort, or
           title="Perfil del equipo en cinco ejes"
         >
           <RadarChart id="dashboard-trainer-radar" summary={summary} units={summary?.units} />
+
+          {/* Los mismos cinco ejes del radar, en barritas. El radar contesta
+              "el perfil es equilibrado" y las barras "cuanto vale cada eje":
+              comparar 87 contra 64 en dos barras es mucho mas facil que
+              buscando un vertice en un poligono. */}
+          <View className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700" nativeID="dashboard-trainer-axes-bars" testID="dashboard-trainer-axes-bars">
+            <AxisBars id="dashboard-trainer-axes-bars-chart" summary={summary} units={units} />
+          </View>
         </ChartCard>
       ) : null}
 
