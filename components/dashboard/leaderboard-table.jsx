@@ -14,7 +14,7 @@ import { useThemeColors } from '../../theme/colors.js';
 // La fila propia se marca por `is_self` —el backend lo resuelve comparando con el
 // llamador— y no por comparar ids en el front, que es donde aparecería el clásico
 // number-vs-string del deep link.
-const COLUMNS = [
+export const COLUMNS = [
   { key: 'best_time_ms', label: 'Mejor tiempo', unitKey: 'best_time', align: 'right' },
   { key: 'mean_speed_kph', label: 'Ritmo medio', unitKey: 'speed', align: 'right' },
   { key: 'total_distance_m', label: 'Distancia', unitKey: 'distance', align: 'right' },
