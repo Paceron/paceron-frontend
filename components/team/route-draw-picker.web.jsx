@@ -12,6 +12,7 @@ import { FIELD_LABEL } from '../forms/fields.jsx';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} };
+const EMPTY_POINT = { type: 'Feature', geometry: { type: 'Point', coordinates: [] }, properties: {} };
 
 // `acceptanceRadiusMeters` -- ver nota en route-draw-picker.jsx (nativo),
 // mismo motivo acá.
@@ -39,11 +40,13 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
     const map = new maplibregl.Map({ container: containerRef.current, style: OPENFREEMAP_STYLE_URL, center: initialCenter, zoom: 13 });
     map.on('load', () => {
       map.addSource('route-draw-picker-halo', { type: 'geojson', data: EMPTY_LINE });
-      // `line-cap`/`line-join: 'round'` -- pedido real: "controlemos que no
-      // se intensifique por superposicion". El join por default ('miter')
-      // duplica cobertura en cada giro filoso del trazado a mano, y una
-      // línea translúcida ahí se ve más intensa que en el resto del halo.
-      map.addLayer({ id: 'route-draw-picker-halo-layer', type: 'line', source: 'route-draw-picker-halo', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8cc63e', 'line-opacity': 0.28, 'line-width': 0 } });
+      // `line-cap`/`line-join: 'round'` -- mitiga el solape EN LOS VÉRTICES,
+      // no lo elimina del todo (ver nota completa en route-draw-picker.jsx,
+      // nativo, mismo mecanismo) -- con mucho zigzag siguen apareciendo
+      // zonas más intensas entre tramos no adyacentes que quedan cerca
+      // geométricamente. Solución completa necesitaría un polígono de
+      // buffer real, fuera de alcance por ahora.
+      map.addLayer({ id: 'route-draw-picker-halo-layer', type: 'line', source: 'route-draw-picker-halo', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8cc63e', 'line-opacity': 0.35, 'line-width': 0 } });
       map.addSource('route-draw-picker-line', { type: 'geojson', data: EMPTY_LINE });
       // Verde oscuro cuando está confirmada (pedido real, 2026-10-17) --
       // arranca con el color sin confirmar, el useEffect de abajo lo
@@ -56,6 +59,13 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
       // usuario lo aclaró). Punteada para distinguirla de la ruta real.
       map.addSource('route-draw-picker-ghost', { type: 'geojson', data: EMPTY_LINE });
       map.addLayer({ id: 'route-draw-picker-ghost-layer', type: 'line', source: 'route-draw-picker-ghost', paint: { 'line-color': '#8cc63e', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.6 } });
+      // Punto de inicio (rojo, visible apenas hay 1 punto) / llegada (azul,
+      // SOLO tras confirmar -- mientras se dibuja el último punto no es
+      // definitivo) -- pedido real, 2026-10-17.
+      map.addSource('route-draw-picker-start', { type: 'geojson', data: EMPTY_POINT });
+      map.addLayer({ id: 'route-draw-picker-start-layer', type: 'circle', source: 'route-draw-picker-start', paint: { 'circle-color': '#ef4444', 'circle-radius': 6, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
+      map.addSource('route-draw-picker-end', { type: 'geojson', data: EMPTY_POINT });
+      map.addLayer({ id: 'route-draw-picker-end-layer', type: 'circle', source: 'route-draw-picker-end', paint: { 'circle-color': '#2563eb', 'circle-radius': 6, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
     });
     map.on('click', (e) => picker.addPoint(e.lngLat.lat, e.lngLat.lng));
     map.on('mousemove', (e) => {
@@ -80,6 +90,9 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
     // si no, queda una línea punteada residual pegada al punto nuevo hasta
     // el próximo mousemove.
     map.getSource('route-draw-picker-ghost')?.setData(EMPTY_LINE);
+
+    const first = picker.points[0];
+    map.getSource('route-draw-picker-start')?.setData(first ? { type: 'Feature', geometry: { type: 'Point', coordinates: [first.lng, first.lat] }, properties: {} } : EMPTY_POINT);
 
     const radiusMeters = Number(radiusRef.current);
     const haloSource = map.getSource('route-draw-picker-halo');
@@ -111,6 +124,11 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
     const map = mapRef.current;
     if (!map?.getLayer('route-draw-picker-line-layer')) return;
     map.setPaintProperty('route-draw-picker-line-layer', 'line-color', picker.confirmed ? '#166534' : '#8cc63e');
+    const last = picker.points[picker.points.length - 1];
+    const endSource = map.getSource('route-draw-picker-end');
+    if (!endSource) return;
+    endSource.setData(picker.confirmed && last ? { type: 'Feature', geometry: { type: 'Point', coordinates: [last.lng, last.lat] }, properties: {} } : EMPTY_POINT);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picker.confirmed]);
 
   const handleLocateMe = async () => {

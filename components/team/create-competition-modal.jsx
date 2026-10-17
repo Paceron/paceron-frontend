@@ -26,23 +26,20 @@ const DEFAULT_ACCEPTANCE_RADIUS = 50;
 
 export function CreateCompetitionModal({ visible, onClose, onSubmit, members, groups }) {
   const colors = useThemeColors();
-  // `vh` vía Tailwind no resuelve en nativo dentro de un Modal -- monta su
-  // contenido en una superficie nativa separada (mismo motivo por el que
-  // GestureHandlerRootView tampoco alcanza ahí, ver CLAUDE.md), y la
-  // resolución reactiva de NativeWind para unidades de viewport no
-  // participa de ese árbol. Bug real, 2026-10-16: en web `max-h-[90vh]`
-  // andaba perfecto, en mobile colapsaba el ScrollView `flex-1` a 0 --
-  // el modal se veía vacío (solo título + botones). Fix: alto máximo
-  // calculado en JS con useWindowDimensions, aplicado vía style, mismo
-  // valor real en las dos plataformas sin depender de CSS.
+  // Causa real confirmada 2026-10-17 con logs reales de Expo Go (ver
+  // create-session-modal.jsx:349-366, MISMO bug ya documentado ahí
+  // 2026-09-14 -- debería haberse copiado el fix completo de entrada, no
+  // solo la mitad): `maxHeight` SIN `height` explícito dejaba el card con
+  // tamaño intrínseco (a su contenido) en Yoga nativo -- el ScrollView
+  // `flex-1` de adentro no tenía a qué alto crecer y colapsaba a 0 (card
+  // onLayout medía 129px pese a maxHeight=751; scroll onLayout medía
+  // 0 de alto). Web tolera ese mismo layout sin colapsar por diferencias
+  // del algoritmo flexbox del browser vs Yoga -- por eso nunca se notó
+  // ahí (confirmado roto solo en mobile, con logs). Fix: `height` fijo
+  // IGUAL a `maxHeight`, no una alternativa -- las dos juntas, mismo
+  // patrón ya probado en create-session-modal.jsx.
   const { height: windowHeight } = useWindowDimensions();
-
-  // TEMP DEBUG 2026-10-17 -- sacar cuando se resuelva el modal vacío en
-  // mobile. Confirma si el problema es general (ScrollView/fields no
-  // renderizan ningún tamaño) o puntual de RouteDrawPicker/MapLibre.
-  if (__DEV__ && visible) {
-    console.log('[DEBUG create-competition-modal] render', { windowHeight, maxHeight: windowHeight * 0.9 });
-  }
+  const modalHeight = windowHeight * 0.9;
 
   const [type, setType] = useState('metric');
   const [metric, setMetric] = useState('distance');
@@ -146,9 +143,8 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
           <Pressable
             className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface"
             nativeID="create-competition-modal-card"
-            onLayout={__DEV__ ? (e) => console.log('[DEBUG create-competition-modal] card onLayout', e.nativeEvent.layout) : undefined}
             onPress={() => {}}
-            style={{ maxHeight: windowHeight * 0.9 }}
+            style={{ height: modalHeight, maxHeight: modalHeight }}
             testID="create-competition-modal-card"
           >
             <View className="mb-4 shrink-0 flex-row items-center gap-2" nativeID="create-competition-modal-header" testID="create-competition-modal-header">
@@ -158,24 +154,12 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
               </Text>
             </View>
 
-            {/* `flex-1` (no `max-h-*`) -- la card entera tiene su `maxHeight`
-                (windowHeight * 0.9, ver arriba); este ScrollView se encoge
-                para llenar lo que sobra ahí después del header/error/
-                acciones, en vez de un tope fijo que no garantizaba que la
-                card completa entrara en pantalla (pedido real, 2026-10-15:
-                "que el modal sea scrollable si no entra en pantalla"). */}
-            <ScrollView
-              className="flex-1"
-              nativeID="create-competition-modal-scroll"
-              onLayout={__DEV__ ? (e) => console.log('[DEBUG create-competition-modal] scroll onLayout', e.nativeEvent.layout) : undefined}
-              testID="create-competition-modal-scroll"
-            >
-              <View
-                className="gap-3"
-                nativeID="create-competition-modal-fields"
-                onLayout={__DEV__ ? (e) => console.log('[DEBUG create-competition-modal] fields onLayout', e.nativeEvent.layout, 'type:', type) : undefined}
-                testID="create-competition-modal-fields"
-              >
+            {/* `flex-1` -- la card entera tiene `height` FIJO (no solo
+                `maxHeight`, ver el comentario de arriba): sin un `height`
+                explícito, Yoga nativo no le da a este ScrollView ningún
+                alto concreto para crecer y colapsa a 0. */}
+            <ScrollView className="flex-1" nativeID="create-competition-modal-scroll" testID="create-competition-modal-scroll">
+              <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
                 <ResponsiveSelectField dense hideErrorRow label="Tipo de competencia" onChange={setType} options={TYPE_OPTIONS} required value={type} />
 
                 {type === 'metric' ? (

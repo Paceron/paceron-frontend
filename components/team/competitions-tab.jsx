@@ -79,9 +79,8 @@ function ParticipantPill({ idPrefix, name, isWinner, progressLabel }) {
 // 2026-10-17: dirección del punto de inicio (clickeable a Google Maps) +
 // participantes a la izquierda, mapa real con el trazado a la derecha, en
 // 2 columnas en web ancho y apilado (mismo orden: dirección, participantes,
-// mapa) en mobile/web angosto. Visible SIEMPRE para type='route' (no detrás
-// del chevron de expandir, a diferencia de los participantes de type=
-// 'metric' -- acá la visual ES el contenido principal de la fila).
+// mapa) en mobile/web angosto. Detrás del chevron de expandir, igual que
+// los participantes de type='metric' (el caller gatea esto con `expanded`).
 function RouteDetailSection({ idPrefix, competition, members, sortedParticipantIds }) {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
@@ -145,9 +144,8 @@ function RouteDetailSection({ idPrefix, competition, members, sortedParticipantI
   );
 }
 
-function CompetitionRow({ competition, members, isTrainerView, currentUserId, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, attemptBlocked, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, attemptBlocked, busy }) {
   const colors = useThemeColors();
-  const [expanded, setExpanded] = useState(false);
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const idPrefix = `competitions-tab-row-${competition.id}`;
 
@@ -178,7 +176,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
 
   return (
     <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={() => setExpanded((v) => !v)} testID={`${idPrefix}-header`}>
+      <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={onToggleExpand} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} />
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
           {/* Sin línea de meta aparte -- pedido real, 2026-10-16: duplicaba
@@ -254,10 +252,6 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
         )}
       </View>
 
-      {/* Participantes de type='metric' siguen detrás del chevron -- acá el
-          número de progreso es el dato principal, no hace falta mostrarlo
-          siempre. type='route' usa RouteDetailSection más abajo, visible
-          sin expandir (ver su comentario). */}
       {expanded && competition.type === 'metric' && (
         <View className="ml-6 mt-3 flex-row flex-wrap items-center gap-1.5" nativeID={`${idPrefix}-participants`} testID={`${idPrefix}-participants`}>
           <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-participants-caption`} testID={`${idPrefix}-participants-caption`}>
@@ -278,7 +272,10 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, on
         </View>
       )}
 
-      {competition.type === 'route' && (
+      {/* Colapsar/expandir aplica igual a las dos variantes ahora -- pedido
+          real, 2026-10-17: "al colapsar una competencia por trayectoria no
+          pasa nada" (antes esto era incondicional a propósito; revertido). */}
+      {expanded && competition.type === 'route' && (
         <RouteDetailSection competition={competition} idPrefix={idPrefix} members={members} sortedParticipantIds={sortedParticipantIds} />
       )}
 
@@ -304,6 +301,20 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
   const [rejectTargetId, setRejectTargetId] = useState(null);
   const [rankingCompetition, setRankingCompetition] = useState(null);
   const [subTab, setSubTab] = useState('active');
+  // Expandidas por defecto, se recuerda cuál se colapsó -- pedido real,
+  // 2026-10-17. Vive acá (no en el estado local de cada fila) porque
+  // cambiar de subtab (Activas/Pendientes/Finalizadas) desmonta y
+  // remonta las filas que no pertenecen a la lista filtrada actual; un
+  // `useState` dentro de CompetitionRow perdería el colapso en ese
+  // round-trip. Un Set de ids colapsados sobrevive a eso.
+  const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+  const toggleExpanded = (id) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   // Sin intento previo barato de consultar en v1 (Gap 33 punto 26, spec
   // "Entry point") -- el 400 del backend es la fuente de verdad, esto solo
   // deshabilita el botón localmente DESPUÉS de un primer intento exitoso o
@@ -415,6 +426,7 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
               busy={busy}
               competition={competition}
               currentUserId={currentUserId}
+              expanded={!collapsedIds.has(competition.id)}
               isTrainerView={isTrainerView}
               key={competition.id}
               members={members}
@@ -424,6 +436,7 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
               onRun={handleRun}
               onReject={setRejectTargetId}
               onOpenRanking={setRankingCompetition}
+              onToggleExpand={() => toggleExpanded(competition.id)}
             />
           ))}
         </View>

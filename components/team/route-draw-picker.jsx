@@ -24,15 +24,6 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   const picker = useRouteDrawPicker({ value, onChange });
   const cameraRef = useRef(null);
 
-  // TEMP DEBUG 2026-10-17 -- sacar cuando se resuelva el modal vacío en
-  // mobile. Si esto NO aparece en el log, el componente ni siquiera se
-  // está montando (problema más arriba, en el modal/layout). Si aparece
-  // pero el mapa nunca loguea onDidFinishLoadingMap/onDidFailLoadingMap,
-  // el problema es la inicialización nativa de MapLibre en sí.
-  if (__DEV__) {
-    console.log('[DEBUG route-draw-picker] render (nativo)', { pointCount: picker.points.length });
-  }
-
   const handleMapPress = (event) => {
     const [lng, lat] = event.nativeEvent.lngLat;
     picker.addPoint(lat, lng);
@@ -74,18 +65,9 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
         <View
           className={`h-72 overflow-hidden rounded-xl border dark:border-slate-700 ${picker.confirmed ? 'border-2 border-primary' : 'border-slate-200'}`}
           nativeID="route-draw-picker-map-wrapper"
-          onLayout={__DEV__ ? (e) => console.log('[DEBUG route-draw-picker] map-wrapper onLayout', e.nativeEvent.layout) : undefined}
           testID="route-draw-picker-map-wrapper"
         >
-          <Map
-            mapStyle={OPENFREEMAP_STYLE_URL}
-            nativeID="route-draw-picker-map"
-            onDidFailLoadingMap={__DEV__ ? () => console.log('[DEBUG route-draw-picker] onDidFailLoadingMap') : undefined}
-            onDidFinishLoadingMap={__DEV__ ? () => console.log('[DEBUG route-draw-picker] onDidFinishLoadingMap') : undefined}
-            onPress={handleMapPress}
-            style={{ flex: 1 }}
-            testID="route-draw-picker-map"
-          >
+          <Map mapStyle={OPENFREEMAP_STYLE_URL} nativeID="route-draw-picker-map" onPress={handleMapPress} style={{ flex: 1 }} testID="route-draw-picker-map">
             <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
             {picker.points.length > 1 && (
               <GeoJSONSource id="route-draw-picker-line-source" shape={lineGeojson}>
@@ -93,15 +75,21 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                   <Layer
                     id="route-draw-picker-halo-layer"
                     // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
-                    // que no se intensifique por superposicion". El join por
-                    // default ('miter', punta recta) duplica cobertura en la
-                    // esquina de cada giro filoso del trazado a mano, y una
-                    // línea translúcida ahí se ve más oscura/intensa que en el
-                    // resto del halo. Con join redondeado el solape en los
-                    // vértices se reduce bastante (no es 100% perfecto para
-                    // una ruta que se cruza a sí misma, caso raro para un
-                    // loop corto).
-                    style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: 0.28, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
+                    // que no se intensifique por superposicion". El join
+                    // redondeado reduce el solape EN LOS VÉRTICES (giros
+                    // filosos), pero no es la causa completa -- confirmado
+                    // 2026-10-17 que con mucho zigzag siguen apareciendo zonas
+                    // más intensas donde dos TRAMOS no adyacentes del trazado
+                    // quedan geométricamente cerca (no solo en un vértice
+                    // compartido). Eliminar eso del todo necesitaría un
+                    // polígono de buffer real (offset de cada lado de la
+                    // línea + unión de los segmentos en una sola forma
+                    // rellena, sin stacking de opacidad) -- MapLibre no lo
+                    // da gratis vía style spec, haría falta calcular la
+                    // geometría a mano. Fuera de alcance por ahora (el
+                    // usuario lo marcó como "no grave"); esto es una mitigación
+                    // parcial, no la solución estructural.
+                    style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: 0.35, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
                     type="line"
                   />
                 )}
@@ -114,6 +102,21 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                   style={{ lineCap: 'round', lineColor: picker.confirmed ? '#166534' : '#8cc63e', lineJoin: 'round', lineWidth: 4 }}
                   type="line"
                 />
+              </GeoJSONSource>
+            )}
+            {/* Punto de inicio (rojo) -- pedido real, 2026-10-17: visible
+                apenas hay un punto marcado, mientras se dibuja. Punto de
+                llegada (azul) SOLO tras confirmar -- mientras se dibuja
+                "el último punto" todavía no es definitivo, puede seguir
+                agregando. */}
+            {picker.points.length >= 1 && (
+              <GeoJSONSource id="route-draw-picker-start-source" shape={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} }}>
+                <Layer id="route-draw-picker-start-layer" style={{ circleColor: '#ef4444', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
+              </GeoJSONSource>
+            )}
+            {picker.confirmed && picker.points.length >= 2 && (
+              <GeoJSONSource id="route-draw-picker-end-source" shape={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} }}>
+                <Layer id="route-draw-picker-end-layer" style={{ circleColor: '#2563eb', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
           </Map>
