@@ -35,7 +35,21 @@ export async function mockChangeStatus(id, status) {
 // — coincidencia parcial case-insensitive por nombre, apellido o email,
 // mismo criterio que documenta el backend real (mínimo 3 caracteres, hasta
 // 5 resultados).
+//
+// user_id 1 (Demo User) y 99 -- sumados 2026-10-16. Bug real encontrado:
+// sin la entrada de 1 acá, cualquier resolución de nombre que pasara por
+// este catálogo (roster de team 5, participantes de competencia) caía al
+// placeholder genérico "Corredor 1" para la propia cuenta demo, en vez de
+// mostrar "Demo User" -- el usuario lo leyó como "no estoy en el roster"
+// cuando en realidad sí estaba, solo mal etiquetado. user_id 99 es el
+// owner_id real de teams 2/3/5 (services/__mocks__/teams-mock.js) --
+// sin esto, mockGetUser (auth-mock.js, ver __lookupCatalogUser) no tenía
+// de dónde sacar su nombre y devolvía "Demo User" para CUALQUIER id
+// pedido, haciendo que "Entrenador a cargo" de team 5 mostrara
+// incorrectamente al propio demo en vez del dueño real.
 const SEARCH_CATALOG = [
+  { user_id: 1, name: 'Demo', surname: 'User', email: 'demo@paceron.com' },
+  { user_id: 99, name: 'Carla', surname: 'Suárez', email: 'carla.suarez@mail.com' },
   { user_id: 101, name: 'Lucía', surname: 'Fernández', email: 'lucia.fernandez@mail.com' },
   { user_id: 102, name: 'Martín', surname: 'Gómez', email: 'martin.gomez@mail.com' },
   { user_id: 103, name: 'Sofía', surname: 'Rodríguez', email: 'sofia.rodriguez@mail.com' },
@@ -43,6 +57,14 @@ const SEARCH_CATALOG = [
   { user_id: 105, name: 'Valentina', surname: 'Díaz', email: 'valentina.diaz@mail.com' },
   { user_id: 106, name: 'Tomás', surname: 'Martínez', email: 'tomas.martinez@mail.com' },
 ];
+
+// Usado por mockGetUser (auth-mock.js) para resolver el perfil de OTRO
+// usuario (ej. el dueño de un equipo que no es el propio demo) contra el
+// mismo catálogo que ya resuelve el roster -- sin esto mockGetUser
+// hardcodeaba "Demo User" sin importar qué id se pidiera.
+export function __lookupCatalogUser(id) {
+  return SEARCH_CATALOG.find((u) => u.user_id === Number(id)) ?? null;
+}
 
 export async function mockSearchUsers(query) {
   const q = (query ?? '').trim().toLowerCase();

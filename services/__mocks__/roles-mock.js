@@ -6,11 +6,18 @@ const ROLES_CATALOG = [
 // Estado in-memory para simular asignación durante una sesión mock — a
 // diferencia de los demás mocks del proyecto (que son puros), este
 // necesita estado para que el flujo de activación se pueda probar de
-// punta a punta con EXPO_PUBLIC_USE_MOCKS=true.
-// El usuario de demo tiene LOS DOS roles, y no por capricho: en el mock es
-// dueño de los equipos (owner_id 1 en teams-mock), así que sin 'entrenador' la
-// reconciliación de use-user.js#useRoleReconciliation lo reboca a 'runner' cada
-// vez que se activa entrenador — el rol no se podía sostener entre reinicios.
+// punta a punta con EXPO_PUBLIC_USE_MOCKS=true. Arranca con los dos roles
+// activos (antes solo 'corredor'), por dos razones que se refuerzan:
+//   - pedido real 2026-10-15: la cuenta demo tiene que poder cambiar a
+//     entrenador sin pasar primero por el flujo de activación (contraseña +
+//     alias) cada vez que se reinicia el mock;
+//   - en el mock es dueño de los equipos (owner_id 1 en teams-mock), así que
+//     sin 'entrenador' la reconciliación de use-user.js#useRoleReconciliation
+//     lo reboca a 'runner' cada vez que se activa entrenador — el rol no se
+//     podía sostener entre reinicios.
+// El flujo de activación/desactivación se sigue pudiendo probar igual
+// (mockDeactivateTrainerRole quita 'entrenador', mockActivateTrainerRole
+// lo vuelve a agregar).
 //
 // `activeRole` sigue siendo estado local y persiste; esto solo hace que el
 // backend simulado reporte la asignación correcta.

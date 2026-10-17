@@ -24,20 +24,37 @@ export function __seedRunnerSession(dto) {
   return row;
 }
 
+// Acceso cruzado para Gap 33 Spec 4b -- el progreso de una competencia
+// type='metric' (ver services/__mocks__/competitions-mock.js#mockGetCompetition)
+// necesita saber cuántos runner_session 'finished' quedaron asociados a esa
+// competencia, por atleta -- único agregado que el mock replica de verdad
+// (métrica sessions_count); el resto de las métricas quedan en 0, ver nota
+// en competitions-mock.js. Solo cuenta 'finished' -- un 'wip'/'interrupted'
+// con competition_id asociado todavía no es un entrenamiento completado.
+export function __countFinishedRunnerSessionsByCompetition(competitionId, athleteUserId) {
+  return runnerSessions.filter(
+    (r) => r.competition_id === Number(competitionId) && r.athlete_user_id === Number(athleteUserId) && r.status === 'finished',
+  ).length;
+}
+
 function findRow(sessionInstanceId, athleteUserId) {
   return runnerSessions.find(
     (r) => r.session_instance_id === Number(sessionInstanceId) && r.athlete_user_id === Number(athleteUserId),
   );
 }
 
-const toResponse = (row) => ({
-  id: row.id,
-  session_instance_id: row.session_instance_id,
-  athlete_user_id: row.athlete_user_id,
-  status: row.status,
-  start_date: row.start_date,
-  end_date: row.end_date ?? null,
-});
+const toResponse = (row) => {
+  const response = {
+    id: row.id,
+    session_instance_id: row.session_instance_id,
+    athlete_user_id: row.athlete_user_id,
+    status: row.status,
+    start_date: row.start_date,
+    end_date: row.end_date ?? null,
+  };
+  if (row.competition_id != null) response.competition_id = row.competition_id;
+  return response;
+};
 
 export async function mockCreateRunnerSession(sessionInstanceId, body) {
   const athleteUserId = body.athlete_user_id ?? 0;
@@ -52,6 +69,7 @@ export async function mockCreateRunnerSession(sessionInstanceId, body) {
     status: 'wip',
     start_date: body.start_date,
     end_date: null,
+    competition_id: body.competition_id ?? null,
   };
   runnerSessions.push(row);
   return { message: 'estado de sesión creado', data: toResponse(row) };

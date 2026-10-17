@@ -21,3 +21,12 @@ export function formatWeekdayLabel(isoDate, { short = false } = {}) {
   const names = short ? LocaleConfig.locales.es.dayNamesShort : LocaleConfig.locales.es.dayNames;
   return names[parseISODate(isoDate).getDay()];
 }
+
+// "14 Oct" -- usado por la grilla semanal de rachas (streaks-tab.jsx) para
+// el encabezado de rango de fechas, mismo array de meses que ya carga
+// config/calendarLocale.js.
+export function formatShortDate(isoDate) {
+  if (!isoDate) return '';
+  const date = parseISODate(isoDate);
+  return `${date.getDate()} ${LocaleConfig.locales.es.monthNamesShort[date.getMonth()]}`;
+}

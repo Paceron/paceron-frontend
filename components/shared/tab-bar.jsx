@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
@@ -25,7 +25,38 @@ import { isWeb } from '../../utils/platform.js';
 //
 // Navegación por teclado: solo web, donde tiene sentido (flechas del teclado
 // físico). En nativo el acceso es por touch y las flechas no aplican.
-export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
+//
+// `variant='compact'` (pedido real, 2026-10-15: subtabs de CompetitionsTab
+// necesitaban distinguirse de las tabs de módulo de TeamDetailScreen, que
+// usan esta misma barra) -- mismo componente/lógica, trae un tratamiento
+// visual más chico y con subrayado en vez de pill de fondo, para que se lea
+// como navegación anidada/secundaria en vez de repetir el look de las tabs
+// de primer nivel.
+const VARIANT = {
+  default: {
+    wrapClassName: 'mb-5 flex-row gap-2',
+    tabClassName: 'gap-1.5 rounded-lg px-3.5 py-2.5',
+    iconSize: 16,
+    activeClassName: 'bg-primary-tint-subtle dark:bg-primary/10',
+    inactiveClassName: 'hover:bg-slate-100 dark:hover:bg-slate-800',
+    labelActiveClassName: 'font-semibold text-primary',
+    labelInactiveClassName: 'font-medium text-slate-700 dark:text-slate-200',
+    labelClassName: 'text-sm',
+  },
+  compact: {
+    wrapClassName: 'mb-4 flex-row gap-4 border-b border-slate-200 dark:border-slate-800',
+    tabClassName: 'gap-1 border-b-2 px-0.5 pb-2',
+    iconSize: 13,
+    activeClassName: 'border-primary',
+    inactiveClassName: 'border-transparent hover:border-slate-300 dark:hover:border-slate-600',
+    labelActiveClassName: 'font-semibold text-primary',
+    labelInactiveClassName: 'font-medium text-slate-500 dark:text-slate-400',
+    labelClassName: 'text-xs',
+  },
+};
+
+export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {}, variant = 'default' }) {
+  const style = VARIANT[variant] ?? VARIANT.default;
   const colors = useThemeColors();
   const refs = useRef({});
 
@@ -55,54 +86,75 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar' }) {
     select((next + tabs.length) % tabs.length);
   };
 
+  // `flex-1` (ancho parejo, sin scroll) se probó y se descartó (pedido
+  // real 2026-10-15, "sin afectar a mobile" + "que se adapten al ancho de
+  // su contenido") -- volvió al ancho natural por contenido. Mobile queda
+  // EXACTAMENTE como estaba antes de tocar nada hoy (ScrollView horizontal,
+  // sin cambios). Solo WEB suma: cada tab puede encogerse (`shrink`) en vez
+  // de desbordar sin límite, el label corta con "…" (`numberOfLines={1}`)
+  // si no entra. Sin tooltip -- a diferencia de un botón solo-ícono, la tab
+  // YA tiene su label visible; repetirlo en un tooltip no aporta nada
+  // (pedido real, 2026-10-15, "no tienen sentido").
+  const tabContent = (tab, index) => {
+    const isActive = tab.id === active;
+    return (
+      <Pressable
+        accessibilityLabel={tab.label}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isActive }}
+        aria-selected={isActive}
+        className={`flex-row items-center ${style.tabClassName} ${isWeb ? 'shrink' : ''} ${isActive ? style.activeClassName : style.inactiveClassName}`}
+        focusable={isWeb}
+        key={tab.id}
+        nativeID={`${scope}-${tab.id}`}
+        // Pressable de react-native-web implementa onKeyDown (lo ve el
+        // keyDownHandler de RNW); en nativo es no-op.
+        onKeyDown={isWeb ? (event) => handleKeyDown(event, index) : undefined}
+        onPress={() => onChange(tab.id)}
+        ref={(node) => { refs.current[tab.id] = node; }}
+        role="tab"
+        // Solo la tab activa entra en el orden de tabulación: las flechas
+        // hacen el resto del recorrido. Es el patrón de roving tabindex.
+        tabIndex={isActive ? 0 : -1}
+        testID={`${scope}-${tab.id}`}
+      >
+        <View className="relative" nativeID={`${scope}-${tab.id}-icon-wrapper`} testID={`${scope}-${tab.id}-icon-wrapper`}>
+          <MaterialCommunityIcons name={tab.icon} size={style.iconSize} color={isActive ? colors.primary : colors.onSurfaceVariant} />
+          {badges[tab.id] && (
+            <View className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" nativeID={`${scope}-${tab.id}-badge`} testID={`${scope}-${tab.id}-badge`} />
+          )}
+        </View>
+        <Text
+          className={`${style.labelClassName} ${isActive ? style.labelActiveClassName : style.labelInactiveClassName}`}
+          nativeID={`${scope}-${tab.id}-label`}
+          numberOfLines={1}
+          testID={`${scope}-${tab.id}-label`}
+        >
+          {tab.label}
+        </Text>
+      </Pressable>
+    );
+  };
+
+  if (!isWeb) {
+    return (
+      <ScrollView
+        accessibilityRole="tablist"
+        className={style.wrapClassName}
+        contentContainerClassName={`flex-row ${variant === 'compact' ? 'gap-4' : 'gap-2'}`}
+        horizontal
+        nativeID={scope}
+        showsHorizontalScrollIndicator={false}
+        testID={scope}
+      >
+        {tabs.map((tab, index) => tabContent(tab, index))}
+      </ScrollView>
+    );
+  }
+
   return (
-    <ScrollView
-      accessibilityRole="tablist"
-      className="mb-5"
-      contentContainerClassName="flex-row gap-2"
-      horizontal
-      nativeID={scope}
-      showsHorizontalScrollIndicator={false}
-      testID={scope}
-    >
-      {tabs.map((tab, index) => {
-        const isActive = tab.id === active;
-        return (
-          <Pressable
-            accessibilityLabel={tab.label}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            aria-selected={isActive}
-            className={`flex-row items-center gap-1.5 rounded-lg px-3.5 py-2.5 ${
-              isActive
-                ? 'bg-primary-tint-subtle dark:bg-primary/10'
-                : 'hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-            focusable={isWeb}
-            key={tab.id}
-            nativeID={`${scope}-${tab.id}`}
-            // Pressable de react-native-web implementa onKeyDown (lo ve el
-            // keyDownHandler de RNW); en nativo es no-op.
-            onKeyDown={isWeb ? (event) => handleKeyDown(event, index) : undefined}
-            onPress={() => onChange(tab.id)}
-            ref={(node) => { refs.current[tab.id] = node; }}
-            role="tab"
-            // Solo la tab activa entra en el orden de tabulación: las flechas
-            // hacen el resto del recorrido. Es el patrón de roving tabindex.
-            tabIndex={isActive ? 0 : -1}
-            testID={`${scope}-${tab.id}`}
-          >
-            <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
-            <Text
-              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
-              nativeID={`${scope}-${tab.id}-label`}
-              testID={`${scope}-${tab.id}-label`}
-            >
-              {tab.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+    <View accessibilityRole="tablist" className={style.wrapClassName} nativeID={scope} testID={scope}>
+      {tabs.map((tab, index) => tabContent(tab, index))}
+    </View>
   );
 }
