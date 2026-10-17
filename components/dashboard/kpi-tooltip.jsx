@@ -65,6 +65,7 @@ export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, va
           // IconTooltip: es la única capa que puede aparecer sobre contenido con
           // su propia superficie.
           className="absolute left-0 right-0 top-full z-tooltip mt-1.5 rounded-lg border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+          style={{ backgroundColor: '#ffffff' }}
           nativeID={`${id}-bubble`}
           testID={`${id}-bubble`}
         >
