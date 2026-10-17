@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
@@ -44,6 +44,7 @@ function RouteMarker({ point, color, label, idPrefix, active, onToggle }) {
 // Marker de abajo, que necesitan su propio onPress para el tap-to-toggle.
 export function RouteMapPreview({ coordinates, nativeID, testID }) {
   const [activeMarker, setActiveMarker] = useState(null);
+  const cameraRef = useRef(null);
   // Mismo fix que route-draw-picker.jsx -- crash real confirmado
   // (NullPointerException en MLRNSource.addToMap -> getStyle() null) al
   // agregar un GeoJSONSource antes de que el estilo nativo del mapa
@@ -89,7 +90,23 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL}
         nativeID={`${nativeID}-map`}
         onDidFailLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFailLoadingMap'); }}
-        onDidFinishLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFinishLoadingMap'); setMapReady(true); }}
+        onDidFinishLoadingMap={() => {
+          if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onDidFinishLoadingMap', { bounds, t: Date.now() });
+          setMapReady(true);
+          // Imperativo (fitBounds vía ref), no declarativo (prop `bounds`
+          // en Camera) -- BUG REAL encontrado 2026-10-17: `padding` se
+          // pasaba como número crudo (24) pero el tipo real de la lib
+          // (`ViewPadding`) es un objeto `{top,right,bottom,left}` --
+          // mismatch de tipo contra el codegen nativo de Fabric, candidato
+          // fuerte para el crash silencioso (sin ningún log de JS, ~2s
+          // después de montar) reportado al ver una competencia de route
+          // ya registrada. Mismo patrón ya probado y funcionando en
+          // trainer-session-live-screen.jsx -- ESE componente evita el
+          // prop `bounds` declarativo por completo (ver su comentario
+          // sobre la firma real de `fitBounds`) y usa el ref imperativo,
+          // llamado recién cuando hay mapa.
+          if (bounds) cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 24, left: 24, right: 24, top: 24 } });
+        }}
         onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionDidChange (gestos deberían estar deshabilitados acá)', e); }}
         onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG route-map-preview] onRegionWillChange (gestos deberían estar deshabilitados acá)', e); }}
         style={{ flex: 1 }}
@@ -98,7 +115,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         touchRotate={false}
         touchZoom={false}
       >
-        <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 13 }} padding={24} />
+        <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
         {mapReady && points.length > 1 && (
           <GeoJSONSource id={`${nativeID}-line-source`} shape={lineGeojson}>
             <Layer id={`${nativeID}-line-layer`} style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineWidth: 4 }} type="line" />

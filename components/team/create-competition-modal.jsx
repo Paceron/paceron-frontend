@@ -140,23 +140,33 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   return (
     <>
       <Modal animationType="fade" nativeID="create-competition-modal" onRequestClose={handleClose} testID="create-competition-modal" transparent visible={visible}>
-        {/* Se probó envolver esto en un GestureHandlerRootView propio (2026-10-17,
-            mismo patrón que create-session-modal.jsx) para el bug de swipes
-            leídos como tap -- NO cambió el síntoma (confirmado, mismo
-            comportamiento con y sin el root), y no debería haber hecho
-            falta: este modal no usa ninguna primitiva de
-            react-native-gesture-handler (sin GestureDetector, sin el
-            ScrollView re-exportado de esa lib) -- el precedente de
-            create-session-modal.jsx aplica a gestos que SÍ dependen de esa
-            librería quedando mudos sin un root propio dentro del Modal, no
-            a un ScrollView/Pressable nativos de React Native, que no
-            dependen de gesture-handler para nada. Revertido -- quedan los
-            logs de abajo para diagnosticar la causa real. */}
-        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-competition-modal-backdrop" onPress={handleClose} onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchEnd', { t: Date.now() }); }} onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchStart', { t: Date.now() }); }} testID="create-competition-modal-backdrop">
+        {/* Backdrop y card como HERMANOS, no backdrop envolviendo card --
+            MISMO bug y MISMO fix ya documentados en
+            session-messages-modal.jsx (2026-10-09, ver CLAUDE.md sección
+            "Modales"). Causa real confirmada con los logs de touch de
+            2026-10-17: con el card (Pressable no-op) como HIJO del
+            backdrop, un touch con un SEGUNDO dedo apoyado (ej. pinch sobre
+            el mapa, que vive adentro de la ScrollView del card) terminaba
+            resolviéndose como un tap sobre el BACKDROP al soltar -- el log
+            mostró handleClose disparando ~325ms después de dos
+            onTouchStart superpuestos sobre el mapa, cerrando el modal en
+            medio de un pinch. Con hermanos + posición absoluta, un touch
+            sobre el card nunca llega al backdrop (gana por z-order
+            nativo) -- no hay ningún Pressable intermedio reclamando
+            responder que pueda confundirse con un segundo dedo. */}
+        <View className="flex-1" nativeID="create-competition-modal-overlay" testID="create-competition-modal-overlay">
           <Pressable
+            className="absolute inset-0 bg-black/50"
+            nativeID="create-competition-modal-backdrop"
+            onPress={handleClose}
+            onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchEnd', { t: Date.now() }); }}
+            onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchStart', { t: Date.now() }); }}
+            testID="create-competition-modal-backdrop"
+          />
+          <View className="absolute inset-0 items-center justify-center px-4" nativeID="create-competition-modal-card-wrap" pointerEvents="box-none" testID="create-competition-modal-card-wrap">
+          <View
             className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface"
             nativeID="create-competition-modal-card"
-            onPress={() => {}}
             onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] card onTouchEnd', { t: Date.now() }); }}
             onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] card onTouchStart', { t: Date.now() }); }}
             style={{ height: modalHeight, maxHeight: modalHeight }}
@@ -280,8 +290,9 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                 )}
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+          </View>
+        </View>
       </Modal>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
