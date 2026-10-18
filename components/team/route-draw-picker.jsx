@@ -1,15 +1,22 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
 import { useRouteDrawPicker } from '../../hooks/use-route-draw-picker.js';
+import { useUser } from '../../hooks/use-user.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { formatMeters } from '../../utils/distance.js';
 import { buildRadiusHaloWidthExpression } from '../../utils/map-radius-expression.js';
 import { FIELD_LABEL } from '../forms/fields.jsx';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
+// Mismos nombres/criterio que route-draw-picker.web.jsx -- placeholder para
+// cuando un GeoJSONSource (siempre montado, ver más abajo) todavía no tiene
+// dato real que mostrar.
+const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} };
+const EMPTY_POINT = { type: 'Feature', geometry: { type: 'Point', coordinates: [] }, properties: {} };
 
 // Dibujo de ruta por tap (Spec 4c, type='route') -- cada tap sobre el mapa
 // agrega un vértice; la polilínea se redibuja en vivo vía GeoJSONSource. Sin
@@ -32,6 +39,33 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   const picker = useRouteDrawPicker({ value, onChange });
   const cameraRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
+  const currentUserId = useAuthStore((s) => s.userId);
+  const { user } = useUser(currentUserId);
+
+  // Centro por defecto: GPS real -> dirección del perfil -> Buenos Aires
+  // (pedido real, 2026-10-17: "en todas las plataformas"). Silencioso
+  // (`silent: true`) -- un intento automático al abrir el picker no debe
+  // mostrar el spinner del botón ni un mensaje de error si el permiso
+  // está denegado; el botón "mi ubicación" sigue sirviendo para pedirlo
+  // explícito. Solo corre si todavía no hay una ruta cargada (editar una
+  // ya confirmada no debería mover la cámara del usuario).
+  useEffect(() => {
+    if (picker.points.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      const gps = await picker.locateMe({ silent: true });
+      if (cancelled) return;
+      if (gps) {
+        cameraRef.current?.flyTo({ center: [gps.lng, gps.lat], zoom: 15, duration: 600 });
+        return;
+      }
+      if (user?.lat != null && user?.lng != null) {
+        cameraRef.current?.flyTo({ center: [user.lng, user.lat], zoom: 13, duration: 600 });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleMapPress = (event) => {
     const [lng, lat] = event.nativeEvent.lngLat;
@@ -81,34 +115,54 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
             nativeID="route-draw-picker-map"
             onDidFinishLoadingMap={() => setMapReady(true)}
             onPress={handleMapPress}
+            // Logs de diagnóstico temporales (2026-10-18) -- pedido real:
+            // tap para plantar puntos anda bien, pero pan/pinch-zoom no
+            // responden dentro del modal. Si `onRegionIsChanging` NUNCA
+            // aparece al deslizar/pellizcar, el gesto no está llegando a
+            // MapLibre -- compararlo contra `onPress`, que si llega.
+            onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionDidChange (fin de pan/pinch)', e.nativeEvent); }}
+            onRegionIsChanging={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionIsChanging (pan/pinch en curso)', e.nativeEvent); }}
+            onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionWillChange (arranca pan/pinch)', e.nativeEvent); }}
             style={{ flex: 1 }}
             testID="route-draw-picker-map"
           >
             <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
-            {mapReady && picker.points.length > 1 && (
-              <GeoJSONSource data={lineGeojson} id="route-draw-picker-line-source">
-                {showHalo && (
-                  <Layer
-                    id="route-draw-picker-halo-layer"
-                    // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
-                    // que no se intensifique por superposicion". El join
-                    // redondeado reduce el solape EN LOS VÉRTICES (giros
-                    // filosos), pero no es la causa completa -- confirmado
-                    // 2026-10-17 que con mucho zigzag siguen apareciendo zonas
-                    // más intensas donde dos TRAMOS no adyacentes del trazado
-                    // quedan geométricamente cerca (no solo en un vértice
-                    // compartido). Eliminar eso del todo necesitaría un
-                    // polígono de buffer real (offset de cada lado de la
-                    // línea + unión de los segmentos en una sola forma
-                    // rellena, sin stacking de opacidad) -- MapLibre no lo
-                    // da gratis vía style spec, haría falta calcular la
-                    // geometría a mano. Fuera de alcance por ahora (el
-                    // usuario lo marcó como "no grave"); esto es una mitigación
-                    // parcial, no la solución estructural.
-                    style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: 0.35, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
-                    type="line"
-                  />
-                )}
+            {/* Los 3 GeoJSONSource (y el halo-Layer de adentro del primero)
+                se montan UNA SOLA VEZ, gateados solo por `mapReady` -- NUNCA
+                condicionados por points.length/confirmed/showHalo, eso
+                causaba un crash real distinto del de `shape` vs `data` (ver
+                CLAUDE.md): sacar un sibling del MEDIO (ej. el halo, o el
+                line-source al deshacer de 2 puntos a 1) desplaza el índice
+                nativo del resto, y la librería reclama "`id` cannot be
+                changed" al intentar reasignarle el id equivocado al vecino
+                que quedó corrido. Reproducido real: crasheaba al vaciar el
+                campo de radio de aceptación (showHalo pasa a false, el halo
+                Layer se desmontaba). Mientras tanto el `data`/`lineOpacity`
+                sí cambian en vivo sin problema -- eso es una actualización
+                de props sobre un source/layer que ya existe, no un
+                mount/unmount. */}
+            {mapReady && (
+              <GeoJSONSource data={picker.points.length > 1 ? lineGeojson : EMPTY_LINE} id="route-draw-picker-line-source">
+                <Layer
+                  id="route-draw-picker-halo-layer"
+                  // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
+                  // que no se intensifique por superposicion". El join
+                  // redondeado reduce el solape EN LOS VÉRTICES (giros
+                  // filosos), pero no es la causa completa -- confirmado
+                  // 2026-10-17 que con mucho zigzag siguen apareciendo zonas
+                  // más intensas donde dos TRAMOS no adyacentes del trazado
+                  // quedan geométricamente cerca (no solo en un vértice
+                  // compartido). Eliminar eso del todo necesitaría un
+                  // polígono de buffer real (offset de cada lado de la
+                  // línea + unión de los segmentos en una sola forma
+                  // rellena, sin stacking de opacidad) -- MapLibre no lo
+                  // da gratis vía style spec, haría falta calcular la
+                  // geometría a mano. Fuera de alcance por ahora (el
+                  // usuario lo marcó como "no grave"); esto es una mitigación
+                  // parcial, no la solución estructural.
+                  style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: showHalo ? 0.35 : 0, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
+                  type="line"
+                />
                 <Layer
                   id="route-draw-picker-line-layer"
                   // Verde oscuro cuando está confirmada (pedido real,
@@ -125,13 +179,13 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                 llegada (azul) SOLO tras confirmar -- mientras se dibuja
                 "el último punto" todavía no es definitivo, puede seguir
                 agregando. */}
-            {mapReady && picker.points.length >= 1 && (
-              <GeoJSONSource data={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} }} id="route-draw-picker-start-source">
+            {mapReady && (
+              <GeoJSONSource data={picker.points.length >= 1 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} } : EMPTY_POINT} id="route-draw-picker-start-source">
                 <Layer id="route-draw-picker-start-layer" style={{ circleColor: '#ef4444', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
-            {mapReady && picker.confirmed && picker.points.length >= 2 && (
-              <GeoJSONSource data={{ type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} }} id="route-draw-picker-end-source">
+            {mapReady && (
+              <GeoJSONSource data={picker.confirmed && picker.points.length >= 2 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} } : EMPTY_POINT} id="route-draw-picker-end-source">
                 <Layer id="route-draw-picker-end-layer" style={{ circleColor: '#2563eb', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
