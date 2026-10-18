@@ -12,11 +12,15 @@ import { buildRadiusHaloWidthExpression } from '../../utils/map-radius-expressio
 import { FIELD_LABEL } from '../forms/fields.jsx';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
-// Mismos nombres/criterio que route-draw-picker.web.jsx -- placeholder para
-// cuando un GeoJSONSource (siempre montado, ver más abajo) todavía no tiene
-// dato real que mostrar.
-const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} };
-const EMPTY_POINT = { type: 'Feature', geometry: { type: 'Point', coordinates: [] }, properties: {} };
+// Placeholder para cuando un GeoJSONSource (siempre montado, ver más abajo)
+// todavía no tiene dato real que mostrar. BUG REAL encontrado 2026-10-18:
+// un `Feature` con geometría `LineString`/`Point` y `coordinates: []` NO es
+// válido para el SDK nativo ("A line string must have two or more
+// coordinate points" / "coordinates array must have at least 2 numbers",
+// error real de MapLibre Native en logcat) -- `GeometryCollection` con
+// `geometries: []` sí es válido vacío, es el único placeholder que
+// funciona para cualquier tipo de geometría.
+const EMPTY_GEOJSON = { type: 'GeometryCollection', geometries: [] };
 
 // Dibujo de ruta por tap (Spec 4c, type='route') -- cada tap sobre el mapa
 // agrega un vértice; la polilínea se redibuja en vivo vía GeoJSONSource. Sin
@@ -34,7 +38,7 @@ const EMPTY_POINT = { type: 'Feature', geometry: { type: 'Point', coordinates: [
 // fallback (`uri!!`) que explotaba con NullPointerException. `mapReady`
 // (abajo) sigue siendo necesario -- evita llamar a getStyle() antes de que
 // el mapa exista.
-export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
+export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters, onMapTouchStart, onMapTouchEnd }) {
   const colors = useThemeColors();
   const picker = useRouteDrawPicker({ value, onChange });
   const cameraRef = useRef(null);
@@ -108,6 +112,9 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
         <View
           className={`h-72 overflow-hidden rounded-xl border dark:border-slate-700 ${picker.confirmed ? 'border-2 border-primary' : 'border-slate-200'}`}
           nativeID="route-draw-picker-map-wrapper"
+          onTouchCancel={onMapTouchEnd}
+          onTouchEnd={onMapTouchEnd}
+          onTouchStart={onMapTouchStart}
           testID="route-draw-picker-map-wrapper"
         >
           <Map
@@ -142,7 +149,7 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                 de props sobre un source/layer que ya existe, no un
                 mount/unmount. */}
             {mapReady && (
-              <GeoJSONSource data={picker.points.length > 1 ? lineGeojson : EMPTY_LINE} id="route-draw-picker-line-source">
+              <GeoJSONSource data={picker.points.length > 1 ? lineGeojson : EMPTY_GEOJSON} id="route-draw-picker-line-source">
                 <Layer
                   id="route-draw-picker-halo-layer"
                   // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
@@ -180,12 +187,12 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                 "el último punto" todavía no es definitivo, puede seguir
                 agregando. */}
             {mapReady && (
-              <GeoJSONSource data={picker.points.length >= 1 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} } : EMPTY_POINT} id="route-draw-picker-start-source">
+              <GeoJSONSource data={picker.points.length >= 1 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} } : EMPTY_GEOJSON} id="route-draw-picker-start-source">
                 <Layer id="route-draw-picker-start-layer" style={{ circleColor: '#ef4444', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
             {mapReady && (
-              <GeoJSONSource data={picker.confirmed && picker.points.length >= 2 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} } : EMPTY_POINT} id="route-draw-picker-end-source">
+              <GeoJSONSource data={picker.confirmed && picker.points.length >= 2 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} } : EMPTY_GEOJSON} id="route-draw-picker-end-source">
                 <Layer id="route-draw-picker-end-layer" style={{ circleColor: '#2563eb', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}

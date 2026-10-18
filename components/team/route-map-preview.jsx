@@ -12,7 +12,14 @@ const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // por `Marker` (no GeoJSONSource), que sí se monta/desmonta condicional
 // sin el mismo riesgo -- es el único de los dos sources en este árbol, no
 // tiene un sibling con el que desalinearse.
-const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} };
+//
+// `GeometryCollection` con `geometries: []`, NO `LineString` con
+// `coordinates: []` -- BUG REAL encontrado 2026-10-18: un `Feature` con
+// geometría `LineString` y coordenadas vacías no es válido para el SDK
+// nativo ("A line string must have two or more coordinate points", error
+// real de MapLibre Native en logcat). `GeometryCollection` vacío sí es
+// válido.
+const EMPTY_GEOJSON = { type: 'GeometryCollection', geometries: [] };
 
 // Marcador de inicio/llegada -- `anchor="bottom"` (mismo patrón que el pin
 // de location-picker.jsx) deja el puntito SIEMPRE pegado a la coordenada
@@ -28,18 +35,45 @@ const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinate
 // source de la línea durante esa misma prueba, así que cualquier cosa
 // que tocara el mapa iba a crashear igual, con o sin `Marker` -- nunca
 // hubo evidencia real contra `Marker` en sí. Restaurado.
-function RouteMarker({ point, color, label, idPrefix, active, onToggle }) {
+//
+// `labelBelow` -- bug real reportado 2026-10-18: la etiqueta (hijo de
+// `Marker`, un overlay DENTRO del árbol nativo del propio `Map`) quedaba
+// cortada por el `overflow-hidden` de la preview cuando el punto caía
+// cerca del borde superior. A diferencia del fix ya hecho en la versión
+// web (portal a `document.body`, ver .web.jsx), acá no hay equivalente:
+// un `Marker` nativo no puede renderizar fuera de los límites del propio
+// `Map`, que ocupa toda la preview -- no hay "afuera del contenedor pero
+// adentro del mapa" para explotar. Se decide arriba/abajo por geografía
+// (¿el punto cae en la mitad norte de los bounds mostrados?), no por
+// medición en tiempo real -- no hay forma de medir contra el contenedor
+// desde un overlay nativo del mapa.
+function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBelow }) {
   return (
     <Marker anchor="bottom" id={idPrefix} lngLat={point} onPress={onToggle}>
-      <View className="items-center" nativeID={idPrefix} testID={idPrefix}>
+      {/* El dot es el ÚNICO hijo en flujo normal -- `anchor="bottom"` ancla
+          el Marker entero contra el borde inferior de su contenido
+          renderizado, así que si la etiqueta pasara a ser un sibling
+          normal DESPUÉS del dot (caso labelBelow), el punto visualmente ya
+          no coincidiría con la coordenada real. La etiqueta va `absolute`
+          (no participa del cálculo de anchor), arriba o abajo del dot
+          según `labelBelow`, con offset fijo (18 = 14px dot + 2px border
+          x2) en vez de porcentual. */}
+      <View nativeID={idPrefix} testID={idPrefix}>
+        <View nativeID={`${idPrefix}-dot`} style={{ backgroundColor: color, borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID={`${idPrefix}-dot`} />
         {active && (
-          <View className="mb-1 rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: color }} testID={`${idPrefix}-label`}>
-            <Text className="text-xs font-semibold text-white" nativeID={`${idPrefix}-label-text`} numberOfLines={1} testID={`${idPrefix}-label-text`}>
-              {label}
-            </Text>
+          <View
+            className="absolute left-0 right-0 items-center"
+            nativeID={`${idPrefix}-label-wrap`}
+            style={labelBelow ? { top: 18 } : { bottom: 18 }}
+            testID={`${idPrefix}-label-wrap`}
+          >
+            <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: color }} testID={`${idPrefix}-label`}>
+              <Text className="text-xs font-semibold text-white" nativeID={`${idPrefix}-label-text`} numberOfLines={1} testID={`${idPrefix}-label-text`}>
+                {label}
+              </Text>
+            </View>
           </View>
         )}
-        <View nativeID={`${idPrefix}-dot`} style={{ backgroundColor: color, borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID={`${idPrefix}-dot`} />
       </View>
     </Marker>
   );
@@ -72,6 +106,13 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   const lineGeojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} };
   const bounds = computeBounds(points.map(([lng, lat]) => ({ latitude: lat, longitude: lng })));
   const initialCenter = points[0] ?? [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
+  // Mitad norte de los bounds mostrados -- un punto ahí arriba cortaría su
+  // etiqueta contra el borde superior de la preview si creciera hacia
+  // arriba (ver comentario largo en RouteMarker). `bounds` es
+  // [west, south, east, north].
+  const midLat = bounds ? (bounds[1] + bounds[3]) / 2 : null;
+  const startLabelBelow = midLat != null && points[0] ? points[0][1] > midLat : false;
+  const endLabelBelow = midLat != null && points[points.length - 1] ? points[points.length - 1][1] > midLat : false;
 
   return (
     <View className="h-full w-full overflow-hidden rounded-xl" nativeID={nativeID} testID={testID}>
@@ -99,7 +140,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
       >
         <Camera initialViewState={{ center: initialCenter, zoom: 16 }} ref={cameraRef} />
         {mapReady && (
-          <GeoJSONSource data={points.length > 1 ? lineGeojson : EMPTY_LINE} id={`${nativeID}-line-source`}>
+          <GeoJSONSource data={points.length > 1 ? lineGeojson : EMPTY_GEOJSON} id={`${nativeID}-line-source`}>
             <Layer id={`${nativeID}-line-layer`} style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineWidth: 4 }} type="line" />
           </GeoJSONSource>
         )}
@@ -109,6 +150,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
             color="#ef4444"
             idPrefix={`${nativeID}-start-marker`}
             label="Punto de inicio"
+            labelBelow={startLabelBelow}
             onToggle={() => setActiveMarker((v) => (v === 'start' ? null : 'start'))}
             point={points[0]}
           />
@@ -118,6 +160,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
             active={activeMarker === 'end'}
             color="#2563eb"
             idPrefix={`${nativeID}-end-marker`}
+            labelBelow={endLabelBelow}
             label="Punto de llegada"
             onToggle={() => setActiveMarker((v) => (v === 'end' ? null : 'end'))}
             point={points[points.length - 1]}

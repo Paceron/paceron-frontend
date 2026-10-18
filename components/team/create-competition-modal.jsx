@@ -51,6 +51,18 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   const [selectedIds, setSelectedIds] = useState([]);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // Pan/pinch-zoom del mapa de RouteDrawPicker no respondían (confirmado
+  // con logs reales, 2026-10-18): MapLibre SÍ recibía el gesto
+  // (onRegionIsChanging disparaba, zoom cambiaba) pero el ScrollView de
+  // este modal lo interrumpía a mitad de camino (onScrollBeginDrag
+  // disparaba, el mapa cortaba con onRegionDidChange) -- MapLibre maneja
+  // sus gestos en su propio hilo nativo, fuera del sistema de responder
+  // de RN, así que no hay prop del `Map` que evite que el ScrollView
+  // ANCESTRO lo intercepte vía onInterceptTouchEvent de Android. Mismo
+  // workaround que usa react-native-maps para este caso: apagar
+  // `scrollEnabled` del ScrollView mientras el dedo está sobre el mapa,
+  // para que no compita por el gesto en absoluto.
+  const [mapInteracting, setMapInteracting] = useState(false);
 
   const resetKey = String(visible);
   const prevResetKeyRef = useRef(null);
@@ -191,6 +203,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
               onScrollBeginDrag={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onScrollBeginDrag (ganó el responder de scroll)', { t: Date.now() }); }}
               onScrollEndDrag={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onScrollEndDrag', { t: Date.now() }); }}
               onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onTouchStart', { t: Date.now() }); }}
+              scrollEnabled={!mapInteracting}
               testID="create-competition-modal-scroll"
             >
               <View className="gap-3" nativeID="create-competition-modal-fields" testID="create-competition-modal-fields">
@@ -215,7 +228,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                 ) : (
                   <>
                     <DateField dense disableFutureLimit hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
-                    <RouteDrawPicker acceptanceRadiusMeters={Number(acceptanceRadius)} onChange={setRoute} value={route} />
+                    <RouteDrawPicker acceptanceRadiusMeters={Number(acceptanceRadius)} onChange={setRoute} onMapTouchEnd={() => setMapInteracting(false)} onMapTouchStart={() => setMapInteracting(true)} value={route} />
                     <InputField className="mb-0" dense hideErrorRow keyboardType="numeric" label="Radio de aceptación (metros)" onChange={setAcceptanceRadius} value={acceptanceRadius} />
                   </>
                 )}
