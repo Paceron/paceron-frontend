@@ -13,7 +13,7 @@
 import { mockGetSession } from './sessions-mock.js';
 import { mockGetTrainingPlan } from './training-plans-mock.js';
 import { addDaysISO } from '../../utils/build-stamp-draft.js';
-import { __getAllMockTeams } from './teams-mock.js';
+import { __getAllMockTeams, __getTeam5DefaultGroupId } from './teams-mock.js';
 import { mockListGroups, mockGetGroupUsers } from './groups-mock.js';
 
 let mockCalendarDays = {};
@@ -41,6 +41,63 @@ async function instantiateSession(sessionId) {
     })),
   };
 }
+
+// Seed síncrono (mismo motivo que __seedGroup/__seedDefaultGroup en
+// groups-mock.js: self-seed de módulo sin await de nivel superior) --
+// arma el `session_instance` a mano en vez de pasar por
+// instantiateSession/mockGetSession (async) -- sin vínculo a un
+// session_id real del catálogo a propósito, no hace falta para este
+// fixture.
+function __seedCalendarDay(groupId, date) {
+  const now = new Date().toISOString();
+  const instanceId = nextInstanceId++;
+  const day = {
+    id: nextId++,
+    group_id: Number(groupId),
+    date,
+    kind: 'training',
+    other_name: null,
+    session_instance: {
+      id: instanceId,
+      name: 'Corrida',
+      description: null,
+      session_id: null,
+      exercises: [{ id: instanceId * 10, name: 'Corrida', role: 'main', repeat_count: 1, rest_minutes: 0, exercise_id: null }],
+    },
+    cancelled_reason: null,
+    is_presencial: false,
+    presencial_time_from: null,
+    presencial_time_to: null,
+    presencial_location: null,
+    source_plan_id: null,
+    created_at: now,
+    updated_at: now,
+  };
+  mockCalendarDays[keyFor(groupId, date)] = day;
+  return day;
+}
+
+// Días de calendario reales para el grupo general de team 5 ("Atletas del
+// Río") -- sin esto demo@paceron.com (corredor ahí) no tenía NINGÚN
+// entrenamiento programado para poder loguear (Play/ingreso manual) y
+// ejercitar el wiring de competition_id de Spec 4b (pedido real,
+// 2026-10-16). Relativo a "hoy" (no fechas de calendario fijas) para que
+// el fixture no quede obsoleto -- mismo motivo que las ventanas de
+// competencias 4/5/6 en competitions-mock.js, pensadas para calzar con
+// estos mismos días:
+// - hoy: cae dentro de las ventanas de las competencias 4 Y 5 (desempate,
+//   gana la 5 por terminar antes).
+// - hoy+7: fuera de las 3 ventanas (4 termina hoy+5, 6 arranca hoy+10) --
+//   para probar que una fecha fuera de rango NO asocia competition_id.
+// - hoy+15: dentro de la ventana de la competencia 6 (futura, no cubre
+//   "hoy").
+function seedTeam5CalendarDays() {
+  const groupId = __getTeam5DefaultGroupId();
+  if (!groupId) return;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  [0, 7, 15].forEach((offset) => __seedCalendarDay(groupId, addDaysISO(todayIso, offset)));
+}
+seedTeam5CalendarDays();
 
 export async function mockGetGroupCalendar(groupId, from, to) {
   return Object.values(mockCalendarDays).filter(
@@ -209,4 +266,5 @@ export function __resetMockCalendar() {
   mockCalendarDays = {};
   nextId = 1;
   nextInstanceId = 1000;
+  seedTeam5CalendarDays();
 }

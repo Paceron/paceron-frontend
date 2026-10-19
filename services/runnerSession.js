@@ -1,5 +1,6 @@
 import api from './api.js';
 import { USE_MOCKS } from '../config/env.js';
+import { toRunnerSessionStartPayload } from './normalizers.js';
 import {
   mockCreateRunnerSession,
   mockFinishRunnerSession,
@@ -20,11 +21,8 @@ const sessionPath = (sessionInstanceId) => `/session-instances/${Number(sessionI
 const withAthleteQuery = (athleteUserId) => (athleteUserId ? `?athlete_user_id=${Number(athleteUserId)}` : '');
 
 // POST /api/v1/session-instances/:id/runner — crea el estado wip (idempotente).
-export async function createRunnerSession(sessionInstanceId, { startDate, athleteUserId } = {}) {
-  const body = {
-    start_date: startDate ?? new Date().toISOString(),
-  };
-  if (athleteUserId != null) body.athlete_user_id = Number(athleteUserId);
+export async function createRunnerSession(sessionInstanceId, { startDate, athleteUserId, competitionId } = {}) {
+  const body = toRunnerSessionStartPayload({ startDate: startDate ?? new Date().toISOString(), athleteUserId, competitionId });
   if (USE_MOCKS) return await mockCreateRunnerSession(sessionInstanceId, body);
   return await api.post(sessionPath(sessionInstanceId), body);
 }

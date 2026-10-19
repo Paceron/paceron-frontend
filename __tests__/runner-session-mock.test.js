@@ -1,6 +1,7 @@
 import {
   __resetRunnerSessionMock,
   __seedRunnerSession,
+  __countFinishedRunnerSessionsByCompetition,
   mockCreateRunnerSession,
   mockFinishRunnerSession,
   mockGetRunnerSession,
@@ -46,6 +47,25 @@ describe('mockCreateRunnerSession', () => {
     const a = await mockCreateRunnerSession(101, { ...baseBody, athlete_user_id: 3 });
     const b = await mockCreateRunnerSession(101, { ...baseBody, athlete_user_id: 9 });
     expect(a.data.id).not.toBe(b.data.id);
+  });
+
+  // Regresión real, 2026-10-16 (Spec 4b): Play dispara un create
+  // fire-and-forget con competition_id, y session-sync.js#syncRun dispara
+  // DESPUÉS otro create del mismo (session_instance_id, athlete_user_id) sin
+  // competition_id -- si alguna de las dos llamadas omitiera
+  // athlete_user_id (defaultea a 0 en el mock), las dos creaban filas
+  // DISTINTAS en vez de pisar la misma, y el competition_id de la primera
+  // nunca llegaba a la fila que terminaba `finished`. Con el mismo
+  // athlete_user_id en ambas (fix real en session-pre-start-screen.jsx), el
+  // segundo create tiene que ser un no-op que preserve el competition_id de
+  // la primera.
+  test('segundo create del mismo atleta sin competition_id preserva el de la primera llamada', async () => {
+    await mockCreateRunnerSession(101, { ...baseBody, athlete_user_id: 1, competition_id: 4 });
+    const second = await mockCreateRunnerSession(101, { ...baseBody, athlete_user_id: 1 });
+    expect(second.data.competition_id).toBe(4);
+
+    await mockFinishRunnerSession(101, { athlete_user_id: 1 });
+    expect(__countFinishedRunnerSessionsByCompetition(4, 1)).toBe(1);
   });
 });
 

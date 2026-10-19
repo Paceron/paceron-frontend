@@ -36,6 +36,9 @@ import { MoveRunnerModal } from './move-runner-modal.jsx';
 import { LeaveGroupModal } from './leave-group-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TeamRequestsTab } from './team-requests-tab.jsx';
+import { LeaderboardTab } from './leaderboard-tab.jsx';
+import { CompetitionsTab } from './competitions-tab.jsx';
+import { useCompetitions } from '../../hooks/use-competitions.js';
 import { TeamSubscriptionPendingBanner } from './team-subscription-pending-banner.jsx';
 import { useTeamSubscription } from '../../hooks/use-team-subscription.js';
 
@@ -68,9 +71,11 @@ const MOCK_TEAM_METRICS = { trainingsCompleted: 210, goalsCompleted: 96 };
 // 4 secciones en una sola pantalla sin navegación por pestañas -- misma
 // pieza de TabBar que ya usaba web, solo se sacó el gate de isWeb).
 const TABS = [
-  { id: 'general', label: 'Información general y estadísticas', icon: 'information-outline' },
+  { id: 'general', label: 'General', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
   { id: 'grupos', label: 'Grupos', icon: 'account-group' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: 'podium-gold' },
+  { id: 'competencias', label: 'Competencias', icon: 'sword-cross' },
   { id: 'solicitudes', label: 'Solicitudes', icon: 'account-question-outline' },
 ];
 
@@ -571,6 +576,7 @@ function TeamDetailScreenContent({ teamId }) {
   };
 
   const { members: allMembers, loading: loadingRoster } = useTeamRoster(team?.id, groups.map((g) => g.id));
+  const { hasUnseen: competitionsHasUnseen } = useCompetitions(team?.id);
   // El dueño del equipo aparece en team_users junto con los corredores
   // reales — se filtra acá (no en el hook, que es agnóstico de "quién es
   // dueño") para que no se cuente ni se liste como corredor.
@@ -779,6 +785,8 @@ function TeamDetailScreenContent({ teamId }) {
     queryClient.invalidateQueries({ queryKey: ['group-users'] }),
     queryClient.invalidateQueries({ queryKey: ['join-requests-team', teamId] }),
     queryClient.invalidateQueries({ queryKey: ['users-batch', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['leaderboard', teamId] }),
+    queryClient.invalidateQueries({ queryKey: ['competitions', teamId] }),
   ]));
 
   // Sin la opción sintética "Todos los grupos" — InlinePicker ya resuelve
@@ -992,6 +1000,10 @@ function TeamDetailScreenContent({ teamId }) {
 
   const visibleTabs = TABS.filter((tab) => (tab.id !== 'grupos' || isTrainerView) && (tab.id !== 'solicitudes' || canDeleteTeam));
   const solicitudesContent = canDeleteTeam && <TeamRequestsTab teamId={team.id} />;
+  const leaderboardContent = <LeaderboardTab teamId={team.id} />;
+  const competitionsContent = (
+    <CompetitionsTab currentUserId={String(user?.userId)} groups={groupOptions} isTrainerView={isTrainerView} members={members} teamId={team.id} />
+  );
 
   return (
     <View className="relative flex-1" nativeID="team-detail-screen-root" ref={runnerMenuContainerRef} testID="team-detail-screen-root">
@@ -1093,10 +1105,12 @@ function TeamDetailScreenContent({ teamId }) {
           />
         )}
 
-        <TabBar active={activeTab} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
+        <TabBar active={activeTab} badges={{ competencias: competitionsHasUnseen }} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
         {activeTab === 'general' && generalContent}
         {activeTab === 'corredores' && corredoresContent}
         {activeTab === 'grupos' && gruposContent}
+        {activeTab === 'leaderboard' && leaderboardContent}
+        {activeTab === 'competencias' && competitionsContent}
         {activeTab === 'solicitudes' && solicitudesContent}
       </View>
 
