@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
-import { computeBounds } from '../../utils/map-bounds.js';
+import { computeBounds, expandBounds } from '../../utils/map-bounds.js';
+import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
+import { openLocationInMaps } from '../../utils/maps-link.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // Placeholder para cuando el GeoJSONSource de la línea (siempre montado,
@@ -47,7 +49,30 @@ const EMPTY_GEOJSON = { type: 'GeometryCollection', geometries: [] };
 // (¿el punto cae en la mitad norte de los bounds mostrados?), no por
 // medición en tiempo real -- no hay forma de medir contra el contenedor
 // desde un overlay nativo del mapa.
-function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBelow }) {
+//
+// Bug real 2026-10-19: con el tooltip visible pero sin texto -- la etiqueta
+// (`left-0 right-0`) se estira contra el ancho del PADRE (`idPrefix`), que
+// sin ancho explícito colapsa al tamaño del dot (~18px, el único hijo en
+// flujo normal -- la etiqueta es `absolute`, no cuenta para el cálculo de
+// ancho intrínseco). El texto queda aplastado contra 18px, invisible, pero
+// el fondo de color de la píldora sí se ve -- de ahí "tooltip sin
+// contenido". Fix: ancho explícito y generoso en el padre (`LABEL_BAND_WIDTH`)
+// para que la etiqueta tenga banda real donde estirarse, + `items-center`
+// para que el dot (con ancho fijo, no se estira) quede centrado en esa
+// banda -- sin este último, el dot se iría al borde izquierdo y el marker
+// (anclado por el centro de TODO el contenido) quedaría desplazado de la
+// coordenada real. 200 (no 160) para dejarle lugar cómodo a la 2da línea
+// de dirección (ver `addressLabel` abajo), que suele ser más larga que el
+// label fijo ("Punto de inicio"/"Punto de llegada").
+const LABEL_BAND_WIDTH = 200;
+
+// `addressLabel` -- solo lo pasa el caller cuando `interactive` (ver
+// RouteMapPreview), pedido real 2026-10-19: el pre-start de un intento de
+// ruta necesita poder abrir Google Maps desde el tooltip de cada punto, no
+// solo ver el label fijo. Segunda línea, pressable, debajo/arriba de la
+// píldora de label (mismo `label-wrap` -- se apilan en columna, sin romper
+// el anclaje del dot, que no depende de `label-wrap` en absoluto).
+function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBelow, addressLabel }) {
   return (
     <Marker anchor="bottom" id={idPrefix} lngLat={point} onPress={onToggle}>
       {/* El dot es el ÚNICO hijo en flujo normal -- `anchor="bottom"` ancla
@@ -58,7 +83,7 @@ function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBel
           (no participa del cálculo de anchor), arriba o abajo del dot
           según `labelBelow`, con offset fijo (18 = 14px dot + 2px border
           x2) en vez de porcentual. */}
-      <View nativeID={idPrefix} testID={idPrefix}>
+      <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH }} testID={idPrefix}>
         <View nativeID={`${idPrefix}-dot`} style={{ backgroundColor: color, borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID={`${idPrefix}-dot`} />
         {active && (
           <View
@@ -72,6 +97,18 @@ function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBel
                 {label}
               </Text>
             </View>
+            {addressLabel && (
+              <Pressable
+                className="mt-1 max-w-full rounded-md bg-white px-2 py-0.5"
+                nativeID={`${idPrefix}-address`}
+                onPress={() => openLocationInMaps({ lat: point[1], lng: point[0] })}
+                testID={`${idPrefix}-address`}
+              >
+                <Text className="text-[10px] font-medium text-primary underline" nativeID={`${idPrefix}-address-label`} numberOfLines={1} testID={`${idPrefix}-address-label`}>
+                  {addressLabel}
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
       </View>
@@ -87,18 +124,28 @@ function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBel
 // a RouteThumbnail (SVG a mano, eliminado) ahora que esto se muestra
 // siempre, no en una lista masiva de filas.
 //
-// Bloqueado -- es una previsualización de lectura, no un mapa para
-// explorar (el dibujo real sigue pasando por RouteDrawPicker). El bloqueo
-// es por los props de gestos del propio `Map` (dragPan/touchZoom/etc en
-// false), no `pointerEvents="none"` -- eso bloquearía también los
-// Marker de arriba, que necesitan su propio onPress para el tap-to-toggle.
+// Bloqueado por default -- es una previsualización de lectura (lista de
+// competencias), no un mapa para explorar (el dibujo real sigue pasando
+// por RouteDrawPicker). El bloqueo es por los props de gestos del propio
+// `Map` (dragPan/touchZoom/etc en false), no `pointerEvents="none"` -- eso
+// bloquearía también los Marker de arriba, que necesitan su propio onPress
+// para el tap-to-toggle.
+//
+// `interactive` -- pedido real, 2026-10-19 (pre-start de un intento de
+// ruta): pan + zoom reales, acotados a un área alrededor de la ruta
+// (`Camera.maxBounds`, prop real de la librería -- no hace falta
+// matemática de clamping propia, ver `utils/map-bounds.js#expandBounds`) en
+// vez de pan infinito. Rotación/tilt se dejan siempre en false -- no hace
+// falta para ver una ruta de running, y complicaría el área acotada sin
+// necesidad. Solo afecta los props de gestos + Camera -- el resto (fuente
+// de la línea, markers) es idéntico en los dos modos.
 //
 // CAUSA REAL del crash nativo (Android, NullPointerException en
 // MLRNGeoJSONSource.makeSource -> uri!!) que motivó una investigación larga
 // (ver CLAUDE.md, sección maplibre-react-native): el prop para pasarle la
 // geometría a `GeoJSONSource` en esta versión de la librería es `data`, NO
 // `shape`.
-export function RouteMapPreview({ coordinates, nativeID, testID }) {
+export function RouteMapPreview({ coordinates, interactive = false, nativeID, testID }) {
   const [activeMarker, setActiveMarker] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const cameraRef = useRef(null);
@@ -114,12 +161,24 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
   const startLabelBelow = midLat != null && points[0] ? points[0][1] > midLat : false;
   const endLabelBelow = midLat != null && points[points.length - 1] ? points[points.length - 1][1] > midLat : false;
 
+  // Dirección resuelta solo cuando `interactive` (3er param `enabled` de
+  // useReverseGeocode) -- el caller de lectura (competitions-tab.jsx,
+  // RouteDetailSection) ya resuelve su propia dirección del punto de
+  // inicio aparte, no hace falta pagar un 2do fetch (cacheado por
+  // coordenada igual, pero sin sentido pedirlo si nadie lo va a ver).
+  const startPoint = points[0];
+  const endPoint = points[points.length - 1];
+  const { address: startAddress, loading: startAddressLoading } = useReverseGeocode(startPoint?.[1], startPoint?.[0], interactive);
+  const { address: endAddress, loading: endAddressLoading } = useReverseGeocode(endPoint?.[1], endPoint?.[0], interactive && points.length >= 2);
+  const startAddressLabel = interactive ? (startAddress?.label ?? (startAddressLoading ? 'Resolviendo dirección…' : null)) : null;
+  const endAddressLabel = interactive ? (endAddress?.label ?? (endAddressLoading ? 'Resolviendo dirección…' : null)) : null;
+
   return (
     <View className="h-full w-full overflow-hidden rounded-xl" nativeID={nativeID} testID={testID}>
       <Map
         doubleTapHoldZoom={false}
-        doubleTapZoom={false}
-        dragPan={false}
+        doubleTapZoom={interactive}
+        dragPan={interactive}
         logo={false}
         mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL}
         nativeID={`${nativeID}-map`}
@@ -136,9 +195,15 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         testID={`${testID}-map`}
         touchPitch={false}
         touchRotate={false}
-        touchZoom={false}
+        touchZoom={interactive}
       >
-        <Camera initialViewState={{ center: initialCenter, zoom: 16 }} ref={cameraRef} />
+        <Camera
+          initialViewState={{ center: initialCenter, zoom: 16 }}
+          maxBounds={interactive && bounds ? expandBounds(bounds) : undefined}
+          maxZoom={interactive ? 18 : undefined}
+          minZoom={interactive ? 12 : undefined}
+          ref={cameraRef}
+        />
         {mapReady && (
           <GeoJSONSource data={points.length > 1 ? lineGeojson : EMPTY_GEOJSON} id={`${nativeID}-line-source`}>
             <Layer id={`${nativeID}-line-layer`} style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineWidth: 4 }} type="line" />
@@ -147,6 +212,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         {mapReady && points.length >= 1 && (
           <RouteMarker
             active={activeMarker === 'start'}
+            addressLabel={startAddressLabel}
             color="#ef4444"
             idPrefix={`${nativeID}-start-marker`}
             label="Punto de inicio"
@@ -158,6 +224,7 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
         {mapReady && points.length >= 2 && (
           <RouteMarker
             active={activeMarker === 'end'}
+            addressLabel={endAddressLabel}
             color="#2563eb"
             idPrefix={`${nativeID}-end-marker`}
             labelBelow={endLabelBelow}

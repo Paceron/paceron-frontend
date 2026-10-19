@@ -290,7 +290,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   );
 }
 
-export function CompetitionsTab({ teamId, members, groups, isTrainerView, currentUserId }) {
+export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerView, currentUserId }) {
   const colors = useThemeColors();
   const router = useRouter();
   const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
@@ -361,11 +361,12 @@ export function CompetitionsTab({ teamId, members, groups, isTrainerView, curren
     }
     setPendingSession({
       teamId,
+      teamName,
       date: new Date().toISOString().slice(0, 10),
       sessionInstance: result.data.session_instance,
       routeAttempt: { route: competition.route, acceptanceRadiusMeters: competition.acceptanceRadiusMeters, competitionId: competition.id },
     });
-    router.push('/training-session');
+    router.push('/route-attempt-pre-start');
   };
 
   const busy = mutations.isApproving || mutations.isRejecting || mutations.isCancelling || mutations.isClosing;
