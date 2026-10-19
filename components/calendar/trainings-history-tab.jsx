@@ -48,7 +48,7 @@ export function TrainingsHistoryTab({ role }) {
   const dateToInput = useTrainingsHistoryFiltersStore((s) => s.dateToInput);
   const setDateToInput = useTrainingsHistoryFiltersStore((s) => s.setDateToInput);
   const order = useTrainingsHistoryFiltersStore((s) => s.order);
-  const setOrder = useTrainingsHistoryFiltersStore((s) => s.setOrder);
+  const toggleOrder = useTrainingsHistoryFiltersStore((s) => s.toggleOrder);
   const filterExerciseId = useTrainingsHistoryFiltersStore((s) => s.exerciseId);
   const setFilterExerciseId = useTrainingsHistoryFiltersStore((s) => s.setExerciseId);
   const filterAthleteId = useTrainingsHistoryFiltersStore((s) => s.athleteId);
@@ -105,6 +105,15 @@ export function TrainingsHistoryTab({ role }) {
     handleCloseRowMenu();
     setSelectedIds(new Set([groupId]));
     setBulkDeleteVisible(true);
+  };
+
+  // Comparar planificado vs realizado (Gap 35), solo para el corredor: el
+  // detalle de la sesión de esta fila, o el resumen del rango con los filtros
+  // que ya tiene el historial (la pantalla los toma del store).
+  const handleCompareFromMenu = () => {
+    const { group } = rowMenu;
+    handleCloseRowMenu();
+    router.push({ pathname: '/training-comparison/session', params: { sessionInstanceId: group.sessionInstanceId, date: group.date } });
   };
 
   const handleExitSelection = () => {
@@ -211,7 +220,7 @@ export function TrainingsHistoryTab({ role }) {
           <Pressable
             className="h-11 w-full flex-row items-center justify-center gap-2 rounded-xl border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
             nativeID="trainings-history-tab-order-toggle"
-            onPress={() => setOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+            onPress={toggleOrder}
             testID="trainings-history-tab-order-toggle"
           >
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name={order === 'desc' ? 'sort-descending' : 'sort-ascending'} size={20} />
@@ -226,6 +235,23 @@ export function TrainingsHistoryTab({ role }) {
         <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="trainings-history-tab-date-range-error" testID="trainings-history-tab-date-range-error">
           {dateRangeError}
         </Text>
+      )}
+
+      {/* Fuera de la card de filtros a propósito (pedido de la HU), pero pegado
+          a ella: es una acción sobre el mismo rango, no un filtro más. */}
+      {role === 'runner' && (
+        <Pressable
+          accessibilityLabel="Comparar entrenamientos planificados y realizados"
+          className="mb-4 h-11 flex-row items-center justify-center gap-2 rounded-xl border border-primary bg-primary-tint hover:opacity-90 active:opacity-80 dark:bg-primary/15"
+          nativeID="trainings-history-tab-compare-button"
+          onPress={() => router.push('/training-comparison')}
+          testID="trainings-history-tab-compare-button"
+        >
+          <MaterialCommunityIcons color={colors.primary} name="scale-balance" size={18} />
+          <Text className="text-sm font-semibold text-on-primary-tint dark:text-primary" nativeID="trainings-history-tab-compare-button-label" testID="trainings-history-tab-compare-button-label">
+            Comparar entrenamientos
+          </Text>
+        </Pressable>
       )}
 
       {selectionMode && (
@@ -306,7 +332,7 @@ export function TrainingsHistoryTab({ role }) {
       )}
 
       <AnimatedDropdown anchorStyle={rowMenu ? { left: Math.max(8, rowMenu.anchor.x + rowMenu.anchor.width - 208), top: rowMenu.anchor.y + rowMenu.anchor.height + 4, width: 208 } : {}} onClose={handleCloseRowMenu} open={Boolean(rowMenu)}>
-        {rowMenu && <TrainingsHistoryRowMenu onDelete={handleDeleteFromMenu} onSelect={handleSelectFromMenu} />}
+        {rowMenu && <TrainingsHistoryRowMenu onCompare={role === 'runner' ? handleCompareFromMenu : undefined} onDelete={handleDeleteFromMenu} onSelect={handleSelectFromMenu} />}
       </AnimatedDropdown>
 
       <BulkDeleteFeedbackModal count={selectedIds.size} onCancel={() => setBulkDeleteVisible(false)} onConfirm={handleBulkDelete} visible={bulkDeleteVisible} />

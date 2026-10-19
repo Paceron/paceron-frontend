@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+const ORDERS = ['desc', 'asc'];
+
 // trainings-history-tab.jsx remonta al volver de /training-session-review
 // (mismo mecanismo que perdía la pestaña activa, ver calendar-tab-store.js)
 // -- sin esto, cada filtro elegido (equipo, grupo, rango de fechas,
@@ -20,7 +22,12 @@ export const useTrainingsHistoryFiltersStore = create((set) => ({
   setGroupId: (groupId) => set({ groupId }),
   setDateFromInput: (dateFromInput) => set({ dateFromInput }),
   setDateToInput: (dateToInput) => set({ dateToInput }),
-  setOrder: (order) => set({ order }),
+  // Solo acepta 'asc'/'desc': un updater `(o) => ...` quedaba guardado como
+  // orden (bug real). Para alternar, toggleOrder.
+  setOrder: (order) => {
+    if (ORDERS.includes(order)) set({ order });
+  },
+  toggleOrder: () => set((s) => ({ order: s.order === 'desc' ? 'asc' : 'desc' })),
   setExerciseId: (exerciseId) => set({ exerciseId }),
   setAthleteId: (athleteId) => set({ athleteId }),
   clearFilters: () => set({ teamId: '', groupId: '', dateFromInput: '', dateToInput: '', exerciseId: '', athleteId: '' }),
