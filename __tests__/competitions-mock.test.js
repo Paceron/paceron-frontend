@@ -7,6 +7,7 @@ import {
   mockCloseCompetition,
   mockCreateCompetitionAttempt,
   mockGetCompetition,
+  mockSeedDynamicRouteCompetitionStart,
   __resetMockCompetitions,
 } from '../services/__mocks__/competitions-mock.js';
 import { __seedRunnerSession, __resetRunnerSessionMock } from '../services/__mocks__/runner-session-mock.js';
@@ -156,6 +157,30 @@ describe('mockGetCompetition', () => {
       acceptance_radius_meters: 50, participant_user_ids: [1, 101],
     }, { isTrainerCreator: true });
     expect(created.synthetic_session_instance_id).not.toBe(9000);
+  });
+
+  test('seed 8 es la competencia de ruta dinámica, reubicable una sola vez por GPS real', async () => {
+    const { data } = await mockListCompetitions(5);
+    const before = data.find((c) => c.id === 8);
+    expect(before.type).toBe('route');
+    expect(before.status).toBe('active');
+    expect(before.participant_user_ids).toContain(1);
+
+    const changed = mockSeedDynamicRouteCompetitionStart(-10, -70);
+    expect(changed).toBe(true);
+    const { data: afterList } = await mockListCompetitions(5);
+    const after = afterList.find((c) => c.id === 8);
+    expect(after.route.coordinates[0]).toEqual([-70, -10]);
+    // El resto del trazado se traslada por el mismo delta -- no colapsa a
+    // un solo punto ni cambia de forma/largo.
+    expect(after.route.coordinates.length).toBe(before.route.coordinates.length);
+    expect(after.route.coordinates[0]).not.toEqual(after.route.coordinates[1]);
+
+    // Segunda llamada -- no reubica de nuevo (ya se fijó una vez).
+    const changedAgain = mockSeedDynamicRouteCompetitionStart(40, 40);
+    expect(changedAgain).toBe(false);
+    const { data: stillList } = await mockListCompetitions(5);
+    expect(stillList.find((c) => c.id === 8).route.coordinates[0]).toEqual([-70, -10]);
   });
 
   test('seed 6 tiene ventana enteramente futura, no cubre hoy', async () => {

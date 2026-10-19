@@ -1,5 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Location from 'expo-location';
 import { useAuthStore } from '../store/auth-store.js';
+import { USE_MOCKS } from '../config/env.js';
 import {
   listCompetitions,
   getCompetition,
@@ -9,6 +12,7 @@ import {
   cancelCompetition as cancelCompetitionService,
   closeCompetition as closeCompetitionService,
   createCompetitionAttempt as createCompetitionAttemptService,
+  seedDynamicRouteCompetitionStart,
 } from '../services/competitions.js';
 import { toCompetitionModel, toCompetitionDetailModel, toCreateCompetitionPayload } from '../services/normalizers.js';
 
@@ -90,4 +94,41 @@ export function useCompetitionMutations(teamId) {
     isClosing: closeMutation.isPending,
     isStartingAttempt: attemptMutation.isPending,
   };
+}
+
+// Solo mocks (USE_MOCKS, early return abajo) -- reubica la competencia de
+// ruta "dinámica" (seed 8, services/__mocks__/competitions-mock.js)
+// contra el GPS real del dispositivo. Pedido real 2026-10-19: no hay forma
+// de crear a mano, con mocks, una competencia de ruta cuyo punto de inicio
+// sirva para probar el gate de GPS como corredor -- crearla como
+// entrenador la deja pending_approval sin un corredor propio que la
+// apruebe/corra después, y crearla directo como `active` la deja sin
+// participante corredor real tampoco (roles separados, catch-22 de
+// mocks). `useRef` (no useState) para el guard de "ya se pidió" -- no hace
+// falta re-renderizar nada por esto, solo evitar pedir permiso de nuevo en
+// cada remount de CompetitionsTab.
+export function useSeedDynamicRouteCompetition() {
+  const queryClient = useQueryClient();
+  const requestedRef = useRef(false);
+
+  useEffect(() => {
+    if (!USE_MOCKS || requestedRef.current) return;
+    requestedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const position = await Location.getCurrentPositionAsync();
+        if (cancelled || !position?.coords) return;
+        const changed = seedDynamicRouteCompetitionStart(position.coords.latitude, position.coords.longitude);
+        // Invalidate amplio (sin teamId/status/groupId) -- no importa en
+        // qué equipo esté parado el tab que disparó esto, la seed 8 es
+        // siempre del equipo 5.
+        if (changed) queryClient.invalidateQueries({ queryKey: ['competitions'] });
+      } catch {
+        // Sin permiso/GPS -- la competencia dinámica queda con su
+        // placeholder (lejos, como seed 7), no bloquea nada más.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [queryClient]);
 }

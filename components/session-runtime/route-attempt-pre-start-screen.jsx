@@ -3,16 +3,20 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { useThemeColors } from '../../theme/colors.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
+import { useCompetitionMutations } from '../../hooks/use-competitions.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
 import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
 import { haversineMeters, formatMeters } from '../../utils/distance.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { notifyError } from '../../utils/haptics.js';
 import { RouteMapPreview } from '../team/route-map-preview.jsx';
 import { CompetitionRankingModal } from '../team/competition-ranking-modal.jsx';
 
@@ -25,9 +29,13 @@ import { CompetitionRankingModal } from '../team/competition-ranking-modal.jsx';
 function RouteAttemptPreStartScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
+  const userId = useAuthStore((s) => s.userId);
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
   const setGpsEnabled = useLiveSessionStore((s) => s.setGpsEnabled);
   const routeAttempt = pendingSession?.routeAttempt ?? null;
+  const mutations = useCompetitionMutations(pendingSession?.teamId);
+  const [starting, setStarting] = useState(false);
 
   const [rankingVisible, setRankingVisible] = useState(false);
   // CompetitionRankingModal pide SU PROPIO detalle (progress) por dentro,
@@ -89,8 +97,25 @@ function RouteAttemptPreStartScreenContent() {
         ? 'Estás en el punto de inicio.'
         : `Estás a ${formatMeters(distanceToStart)} del punto de inicio (necesitás estar a ${acceptanceRadiusMeters} m o menos).`;
 
-  const handlePlay = () => {
-    if (!canPlay) return;
+  // El intake real (POST /competitions/{id}/attempts) se dispara ACÁ, no al
+  // tocar "Correr esta trayectoria" en la lista (ver competitions-tab.jsx)
+  // -- bug real reportado 2026-10-19: con el intake en la lista, solo
+  // entrar a este pre-start y volver atrás sin jugar ya consumía el único
+  // intento permitido (sin reintentos v1), y con el gate de GPS de arriba
+  // el corredor puede tardar en llegar (o no llegar nunca) al punto de
+  // inicio -- quedaba sin poder intentarlo de verdad jamás. Acá el intake
+  // recién pasa cuando `canPlay` ya confirmó que está parado en el punto.
+  const handlePlay = async () => {
+    if (!canPlay || starting) return;
+    setStarting(true);
+    const result = await mutations.createCompetitionAttempt(routeAttempt.competitionId, userId);
+    if (!result.success) {
+      setStarting(false);
+      notifyError();
+      Toast.show({ type: 'error', text1: 'No pudimos arrancar el intento', text2: result.error });
+      return;
+    }
+    setPendingSession({ ...pendingSession, sessionInstance: result.data.session_instance });
     setGpsEnabled(true);
     router.push('/training-session-active');
   };
@@ -139,13 +164,13 @@ function RouteAttemptPreStartScreenContent() {
           {gpsHint}
         </Text>
         <Pressable
-          className={`h-24 w-24 items-center justify-center rounded-full bg-primary active:opacity-80 ${canPlay ? '' : 'opacity-50'}`}
-          disabled={!canPlay}
+          className={`h-24 w-24 items-center justify-center rounded-full bg-primary active:opacity-80 ${canPlay && !starting ? '' : 'opacity-50'}`}
+          disabled={!canPlay || starting}
           nativeID="route-attempt-pre-start-screen-play-button"
           onPress={handlePlay}
           testID="route-attempt-pre-start-screen-play-button"
         >
-          {gpsPermissionGranted == null ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
+          {gpsPermissionGranted == null || starting ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
         </Pressable>
       </View>
 

@@ -191,6 +191,17 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
           // CLAUDE.md). Mismo patrón que trainer-session-live-screen.jsx.
           if (bounds) cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 24, left: 24, right: 24, top: 24 } });
         }}
+        // Cierra el tooltip con un tap afuera de cualquier marcador --
+        // pedido real, 2026-10-19: antes solo se cerraba volviendo a tocar
+        // el MISMO marcador (toggle). Un tap sobre el fondo del mapa (no
+        // consumido por ningún Marker -- el SDK nativo lo enruta al
+        // feature de más arriba en el hit-test, mismo comportamiento ya
+        // confirmado en route-draw-picker.jsx, donde el `onPress` del Map
+        // agrega puntos sin pelearse con el tap de los markers) dispara
+        // esto. No pelea con pan/pinch cuando `interactive` -- el SDK
+        // distingue tap de gesto de arrastre nativamente, mismo onPress
+        // que ya convive con esos gestos en route-draw-picker.jsx.
+        onPress={() => setActiveMarker(null)}
         style={{ flex: 1 }}
         testID={`${testID}-map`}
         touchPitch={false}
@@ -201,7 +212,12 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
           initialViewState={{ center: initialCenter, zoom: 16 }}
           maxBounds={interactive && bounds ? expandBounds(bounds) : undefined}
           maxZoom={interactive ? 18 : undefined}
-          minZoom={interactive ? 12 : undefined}
+          // 14, no 12 -- pedido real 2026-10-19: "reducir la capacidad de
+          // zoom out en un 35% aprox". Rango original (12 a 18 = 6
+          // niveles) acotado un 35% desde el extremo de zoom-out: 12 +
+          // 0.35*6 = 14.1, redondeado a 14. maxZoom intacto -- el pedido
+          // es solo sobre zoom-out, no sobre zoom-in.
+          minZoom={interactive ? 14 : undefined}
           ref={cameraRef}
         />
         {mapReady && (

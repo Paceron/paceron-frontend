@@ -7,7 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
-import { useCompetitions, useCompetitionMutations, useCompetitionDetail } from '../../hooks/use-competitions.js';
+import { useCompetitions, useCompetitionMutations, useCompetitionDetail, useSeedDynamicRouteCompetition } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
@@ -144,7 +144,7 @@ function RouteDetailSection({ idPrefix, competition, members, sortedParticipantI
   );
 }
 
-function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, attemptBlocked, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, busy }) {
   const colors = useThemeColors();
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const idPrefix = `competitions-tab-row-${competition.id}`;
@@ -242,8 +242,8 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
               </IconTooltip>
             )}
             {canRun && !isWeb && (
-              <IconTooltip align="end" idPrefix={`${idPrefix}-run-tooltip`} label={attemptBlocked ? 'Ya corriste esta trayectoria' : 'Correr esta trayectoria'} position="bottom">
-                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15 active:opacity-70 disabled:opacity-60" disabled={busy || attemptBlocked} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
+              <IconTooltip align="end" idPrefix={`${idPrefix}-run-tooltip`} label="Correr esta trayectoria" position="bottom">
+                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15 active:opacity-70 disabled:opacity-60" disabled={busy} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
                   <MaterialCommunityIcons color={colors.primary} name="play" size={18} />
                 </Pressable>
               </IconTooltip>
@@ -296,6 +296,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
   const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
   const { competitions, loading, error } = useCompetitions(teamId);
   const mutations = useCompetitionMutations(teamId);
+  useSeedDynamicRouteCompetition();
   const { ackSection } = useGamificationBadge();
   const [createVisible, setCreateVisible] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState(null);
@@ -315,12 +316,6 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
       return next;
     });
   };
-  // Sin intento previo barato de consultar en v1 (Gap 33 punto 26, spec
-  // "Entry point") -- el 400 del backend es la fuente de verdad, esto solo
-  // deshabilita el botón localmente DESPUÉS de un primer intento exitoso o
-  // fallido por "ya tenés intento", para esta sesión de la app.
-  const [blockedCompetitionIds, setBlockedCompetitionIds] = useState([]);
-
   useEffect(() => {
     ackSection('competitions', teamId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar, mismo criterio que achievements-screen.jsx (Spec 1)
@@ -351,19 +346,21 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
     else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos cerrar la competencia', text2: result.error }); }
   };
 
-  const handleRun = async (competition) => {
-    const result = await mutations.createCompetitionAttempt(competition.id, currentUserId);
-    if (!result.success) {
-      setBlockedCompetitionIds((prev) => [...prev, competition.id]);
-      notifyError();
-      Toast.show({ type: 'error', text1: 'No pudimos arrancar el intento', text2: result.error });
-      return;
-    }
+  // El intake real (POST /competitions/{id}/attempts, sin reintentos v1 --
+  // ver mockAttempts en el mock) se dispara desde el propio pre-start al
+  // tocar Play, NO acá -- bug real reportado 2026-10-19: con el intake
+  // acá, solo ENTRAR al pre-start y volver atrás sin jugar ya consumía el
+  // único intento permitido, y con el gate de GPS nuevo (el corredor puede
+  // tardar en llegar al punto de inicio, o directamente no llegar) eso
+  // deja al corredor sin poder intentarlo nunca más. Acá solo navega --
+  // nada que pueda fallar, así que ya no hace falta el estado de
+  // "bloqueado localmente" que existía antes (ver route-attempt-pre-start-
+  // screen.jsx para el manejo del error real).
+  const handleRun = (competition) => {
     setPendingSession({
       teamId,
       teamName,
       date: new Date().toISOString().slice(0, 10),
-      sessionInstance: result.data.session_instance,
       routeAttempt: { route: competition.route, acceptanceRadiusMeters: competition.acceptanceRadiusMeters, competitionId: competition.id },
     });
     router.push('/route-attempt-pre-start');
@@ -423,7 +420,6 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
         <View className="gap-3" nativeID="competitions-tab-list" testID="competitions-tab-list">
           {visibleList.map((competition) => (
             <CompetitionRow
-              attemptBlocked={blockedCompetitionIds.includes(competition.id)}
               busy={busy}
               competition={competition}
               currentUserId={currentUserId}

@@ -9,6 +9,7 @@ import {
   mockCloseCompetition,
   mockCreateCompetitionAttempt,
   mockGetCompetition,
+  mockSeedDynamicRouteCompetitionStart,
 } from './__mocks__/competitions-mock.js';
 
 // GET /api/v1/teams/{id}/competitions -- Gap 33.
@@ -64,4 +65,13 @@ export async function getCompetition(id) {
 export async function createCompetitionAttempt(id, athleteUserId) {
   if (USE_MOCKS) return await mockCreateCompetitionAttempt(id, athleteUserId);
   return await api.post(`/competitions/${id}/attempts`, {});
+}
+
+// Solo mocks -- no existe contraparte real (reubicar el trazado de una
+// competencia real no es un caso de uso, es puramente para poder probar
+// el gate de GPS del pre-start contra una ubicación real sin backend de
+// por medio). No-op devolviendo false contra el backend real.
+export function seedDynamicRouteCompetitionStart(lat, lng) {
+  if (!USE_MOCKS) return false;
+  return mockSeedDynamicRouteCompetitionStart(lat, lng);
 }

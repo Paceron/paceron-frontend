@@ -52,18 +52,46 @@ const SEED = [
   // otro dispositivo"). Esta queda fija en el seed para que el script de
   // CORRER (pasos 7-13) tenga algo real sin depender de lo creado en los
   // pasos 1-6 -- esos siguen sirviendo para probar la UI de creación en
-  // sí, por separado. Loop corto (~400m, caminable) cerca de Avellaneda
-  // (ciudad real de team 5 en teams-mock.js). synthetic_session_instance_id
+  // sí, por separado. Camino corto (~300m, caminable) cerca de Avellaneda
+  // (ciudad real de team 5 en teams-mock.js) -- ABIERTO, no un loop: hasta
+  // 2026-10-19 el último punto repetía el primero (cerraba el rectángulo),
+  // así que inicio y llegada eran la MISMA coordenada -- bug real
+  // reportado al probar la preview ("necesito que el punto de inicio y de
+  // final sean distintos"), el marker de llegada quedaba invisible,
+  // tapado exactamente por el de inicio. synthetic_session_instance_id
   // fijo en 9000 -- nextSyntheticInstanceId arranca en 9001 para no
   // pisarlo con uno creado en runtime.
   {
     id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
     start_at: addDaysISO(TODAY_ISO, -5), end_at: null,
-    route: { type: 'LineString', coordinates: [[-58.365, -34.660], [-58.364, -34.660], [-58.364, -34.661], [-58.365, -34.661], [-58.365, -34.660]] },
+    route: { type: 'LineString', coordinates: [[-58.365, -34.660], [-58.364, -34.660], [-58.364, -34.661], [-58.365, -34.661]] },
     acceptance_radius_meters: 50,
     participant_user_ids: [1, 101, 102], created_by_user_id: 99, created_by_role: 'trainer', status: 'active',
     approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null,
     synthetic_session_instance_id: 9000,
+  },
+  // Seed 8 -- competencia de ruta "dinámica", pedido real 2026-10-19: no
+  // hay forma de crear a mano una competencia de ruta cuyo punto de inicio
+  // sirva para probar el gate de GPS como corredor -- crearla como
+  // entrenador la deja pending_approval sin un usuario corredor propio
+  // para aprobarla y correrla después (son roles separados en mocks,
+  // catch-22), y crearla ya como entrenador-dueño (`active` directo) no
+  // sirve porque el dueño no es nunca corredor propio tampoco. Arranca con
+  // un placeholder lejano (mismo problema que seed 7 si se la deja así) --
+  // `mockSeedDynamicRouteCompetitionStart(lat,lng)` la reubica contra el
+  // GPS real del dispositivo la primera vez que resuelve (ver
+  // hooks/use-competitions.js#useSeedDynamicRouteCompetition), trasladando
+  // TODO el trazado en paralelo para no deformar la forma/largo. radio
+  // más generoso (75m, no 50) a propósito -- da más margen contra el
+  // jitter real de GPS al probar "Play habilitado".
+  {
+    id: 8, team_id: 5, group_id: null, type: 'route', metric: null,
+    start_at: addDaysISO(TODAY_ISO, -1), end_at: null,
+    route: { type: 'LineString', coordinates: [[-58.365, -34.660], [-58.3645, -34.6595], [-58.3638, -34.6598]] },
+    acceptance_radius_meters: 75,
+    participant_user_ids: [1, 101, 103], created_by_user_id: 99, created_by_role: 'trainer', status: 'active',
+    approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null,
+    synthetic_session_instance_id: 9100,
   },
 ];
 
@@ -73,12 +101,18 @@ let nextSyntheticInstanceId = 9001;
 // (competition_id, athlete_user_id) ya intentados -- Gap 33 punto 28, sin
 // reintentos en v1.
 const mockAttempts = new Set();
+// Seed 8 (la "dinámica") solo se reubica UNA vez por proceso -- sin este
+// guard, cada llamada (ej. remontar CompetitionsTab) la trasladaría de
+// nuevo relativo a su posición YA reubicada, alejándola cada vez más del
+// GPS real en vez de clavarla ahí una sola vez.
+let dynamicRouteSeeded = false;
 
 function resetSeed() {
   mockCompetitions = SEED.map((c) => ({ ...c }));
   nextId = SEED.length + 1;
   nextSyntheticInstanceId = 9001;
   mockAttempts.clear();
+  dynamicRouteSeeded = false;
 }
 resetSeed();
 
@@ -147,6 +181,33 @@ export async function mockCloseCompetition(id) {
 
 export function __resetMockCompetitions() {
   resetSeed();
+}
+
+// Reubica el trazado de la seed 8 ("dinámica") contra una coordenada real
+// -- pensado para llamarse UNA sola vez con el GPS real del dispositivo
+// (ver hooks/use-competitions.js#useSeedDynamicRouteCompetition). Traslada
+// TODOS los puntos por el mismo delta (no solo el primero) para no
+// deformar la forma/largo del trazado ya definido en el seed. Sin
+// `expo-location` importado en este archivo a propósito -- lo pide quien
+// llama, mocks no debe depender de un módulo nativo (mismo motivo por el
+// que use-route-draw-picker.test.js necesita su propio jest.mock local:
+// expo-location no entra en transformIgnorePatterns de jest.config.js).
+// Devuelve false sin tocar nada si ya se reubicó antes en este proceso o
+// si la competencia no existe -- el caller usa el resultado para decidir
+// si hace falta invalidar la query de la lista.
+export function mockSeedDynamicRouteCompetitionStart(lat, lng) {
+  if (dynamicRouteSeeded) return false;
+  const competition = mockCompetitions.find((c) => c.id === 8);
+  if (!competition) return false;
+  const [firstLng, firstLat] = competition.route.coordinates[0];
+  const deltaLng = lng - firstLng;
+  const deltaLat = lat - firstLat;
+  competition.route = {
+    ...competition.route,
+    coordinates: competition.route.coordinates.map(([pointLng, pointLat]) => [pointLng + deltaLng, pointLat + deltaLat]),
+  };
+  dynamicRouteSeeded = true;
+  return true;
 }
 
 // POST /competitions/{id}/attempts (Gap 33 punto 26) -- valida active +
