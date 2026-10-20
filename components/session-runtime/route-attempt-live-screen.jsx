@@ -539,7 +539,7 @@ function RouteAttemptLiveScreenContent() {
   const goToResult = () => {
     clearLiveSession();
     pendingExitRef.current = () => router.replace({
-      pathname: '/route-attempt-result',
+      pathname: '/route-attempt-detail',
       params: {
         competitionId: routeAttempt.competitionId,
         setId: String(set.id),
