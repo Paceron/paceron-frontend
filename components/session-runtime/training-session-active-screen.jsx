@@ -111,7 +111,7 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
 
   return (
     <Pressable
-      className={`h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 px-4 ${disabled ? 'opacity-50' : ''} dark:border-red-900/60`}
+      className={`h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-4 dark:border-red-900/60 dark:bg-surface ${disabled ? 'opacity-50' : ''}`}
       disabled={disabled}
       nativeID={`${idPrefix}-cancel-button`}
       onPress={handlePress}
@@ -232,7 +232,7 @@ function DragToFinishButton({
   return (
     <GestureDetector gesture={pan}>
       <View
-        className={`h-24 flex-1 rounded-full border ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
+        className={`h-24 flex-1 rounded-full border bg-white dark:bg-surface ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => {
           widthSV.value = Math.round(event.nativeEvent.layout.width);
