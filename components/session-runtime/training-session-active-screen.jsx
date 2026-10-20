@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -110,7 +110,7 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
 
   return (
     <Pressable
-      className={`h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-4 dark:border-red-900/60 dark:bg-surface ${disabled ? 'opacity-50' : ''}`}
+      className={`min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 bg-red-50 px-4 dark:border-red-900/60 dark:bg-red-950/40 ${disabled ? 'opacity-50' : ''}`}
       disabled={disabled}
       nativeID={`${idPrefix}-cancel-button`}
       onPress={handlePress}
@@ -125,7 +125,7 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
       )}
       <MaterialCommunityIcons color={colors.error} name="stop-circle-outline" size={18} />
       <Text className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400" nativeID={`${idPrefix}-cancel-button-label`} testID={`${idPrefix}-cancel-button-label`}>
-        {holding ? 'Soltá para cancelar' : isWeb ? 'Cancelar sesión' : 'Mantener presionado para cancelar'}
+        {holding ? 'Soltá para cancelar' : isWeb ? 'Cancelar sesión' : 'Mantené para cancelar'}
       </Text>
     </Pressable>
   );
@@ -137,24 +137,45 @@ const DRAG_VARIANTS = {
   // dos controles del reloj usan finish (verde) y neutral (gris claro).
   finish: {
     trackBorder: 'border-emerald-300 dark:border-emerald-800/70',
-    fill: 'bg-emerald-500/20',
+    // trackBg: tono suave del color de la variante en reposo -- pedido
+    // real 2026-10-20: con el track en bg-white/surface fijo, la única
+    // pista de color era el `fill` semitransparente creciendo con el
+    // drag, casi invisible en tema claro ("los veo con relleno blanco").
+    trackBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    fill: 'bg-emerald-500/45',
     thumb: 'bg-emerald-500/70 border border-emerald-600/60',
     iconColor: '#ffffff',
     label: 'text-emerald-700 dark:text-emerald-300',
   },
   neutral: {
     trackBorder: 'border-slate-200 dark:border-slate-700/60',
-    fill: 'bg-slate-300/25',
+    trackBg: 'bg-slate-100 dark:bg-slate-800/40',
+    fill: 'bg-slate-400/45',
     thumb: 'bg-slate-300/80 border border-slate-400/60',
     iconColor: '#ffffff',
     label: 'text-slate-500 dark:text-slate-400',
   },
   danger: {
     trackBorder: 'border-red-300 dark:border-red-900/60',
-    fill: 'bg-red-600/25',
+    trackBg: 'bg-red-50 dark:bg-red-950/40',
+    fill: 'bg-red-600/45',
     thumb: 'bg-red-600',
     iconColor: '#ffffff',
     label: 'text-red-600 dark:text-red-400',
+  },
+  // Reanudar -- mismo verde-lima que el botón "Reanudar" original
+  // (bg-primary) que este slider reemplaza, no el verde esmeralda de
+  // "finish" (los dos comparten fila y necesitan distinguirse por color,
+  // no solo por ícono/label). Label = mismo `text-primary` que el resto
+  // del slider (thumb/fill/borde) -- pedido real 2026-10-20: un verde
+  // oscuro aparte quedaba desentonado con el resto del control.
+  resume: {
+    trackBorder: 'border-primary/50 dark:border-primary/40',
+    trackBg: 'bg-primary-tint-subtle dark:bg-primary/10',
+    fill: 'bg-primary/45',
+    thumb: 'bg-primary border border-[#6b9c2f]',
+    iconColor: '#111518',
+    label: 'text-primary',
   },
 };
 
@@ -184,6 +205,17 @@ function DragToFinishButton({
 
   const fillStyle = useAnimatedStyle(() => ({ width: translateX.value }));
   const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+
+  // Hint de "esto se arrastra" -- ver route-attempt-live-screen.jsx para el
+  // detalle. Chevrones en loop sutil, se apagan apenas el drag real arranca.
+  const hintX = useSharedValue(0);
+  useEffect(() => {
+    hintX.value = withRepeat(withTiming(8, { duration: 550, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [hintX]);
+  const hintStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: hintX.value }],
+    opacity: interpolate(translateX.value, [0, 24], [1, 0], 'clamp'),
+  }));
 
   const pan = useMemo(() => {
     let p = Gesture.Pan().runOnJS(true);
@@ -231,7 +263,7 @@ function DragToFinishButton({
   return (
     <GestureDetector gesture={pan}>
       <View
-        className={`h-24 flex-1 rounded-full border bg-white dark:bg-surface ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
+        className={`h-24 flex-1 rounded-full border ${colors.trackBg} ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => {
           widthSV.value = Math.round(event.nativeEvent.layout.width);
@@ -256,21 +288,34 @@ function DragToFinishButton({
             absolutos se pintan en orden, así que el texto queda por encima del
             deslizador y se lee durante todo el recorrido (antes el thumb
             opaco lo tapaba al pasar por el medio). Por eso también es
-            absolute — un hijo normal quedaría siempre debajo. */}
+            absolute — un hijo normal quedaría siempre debajo.
+            Padding asimétrico (no px-20 simétrico): el thumb solo descansa a
+            la izquierda, pl-20 le da margen ahí; pr-3 alcanza a la derecha.
+            Bug real 2026-10-20: con padding simétrico, en el layout de dos
+            sliders lado a lado (pausar+finalizar) el padding solo ya
+            consumía casi todo el ancho y el label truncaba a "...".
+            Hint ANTES del texto, en el mismo flex-row -- ver
+            route-attempt-live-screen.jsx para el detalle del bug (quedaba
+            encima del label al estar absolute aparte). */}
         <View
-          className="absolute inset-0 items-center justify-center px-20"
+          className="absolute inset-0 items-center justify-center pl-20 pr-3"
           nativeID={`${idPrefix}-drag-content`}
           pointerEvents="none"
           testID={`${idPrefix}-drag-content`}
         >
-          <Text
-            className={`text-center text-base font-bold uppercase tracking-wide ${colors.label}`}
-            nativeID={`${idPrefix}-drag-label`}
-            numberOfLines={1}
-            testID={`${idPrefix}-drag-label`}
-          >
-            {label}
-          </Text>
+          <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-drag-label-row`} testID={`${idPrefix}-drag-label-row`}>
+            <Animated.View nativeID={`${idPrefix}-drag-hint`} style={hintStyle} testID={`${idPrefix}-drag-hint`}>
+              <MaterialCommunityIcons color="#94a3b8" name="chevron-double-right" size={16} />
+            </Animated.View>
+            <Text
+              className={`text-center text-base font-bold uppercase tracking-wide ${colors.label}`}
+              nativeID={`${idPrefix}-drag-label`}
+              numberOfLines={1}
+              testID={`${idPrefix}-drag-label`}
+            >
+              {label}
+            </Text>
+          </View>
         </View>
       </View>
     </GestureDetector>
@@ -976,7 +1021,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
 
         {phase === 'ready' && (
           <View className="mb-4" nativeID={`${idPrefix}-skip-hint`} testID={`${idPrefix}-skip-hint`}>
-            <Pressable className="h-11 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
+            <Pressable className="h-11 items-center justify-center rounded-full border border-slate-200 bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-800/40" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-skip-label`} testID={`${idPrefix}-skip-label`}>Saltear</Text>
             </Pressable>
           </View>
@@ -997,28 +1042,30 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
 
           {phase === 'paused' && (
             <>
+              {/* Saltear sube al slot que antes era "Reanudar" (pedido real
+                  2026-10-20) -- Reanudar pasa a ser un slider más, en el
+                  slot donde antes estaba el botón de saltear, mismo layout
+                  de dos sliders lado a lado que ya usa `running`. */}
               <Pressable
-                className="h-16 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
-                nativeID={`${idPrefix}-resume-button`}
-                onPress={handlePlay}
-                testID={`${idPrefix}-resume-button`}
+                className="h-11 items-center justify-center rounded-full border border-slate-200 bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-800/40"
+                disabled={busy}
+                nativeID={`${idPrefix}-skip-button`}
+                onPress={() => setSkipVisible(true)}
+                testID={`${idPrefix}-skip-button`}
               >
-                <MaterialCommunityIcons color={colors.onPrimary} name="play" size={28} />
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-resume-label`} numberOfLines={1} testID={`${idPrefix}-resume-label`}>Reanudar</Text>
+                <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-skip-label`} testID={`${idPrefix}-skip-label`}>Saltear</Text>
               </Pressable>
               <View className="flex-row gap-3" nativeID={`${idPrefix}-secondary-controls`} testID={`${idPrefix}-secondary-controls`}>
-                <Pressable className="h-12 flex-1 items-center justify-center rounded-full border border-slate-200 active:opacity-70 dark:border-slate-700" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="skip-next" size={18} />
-                </Pressable>
-                <DragToFinishButton disabled={false} idPrefix={idPrefix} onTrigger={handleFinish} />
+                <DragToFinishButton icon="play" idPrefix={`${idPrefix}-resume`} label="Reanudar" onTrigger={handlePlay} variant="resume" />
+                <DragToFinishButton disabled={false} idPrefix={idPrefix} label="Finalizar" onTrigger={handleFinish} />
               </View>
             </>
           )}
 
           {phase === 'running' && (
             <View className="flex-row gap-3" nativeID={`${idPrefix}-running-controls`} testID={`${idPrefix}-running-controls`}>
-              <DragToFinishButton idPrefix={`${idPrefix}-pause`} icon="pause" label="Deslizá para pausar" onTrigger={handlePause} variant="neutral" />
-              <DragToFinishButton disabled={false} idPrefix={idPrefix} onTrigger={handleFinish} />
+              <DragToFinishButton idPrefix={`${idPrefix}-pause`} icon="pause" label="Pausar" onTrigger={handlePause} variant="neutral" />
+              <DragToFinishButton disabled={false} idPrefix={idPrefix} label="Finalizar" onTrigger={handleFinish} />
             </View>
           )}
         </View>

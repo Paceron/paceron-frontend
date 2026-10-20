@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
@@ -190,8 +190,14 @@ const DRAG_VARIANTS = {
     // legible"). En oscuro el contraste con bg-ink ya alcanzaba, por eso
     // no se había notado antes.
     trackBorder: 'border-emerald-300 dark:border-emerald-800/70',
-    trackBg: 'bg-white dark:bg-surface',
-    fill: 'bg-emerald-500/20',
+    // Tono suave (no blanco/surface plano) -- pedido real 2026-10-20:
+    // mismo criterio que el resto de los sliders, el track en reposo
+    // necesita su propia pista de color, no depender solo del fill
+    // semitransparente mientras se arrastra. El thumb sigue opaco (no
+    // /70, ver comentario de abajo) así que esto no reabre el problema
+    // de contraste de 2026-10-08.
+    trackBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    fill: 'bg-emerald-500/45',
     // Thumb opaco (no /70) -- mismo motivo, necesita contraste sólido
     // contra el ícono blanco sin depender de qué haya detrás.
     thumb: 'bg-emerald-500 border border-emerald-600/60',
@@ -225,6 +231,17 @@ const DragToFinishButton = forwardRef(function DragToFinishButton({ onTrigger, i
 
   const fillStyle = useAnimatedStyle(() => ({ width: translateX.value }));
   const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+
+  // Hint de "esto se arrastra" -- ver route-attempt-live-screen.jsx para el
+  // detalle. Amplitud/tamaño más chicos acá (thumb 48px, no 64px).
+  const hintX = useSharedValue(0);
+  useEffect(() => {
+    hintX.value = withRepeat(withTiming(6, { duration: 550, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [hintX]);
+  const hintStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: hintX.value }],
+    opacity: interpolate(translateX.value, [0, 18], [1, 0], 'clamp'),
+  }));
 
   const pan = useMemo(() => Gesture.Pan()
     .runOnJS(true)
@@ -275,8 +292,16 @@ const DragToFinishButton = forwardRef(function DragToFinishButton({ onTrigger, i
         <Animated.View className={`absolute left-0.5 top-1 h-12 w-12 items-center justify-center rounded-full ${colors.thumb}`} nativeID={`${idPrefix}-drag-thumb`} style={thumbStyle} testID={`${idPrefix}-drag-thumb`}>
           <MaterialCommunityIcons color={colors.iconColor} name="flag-checkered" size={18} />
         </Animated.View>
+        {/* Hint ANTES del texto, en el mismo flex-row -- ver
+            route-attempt-live-screen.jsx para el detalle del bug (quedaba
+            encima del label al estar absolute aparte). */}
         <View className="absolute inset-0 items-center justify-center px-14" nativeID={`${idPrefix}-drag-content`} pointerEvents="none" testID={`${idPrefix}-drag-content`}>
-          <Text className={`text-center text-xs font-bold uppercase tracking-wide ${colors.label}`} nativeID={`${idPrefix}-drag-label`} numberOfLines={1} testID={`${idPrefix}-drag-label`}>{label}</Text>
+          <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-drag-label-row`} testID={`${idPrefix}-drag-label-row`}>
+            <Animated.View nativeID={`${idPrefix}-drag-hint`} style={hintStyle} testID={`${idPrefix}-drag-hint`}>
+              <MaterialCommunityIcons color="#94a3b8" name="chevron-double-right" size={14} />
+            </Animated.View>
+            <Text className={`text-center text-xs font-bold uppercase tracking-wide ${colors.label}`} nativeID={`${idPrefix}-drag-label`} numberOfLines={1} testID={`${idPrefix}-drag-label`}>{label}</Text>
+          </View>
         </View>
       </View>
     </GestureDetector>
@@ -565,7 +590,7 @@ function TrainerSessionLiveScreenContent() {
       </View>
 
       <View className="flex-1 overflow-hidden" nativeID="trainer-session-live-map-container" testID="trainer-session-live-map-container">
-        <Map mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL} nativeID="trainer-session-live-map" style={{ flex: 1 }} testID="trainer-session-live-map">
+        <Map attribution={false} logo={false} mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL} nativeID="trainer-session-live-map" style={{ flex: 1 }} testID="trainer-session-live-map">
           {/* maxZoom frena el "fit all points" cuando los puntos coinciden
               casi exactamente (ej. solo el entrenador conectado, sin ningún
               corredor todavía) -- sin esto, fitBounds sobre una caja de área

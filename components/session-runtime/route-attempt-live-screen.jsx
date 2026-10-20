@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { usePreventRemove } from '@react-navigation/native';
@@ -79,14 +79,20 @@ function CountdownOverlay({ value, onCancelCountdown }) {
 const DRAG_VARIANTS = {
   finish: {
     trackBorder: 'border-emerald-300 dark:border-emerald-800/70',
-    fill: 'bg-emerald-500/20',
+    // trackBg: tono suave del color de la variante en reposo -- pedido
+    // real 2026-10-20: con el track en bg-white/surface fijo, la única
+    // pista de color era el `fill` semitransparente creciendo con el
+    // drag, casi invisible en tema claro ("los veo con relleno blanco").
+    trackBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    fill: 'bg-emerald-500/45',
     thumb: 'bg-emerald-500/70 border border-emerald-600/60',
     iconColor: '#ffffff',
     label: 'text-emerald-700 dark:text-emerald-300',
   },
   neutral: {
     trackBorder: 'border-slate-200 dark:border-slate-700/60',
-    fill: 'bg-slate-300/25',
+    trackBg: 'bg-slate-100 dark:bg-slate-800/40',
+    fill: 'bg-slate-400/45',
     thumb: 'bg-slate-300/80 border border-slate-400/60',
     iconColor: '#ffffff',
     label: 'text-slate-500 dark:text-slate-400',
@@ -104,6 +110,20 @@ function DragToFinishButton({ onTrigger, disabled, idPrefix, label, icon = 'flag
 
   const fillStyle = useAnimatedStyle(() => ({ width: translateX.value }));
   const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+
+  // Hint de "esto se arrastra" -- pedido real 2026-10-20: con el label corto
+  // ("Pausar"/"Finalizar") ya legible, hacía falta algo que siga indicando
+  // que el control es deslizable, no un botón. Chevrones en loop sutil,
+  // se apagan apenas el drag real arranca (`translateX.value` crece) para
+  // no competir visualmente con el thumb en movimiento.
+  const hintX = useSharedValue(0);
+  useEffect(() => {
+    hintX.value = withRepeat(withTiming(8, { duration: 550, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [hintX]);
+  const hintStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: hintX.value }],
+    opacity: interpolate(translateX.value, [0, 24], [1, 0], 'clamp'),
+  }));
 
   const pan = useMemo(() => {
     let p = Gesture.Pan().runOnJS(true);
@@ -137,8 +157,18 @@ function DragToFinishButton({ onTrigger, disabled, idPrefix, label, icon = 'flag
 
   return (
     <GestureDetector gesture={pan}>
+      {/* Sin flex-1 propio -- bug real reportado 2026-10-20: este componente
+          se usa tanto suelto (hijo directo de una columna, fase `paused`)
+          como de a dos en una fila (fase `running`). `flex-1` adentro de
+          una COLUMNA no reparte ancho -- hace crecer el alto para llenar el
+          espacio vertical restante, haciendo que el slider de finalizar
+          invadiera visualmente el HoldToCancelButton de abajo ("detrás del
+          mantener presionado"). El ancho completo en el caso suelto ya sale
+          gratis del stretch por default de una columna (mismo patrón ya
+          usado en trainer-session-live-screen.jsx); para el caso de fila,
+          el flex-1 ahora vive en el wrapper del call site, no acá. */}
       <View
-        className={`h-24 flex-1 rounded-full border bg-white dark:bg-surface ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
+        className={`h-24 rounded-full border ${colors.trackBg} ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => { widthSV.value = Math.round(event.nativeEvent.layout.width); }}
         testID={`${idPrefix}-drag-track`}
@@ -147,8 +177,24 @@ function DragToFinishButton({ onTrigger, disabled, idPrefix, label, icon = 'flag
         <Animated.View className={`absolute left-0.5 top-4 h-16 w-16 items-center justify-center rounded-full ${colors.thumb}`} nativeID={`${idPrefix}-drag-thumb`} style={thumbStyle} testID={`${idPrefix}-drag-thumb`}>
           <MaterialCommunityIcons color={colors.iconColor} name={icon} size={26} />
         </Animated.View>
-        <View className="absolute inset-0 items-center justify-center px-20" nativeID={`${idPrefix}-drag-content`} pointerEvents="none" testID={`${idPrefix}-drag-content`}>
-          <Text className={`text-center text-base font-bold uppercase tracking-wide ${colors.label}`} nativeID={`${idPrefix}-drag-label`} numberOfLines={1} testID={`${idPrefix}-drag-label`}>{label}</Text>
+        {/* Padding asimétrico, no px-20 simétrico: el thumb (w-16, 64px) solo
+            descansa a la izquierda -- pl-20 le da margen de sobra ahí, pr-3
+            alcanza porque ese lado nunca lo tapa nada. Bug real reportado
+            2026-10-20: con padding simétrico, en el layout de dos sliders
+            lado a lado (pausar+finalizar) el padding solo ya consumía casi
+            todo el ancho disponible y el label truncaba a "...". */}
+        <View className="absolute inset-0 items-center justify-center pl-20 pr-3" nativeID={`${idPrefix}-drag-content`} pointerEvents="none" testID={`${idPrefix}-drag-content`}>
+          {/* Hint ANTES del texto (no absolute aparte) -- pedido real
+              2026-10-20: separado y pegado al borde derecho, quedaba
+              encima del label en el layout angosto de dos sliders.
+              Adentro del mismo flex-row, en flujo normal, nunca compite
+              espacio con el texto -- lo precede nomás. */}
+          <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-drag-label-row`} testID={`${idPrefix}-drag-label-row`}>
+            <Animated.View nativeID={`${idPrefix}-drag-hint`} style={hintStyle} testID={`${idPrefix}-drag-hint`}>
+              <MaterialCommunityIcons color="#94a3b8" name="chevron-double-right" size={16} />
+            </Animated.View>
+            <Text className={`text-center text-base font-bold uppercase tracking-wide ${colors.label}`} nativeID={`${idPrefix}-drag-label`} numberOfLines={1} testID={`${idPrefix}-drag-label`}>{label}</Text>
+          </View>
         </View>
       </View>
     </GestureDetector>
@@ -192,7 +238,7 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
 
   return (
     <Pressable
-      className={`h-10 flex-row items-center justify-center gap-2 self-center rounded-full border border-red-300 bg-white px-4 dark:border-red-900/60 dark:bg-surface ${disabled ? 'opacity-50' : ''}`}
+      className={`min-h-10 flex-row items-center justify-center gap-2 self-center rounded-full border border-red-300 bg-red-50 px-4 dark:border-red-900/60 dark:bg-red-950/40 ${disabled ? 'opacity-50' : ''}`}
       disabled={disabled}
       nativeID={`${idPrefix}-cancel-button`}
       onPressIn={startHold}
@@ -206,7 +252,7 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
       )}
       <MaterialCommunityIcons color={colors.error} name="stop-circle-outline" size={16} />
       <Text className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400" nativeID={`${idPrefix}-cancel-button-label`} testID={`${idPrefix}-cancel-button-label`}>
-        {holding ? 'Soltá para cancelar' : 'Mantener presionado para cancelar'}
+        {holding ? 'Soltá para cancelar' : 'Mantené para cancelar'}
       </Text>
     </Pressable>
   );
@@ -638,8 +684,12 @@ function RouteAttemptLiveScreenContent() {
         )}
         {phase === 'running' && (
           <View className="flex-row gap-3" nativeID="route-attempt-live-screen-running-controls" testID="route-attempt-live-screen-running-controls">
-            <DragToFinishButton icon="pause" idPrefix="route-attempt-live-screen-pause" label="Deslizá para pausar" onTrigger={handlePause} variant="neutral" />
-            <DragToFinishButton idPrefix="route-attempt-live-screen-finish" label="Deslizá para finalizar" onTrigger={handleFinish} />
+            <View className="flex-1" nativeID="route-attempt-live-screen-pause-wrap" testID="route-attempt-live-screen-pause-wrap">
+              <DragToFinishButton icon="pause" idPrefix="route-attempt-live-screen-pause" label="Pausar" onTrigger={handlePause} variant="neutral" />
+            </View>
+            <View className="flex-1" nativeID="route-attempt-live-screen-finish-wrap" testID="route-attempt-live-screen-finish-wrap">
+              <DragToFinishButton idPrefix="route-attempt-live-screen-finish" label="Finalizar" onTrigger={handleFinish} />
+            </View>
           </View>
         )}
         {(phase === 'running' || phase === 'paused') && (
