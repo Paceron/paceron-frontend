@@ -7,6 +7,7 @@ import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { getCompetition } from '../../services/competitions.js';
 import { toCompetitionModel } from '../../services/normalizers.js';
+import { getGpsPoints } from '../../services/session-db.js';
 import { formatMeters } from '../../utils/distance.js';
 import { formatStopwatch } from '../../utils/time.js';
 import { LiveTrajectoryMap } from './live-trajectory-map';
@@ -25,6 +26,17 @@ export function RouteAttemptResultScreen() {
   const params = useLocalSearchParams();
   const [competition, setCompetition] = useState(null);
   const [exhausted, setExhausted] = useState(false);
+  const [traveledPoints, setTraveledPoints] = useState([]);
+
+  useEffect(() => {
+    if (!params.setId) return;
+    let cancelled = false;
+    (async () => {
+      const points = await getGpsPoints(params.setId);
+      if (!cancelled) setTraveledPoints(points.map((p) => ({ latitude: p.latitude, longitude: p.longitude })));
+    })();
+    return () => { cancelled = true; };
+  }, [params.setId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +70,9 @@ export function RouteAttemptResultScreen() {
             Resultado de tu intento
           </Text>
 
-          <LiveTrajectoryMap referenceRoute={competition?.route ?? null} traveledPoints={[]} />
+          <View className="h-80 w-full" nativeID="route-attempt-result-screen-map-wrap" testID="route-attempt-result-screen-map-wrap">
+            <LiveTrajectoryMap referenceRoute={competition?.route ?? null} traveledPoints={traveledPoints} />
+          </View>
 
           <View className="mt-4 flex-row justify-around" nativeID="route-attempt-result-screen-stats" testID="route-attempt-result-screen-stats">
             <View nativeID="route-attempt-result-screen-distance" testID="route-attempt-result-screen-distance">
