@@ -81,7 +81,7 @@ describe('mockCreateCompetitionAttempt', () => {
       acceptance_radius_meters: 50, participant_user_ids: [2, 3],
     }, { isTrainerCreator: true });
     const attempt = await mockCreateCompetitionAttempt(competition.id, 2);
-    expect(attempt.session_instance_id).toBe(competition.synthetic_session_instance_id);
+    expect(attempt.session_instance_id).toBe(competition.session_instance_id);
     expect(attempt.session_instance.exercises).toHaveLength(1);
   });
 
@@ -143,7 +143,7 @@ describe('mockGetCompetition', () => {
     expect(competition.route.coordinates.length).toBeGreaterThanOrEqual(2);
     expect(competition.acceptance_radius_meters).toBeGreaterThanOrEqual(5);
     expect(competition.acceptance_radius_meters).toBeLessThanOrEqual(500);
-    expect(competition.synthetic_session_instance_id).toEqual(expect.any(Number));
+    expect(competition.session_instance_id).toEqual(expect.any(Number));
   });
 
   test('user_id 1 puede correr un intento contra la seed 7, sin colisionar con instancias creadas en runtime', async () => {
@@ -156,7 +156,7 @@ describe('mockGetCompetition', () => {
       type: 'route', route: { type: 'LineString', coordinates: [[-58.3, -34.6], [-58.31, -34.61]] },
       acceptance_radius_meters: 50, participant_user_ids: [1, 101],
     }, { isTrainerCreator: true });
-    expect(created.synthetic_session_instance_id).not.toBe(9000);
+    expect(created.session_instance_id).not.toBe(9000);
   });
 
   test('seed 8 es la competencia de ruta dinámica, reubicable una sola vez por GPS real', async () => {

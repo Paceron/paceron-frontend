@@ -1144,6 +1144,10 @@ export function toCompetitionModel(dto) {
     startAt: dto.start_at,
     endAt: dto.end_at ?? null,
     route: dto.route ?? null,
+    // Gap 35 -- instancia sintética de una competencia de ruta, null para
+    // type='metric'. Sin esto no hay forma de pedir el detalle de un
+    // intento viejo por API (ver route-attempt-detail-screen.jsx).
+    sessionInstanceId: dto.session_instance_id != null ? String(dto.session_instance_id) : null,
     acceptanceRadiusMeters: dto.acceptance_radius_meters ?? null,
     participantUserIds: (dto.participant_user_ids ?? []).map((id) => String(id)),
     createdByUserId: String(dto.created_by_user_id),

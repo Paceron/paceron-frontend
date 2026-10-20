@@ -58,7 +58,7 @@ const SEED = [
   // así que inicio y llegada eran la MISMA coordenada -- bug real
   // reportado al probar la preview ("necesito que el punto de inicio y de
   // final sean distintos"), el marker de llegada quedaba invisible,
-  // tapado exactamente por el de inicio. synthetic_session_instance_id
+  // tapado exactamente por el de inicio. session_instance_id
   // fijo en 9000 -- nextSyntheticInstanceId arranca en 9001 para no
   // pisarlo con uno creado en runtime.
   {
@@ -68,7 +68,7 @@ const SEED = [
     acceptance_radius_meters: 50,
     participant_user_ids: [1, 101, 102], created_by_user_id: 99, created_by_role: 'trainer', status: 'active',
     approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null,
-    synthetic_session_instance_id: 9000,
+    session_instance_id: 9000,
   },
   // Seed 8 -- competencia de ruta "dinámica", pedido real 2026-10-19: no
   // hay forma de crear a mano una competencia de ruta cuyo punto de inicio
@@ -91,7 +91,7 @@ const SEED = [
     acceptance_radius_meters: 75,
     participant_user_ids: [1, 101, 103], created_by_user_id: 99, created_by_role: 'trainer', status: 'active',
     approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null,
-    synthetic_session_instance_id: 9100,
+    session_instance_id: 9100,
   },
 ];
 
@@ -144,7 +144,7 @@ export async function mockCreateCompetition(teamId, payload, { isTrainerCreator 
     finished_at: null,
     // Instancia sintética (Gap 33 punto 26) -- una sola por competencia,
     // compartida por todos los participantes, generada al crear.
-    synthetic_session_instance_id: payload.type === 'route' ? nextSyntheticInstanceId++ : null,
+    session_instance_id: payload.type === 'route' ? nextSyntheticInstanceId++ : null,
   };
   mockCompetitions.push(competition);
   return competition;
@@ -221,11 +221,11 @@ export async function mockCreateCompetitionAttempt(competitionId, athleteUserId)
   if (mockAttempts.has(key)) throw new Error('Ya tenés un intento registrado para esta competencia');
   mockAttempts.add(key);
   return {
-    session_instance_id: competition.synthetic_session_instance_id,
+    session_instance_id: competition.session_instance_id,
     session_instance: {
-      id: competition.synthetic_session_instance_id,
+      id: competition.session_instance_id,
       name: 'Corrida',
-      exercises: [{ id: competition.synthetic_session_instance_id * 10, name: 'Corrida', role: 'main', repeat_count: 1, rest_minutes: 0 }],
+      exercises: [{ id: competition.session_instance_id * 10, name: 'Corrida', role: 'main', repeat_count: 1, rest_minutes: 0 }],
     },
   };
 }

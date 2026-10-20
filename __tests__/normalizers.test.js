@@ -11,6 +11,7 @@ import {
   toTeamSubscriptionModel, toTeamConfigurationModel,
   toSessionMessageModel, toSessionMessagePayload,
   toExerciseModel, toCreateExercisePayload,
+  toCompetitionModel,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -1331,5 +1332,33 @@ describe('toCreateExercisePayload', () => {
     // para el repo Go — no se "arregla" acá sin cambiar el contrato.
     const payload = toCreateExercisePayload({ ...form, minutes: null });
     expect(payload).not.toHaveProperty('minutes');
+  });
+});
+
+describe('toCompetitionModel', () => {
+  test('maps session_instance_id to sessionInstanceId as a string', () => {
+    const dto = {
+      id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+      start_at: '2026-10-20T10:00:00Z', end_at: null,
+      route: null, acceptance_radius_meters: 50,
+      participant_user_ids: [1], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null,
+      session_instance_id: 9000,
+    };
+    expect(toCompetitionModel(dto).sessionInstanceId).toBe('9000');
+  });
+
+  test('maps a null session_instance_id (metric competitions) to null', () => {
+    const dto = {
+      id: 1, team_id: 5, group_id: null, type: 'metric', metric: 'distance',
+      start_at: '2026-10-20T10:00:00Z', end_at: '2026-10-27T10:00:00Z',
+      route: null, acceptance_radius_meters: null,
+      participant_user_ids: [1], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null,
+      session_instance_id: null,
+    };
+    expect(toCompetitionModel(dto).sessionInstanceId).toBeNull();
   });
 });
