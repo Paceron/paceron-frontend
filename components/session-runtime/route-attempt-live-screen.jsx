@@ -38,7 +38,7 @@ import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
 import { useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { computeRouteTimeoutMs, distanceToRouteMeters, totalRouteMeters } from '../../utils/route-geometry.js';
-import { LiveTrajectoryMap } from './live-trajectory-map.jsx';
+import { LiveTrajectoryMap } from './live-trajectory-map';
 
 const COUNTDOWN_GIF_BG = '#979597';
 
@@ -599,11 +599,15 @@ function RouteAttemptLiveScreenContent() {
         <Text className="text-4xl" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID="route-attempt-live-screen-timer" testID="route-attempt-live-screen-timer">
           {showTimer ? formatStopwatch(stopwatch.wallMs) : '00:00:00'}
         </Text>
-        {distance != null && (
-          <Text className="text-sm font-semibold text-emerald-700 dark:text-emerald-400" nativeID="route-attempt-live-screen-distance" testID="route-attempt-live-screen-distance">
-            {formatMeters(distance)}
-          </Text>
-        )}
+        {/* Siempre montado (no condicionado a `distance != null`) -- bug
+            real reportado 2026-10-20: cuando el primer fix de GPS llegaba,
+            este Text aparecía de la nada y le robaba esa altura al mapa de
+            arriba (`flex-1`, se achica cuando cualquier hermano no-flex
+            crece) -- se sentía como que "el mapa se contrae de repente".
+            Mostrar 0 m desde el arranque reserva la altura siempre. */}
+        <Text className="text-sm font-semibold text-emerald-700 dark:text-emerald-400" nativeID="route-attempt-live-screen-distance" testID="route-attempt-live-screen-distance">
+          {formatMeters(distance ?? 0)}
+        </Text>
       </View>
 
       <View className="gap-3 px-4 pb-3" nativeID="route-attempt-live-screen-controls" testID="route-attempt-live-screen-controls">
