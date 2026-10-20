@@ -1718,9 +1718,15 @@ dato de "novedad" vive junto al recurso que la genera, no en un servicio aparte)
     cross-team aparte. El punto rojo de la pestaña Competencias DENTRO de un equipo puntual usa
     directamente el `has_unseen` de ESE equipo, sin agregación.
 
-## Gap 35 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta
+## Gap 35 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta [RESUELTO del lado backend, no mergeado a `develop` todavía]
 
-**Contexto.** Confirmado leyendo el frontend (2026-10-20): un intento de competencia de ruta
+**Actualización 2026-10-20:** backend confirma implementado — `GET /teams/{id}/competitions` (cada
+fila) y `GET /competitions/{id}` ahora incluyen `session_instance_id: number` (>0) para
+competencias de ruta, `null` para métrica. El id coincide con el que ya devuelve el intake (`POST
+/competitions/{id}/attempts`) — "sobrevive al SQLite local". Todavía no mergeado a `develop` al
+momento de escribir esto, así que el frontend no puede consumirlo hasta que eso pase.
+
+**Contexto (original).** Confirmado leyendo el frontend (2026-10-20): un intento de competencia de ruta
 corre por el mismo pipeline que una sesión de entrenamiento normal — `POST
 /competitions/{id}/attempts` crea el `session_instance` sintético (Gap 33 punto 26) y el
 frontend guarda localmente un `run`/`set` (SQLite) contra ese `session_instance_id`, sincronizado
