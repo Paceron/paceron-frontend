@@ -299,6 +299,7 @@ function RouteAttemptLiveScreenContent() {
   const countdownTimerRef = useRef(null);
   const timeoutTimerRef = useRef(null);
   const offRouteStreakRef = useRef(0);
+  const cancelingRef = useRef(false);
 
   // Poll de status de competencia (Gap 33) mientras el intento está en
   // curso -- si se cierra/cancela desde otro lado (entrenador, u otro
@@ -521,6 +522,14 @@ function RouteAttemptLiveScreenContent() {
   };
 
   const handleCancelConfirmed = async () => {
+    // Guard de reentrancia -- a partir de Task 7 hay 2 callers automáticos
+    // (drift en handleGpsPoint, ~1/seg; competencia cerrada en el useEffect
+    // de competitionDetail, ~cada 15s) sumados al botón manual. Esta
+    // función no hace setPhase, así que el guard de running/paused de
+    // ambos triggers sigue cumplido durante TODOS sus awaits -- sin esto,
+    // los dos podrían solaparse y duplicar syncRun/Toast/router.replace.
+    if (cancelingRef.current) return;
+    cancelingRef.current = true;
     try {
       const snap = phase === 'running' ? stopwatch.pause() : savedTimingsRef.current;
       await gps.stop();
