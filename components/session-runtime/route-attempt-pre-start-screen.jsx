@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
 import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
 import { haversineMeters, formatMeters } from '../../utils/distance.js';
+import { totalRouteMeters } from '../../utils/route-geometry.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { notifyError } from '../../utils/haptics.js';
 import { RouteMapPreview } from '../team/route-map-preview.jsx';
@@ -83,11 +85,53 @@ function RouteAttemptPreStartScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gpsPermissionGranted, startPoint]);
 
+  // withinRange/canPlay/playState/playReady calculados ANTES del guard de
+  // abajo (en vez de al lado de acceptanceRadiusMeters/gpsHint, puramente
+  // de display) porque el pulso que sigue es un HOOK (useSharedValue +
+  // useEffect) -- tiene que correr en TODOS los renders de este
+  // componente, nunca después de un return condicional (regla de hooks).
+  // `routeAttempt` puede ser null en el primer render (antes del guard),
+  // de ahí el `?.` acá.
+  const withinRange = distanceToStart != null && routeAttempt && distanceToStart <= routeAttempt.acceptanceRadiusMeters;
+  const canPlay = gpsPermissionGranted === true && withinRange;
+  const waitingForFix = gpsPermissionGranted === true && distanceToStart == null;
+  // 3 estados visuales del botón Play -- pedido real 2026-10-19 ("un
+  // estilo mas adecuado al play deshabilitado"): antes era un solo círculo
+  // primary con opacity-50 sin importar el motivo. Ahora:
+  // - loading: todavía no se sabe si se puede jugar (permiso sin
+  //   resolver, esperando el primer fix de GPS, o mandando el intake) --
+  //   spinner, fondo neutro.
+  // - blocked: ya se sabe que NO se puede, con un motivo concreto (sin
+  //   permiso vs. lejos) -- ícono que comunica el motivo, fondo neutro.
+  // - ready: se puede jugar -- ícono de play, fondo primary, con el pulso
+  //   de abajo invitando a tocar.
+  const playState = gpsPermissionGranted == null || starting || waitingForFix
+    ? 'loading'
+    : canPlay ? 'ready' : 'blocked';
+  const playReady = playState === 'ready';
+
+  // Mismo patrón que ConnectionBanner/ParticipantMarker en
+  // trainer-session-live-screen.jsx -- withRepeat+withTiming en bucle
+  // mientras `ready`, se asienta en 1 (withTiming corto, no instantáneo)
+  // en cualquier otro estado. Solo transform:scale -- no toca layout ni
+  // puede romper el hit-test del Pressable de adentro.
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = playReady
+      ? withRepeat(withTiming(1.06, { duration: 650 }), -1, true)
+      : withTiming(1, { duration: 200 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playReady]);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   if (!pendingSession || !routeAttempt) return <Redirect href="/" />;
 
   const acceptanceRadiusMeters = routeAttempt.acceptanceRadiusMeters;
-  const withinRange = distanceToStart != null && distanceToStart <= acceptanceRadiusMeters;
-  const canPlay = gpsPermissionGranted === true && withinRange;
+  // Mismo cálculo que buildCompetitionTitle (utils/competition-title.js) --
+  // no se importa esa función (arma un título completo con conteo de
+  // puntos, no solo la distancia), se repite el remapeo GeoJSON->{lat,lng}
+  // sobre totalRouteMeters directo.
+  const totalMeters = totalRouteMeters((routeAttempt.route?.coordinates ?? []).map(([lng, lat]) => ({ lat, lng })));
 
   const gpsHint = gpsPermissionGranted === false
     ? 'Activá la ubicación para poder arrancar.'
@@ -145,14 +189,22 @@ function RouteAttemptPreStartScreenContent() {
         <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="route-attempt-pre-start-screen-date" testID="route-attempt-pre-start-screen-date">
           {formatWeekdayLabel(pendingSession.date)}, {formatDisplayDate(pendingSession.date)}
         </Text>
-        {pendingSession.teamName && (
-          <View className="mt-1 flex-row items-center gap-1" nativeID="route-attempt-pre-start-screen-team" testID="route-attempt-pre-start-screen-team">
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={16} />
-            <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="route-attempt-pre-start-screen-team-label" testID="route-attempt-pre-start-screen-team-label">
-              {pendingSession.teamName}
+        <View className="mt-1.5 flex-row items-center gap-3" nativeID="route-attempt-pre-start-screen-meta-row" testID="route-attempt-pre-start-screen-meta-row">
+          {pendingSession.teamName && (
+            <View className="flex-row items-center gap-1" nativeID="route-attempt-pre-start-screen-team" testID="route-attempt-pre-start-screen-team">
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={16} />
+              <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="route-attempt-pre-start-screen-team-label" testID="route-attempt-pre-start-screen-team-label">
+                {pendingSession.teamName}
+              </Text>
+            </View>
+          )}
+          <View className="flex-row items-center gap-1" nativeID="route-attempt-pre-start-screen-distance" testID="route-attempt-pre-start-screen-distance">
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-distance" size={16} />
+            <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300" nativeID="route-attempt-pre-start-screen-distance-label" testID="route-attempt-pre-start-screen-distance-label">
+              {formatMeters(totalMeters)}
             </Text>
           </View>
-        )}
+        </View>
       </View>
 
       <View className="flex-1 px-4" nativeID="route-attempt-pre-start-screen-map-wrap" testID="route-attempt-pre-start-screen-map-wrap">
@@ -163,15 +215,25 @@ function RouteAttemptPreStartScreenContent() {
         <Text className="px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-pre-start-screen-gps-hint" testID="route-attempt-pre-start-screen-gps-hint">
           {gpsHint}
         </Text>
-        <Pressable
-          className={`h-24 w-24 items-center justify-center rounded-full bg-primary active:opacity-80 ${canPlay && !starting ? '' : 'opacity-50'}`}
-          disabled={!canPlay || starting}
-          nativeID="route-attempt-pre-start-screen-play-button"
-          onPress={handlePlay}
-          testID="route-attempt-pre-start-screen-play-button"
-        >
-          {gpsPermissionGranted == null || starting ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
-        </Pressable>
+        <Animated.View nativeID="route-attempt-pre-start-screen-play-button-pulse" style={pulseStyle} testID="route-attempt-pre-start-screen-play-button-pulse">
+          <Pressable
+            className={`h-24 w-24 items-center justify-center rounded-full ${playState === 'ready' ? 'bg-primary active:opacity-80' : 'bg-slate-200 dark:bg-slate-800'}`}
+            disabled={playState !== 'ready'}
+            nativeID="route-attempt-pre-start-screen-play-button"
+            onPress={handlePlay}
+            testID="route-attempt-pre-start-screen-play-button"
+          >
+            {playState === 'loading' ? (
+              <ActivityIndicator color={colors.onSurfaceVariant} size="small" />
+            ) : playState === 'ready' ? (
+              <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />
+            ) : (
+              // blocked -- el ícono distingue el motivo (sin permiso vs.
+              // lejos del punto de inicio), no un play atenuado genérico.
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name={gpsPermissionGranted === false ? 'lock-outline' : 'map-marker-distance'} size={36} />
+            )}
+          </Pressable>
+        </Animated.View>
       </View>
 
       <CompetitionRankingModal competition={rankingCompetitionStub} members={members} onClose={() => setRankingVisible(false)} visible={rankingVisible} />

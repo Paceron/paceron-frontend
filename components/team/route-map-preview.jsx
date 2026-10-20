@@ -149,6 +149,22 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
   const [activeMarker, setActiveMarker] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const cameraRef = useRef(null);
+  // Bug real 2026-10-19: el tap-afuera-cierra de abajo (`Map.onPress`)
+  // rompió el toggle de los markers por completo -- confirmado que
+  // `Marker.onPress` NO consume el tap para el `Map.onPress` en esta
+  // librería, los dos disparan para el MISMO toque, y como React batchea
+  // los dos `setActiveMarker` del mismo tick, el de `Map.onPress`
+  // (literal `null`) corre DESPUÉS del toggle del marker y lo pisa -- el
+  // tooltip (label Y, en modo interactive, la línea de dirección) nunca
+  // llegaba a mostrarse. Fix: un ref síncrono (no estado, no dispara
+  // render) que el toggle del marker marca ANTES de tocar el estado --
+  // `Map.onPress` lo chequea primero y, si está prendido, se lo come sin
+  // cerrar nada.
+  const suppressMapCloseRef = useRef(false);
+  const handleMarkerToggle = (id) => {
+    suppressMapCloseRef.current = true;
+    setActiveMarker((v) => (v === id ? null : id));
+  };
   const points = coordinates ?? [];
   const lineGeojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: points }, properties: {} };
   const bounds = computeBounds(points.map(([lng, lat]) => ({ latitude: lat, longitude: lng })));
@@ -192,16 +208,16 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
           if (bounds) cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 24, left: 24, right: 24, top: 24 } });
         }}
         // Cierra el tooltip con un tap afuera de cualquier marcador --
-        // pedido real, 2026-10-19: antes solo se cerraba volviendo a tocar
-        // el MISMO marcador (toggle). Un tap sobre el fondo del mapa (no
-        // consumido por ningún Marker -- el SDK nativo lo enruta al
-        // feature de más arriba en el hit-test, mismo comportamiento ya
-        // confirmado en route-draw-picker.jsx, donde el `onPress` del Map
-        // agrega puntos sin pelearse con el tap de los markers) dispara
-        // esto. No pelea con pan/pinch cuando `interactive` -- el SDK
-        // distingue tap de gesto de arrastre nativamente, mismo onPress
-        // que ya convive con esos gestos en route-draw-picker.jsx.
-        onPress={() => setActiveMarker(null)}
+        // pedido real, 2026-10-19. Un tap SOBRE un marker también dispara
+        // esto (ver el ref de arriba) -- de ahí el guard, sin él el tap
+        // que abre el tooltip es el mismo que lo vuelve a cerrar. No pelea
+        // con pan/pinch cuando `interactive` -- el SDK distingue tap de
+        // gesto de arrastre nativamente, mismo onPress que ya convive con
+        // esos gestos en route-draw-picker.jsx.
+        onPress={() => {
+          if (suppressMapCloseRef.current) { suppressMapCloseRef.current = false; return; }
+          setActiveMarker(null);
+        }}
         style={{ flex: 1 }}
         testID={`${testID}-map`}
         touchPitch={false}
@@ -233,7 +249,7 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
             idPrefix={`${nativeID}-start-marker`}
             label="Punto de inicio"
             labelBelow={startLabelBelow}
-            onToggle={() => setActiveMarker((v) => (v === 'start' ? null : 'start'))}
+            onToggle={() => handleMarkerToggle('start')}
             point={points[0]}
           />
         )}
@@ -245,7 +261,7 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
             idPrefix={`${nativeID}-end-marker`}
             labelBelow={endLabelBelow}
             label="Punto de llegada"
-            onToggle={() => setActiveMarker((v) => (v === 'end' ? null : 'end'))}
+            onToggle={() => handleMarkerToggle('end')}
             point={points[points.length - 1]}
           />
         )}
