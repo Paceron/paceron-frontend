@@ -280,12 +280,13 @@ function RouteAttemptLiveScreenContent() {
   const [booted, setBooted] = useState(false);
   const [run, setRun] = useState(null);
   const [set, setSet] = useState(null);
-  const [phase, setPhase] = useState('ready'); // ready -> countdown -> running <-> paused -> finishing
+  const [phase, setPhase] = useState('ready'); // ready -> countdown -> running <-> paused
   const [countdown, setCountdown] = useState(3);
   const [distance, setDistance] = useState(null);
   const [tracePoints, setTracePoints] = useState([]);
   const [cancelVisible, setCancelVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [bypassingExit, setBypassingExit] = useState(false);
 
   const stopwatch = useStopwatch();
   const gps = useGpsTracker(true); // GPS ya es obligatorio para haber llegado a esta pantalla (gate del pre-start)
@@ -300,6 +301,7 @@ function RouteAttemptLiveScreenContent() {
   const timeoutTimerRef = useRef(null);
   const offRouteStreakRef = useRef(0);
   const cancelingRef = useRef(false);
+  const pendingExitRef = useRef(null);
 
   // Poll de status de competencia (Gap 33) mientras el intento está en
   // curso -- si se cierra/cancela desde otro lado (entrenador, u otro
@@ -482,9 +484,15 @@ function RouteAttemptLiveScreenContent() {
     setBusy(false);
   };
 
+  // Navegación de salida deliberada (finish/cancel/auto-finalize) -- se
+  // diferiere un render a través de `bypassingExit` en vez de llamar
+  // router.replace() directo, porque en ese momento `phase` todavía es
+  // running/paused y el guard de usePreventRemove de más abajo seguiría
+  // interceptando la navegación como si fuera una salida sin confirmar
+  // (mismo mecanismo que bypassGuard en use-unsaved-changes-guard.js).
   const goToResult = () => {
     clearLiveSession();
-    router.replace({
+    pendingExitRef.current = () => router.replace({
       pathname: '/route-attempt-result',
       params: {
         competitionId: routeAttempt.competitionId,
@@ -493,6 +501,7 @@ function RouteAttemptLiveScreenContent() {
         durationMs: String(savedTimingsRef.current.wallMs ?? 0),
       },
     });
+    setBypassingExit(true);
   };
 
   const handleFinish = async () => {
@@ -547,13 +556,27 @@ function RouteAttemptLiveScreenContent() {
     goToResult();
   };
 
+  // Dispara la navegación diferida de goToResult() recién después de que el
+  // render con bypassingExit=true ya haya commiteado -- usePreventRemove lee
+  // su argumento booleano al momento en que la navegación se dispatchea, no
+  // al momento en que se pisa un ref, así que hace falta este efecto (mismo
+  // patrón que use-unsaved-changes-guard.js).
+  useEffect(() => {
+    if (!bypassingExit || !pendingExitRef.current) return;
+    const action = pendingExitRef.current;
+    pendingExitRef.current = null;
+    action();
+  }, [bypassingExit]);
+
   // Intercepta el back nativo/gesto mientras hay un intento en curso -- sin
   // esto, volver a pre-start deja al corredor en una pantalla que reintentaría
   // POST /competitions/{id}/attempts (rechazado, sin reintentos v1) en vez de
   // simplemente cancelar lo que ya está corriendo. Mismo mecanismo que
   // useUnsavedChangesGuard usa en otras pantallas (usePreventRemove de
-  // @react-navigation/native, ya viene con expo-router).
-  usePreventRemove(phase === 'running' || phase === 'paused', () => setCancelVisible(true));
+  // @react-navigation/native, ya viene con expo-router). `!bypassingExit`
+  // deja pasar la navegación de salida deliberada que goToResult() dispara
+  // (finish/cancel/auto-finalize) sin volver a mostrar el modal de cancelar.
+  usePreventRemove((phase === 'running' || phase === 'paused') && !bypassingExit, () => setCancelVisible(true));
 
   if (!pendingSession || !routeAttempt) return <Redirect href="/" />;
   if (!booted || !set) {
@@ -564,7 +587,7 @@ function RouteAttemptLiveScreenContent() {
     );
   }
 
-  const showTimer = phase === 'running' || phase === 'paused' || phase === 'finishing';
+  const showTimer = phase === 'running' || phase === 'paused';
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-live-screen-root" testID="route-attempt-live-screen-root">
