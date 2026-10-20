@@ -1717,3 +1717,29 @@ dato de "novedad" vive junto al recurso que la genera, no en un servicio aparte)
     tiene cargada (`useTeams`/`useMyMemberTeams`, hooks existentes) — sin pedir un endpoint
     cross-team aparte. El punto rojo de la pestaña Competencias DENTRO de un equipo puntual usa
     directamente el `has_unseen` de ESE equipo, sin agregación.
+
+## Gap 35 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta
+
+**Contexto.** Confirmado leyendo el frontend (2026-10-20): un intento de competencia de ruta
+corre por el mismo pipeline que una sesión de entrenamiento normal — `POST
+/competitions/{id}/attempts` crea el `session_instance` sintético (Gap 33 punto 26) y el
+frontend guarda localmente un `run`/`set` (SQLite) contra ese `session_instance_id`, sincronizado
+después con el `syncRun()` genérico (`POST /workout-feedback` + `POST /workout-feedback/:id/points`).
+Mientras el intento está recién hecho, el frontend tiene ese id en memoria (vino de la respuesta
+del intake). El propio texto de la Spec 4b ya anticipaba el problema: "No la expone en
+`CompetitionResponse` (si algún día necesitan suscribirse antes de abrir intento, se puede
+exponer)".
+
+**Pedido concreto:** ese día llegó — **`GET /competitions/{id}` necesita devolver el
+`session_instance_id` sintético** (ej. campo `session_instance_id` en el body, o anidado si
+en algún momento se expone el objeto completo). Sin esto, no hay forma de pedir
+`GET /session-instances/:id/feedback` ni `GET /workout-feedback/:id/points` para un intento VIEJO
+ya sincronizado (y por lo tanto ya borrado de SQLite local) — solo funciona mientras el id sigue
+vivo en memoria del dispositivo que corrió el intento.
+
+**Impacto en frontend:** bloquea la pantalla de detalle de intento (`route-attempt-result-screen.jsx`,
+en rediseño hacia una vista de detalle genérica, reusable fuera del flujo "recién terminado") para
+el caso "ver un intento pasado desde cualquier dispositivo/plataforma, sin el estado local que lo
+originó" — ver `docs/superpowers/specs/2026-10-20-route-attempt-detail-screen-design.md`. El caso
+"intento recién terminado, todavía en este mismo dispositivo" no depende de este gap (usa el id
+que ya tiene en memoria/SQLite).
