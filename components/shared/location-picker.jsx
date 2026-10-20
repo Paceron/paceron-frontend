@@ -225,6 +225,8 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
 
             <View className="flex-1 overflow-hidden" nativeID="location-picker-map-wrapper" testID="location-picker-map-wrapper">
               <Map
+                attribution={false}
+                logo={false}
                 mapStyle={OPENFREEMAP_STYLE_URL}
                 nativeID="location-picker-map"
                 onLongPress={handleMapPress}

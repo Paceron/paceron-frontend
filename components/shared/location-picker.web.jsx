@@ -100,6 +100,7 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
       style: OPENFREEMAP_STYLE_URL,
       center: initialCenter,
       zoom: value ? 15 : 12,
+      attributionControl: false,
     });
     // Mantener presionado (no click simple) para marcar el pin — deja el
     // doble-click nativo de maplibre-gl libre para hacer zoom, y evita que

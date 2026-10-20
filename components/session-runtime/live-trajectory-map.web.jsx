@@ -14,7 +14,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
 
   useEffect(() => {
     const initialCenter = traveledPoints?.[0] ? [traveledPoints[0].longitude, traveledPoints[0].latitude] : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
-    const map = new maplibregl.Map({ container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 14, interactive: false });
+    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 14, interactive: false });
     map.on('load', () => {
       map.addSource('live-trajectory-map-traveled', { type: 'geojson', data: EMPTY_LINE });
       map.addLayer({ id: 'live-trajectory-map-traveled-layer', type: 'line', source: 'live-trajectory-map-traveled', paint: { 'line-color': '#8cc63e', 'line-width': 4 } });

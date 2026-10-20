@@ -50,7 +50,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
 
   return (
     <View className="h-full w-full overflow-hidden rounded-2xl" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
-      <Map mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL} nativeID="live-trajectory-map" style={{ flex: 1 }} testID="live-trajectory-map">
+      <Map attribution={false} logo={false} mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL} nativeID="live-trajectory-map" style={{ flex: 1 }} testID="live-trajectory-map">
         <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 14 }} padding={{ bottom: 40, left: 40, right: 40, top: 40 }} ref={cameraRef} />
         {referenceCoords.length > 1 && (
           <GeoJSONSource data={{ type: 'Feature', geometry: referenceRoute, properties: {} }} id="live-trajectory-map-reference-source">

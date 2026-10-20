@@ -192,6 +192,7 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
   return (
     <View className="h-full w-full overflow-hidden rounded-xl" nativeID={nativeID} testID={testID}>
       <Map
+        attribution={false}
         doubleTapHoldZoom={false}
         doubleTapZoom={interactive}
         dragPan={interactive}

@@ -118,6 +118,8 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters, onMap
           testID="route-draw-picker-map-wrapper"
         >
           <Map
+            attribution={false}
+            logo={false}
             mapStyle={OPENFREEMAP_STYLE_URL}
             nativeID="route-draw-picker-map"
             onDidFinishLoadingMap={() => setMapReady(true)}

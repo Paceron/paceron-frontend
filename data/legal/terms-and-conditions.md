@@ -179,6 +179,10 @@ En caso de surgir cualquier discrepancia, cuestión o reclamación derivada dire
 En el supuesto de que el Usuario sea una persona física que actúe como consumidor, será aplicable el fuero correspondiente a su domicilio habitual, de acuerdo con la normativa vigente.
 
 
+# ATRIBUCIONES DE TERCEROS
+
+Los mapas de la Plataforma utilizan datos de © OpenStreetMap contributors, disponibles bajo la Open Database License (ODbL), y el motor de renderizado MapLibre. La atribución en pantalla se omite deliberadamente en los mapas de la app para priorizar la experiencia visual; esta nota cumple ese requisito por una vía alternativa, conforme lo permiten las pautas de atribución de OpenStreetMap.
+
 # RESPECTO A LA POLITICA DE PRIVACIDAD:
 
 Al hacerla hay que definir el responsable del tratamiento de los datos, deben especificar derecho a la eliminación, deben expresar que proveedores de tratamiento de datos usan, etc. Recomendación: ver políticas de privacidad de otras empresas con objetivos similares para ver que tienen que poner, como:

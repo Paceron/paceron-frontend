@@ -70,13 +70,12 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
     // `interactive: false` -- bloqueado, es una previsualización de
     // lectura, no un mapa para explorar. No afecta el hover de los
     // marcadores de abajo (viven en un overlay DOM aparte del canvas).
-    // `attributionControl: { compact: true }` -- pedido real, 2026-10-17:
-    // sin esto el control de atribución arranca expandido (texto inline
-    // "© OpenFreeMap © MapLibre..." siempre visible, lo que el usuario
-    // describía como "marca de agua"/"toggle siempre abierto") en vez de
-    // colapsado al ícono "i" que ya se ve en el extremo -- compact lo deja
-    // colapsado de entrada, se expande recién con un click.
-    const map = new maplibregl.Map({ attributionControl: { compact: true }, container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 13, interactive: false });
+    // `attributionControl: false` -- pedido real 2026-10-20, reemplaza el
+    // compromiso anterior de "compact: true" (icono colapsado, 2026-10-17):
+    // "no quiero la marca de agua de maplibre en ningun mapa en ningun
+    // lado". La atribución de OSM/ODbL sigue cumplida fuera del mapa, ver
+    // data/legal/terms-and-conditions.md.
+    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 13, interactive: false });
     // Tooltips colgados de document.body (ver buildMarker) -- hay que
     // sacarlos a mano al desmontar, nadie más los limpia.
     const markerCleanups = [];

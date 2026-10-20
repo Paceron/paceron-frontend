@@ -41,9 +41,12 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   // recrear el mapa cuando cambia la lista de puntos.
   useEffect(() => {
     const initialCenter = picker.points[0] ? [picker.points[0].lng, picker.points[0].lat] : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
-    // `attributionControl: { compact: true }` -- ver nota en
-    // route-map-preview.web.jsx, mismo motivo acá.
-    const map = new maplibregl.Map({ attributionControl: { compact: true }, container: containerRef.current, style: OPENFREEMAP_STYLE_URL, center: initialCenter, zoom: 13 });
+    // `attributionControl: false` -- pedido real 2026-10-20, reemplaza el
+    // compromiso anterior de "compact: true" (icono colapsado): "no quiero
+    // la marca de agua de maplibre en ningun mapa en ningun lado". La
+    // atribución de OSM/ODbL sigue cumplida fuera del mapa, ver
+    // data/legal/terms-and-conditions.md.
+    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_STYLE_URL, center: initialCenter, zoom: 13 });
     map.on('load', () => {
       map.addSource('route-draw-picker-halo', { type: 'geojson', data: EMPTY_LINE });
       // `line-cap`/`line-join: 'round'` -- mitiga el solape EN LOS VÉRTICES,
