@@ -161,7 +161,7 @@ function RouteAttemptPreStartScreenContent() {
     }
     setPendingSession({ ...pendingSession, sessionInstance: result.data.session_instance });
     setGpsEnabled(true);
-    router.push('/training-session-active');
+    router.push('/route-attempt-live');
   };
 
   return (
