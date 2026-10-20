@@ -35,7 +35,9 @@ import {
 import { syncRun } from '../../services/session-sync.js';
 import { useStopwatch } from '../../hooks/use-stopwatch.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
+import { useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { logDebug } from '../../utils/debug-log.js';
+import { computeRouteTimeoutMs, distanceToRouteMeters, totalRouteMeters } from '../../utils/route-geometry.js';
 import { LiveTrajectoryMap } from './live-trajectory-map.jsx';
 
 const COUNTDOWN_GIF_BG = '#979597';
@@ -295,6 +297,20 @@ function RouteAttemptLiveScreenContent() {
   const distanceRef = useRef(null);
   const countdownRef = useRef(3);
   const countdownTimerRef = useRef(null);
+  const timeoutTimerRef = useRef(null);
+  const offRouteStreakRef = useRef(0);
+
+  // Poll de status de competencia (Gap 33) mientras el intento está en
+  // curso -- si se cierra/cancela desde otro lado (entrenador, u otro
+  // participante que termina una competencia de 1-solo-ganador) mientras
+  // este corredor sigue corriendo, se corta el intento en vez de dejarlo
+  // avanzar hacia un resultado que el backend ya no va a aceptar. Hook
+  // real (Rules of Hooks) -- va antes de los 2 early-return guards de
+  // abajo, nunca después.
+  const { detail: competitionDetail } = useCompetitionDetail(routeAttempt?.competitionId, {
+    enabled: phase === 'running' || phase === 'paused',
+    refetchInterval: (phase === 'running' || phase === 'paused') ? 15000 : false,
+  });
 
   // Bootstrap -- subconjunto deliberadamente más simple que
   // training-session-active-screen.jsx#bootstrap: una competencia de ruta
@@ -332,6 +348,23 @@ function RouteAttemptLiveScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Si la competencia se cierra/cancela desde otro lado (entrenador, u
+  // otro participante) mientras el intento sigue corriendo, se corta en
+  // vez de dejarlo avanzar hacia un resultado que el backend ya no va a
+  // aceptar. `handleCancelConfirmed` ya navega a goToResult() al terminar
+  // -- una vez disparado, `phase` deja de ser running/paused (el guard de
+  // arriba) y este efecto no vuelve a repetirse aunque competitionDetail
+  // cambie de nuevo (el poll se desactiva también porque `enabled` cae a
+  // false).
+  useEffect(() => {
+    if (!competitionDetail || competitionDetail.status === 'active') return;
+    if (phase !== 'running' && phase !== 'paused') return;
+    logDebug(`route-attempt-live competencia status="${competitionDetail.status}" -- cancelando`);
+    setCancelVisible(false);
+    handleCancelConfirmed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [competitionDetail]);
+
   const handleGpsPoint = async ({ latitude, longitude, timestamp, accuracy }) => {
     if (!gpsActiveRef.current || !set) return;
     const point = { latitude, longitude, timestamp, accuracy };
@@ -351,6 +384,19 @@ function RouteAttemptLiveScreenContent() {
     pointOrderRef.current += 1;
     await insertGpsPoint(set.id, pointOrderRef.current, latitude, longitude, timestamp ?? Date.now());
     setTracePoints((prev) => [...prev, { latitude, longitude }]);
+    const driftMeters = distanceToRouteMeters({ lat: latitude, lng: longitude }, routeAttempt.route?.coordinates ?? []);
+    const driftThreshold = routeAttempt.acceptanceRadiusMeters * 3;
+    if (driftMeters > driftThreshold) {
+      offRouteStreakRef.current += 1;
+      if (offRouteStreakRef.current >= 3) {
+        logDebug(`route-attempt-live alejamiento sostenido (${Math.round(driftMeters)}m > ${driftThreshold}m) -- cancelando`);
+        setCancelVisible(false);
+        handleCancelConfirmed();
+        return;
+      }
+    } else {
+      offRouteStreakRef.current = 0;
+    }
     if (leg > 0) {
       const nextDistance = (distanceRef.current ?? 0) + leg;
       distanceRef.current = nextDistance;
@@ -368,6 +414,11 @@ function RouteAttemptLiveScreenContent() {
       gpsActiveRef.current = true;
       pointOrderRef.current = 0;
       await gps.start({ onPoint: handleGpsPoint });
+      const totalMeters = totalRouteMeters((routeAttempt.route?.coordinates ?? []).map(([lng, lat]) => ({ lat, lng })));
+      timeoutTimerRef.current = setTimeout(() => {
+        logDebug('route-attempt-live timeout -- finalizando como finish');
+        handleFinish();
+      }, computeRouteTimeoutMs(totalMeters));
     } catch (error) {
       logDebug('route-attempt-live beginSet error', error);
       notifyError();
@@ -408,8 +459,13 @@ function RouteAttemptLiveScreenContent() {
       setBusy(true);
       stopwatch.resumeFrom(savedTimingsRef.current);
       setPhase('running');
-      if (gpsActiveRef.current) gps.start({ onPoint: handleGpsPoint }).finally(() => setBusy(false));
-      else setBusy(false);
+      if (gpsActiveRef.current) {
+        gps.start({ onPoint: handleGpsPoint }).finally(() => setBusy(false));
+        const totalMeters = totalRouteMeters((routeAttempt.route?.coordinates ?? []).map(([lng, lat]) => ({ lat, lng })));
+        timeoutTimerRef.current = setTimeout(() => { logDebug('route-attempt-live timeout -- finalizando como finish'); handleFinish(); }, computeRouteTimeoutMs(totalMeters));
+      } else {
+        setBusy(false);
+      }
     }
   };
 
@@ -420,6 +476,7 @@ function RouteAttemptLiveScreenContent() {
     savedTimingsRef.current = { wallMs: snap.wallMs, activeMs: snap.activeMs };
     await updateSetTimings(set.id, { durationMs: snap.wallMs, activeDurationMs: snap.activeMs });
     await gps.stop();
+    if (timeoutTimerRef.current) { clearTimeout(timeoutTimerRef.current); timeoutTimerRef.current = null; }
     setPhase('paused');
     setBusy(false);
   };
@@ -444,6 +501,7 @@ function RouteAttemptLiveScreenContent() {
       const snap = phase === 'running' ? stopwatch.pause() : savedTimingsRef.current;
       savedTimingsRef.current = snap;
       await gps.stop();
+      if (timeoutTimerRef.current) { clearTimeout(timeoutTimerRef.current); timeoutTimerRef.current = null; }
       await finishSet(set.id, { endedAtIso: toIsoUtc(), durationMs: snap.wallMs, activeDurationMs: snap.activeMs, distanceMeters: distanceRef.current });
       await finalizeRun(run.id);
       const result = await syncRun(run.id);
@@ -466,6 +524,7 @@ function RouteAttemptLiveScreenContent() {
     try {
       const snap = phase === 'running' ? stopwatch.pause() : savedTimingsRef.current;
       await gps.stop();
+      if (timeoutTimerRef.current) { clearTimeout(timeoutTimerRef.current); timeoutTimerRef.current = null; }
       await markSetInterrupted(set.id, { endedAtIso: toIsoUtc(), durationMs: snap.wallMs, activeDurationMs: snap.activeMs, distanceMeters: distanceRef.current });
       await interruptStartedSets(run.id);
       await cancelRun(run.id);
