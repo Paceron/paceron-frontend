@@ -41,11 +41,12 @@ export function useCompetitions(teamId, { status, groupId } = {}) {
 // Detalle + progreso (Gap 33 punto 23, Spec 4b) -- lazy por default
 // (`enabled`): CompetitionRow lo pide recién al expandir una fila, no de
 // entrada para las 3-5 competencias de la lista completa.
-export function useCompetitionDetail(id, { enabled = true } = {}) {
+export function useCompetitionDetail(id, { enabled = true, refetchInterval } = {}) {
   const query = useQuery({
     queryKey: ['competition', id],
     queryFn: () => getCompetition(id).then((response) => toCompetitionDetailModel(response.data ?? response)),
     enabled: Boolean(id) && enabled,
+    refetchInterval,
   });
 
   return { detail: query.data ?? null, loading: query.isLoading };
