@@ -1,4 +1,5 @@
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useCompetitionDetail } from '../../hooks/use-competitions.js';
@@ -16,6 +17,7 @@ function memberName(members, userId) {
 // que la fila esté expandida o no -- el botón puede tocarse sin expandir
 // primero).
 export function CompetitionRankingModal({ visible, onClose, competition, members }) {
+  const router = useRouter();
   const colors = useThemeColors();
   const { detail, loading } = useCompetitionDetail(competition?.id, { enabled: visible && Boolean(competition) });
 
@@ -47,7 +49,20 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
             <ScrollView className="max-h-[60vh]" nativeID="competition-ranking-modal-scroll" testID="competition-ranking-modal-scroll">
               <View className="gap-2" nativeID="competition-ranking-modal-list" testID="competition-ranking-modal-list">
                 {ranked.map((entry, index) => (
-                  <View className="flex-row items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900" key={entry.userId} nativeID={`competition-ranking-modal-row-${entry.userId}`} testID={`competition-ranking-modal-row-${entry.userId}`}>
+                  <Pressable
+                    className={`flex-row items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900 ${competition?.type === 'route' ? 'active:opacity-70' : ''}`}
+                    key={entry.userId}
+                    nativeID={`competition-ranking-modal-row-${entry.userId}`}
+                    // Solo ruta tiene "detalle de intento" -- metric no tiene
+                    // ningún GPS/sesión individual que mostrar ahí, navegar
+                    // igual deja un dead-end confuso ("sin intento
+                    // registrado" sobre algo que nunca tuvo el concepto).
+                    onPress={competition?.type === 'route' ? () => {
+                      onClose();
+                      router.push({ pathname: '/route-attempt-detail', params: { competitionId: competition.id, athleteUserId: entry.userId } });
+                    } : undefined}
+                    testID={`competition-ranking-modal-row-${entry.userId}`}
+                  >
                     <Text className="w-6 text-sm font-bold text-slate-400 dark:text-slate-500" nativeID={`competition-ranking-modal-row-${entry.userId}-rank`} testID={`competition-ranking-modal-row-${entry.userId}-rank`}>
                       {index + 1}
                     </Text>
@@ -57,7 +72,7 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
                     <Text className="text-sm font-semibold text-primary" nativeID={`competition-ranking-modal-row-${entry.userId}-value`} testID={`competition-ranking-modal-row-${entry.userId}-value`}>
                       {competition?.type === 'metric' ? formatMetricValue(competition.metric, entry.value) : '—'}
                     </Text>
-                  </View>
+                  </Pressable>
                 ))}
                 {ranked.length === 0 && (
                   <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="competition-ranking-modal-empty" testID="competition-ranking-modal-empty">
