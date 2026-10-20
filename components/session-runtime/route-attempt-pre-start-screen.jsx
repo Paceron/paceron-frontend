@@ -19,7 +19,7 @@ import { haversineMeters, formatMeters } from '../../utils/distance.js';
 import { totalRouteMeters } from '../../utils/route-geometry.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { notifyError } from '../../utils/haptics.js';
-import { RouteMapPreview } from '../team/route-map-preview.jsx';
+import { RouteMapPreview } from '../team/route-map-preview';
 import { CompetitionRankingModal } from '../team/competition-ranking-modal.jsx';
 
 // Pre-start dedicado de un intento de competencia por trayectoria (Spec
