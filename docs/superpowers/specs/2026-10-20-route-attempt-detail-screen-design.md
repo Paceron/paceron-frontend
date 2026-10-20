@@ -47,11 +47,16 @@ documento asume que ya está mergeado antes de implementar la rama remota (ver R
   terminado/no sincronizado todavía) se muestra un banner de bienvenida/felicitación arriba de
   todo. Si no llega `setId` (abierto desde el ranking, cualquier plataforma) el título es el
   normal de una pantalla de detalle — sin "recién completaste".
-- **El bug de hoy en `competition-ranking-modal.jsx` para `type='route'` se arregla en este mismo
-  sub-proyecto** (no es un issue aparte): la columna de valor muestra literal `'—'` para
-  competencias de ruta, y el orden de sort asume "mayor gana" salvo `pace` — para ruta el valor es
-  tiempo (menor gana). Sin arreglar esto no hay ranking legible ni fila tocable que tenga sentido
-  abrir.
+- **Corrección a la propuesta anterior, encontrada escribiendo el plan:** `progress.value` es
+  **siempre `null` para `type='route'` en v1** (confirmado en el mock,
+  `services/__mocks__/competitions-mock.js#computeProgressValue`, y en que
+  `competitions-tab.jsx#ParticipantPill` ya solo pinta la medalla del ganador para ruta, nunca un
+  valor por corredor — `progressLabel: null` a propósito). El `'—'` de
+  `competition-ranking-modal.jsx` para ruta **no es un bug** — no hay tiempo-por-corredor que
+  mostrar ahí sin N llamadas extra (`getSessionFeedback` por participante), fuera de alcance de
+  este sub-proyecto. **Lo único que cambia en esa modal:** las filas pasan a `Pressable`,
+  navegando al detalle (que SÍ pide el tiempo real de ESE corredor puntual, vía
+  `getSessionFeedback`). Sin cambio de sort ni de la columna de valor.
 
 ## Arquitectura
 
@@ -113,7 +118,9 @@ falta orquestar manualmente, cada paso depende del anterior vía `enabled`.
 - **Mapa** (`LiveTrajectoryMap`, sin cambios en el componente): ocupa el espacio que antes quedaba
   vacío abajo — contenedor `flex-1` en vez de `h-80` fijo.
 - **Stats**, agregando a lo que ya existe (distancia/tiempo logrados):
-  - Fecha (`startedAt`, formateada con el formatter de fecha ya existente en el repo).
+  - Fecha (`startedAt`, formateada con un helper local chico `DD/MM/AAAA HH:mm`, mismo patrón
+    sin exportar que `formatDayTime` en `session-review-screen.jsx:43` — no hay un formatter
+    exportado para timestamp completo, solo para fecha sola `YYYY-MM-DD`).
   - Equipo: `useTeam(teamId)` (hook ya existente) → nombre.
   - Distancia esperada (`expectedMeters`, de la ruta) junto a la logrados, para comparar.
   - Estado `'pending'`: mensaje en vez de spinner infinito — "Este intento todavía no terminó o no
@@ -125,19 +132,17 @@ falta orquestar manualmente, cada paso depende del anterior vía `enabled`.
 
 ### `competition-ranking-modal.jsx`
 
-- `formatMetricValue` solo sabe de `type='metric'`. Para `type==='route'`, mostrar
-  `formatStopwatch(entry.value)` (asumiendo que `progress.value` para ruta es tiempo en ms — ya
-  insinuado por "tie-break por tiempo" en la nota de backend de Gap 33 punto 12).
-- Orden: `direction = competition?.type === 'route' || competition?.metric === 'pace' ? 1 : -1`
-  (ambos casos "menor gana" — ruta por tiempo, pace igual).
-- Cada fila pasa a `Pressable`, `onPress` navega a `/route-attempt-detail` con
+- Sin cambios en el cálculo de `direction`/`formatMetricValue` — `progress.value` sigue `null`
+  para ruta, la columna de valor sigue mostrando `'—'` (correcto, no hay dato que mostrar ahí).
+- Único cambio: cada fila pasa a `Pressable`, `onPress` navega a `/route-attempt-detail` con
   `{ competitionId: competition.id, athleteUserId: entry.userId }` — sin `setId`, rama remota
-  siempre desde esta entrada.
+  siempre desde esta entrada. El tiempo real de ese corredor se ve recién en el detalle (vía
+  `getSessionFeedback`, que sí lo tiene).
 
 ## Testing
 
-- `competition-ranking-modal.jsx`: el cálculo de `direction`/el valor mostrado por tipo es lógica
-  pura extraíble si no lo es ya — test unitario cubriendo `type='route'` vs `type='metric'`
+- Sin lógica pura nueva en `competition-ranking-modal.jsx` (el único cambio es agregar
+  `Pressable`+navegación) — nada que amerite test unitario ahí.
   vs `metric='pace'`.
 - Sin test de render de pantallas (convención del repo).
 - Verificación real: web (preview) para la rama remota completa; dispositivo solo para confirmar
@@ -151,13 +156,12 @@ de `route-attempt-result-screen-*` pasan a `route-attempt-detail-screen-*` en el
 ## Riesgos / decisiones abiertas
 
 - **Depende de que Gap 35 se mergee a `develop` antes de poder probar la rama remota contra el
-  backend real.** Contra mocks (`USE_MOCKS=true`) se puede simular agregando `session_instance_id`
-  al mock de competencias — no bloquea escribir/probar el código, sí bloquea la verificación
-  end-to-end contra el backend real hasta el merge.
-- **`progress.value` para ruta asumido como tiempo en ms** — no confirmado explícito en ningún
-  texto de backend pegado hasta ahora (solo inferido de "tie-break por tiempo"). Si resulta ser
-  otra unidad, el fix de `competition-ranking-modal.jsx` es de una sola línea (cambiar el
-  formatter), no afecta el resto de este diseño.
+  backend real.** Contra mocks (`USE_MOCKS=true`) no hace falta agregar nada nuevo — el mock YA
+  trackea el id sintético internamente, solo con el nombre de campo viejo
+  (`synthetic_session_instance_id` en vez de `session_instance_id`, de antes de que se confirmara
+  el contrato real) — se renombra en el mock para que coincida, y ya se puede probar toda la rama
+  remota sin el backend real. Bloquea solo la verificación end-to-end contra el backend real hasta
+  el merge.
 - **`traveledPoints: []` cuando `pointsCount === 0`** — caso no verificado en la práctica (requiere
   un intento real sincronizado sin puntos, poco probable dado que el flujo de hoy siempre graba
   puntos si hubo GPS). Degradación aceptable: mapa muestra solo la ruta esperada.
