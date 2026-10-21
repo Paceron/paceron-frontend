@@ -9,6 +9,7 @@ import {
   mockInterruptRunnerSession,
   mockUpdateWorkoutFeedback,
 } from './__mocks__/runner-session-mock.js';
+import { mockGetWorkoutFeedbackPoints } from './__mocks__/workoutFeedback-mock.js';
 
 // Estado de sesión del corredor (runner_session) + feedback por sesión para
 // la pantalla de "Registro de Sesión" — ver
@@ -63,8 +64,13 @@ export async function getSessionFeedback(sessionInstanceId, athleteUserId) {
 }
 
 // GET /api/v1/workout-feedback/:id/points — puntos GPS de una serie (solo
-// lectura en la revisión; se preservan tal como se grabaron).
+// lectura en la revisión; se preservan tal como se grabaron). Bug real
+// 2026-10-21: esta función no tenía rama de mocks -- pegaba siempre
+// contra el backend real (401 con USE_MOCKS=true, auth de mock no es
+// válida ahí), encontrado al verificar route-attempt-detail-screen.jsx
+// en preview web.
 export async function getWorkoutFeedbackPoints(feedbackId) {
+  if (USE_MOCKS) return await mockGetWorkoutFeedbackPoints(feedbackId);
   return await api.get(`/workout-feedback/${Number(feedbackId)}/points`);
 }
 

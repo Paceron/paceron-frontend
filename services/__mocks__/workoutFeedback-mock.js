@@ -102,3 +102,10 @@ export async function mockCreateWorkoutFeedbackPoints(feedbackId, payload) {
   pointsByFeedback.set(Number(feedbackId), points);
   return { message: 'puntos registrados', data: { created: payload.points.length - skipped, skipped } };
 }
+
+// GET /api/v1/workout-feedback/:id/points -- bug real 2026-10-21:
+// services/runnerSession.js#getWorkoutFeedbackPoints no tenía rama de
+// mocks (pegaba siempre contra el backend real, 401 en modo mock).
+export async function mockGetWorkoutFeedbackPoints(feedbackId) {
+  return { data: __getMockPoints(feedbackId) };
+}
