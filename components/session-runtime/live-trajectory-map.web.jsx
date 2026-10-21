@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
-import { computeBounds } from '../../utils/map-bounds.js';
+import { computeBounds, expandBounds } from '../../utils/map-bounds.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} };
@@ -54,7 +54,13 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
 
   useEffect(() => {
     const initialCenter = traveledPoints?.[0] ? [traveledPoints[0].longitude, traveledPoints[0].latitude] : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
-    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 14, interactive: false });
+    // `interactive: false` sacado -- pedido real 2026-10-21: a diferencia de
+    // RouteMapPreview (resumen de lectura, bloqueado a propósito), esta
+    // pantalla SÍ necesita pan/zoom real para poder explorar la trayectoria
+    // recorrida -- el maxBounds de abajo (mismo expandBounds que ya usa la
+    // Camera nativa) acota el panning a una zona razonable en vez de dejarlo
+    // infinito.
+    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 14 });
     const markerCleanups = [];
     map.on('load', () => {
       map.addSource('live-trajectory-map-traveled', { type: 'geojson', data: EMPTY_LINE });
@@ -87,12 +93,34 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map?.getSource('live-trajectory-map-traveled')) return;
-    const line = { type: 'Feature', geometry: { type: 'LineString', coordinates: (traveledPoints ?? []).map((p) => [p.longitude, p.latitude]) }, properties: {} };
-    map.getSource('live-trajectory-map-traveled').setData(line);
-    const boundsSource = [...(traveledPoints ?? []), ...(referenceRoute?.coordinates ?? []).map(([lng, lat]) => ({ latitude: lat, longitude: lng }))];
-    const bounds = computeBounds(boundsSource);
-    if (bounds) map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], { padding: 40, duration: 300 });
+    if (!map) return;
+    // Bug real 2026-10-21: con `map.loaded()` todavía en false en este punto
+    // (el 'load' del primer efecto es async, puede no haber terminado
+    // cuando el detalle de intento llega con traveledPoints/referenceRoute
+    // YA poblados desde el primer render), `getSource` devolvía undefined y
+    // este efecto se salía sin hacer nada -- el mapa quedaba pegado al zoom
+    // fijo inicial (14, sin fit real) para siempre, sin reintentar. `once`
+    // al evento 'load' en vez de salir en silencio cubre los dos casos
+    // (mapa ya cargado o todavía cargando) sin duplicar el fit.
+    const applyFit = () => {
+      if (!map.getSource('live-trajectory-map-traveled')) return;
+      const line = { type: 'Feature', geometry: { type: 'LineString', coordinates: (traveledPoints ?? []).map((p) => [p.longitude, p.latitude]) }, properties: {} };
+      map.getSource('live-trajectory-map-traveled').setData(line);
+      const boundsSource = [...(traveledPoints ?? []), ...(referenceRoute?.coordinates ?? []).map(([lng, lat]) => ({ latitude: lat, longitude: lng }))];
+      const bounds = computeBounds(boundsSource);
+      if (!bounds) return;
+      map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], { padding: 40, duration: 300 });
+      // Acota el panning a una zona razonable alrededor de la trayectoria --
+      // mismo expandBounds que ya usa la Camera nativa (Gap de paridad con
+      // route-map-preview.jsx) -- pedido real: "no permite... moverse
+      // dentro del area limitada que rodea la zona de la trayectoria".
+      const expanded = expandBounds(bounds);
+      if (expanded) map.setMaxBounds([[expanded[0], expanded[1]], [expanded[2], expanded[3]]]);
+      map.setMinZoom(13);
+      map.setMaxZoom(18);
+    };
+    if (map.loaded()) applyFit();
+    else map.once('load', applyFit);
   }, [traveledPoints, referenceRoute]);
 
   return (
