@@ -1,10 +1,35 @@
-import { useRef } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
 import { computeBounds } from '../../utils/map-bounds.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
+// Mismo ancho de banda que RouteMarker en route-map-preview.jsx -- sin esto
+// la etiqueta (absolute, no cuenta para el ancho intrínseco del Marker) se
+// aplasta contra el ancho del dot (~18px), texto invisible aunque el fondo
+// de color sí se vea (bug ya documentado ahí).
+const LABEL_BAND_WIDTH = 200;
+
+// Marcador con tooltip por tap -- mismo patrón que RouteMarker en
+// route-map-preview.jsx, simplificado (label fijo, sin resolución de
+// dirección -- acá no hace falta abrir Google Maps desde el tooltip).
+function TrajectoryMarker({ point, color, label, idPrefix, active, onToggle, labelBelow }) {
+  return (
+    <Marker anchor="bottom" id={idPrefix} lngLat={point} onPress={onToggle}>
+      <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH }} testID={idPrefix}>
+        <View nativeID={`${idPrefix}-dot`} style={{ backgroundColor: color, borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID={`${idPrefix}-dot`} />
+        {active && (
+          <View className="absolute left-0 right-0 items-center" nativeID={`${idPrefix}-label-wrap`} style={labelBelow ? { top: 18 } : { bottom: 18 }} testID={`${idPrefix}-label-wrap`}>
+            <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: color }} testID={`${idPrefix}-label`}>
+              <Text className="text-xs font-semibold text-white" nativeID={`${idPrefix}-label-text`} numberOfLines={1} testID={`${idPrefix}-label-text`}>{label}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+    </Marker>
+  );
+}
 
 // Mapa real con la trayectoria recorrida (y opcionalmente una ruta de
 // referencia marcada) -- diseñado genérico a propósito (Spec 4c): esta
@@ -31,6 +56,15 @@ const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // ninguno, bug real reportado.
 export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
   const cameraRef = useRef(null);
+  const [activeMarker, setActiveMarker] = useState(null);
+  // Mismo guard que RouteMapPreview -- Marker.onPress no consume el tap
+  // para el Map.onPress de abajo (los dos disparan para el mismo toque),
+  // así que sin esto el tap-afuera-cierra se come su propio toggle.
+  const suppressMapCloseRef = useRef(false);
+  const handleMarkerToggle = (id) => {
+    suppressMapCloseRef.current = true;
+    setActiveMarker((v) => (v === id ? null : id));
+  };
 
   const traveledGeojson = {
     type: 'Feature',
@@ -47,10 +81,28 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
     ? [traveledPoints[0].longitude, traveledPoints[0].latitude]
     : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
   const referenceCoords = referenceRoute?.coordinates ?? [];
+  // Mitad norte de los bounds -- mismo criterio que RouteMarker en
+  // route-map-preview.jsx para decidir si la etiqueta crece hacia arriba o
+  // abajo sin cortarse contra el borde de la preview. bounds es
+  // [west, south, east, north].
+  const midLat = bounds ? (bounds[1] + bounds[3]) / 2 : null;
+  const startLabelBelow = midLat != null && referenceCoords[0] ? referenceCoords[0][1] > midLat : false;
+  const endLabelBelow = midLat != null && referenceCoords[referenceCoords.length - 1] ? referenceCoords[referenceCoords.length - 1][1] > midLat : false;
 
   return (
     <View className="h-full w-full overflow-hidden rounded-2xl" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
-      <Map attribution={false} logo={false} mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL} nativeID="live-trajectory-map" style={{ flex: 1 }} testID="live-trajectory-map">
+      <Map
+        attribution={false}
+        logo={false}
+        mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL}
+        nativeID="live-trajectory-map"
+        onPress={() => {
+          if (suppressMapCloseRef.current) { suppressMapCloseRef.current = false; return; }
+          setActiveMarker(null);
+        }}
+        style={{ flex: 1 }}
+        testID="live-trajectory-map"
+      >
         <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 14 }} padding={{ bottom: 40, left: 40, right: 40, top: 40 }} ref={cameraRef} />
         {referenceCoords.length > 1 && (
           <GeoJSONSource data={{ type: 'Feature', geometry: referenceRoute, properties: {} }} id="live-trajectory-map-reference-source">
@@ -63,14 +115,26 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
           </GeoJSONSource>
         )}
         {referenceCoords.length >= 1 && (
-          <Marker anchor="bottom" id="live-trajectory-map-start-marker" lngLat={referenceCoords[0]}>
-            <View nativeID="live-trajectory-map-start-dot" style={{ backgroundColor: '#ef4444', borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID="live-trajectory-map-start-dot" />
-          </Marker>
+          <TrajectoryMarker
+            active={activeMarker === 'start'}
+            color="#ef4444"
+            idPrefix="live-trajectory-map-start-marker"
+            label="Punto de inicio"
+            labelBelow={startLabelBelow}
+            onToggle={() => handleMarkerToggle('start')}
+            point={referenceCoords[0]}
+          />
         )}
         {referenceCoords.length >= 2 && (
-          <Marker anchor="bottom" id="live-trajectory-map-end-marker" lngLat={referenceCoords[referenceCoords.length - 1]}>
-            <View nativeID="live-trajectory-map-end-dot" style={{ backgroundColor: '#2563eb', borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID="live-trajectory-map-end-dot" />
-          </Marker>
+          <TrajectoryMarker
+            active={activeMarker === 'end'}
+            color="#2563eb"
+            idPrefix="live-trajectory-map-end-marker"
+            label="Punto de llegada"
+            labelBelow={endLabelBelow}
+            onToggle={() => handleMarkerToggle('end')}
+            point={referenceCoords[referenceCoords.length - 1]}
+          />
         )}
       </Map>
     </View>
