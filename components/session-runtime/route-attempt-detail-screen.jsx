@@ -7,7 +7,6 @@ import { useAttemptDetail } from '../../hooks/use-attempt-detail.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { formatMeters } from '../../utils/distance.js';
 import { formatStopwatch } from '../../utils/time.js';
-import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { isWeb } from '../../utils/platform.js';
 import { LiveTrajectoryMap } from './live-trajectory-map';
 
@@ -18,6 +17,19 @@ const pad2 = (n) => String(n).padStart(2, '0');
 // a qué tan apegado estuvo el corredor a la ruta marcada, no solo si
 // completó una distancia similar por cualquier camino.
 const COMPLIANCE_MET_THRESHOLD = 90;
+
+// Local, no el `formatPace` de leaderboard-metric-format.js -- pedido real
+// 2026-10-21: "ritmo no tiene bien la unidad min/km" (ese formatter da
+// "6:13 /km", sin el "min" que aclara qué es el número de la izquierda).
+// No se toca el formatter compartido para no alterar el leaderboard, que
+// nadie pidió cambiar.
+function formatPaceMinPerKm(minutesPerKm) {
+  if (minutesPerKm == null || !Number.isFinite(minutesPerKm)) return '—';
+  const totalSeconds = Math.round(minutesPerKm * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')} min/km`;
+}
 
 // Timestamp completo DD/MM/AAAA HH:mm -- mismo patrón sin exportar que
 // `formatDayTime` en session-review-screen.jsx, no hay un formatter
@@ -93,6 +105,7 @@ function RouteAttemptDetailScreenContent() {
     setId: params.setId,
     distanceMeters: params.distanceMeters,
     durationMs: params.durationMs,
+    startedAt: params.startedAt,
   });
   const { team } = useTeam(detail.teamId);
 
@@ -171,7 +184,7 @@ function RouteAttemptDetailScreenContent() {
             />
             <View className="flex-row gap-2" nativeID="route-attempt-detail-screen-stats-row-2" testID="route-attempt-detail-screen-stats-row-2">
               <StatBox idPrefix="route-attempt-detail-screen-duration" label="Tiempo" value={formatStopwatch(detail.durationMs ?? 0)} />
-              <StatBox idPrefix="route-attempt-detail-screen-pace" label="Ritmo" value={paceMinPerKm != null ? formatMetricValue('pace', paceMinPerKm) : '—'} />
+              <StatBox idPrefix="route-attempt-detail-screen-pace" label="Ritmo" value={formatPaceMinPerKm(paceMinPerKm)} />
             </View>
             <View className="flex-row gap-2" nativeID="route-attempt-detail-screen-stats-row-3" testID="route-attempt-detail-screen-stats-row-3">
               <StatBox idPrefix="route-attempt-detail-screen-date" label="Fecha y hora" value={attemptDate ?? '—'} />

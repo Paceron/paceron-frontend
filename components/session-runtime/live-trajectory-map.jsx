@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
-import { computeBounds } from '../../utils/map-bounds.js';
+import { computeBounds, expandBounds } from '../../utils/map-bounds.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // Mismo ancho de banda que RouteMarker en route-map-preview.jsx -- sin esto
@@ -77,6 +77,11 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
     ...(referenceRoute?.coordinates ?? []).map(([lng, lat]) => ({ latitude: lat, longitude: lng })),
   ];
   const bounds = computeBounds(boundsSource);
+  // Acota pan/zoom-out a una zona razonable alrededor de la trayectoria --
+  // pedido real 2026-10-21: "en el mapa mobile el zoom out pareciera no
+  // tener limite" (antes sin ningún maxBounds/minZoom, a diferencia de
+  // RouteMapPreview). Mismo expandBounds que ya usa esa Camera nativa.
+  const maxBounds = bounds ? expandBounds(bounds) : undefined;
   const initialCenter = traveledPoints?.[0]
     ? [traveledPoints[0].longitude, traveledPoints[0].latitude]
     : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
@@ -103,7 +108,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
         style={{ flex: 1 }}
         testID="live-trajectory-map"
       >
-        <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 14 }} padding={{ bottom: 40, left: 40, right: 40, top: 40 }} ref={cameraRef} />
+        <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 14 }} maxBounds={maxBounds} maxZoom={18} minZoom={10} padding={{ bottom: 40, left: 40, right: 40, top: 40 }} ref={cameraRef} />
         {referenceCoords.length > 1 && (
           <GeoJSONSource data={{ type: 'Feature', geometry: referenceRoute, properties: {} }} id="live-trajectory-map-reference-source">
             <Layer id="live-trajectory-map-reference-layer" style={{ lineColor: '#94a3b8', lineWidth: 3, lineDasharray: [2, 2] }} type="line" />

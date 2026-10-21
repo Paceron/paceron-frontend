@@ -116,7 +116,11 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
       // dentro del area limitada que rodea la zona de la trayectoria".
       const expanded = expandBounds(bounds);
       if (expanded) map.setMaxBounds([[expanded[0], expanded[1]], [expanded[2], expanded[3]]]);
-      map.setMinZoom(13);
+      // minZoom 10 (no 13) -- pedido real 2026-10-21: "se permite muy poco
+      // zoom out". `maxBounds` ya acota el panning a una zona razonable; el
+      // minZoom numérico solo evita alejarse hasta ver medio continente, no
+      // hace falta que sea tan ajustado.
+      map.setMinZoom(10);
       map.setMaxZoom(18);
     };
     if (map.loaded()) applyFit();

@@ -9,7 +9,7 @@ import { deriveAttemptStatus } from '../utils/attempt-status.js';
 
 export { deriveAttemptStatus };
 
-function useLocalAttemptDetail(setId, { distanceMeters, durationMs, competition }) {
+function useLocalAttemptDetail(setId, { distanceMeters, durationMs, startedAt, competition }) {
   const query = useQuery({
     queryKey: ['attempt-detail-local', setId],
     queryFn: async () => {
@@ -29,7 +29,7 @@ function useLocalAttemptDetail(setId, { distanceMeters, durationMs, competition 
     status: 'local',
     distanceMeters: Number(distanceMeters ?? 0),
     durationMs: Number(durationMs ?? 0),
-    startedAt: null,
+    startedAt: startedAt ?? null,
     teamId: competition?.teamId ?? null,
     traveledPoints: query.data ?? [],
     referenceRoute,
@@ -107,9 +107,9 @@ function useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading
 // ramas -- antes la rama local nunca lo pedía, dejando el mapa vacío y
 // sin distancia esperada/equipo (bug real reportado 2026-10-21). Ver la
 // spec para el detalle completo.
-export function useAttemptDetail({ competitionId, athleteUserId, setId, distanceMeters, durationMs }) {
+export function useAttemptDetail({ competitionId, athleteUserId, setId, distanceMeters, durationMs, startedAt }) {
   const { detail: competition, loading: competitionLoading } = useCompetitionDetail(competitionId);
-  const local = useLocalAttemptDetail(setId, { distanceMeters, durationMs, competition });
+  const local = useLocalAttemptDetail(setId, { distanceMeters, durationMs, startedAt, competition });
   const remote = useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading });
   const result = setId ? local : remote;
   // % de la distancia recorrida dentro del radio de aceptación -- mismos

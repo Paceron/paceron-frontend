@@ -349,6 +349,11 @@ function RouteAttemptLiveScreenContent() {
   const gps = useGpsTracker(true); // GPS ya es obligatorio para haber llegado a esta pantalla (gate del pre-start)
 
   const savedTimingsRef = useRef({ wallMs: 0, activeMs: 0 });
+  // Timestamp real de arranque -- pedido real 2026-10-21: la pantalla de
+  // detalle no mostraba fecha/hora en el camino local (recién terminado),
+  // `markSetStarted` graba el timestamp en SQLite pero nunca quedaba en
+  // memoria para mandarlo como param de navegación.
+  const startedAtRef = useRef(null);
   const gpsActiveRef = useRef(false);
   const lastPointRef = useRef(null);
   const pointOrderRef = useRef(0);
@@ -467,7 +472,9 @@ function RouteAttemptLiveScreenContent() {
 
   const beginSet = async () => {
     try {
-      await markSetStarted(set.id, toIsoUtc());
+      const startedAtIso = toIsoUtc();
+      startedAtRef.current = startedAtIso;
+      await markSetStarted(set.id, startedAtIso);
       savedTimingsRef.current = { wallMs: 0, activeMs: 0 };
       stopwatch.start();
       setPhase('running');
@@ -556,6 +563,7 @@ function RouteAttemptLiveScreenContent() {
         setId: String(set.id),
         distanceMeters: String(distanceRef.current ?? 0),
         durationMs: String(savedTimingsRef.current.wallMs ?? 0),
+        ...(startedAtRef.current ? { startedAt: startedAtRef.current } : {}),
       },
     });
     setBypassingExit(true);
