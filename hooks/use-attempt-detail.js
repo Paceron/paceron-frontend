@@ -9,7 +9,7 @@ import { deriveAttemptStatus } from '../utils/attempt-status.js';
 
 export { deriveAttemptStatus };
 
-function useLocalAttemptDetail(setId, { distanceMeters, durationMs }) {
+function useLocalAttemptDetail(setId, { distanceMeters, durationMs, competition }) {
   const query = useQuery({
     queryKey: ['attempt-detail-local', setId],
     queryFn: async () => {
@@ -19,22 +19,26 @@ function useLocalAttemptDetail(setId, { distanceMeters, durationMs }) {
     enabled: Boolean(setId) && !isWeb,
   });
 
+  const referenceRoute = competition?.route ?? null;
+  const expectedMeters = referenceRoute
+    ? totalRouteMeters((referenceRoute.coordinates ?? []).map(([lng, lat]) => ({ lat, lng })))
+    : null;
+
   return {
     loading: query.isLoading,
     status: 'local',
     distanceMeters: Number(distanceMeters ?? 0),
     durationMs: Number(durationMs ?? 0),
     startedAt: null,
-    teamId: null,
+    teamId: competition?.teamId ?? null,
     traveledPoints: query.data ?? [],
-    referenceRoute: null,
-    expectedMeters: null,
+    referenceRoute,
+    expectedMeters,
   };
 }
 
-function useRemoteAttemptDetail(competitionId, athleteUserId) {
-  const { detail, loading: competitionLoading } = useCompetitionDetail(competitionId);
-  const sessionInstanceId = detail?.sessionInstanceId ?? null;
+function useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading }) {
+  const sessionInstanceId = competition?.sessionInstanceId ?? null;
 
   const runnerSessionQuery = useQuery({
     queryKey: ['attempt-detail-runner-session', sessionInstanceId, athleteUserId],
@@ -76,7 +80,7 @@ function useRemoteAttemptDetail(competitionId, athleteUserId) {
   });
 
   const status = deriveAttemptStatus({ runnerSession: runnerSessionQuery.data, feedbackList: flatFeedbackList });
-  const referenceRoute = detail?.route ?? null;
+  const referenceRoute = competition?.route ?? null;
   const expectedMeters = referenceRoute
     ? totalRouteMeters((referenceRoute.coordinates ?? []).map(([lng, lat]) => ({ lat, lng })))
     : null;
@@ -87,7 +91,7 @@ function useRemoteAttemptDetail(competitionId, athleteUserId) {
     distanceMeters: feedback?.distanceMeters ?? null,
     durationMs: feedback?.durationMs ?? null,
     startedAt: feedback?.startedAt ?? feedback?.createdAt ?? null,
-    teamId: feedback?.teamId ?? null,
+    teamId: feedback?.teamId ?? competition?.teamId ?? null,
     traveledPoints: pointsQuery.data ?? [],
     referenceRoute,
     expectedMeters,
@@ -98,9 +102,14 @@ function useRemoteAttemptDetail(competitionId, athleteUserId) {
 // (nativo, intento recién terminado/no sincronizado) lee SQLite local sin
 // esperar red; sin `setId` (cualquier plataforma, cualquier participante)
 // pide todo por API vía el session_instance_id sintético de la
-// competencia (Gap 35). Ver la spec para el detalle completo.
+// competencia (Gap 35). El detalle de la competencia (ruta esperada,
+// equipo) se pide UNA sola vez acá arriba y se comparte entre las dos
+// ramas -- antes la rama local nunca lo pedía, dejando el mapa vacío y
+// sin distancia esperada/equipo (bug real reportado 2026-10-21). Ver la
+// spec para el detalle completo.
 export function useAttemptDetail({ competitionId, athleteUserId, setId, distanceMeters, durationMs }) {
-  const local = useLocalAttemptDetail(setId, { distanceMeters, durationMs });
-  const remote = useRemoteAttemptDetail(competitionId, athleteUserId);
+  const { detail: competition, loading: competitionLoading } = useCompetitionDetail(competitionId);
+  const local = useLocalAttemptDetail(setId, { distanceMeters, durationMs, competition });
+  const remote = useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading });
   return setId ? local : remote;
 }
