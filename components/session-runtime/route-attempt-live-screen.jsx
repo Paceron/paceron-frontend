@@ -97,6 +97,17 @@ const DRAG_VARIANTS = {
     iconColor: '#ffffff',
     label: 'text-slate-500 dark:text-slate-400',
   },
+  // Reanudar -- mismo verde-lima que el botón "Reanudar" original
+  // (bg-primary) que este slider reemplaza, no el verde esmeralda de
+  // "finish" (los dos comparten fila y necesitan distinguirse por color).
+  resume: {
+    trackBorder: 'border-primary/50 dark:border-primary/40',
+    trackBg: 'bg-primary-tint-subtle dark:bg-primary/10',
+    fill: 'bg-primary/45',
+    thumb: 'bg-primary border border-[#6b9c2f]',
+    iconColor: '#111518',
+    label: 'text-primary',
+  },
 };
 
 function DragToFinishButton({ onTrigger, disabled, idPrefix, label, icon = 'flag-checkered', variant = 'finish' }) {
@@ -668,19 +679,19 @@ function RouteAttemptLiveScreenContent() {
             <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="route-attempt-live-screen-play-label" testID="route-attempt-live-screen-play-label">Arrancar</Text>
           </Pressable>
         )}
+        {/* Reanudar+Finalizar en la misma fila -- pedido real 2026-10-21:
+            mantener pausa/finalizar siempre en línea, también al pausar
+            (antes Reanudar era un botón de ancho completo, rompiendo la
+            fila). Mismo patrón ya aplicado en training-session-*-screen.jsx. */}
         {phase === 'paused' && (
-          <>
-            <Pressable
-              className="h-16 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 active:opacity-80"
-              nativeID="route-attempt-live-screen-resume-button"
-              onPress={handlePlay}
-              testID="route-attempt-live-screen-resume-button"
-            >
-              <MaterialCommunityIcons color={colors.onPrimary} name="play" size={28} />
-              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="route-attempt-live-screen-resume-label" testID="route-attempt-live-screen-resume-label">Reanudar</Text>
-            </Pressable>
-            <DragToFinishButton idPrefix="route-attempt-live-screen-finish" label="Deslizá para finalizar" onTrigger={handleFinish} />
-          </>
+          <View className="flex-row gap-3" nativeID="route-attempt-live-screen-paused-controls" testID="route-attempt-live-screen-paused-controls">
+            <View className="flex-1" nativeID="route-attempt-live-screen-resume-wrap" testID="route-attempt-live-screen-resume-wrap">
+              <DragToFinishButton icon="play" idPrefix="route-attempt-live-screen-resume" label="Reanudar" onTrigger={handlePlay} variant="resume" />
+            </View>
+            <View className="flex-1" nativeID="route-attempt-live-screen-finish-wrap-paused" testID="route-attempt-live-screen-finish-wrap-paused">
+              <DragToFinishButton idPrefix="route-attempt-live-screen-finish" label="Finalizar" onTrigger={handleFinish} />
+            </View>
+          </View>
         )}
         {phase === 'running' && (
           <View className="flex-row gap-3" nativeID="route-attempt-live-screen-running-controls" testID="route-attempt-live-screen-running-controls">
