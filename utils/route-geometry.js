@@ -73,6 +73,33 @@ export function distanceToRouteMeters(point, routeCoordinates) {
   return min;
 }
 
+// % de la distancia recorrida que cayó DENTRO del radio de aceptación de la
+// ruta marcada -- pedido real 2026-10-21, pantalla de detalle de intento
+// ("veredicto" del intento). Clasifica cada TRAMO (no cada punto suelto) por
+// si su punto final queda dentro del radio -- un tramo entero cuenta como
+// cumplido o no, consistente con cómo se acumula distancia en el resto del
+// módulo (utils/distance.js#acceptGpsLeg). `null` sin datos suficientes
+// (menos de 2 puntos recorridos, o sin ruta de referencia) -- 0% sería
+// engañoso, no es que incumplió, es que no hay nada que evaluar.
+export function computeRouteComplianceRatio(traveledPoints, routeCoordinates, acceptanceRadiusMeters) {
+  const points = traveledPoints ?? [];
+  const coords = routeCoordinates ?? [];
+  if (points.length < 2 || coords.length < 2 || acceptanceRadiusMeters == null) return null;
+
+  let totalMeters = 0;
+  let compliantMeters = 0;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const legMeters = haversineMeters(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+    totalMeters += legMeters;
+    const distanceToRoute = distanceToRouteMeters({ lat: curr.latitude, lng: curr.longitude }, coords);
+    if (distanceToRoute <= acceptanceRadiusMeters) compliantMeters += legMeters;
+  }
+  if (totalMeters === 0) return null;
+  return (compliantMeters / totalMeters) * 100;
+}
+
 const REFERENCE_PACE_MIN_PER_KM = 12;
 const TIMEOUT_MARGIN_FACTOR = 2;
 const MIN_TIMEOUT_MS = 30 * 60_000;

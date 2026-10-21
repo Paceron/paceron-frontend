@@ -1,4 +1,4 @@
-import { totalRouteMeters, routeLimitStatus, MAX_ROUTE_VERTICES, MAX_ROUTE_METERS, distanceToRouteMeters, computeRouteTimeoutMs } from '../utils/route-geometry.js';
+import { totalRouteMeters, routeLimitStatus, MAX_ROUTE_VERTICES, MAX_ROUTE_METERS, distanceToRouteMeters, computeRouteTimeoutMs, computeRouteComplianceRatio } from '../utils/route-geometry.js';
 
 describe('totalRouteMeters', () => {
   test('sin puntos o un solo punto -> 0', () => {
@@ -99,5 +99,52 @@ describe('computeRouteTimeoutMs', () => {
 
   test('es monótono creciente con la distancia', () => {
     expect(computeRouteTimeoutMs(20_000)).toBeGreaterThan(computeRouteTimeoutMs(10_000));
+  });
+});
+
+describe('computeRouteComplianceRatio', () => {
+  const route = [[-58.4, -34.6], [-58.39, -34.6]];
+
+  test('menos de 2 puntos recorridos -- null, no 0%', () => {
+    expect(computeRouteComplianceRatio([], route, 50)).toBeNull();
+    expect(computeRouteComplianceRatio([{ latitude: -34.6, longitude: -58.4 }], route, 50)).toBeNull();
+  });
+
+  test('sin ruta de referencia -- null', () => {
+    const points = [{ latitude: -34.6, longitude: -58.4 }, { latitude: -34.6, longitude: -58.395 }];
+    expect(computeRouteComplianceRatio(points, [], 50)).toBeNull();
+  });
+
+  test('sin radio de aceptación -- null', () => {
+    const points = [{ latitude: -34.6, longitude: -58.4 }, { latitude: -34.6, longitude: -58.395 }];
+    expect(computeRouteComplianceRatio(points, route, null)).toBeNull();
+  });
+
+  test('todo el recorrido sobre la ruta -- 100%', () => {
+    const points = [
+      { latitude: -34.6, longitude: -58.4 },
+      { latitude: -34.6, longitude: -58.398 },
+      { latitude: -34.6, longitude: -58.395 },
+    ];
+    expect(computeRouteComplianceRatio(points, route, 10)).toBeCloseTo(100, 0);
+  });
+
+  test('todo el recorrido lejos de la ruta -- 0%', () => {
+    const points = [
+      { latitude: -34.65, longitude: -58.4 },
+      { latitude: -34.65, longitude: -58.395 },
+    ];
+    expect(computeRouteComplianceRatio(points, route, 10)).toBe(0);
+  });
+
+  test('mitad del recorrido dentro, mitad lejos -- a mitad de camino', () => {
+    const points = [
+      { latitude: -34.6, longitude: -58.4 }, // sobre la ruta
+      { latitude: -34.6, longitude: -58.395 }, // sigue sobre la ruta -- tramo cumplido
+      { latitude: -34.65, longitude: -58.395 }, // se aleja -- tramo NO cumplido
+    ];
+    const ratio = computeRouteComplianceRatio(points, route, 10);
+    expect(ratio).toBeGreaterThan(0);
+    expect(ratio).toBeLessThan(100);
   });
 });
