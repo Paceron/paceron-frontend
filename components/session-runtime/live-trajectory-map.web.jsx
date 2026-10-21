@@ -110,17 +110,21 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
       const bounds = computeBounds(boundsSource);
       if (!bounds) return;
       map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], { padding: 40, duration: 300 });
-      // Acota el panning a una zona razonable alrededor de la trayectoria --
-      // mismo expandBounds que ya usa la Camera nativa (Gap de paridad con
-      // route-map-preview.jsx) -- pedido real: "no permite... moverse
-      // dentro del area limitada que rodea la zona de la trayectoria".
-      const expanded = expandBounds(bounds);
+      // Causa real de "se permite muy poco zoom out" (reportado otra vez
+      // 2026-10-21 pese al minZoom bajado a 10 en la vuelta anterior):
+      // `setMaxBounds` en maplibre-gl no es solo un límite de panning --
+      // internamente calcula un minZoom EFECTIVO para que el viewport
+      // nunca llegue a mostrar algo fuera de esa caja, y ese cálculo gana
+      // sobre cualquier minZoom explícito más bajo si la caja es chica
+      // (una ruta de a pie entra en una caja de pocos cientos de metros,
+      // mucho más chica que lo que se ve a zoom 10). El minZoom de 10
+      // nunca era alcanzable -- el límite real era el que imponía esta
+      // caja. Fix: agrandar la caja en sí (margen mucho mayor que el de
+      // route-map-preview.jsx, que es una preview de lectura bloqueada a
+      // propósito a una zona chica) en vez de pelear con un minZoom
+      // numérico que nunca le iba a ganar a una caja chica.
+      const expanded = expandBounds(bounds, { marginRatio: 3, minMarginMeters: 3000 });
       if (expanded) map.setMaxBounds([[expanded[0], expanded[1]], [expanded[2], expanded[3]]]);
-      // minZoom 10 (no 13) -- pedido real 2026-10-21: "se permite muy poco
-      // zoom out". `maxBounds` ya acota el panning a una zona razonable; el
-      // minZoom numérico solo evita alejarse hasta ver medio continente, no
-      // hace falta que sea tan ajustado.
-      map.setMinZoom(10);
       map.setMaxZoom(18);
     };
     if (map.loaded()) applyFit();

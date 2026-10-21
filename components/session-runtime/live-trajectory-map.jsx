@@ -78,10 +78,12 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
   ];
   const bounds = computeBounds(boundsSource);
   // Acota pan/zoom-out a una zona razonable alrededor de la trayectoria --
-  // pedido real 2026-10-21: "en el mapa mobile el zoom out pareciera no
-  // tener limite" (antes sin ningún maxBounds/minZoom, a diferencia de
-  // RouteMapPreview). Mismo expandBounds que ya usa esa Camera nativa.
-  const maxBounds = bounds ? expandBounds(bounds) : undefined;
+  // margen mucho más generoso que el de RouteMapPreview (esa es una
+  // preview de lectura, bloqueada a propósito a una zona chica). Sin
+  // minZoom numérico aparte (ver Camera más abajo) -- el propio tamaño de
+  // este rectángulo YA es el único límite de zoom-out, así que tiene que
+  // ser él el que se agrande, no un número que compita con él.
+  const maxBounds = bounds ? expandBounds(bounds, { marginRatio: 3, minMarginMeters: 3000 }) : undefined;
   const initialCenter = traveledPoints?.[0]
     ? [traveledPoints[0].longitude, traveledPoints[0].latitude]
     : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
@@ -101,6 +103,19 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
         logo={false}
         mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL}
         nativeID="live-trajectory-map"
+        onDidFinishLoadingMap={() => {
+          // Fit imperativo UNA sola vez al terminar de cargar -- mismo
+          // patrón ya probado en RouteMapPreview. Antes `bounds` iba como
+          // prop DECLARATIVO de `<Camera>` -- Camera.tsx lo mergea dentro
+          // de `...stop`, un objeto nuevo en cada render que se manda tal
+          // cual a la capa nativa como comando de cámara; en cualquier
+          // re-render (no solo el primero) eso vuelve a disparar un
+          // "stop" hacia bounds, y es lo que dejaba el zoom-out efectivo
+          // sin límite real en mobile (bug real reportado 2026-10-21) --
+          // minZoom/maxBounds quedaban peleando contra un comando de
+          // cámara que se repetía solo.
+          if (bounds) cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 40, left: 40, right: 40, top: 40 } });
+        }}
         onPress={() => {
           if (suppressMapCloseRef.current) { suppressMapCloseRef.current = false; return; }
           setActiveMarker(null);
@@ -108,7 +123,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
         style={{ flex: 1 }}
         testID="live-trajectory-map"
       >
-        <Camera bounds={bounds ?? undefined} initialViewState={{ center: initialCenter, zoom: 14 }} maxBounds={maxBounds} maxZoom={18} minZoom={10} padding={{ bottom: 40, left: 40, right: 40, top: 40 }} ref={cameraRef} />
+        <Camera initialViewState={{ center: initialCenter, zoom: 14 }} maxBounds={maxBounds} maxZoom={18} ref={cameraRef} />
         {referenceCoords.length > 1 && (
           <GeoJSONSource data={{ type: 'Feature', geometry: referenceRoute, properties: {} }} id="live-trajectory-map-reference-source">
             <Layer id="live-trajectory-map-reference-layer" style={{ lineColor: '#94a3b8', lineWidth: 3, lineDasharray: [2, 2] }} type="line" />
