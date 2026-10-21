@@ -123,7 +123,18 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
         style={{ flex: 1 }}
         testID="live-trajectory-map"
       >
-        <Camera initialViewState={{ center: initialCenter, zoom: 14 }} maxBounds={maxBounds} maxZoom={18} ref={cameraRef} />
+        {/* minZoom explícito de nuevo -- pedido real 2026-10-21 (3ra vuelta):
+            con el pan ya acotado por maxBounds, el zoom-out seguía sin
+            límite ("hasta ver el mapa del mundo completo"). A diferencia de
+            maplibre-gl en web, que deriva un minZoom efectivo del tamaño de
+            maxBounds, el SDK nativo de maplibre-react-native SOLO usa
+            maxBounds para limitar el centro de la cámara -- no toca el
+            zoom. Sin minZoom propio, no hay ningún límite de zoom-out en
+            absoluto. 12, no 10 -- valor cercano al que el maxBounds (mismo
+            margen que el de arriba) ya termina clampeando de forma natural
+            en la versión web, para que las dos plataformas se sientan
+            parecidas. */}
+        <Camera initialViewState={{ center: initialCenter, zoom: 14 }} maxBounds={maxBounds} maxZoom={18} minZoom={12} ref={cameraRef} />
         {referenceCoords.length > 1 && (
           <GeoJSONSource data={{ type: 'Feature', geometry: referenceRoute, properties: {} }} id="live-trajectory-map-reference-source">
             <Layer id="live-trajectory-map-reference-layer" style={{ lineColor: '#94a3b8', lineWidth: 3, lineDasharray: [2, 2] }} type="line" />
