@@ -17,6 +17,26 @@ export function __resetRunnerSessionMock() {
   nextRunnerSessionId = 1;
 }
 
+// Seed de un intento de competencia de ruta ya completado y sincronizado
+// (athlete_user_id 101, Lucía Fernández, participante de la competición
+// seed 7 de competitions-mock.js, session_instance_id 9000) -- pedido
+// real 2026-10-21: poder verificar en web el camino 'synced' del detalle
+// de intento (hasta ahora solo probable con el camino local/recién
+// terminado, mobile-only). Vive FUERA de __resetRunnerSessionMock (que
+// los tests existentes esperan que limpie a vacío) -- se agrega una sola
+// vez acá, al cargar el módulo; cualquier test que llame al reset la
+// borra igual que el resto del estado, sin romper nada.
+runnerSessions.push({
+  id: 9000,
+  session_instance_id: 9000,
+  athlete_user_id: 101,
+  status: 'finished',
+  start_date: '2026-10-18T14:02:00Z',
+  end_date: '2026-10-18T14:03:47Z',
+  competition_id: 7,
+});
+nextRunnerSessionId = 9001;
+
 // Seed para pruebas deterministas de la pantalla de revisión.
 export function __seedRunnerSession(dto) {
   const row = { id: nextRunnerSessionId++, status: 'wip', end_date: null, ...dto };

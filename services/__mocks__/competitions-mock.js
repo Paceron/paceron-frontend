@@ -112,6 +112,14 @@ function resetSeed() {
   nextId = SEED.length + 1;
   nextSyntheticInstanceId = 9001;
   mockAttempts.clear();
+  // user_id 101 (Lucía Fernández, participante de la seed 7, NO el user_id 1
+  // de pruebas -- ese slot lo necesita libre el test existente "user_id 1
+  // puede correr un intento contra la seed 7") ya corrió la seed 7 -- ver
+  // seed de runner-session-mock.js/workoutFeedback-mock.js para el
+  // runner_session finished + feedback + puntos correspondientes. Sin
+  // esto, "Correr esta trayectoria" seguiría ofreciéndose para un
+  // intento que ya tiene resultado (contradice "sin reintentos v1").
+  mockAttempts.add('7:101');
   dynamicRouteSeeded = false;
 }
 resetSeed();
