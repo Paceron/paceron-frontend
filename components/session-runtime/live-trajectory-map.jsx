@@ -95,7 +95,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
   const endLabelBelow = midLat != null && referenceCoords[referenceCoords.length - 1] ? referenceCoords[referenceCoords.length - 1][1] > midLat : false;
 
   return (
-    <View className="h-full w-full overflow-hidden rounded-2xl" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
+    <View className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
       <Map
         attribution={false}
         logo={false}

@@ -146,7 +146,7 @@ function RouteAttemptDetailScreenContent() {
               Ese font queda reservado para displays numéricos (cronómetro),
               no para títulos de texto -- mismo tratamiento que
               team-detail-screen.jsx/session-review-screen.jsx. */}
-          <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-title" testID="route-attempt-detail-screen-title">
+          <Text className="text-xl text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="route-attempt-detail-screen-title">
             Detalle de intento
           </Text>
         </View>
