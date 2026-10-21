@@ -3,7 +3,7 @@ import { getGpsPoints } from '../services/session-db.js';
 import { getRunnerSession, getSessionFeedback, getWorkoutFeedbackPoints } from '../services/runnerSession.js';
 import { toRunnerSessionModel, toSessionFeedbackListModel } from '../services/normalizers.js';
 import { useCompetitionDetail } from './use-competitions.js';
-import { totalRouteMeters } from '../utils/route-geometry.js';
+import { totalRouteMeters, computeRouteComplianceRatio } from '../utils/route-geometry.js';
 import { isWeb } from '../utils/platform.js';
 import { deriveAttemptStatus } from '../utils/attempt-status.js';
 
@@ -111,5 +111,15 @@ export function useAttemptDetail({ competitionId, athleteUserId, setId, distance
   const { detail: competition, loading: competitionLoading } = useCompetitionDetail(competitionId);
   const local = useLocalAttemptDetail(setId, { distanceMeters, durationMs, competition });
   const remote = useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading });
-  return setId ? local : remote;
+  const result = setId ? local : remote;
+  // % de la distancia recorrida dentro del radio de aceptación -- mismos
+  // traveledPoints/referenceRoute que ya resolvió la rama elegida, solo
+  // falta el radio (vive en la competencia, no en ninguna de las dos
+  // ramas). null mientras no haya datos suficientes, no un 0% engañoso.
+  const complianceRatio = computeRouteComplianceRatio(
+    result.traveledPoints,
+    result.referenceRoute?.coordinates,
+    competition?.acceptanceRadiusMeters,
+  );
+  return { ...result, complianceRatio, acceptanceRadiusMeters: competition?.acceptanceRadiusMeters ?? null };
 }

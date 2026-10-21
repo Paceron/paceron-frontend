@@ -7,13 +7,17 @@ import { useAttemptDetail } from '../../hooks/use-attempt-detail.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { formatMeters } from '../../utils/distance.js';
 import { formatStopwatch } from '../../utils/time.js';
+import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { isWeb } from '../../utils/platform.js';
 import { LiveTrajectoryMap } from './live-trajectory-map';
 
 const pad2 = (n) => String(n).padStart(2, '0');
-// Tolerancia del 5% -- ruido típico de medición GPS, no exige llegar al
-// metro exacto de la ruta marcada para contar como "cumplido".
-const EXPECTED_TOLERANCE = 0.95;
+// % de cumplimiento (tiempo dentro del radio de aceptación) desde el que se
+// considera "cumplido" -- pedido real 2026-10-21, reemplaza el criterio
+// anterior (distancia lograda vs. esperada con tolerancia del 5%): más fiel
+// a qué tan apegado estuvo el corredor a la ruta marcada, no solo si
+// completó una distancia similar por cualquier camino.
+const COMPLIANCE_MET_THRESHOLD = 90;
 
 // Timestamp completo DD/MM/AAAA HH:mm -- mismo patrón sin exportar que
 // `formatDayTime` en session-review-screen.jsx, no hay un formatter
@@ -34,28 +38,34 @@ function StatBox({ idPrefix, label, value }) {
   );
 }
 
-// Box de comparación logrado-vs-esperado, fila entera, dos caras -- pedido
-// real 2026-10-21. `met` null = todavía no hay distancia esperada para
-// comparar (tono neutro); true/false colorea verde/ámbar.
-function ComparisonBox({ achievedLabel, achievedValue, expectedLabel, expectedValue, met }) {
+// Box de veredicto, fila entera, tres partes -- pedido real 2026-10-21
+// (reemplaza la versión anterior de dos caras). Esperado | ícono+% de
+// cumplimiento | logrado. `met` null = todavía no hay % que evaluar (tono
+// neutro); true/false colorea verde/ámbar todo el box.
+function VerdictBox({ expectedValue, achievedValue, complianceRatio, met }) {
   const tone = met == null
-    ? { bg: 'bg-slate-100 dark:bg-slate-800/40', border: 'border-slate-200 dark:border-slate-700', icon: null }
+    ? { bg: 'bg-slate-100 dark:bg-slate-800/40', border: 'border-slate-200 dark:border-slate-700', icon: 'help-circle-outline', iconColor: '#64748b' }
     : met
-      ? { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-300 dark:border-emerald-800/70', icon: 'check-circle' }
-      : { bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-300 dark:border-amber-800/70', icon: 'alert-circle-outline' };
+      ? { bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-300 dark:border-emerald-800/70', icon: 'check-circle', iconColor: '#047857' }
+      : { bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-300 dark:border-amber-800/70', icon: 'alert-circle-outline', iconColor: '#b45309' };
   return (
-    <View className={`flex-row overflow-hidden rounded-xl border ${tone.bg} ${tone.border}`} nativeID="route-attempt-detail-screen-comparison" testID="route-attempt-detail-screen-comparison">
-      <View className="flex-1 items-center gap-0.5 p-3" nativeID="route-attempt-detail-screen-comparison-achieved" testID="route-attempt-detail-screen-comparison-achieved">
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-detail-screen-comparison-achieved-label" testID="route-attempt-detail-screen-comparison-achieved-label">{achievedLabel}</Text>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-comparison-achieved-value" testID="route-attempt-detail-screen-comparison-achieved-value">{achievedValue}</Text>
+    <View className={`flex-row overflow-hidden rounded-xl border ${tone.bg} ${tone.border}`} nativeID="route-attempt-detail-screen-verdict" testID="route-attempt-detail-screen-verdict">
+      <View className="flex-1 items-center gap-0.5 p-3" nativeID="route-attempt-detail-screen-verdict-expected" testID="route-attempt-detail-screen-verdict-expected">
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-detail-screen-verdict-expected-label" testID="route-attempt-detail-screen-verdict-expected-label">Esperado</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-verdict-expected-value" testID="route-attempt-detail-screen-verdict-expected-value">{expectedValue}</Text>
       </View>
-      <View className="w-px bg-slate-200 dark:bg-slate-700" nativeID="route-attempt-detail-screen-comparison-divider" testID="route-attempt-detail-screen-comparison-divider" />
-      <View className="flex-1 items-center gap-0.5 p-3" nativeID="route-attempt-detail-screen-comparison-expected" testID="route-attempt-detail-screen-comparison-expected">
-        <View className="flex-row items-center gap-1" nativeID="route-attempt-detail-screen-comparison-expected-row" testID="route-attempt-detail-screen-comparison-expected-row">
-          {tone.icon && <MaterialCommunityIcons color={met ? '#047857' : '#b45309'} name={tone.icon} size={14} />}
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-detail-screen-comparison-expected-label" testID="route-attempt-detail-screen-comparison-expected-label">{expectedLabel}</Text>
-        </View>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-comparison-expected-value" testID="route-attempt-detail-screen-comparison-expected-value">{expectedValue}</Text>
+      <View className="w-px bg-slate-200 dark:bg-slate-700" nativeID="route-attempt-detail-screen-verdict-divider-1" testID="route-attempt-detail-screen-verdict-divider-1" />
+      <View className="flex-1 items-center gap-0.5 p-3" nativeID="route-attempt-detail-screen-verdict-compliance" testID="route-attempt-detail-screen-verdict-compliance">
+        <MaterialCommunityIcons color={tone.iconColor} name={tone.icon} size={22} />
+        <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-verdict-compliance-value" testID="route-attempt-detail-screen-verdict-compliance-value">
+          {complianceRatio != null ? `${Math.round(complianceRatio)}%` : '—'}
+        </Text>
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-detail-screen-verdict-compliance-label" testID="route-attempt-detail-screen-verdict-compliance-label">Cumplimiento</Text>
+      </View>
+      <View className="w-px bg-slate-200 dark:bg-slate-700" nativeID="route-attempt-detail-screen-verdict-divider-2" testID="route-attempt-detail-screen-verdict-divider-2" />
+      <View className="flex-1 items-center gap-0.5 p-3" nativeID="route-attempt-detail-screen-verdict-achieved" testID="route-attempt-detail-screen-verdict-achieved">
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-detail-screen-verdict-achieved-label" testID="route-attempt-detail-screen-verdict-achieved-label">Registrada</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-verdict-achieved-value" testID="route-attempt-detail-screen-verdict-achieved-value">{achievedValue}</Text>
       </View>
     </View>
   );
@@ -88,8 +98,9 @@ function RouteAttemptDetailScreenContent() {
 
   const justFinished = Boolean(params.setId);
   const attemptDate = formatAttemptDate(detail.startedAt);
-  const met = detail.expectedMeters != null && detail.distanceMeters != null
-    ? detail.distanceMeters >= detail.expectedMeters * EXPECTED_TOLERANCE
+  const met = detail.complianceRatio != null ? detail.complianceRatio >= COMPLIANCE_MET_THRESHOLD : null;
+  const paceMinPerKm = detail.durationMs > 0 && detail.distanceMeters > 0
+    ? (detail.durationMs / 60_000) / (detail.distanceMeters / 1000)
     : null;
 
   // Mismo destino en los dos casos (recién terminado o abierto desde el
@@ -105,7 +116,7 @@ function RouteAttemptDetailScreenContent() {
   };
 
   return (
-    <View className={`flex-1 w-full self-center bg-paper p-4 dark:bg-ink ${isWeb ? 'max-w-3xl' : ''}`} nativeID="route-attempt-detail-screen-root" testID="route-attempt-detail-screen-root">
+    <View className={`flex-1 w-full self-center bg-paper p-4 pb-6 dark:bg-ink ${isWeb ? 'max-w-3xl' : ''}`} nativeID="route-attempt-detail-screen-root" testID="route-attempt-detail-screen-root">
       {justFinished ? (
         <View className="mb-3 flex-row items-center gap-2 rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/40" nativeID="route-attempt-detail-screen-banner" testID="route-attempt-detail-screen-banner">
           <MaterialCommunityIcons color={colors.primary} name="flag-checkered" size={20} />
@@ -118,7 +129,11 @@ function RouteAttemptDetailScreenContent() {
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="route-attempt-detail-screen-back-button" onPress={goToCompetitions} testID="route-attempt-detail-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           </Pressable>
-          <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="route-attempt-detail-screen-title">
+          {/* Sin Orbitron -- pedido real 2026-10-21, se veía mal en mobile.
+              Ese font queda reservado para displays numéricos (cronómetro),
+              no para títulos de texto -- mismo tratamiento que
+              team-detail-screen.jsx/session-review-screen.jsx. */}
+          <Text className="text-xl font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-title" testID="route-attempt-detail-screen-title">
             Detalle de intento
           </Text>
         </View>
@@ -148,16 +163,18 @@ function RouteAttemptDetailScreenContent() {
           </View>
 
           <View className="gap-2" nativeID="route-attempt-detail-screen-stats" testID="route-attempt-detail-screen-stats">
-            <ComparisonBox
-              achievedLabel="Lograste"
+            <VerdictBox
               achievedValue={formatMeters(detail.distanceMeters ?? 0)}
-              expectedLabel="Esperado"
+              complianceRatio={detail.complianceRatio}
               expectedValue={detail.expectedMeters != null ? formatMeters(detail.expectedMeters) : '—'}
               met={met}
             />
-            <View className="flex-row gap-2" nativeID="route-attempt-detail-screen-stats-row" testID="route-attempt-detail-screen-stats-row">
+            <View className="flex-row gap-2" nativeID="route-attempt-detail-screen-stats-row-2" testID="route-attempt-detail-screen-stats-row-2">
               <StatBox idPrefix="route-attempt-detail-screen-duration" label="Tiempo" value={formatStopwatch(detail.durationMs ?? 0)} />
-              <StatBox idPrefix="route-attempt-detail-screen-date" label="Fecha" value={attemptDate ?? '—'} />
+              <StatBox idPrefix="route-attempt-detail-screen-pace" label="Ritmo" value={paceMinPerKm != null ? formatMetricValue('pace', paceMinPerKm) : '—'} />
+            </View>
+            <View className="flex-row gap-2" nativeID="route-attempt-detail-screen-stats-row-3" testID="route-attempt-detail-screen-stats-row-3">
+              <StatBox idPrefix="route-attempt-detail-screen-date" label="Fecha y hora" value={attemptDate ?? '—'} />
               <StatBox idPrefix="route-attempt-detail-screen-team" label="Equipo" value={team?.name ?? '—'} />
             </View>
           </View>
