@@ -1749,3 +1749,80 @@ el caso "ver un intento pasado desde cualquier dispositivo/plataforma, sin el es
 originó" — ver `docs/superpowers/specs/2026-10-20-route-attempt-detail-screen-design.md`. El caso
 "intento recién terminado, todavía en este mismo dispositivo" no depende de este gap (usa el id
 que ya tiene en memoria/SQLite).
+
+## Gap 36 — competencias de ruta: intentos múltiples configurables (`max_attempts`)
+
+**Pedido concreto.** Hoy una competencia `type='route'` admite un solo intento por
+corredor (Gap 33 punto 28, `400` en el segundo). Se pide hacerlo configurable: el
+creador de la competencia elige un `max_attempts` al crearla, y cada participante
+puede correr la ruta hasta esa cantidad de veces. El ranking usa, para cada
+corredor, el mejor de sus intentos propios (mayor % de cumplimiento de la
+trayectoria, empate por menor duración).
+
+**Arquitectura elegida (ver spec completa en
+`docs/superpowers/specs/2026-10-21-route-competition-multi-attempt-design.md`):
+un `session_instance` nuevo por cada intento, no uno compartido por toda la
+competencia.** Hoy `CreateAttempt` (`competition_service.go`) reusa la única
+`session_instance` sintética de la competencia (`comp.RouteSessionInstanceID`,
+Gap 33 punto 26) para el primer y único intento permitido. Para intentos
+adicionales del MISMO atleta, hace falta crear una `session_instance` nueva (la
+compartida ya quedó "ocupada" por ese atleta en su primer intento, y el índice
+único genérico de `runner_session` — `session_instance_id, athlete_user_id` —
+rige TODAS las sesiones del sistema, no solo competencias, así que no se toca).
+El primer intento de CUALQUIER atleta sigue reusando la instancia compartida
+sin cambios — el comportamiento de hoy para "un solo intento" queda intacto.
+
+**Campo nuevo en `Competition`:** `max_attempts: number`, solo para
+`type='route'` (`null`/ausente para `type='metric'`). Pregunta abierta: ¿cuál es
+el rango mínimo/máximo válido? El frontend valida client-side `[1, 10]` con
+default 3 mientras no haya respuesta (mismo criterio que
+`acceptance_radius_meters`, Gap 33 punto 31).
+
+**`CreateAttempt` cambia de regla:** de "¿existe ya un intento de este atleta
+contra esta competencia? → 400" a "`COUNT(runner_session WHERE competition_id=X
+AND athlete_user_id=Y) >= max_attempts` → 400". El primer intento de un atleta
+(count=0) sigue usando `comp.RouteSessionInstanceID`; el segundo en adelante
+crea una `session_instance` nueva.
+
+**Endpoint nuevo: `GET /competitions/{id}/attempts?athlete_user_id=X`**
+(`athlete_user_id` opcional, default = caller) → lista de intentos de ESE
+atleta contra esa competencia, mismo criterio de visibilidad que el ranking
+(cualquiera que vea la competencia puede pedir los intentos de cualquier
+participante, no solo los propios):
+
+```json
+[{
+  "runner_session_id": 123,
+  "session_instance_id": 9001,
+  "status": "finished",
+  "started_at": "2026-10-21T10:00:00Z",
+  "finished_at": "2026-10-21T10:15:00Z",
+  "distance_meters": 2850,
+  "duration_ms": 900000,
+  "compliance_ratio": 94.2
+}]
+```
+
+**`progress` del detalle de competencia (`GET /competitions/{id}`) deja de ser
+inútil para `type='route'`.** Hoy `progress: [{user_id, value}]` con `value`
+siempre sin semántica real para ruta. Pasa a llevar, por atleta, el MEJOR
+intento (mismo comparador de arriba): `{user_id, compliance_ratio, duration_ms,
+session_instance_id}` en vez de `value` — el `session_instance_id` es el de ESE
+mejor intento, imprescindible para que la navegación desde el ranking (que no
+elige un intento específico) pueda seguir pidiendo
+`GET /session-instances/:id/feedback` sin depender del endpoint de lista.
+
+**Nice-to-have, no bloqueante:** exponer `attempts_used`/`remaining_attempts`
+del caller en la fila de la competencia misma (listado o detalle), para que el
+frontend no tenga que pedir el endpoint de lista completo solo para decidir si
+mostrar el botón "Correr esta trayectoria". El frontend de esta ronda (ver
+spec) resuelve esto pidiendo el endpoint de lista igual, filtrado al usuario
+actual — funciona sin este campo, pero es más barato con él si en algún
+momento se agrega.
+
+**Impacto en frontend:** bloquea la versión real (no-mock) de todo el flujo de
+intentos múltiples — mismo patrón que Gap 18/35, el frontend ya está
+construido y probado contra mocks (branch `feature/route-competitions-polish`,
+ver el plan de implementación en
+`docs/superpowers/plans/2026-10-21-route-competition-multi-attempt.md`) y
+solo falta el flip a datos reales cuando esto se mergee.
