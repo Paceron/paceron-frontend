@@ -49,7 +49,42 @@ pointsByFeedback.set(9000, [
   { order: 3, session_instance_id: 9000, exercise_instance_id: 90000, latitude: -34.661, longitude: -58.364, recorded_at: '2026-10-18T14:03:25Z' },
   { order: 4, session_instance_id: 9000, exercise_instance_id: 90000, latitude: -34.661, longitude: -58.365, recorded_at: '2026-10-18T14:03:47Z' },
 ]);
-nextFeedbackId = 9001;
+// Segundo intento (Gap 36) -- mismo athlete_user_id/team_id, apuntando a la
+// session_instance NUEVA (9010, ver runner-session-mock.js). assigned_exercise_id
+// = 90100 = 9010*10, mismo criterio que mockCreateCompetitionAttempt
+// (session_instance_id * 10) para el ejercicio sintético. Deliberadamente
+// PEOR que el intento 9000: más lento (185000ms vs 107000ms) y con 2 de los
+// 5 puntos desviados ~150-200m del trazado de la seed 7
+// (acceptance_radius_meters: 50), así que su % de cumplimiento queda
+// claramente por debajo del ~100% del intento 9000 -- pickBestAttempt tiene
+// que elegir 9000, no un empate.
+feedbacks.push({
+  id: 9001,
+  assigned_session_id: 9010,
+  assigned_exercise_id: 90100,
+  athlete_user_id: 101,
+  team_id: 5,
+  exercise_name: 'Corrida',
+  set_number: 1,
+  completion_status: 'completed',
+  started_at: '2026-10-19T09:00:00Z',
+  ended_at: '2026-10-19T09:03:05Z',
+  duration_ms: 185000,
+  active_duration_ms: 185000,
+  distance_meters: 310,
+  report_source: 'corredor',
+  annotations: null,
+  created_at: '2026-10-19T09:03:10Z',
+  updated_at: '2026-10-19T09:03:10Z',
+});
+pointsByFeedback.set(9001, [
+  { order: 0, session_instance_id: 9010, exercise_instance_id: 90100, latitude: -34.660, longitude: -58.365, recorded_at: '2026-10-19T09:00:00Z' },
+  { order: 1, session_instance_id: 9010, exercise_instance_id: 90100, latitude: -34.6585, longitude: -58.3625, recorded_at: '2026-10-19T09:00:50Z' },
+  { order: 2, session_instance_id: 9010, exercise_instance_id: 90100, latitude: -34.6625, longitude: -58.3625, recorded_at: '2026-10-19T09:01:45Z' },
+  { order: 3, session_instance_id: 9010, exercise_instance_id: 90100, latitude: -34.661, longitude: -58.364, recorded_at: '2026-10-19T09:02:30Z' },
+  { order: 4, session_instance_id: 9010, exercise_instance_id: 90100, latitude: -34.661, longitude: -58.365, recorded_at: '2026-10-19T09:03:05Z' },
+]);
+nextFeedbackId = 9002;
 
 // Accesores compartidos con runner-session-mock: GET feedback por sesión y
 // GET points leen de la MISMA lista que crea el sync/los POSTs manuales,

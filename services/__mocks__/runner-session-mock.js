@@ -35,7 +35,28 @@ runnerSessions.push({
   end_date: '2026-10-18T14:03:47Z',
   competition_id: 7,
 });
-nextRunnerSessionId = 9001;
+// Segundo intento de la MISMA atleta contra la MISMA competencia -- pedido
+// real 2026-10-21 (Gap 36, intentos múltiples configurables): necesita
+// existir un atleta con MÁS de un intento contra la misma competencia para
+// poder probar pickBestAttempt/AttemptsListModal contra datos reales, no
+// solo tests unitarios aislados. session_instance_id 9010, no 9001 -- el
+// rango 9001+ lo usa nextSyntheticInstanceId de competitions-mock.js para
+// instancias creadas EN RUNTIME (nueva competencia, o segundo+ intento real
+// vía mockCreateCompetitionAttempt); un id fijo en el bloque "reservado para
+// seeds" (9000 = seed 7 intento 1, 9100 = seed 8) evita cualquier colisión
+// futura. Peor que el intento 9000 a propósito (ver el feedback/puntos
+// correspondientes en workoutFeedback-mock.js) -- así pickBestAttempt tiene
+// un ganador real y verificable, no dos intentos empatados por accidente.
+runnerSessions.push({
+  id: 9001,
+  session_instance_id: 9010,
+  athlete_user_id: 101,
+  status: 'finished',
+  start_date: '2026-10-19T09:00:00Z',
+  end_date: '2026-10-19T09:03:05Z',
+  competition_id: 7,
+});
+nextRunnerSessionId = 9002;
 
 // Seed para pruebas deterministas de la pantalla de revisión.
 export function __seedRunnerSession(dto) {
@@ -55,6 +76,17 @@ export function __countFinishedRunnerSessionsByCompetition(competitionId, athlet
   return runnerSessions.filter(
     (r) => r.competition_id === Number(competitionId) && r.athlete_user_id === Number(athleteUserId) && r.status === 'finished',
   ).length;
+}
+
+// Lista CRUDA (sin joins) de las filas de runner_session de UN atleta contra
+// UNA competencia -- base de GET /competitions/{id}/attempts (Gap 36,
+// intentos múltiples). A diferencia de __countFinishedRunnerSessionsByCompetition
+// (que solo cuenta 'finished'), esto devuelve TODAS las filas sin filtrar por
+// status -- el caller (competitions-mock.js) decide qué hacer con cada una.
+export function __listRunnerSessionsByCompetitionAndAthlete(competitionId, athleteUserId) {
+  return runnerSessions.filter(
+    (r) => r.competition_id === Number(competitionId) && r.athlete_user_id === Number(athleteUserId),
+  );
 }
 
 function findRow(sessionInstanceId, athleteUserId) {
