@@ -3,9 +3,11 @@
 ## Contexto
 
 Hoy una competencia `type='route'` admite **un solo intento por corredor**
-(`400` en el segundo, ver `docs/BACKEND_API_GAPS.md` Gap 28 — "resuelto, sin
-reintentos en v1"). Esto se decidió explícitamente así para la v1 del módulo
-de gamificación (Gap 33), con la nota de que iba a cambiar. El usuario pidió
+(`400` en el segundo, ver `docs/BACKEND_API_GAPS.md` Gap 33 punto 28 — "resuelto,
+sin reintentos en v1"; no confundir con el Gap 28 standalone del mismo
+documento, que es sobre WebSocket de asistencia, tema no relacionado). Esto
+se decidió explícitamente así para la v1 del módulo de gamificación (Gap 33),
+con la nota de que iba a cambiar. El usuario pidió
 retomar esto ahora que el camino de un solo intento ya está construido y
 probado (`route-attempt-pre-start-screen.jsx` → `route-attempt-live-screen.jsx`
 → `route-attempt-detail-screen.jsx`, con el mapa de trayectoria y el
@@ -96,8 +98,12 @@ Se evaluaron 3 enfoques:
   muestra literal `'—'`). Pasa a llevar, por atleta, el MEJOR intento según
   el mismo comparador que ya ordena entre corredores distintos
   (% de cumplimiento de la trayectoria descendente, empate por menor
-  `duration_ms`): `{user_id, compliance_ratio, duration_ms}` en vez de
-  `value` para competencias de ruta.
+  `duration_ms`): `{user_id, compliance_ratio, duration_ms, session_instance_id}`
+  en vez de `value` para competencias de ruta — el `session_instance_id` es
+  el de ESE mejor intento, imprescindible para que la navegación desde el
+  ranking (`competitionId + athleteUserId`, sin intento específico elegido)
+  siga pudiendo pedir `GET /session-instances/:id/feedback` sin pasar por el
+  endpoint de lista.
 - **El detalle (o el endpoint de arriba) expone `attempts_used` /
   `remaining_attempts` del CALLER** sobre la fila de la competencia misma
   (no solo dentro del endpoint de lista) — para que `competitions-tab.jsx`
