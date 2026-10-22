@@ -37,8 +37,19 @@ function useLocalAttemptDetail(setId, { distanceMeters, durationMs, startedAt, c
   };
 }
 
-function useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading }) {
-  const sessionInstanceId = competition?.sessionInstanceId ?? null;
+function useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading, sessionInstanceIdOverride }) {
+  // Prioridad: (1) un intento específico elegido explícitamente (viene de
+  // AttemptsListModal, Task 10) -- (2) el mejor intento de ESTE atleta
+  // puntual (Gap 36, vive en competition.progress, distinto por atleta) --
+  // (3) fallback al session_instance_id único de la competencia (gap 35,
+  // competencias viejas sin progress poblado todavía). Antes de este plan
+  // SIEMPRE usaba (3) sin más -- correcto solo mientras cada atleta tenía
+  // como máximo un intento.
+  const athleteProgress = competition?.progress?.find((p) => p.userId === String(athleteUserId));
+  const sessionInstanceId = sessionInstanceIdOverride
+    ?? athleteProgress?.sessionInstanceId
+    ?? competition?.sessionInstanceId
+    ?? null;
 
   const runnerSessionQuery = useQuery({
     queryKey: ['attempt-detail-runner-session', sessionInstanceId, athleteUserId],
@@ -107,10 +118,10 @@ function useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading
 // ramas -- antes la rama local nunca lo pedía, dejando el mapa vacío y
 // sin distancia esperada/equipo (bug real reportado 2026-10-21). Ver la
 // spec para el detalle completo.
-export function useAttemptDetail({ competitionId, athleteUserId, setId, distanceMeters, durationMs, startedAt }) {
+export function useAttemptDetail({ competitionId, athleteUserId, setId, distanceMeters, durationMs, startedAt, sessionInstanceId }) {
   const { detail: competition, loading: competitionLoading } = useCompetitionDetail(competitionId);
   const local = useLocalAttemptDetail(setId, { distanceMeters, durationMs, startedAt, competition });
-  const remote = useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading });
+  const remote = useRemoteAttemptDetail(athleteUserId, { competition, competitionLoading, sessionInstanceIdOverride: sessionInstanceId });
   const result = setId ? local : remote;
   // % de la distancia recorrida dentro del radio de aceptación -- mismos
   // traveledPoints/referenceRoute que ya resolvió la rama elegida, solo
