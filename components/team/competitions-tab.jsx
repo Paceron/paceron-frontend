@@ -7,7 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
-import { useCompetitions, useCompetitionMutations, useCompetitionDetail, useSeedDynamicRouteCompetition } from '../../hooks/use-competitions.js';
+import { useCompetitions, useCompetitionMutations, useCompetitionDetail, useCompetitionAttempts, useSeedDynamicRouteCompetition } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
@@ -16,6 +16,7 @@ import { openLocationInMaps } from '../../utils/maps-link.js';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
+import { AttemptsListModal } from './attempts-list-modal.jsx';
 import { RouteMapPreview } from './route-map-preview';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
@@ -144,24 +145,32 @@ function RouteDetailSection({ idPrefix, competition, members, sortedParticipantI
   );
 }
 
-function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, busy }) {
   const colors = useThemeColors();
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const idPrefix = `competitions-tab-row-${competition.id}`;
 
   const isOwnPendingProposal = competition.status === 'pending_approval' && competition.createdByRole === 'runner' && competition.createdByUserId === currentUserId;
   const canClose = isTrainerView && competition.status === 'active' && competition.endAt && competition.endAt < new Date().toISOString().slice(0, 10);
-  const canRun = !isTrainerView && competition.type === 'route' && competition.status === 'active' && competition.participantUserIds.includes(currentUserId);
+  // Gap 36 -- antes `canRun` no chequeaba intentos usados en absoluto (el
+  // único bloqueo era un 400 server-side, invisible hasta que el corredor
+  // lo tocaba). Con max_attempts > 1 posible, un corredor con cupo agotado
+  // necesita feedback claro de entrada, no un error de red.
+  const canRunBase = !isTrainerView && competition.type === 'route' && competition.status === 'active' && competition.participantUserIds.includes(currentUserId);
+  const { attempts: myAttempts } = useCompetitionAttempts(competition.id, currentUserId, { enabled: canRunBase });
+  const maxAttempts = competition.maxAttempts ?? 1;
+  const remainingAttempts = maxAttempts - myAttempts.length;
+  const runTooltipLabel = remainingAttempts > 0 ? `Correr esta trayectoria (intento ${myAttempts.length + 1} de ${maxAttempts})` : 'Sin intentos disponibles';
   const canApproveReject = isTrainerView && competition.status === 'pending_approval';
   // Ranking: visible para CUALQUIERA que pueda ver la competencia mientras
   // esté activa -- a diferencia del resto de las acciones de acá, no
   // depende de rol ni de participación (pedido real, 2026-10-16).
   const canViewRanking = competition.status === 'active';
-  // El botón de Play (canRun) solo entra en el grupo de acciones ícono en
-  // nativo -- en web `canRun` sigue true pero no hay botón, solo un aviso
-  // informativo (más abajo), así que no cuenta para decidir si el grupo
-  // de acciones se renderiza.
-  const hasActions = canApproveReject || isOwnPendingProposal || canClose || canViewRanking || (canRun && !isWeb);
+  // El botón de Play (canRunBase) solo entra en el grupo de acciones ícono
+  // en nativo -- en web `canRunBase` sigue true pero no hay botón, solo un
+  // aviso informativo (más abajo), así que no cuenta para decidir si el
+  // grupo de acciones se renderiza.
+  const hasActions = canApproveReject || isOwnPendingProposal || canClose || canViewRanking || (canRunBase && !isWeb);
 
   const sortedParticipantIds = [...competition.participantUserIds].sort((a, b) => {
     const aWinner = competition.winnerUserIds.includes(a) ? 0 : 1;
@@ -213,6 +222,13 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
                 </Pressable>
               </IconTooltip>
             )}
+            {canViewRanking && competition.type === 'route' && (
+              <IconTooltip align="end" idPrefix={`${idPrefix}-attempts-tooltip`} label="Ver todos los intentos" position="bottom">
+                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:opacity-70 dark:bg-slate-800" nativeID={`${idPrefix}-attempts-button`} onPress={() => onOpenAttempts(competition)} testID={`${idPrefix}-attempts-button`}>
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="format-list-bulleted" size={18} />
+                </Pressable>
+              </IconTooltip>
+            )}
             {canApproveReject && (
               <>
                 <IconTooltip align="end" idPrefix={`${idPrefix}-approve-tooltip`} label="Aprobar" position="bottom">
@@ -241,9 +257,9 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
                 </Pressable>
               </IconTooltip>
             )}
-            {canRun && !isWeb && (
-              <IconTooltip align="end" idPrefix={`${idPrefix}-run-tooltip`} label="Correr esta trayectoria" position="bottom">
-                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15 active:opacity-70 disabled:opacity-60" disabled={busy} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
+            {canRunBase && !isWeb && (
+              <IconTooltip align="end" idPrefix={`${idPrefix}-run-tooltip`} label={runTooltipLabel} position="bottom">
+                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15 active:opacity-70 disabled:opacity-60" disabled={busy || remainingAttempts <= 0} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
                   <MaterialCommunityIcons color={colors.primary} name="play" size={18} />
                 </Pressable>
               </IconTooltip>
@@ -279,10 +295,12 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
         <RouteDetailSection competition={competition} idPrefix={idPrefix} members={members} sortedParticipantIds={sortedParticipantIds} />
       )}
 
-      {canRun && isWeb && (
+      {canRunBase && isWeb && (
         <View className="ml-6 mt-3" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
           <Text className="self-start rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
-            Correr una trayectoria solo está disponible en la app nativa
+            {remainingAttempts > 0
+              ? `Correr una trayectoria solo está disponible en la app nativa (intento ${myAttempts.length + 1} de ${maxAttempts})`
+              : 'Ya alcanzaste el máximo de intentos para esta competencia'}
           </Text>
         </View>
       )}
@@ -301,6 +319,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
   const [createVisible, setCreateVisible] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState(null);
   const [rankingCompetition, setRankingCompetition] = useState(null);
+  const [attemptsCompetition, setAttemptsCompetition] = useState(null);
   const [subTab, setSubTab] = useState('active');
   // Expandidas por defecto, se recuerda cuál se colapsó -- pedido real,
   // 2026-10-17. Vive acá (no en el estado local de cada fila) porque
@@ -432,6 +451,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
               onClose={handleClose}
               onRun={handleRun}
               onReject={setRejectTargetId}
+              onOpenAttempts={setAttemptsCompetition}
               onOpenRanking={setRankingCompetition}
               onToggleExpand={() => toggleExpanded(competition.id)}
             />
@@ -456,6 +476,13 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
         members={members}
         onClose={() => setRankingCompetition(null)}
         visible={rankingCompetition != null}
+      />
+      <AttemptsListModal
+        competition={attemptsCompetition}
+        currentUserId={currentUserId}
+        members={members}
+        onClose={() => setAttemptsCompetition(null)}
+        visible={attemptsCompetition != null}
       />
     </View>
   );
