@@ -106,6 +106,11 @@ function RouteAttemptDetailScreenContent() {
     distanceMeters: params.distanceMeters,
     durationMs: params.durationMs,
     startedAt: params.startedAt,
+    // Gap 36 -- presente solo cuando se navega desde AttemptsListModal (un
+    // intento puntual, no necesariamente el mejor); ausente desde el
+    // ranking, que sigue resolviendo el mejor intento del atleta por su
+    // cuenta (ver hooks/use-attempt-detail.js).
+    sessionInstanceId: params.sessionInstanceId,
   });
   const { team } = useTeam(detail.teamId);
 
