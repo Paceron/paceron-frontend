@@ -11,6 +11,7 @@ import {
   toTeamSubscriptionModel, toTeamConfigurationModel,
   toSessionMessageModel, toSessionMessagePayload,
   toExerciseModel, toCreateExercisePayload,
+  toCompetitionModel, toCompetitionDetailModel, toCompetitionAttemptListModel, toCreateCompetitionPayload,
 } from '../services/normalizers.js';
 
 describe('toUserModel', () => {
@@ -1331,5 +1332,133 @@ describe('toCreateExercisePayload', () => {
     // para el repo Go — no se "arregla" acá sin cambiar el contrato.
     const payload = toCreateExercisePayload({ ...form, minutes: null });
     expect(payload).not.toHaveProperty('minutes');
+  });
+});
+
+describe('toCompetitionModel', () => {
+  test('maps session_instance_id to sessionInstanceId as a string', () => {
+    const dto = {
+      id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+      start_at: '2026-10-20T10:00:00Z', end_at: null,
+      route: null, acceptance_radius_meters: 50,
+      participant_user_ids: [1], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null,
+      session_instance_id: 9000,
+    };
+    expect(toCompetitionModel(dto).sessionInstanceId).toBe('9000');
+  });
+
+  test('maps a null session_instance_id (metric competitions) to null', () => {
+    const dto = {
+      id: 1, team_id: 5, group_id: null, type: 'metric', metric: 'distance',
+      start_at: '2026-10-20T10:00:00Z', end_at: '2026-10-27T10:00:00Z',
+      route: null, acceptance_radius_meters: null,
+      participant_user_ids: [1], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null,
+      session_instance_id: null,
+    };
+    expect(toCompetitionModel(dto).sessionInstanceId).toBeNull();
+  });
+});
+
+describe('toCompetitionModel -- maxAttempts', () => {
+  test('maps max_attempts through for a route competition', () => {
+    const dto = {
+      id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+      start_at: '2026-10-20T10:00:00Z', end_at: null,
+      route: null, acceptance_radius_meters: 50, max_attempts: 3,
+      participant_user_ids: [1], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null, session_instance_id: 9000,
+    };
+    expect(toCompetitionModel(dto).maxAttempts).toBe(3);
+  });
+
+  test('maps a null max_attempts (metric competitions) to null', () => {
+    const dto = {
+      id: 1, team_id: 5, group_id: null, type: 'metric', metric: 'distance',
+      start_at: '2026-10-20T10:00:00Z', end_at: '2026-10-27T10:00:00Z',
+      route: null, acceptance_radius_meters: null, max_attempts: null,
+      participant_user_ids: [1], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null, session_instance_id: null,
+    };
+    expect(toCompetitionModel(dto).maxAttempts).toBeNull();
+  });
+});
+
+describe('toCompetitionDetailModel -- progress de type=route', () => {
+  test('carga complianceRatio/durationMs/sessionInstanceId para type=route', () => {
+    const dto = {
+      id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+      start_at: '2026-10-20T10:00:00Z', end_at: null,
+      route: null, acceptance_radius_meters: 50, max_attempts: 3,
+      participant_user_ids: [101], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null, session_instance_id: 9000,
+      progress: [{ user_id: 101, value: null, compliance_ratio: 94.2, duration_ms: 107000, session_instance_id: 9000 }],
+    };
+    const entry = toCompetitionDetailModel(dto).progress[0];
+    expect(entry.userId).toBe('101');
+    expect(entry.complianceRatio).toBe(94.2);
+    expect(entry.durationMs).toBe(107000);
+    expect(entry.sessionInstanceId).toBe('9000');
+  });
+
+  test('sin intentos (atleta sin registro) -- los 3 campos son null', () => {
+    const dto = {
+      id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+      start_at: '2026-10-20T10:00:00Z', end_at: null,
+      route: null, acceptance_radius_meters: 50, max_attempts: 3,
+      participant_user_ids: [102], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null, session_instance_id: 9000,
+      progress: [{ user_id: 102, value: null, compliance_ratio: null, duration_ms: null, session_instance_id: null }],
+    };
+    const entry = toCompetitionDetailModel(dto).progress[0];
+    expect(entry.complianceRatio).toBeNull();
+    expect(entry.durationMs).toBeNull();
+    expect(entry.sessionInstanceId).toBeNull();
+  });
+});
+
+describe('toCompetitionAttemptListModel', () => {
+  test('mapea cada intento, ids a string', () => {
+    const list = [{
+      runner_session_id: 9000, session_instance_id: 9000, status: 'finished',
+      started_at: '2026-10-18T14:02:00Z', finished_at: '2026-10-18T14:03:47Z',
+      distance_meters: 287, duration_ms: 107000, compliance_ratio: 94.2,
+    }];
+    const [entry] = toCompetitionAttemptListModel(list);
+    expect(entry.runnerSessionId).toBe('9000');
+    expect(entry.sessionInstanceId).toBe('9000');
+    expect(entry.status).toBe('finished');
+    expect(entry.distanceMeters).toBe(287);
+    expect(entry.durationMs).toBe(107000);
+    expect(entry.complianceRatio).toBe(94.2);
+  });
+
+  test('lista vacía -> array vacío', () => {
+    expect(toCompetitionAttemptListModel([])).toEqual([]);
+  });
+});
+
+describe('toCreateCompetitionPayload -- max_attempts', () => {
+  test('incluye max_attempts cuando type=route', () => {
+    const payload = toCreateCompetitionPayload({
+      type: 'route', startAt: '2026-11-01', route: { type: 'LineString', coordinates: [] },
+      acceptanceRadiusMeters: '50', maxAttempts: '3', participantUserIds: ['1', '2'],
+    });
+    expect(payload.max_attempts).toBe(3);
+  });
+
+  test('no incluye max_attempts cuando type=metric', () => {
+    const payload = toCreateCompetitionPayload({
+      type: 'metric', startAt: '2026-11-01', metric: 'distance', endAt: '2026-11-07',
+      participantUserIds: ['1', '2'],
+    });
+    expect(payload).not.toHaveProperty('max_attempts');
   });
 });

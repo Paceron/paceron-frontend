@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { notifySuccess } from '../../utils/haptics.js';
@@ -24,8 +23,8 @@ import { syncRun } from '../../services/session-sync.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { findActiveMetricCompetitionId } from '../../utils/competition-match.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
-import { logDebug } from '../../utils/debug-log.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
+import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();
@@ -323,16 +322,7 @@ function SessionPreStartScreenContent() {
     // watchPositionAsync, una API distinta que no bloquea nada -- si el GPS
     // realmente no consigue un fix, simplemente no llegan puntos, mismo
     // resultado gracioso que cuando el permiso se niega.
-    const gpsStartedAt = Date.now();
-    let gpsEnabled = false;
-    try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      logDebug(`[pre-start] permiso GPS resuelto (${Date.now() - gpsStartedAt}ms) granted=${permission.granted}`);
-      gpsEnabled = Boolean(permission.granted);
-    } catch (error) {
-      logDebug(`[pre-start] GPS ERROR (${Date.now() - gpsStartedAt}ms): ${error.message}`);
-      gpsEnabled = false;
-    }
+    const gpsEnabled = await requestSessionGpsPermission('[pre-start]');
     setGpsEnabled(gpsEnabled);
     router.push(pendingSession.isPresencial ? '/training-session-live' : '/training-session-active');
   };

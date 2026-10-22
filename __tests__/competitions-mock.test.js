@@ -7,6 +7,8 @@ import {
   mockCloseCompetition,
   mockCreateCompetitionAttempt,
   mockGetCompetition,
+  mockGetCompetitionAttempts,
+  mockSeedDynamicRouteCompetitionStart,
   __resetMockCompetitions,
 } from '../services/__mocks__/competitions-mock.js';
 import { __seedRunnerSession, __resetRunnerSessionMock } from '../services/__mocks__/runner-session-mock.js';
@@ -80,17 +82,17 @@ describe('mockCreateCompetitionAttempt', () => {
       acceptance_radius_meters: 50, participant_user_ids: [2, 3],
     }, { isTrainerCreator: true });
     const attempt = await mockCreateCompetitionAttempt(competition.id, 2);
-    expect(attempt.session_instance_id).toBe(competition.synthetic_session_instance_id);
+    expect(attempt.session_instance_id).toBe(competition.session_instance_id);
     expect(attempt.session_instance.exercises).toHaveLength(1);
   });
 
-  test('segundo intento del mismo atleta -> error', async () => {
+  test('segundo intento del mismo atleta sin max_attempts (default 1) -> error', async () => {
     const competition = await mockCreateCompetition(1, {
       type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
       acceptance_radius_meters: 50, participant_user_ids: [2, 3],
     }, { isTrainerCreator: true });
     await mockCreateCompetitionAttempt(competition.id, 2);
-    await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('Ya tenés un intento');
+    await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('máximo de intentos');
   });
 
   test('atleta no participante -> error', async () => {
@@ -142,7 +144,7 @@ describe('mockGetCompetition', () => {
     expect(competition.route.coordinates.length).toBeGreaterThanOrEqual(2);
     expect(competition.acceptance_radius_meters).toBeGreaterThanOrEqual(5);
     expect(competition.acceptance_radius_meters).toBeLessThanOrEqual(500);
-    expect(competition.synthetic_session_instance_id).toEqual(expect.any(Number));
+    expect(competition.session_instance_id).toEqual(expect.any(Number));
   });
 
   test('user_id 1 puede correr un intento contra la seed 7, sin colisionar con instancias creadas en runtime', async () => {
@@ -155,7 +157,31 @@ describe('mockGetCompetition', () => {
       type: 'route', route: { type: 'LineString', coordinates: [[-58.3, -34.6], [-58.31, -34.61]] },
       acceptance_radius_meters: 50, participant_user_ids: [1, 101],
     }, { isTrainerCreator: true });
-    expect(created.synthetic_session_instance_id).not.toBe(9000);
+    expect(created.session_instance_id).not.toBe(9000);
+  });
+
+  test('seed 8 es la competencia de ruta dinámica, reubicable una sola vez por GPS real', async () => {
+    const { data } = await mockListCompetitions(5);
+    const before = data.find((c) => c.id === 8);
+    expect(before.type).toBe('route');
+    expect(before.status).toBe('active');
+    expect(before.participant_user_ids).toContain(1);
+
+    const changed = mockSeedDynamicRouteCompetitionStart(-10, -70);
+    expect(changed).toBe(true);
+    const { data: afterList } = await mockListCompetitions(5);
+    const after = afterList.find((c) => c.id === 8);
+    expect(after.route.coordinates[0]).toEqual([-70, -10]);
+    // El resto del trazado se traslada por el mismo delta -- no colapsa a
+    // un solo punto ni cambia de forma/largo.
+    expect(after.route.coordinates.length).toBe(before.route.coordinates.length);
+    expect(after.route.coordinates[0]).not.toEqual(after.route.coordinates[1]);
+
+    // Segunda llamada -- no reubica de nuevo (ya se fijó una vez).
+    const changedAgain = mockSeedDynamicRouteCompetitionStart(40, 40);
+    expect(changedAgain).toBe(false);
+    const { data: stillList } = await mockListCompetitions(5);
+    expect(stillList.find((c) => c.id === 8).route.coordinates[0]).toEqual([-70, -10]);
   });
 
   test('seed 6 tiene ventana enteramente futura, no cubre hoy', async () => {
@@ -176,5 +202,104 @@ describe('mockGetCompetition', () => {
     const { data } = await mockGetCompetition(4);
     const own = data.progress.find((p) => p.user_id === 1);
     expect(own.value).toBe(2);
+  });
+});
+
+describe('mockCreateCompetitionAttempt -- max_attempts', () => {
+  beforeEach(() => {
+    __resetMockCompetitions();
+  });
+
+  test('con max_attempts=2, el primer intento reusa la instancia de la competencia', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, max_attempts: 2, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: true });
+    const attempt = await mockCreateCompetitionAttempt(competition.id, 2);
+    expect(attempt.session_instance_id).toBe(competition.session_instance_id);
+  });
+
+  test('con max_attempts=2, el segundo intento del mismo atleta mintea una instancia nueva', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, max_attempts: 2, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: true });
+    const first = await mockCreateCompetitionAttempt(competition.id, 2);
+    const second = await mockCreateCompetitionAttempt(competition.id, 2);
+    expect(second.session_instance_id).not.toBe(first.session_instance_id);
+  });
+
+  test('con max_attempts=2, el tercer intento del mismo atleta -> error', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, max_attempts: 2, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: true });
+    await mockCreateCompetitionAttempt(competition.id, 2);
+    await mockCreateCompetitionAttempt(competition.id, 2);
+    await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('máximo de intentos');
+  });
+
+  test('sin max_attempts en el payload -> default 1, mismo comportamiento que antes', async () => {
+    const competition = await mockCreateCompetition(1, {
+      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
+      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+    }, { isTrainerCreator: true });
+    expect(competition.max_attempts).toBe(1);
+  });
+});
+
+describe('mockGetCompetitionAttempts', () => {
+  // Reseed explícito de los 2 intentos de la seed 7/atleta 101 -- el seed de
+  // módulo (runner-session-mock.js) se agrega UNA vez al cargar el módulo, y
+  // un test anterior en este mismo archivo ("metric sessions_count agrega...")
+  // llama __resetRunnerSessionMock(), que lo vacía para el resto de la
+  // corrida. Sin este beforeEach, estos tests dependen del ORDEN de
+  // ejecución dentro del archivo -- bug real encontrado corriendo los tests
+  // (0 intentos en vez de 2).
+  beforeEach(() => {
+    __resetMockCompetitions();
+    __resetRunnerSessionMock();
+    __seedRunnerSession({ id: 9000, session_instance_id: 9000, athlete_user_id: 101, status: 'finished', start_date: '2026-10-18T14:02:00Z', end_date: '2026-10-18T14:03:47Z', competition_id: 7 });
+    __seedRunnerSession({ id: 9001, session_instance_id: 9010, athlete_user_id: 101, status: 'finished', start_date: '2026-10-19T09:00:00Z', end_date: '2026-10-19T09:03:05Z', competition_id: 7 });
+  });
+
+  test('devuelve los 2 intentos seed de la atleta 101 contra la competencia 7, con compliance_ratio distinto', async () => {
+    const { data } = await mockGetCompetitionAttempts(7, 101);
+    expect(data).toHaveLength(2);
+    const bySessionInstance = Object.fromEntries(data.map((a) => [a.session_instance_id, a]));
+    expect(bySessionInstance[9000].compliance_ratio).toBeGreaterThan(bySessionInstance[9010].compliance_ratio);
+    expect(bySessionInstance[9000].duration_ms).toBe(107000);
+    expect(bySessionInstance[9010].duration_ms).toBe(185000);
+  });
+
+  test('atleta sin intentos -> lista vacía, no error', async () => {
+    const { data } = await mockGetCompetitionAttempts(7, 102);
+    expect(data).toEqual([]);
+  });
+});
+
+describe('mockGetCompetition -- progress de type=route (Gap 36)', () => {
+  // Mismo motivo que el beforeEach de mockGetCompetitionAttempts arriba.
+  beforeEach(() => {
+    __resetMockCompetitions();
+    __resetRunnerSessionMock();
+    __seedRunnerSession({ id: 9000, session_instance_id: 9000, athlete_user_id: 101, status: 'finished', start_date: '2026-10-18T14:02:00Z', end_date: '2026-10-18T14:03:47Z', competition_id: 7 });
+    __seedRunnerSession({ id: 9001, session_instance_id: 9010, athlete_user_id: 101, status: 'finished', start_date: '2026-10-19T09:00:00Z', end_date: '2026-10-19T09:03:05Z', competition_id: 7 });
+  });
+
+  test('el mejor intento de la atleta 101 contra la seed 7 aparece en progress', async () => {
+    const { data } = await mockGetCompetition(7);
+    const own = data.progress.find((p) => p.user_id === 101);
+    expect(own.session_instance_id).toBe(9000);
+    expect(own.compliance_ratio).toBeGreaterThan(0);
+    expect(own.duration_ms).toBe(107000);
+  });
+
+  test('un participante sin intentos tiene compliance_ratio/duration_ms/session_instance_id null', async () => {
+    const { data } = await mockGetCompetition(7);
+    const noAttempts = data.progress.find((p) => p.user_id === 102);
+    expect(noAttempts.compliance_ratio).toBeNull();
+    expect(noAttempts.duration_ms).toBeNull();
+    expect(noAttempts.session_instance_id).toBeNull();
   });
 });

@@ -1144,7 +1144,16 @@ export function toCompetitionModel(dto) {
     startAt: dto.start_at,
     endAt: dto.end_at ?? null,
     route: dto.route ?? null,
+    // Gap 35 -- instancia sintética de una competencia de ruta, null para
+    // type='metric'. Sin esto no hay forma de pedir el detalle de un
+    // intento viejo por API (ver route-attempt-detail-screen.jsx).
+    sessionInstanceId: dto.session_instance_id != null ? String(dto.session_instance_id) : null,
     acceptanceRadiusMeters: dto.acceptance_radius_meters ?? null,
+    // Gap 36 -- tope de intentos de una competencia de ruta, null para
+    // type='metric'. Default 1 ya lo aplica el backend/mock si viene
+    // ausente -- este normalizer no inventa un default propio, solo
+    // refleja lo que llegó.
+    maxAttempts: dto.max_attempts ?? null,
     participantUserIds: (dto.participant_user_ids ?? []).map((id) => String(id)),
     createdByUserId: String(dto.created_by_user_id),
     createdByRole: dto.created_by_role,
@@ -1166,8 +1175,38 @@ export function toCompetitionDetailModel(dto) {
   if (!dto) return null;
   return {
     ...toCompetitionModel(dto),
-    progress: (dto.progress ?? []).map((p) => ({ userId: String(p.user_id), value: p.value })),
+    // Gap 36 -- compliance_ratio/duration_ms/session_instance_id solo
+    // llegan con datos reales para type='route' (el mejor intento de ese
+    // atleta); quedan null/ausentes para type='metric', donde `value` sigue
+    // siendo el campo real.
+    progress: (dto.progress ?? []).map((p) => ({
+      userId: String(p.user_id),
+      value: p.value,
+      complianceRatio: p.compliance_ratio ?? null,
+      durationMs: p.duration_ms ?? null,
+      sessionInstanceId: p.session_instance_id != null ? String(p.session_instance_id) : null,
+    })),
   };
+}
+
+// Un intento de competencia de ruta (GET /competitions/{id}/attempts, Gap
+// 36) -- usado por AttemptsListModal y por competitions-tab.jsx para contar
+// cupo restante del usuario actual.
+export function toCompetitionAttemptModel(dto) {
+  return {
+    runnerSessionId: String(dto.runner_session_id),
+    sessionInstanceId: String(dto.session_instance_id),
+    status: dto.status,
+    startedAt: dto.started_at,
+    finishedAt: dto.finished_at ?? null,
+    distanceMeters: dto.distance_meters ?? null,
+    durationMs: dto.duration_ms ?? null,
+    complianceRatio: dto.compliance_ratio ?? null,
+  };
+}
+
+export function toCompetitionAttemptListModel(list) {
+  return (list ?? []).map(toCompetitionAttemptModel);
 }
 
 // Payload de creación (Gap 33) -- SIN created_by_user_id/created_by_role,
@@ -1185,6 +1224,8 @@ export function toCreateCompetitionPayload(form) {
   if (form.type === 'route') {
     payload.route = form.route;
     payload.acceptance_radius_meters = Number(form.acceptanceRadiusMeters);
+    // Gap 36 -- tope de intentos, solo para competencias de ruta.
+    payload.max_attempts = Number(form.maxAttempts);
   } else {
     payload.metric = form.metric;
     payload.end_at = form.endAt;
