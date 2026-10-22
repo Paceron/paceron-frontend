@@ -6,6 +6,7 @@ import { USE_MOCKS } from '../config/env.js';
 import {
   listCompetitions,
   getCompetition,
+  getCompetitionAttempts,
   createCompetition as createCompetitionService,
   approveCompetition as approveCompetitionService,
   rejectCompetition as rejectCompetitionService,
@@ -14,7 +15,7 @@ import {
   createCompetitionAttempt as createCompetitionAttemptService,
   seedDynamicRouteCompetitionStart,
 } from '../services/competitions.js';
-import { toCompetitionModel, toCompetitionDetailModel, toCreateCompetitionPayload } from '../services/normalizers.js';
+import { toCompetitionModel, toCompetitionDetailModel, toCompetitionAttemptListModel, toCreateCompetitionPayload } from '../services/normalizers.js';
 
 // Listado de competencias de un equipo (Gap 33) -- `hasUnseen` alimenta el
 // punto rojo de la pestaña (ver hooks/use-gamification-badge.js, que NO
@@ -52,6 +53,20 @@ export function useCompetitionDetail(id, { enabled = true, refetchInterval } = {
   return { detail: query.data ?? null, loading: query.isLoading };
 }
 
+// Lista de intentos de UN atleta contra una competencia de ruta (Gap 36,
+// endpoint nuevo). Dos consumidores: AttemptsListModal (elegir atleta y
+// listar sus intentos) y competitions-tab.jsx (contar cupo restante del
+// usuario actual antes de mostrar/deshabilitar "Correr esta trayectoria").
+export function useCompetitionAttempts(competitionId, athleteUserId, { enabled = true } = {}) {
+  const query = useQuery({
+    queryKey: ['competition-attempts', competitionId, athleteUserId],
+    queryFn: () => getCompetitionAttempts(competitionId, athleteUserId).then((response) => toCompetitionAttemptListModel(response.data ?? response)),
+    enabled: Boolean(competitionId) && Boolean(athleteUserId) && enabled,
+  });
+
+  return { attempts: query.data ?? [], loading: query.isLoading };
+}
+
 // Las 5 mutaciones del dominio -- todas invalidan la misma queryKey al
 // resolver (sin filtros: invalida cualquier variante status/groupId
 // cacheada para este equipo, comportamiento default de TanStack Query).
@@ -68,9 +83,20 @@ export function useCompetitionMutations(teamId) {
   const rejectMutation = useMutation({ mutationFn: ({ id, reason }) => rejectCompetitionService(id, reason), onSuccess: invalidate });
   const cancelMutation = useMutation({ mutationFn: cancelCompetitionService, onSuccess: invalidate });
   const closeMutation = useMutation({ mutationFn: closeCompetitionService, onSuccess: invalidate });
-  // Sin invalidate -- correr un intento no cambia el status/listado de la
-  // competencia, solo crea el runner_session sintético del lado backend.
-  const attemptMutation = useMutation({ mutationFn: ({ id, athleteUserId }) => createCompetitionAttemptService(id, athleteUserId) });
+  // Gap 36 -- SÍ invalida ahora: el comentario de arriba ("no cambia el
+  // status/listado") sigue siendo cierto para la query de LISTADO de
+  // competencias (sin tocar), pero el listado de intentos propios
+  // (useCompetitionAttempts) y el progress/ranking de la competencia
+  // (useCompetitionDetail) necesitan reflejar el intento recién creado la
+  // próxima vez que se consulten -- típicamente al volver a
+  // competitions-tab.jsx después de correr.
+  const attemptMutation = useMutation({
+    mutationFn: ({ id, athleteUserId }) => createCompetitionAttemptService(id, athleteUserId),
+    onSuccess: (_, { id, athleteUserId }) => {
+      queryClient.invalidateQueries({ queryKey: ['competition-attempts', id, athleteUserId] });
+      queryClient.invalidateQueries({ queryKey: ['competition', id] });
+    },
+  });
 
   const wrap = (mutateAsync) => async (...args) => {
     try {

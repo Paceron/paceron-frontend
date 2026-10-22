@@ -9,6 +9,7 @@ import {
   mockCloseCompetition,
   mockCreateCompetitionAttempt,
   mockGetCompetition,
+  mockGetCompetitionAttempts,
   mockSeedDynamicRouteCompetitionStart,
 } from './__mocks__/competitions-mock.js';
 
@@ -65,6 +66,17 @@ export async function getCompetition(id) {
 export async function createCompetitionAttempt(id, athleteUserId) {
   if (USE_MOCKS) return await mockCreateCompetitionAttempt(id, athleteUserId);
   return await api.post(`/competitions/${id}/attempts`, {});
+}
+
+// GET /api/v1/competitions/{id}/attempts -- listado de intentos de un
+// atleta contra una competencia de ruta (Gap 36, intentos múltiples
+// configurables, endpoint todavía no mergeado al backend real).
+// `athleteUserId` opcional -- default caller del lado real (no se manda
+// query param); en mocks siempre explícito, no hay token real que simular.
+export async function getCompetitionAttempts(competitionId, athleteUserId) {
+  if (USE_MOCKS) return await mockGetCompetitionAttempts(competitionId, athleteUserId);
+  const query = athleteUserId ? `?athlete_user_id=${Number(athleteUserId)}` : '';
+  return await api.get(`/competitions/${competitionId}/attempts${query}`);
 }
 
 // Solo mocks -- no existe contraparte real (reubicar el trazado de una
