@@ -1,4 +1,4 @@
-import { totalRouteMeters, routeLimitStatus, MAX_ROUTE_VERTICES, MAX_ROUTE_METERS, distanceToRouteMeters, computeRouteTimeoutMs, computeRouteComplianceRatio } from '../utils/route-geometry.js';
+import { totalRouteMeters, routeLimitStatus, MAX_ROUTE_VERTICES, MAX_ROUTE_METERS, distanceToRouteMeters, computeRouteTimeoutMs, computeRouteComplianceRatio, pickBestAttempt } from '../utils/route-geometry.js';
 
 describe('totalRouteMeters', () => {
   test('sin puntos o un solo punto -> 0', () => {
@@ -146,5 +146,40 @@ describe('computeRouteComplianceRatio', () => {
     const ratio = computeRouteComplianceRatio(points, route, 10);
     expect(ratio).toBeGreaterThan(0);
     expect(ratio).toBeLessThan(100);
+  });
+});
+
+describe('pickBestAttempt', () => {
+  test('returns null for an empty list', () => {
+    expect(pickBestAttempt([])).toBeNull();
+  });
+
+  test('returns null when no attempt has a usable complianceRatio', () => {
+    const attempts = [{ complianceRatio: null, durationMs: 100 }, { complianceRatio: null, durationMs: 50 }];
+    expect(pickBestAttempt(attempts)).toBeNull();
+  });
+
+  test('higher complianceRatio wins', () => {
+    const attempts = [
+      { complianceRatio: 60, durationMs: 100000, label: 'a' },
+      { complianceRatio: 95, durationMs: 200000, label: 'b' },
+    ];
+    expect(pickBestAttempt(attempts).label).toBe('b');
+  });
+
+  test('tie on complianceRatio -> lower durationMs wins', () => {
+    const attempts = [
+      { complianceRatio: 90, durationMs: 150000, label: 'slower' },
+      { complianceRatio: 90, durationMs: 120000, label: 'faster' },
+    ];
+    expect(pickBestAttempt(attempts).label).toBe('faster');
+  });
+
+  test('ignores attempts without a usable complianceRatio, picks among the rest', () => {
+    const attempts = [
+      { complianceRatio: null, durationMs: 1000, label: 'unfinished' },
+      { complianceRatio: 70, durationMs: 100000, label: 'finished' },
+    ];
+    expect(pickBestAttempt(attempts).label).toBe('finished');
   });
 });

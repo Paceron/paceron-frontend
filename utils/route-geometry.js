@@ -113,3 +113,21 @@ export function computeRouteTimeoutMs(totalMeters) {
   const estimatedMs = (totalMeters / 1000) * REFERENCE_PACE_MIN_PER_KM * 60_000;
   return Math.max(MIN_TIMEOUT_MS, estimatedMs * TIMEOUT_MARGIN_FACTOR);
 }
+
+// Elige, entre los intentos de UN atleta, cuál cuenta para el ranking --
+// mismo comparador que ya ordena entre corredores distintos (% de
+// cumplimiento desc, empate por menor duración). Usado por los mocks (el
+// backend real todavía no calcula esto, ver Gap 36 en
+// docs/BACKEND_API_GAPS.md) y por competition-ranking-modal.jsx para
+// ordenar filas type='route'. Ignora intentos sin complianceRatio
+// (todavía no terminaron/sincronizaron) -- null, no 0, es "no hay nada que
+// comparar todavía", mismo criterio que computeRouteComplianceRatio.
+export function pickBestAttempt(attempts) {
+  const valid = (attempts ?? []).filter((a) => a.complianceRatio != null);
+  if (valid.length === 0) return null;
+  return valid.reduce((best, curr) => {
+    if (curr.complianceRatio > best.complianceRatio) return curr;
+    if (curr.complianceRatio < best.complianceRatio) return best;
+    return (curr.durationMs ?? Infinity) < (best.durationMs ?? Infinity) ? curr : best;
+  });
+}
