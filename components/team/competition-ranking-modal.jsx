@@ -25,7 +25,21 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
   // El resto (distance/duration/peak_speed/sessions_count/attendance_count)
   // ordena de mayor a menor.
   const direction = competition?.metric === 'pace' ? 1 : -1;
-  const ranked = [...(detail?.progress ?? [])].sort((a, b) => direction * ((a.value ?? 0) - (b.value ?? 0)));
+  // type='route' (Gap 36): mayor % de cumplimiento gana, empate por menor
+  // duración -- mismo comparador que pickBestAttempt (utils/route-geometry.js),
+  // aplicado acá entre atletas distintos en vez de entre los intentos
+  // propios de uno. Participantes sin ningún intento (complianceRatio null)
+  // quedan siempre al final, sin importar el resto del orden.
+  const ranked = [...(detail?.progress ?? [])].sort((a, b) => {
+    if (competition?.type === 'route') {
+      if (a.complianceRatio == null && b.complianceRatio == null) return 0;
+      if (a.complianceRatio == null) return 1;
+      if (b.complianceRatio == null) return -1;
+      if (a.complianceRatio !== b.complianceRatio) return b.complianceRatio - a.complianceRatio;
+      return (a.durationMs ?? Infinity) - (b.durationMs ?? Infinity);
+    }
+    return direction * ((a.value ?? 0) - (b.value ?? 0));
+  });
 
   return (
     <Modal animationType="fade" nativeID="competition-ranking-modal" onRequestClose={onClose} testID="competition-ranking-modal" transparent visible={visible}>
@@ -70,7 +84,9 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
                       {memberName(members, entry.userId)}
                     </Text>
                     <Text className="text-sm font-semibold text-primary" nativeID={`competition-ranking-modal-row-${entry.userId}-value`} testID={`competition-ranking-modal-row-${entry.userId}-value`}>
-                      {competition?.type === 'metric' ? formatMetricValue(competition.metric, entry.value) : '—'}
+                      {competition?.type === 'metric'
+                        ? formatMetricValue(competition.metric, entry.value)
+                        : entry.complianceRatio != null ? `${Math.round(entry.complianceRatio)}%` : 'Sin intentos'}
                     </Text>
                   </Pressable>
                 ))}
