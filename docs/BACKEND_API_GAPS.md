@@ -1750,9 +1750,37 @@ originó" — ver `docs/superpowers/specs/2026-10-20-route-attempt-detail-screen
 "intento recién terminado, todavía en este mismo dispositivo" no depende de este gap (usa el id
 que ya tiene en memoria/SQLite).
 
-## Gap 36 — competencias de ruta: intentos múltiples configurables (`max_attempts`)
+## Gap 36 — competencias de ruta: intentos múltiples configurables (`max_attempts`) [RESUELTO del lado backend, mergeado a `develop`]
 
-**Pedido concreto.** Hoy una competencia `type='route'` admite un solo intento por
+**Actualización 2026-10-23 — implementado y confirmado contra código real** (backend
+pasó el detalle completo, ver `docs/FRONTEND_IMPACTO_INSTANCIACION.md` §19 del repo
+`paceron-backend`, change `competencias-ruta-intentos-multiples`, ya en `develop`).
+2 diferencias reales respecto al pedido original de abajo, a tener en cuenta cuando
+el frontend deje de construirse contra mocks (ver
+`docs/superpowers/specs/2026-10-21-route-competition-multi-attempt-design.md`, hoy
+implementado contra mocks con *otro* comportamiento default):
+
+1. **`max_attempts` ausente/null = SIN LÍMITE, no 1.** El pedido original asumía
+   default 1 (mismo comportamiento que sin esta feature); el backend implementó lo
+   contrario — ausente = ilimitado. El mock de este repo (`competitions-mock.js`)
+   hoy default-ea a 1 cuando no viene en el payload — hay que invertir ese default
+   (y el form de creación, que hoy siempre manda un número 1-10, sin opción de "sin
+   límite") antes de integrar contra el backend real.
+2. **`attempts_used`/`can_attempt` SON campos reales y garantizados** (no el
+   "nice-to-have" que pedíamos) — vienen en el detalle, el listado, y las
+   mutaciones de aprobar/rechazar/cerrar (no en cancel). `can_attempt` reemplaza
+   por completo la lógica que el frontend tuvo que inventar client-side
+   (`useCompetitionAttempts` + resta contra `maxAttempts` en
+   `competitions-tab.jsx`) para decidir si mostrar/deshabilitar "Correr esta
+   trayectoria" — al integrar, usar directo ese campo en vez de la cuenta propia.
+
+El resto (instancia nueva por intento 2+, endpoint de lista, shape de `progress`,
+reglas de `winner_user_ids`) coincide con lo pedido — ver el documento del backend
+para los shapes exactos (algunos nombres de campo en el endpoint de lista difieren
+de lo que el frontend asumió al mockear: `id` no `runner_session_id`, `ended_at` no
+`finished_at` — corregir el normalizer al integrar).
+
+**Pedido concreto (original).** Hoy una competencia `type='route'` admite un solo intento por
 corredor (Gap 33 punto 28, `400` en el segundo). Se pide hacerlo configurable: el
 creador de la competencia elige un `max_attempts` al crearla, y cada participante
 puede correr la ruta hasta esa cantidad de veces. El ranking usa, para cada
