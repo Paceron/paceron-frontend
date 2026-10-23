@@ -165,9 +165,10 @@ export async function mockCreateCompetition(teamId, payload, { isTrainerCreator 
     // crearla; reusada por el PRIMER intento de cada atleta (Gap 36, ver
     // mockCreateCompetitionAttempt más abajo).
     session_instance_id: payload.type === 'route' ? nextSyntheticInstanceId++ : null,
-    // max_attempts (Gap 36) -- solo type='route'; default 1 cuando no viene
-    // en el payload, mismo comportamiento que antes de este gap.
-    max_attempts: payload.type === 'route' ? (payload.max_attempts ?? 1) : null,
+    // max_attempts (Gap 36) -- solo type='route'. Ausente/null = SIN
+    // LÍMITE -- confirmado por backend 2026-10-23 (no default 1, como se
+    // había asumido antes de esa confirmación).
+    max_attempts: payload.type === 'route' ? (payload.max_attempts ?? null) : null,
   };
   mockCompetitions.push(competition);
   return competition;
@@ -248,8 +249,11 @@ export async function mockCreateCompetitionAttempt(competitionId, athleteUserId)
   if (!competition.participant_user_ids.includes(Number(athleteUserId))) throw new Error('No participás de esta competencia');
   const key = `${competitionId}:${athleteUserId}`;
   const attemptsSoFar = attemptCounts.get(key) ?? 0;
-  const maxAttempts = competition.max_attempts ?? 1;
-  if (attemptsSoFar >= maxAttempts) throw new Error('Ya alcanzaste el máximo de intentos para esta competencia');
+  // null = sin límite (confirmado por backend 2026-10-23) -- sin cupo que
+  // chequear en ese caso, a diferencia de antes (default 1).
+  if (competition.max_attempts != null && attemptsSoFar >= competition.max_attempts) {
+    throw new Error('Ya alcanzaste el máximo de intentos para esta competencia');
+  }
   const sessionInstanceId = attemptsSoFar === 0 ? competition.session_instance_id : nextSyntheticInstanceId++;
   attemptCounts.set(key, attemptsSoFar + 1);
   return {

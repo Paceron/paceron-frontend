@@ -1224,8 +1224,10 @@ export function toCreateCompetitionPayload(form) {
   if (form.type === 'route') {
     payload.route = form.route;
     payload.acceptance_radius_meters = Number(form.acceptanceRadiusMeters);
-    // Gap 36 -- tope de intentos, solo para competencias de ruta.
-    payload.max_attempts = Number(form.maxAttempts);
+    // Gap 36 -- tope de intentos, solo para competencias de ruta. Opcional,
+    // dato extra -- confirmado por backend 2026-10-23: ausente/null = sin
+    // límite (no un default de 1). Vacío en el form -> null, no 0/NaN.
+    payload.max_attempts = form.maxAttempts ? Number(form.maxAttempts) : null;
   } else {
     payload.metric = form.metric;
     payload.end_at = form.endAt;

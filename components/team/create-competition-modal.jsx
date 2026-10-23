@@ -23,7 +23,6 @@ const TYPE_OPTIONS = [
   { id: 'route', name: 'Por trayectoria' },
 ];
 const DEFAULT_ACCEPTANCE_RADIUS = 50;
-const DEFAULT_MAX_ATTEMPTS = 3;
 
 export function CreateCompetitionModal({ visible, onClose, onSubmit, members, groups }) {
   const colors = useThemeColors();
@@ -48,7 +47,9 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   const [endDate, setEndDate] = useState('');
   const [route, setRoute] = useState(null);
   const [acceptanceRadius, setAcceptanceRadius] = useState(String(DEFAULT_ACCEPTANCE_RADIUS));
-  const [maxAttempts, setMaxAttempts] = useState(String(DEFAULT_MAX_ATTEMPTS));
+  // Vacío por default -- Gap 36, confirmado por backend 2026-10-23: dato
+  // extra, no requerido. Vacío = sin límite (no un número por default).
+  const [maxAttempts, setMaxAttempts] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [error, setError] = useState(null);
@@ -78,7 +79,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
     setEndDate('');
     setRoute(null);
     setAcceptanceRadius(String(DEFAULT_ACCEPTANCE_RADIUS));
-    setMaxAttempts(String(DEFAULT_MAX_ATTEMPTS));
+    setMaxAttempts('');
     setGroupFilter('');
     setSelectedIds([]);
     setError(null);
@@ -127,10 +128,15 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
         setError('El radio de aceptación tiene que estar entre 5 y 500 metros.');
         return;
       }
-      const attempts = Number(maxAttempts);
-      if (!Number.isInteger(attempts) || attempts < 1 || attempts > 10) {
-        setError('El máximo de intentos tiene que ser un número entero entre 1 y 10.');
-        return;
+      // Opcional -- vacío es válido (sin límite). Solo valida si trae algo.
+      // Sin tope superior -- confirmado por backend 2026-10-23: entero ≥1,
+      // sin máximo.
+      if (maxAttempts) {
+        const attempts = Number(maxAttempts);
+        if (!Number.isInteger(attempts) || attempts < 1) {
+          setError('El máximo de intentos tiene que ser un número entero mayor o igual a 1.');
+          return;
+        }
       }
     }
     if (selectedIds.length < 2) {
@@ -144,7 +150,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
       startAt: startIso,
       ...(type === 'metric'
         ? { metric, endAt: endIso }
-        : { route, acceptanceRadiusMeters: Number(acceptanceRadius), maxAttempts: Number(maxAttempts) }),
+        : { route, acceptanceRadiusMeters: Number(acceptanceRadius), maxAttempts: maxAttempts || null }),
       participantUserIds: selectedIds,
       groupId: groupFilter || null,
     });
@@ -238,7 +244,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                     <DateField dense disableFutureLimit hideErrorRow label="Desde" onChange={setStartDate} value={startDate} />
                     <RouteDrawPicker acceptanceRadiusMeters={Number(acceptanceRadius)} onChange={setRoute} onMapTouchEnd={() => setMapInteracting(false)} onMapTouchStart={() => setMapInteracting(true)} value={route} />
                     <InputField className="mb-0" dense hideErrorRow keyboardType="numeric" label="Radio de aceptación (metros)" onChange={setAcceptanceRadius} value={acceptanceRadius} />
-                    <InputField className="mb-0" dense hideErrorRow keyboardType="numeric" label="Máximo de intentos por corredor" onChange={setMaxAttempts} value={maxAttempts} />
+                    <InputField className="mb-0" dense hideErrorRow keyboardType="numeric" label="Máximo de intentos por corredor (opcional)" onChange={setMaxAttempts} placeholder="Sin límite" value={maxAttempts} />
                   </>
                 )}
 

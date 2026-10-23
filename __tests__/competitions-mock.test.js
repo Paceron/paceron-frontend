@@ -86,13 +86,14 @@ describe('mockCreateCompetitionAttempt', () => {
     expect(attempt.session_instance.exercises).toHaveLength(1);
   });
 
-  test('segundo intento del mismo atleta sin max_attempts (default 1) -> error', async () => {
+  test('segundo intento del mismo atleta sin max_attempts (sin límite) -> éxito', async () => {
     const competition = await mockCreateCompetition(1, {
       type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
       acceptance_radius_meters: 50, participant_user_ids: [2, 3],
     }, { isTrainerCreator: true });
-    await mockCreateCompetitionAttempt(competition.id, 2);
-    await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('máximo de intentos');
+    const first = await mockCreateCompetitionAttempt(competition.id, 2);
+    const second = await mockCreateCompetitionAttempt(competition.id, 2);
+    expect(second.session_instance_id).not.toBe(first.session_instance_id);
   });
 
   test('atleta no participante -> error', async () => {
@@ -239,12 +240,12 @@ describe('mockCreateCompetitionAttempt -- max_attempts', () => {
     await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('máximo de intentos');
   });
 
-  test('sin max_attempts en el payload -> default 1, mismo comportamiento que antes', async () => {
+  test('sin max_attempts en el payload -> null (sin límite), confirmado por backend 2026-10-23', async () => {
     const competition = await mockCreateCompetition(1, {
       type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
       acceptance_radius_meters: 50, participant_user_ids: [2, 3],
     }, { isTrainerCreator: true });
-    expect(competition.max_attempts).toBe(1);
+    expect(competition.max_attempts).toBeNull();
   });
 });
 

@@ -1461,4 +1461,12 @@ describe('toCreateCompetitionPayload -- max_attempts', () => {
     });
     expect(payload).not.toHaveProperty('max_attempts');
   });
+
+  test('vacío (dato extra opcional) -> null, sin límite -- confirmado por backend 2026-10-23', () => {
+    const payload = toCreateCompetitionPayload({
+      type: 'route', startAt: '2026-11-01', route: { type: 'LineString', coordinates: [] },
+      acceptanceRadiusMeters: '50', maxAttempts: '', participantUserIds: ['1', '2'],
+    });
+    expect(payload.max_attempts).toBeNull();
+  });
 });
