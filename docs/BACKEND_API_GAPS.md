@@ -1718,13 +1718,20 @@ dato de "novedad" vive junto al recurso que la genera, no en un servicio aparte)
     cross-team aparte. El punto rojo de la pestaña Competencias DENTRO de un equipo puntual usa
     directamente el `has_unseen` de ESE equipo, sin agregación.
 
-## Gap 35 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta [RESUELTO del lado backend, no mergeado a `develop` todavía]
+## Gap 35 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta [RESUELTO y mergeado a `develop`]
+
+**Actualización 2026-10-23 — corrección de la nota de abajo, que había quedado desactualizada:**
+confirmado (`cmd/api/domains/competition/competition.go`, campo `SessionInstanceID` presente en
+los 3 structs de respuesta) que esto SÍ está mergeado a `develop` -- la nota original decía lo
+contrario, probablemente escrita antes de que el merge terminara de aterrizar. El frontend ya
+está cableado contra este campo (no es un mock) desde la spec de
+`route-attempt-detail-screen.jsx` (`services/normalizers.js#toCompetitionModel`, campo
+`sessionInstanceId`) -- este gap está 100% resuelto, backend y frontend, sin pendientes.
 
 **Actualización 2026-10-20:** backend confirma implementado — `GET /teams/{id}/competitions` (cada
 fila) y `GET /competitions/{id}` ahora incluyen `session_instance_id: number` (>0) para
 competencias de ruta, `null` para métrica. El id coincide con el que ya devuelve el intake (`POST
-/competitions/{id}/attempts`) — "sobrevive al SQLite local". Todavía no mergeado a `develop` al
-momento de escribir esto, así que el frontend no puede consumirlo hasta que eso pase.
+/competitions/{id}/attempts`) — "sobrevive al SQLite local".
 
 **Contexto (original).** Confirmado leyendo el frontend (2026-10-20): un intento de competencia de ruta
 corre por el mismo pipeline que una sesión de entrenamiento normal — `POST
