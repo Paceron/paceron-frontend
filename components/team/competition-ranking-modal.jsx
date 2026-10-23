@@ -71,8 +71,15 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
                     // ningún GPS/sesión individual que mostrar ahí, navegar
                     // igual deja un dead-end confuso ("sin intento
                     // registrado" sobre algo que nunca tuvo el concepto).
+                    //
+                    // Sin onClose() antes de navegar -- pedido real
+                    // 2026-10-23: "al volver... se mantenga el modal
+                    // abierto si corresponde". La navegación ya tapa la
+                    // pantalla entera; el estado `rankingCompetition` de
+                    // competitions-tab.jsx sigue como estaba, así que
+                    // router.back() lo reabre solo, sin tener que rastrear
+                    // "estaba abierto antes" en ningún lado nuevo.
                     onPress={competition?.type === 'route' ? () => {
-                      onClose();
                       router.push({ pathname: '/route-attempt-detail', params: { competitionId: competition.id, athleteUserId: entry.userId } });
                     } : undefined}
                     testID={`competition-ranking-modal-row-${entry.userId}`}

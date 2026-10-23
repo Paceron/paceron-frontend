@@ -121,16 +121,32 @@ function RouteAttemptDetailScreenContent() {
     ? (detail.durationMs / 60_000) / (detail.distanceMeters / 1000)
     : null;
 
-  // Mismo destino en los dos casos (recién terminado o abierto desde el
-  // ranking) -- pedido real 2026-10-21: "Listo"/volver mandaba a home en
-  // vez de a la vista de competencias de donde salió. `/teams/{id}` ya
-  // soporta `?tab=competencias` como deep-link (team-detail-screen.jsx).
+  // Dos caminos de entrada distintos, pedido real 2026-10-23: "volver"
+  // tiene que preservar la posición/modal anterior cuando corresponde, no
+  // siempre aterrizar en una vista de competencias en blanco.
+  //
+  // - Abierto desde el ranking/modal de intentos (NO justFinished): el
+  //   team-detail YA está en el stack, un paso atrás (esta pantalla se
+  //   llegó con `router.push`). `router.back()` vuelve a ESA instancia --
+  //   mismo scroll, mismo estado de React -- en vez de `replace`, que
+  //   descartaba esa instancia y montaba una nueva en blanco (bug real:
+  //   perdía la posición y cualquier modal que hubiera estado abierto).
+  // - Recién terminado (justFinished): se llegó acá vía pre-start → en
+  //   vivo (con un `replace` intermedio, ver route-attempt-live-screen.jsx),
+  //   así que `back()` aterrizaría en el pre-start, no en competencias. No
+  //   hay "posición anterior" real que preservar en este camino (el
+  //   usuario estaba corriendo, no navegando la lista) -- sigue yendo
+  //   directo al tab, como antes.
   const goToCompetitions = () => {
-    if (detail.teamId) {
-      router.replace({ pathname: `/teams/${detail.teamId}`, params: { tab: 'competencias' } });
-    } else {
-      router.back();
+    if (justFinished) {
+      if (detail.teamId) {
+        router.replace({ pathname: `/teams/${detail.teamId}`, params: { tab: 'competencias' } });
+      } else {
+        router.back();
+      }
+      return;
     }
+    router.back();
   };
 
   return (

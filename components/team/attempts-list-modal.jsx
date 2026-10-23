@@ -41,8 +41,10 @@ export function AttemptsListModal({ visible, onClose, competition, members, curr
 
   const athleteOptions = participantIds.map((id) => ({ id, name: memberName(members, id) }));
 
+  // Sin onClose() antes de navegar -- mismo motivo que
+  // competition-ranking-modal.jsx (pedido real 2026-10-23, preservar el
+  // modal abierto al volver con router.back()).
   const handleOpenAttempt = (attempt) => {
-    onClose();
     router.push({
       pathname: '/route-attempt-detail',
       params: { competitionId: competition.id, athleteUserId: resolvedAthleteId, sessionInstanceId: attempt.sessionInstanceId },
