@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { formatMeters } from '../../utils/distance.js';
 import { formatStopwatch } from '../../utils/time.js';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
+import { useCompetitionsUiStore } from '../../store/competitions-ui-store.js';
 
 function memberName(members, userId) {
   return members.find((m) => m.userId === userId)?.name ?? 'Corredor';
@@ -28,12 +29,25 @@ function formatAttemptDate(iso) {
 // elegir cualquier participante en el select de arriba, no solo verse a sí
 // mismo. Default del select: el usuario actual si participa, si no el
 // primer participante de la lista -- pedido real, 2026-10-21.
-export function AttemptsListModal({ visible, onClose, competition, members, currentUserId }) {
+export function AttemptsListModal({ visible, onClose, competition, members, currentUserId, initialAthleteId }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const setReopenModal = useCompetitionsUiStore((s) => s.setReopenModal);
   const participantIds = competition?.participantUserIds ?? [];
   const defaultAthleteId = participantIds.includes(currentUserId) ? currentUserId : (participantIds[0] ?? null);
-  const [athleteId, setAthleteId] = useState(defaultAthleteId);
+  const [athleteId, setAthleteId] = useState(initialAthleteId ?? defaultAthleteId);
+  // Bug real encontrado en preview: este componente está SIEMPRE montado
+  // en el JSX de competitions-tab.jsx (solo `visible` cambia) -- monta en
+  // el mismo commit que CompetitionsTab, ANTES de que el efecto de
+  // restauración (que corre después del montaje) llegue a escribir
+  // `initialAthleteId`. El valor inicial de `useState` arriba lo capturó
+  // en null, y una prop que cambia después NO reinicializa un useState ya
+  // montado -- de ahí este efecto, que sincroniza explícitamente apenas
+  // `initialAthleteId` deja de ser null (pasa una sola vez: cuando hay algo
+  // real para restaurar, nunca en el caso normal sin restauración).
+  useEffect(() => {
+    if (initialAthleteId != null) setAthleteId(initialAthleteId);
+  }, [initialAthleteId]);
   const resolvedAthleteId = participantIds.includes(athleteId) ? athleteId : defaultAthleteId;
 
   const { attempts, loading } = useCompetitionAttempts(competition?.id, resolvedAthleteId, { enabled: visible && Boolean(competition) });
@@ -41,10 +55,13 @@ export function AttemptsListModal({ visible, onClose, competition, members, curr
 
   const athleteOptions = participantIds.map((id) => ({ id, name: memberName(members, id) }));
 
-  // Sin onClose() antes de navegar -- mismo motivo que
-  // competition-ranking-modal.jsx (pedido real 2026-10-23, preservar el
-  // modal abierto al volver con router.back()).
+  // Sin onClose() antes de navegar, y grabando en el store qué modal
+  // reabrir -- mismo motivo que competition-ranking-modal.jsx (pedido real
+  // 2026-10-23, bug real encontrado en preview: router.back() en Expo
+  // Router web remonta competitions-tab.jsx desde cero, el useState local
+  // no sobrevive solo).
   const handleOpenAttempt = (attempt) => {
+    setReopenModal({ type: 'attempts', competitionId: competition.id, athleteId: resolvedAthleteId });
     router.push({
       pathname: '/route-attempt-detail',
       params: { competitionId: competition.id, athleteUserId: resolvedAthleteId, sessionInstanceId: attempt.sessionInstanceId },

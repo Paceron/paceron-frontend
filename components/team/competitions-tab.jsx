@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
@@ -12,11 +12,13 @@ import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
 import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
+import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
 import { AttemptsListModal } from './attempts-list-modal.jsx';
+import { useCompetitionsUiStore } from '../../store/competitions-ui-store.js';
 import { RouteMapPreview } from './route-map-preview';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
@@ -152,15 +154,31 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
 
   const isOwnPendingProposal = competition.status === 'pending_approval' && competition.createdByRole === 'runner' && competition.createdByUserId === currentUserId;
   const canClose = isTrainerView && competition.status === 'active' && competition.endAt && competition.endAt < new Date().toISOString().slice(0, 10);
-  // Gap 36 -- antes `canRun` no chequeaba intentos usados en absoluto (el
-  // único bloqueo era un 400 server-side, invisible hasta que el corredor
-  // lo tocaba). Con max_attempts > 1 posible, un corredor con cupo agotado
-  // necesita feedback claro de entrada, no un error de red.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  // `canRunBase` sigue siendo "¿esto es algo que este corredor podría
+  // llegar a correr alguna vez?" (participante + ruta + activa) -- NO
+  // incluye fecha/cupo. Eso decide si el botón se RENDERIZA en absoluto
+  // (igual que antes). Fecha/cupo deciden si queda HABILITADO
+  // (`canPlayNow` + `disabled`), mismo patrón que ya existía para
+  // "agotó los intentos" -- se muestra igual, deshabilitado, con un
+  // tooltip que explica por qué (no se oculta sin explicación).
   const canRunBase = !isTrainerView && competition.type === 'route' && competition.status === 'active' && competition.participantUserIds.includes(currentUserId);
   const { attempts: myAttempts } = useCompetitionAttempts(competition.id, currentUserId, { enabled: canRunBase });
-  const maxAttempts = competition.maxAttempts ?? 1;
-  const remainingAttempts = maxAttempts - myAttempts.length;
-  const runTooltipLabel = remainingAttempts > 0 ? `Correr esta trayectoria (intento ${myAttempts.length + 1} de ${maxAttempts})` : 'Sin intentos disponibles';
+  // maxAttempts null = sin límite (confirmado por backend 2026-10-23) --
+  // remainingAttempts queda Infinity en ese caso, nunca agota el cupo.
+  const maxAttempts = competition.maxAttempts;
+  const remainingAttempts = maxAttempts == null ? Infinity : maxAttempts - myAttempts.length;
+  const attemptsLabel = maxAttempts == null ? 'sin límite' : `máx. ${maxAttempts} por corredor`;
+  // Pedido real 2026-10-23: antes esto no chequeaba la fecha de inicio en
+  // absoluto -- una competencia de ruta con `startAt` futuro igual
+  // ofrecía "Correr esta trayectoria" como si ya se pudiera.
+  const hasStarted = competition.startAt <= todayIso;
+  const canPlayNow = hasStarted && remainingAttempts > 0;
+  const runTooltipLabel = !hasStarted
+    ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
+    : remainingAttempts > 0
+      ? `Correr esta trayectoria (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
+      : 'Sin intentos disponibles';
   const canApproveReject = isTrainerView && competition.status === 'pending_approval';
   // Ranking: visible para CUALQUIERA que pueda ver la competencia mientras
   // esté activa -- a diferencia del resto de las acciones de acá, no
@@ -188,12 +206,22 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
       <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={onToggleExpand} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} />
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
-          {/* Sin línea de meta aparte -- pedido real, 2026-10-16: duplicaba
-              exactamente la misma info que el título (buildCompetitionTitle
-              ya arma "métrica (desde → hasta)"), solo con otra puntuación. */}
+          {/* Sin línea de meta aparte para type='metric' -- pedido real,
+              2026-10-16: duplicaba exactamente la misma info que el título
+              (buildCompetitionTitle ya arma "métrica (desde → hasta)"),
+              solo con otra puntuación. type='route' SÍ la necesita --
+              buildCompetitionTitle para ruta no incluye fecha de inicio ni
+              tope de intentos (pedido real 2026-10-23: esta info determina
+              si tiene sentido ofrecer Play, hay que poder verla sin
+              expandir la fila). */}
           <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
             {competition.name ?? buildCompetitionTitle(competition)}
           </Text>
+          {competition.type === 'route' && competition.status === 'active' && (
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-meta`} testID={`${idPrefix}-route-meta`}>
+              Desde: {formatDisplayDate(competition.startAt)} · Intentos: {attemptsLabel}
+            </Text>
+          )}
         </View>
       </Pressable>
 
@@ -259,7 +287,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
             )}
             {canRunBase && !isWeb && (
               <IconTooltip align="end" idPrefix={`${idPrefix}-run-tooltip`} label={runTooltipLabel} position="bottom">
-                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15 active:opacity-70 disabled:opacity-60" disabled={busy || remainingAttempts <= 0} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
+                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15 active:opacity-70 disabled:opacity-60" disabled={busy || !canPlayNow} nativeID={`${idPrefix}-run-button`} onPress={() => onRun(competition)} testID={`${idPrefix}-run-button`}>
                   <MaterialCommunityIcons color={colors.primary} name="play" size={18} />
                 </Pressable>
               </IconTooltip>
@@ -298,9 +326,11 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
       {canRunBase && isWeb && (
         <View className="ml-6 mt-3" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
           <Text className="self-start rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
-            {remainingAttempts > 0
-              ? `Correr una trayectoria solo está disponible en la app nativa (intento ${myAttempts.length + 1} de ${maxAttempts})`
-              : 'Ya alcanzaste el máximo de intentos para esta competencia'}
+            {!hasStarted
+              ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
+              : remainingAttempts > 0
+                ? `Correr una trayectoria solo está disponible en la app nativa (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
+                : 'Ya alcanzaste el máximo de intentos para esta competencia'}
           </Text>
         </View>
       )}
@@ -320,7 +350,50 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
   const [rejectTargetId, setRejectTargetId] = useState(null);
   const [rankingCompetition, setRankingCompetition] = useState(null);
   const [attemptsCompetition, setAttemptsCompetition] = useState(null);
+  const [reopenAthleteId, setReopenAthleteId] = useState(null);
   const [subTab, setSubTab] = useState('active');
+
+  // Restaura el modal que estaba abierto antes de navegar al detalle de un
+  // intento -- pedido real 2026-10-23. `router.back()` remonta este
+  // componente desde cero en la versión web de Expo Router (bug real
+  // confirmado en preview), así que sin este store (escrito por
+  // competition-ranking-modal.jsx/attempts-list-modal.jsx justo antes de
+  // navegar) no hay forma de saber qué reabrir.
+  //
+  // `useRef(initialValue)` -- NO `useCompetitionsUiStore(selector)` -- a
+  // propósito: congela el valor del store tal como estaba en el PRIMER
+  // render de ESTE montaje, ignorando cualquier escritura posterior. Bug
+  // real encontrado en preview con el enfoque reactivo: este mismo
+  // componente sigue montado en el momento en que el modal escribe
+  // `setReopenModal` (todavía no navegamos a ningún lado) -- con un
+  // selector reactivo, el efecto de abajo disparaba YA, en esa misma
+  // instancia, consumiendo y limpiando el valor ANTES de llegar siquiera a
+  // navegar. Al volver, el store ya estaba vacío. Con el valor congelado al
+  // montar, una escritura mientras este componente ya existe no lo afecta
+  // -- solo un montaje GENUINAMENTE nuevo (después del remount real) lee
+  // el valor que se dejó justo antes de salir.
+  const reopenModalRef = useRef(useCompetitionsUiStore.getState().reopenModal);
+  const clearReopenModal = useCompetitionsUiStore((s) => s.clearReopenModal);
+  const appliedReopenRef = useRef(false);
+  useEffect(() => {
+    const reopenModal = reopenModalRef.current;
+    if (appliedReopenRef.current || !reopenModal || loading) return;
+    const target = competitions.find((c) => c.id === reopenModal.competitionId);
+    if (!target) {
+      // Ya cargó y no está (se cerró/canceló entre medio) -- no hay nada
+      // que reabrir, se descarta en vez de reintentar para siempre.
+      appliedReopenRef.current = true;
+      clearReopenModal();
+      return;
+    }
+    appliedReopenRef.current = true;
+    if (reopenModal.type === 'ranking') setRankingCompetition(target);
+    else if (reopenModal.type === 'attempts') {
+      setAttemptsCompetition(target);
+      setReopenAthleteId(reopenModal.athleteId);
+    }
+    clearReopenModal();
+  }, [competitions, loading, clearReopenModal]);
   // Expandidas por defecto, se recuerda cuál se colapsó -- pedido real,
   // 2026-10-17. Vive acá (no en el estado local de cada fila) porque
   // cambiar de subtab (Activas/Pendientes/Finalizadas) desmonta y
@@ -480,6 +553,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
       <AttemptsListModal
         competition={attemptsCompetition}
         currentUserId={currentUserId}
+        initialAthleteId={reopenAthleteId}
         members={members}
         onClose={() => setAttemptsCompetition(null)}
         visible={attemptsCompetition != null}

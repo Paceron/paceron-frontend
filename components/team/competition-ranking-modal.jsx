@@ -5,6 +5,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
+import { useCompetitionsUiStore } from '../../store/competitions-ui-store.js';
 
 function memberName(members, userId) {
   return members.find((m) => m.userId === userId)?.name ?? 'Corredor';
@@ -19,6 +20,7 @@ function memberName(members, userId) {
 export function CompetitionRankingModal({ visible, onClose, competition, members }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const setReopenModal = useCompetitionsUiStore((s) => s.setReopenModal);
   const { detail, loading } = useCompetitionDetail(competition?.id, { enabled: visible && Boolean(competition) });
 
   // `pace`: menor es mejor (más rápido) -- único metric donde "menos" gana.
@@ -72,14 +74,18 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
                     // igual deja un dead-end confuso ("sin intento
                     // registrado" sobre algo que nunca tuvo el concepto).
                     //
-                    // Sin onClose() antes de navegar -- pedido real
-                    // 2026-10-23: "al volver... se mantenga el modal
-                    // abierto si corresponde". La navegación ya tapa la
-                    // pantalla entera; el estado `rankingCompetition` de
-                    // competitions-tab.jsx sigue como estaba, así que
-                    // router.back() lo reabre solo, sin tener que rastrear
-                    // "estaba abierto antes" en ningún lado nuevo.
+                    // Sin onClose() antes de navegar, y grabando en el
+                    // store (store/competitions-ui-store.js) qué modal
+                    // reabrir -- pedido real 2026-10-23: "al volver... se
+                    // mantenga el modal abierto si corresponde". Bug real
+                    // encontrado en preview: router.back() en Expo Router
+                    // web REMONTA competitions-tab.jsx desde cero (no
+                    // mantiene la pantalla anterior viva como un stack
+                    // nativo), así que el useState local de
+                    // `rankingCompetition` NO sobrevive solo -- de ahí la
+                    // necesidad real de este store.
                     onPress={competition?.type === 'route' ? () => {
+                      setReopenModal({ type: 'ranking', competitionId: competition.id });
                       router.push({ pathname: '/route-attempt-detail', params: { competitionId: competition.id, athleteUserId: entry.userId } });
                     } : undefined}
                     testID={`competition-ranking-modal-row-${entry.userId}`}
