@@ -100,6 +100,29 @@ Cuando la API devuelva un campo como `null`, la pantalla SHALL mostrar un guion 
 - **WHEN** la API devuelve `delta_pct: null` y `compliance_rate: null`
 - **THEN** la pantalla muestra "—" en esos campos, no `0 %` ni `0 km/h`
 
+### Requirement: Los gráficos SHALL poder explorarse sin perder el conjunto
+
+La pantalla SHALL mostrar los gráficos de la paleta en una grilla de **dos columnas** en viewport ancho y de **una columna** en viewport angosto. Cada tarjeta SHALL arrancar colapsada, mostrando su título y una **preview textual** en lugar del gráfico completo, y SHALL poder expandirse o colapsarse individualmente. La pantalla SHALL ofrecer una acción global para maximizar todos los gráficos de la grilla y otra para minimizarlos todos, y SHALL permitir tener uno, varios, todos o ninguno expandidos.
+
+Expandir una tarjeta NO SHALL modificar el filtro ni la granularidad de las demás. Una tarjeta colapsada NO SHALL montar el SVG del gráfico completo: la preview es texto, no un gráfico reducido.
+
+#### Scenario: Todos colapsados al abrir
+
+- **WHEN** se abre la pantalla por primera vez
+- **THEN** los gráficos aparecen en grilla de dos columnas en ancho, o de una en angosto, con sus previews, y ninguno está expandido
+
+#### Scenario: Expandir varios
+
+- **WHEN** el usuario expande dos tarjetas
+- **THEN** las dos muestran el gráfico completo y las demás siguen colapsadas
+
+#### Scenario: Maximizar y minimizar todos
+
+- **WHEN** el usuario presiona "Maximizar todos"
+- **THEN** todas las tarjetas de la grilla se expanden
+- **WHEN** presiona "Minimizar todos"
+- **THEN** todas se colapsan, incluso las que se habían expandido individualmente
+
 ### Requirement: El sistema SHALL exponer el estado de calidad de los datos
 
 La pantalla SHALL mostrar el bloque `data_quality` que devuelve la API, con sus **seis** campos: series no calculables, tiempo degradado, estado de cumplimiento desconocido, sesiones sin cerrar, sesiones sin registro y volumen insuficiente.
@@ -108,20 +131,20 @@ La pantalla SHALL mostrar el bloque `data_quality` que devuelve la API, con sus 
 
 Cuando `insufficient_data` sea verdadero, la pantalla SHALL ocultar los indicadores de tendencia y mostrar el motivo, en lugar de mostrar un porcentaje calculado sobre muy pocos datos.
 
-El estado de calidad SHALL ser un panel **propio y colapsable**, separado del panel de filtros: son dos preguntas distintas —"qué está mal en los datos" y "qué estoy mirando"— y un panel único obliga a meter una card dentro de otra. Colapsado, el panel SHALL seguir mostrando cuántos avisos hay en su badge, y NO SHALL renderizarse cuando no hay nada que avisar.
+El estado de calidad SHALL compartir panel con los filtros, como una **segunda pestaña al mismo nivel**, y no como un panel separado: son dos preguntas que se consultan juntas y dos tarjetas apiladas empujaban los gráficos. El panel SHALL arrancar minimizado y SHALL mostrar el conteo de avisos en el label de la pestaña de calidad, sin un badge combinado con los filtros. Abrir o cerrar una pestaña NO SHALL afectar a la otra. La pestaña SHALL existir aunque no haya avisos, y en ese caso su contenido SHALL decir que no hay avisos en el período, en vez de mostrar un recuadro ámbar vacío.
 
 #### Scenario: Tendencia sin volumen suficiente
 
 - **WHEN** la API devuelve `insufficient_data: true` y `trend_pct: null`
 - **THEN** la pantalla no muestra flecha de tendencia ni porcentaje, y explica que hay datos insuficientes
 
-#### Scenario: Calidad colapsada y sin avisos
+#### Scenario: Calidad minimizada y sin avisos
 
-- **WHEN** el usuario colapsa "Calidad de los datos" habiendo tres series no calculables
-- **THEN** el contenido desaparece pero el header sigue diciendo "3 avisos", y el panel de filtros sigue abierto e intacto
+- **WHEN** el panel está minimizado habiendo tres series no calculables
+- **THEN** el label de la pestaña sigue diciendo "Calidad · 3 avisos", y el contenido de las dos pestañas está colapsado
 
 - **WHEN** `data_quality` no trae ningún defecto, no hay `insufficient_data` ni `legacy_sessions`
-- **THEN** el panel "Calidad de los datos" no se renderiza
+- **THEN** la pestaña "Calidad" sigue existiendo y su contenido dice "Sin avisos de calidad en el período"
 
 ### Requirement: El sistema SHALL indicar la fuente de cada número
 
@@ -207,7 +230,7 @@ Cada banda SHALL tener grosor real en la pila: "no cumplió" no SHALL quedar rep
 
 ### Requirement: La pantalla SHALL mostrar el mismo perfil a los dos roles, recortado a las series propias del corredor
 
-El cuerpo de la pantalla —KPIs, evolución, card de cinco ejes y cumplimiento por período— SHALL ser **el mismo** para entrenador y corredor.
+El cuerpo de la pantalla —KPIs, gráficos de la paleta y panel de insights con el radar— SHALL ser **el mismo** para entrenador y corredor.
 
 El recorte a las series propias de un corredor NO SHALL hacerse en el front: el backend ya scopea las métricas por el usuario que pregunta. Duplicar esa regla en la UI la vuelve a romper en cuanto cambie del lado del servidor, y además deja la pantalla mostrando datos ajenos si el recorte del backend falla.
 
@@ -215,7 +238,7 @@ El **ranking del equipo** y la comparación **entre** corredores SHALL mostrarse
 
 La comparación del **período** contra el anterior es dato propio del corredor y SHALL estar lista para mostrarse, pero SHALL permanecer apagada mientras el endpoint siga restringido a dueños del equipo (Gap 35 de `docs/BACKEND_API_GAPS.md`, interruptor `MEMBER_PERIOD_COMPARISON_ENABLED`).
 
-Los textos que nombran el scope SHALL decir "el equipo" solo cuando el scope es el equipo: para un corredor, la card del radar dice "Tu perfil" y el scope de los filtros, "Tus series". Los estados vacío y primer uso SHALL seguir la misma regla.
+Los textos que nombran el scope SHALL decir "el equipo" solo cuando el scope es el equipo: para un corredor, la pestaña del radar dice "Tu perfil" y el scope de los filtros, "Tus series". Los estados vacío y primer uso SHALL seguir la misma regla.
 
 #### Scenario: Corredor en el equipo
 
@@ -228,6 +251,25 @@ Los textos que nombran el scope SHALL decir "el equipo" solo cuando el scope es 
 
 - **WHEN** el dueño del equipo abre la pestaña Rendimiento
 - **THEN** además del cuerpo común ve el ranking del equipo y la comparación por período
+
+### Requirement: El radar SHALL compartir panel con las secciones que dependen del rol
+
+El radar SHALL compartir un panel con pestañas con el ranking del equipo y la comparación por período. La pestaña del radar SHALL ser la activa por defecto y SHALL ser la única sección montada hasta que el usuario cambie de pestaña; el ranking y la comparación SHALL montarse solo al abrir su pestaña. Para un corredor, las pestañas de ranking y comparación NO SHALL existir cuando las capacidades no las habilitan, y sus requests NO SHALL hacerse.
+
+#### Scenario: Radar por defecto
+
+- **WHEN** el usuario abre el panel de insights
+- **THEN** ve el radar en la pestaña "Perfil en 5 ejes" y no se hizo ningún request de leaderboard ni de comparación
+
+#### Scenario: Cambiar a ranking
+
+- **WHEN** el entrenador abre la pestaña "Ranking"
+- **THEN** se monta el ranking del equipo y el radar deja de estar montado
+
+#### Scenario: Corredor sin pestañas ajenas
+
+- **WHEN** un corredor abre el panel de insights
+- **THEN** solo ve la pestaña del radar, sin ranking ni comparación
 
 ### Requirement: El sistema SHALL ser accesible según WCAG 2.1 AA
 
@@ -398,12 +440,19 @@ Cada rango SHALL presentarse como **un solo grupo** —título "Distancia" (o "T
 
 Las dos fechas SHALL presentarse como **un solo grupo** —título "Fecha" con los dos extremos debajo, lado a lado— y no como dos campos con título propio, para que el form tenga una sola forma de mostrar un rango (fechas, distancia y tiempo). El título NO SHALL repetir "desde / hasta": cada extremo ya lo dice en su propio rótulo visible. El nombre accesible de cada extremo SHALL seguir siendo el completo ("Fecha desde").
 
-Los botones "Filtrar" y "Limpiar" SHALL vivir **al pie del form**, en la media fila que el grupo de fechas deja libre, y no en el header del panel colapsado: ahí quedaba arriba de todo, lejos de lo que limpia, y duplicaba el badge, que ya dice cuántos filtros hay. "Filtrar" SHALL ser la acción primaria (verde) y estar siempre visible, porque es la única forma de aplicar el borrador; "Limpiar" SHALL ser secundaria (gris) y mostrarse solo cuando hay filtros aplicados. "Limpiar" SHALL limpiar el borrador y aplicar el estado vacío en el mismo click.
+Los botones "Filtrar" y "Limpiar" SHALL vivir **al pie del form**, debajo del grupo de fechas y alineados a la derecha, y no en el header del panel colapsado: ahí quedaba arriba de todo, lejos de lo que limpia, y duplicaba el badge, que ya dice cuántos filtros hay. "Filtrar" SHALL ser la acción primaria (verde) y estar siempre visible, porque es la única forma de aplicar el borrador; "Limpiar" SHALL ser secundaria (gris) y mostrarse solo cuando hay filtros aplicados. "Limpiar" SHALL limpiar el borrador y aplicar el estado vacío en el mismo click.
 
-#### Scenario: Fechas y acciones comparten la última fila
+En viewport ancha el form abierto SHALL ocupar **dos filas** sin esconder ningún filtro: Grupo, Corredor, Tipo y Ejercicio comparten la primera fila, y Distancia, Tiempo y Fecha+acciones la segunda. Las acciones van debajo de la fecha, dentro de su misma columna. En viewport angosta los grupos SHALL apilarse. La línea de ayuda de los rangos NO SHALL ocupar una fila propia; el estado de carga SHALL comunicarse en el placeholder de los campos.
+
+#### Scenario: Las acciones cierran el form debajo de la fecha
 
 - **WHEN** se abre la barra de filtros en ventana ancha con al menos un filtro aplicado
-- **THEN** el grupo "Fecha" ocupa media fila y los botones "Limpiar" (gris, con ícono de escoba) y "Filtrar" (verde, con ícono de embudo con tilde) la otra media, sin "Limpiar" en el header del panel
+- **THEN** el grupo "Fecha" y los botones "Limpiar" (gris, con ícono de escoba) y "Filtrar" (verde, con ícono de embudo con tilde) comparten la tercera columna de la segunda fila, con las acciones debajo de las fechas y "Limpiar" fuera del header del panel
+
+#### Scenario: El form ocupa dos filas en ancho
+
+- **WHEN** se abre la barra de filtros en ventana ancha
+- **THEN** Grupo, Corredor, Tipo y Ejercicio comparten la primera fila, y Distancia, Tiempo y Fecha+acciones la segunda, con todos los filtros visibles y sin una fila extra de ayuda
 
 #### Scenario: Sin filtros puestos
 

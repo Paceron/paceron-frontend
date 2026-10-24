@@ -33,10 +33,11 @@ import { availableMetricKinds, exercisesForKind, reconcileExercise } from '../..
 import { resolveDashboardRange } from '../../utils/dashboard-range.js';
 import { ComparisonStrip } from './comparison-strip.jsx';
 import { DashboardBody } from './dashboard-body.jsx';
+import { DashboardInsightsPanel } from './dashboard-insights-panel.jsx';
+import { DashboardUtilityPanel } from './dashboard-utility-panel.jsx';
 import { DashboardLoadingOverlay } from './dashboard-loading-overlay.jsx';
 import { ExportActions } from './export-actions.jsx';
 import { FiltersBar } from './filters-bar.jsx';
-import { FilterPanel } from '../shared/filter-panel.jsx';
 import { LeaderboardTable } from './leaderboard-table.jsx';
 import { QualityBanner } from './quality-banner.jsx';
 import { StateEmpty } from './state-empty.jsx';
@@ -478,79 +479,74 @@ export function DashboardScreen({ teamId }) {
 
         {summary ? (
           <View nativeID="dashboard-content" testID="dashboard-content">
-            {/* DOS paneles colapsables, no uno (2026-10-17). Hasta esa fecha
-                había un solo contenedor "Filtros y calidad" con las dos cosas
-                adentro, y encima anidaba una card dentro de otra (la barra de
-                filtros traía su propia card y su propio título). Ahora cada cosa
-                tiene su card y su chevron, y el badge dice lo suyo.
-
-                El aviso de calidad va arriba porque su contenido explica por qué
-                puede no haber nada que filtrar, y no se renderiza si no hay nada
-                que avisar (un panel ámbar vacío es ruido). */}
-            {hasQualityNotes(summary.data_quality) ? (
-              <FilterPanel
-                badge={qualityBadge(summary.data_quality)}
-                badgeTone={qualityDefects(summary.data_quality) > 0 ? 'warning' : 'muted'}
-                icon="alert-outline"
-                idPrefix="dashboard-quality-panel"
-                label="Calidad de los datos"
-                tone="warning"
-              >
-                <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
-              </FilterPanel>
-            ) : null}
-
-            {/* Sin `hasActiveFilters`/`onClear`: en el dashboard "Filtrar" y
-                "Limpiar" no van en el header del panel sino adentro de la barra,
-                al pie del form y junto a las fechas (`FiltersBar`). El panel
-                sigue soportando las dos props —las usan las pantallas de
-                calendario, que sí lo tienen arriba. */}
-            <FilterPanel
-              badge={filterBadge(activeFilterCount)}
-              contentClassName="mt-3"
-              icon="filter-variant"
-              idPrefix="dashboard-filters-panel"
-              label="Filtros"
+            {/* Filtros y calidad comparten UN panel con dos pestañas y arranca
+                minimizado (2026-10-23). Antes eran dos `FilterPanel` hermanos,
+                cada uno con su card, su chevron y su badge: dos tarjetas para
+                dos preguntas que se consultan juntas y que, apiladas, empujaban
+                los gráficos. Cada pestaña conserva su propio conteo —nunca un
+                badge combinado— y el contenido de cada una se arma acá. */}
+            <DashboardUtilityPanel
+              filterCount={activeFilterCount}
+              filtersContent={(
+                <FiltersBar
+                  athleteUserId={athleteUserId}
+                  athletes={filtersData?.athletes ?? []}
+                  distanceFrom={distanceFrom}
+                  distanceTo={distanceTo}
+                  exerciseId={exerciseId}
+                  exercises={exerciseOptions}
+                  from={from}
+                  groupId={groupId}
+                  groups={filtersData?.groups ?? []}
+                  hasActiveFilters={activeFilterCount > 0}
+                  kind={kind}
+                  kinds={availableKinds}
+                  loading={filtersQuery.loading}
+                  onChangeAthlete={setAthleteUserId}
+                  onChangeDistanceFrom={setDistanceFrom}
+                  onChangeDistanceTo={setDistanceTo}
+                  onChangeExercise={(value) => setExerciseId(value ?? '')}
+                  onChangeFrom={setFrom}
+                  onChangeGroup={(value) => setGroupId(value ?? '')}
+                  onChangeKind={changeKind}
+                  onChangeTimeFrom={setTimeFrom}
+                  onChangeTimeTo={setTimeTo}
+                  onChangeTo={setTo}
+                  onApply={applyFilters}
+                  onClear={resetFilters}
+                  applyDisabled={applyDisabled}
+                  rangeErrors={draftRange.errors}
+                  showAthlete={isTrainer}
+                  timeFrom={timeFrom}
+                  timeTo={timeTo}
+                  to={to}
+                />
+              )}
+              id="dashboard-utility"
               meta={describeScope(isTrainer, selectedExercise, effectiveKind)}
-            >
-              <FiltersBar
-                athleteUserId={athleteUserId}
-                athletes={filtersData?.athletes ?? []}
-                distanceFrom={distanceFrom}
-                distanceTo={distanceTo}
-                exerciseId={exerciseId}
-                exercises={exerciseOptions}
-                from={from}
-                groupId={groupId}
-                groups={filtersData?.groups ?? []}
-                hasActiveFilters={activeFilterCount > 0}
-                kind={kind}
-                kinds={availableKinds}
-                loading={filtersQuery.loading}
-                onChangeAthlete={setAthleteUserId}
-                onChangeDistanceFrom={setDistanceFrom}
-                onChangeDistanceTo={setDistanceTo}
-                onChangeExercise={(value) => setExerciseId(value ?? '')}
-                onChangeFrom={setFrom}
-                onChangeGroup={(value) => setGroupId(value ?? '')}
-                onChangeKind={changeKind}
-                onChangeTimeFrom={setTimeFrom}
-                onChangeTimeTo={setTimeTo}
-                onChangeTo={setTo}
-                onApply={applyFilters}
-                onClear={resetFilters}
-                applyDisabled={applyDisabled}
-                rangeErrors={draftRange.errors}
-                showAthlete={isTrainer}
-                timeFrom={timeFrom}
-                timeTo={timeTo}
-                to={to}
-              />
-            </FilterPanel>
+              qualityBadge={qualityBadge(summary.data_quality)}
+              qualityContent={hasQualityNotes(summary.data_quality) ? (
+                // La pestaña es neutral, pero el aviso conserva la identidad
+                // ámbar: sigue siendo una advertencia, no un dato más.
+                <View
+                  className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20"
+                  nativeID="dashboard-quality-callout"
+                  testID="dashboard-quality-callout"
+                >
+                  <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
+                </View>
+              ) : (
+                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="dashboard-quality-empty" testID="dashboard-quality-empty">
+                  Sin avisos de calidad en el período.
+                </Text>
+              )}
+            />
 
-            {/* Un solo cuerpo para los dos roles. Lo que cambia según el rol se
-                AGREGA después, y lo decide una capacidad: para un corredor las
-                dos secciones no existen (ni sus hooks). */}
+            {/* Un solo cuerpo para los dos roles. Después de los gráficos, el
+                perfil de cinco ejes comparte panel con las secciones que
+                dependen del rol, cada una en su pestaña. La decisión de montar
+                (o no) ranking y comparación sigue viviendo en las capacidades:
+                para un corredor llegan en null y sus hooks no se llaman. */}
             <DashboardBody
               captureRef={captureViewRef}
               granularity={granularity}
@@ -559,19 +555,24 @@ export function DashboardScreen({ teamId }) {
               onGranularityChange={setGranularity}
               seriesPoints={seriesPoints}
               seriesSamples={seriesSamples}
-              // Mismo cuerpo, título en primera persona para el corredor: el
-              // backend ya recortó el scope a sus series, así que "perfil del
-              // equipo" sobre un solo corredor sería mentir.
-              radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
               summary={summary}
               timeseries={timeseries}
             >
-              {canReadTeamRanking(activeRole) ? (
-                <TeamRankingSection order={order} scope={scope} sort={sort} summaryUnits={summary?.units} toggleSort={toggleSort} />
-              ) : null}
-              {canReadPeriodComparison(activeRole) ? (
-                <PeriodComparisonSection from={applied.from} scope={scope} to={applied.to} />
-              ) : null}
+              <DashboardInsightsPanel
+                // Mismo cuerpo, título en primera persona para el corredor: el
+                // backend ya recortó el scope a sus series, así que "perfil del
+                // equipo" sobre un solo corredor sería mentir.
+                comparison={canReadPeriodComparison(activeRole) ? (
+                  <PeriodComparisonSection from={applied.from} scope={scope} to={applied.to} />
+                ) : null}
+                id={isTrainer ? 'dashboard-trainer-insights' : 'dashboard-runner-insights'}
+                kind={effectiveKind}
+                radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
+                ranking={canReadTeamRanking(activeRole) ? (
+                  <TeamRankingSection order={order} scope={scope} sort={sort} summaryUnits={summary?.units} toggleSort={toggleSort} />
+                ) : null}
+                summary={summary}
+              />
             </DashboardBody>
           </View>
         ) : null}
@@ -707,11 +708,6 @@ function qualityBadge(quality) {
   const legacy = Number(quality?.legacy_sessions) || 0;
   if (legacy > 0) return `${legacy} ${legacy === 1 ? 'histórica' : 'históricas'}`;
   return null;
-}
-
-function filterBadge(activeFilterCount) {
-  if (!activeFilterCount) return null;
-  return `${activeFilterCount} ${activeFilterCount === 1 ? 'filtro' : 'filtros'}`;
 }
 
 // ¿Hay algo que avisar? Un panel "Calidad de los datos" vacío es ruido: los

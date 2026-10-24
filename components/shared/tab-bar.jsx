@@ -55,8 +55,9 @@ const VARIANT = {
   },
 };
 
-export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {}, variant = 'default' }) {
+export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {}, variant = 'default', wrapClassName = null }) {
   const style = VARIANT[variant] ?? VARIANT.default;
+  const wrapClass = wrapClassName ?? style.wrapClassName;
   const colors = useThemeColors();
   const refs = useRef({});
 
@@ -151,7 +152,7 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {},
     return (
       <ScrollView
         accessibilityRole="tablist"
-        className={style.wrapClassName}
+        className={wrapClass}
         contentContainerClassName={`flex-row ${variant === 'compact' ? 'gap-4' : 'gap-2'}`}
         horizontal
         nativeID={scope}
@@ -164,7 +165,7 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {},
   }
 
   return (
-    <View accessibilityRole="tablist" className={style.wrapClassName} nativeID={scope} testID={scope}>
+    <View accessibilityRole="tablist" className={wrapClass} nativeID={scope} testID={scope}>
       {tabs.map((tab, index) => tabContent(tab, index))}
     </View>
   );

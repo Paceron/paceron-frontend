@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FIELD_LABEL } from './fields.jsx';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 
 // Campo numérico ESCRIBIBLE A MANO con una lista de valores frecuentes, para
 // filtros donde el `select` no alcanza: `ResponsiveSelectField` es cerrado, y
@@ -61,6 +62,17 @@ export function NumberFieldWithSuggestions({
     : error
       ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
       : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
+  // En web, la variante `dense` se usa dentro de grupos de dos campos (los
+  // rangos del dashboard) y el toggle de 44 px + el padding de 16 px dejaban al
+  // input sin ancho visible. En táctil se mantienen los 44 px de touch target;
+  // en web el toggle baja a 36 px, el alto a 32 px (el mismo de `DateField`
+  // dense, para que la fila quede alineada) y el input a `px-2`. Eso es lo que
+  // permite poner tres grupos de dos extremos en una sola fila sin recortar el
+  // valor.
+  const compactWeb = dense && isWeb;
+  const inputPadding = compactWeb ? 'px-2' : 'px-4';
+  const boxHeight = compactWeb ? 'min-h-8' : 'min-h-12';
+  const toggleClass = compactWeb ? 'h-8 w-9' : 'h-11 w-11';
 
   const choose = (number) => {
     onChange(formatDecimal(number));
@@ -75,7 +87,7 @@ export function NumberFieldWithSuggestions({
         </Text>
       )}
       <View
-        className={`min-h-12 flex-row items-center rounded-xl border ${borderColor}`}
+        className={`${boxHeight} flex-row items-center rounded-xl border ${borderColor}`}
         nativeID={`${idPrefix}-box`}
         testID={`${idPrefix}-box`}
       >
@@ -86,7 +98,7 @@ export function NumberFieldWithSuggestions({
           // intrínseco del <input> — y en web ese ancho es de ~20 caracteres,
           // suficiente para empujar el botón de sugerencias fuera de la caja. Es
           // el mismo motivo por el que InputField lo hace con su stepper.
-          className="min-w-0 flex-1 px-4 text-sm text-slate-900 outline-none dark:text-white"
+          className={`min-w-0 flex-1 ${inputPadding} text-sm text-slate-900 outline-none dark:text-white`}
           editable={!disabled}
           keyboardType="decimal-pad"
           nativeID={`${idPrefix}-input`}
@@ -108,7 +120,7 @@ export function NumberFieldWithSuggestions({
           accessibilityRole="button"
           accessibilityState={{ disabled, expanded: open }}
           aria-expanded={open}
-          className="h-11 w-11 items-center justify-center rounded-r-xl active:opacity-70"
+          className={`${toggleClass} items-center justify-center rounded-r-xl active:opacity-70`}
           disabled={disabled}
           nativeID={`${idPrefix}-suggestions-toggle`}
           onPress={() => setOpen((current) => !current)}

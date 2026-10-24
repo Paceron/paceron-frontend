@@ -96,6 +96,10 @@ export function FiltersBar({
 
   return (
     <View nativeID={id} testID={id}>
+      {/* Alcance y cascada en una sola fila de 4 columnas en ancho: Grupo,
+          Corredor, Tipo y Ejercicio. En angosto cada uno cae a ancho completo.
+          Antes eran dos filas de 2; juntarlas es lo que permite que el form
+          abierto ocupe solo dos filas en desktop sin esconder ningún filtro. */}
       <Row>
         <Col>
           <ResponsiveSelectField
@@ -121,9 +125,6 @@ export function FiltersBar({
             />
           </Col>
         ) : null}
-      </Row>
-
-      <Row>
         <Col>
           <TypeFilter kind={kind} kinds={kinds} onChange={onChangeKind} />
         </Col>
@@ -145,30 +146,21 @@ export function FiltersBar({
         </Col>
       </Row>
 
-      <Text
-        className="mb-1 text-xs text-slate-500 dark:text-slate-400"
-        nativeID={`${id}-ranges-hint`}
-        testID={`${id}-ranges-hint`}
-      >
-        {rangesDisabled
-          ? 'Cargando filtros…'
-          : 'Escribí el valor o elegí uno de los sugeridos.'}
-      </Text>
-
-      {/* Distancia y Tiempo: cada rango es UNA pregunta con dos extremos, así que
-          lleva un solo título ("Distancia", "Tiempo") y las dos cajas debajo,
-          en vez de dos campos con título propio cada uno. El título NO repite
-          "desde / hasta": cada caja ya lo dice en su propio rótulo. Los títulos
-          de los dos rangos quedan en la misma fila y las cajas forman una grilla
-          de 2×2: son números chicos y cuatro filas de ancho completo
-          desperdiciaban el alto.
+      {/* Distancia, Tiempo y Fecha comparten la segunda fila en ancho: son tres
+          grupos más un bloque de acciones debajo de la fecha. Cada grupo es UNA
+          pregunta con dos extremos, con un solo título ("Distancia", "Tiempo",
+          "Fecha") y las dos cajas debajo; el título NO repite "desde / hasta"
+          porque cada caja ya lo dice. Así el form entero queda en dos filas en
+          desktop sin recortar los campos numéricos (el `dense` de web achica el
+          toggle de sugerencias a 36 px y el padding del input; en táctil se
+          mantienen los 44 px) ni las fechas.
 
           Los dos extremos van en un `flex-row` con slots `flex-1` propios, no en
           `Row`/`Col`: el `flex: 1` de `Col` solo aplica en ventana ancha
           (components/forms/fields.jsx), y acá los dos extremos tienen que quedar
           50/50 en cualquier ancho (si no, un `<input>` con `min-w-0` se encoge a
-          su contenido). El `Row`/`Col` de afuera sí queda, para apilar los dos
-          rangos en angosto. */}
+          su contenido). El `Row`/`Col` de afuera sí queda, para apilar los tres
+          grupos en angosto. */}
       <Row>
         <Col>
           <View nativeID={`${id}-distance-range`} testID={`${id}-distance-range`}>
@@ -194,6 +186,7 @@ export function FiltersBar({
                   label="Desde"
                   labelClassName={RANGE_SUBLABEL}
                   onChange={onChangeDistanceFrom}
+                  placeholder={loading ? 'Cargando…' : undefined}
                   suggestions={DISTANCE_SUGGESTIONS_KM}
                   unit="km"
                   value={distanceFrom ?? ''}
@@ -209,6 +202,7 @@ export function FiltersBar({
                   label="Hasta"
                   labelClassName={RANGE_SUBLABEL}
                   onChange={onChangeDistanceTo}
+                  placeholder={loading ? 'Cargando…' : undefined}
                   suggestions={DISTANCE_SUGGESTIONS_KM}
                   unit="km"
                   value={distanceTo ?? ''}
@@ -241,6 +235,7 @@ export function FiltersBar({
                   label="Desde"
                   labelClassName={RANGE_SUBLABEL}
                   onChange={onChangeTimeFrom}
+                  placeholder={loading ? 'Cargando…' : undefined}
                   suggestions={TIME_SUGGESTIONS_MIN}
                   unit="min"
                   value={timeFrom ?? ''}
@@ -256,6 +251,7 @@ export function FiltersBar({
                   label="Hasta"
                   labelClassName={RANGE_SUBLABEL}
                   onChange={onChangeTimeTo}
+                  placeholder={loading ? 'Cargando…' : undefined}
                   suggestions={TIME_SUGGESTIONS_MIN}
                   unit="min"
                   value={timeTo ?? ''}
@@ -264,17 +260,6 @@ export function FiltersBar({
             </View>
           </View>
         </Col>
-      </Row>
-
-      {/* Fechas: mismo criterio que los dos rangos de arriba — UNA pregunta
-          ("Fecha") con las dos cajitas abajo, en vez de dos campos con
-          título propio cada uno. Al quedar en media fila, la otra mitad la ocupan
-          las acciones: antes el "Limpiar" vivía en el header del panel,
-          arriba de todo el form y lejos de lo que limpia (y repetido con el
-          badge, que ya dice cuántos filtros hay). "Limpiar" se renderiza solo
-          cuando hay algo que limpiar; "Filtrar" está siempre, porque es la única
-          forma de aplicar el borrador. */}
-      <Row narrowClassName="gap-3">
         <Col>
           <View nativeID={`${id}-date-range`} testID={`${id}-date-range`}>
             <Text
@@ -318,14 +303,13 @@ export function FiltersBar({
               </View>
             </View>
           </View>
-        </Col>
-        <Col>
-          {/* Alineadas al pie de la columna y contra el borde derecho del form:
-              a la altura de las cajitas de fecha (no del título del grupo), que
-              es donde se busca una acción de cierre. "Limpiar" (gris, secundaria)
-              va primero; "Filtrar" (verde, primaria) cierra la fila. */}
+
+          {/* Las acciones cierran el form debajo de la fecha, alineadas a la
+              derecha: siguen al pie (no en el header, donde estaban lejos de lo
+              que limpian) y no necesitan una fila propia. "Limpiar" (gris,
+              secundaria) va primero; "Filtrar" (verde, primaria) cierra. */}
           <View
-            className="h-full flex-row items-end justify-end gap-2"
+            className="mt-3 flex-row items-center justify-end gap-2"
             nativeID={`${id}-actions-slot`}
             testID={`${id}-actions-slot`}
           >

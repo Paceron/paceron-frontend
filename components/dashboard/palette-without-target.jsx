@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { formatDelta, hasMetric } from '../../utils/dashboard-format.js';
+import { formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
 import { describePalette } from '../../utils/dashboard-palette.js';
-import { ChartCard } from './charts/chart-surface.jsx';
+import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { DotPlot } from './charts/dot-plot.jsx';
 import { LineChart } from './charts/line-chart.jsx';
 import { GranularitySelect } from './granularity-select.jsx';
@@ -120,43 +120,55 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = n
         ))}
       </View>
 
-      <ChartCard
-        id={`${id}-evolution-card`}
-        action={onGranularityChange ? (
-          <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
-        ) : null}
-        icon="chart-line"
-        description="Mejor marca de cada período (el menor tiempo alcanzado entre las series válidas), agrupada según la granularidad elegida. En esta paleta el ejercicio no tiene objetivo cargado, así que la línea va sola: se lee contra los otros períodos, no contra una referencia."
-        title="Evolución de la mejor marca"
-      >
-        <LineChart
-          formatX={shortLabel}
-          id={`${id}-line`}
-          label={`Evolución de la mejor marca en ${bestBuckets.length} ${bestBuckets.length === 1 ? 'período' : 'períodos'}`}
-          primary={bestBuckets}
-          unit={units.best_time}
-        />
-      </ChartCard>
-
-      {seriesPoints && seriesPoints.length > 1 ? (
-        <ChartCard
-          description="Cada punto es una serie del período: horizontal, el tiempo alcanzado (más a la izquierda, mejor); vertical, la velocidad. Muestra la dispersión y las marcas atípicas que un promedio esconde."
-          id={`${id}-dot-card`}
-          icon="chart-scatter-plot"
-          title="Dispersión de marcas"
+      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesPoints)}>
+        <ChartGridItem
+          action={onGranularityChange ? (
+            <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
+          ) : null}
+          description="Mejor marca de cada período (el menor tiempo alcanzado entre las series válidas), agrupada según la granularidad elegida. En esta paleta el ejercicio no tiene objetivo cargado, así que la línea va sola: se lee contra los otros períodos, no contra una referencia."
+          icon="chart-line"
+          id={`${id}-evolution-card`}
+          preview={(
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-evolution-preview`} testID={`${id}-evolution-preview`}>
+              {`${formatMetric(totals.best_time_ms, units.best_time)} · ${bestBuckets.length} ${bestBuckets.length === 1 ? 'período' : 'períodos'}`}
+            </Text>
+          )}
+          title="Evolución de la mejor marca"
         >
-          <DotPlot
-            id={`${id}-dot`}
-            label={`Dispersión de ${seriesPoints.length} marcas medidas`}
-            pointLabel="Cada punto es una serie registrada."
-            xUnit={units.time}
-            xCaption="Tiempo (menor es mejor)"
-            yUnit={units.speed}
-            yCaption="Velocidad"
-            points={seriesPoints.map((sample) => ({ x: sample.time_ms, y: sample.speed_kph }))}
+          <LineChart
+            formatX={shortLabel}
+            id={`${id}-line`}
+            label={`Evolución de la mejor marca en ${bestBuckets.length} ${bestBuckets.length === 1 ? 'período' : 'períodos'}`}
+            primary={bestBuckets}
+            unit={units.best_time}
           />
-        </ChartCard>
-      ) : null}
+        </ChartGridItem>
+
+        {seriesPoints && seriesPoints.length > 1 ? (
+          <ChartGridItem
+            description="Cada punto es una serie del período: horizontal, el tiempo alcanzado (más a la izquierda, mejor); vertical, la velocidad. Muestra la dispersión y las marcas atípicas que un promedio esconde."
+            icon="chart-scatter-plot"
+            id={`${id}-dot-card`}
+            preview={(
+              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-dot-preview`} testID={`${id}-dot-preview`}>
+                {`${seriesPoints.length} marcas medidas`}
+              </Text>
+            )}
+            title="Dispersión de marcas"
+          >
+            <DotPlot
+              id={`${id}-dot`}
+              label={`Dispersión de ${seriesPoints.length} marcas medidas`}
+              pointLabel="Cada punto es una serie registrada."
+              xUnit={units.time}
+              xCaption="Tiempo (menor es mejor)"
+              yUnit={units.speed}
+              yCaption="Velocidad"
+              points={seriesPoints.map((sample) => ({ x: sample.time_ms, y: sample.speed_kph }))}
+            />
+          </ChartGridItem>
+        ) : null}
+      </ChartGrid>
 
 
       <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
@@ -166,6 +178,15 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = n
       </Text>
     </View>
   );
+}
+
+// Misma lista que usa la paleta A: el dot plot entra solo cuando hay más de
+// una marca, porque con una sola no hay dispersión que dibujar.
+function chartGridIds(id, seriesPoints) {
+  return [
+    `${id}-evolution-card`,
+    ...(seriesPoints && seriesPoints.length > 1 ? [`${id}-dot-card`] : []),
+  ];
 }
 
 function shortLabel(value) {

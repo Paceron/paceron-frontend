@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
 import { formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
-import { ChartCard } from './charts/chart-surface.jsx';
+import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
 import { BulletChart } from './charts/bullet-chart.jsx';
 import { ComplianceDonut } from './charts/compliance-donut.jsx';
@@ -179,100 +179,125 @@ export function PaletteWithTarget({
         ))}
       </View>
 
-      <ChartCard
-        id={`${id}-compliance-card`}
-        icon="gauge"
-        description="Porcentaje de las series con objetivo cargado que lo cumplieron dentro de la tolerancia aplicada. La barra no se estira más allá del objetivo: la escala termina en 100 %, y las muescas del track marcan 80 % (falta) y 95 % (cerca)."
-        subtitle={hasMetric(summary?.tolerance_applied) ? `Tolerancia aplicada ${Math.round(summary.tolerance_applied * 1000) / 10} %` : undefined}
-        title="Cumplimiento del objetivo"
-      >
-        <BulletChart
-          id={`${id}-bullet`}
-          label={`Cumplimiento del objetivo: ${formatMetric(totals.compliance_rate, units.compliance)}`}
-          target={100}
-          unit={units.compliance}
-          value={totals.compliance_rate}
-        />
-      </ChartCard>
-
-      <ChartCard
-        action={onGranularityChange ? (
-          <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
-        ) : null}
-        id={`${id}-evolution-card`}
-        icon="chart-line"
-        description={evolutionDescription}
-        subtitle={pacePieces ? 'Línea continua: ritmo logrado. Línea punteada: velocidad esperada.' : undefined}
-        title="Evolución del ritmo"
-      >
-        <LineChart
-          formatX={shortLabel}
-          id={`${id}-line`}
-          label={`Evolución del ritmo en ${speedBuckets.length} ${speedBuckets.length === 1 ? 'período' : 'períodos'}`}
-          primary={speedBuckets}
-          secondary={pacePieces ? targetBuckets : []}
-          secondaryLabel={pacePieces ? 'La línea punteada es la velocidad esperada del objetivo vigente.' : undefined}
-          unit={units.speed}
-        />
-      </ChartCard>
-
-      {seriesSamples && seriesSamples.length ? (
-        <ChartCard
-          description="Cómo se reparten las velocidades de las series del período: la caja abarca el 50 % central de las marcas, la línea del medio es la mediana y los bigotes llegan hasta el resto (los valores atípicos quedan marcados fuera). Es la geometría de la misma distribución de la que sale la consistencia del KPI."
-          id={`${id}-box-card`}
-          icon="chart-bell-curve"
-          title="Distribución del ritmo por serie"
+      {/* Los gráficos arrancan minimizados en una grilla de dos columnas. El
+          estado de qué está maximizado vive en `ChartGrid` y no en cada tarjeta:
+          el control "Maximizar todos" necesita el conjunto completo. */}
+      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesSamples)}>
+        <ChartGridItem
+          description="Porcentaje de las series con objetivo cargado que lo cumplieron dentro de la tolerancia aplicada. La barra no se estira más allá del objetivo: la escala termina en 100 %, y las muescas del track marcan 80 % (falta) y 95 % (cerca)."
+          icon="gauge"
+          id={`${id}-compliance-card`}
+          preview={(
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-compliance-preview`} testID={`${id}-compliance-preview`}>
+              {`Cumplimiento ${formatMetric(totals.compliance_rate, units.compliance)}`}
+            </Text>
+          )}
+          subtitle={hasMetric(summary?.tolerance_applied) ? `Tolerancia aplicada ${Math.round(summary.tolerance_applied * 1000) / 10} %` : undefined}
+          title="Cumplimiento del objetivo"
         >
-          <BoxPlot
-            id={`${id}-box`}
-            label={`Distribución de ${seriesSamples.length} velocidades medidas`}
-            unit={units.speed}
-            values={seriesSamples}
+          <BulletChart
+            id={`${id}-bullet`}
+            label={`Cumplimiento del objetivo: ${formatMetric(totals.compliance_rate, units.compliance)}`}
+            target={100}
+            unit={units.compliance}
+            value={totals.compliance_rate}
           />
-        </ChartCard>
-      ) : null}
+        </ChartGridItem>
 
-      <ChartCard
-        id={`${id}-periods-card`}
-        icon="chart-donut-variant"
-        description="El área apilada reparte cada período entre cumplió, cerca, no cumplió y sin dato sobre el total de series con objetivo de ese período; la línea que la recorre es el cumplimiento y el anillo, el total del rango. El eje vertical está fijo en 0–100 % para que dos períodos planos se comparen de verdad, y 'sin dato' se apila contra el techo porque es lo que no se pudo evaluar. Las bandas llegan calculadas por la API: el front no reclasifica nada."
-        title="Cumplimiento por período"
-      >
-        <View
-          nativeID={`${id}-periods-body`}
-          onLayout={(event) => setPeriodsWidth(Math.floor(event.nativeEvent.layout.width))}
-          testID={`${id}-periods-body`}
+        <ChartGridItem
+          action={onGranularityChange ? (
+            <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
+          ) : null}
+          description={evolutionDescription}
+          icon="chart-line"
+          id={`${id}-evolution-card`}
+          preview={(
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-evolution-preview`} testID={`${id}-evolution-preview`}>
+              {`${formatMetric(totals.achieved_speed_kph, units.speed)} · ${speedBuckets.length} ${speedBuckets.length === 1 ? 'período' : 'períodos'}`}
+            </Text>
+          )}
+          subtitle={pacePieces ? 'Línea continua: ritmo logrado. Línea punteada: velocidad esperada.' : undefined}
+          title="Evolución del ritmo"
+        >
+          <LineChart
+            formatX={shortLabel}
+            id={`${id}-line`}
+            label={`Evolución del ritmo en ${speedBuckets.length} ${speedBuckets.length === 1 ? 'período' : 'períodos'}`}
+            primary={speedBuckets}
+            secondary={pacePieces ? targetBuckets : []}
+            secondaryLabel={pacePieces ? 'La línea punteada es la velocidad esperada del objetivo vigente.' : undefined}
+            unit={units.speed}
+          />
+        </ChartGridItem>
+
+        {seriesSamples && seriesSamples.length ? (
+          <ChartGridItem
+            description="Cómo se reparten las velocidades de las series del período: la caja abarca el 50 % central de las marcas, la línea del medio es la mediana y los bigotes llegan hasta el resto (los valores atípicos quedan marcados fuera). Es la geometría de la misma distribución de la que sale la consistencia del KPI."
+            icon="chart-bell-curve"
+            id={`${id}-box-card`}
+            preview={(
+              <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-box-preview`} testID={`${id}-box-preview`}>
+                {`${seriesSamples.length} ${seriesSamples.length === 1 ? 'serie medida' : 'series medidas'}`}
+              </Text>
+            )}
+            title="Distribución del ritmo por serie"
+          >
+            <BoxPlot
+              id={`${id}-box`}
+              label={`Distribución de ${seriesSamples.length} velocidades medidas`}
+              unit={units.speed}
+              values={seriesSamples}
+            />
+          </ChartGridItem>
+        ) : null}
+
+        <ChartGridItem
+          description="El área apilada reparte cada período entre cumplió, cerca, no cumplió y sin dato sobre el total de series con objetivo de ese período; la línea que la recorre es el cumplimiento y el anillo, el total del rango. El eje vertical está fijo en 0–100 % para que dos períodos planos se comparen de verdad, y 'sin dato' se apila contra el techo porque es lo que no se pudo evaluar. Las bandas llegan calculadas por la API: el front no reclasifica nada."
+          icon="chart-donut-variant"
+          id={`${id}-periods-card`}
+          preview={(
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-periods-preview`} testID={`${id}-periods-preview`}>
+              {`${buckets.length} ${buckets.length === 1 ? 'período' : 'períodos'} con bandas`}
+            </Text>
+          )}
+          title="Cumplimiento por período"
         >
           <View
-            className={periodsWide ? 'flex-row items-center gap-4' : ''}
-            nativeID={`${id}-periods-row`}
-            testID={`${id}-periods-row`}
+            nativeID={`${id}-periods-body`}
+            onLayout={(event) => setPeriodsWidth(Math.floor(event.nativeEvent.layout.width))}
+            testID={`${id}-periods-body`}
           >
             <View
-              className={periodsWide ? 'flex-1' : ''}
-              nativeID={`${id}-trend-cell`}
-              testID={`${id}-trend-cell`}
+              className={periodsWide ? 'flex-row items-center gap-4' : ''}
+              nativeID={`${id}-periods-row`}
+              testID={`${id}-periods-row`}
             >
-              <ComplianceTrendChart
-                buckets={periodBuckets}
-                id={`${id}-trend`}
-                label={`Cumplimiento por período: series que cumplieron, quedaron cerca, no cumplieron y sin dato, ${buckets.length} ${buckets.length === 1 ? 'período' : 'períodos'}`}
-              />
-            </View>
-            <View
-              nativeID={`${id}-donut-cell`}
-              style={periodsWide ? { width: 176 } : { marginTop: 12 }}
-              testID={`${id}-donut-cell`}
-            >
-              <ComplianceDonut
-                counts={bandTotals}
-                id={`${id}-donut`}
-                label={`Reparto de cumplimiento del período: ${DASHBOARD_BANDS.map((band) => `${BAND_LABELS[band]} ${bandTotals[band]}`).join(', ')}`}
-              />
+              <View
+                className={periodsWide ? 'flex-1' : ''}
+                nativeID={`${id}-trend-cell`}
+                testID={`${id}-trend-cell`}
+              >
+                <ComplianceTrendChart
+                  buckets={periodBuckets}
+                  id={`${id}-trend`}
+                  label={`Cumplimiento por período: series que cumplieron, quedaron cerca, no cumplieron y sin dato, ${buckets.length} ${buckets.length === 1 ? 'período' : 'períodos'}`}
+                />
+              </View>
+              <View
+                nativeID={`${id}-donut-cell`}
+                style={periodsWide ? { width: 176 } : { marginTop: 12 }}
+                testID={`${id}-donut-cell`}
+              >
+                <ComplianceDonut
+                  counts={bandTotals}
+                  id={`${id}-donut`}
+                  label={`Reparto de cumplimiento del período: ${DASHBOARD_BANDS.map((band) => `${BAND_LABELS[band]} ${bandTotals[band]}`).join(', ')}`}
+                />
+              </View>
             </View>
           </View>
-        </View>
-      </ChartCard>
+        </ChartGridItem>
+      </ChartGrid>
 
 
       <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
@@ -305,6 +330,17 @@ const FORMULAS = {
   compliance_rate: 'Series válidas que cumplen el objetivo según la tolerancia aplicada, sobre las series válidas que tienen objetivo cargado.',
   cv: 'Coeficiente de variación de la velocidad (σ ÷ μ) de las series válidas del período. Sin dato con menos de 2 series.',
 };
+
+// Los ids de las tarjetas que participan del "maximizar todas". El box plot
+// aparece solo cuando hay muestras, así que también entra o sale de la lista.
+function chartGridIds(id, seriesSamples) {
+  return [
+    `${id}-compliance-card`,
+    `${id}-evolution-card`,
+    ...(seriesSamples && seriesSamples.length ? [`${id}-box-card`] : []),
+    `${id}-periods-card`,
+  ];
+}
 
 function hasTarget(summary) {
   return Boolean(summary?.has_target);

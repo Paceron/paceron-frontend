@@ -44,11 +44,11 @@ export function QualityBanner({ id = 'dashboard-quality', quality }) {
   if (!active.length && !insufficient && !isLegacyNote(quality)) return null;
 
   return (
-    // Sin card propia: la card ámbar (con su `border-l-4` grueso, que es lo que
-    // separa este AVISO de las tarjetas de KPI) y el título "Calidad de los
-    // datos" los pone el `FilterPanel` con `tone="warning"` que lo envuelve — el
-    // mismo panel que hace que el aviso se pueda colapsar sin perder el conteo,
-    // que queda en el badge del header.
+    // Sin card propia: desde 2026-10-23 el aviso vive en la pestaña "Calidad"
+    // del panel de filtros/calidad, y el recuadro ámbar (con su borde, que es lo
+    // que separa este AVISO de las tarjetas de KPI) lo pone la pantalla. El
+    // conteo que antes vivía en el badge del header ahora va en el label de la
+    // pestaña.
     <View nativeID={id} testID={id}>
       {insufficient ? (
         <View className="mb-3" nativeID={`${id}-insufficient`} testID={`${id}-insufficient`}>
