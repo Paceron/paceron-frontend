@@ -20,6 +20,7 @@ import { formatMeters } from '../../utils/distance.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import { isWeb } from '../../utils/platform.js';
 import { logDebug } from '../../utils/debug-log.js';
+import { syncRun } from '../../services/session-sync.js';
 
 // Runtime de la sesión PRESENCIAL -- calca a propósito la experiencia de
 // training-session-active-screen.jsx (asíncrona, sin tocar: overview con
@@ -715,6 +716,20 @@ function TrainingSessionLiveScreenContent() {
   const [currentSetId, setCurrentSetId] = useState(null);
   const [finishing, setFinishing] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
+  const [openingComparison, setOpeningComparison] = useState(false);
+
+  // "Ver comparación" (Gap 35): en presencial las series se suben de a una en
+  // segundo plano y finalizeSession no espera la última. Antes de abrir la
+  // comparación se fuerza un syncRun (idempotente: lo ya subido vuelve como
+  // conflicto) para no mostrar la sesión con una serie de menos.
+  const handleOpenComparison = async () => {
+    if (openingComparison || !run) return;
+    setOpeningComparison(true);
+    await syncRun(run.id).catch((error) => logDebug(`[live] syncRun antes de comparar ERROR ${error.message}`));
+    const params = { sessionInstanceId: run.session_instance_id, date: run.session_date };
+    clearLiveSession();
+    router.replace({ pathname: '/training-comparison/session', params });
+  };
 
   // `run` recién existe después del bootstrap -- antes de eso, `teamId` es
   // null y los dos hooks de abajo simplemente no piden nada todavía (su
@@ -924,7 +939,19 @@ function TrainingSessionLiveScreenContent() {
                 Completaste todos los ejercicios de la sesión.
               </Text>
               <Pressable
-                className="mt-5 h-12 w-full items-center justify-center rounded-full bg-primary active:opacity-80"
+                className="mt-5 h-11 w-full flex-row items-center justify-center gap-2 rounded-full border border-primary bg-primary-tint active:opacity-80 dark:bg-primary/15"
+                disabled={openingComparison}
+                nativeID="training-session-live-complete-modal-compare-button"
+                onPress={handleOpenComparison}
+                testID="training-session-live-complete-modal-compare-button"
+              >
+                {openingComparison ? <ActivityIndicator color="#8cc63e" size="small" /> : <MaterialCommunityIcons color="#8cc63e" name="scale-balance" size={18} />}
+                <Text className="text-sm font-semibold text-on-primary-tint dark:text-primary" nativeID="training-session-live-complete-modal-compare-label" testID="training-session-live-complete-modal-compare-label">
+                  Ver comparación con lo planificado
+                </Text>
+              </Pressable>
+              <Pressable
+                className="mt-3 h-12 w-full items-center justify-center rounded-full bg-primary active:opacity-80"
                 nativeID="training-session-live-complete-modal-close-button"
                 onPress={() => { clearLiveSession(); router.back(); }}
                 testID="training-session-live-complete-modal-close-button"

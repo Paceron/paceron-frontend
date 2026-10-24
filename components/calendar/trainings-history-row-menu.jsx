@@ -3,11 +3,25 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // "Ver/editar registro" ya no vive acá -- clickear la fila (fuera de modo
 // selección) hace exactamente eso, ver trainings-history-row.jsx#onOpenReview.
-// El menú queda para lo que la fila sola no resuelve: entrar a selección
-// múltiple, o borrar esta sesión sin pasar por "Seleccionar" primero.
-export function TrainingsHistoryRowMenu({ onSelect, onDelete }) {
+// El menú queda para lo que la fila sola no resuelve: comparar la sesión con
+// lo planificado (solo corredor, Gap 35), entrar a selección múltiple, o
+// borrar esta sesión sin pasar por "Seleccionar" primero.
+export function TrainingsHistoryRowMenu({ onSelect, onDelete, onCompare }) {
   return (
     <View className="w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID="trainings-history-row-menu-panel" testID="trainings-history-row-menu-panel">
+      {onCompare ? (
+        <Pressable
+          className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+          nativeID="trainings-history-row-menu-compare"
+          onPress={onCompare}
+          testID="trainings-history-row-menu-compare"
+        >
+          <MaterialCommunityIcons color="#64748b" name="scale-balance" size={16} />
+          <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="trainings-history-row-menu-compare-label" testID="trainings-history-row-menu-compare-label">
+            Comparar con lo planificado
+          </Text>
+        </Pressable>
+      ) : null}
       <Pressable
         className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
         nativeID="trainings-history-row-menu-select"

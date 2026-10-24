@@ -460,7 +460,10 @@ function FinishSummaryModal({ summary, onClose, visible }) {
   );
 }
 
-function SessionCompleteModal({ visible, runId, counts, onClose }) {
+// `onCompare` abre la comparación planificado vs realizado (Gap 35). Se ofrece
+// recién cuando la sincronización terminó sin errores: el detalle se arma con
+// lo que ya llegó al backend, y con series sin subir mostraría de menos.
+function SessionCompleteModal({ visible, runId, counts, onClose, onCompare }) {
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState(null);
   const startedRef = useRef(false);
@@ -528,6 +531,21 @@ function SessionCompleteModal({ visible, runId, counts, onClose }) {
               <Text className="text-sm font-medium text-slate-500 dark:text-slate-400" nativeID="session-complete-modal-sync-idle" testID="session-complete-modal-sync-idle">Esperando sincronización</Text>
             )}
           </View>
+
+          {result && !hasErrors && onCompare ? (
+            <Pressable
+              className="mt-4 h-11 flex-row items-center justify-center gap-2 rounded-full border border-primary bg-primary-tint hover:opacity-90 active:opacity-80 dark:bg-primary/15"
+              disabled={syncing}
+              nativeID="session-complete-modal-compare-button"
+              onPress={onCompare}
+              testID="session-complete-modal-compare-button"
+            >
+              <MaterialCommunityIcons color="#8cc63e" name="scale-balance" size={18} />
+              <Text className="text-sm font-semibold text-on-primary-tint dark:text-primary" nativeID="session-complete-modal-compare-label" testID="session-complete-modal-compare-label">
+                Ver comparación con lo planificado
+              </Text>
+            </Pressable>
+          ) : null}
 
           <View className="mt-5 flex-row gap-3" nativeID="session-complete-modal-actions" testID="session-complete-modal-actions">
             {hasErrors && (
@@ -1263,6 +1281,10 @@ function TrainingSessionActiveScreenContent() {
           onClose={() => {
             clearLiveSession();
             router.back();
+          }}
+          onCompare={() => {
+            clearLiveSession();
+            router.replace({ pathname: '/training-comparison/session', params: { sessionInstanceId: run.session_instance_id, date: run.session_date } });
           }}
           runId={run.id}
           visible={sessionCompleteVisible}
