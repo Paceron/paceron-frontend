@@ -14,7 +14,7 @@ import { rankMeta } from '../../utils/leaderboard-rank-meta.js';
 import { toISODate } from '../../utils/date-field-format.js';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
-import { isWeb } from '../../utils/platform.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 
 const PERIOD_OPTIONS = [
   { id: 'week', name: 'Última semana' },
@@ -117,6 +117,25 @@ export function LeaderboardTab({ teamId }) {
   const from = period === 'custom' && fromDate ? toISODate(fromDate) : undefined;
   const to = period === 'custom' && toDate ? toISODate(toDate) : undefined;
   const hasConfirmedRange = period === 'custom' && Boolean(fromDate) && Boolean(toDate);
+  // `useIsNarrowWeb` (ancho de viewport, no Platform.OS) -- a propósito,
+  // no `isWeb`: un navegador angosto (mobile real o ventana chica)
+  // necesita el mismo layout compacto que nativo, aunque siga siendo
+  // build web ("angosto" y "nativo" no son lo mismo). Ancho: label+select
+  // en la misma línea. Angosto (mobile real o web angosto): label arriba,
+  // select abajo. `items-center` en ambos centra el bloque dentro de su
+  // mitad de columna (el padre directo, `-metric-wrap`/`-period-wrap`, es
+  // quien tiene `flex-1` para el 50/50).
+  //
+  // `fixedWidth` SIEMPRE tiene un valor, ninguno de los dos es "sin
+  // ancho" -- bug real encontrado en preview: un `<select>` web sin ancho
+  // explícito igual se autoajusta al ancho de su opción MÁS LARGA
+  // ("Entrenamientos realizados"), no a la elegida, así que "angosto sin
+  // ancho fijo" desbordaba la columna de 375px igual. 130px en angosto
+  // trunca con "…" (ver overflow-hidden/text-ellipsis en
+  // SELECT_CLASS_OUTLINE, fields.jsx) en vez de desbordar.
+  const isNarrow = useIsNarrowWeb();
+  const fieldClassName = isNarrow ? 'items-center mb-0' : 'flex-row items-center gap-2';
+  const fieldFixedWidth = isNarrow ? 130 : 200;
 
   const { leaderboard, loading, error } = useTeamLeaderboard(teamId, { metric: activeMetric, period, from, to });
 
@@ -137,13 +156,13 @@ export function LeaderboardTab({ teamId }) {
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="leaderboard-tab-root" testID="leaderboard-tab-root">
-      <View className="mb-3 flex-row items-center gap-3" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
-        <View nativeID="leaderboard-tab-metric-wrap" testID="leaderboard-tab-metric-wrap">
-          <ResponsiveSelectField className={isWeb ? 'flex-row items-center gap-2' : 'mb-0'} hideErrorRow label="Métrica" onChange={setActiveMetric} options={METRIC_OPTIONS} outline required value={activeMetric} />
+      <View className="mb-3 flex-row items-center gap-2" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
+        <View className="flex-1 items-center" nativeID="leaderboard-tab-metric-wrap" testID="leaderboard-tab-metric-wrap">
+          <ResponsiveSelectField className={fieldClassName} fixedWidth={fieldFixedWidth} hideErrorRow label="Métrica" onChange={setActiveMetric} options={METRIC_OPTIONS} outline required value={activeMetric} />
         </View>
         <View className="h-6 w-px bg-slate-200 dark:bg-slate-700" nativeID="leaderboard-tab-header-divider" testID="leaderboard-tab-header-divider" />
-        <View nativeID="leaderboard-tab-period-wrap" testID="leaderboard-tab-period-wrap">
-          <ResponsiveSelectField className={isWeb ? 'flex-row items-center gap-2' : 'mb-0'} hideErrorRow label="Período" onChange={handlePeriodChange} options={PERIOD_OPTIONS} outline required value={period} />
+        <View className="flex-1 items-center" nativeID="leaderboard-tab-period-wrap" testID="leaderboard-tab-period-wrap">
+          <ResponsiveSelectField className={fieldClassName} fixedWidth={fieldFixedWidth} hideErrorRow label="Período" onChange={handlePeriodChange} options={PERIOD_OPTIONS} outline required value={period} />
         </View>
       </View>
 

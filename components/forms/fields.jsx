@@ -41,14 +41,24 @@ export const SELECT_CLASS = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 da
 // combine con el fondo de la card que lo contiene en vez de un gris
 // genérico.
 const SELECT_CLASS_PLAIN = 'bg-white dark:bg-surface border-0 pl-0 pr-4 py-1 text-sm font-semibold text-slate-900 dark:text-white outline-none appearance-none cursor-pointer';
-// Variante `outline` -- select chico, ancho según contenido (sin `flex-1`,
-// a diferencia de SELECT_CLASS), con borde+fondo propios (a diferencia de
-// SELECT_CLASS_PLAIN) y SIN flechita propia (ni la nativa del navegador,
-// ya cubierta por `appearance-none`, ni una manual superpuesta como hace
-// `plain`) -- pedido real 2026-10-24, leaderboard-tab.jsx: dos selects
-// lado a lado que necesitaban verse como un control chico y prolijo, no
-// un form field de ancho completo ni un texto pelado.
-const SELECT_CLASS_OUTLINE = 'px-3 py-1.5 text-sm font-semibold text-slate-900 dark:text-white rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none cursor-pointer';
+// Variante `outline` -- select chico, con borde+fondo propios (a
+// diferencia de SELECT_CLASS_PLAIN) y SIN flechita propia (ni la nativa
+// del navegador, ya cubierta por `appearance-none`, ni una manual
+// superpuesta como hace `plain`) -- pedido real 2026-10-24,
+// leaderboard-tab.jsx: dos selects lado a lado que necesitaban verse
+// como un control chico y prolijo, no un form field de ancho completo ni
+// un texto pelado. Sin ancho propio acá a propósito -- por default se
+// ajusta al contenido (ver prop `fixedWidth` más abajo para el caso
+// donde el caller SÍ quiere un ancho fijo, ej. web ancho). `bg-slate-50`
+// (no `bg-white`) en claro -- pedido real: el blanco puro se perdía
+// contra el fondo blanco de la card que lo contiene.
+// `overflow-hidden text-ellipsis whitespace-nowrap` -- un `<select>` sin
+// ancho explícito se autoajusta al ancho de su opción MÁS LARGA (no solo
+// la elegida), confirmado en preview: en una columna angosta eso
+// desbordaba igual aunque no se pasara `fixedWidth`. Con un ancho fijo
+// chico (ver prop `fixedWidth`) más esto, el texto que no entra trunca
+// con "…" en vez de desbordar.
+const SELECT_CLASS_OUTLINE = 'overflow-hidden text-ellipsis whitespace-nowrap px-3 py-1.5 text-center text-sm font-semibold text-slate-900 dark:text-white rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none cursor-pointer';
 const DATE_BASE = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 // Variante compacta de DATE_BASE -- `dense` de DateField (no de TimeField,
 // que sigue usando DATE_BASE sin tocar). Pensada para selects incrustados
@@ -97,7 +107,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain, outline }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain, outline, fixedWidth }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -132,6 +142,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
         <View className={outline || plain ? 'relative' : 'flex-1 relative'} nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
             className={outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : SELECT_CLASS)}
+            style={outline && fixedWidth ? { width: fixedWidth } : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
@@ -725,7 +736,7 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
   );
 }
 
-export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain, outline }) {
+export function PickerField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain, outline, fixedWidth }) {
   const colors = useThemeColors();
   const [visible, setVisible] = useState(false);
   const slug = slugify(label);
@@ -742,7 +753,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
     : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900';
   const triggerClass = outline
-    ? 'h-8 flex-row items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 dark:border-slate-700 dark:bg-slate-900'
+    ? 'h-8 flex-row items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 dark:border-slate-700 dark:bg-slate-900'
     : plain
     ? 'h-8 flex-row items-center gap-1'
     : `h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`;
@@ -771,6 +782,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         className={triggerClass}
         onPress={disabled ? undefined : () => setVisible(true)}
         nativeID={`picker-field-${slug}-trigger`}
+        style={outline && fixedWidth ? { width: fixedWidth } : undefined}
         testID={`picker-field-${slug}-trigger`}
       >
         <Text
@@ -778,6 +790,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
             ? 'text-sm font-semibold text-slate-900 dark:text-white'
             : `flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
           nativeID={`picker-field-${slug}-value`}
+          numberOfLines={outline ? 1 : undefined}
           testID={`picker-field-${slug}-value`}
         >
           {selected ? selected.name : placeholder}
