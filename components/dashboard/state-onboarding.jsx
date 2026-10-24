@@ -10,19 +10,26 @@ import { useThemeColors } from '../../theme/colors.js';
 // La pantalla guía a los dos pasos que desbloquean el resto: elegir grupo y tipo
 // de ejercicio. Es el único estado que explica qué hacer antes de que exista el
 // dato, en vez de describir una ausencia.
+//
+// Para un corredor el "todavía no hay nada" es sobre SUS sesiones: el equipo puede
+// tener historial y a él no haberle tocado ninguna serie en el scope.
 const STEPS = [
   { id: 'group', icon: 'account-group-outline', label: 'Elegí un grupo del equipo' },
   { id: 'kind', icon: 'run-fast', label: 'Elegí un tipo de ejercicio' },
 ];
 
-export function StateOnboarding({ id = 'dashboard-state-onboarding', onPickGroup, onPickKind }) {
+export function StateOnboarding({ id = 'dashboard-state-onboarding', isTrainer = true, onPickGroup, onPickKind }) {
   const colors = useThemeColors();
 
   return (
     <DashboardState
       icon="rocket-launch-outline"
       id={id}
-      message="Registrá la primera sesión del equipo y acá vas a ver el rendimiento por ejercicio, con ritmo, cumplimiento y tendencia."
+      message={
+        isTrainer
+          ? 'Registrá la primera sesión del equipo y acá vas a ver el rendimiento por ejercicio, con ritmo, cumplimiento y tendencia.'
+          : 'Cuando registres tu primera sesión vas a ver acá tu rendimiento por ejercicio, con ritmo, cumplimiento y tendencia.'
+      }
       title="Todavía no hay nada que medir"
       tone="info"
     >

@@ -1,9 +1,13 @@
 import {
   DASHBOARD_BANDS,
   BAND_LABELS,
+  areaPath,
+  bandPath,
+  bandShares,
   barPath,
   boxPlotStats,
   bulletBar,
+  donutSlices,
   dotPoints,
   extent,
   gaugeArc,
@@ -11,7 +15,7 @@ import {
   lineSeries,
   quantile,
   scaleLinear,
-  stackedBar100,
+  tickIndexes,
 } from '../utils/dashboard-chart.js';
 
 describe('scaleLinear', () => {
@@ -188,69 +192,146 @@ describe('barPath', () => {
   });
 });
 
-describe('stackedBar100', () => {
-  const buckets = [
-    [6, 2, 1, 1],
-    [0, 0, 4, 0],
-  ];
-
-  test('reparte el 100 % de la barra entre las bandas', () => {
-    const bars = stackedBar100(buckets, { width: 100, height: 200 });
-    expect(bars).toHaveLength(2);
-
-    const first = bars[0];
-    expect(first.total).toBe(10);
-    expect(first.parts.map((p) => p.band)).toEqual(['met', 'near', 'missed', 'unknown']);
-    expect(first.parts.map((p) => p.share)).toEqual([0.6, 0.2, 0.1, 0.1]);
-    expect(first.parts.map((p) => p.height)).toEqual([120, 40, 20, 20]);
-    expect(first.parts.map((p) => p.width)).toEqual([50, 50, 50, 50]);
-    expect(first).toEqual(expect.objectContaining({ x: 0, width: 50, height: 200 }));
-
-    // La pila arranca en la base y termina arriba, sin huecos ni solapes.
-    expect(first.parts.map((p) => p.y)).toEqual([80, 40, 20, 0]);
-    expect(first.parts[1].y + first.parts[1].height).toBe(first.parts[0].y);
-    expect(first.parts[3].y + first.parts[3].height).toBe(first.parts[2].y);
+describe('tickIndexes', () => {
+  test('hasta tres etiquetas devuelve todas', () => {
+    expect(tickIndexes(0)).toEqual([]);
+    expect(tickIndexes(1)).toEqual([0]);
+    expect(tickIndexes(3)).toEqual([0, 1, 2]);
   });
 
-  test('un bucket sin conteos no inventa reparto', () => {
-    const [empty] = stackedBar100([[0, 0, 0, 0]], { width: 100, height: 200 });
-    expect(empty.total).toBe(0);
-    expect(empty.parts).toEqual([]);
+  test('con más de tres devuelve primera, del medio y última', () => {
+    expect(tickIndexes(12)).toEqual([0, 5, 11]);
+    expect(tickIndexes(4)).toEqual([0, 1, 3]);
+  });
+});
+
+describe('bandShares', () => {
+  test('reparte los conteos del backend sobre su propia suma', () => {
+    const shares = bandShares({ met: 6, near: 2, missed: 1, unknown: 1 });
+    expect(shares.total).toBe(10);
+    expect(shares.metShare).toBe(60);
+    expect(shares.nearShare).toBe(20);
+    expect(shares.missedShare).toBe(10);
+    expect(shares.unknownShare).toBe(10);
+    // "Dentro o cerca" es met + near: el borde de arriba de la zona de tolerancia.
+    expect(shares.withinShare).toBe(80);
   });
 
-  test('acepta el bucket como objeto además de como arreglo', () => {
-    const [asObject] = stackedBar100([{ met: 6, near: 2, missed: 1, unknown: 1 }], { width: 100, height: 200 });
-    const [asArray] = stackedBar100([[6, 2, 1, 1]], { width: 100, height: 200 });
-    expect(asObject.parts).toEqual(asArray.parts);
+  test('el stack acumula los tres bordes sobre los conteos crudos', () => {
+    // 1/3 + 1/3 + 1/3: sumar los shares ya redondeados daría 99,99, pero el
+    // último borde cierra en 100 porque se calcula sobre los conteos.
+    const shares = bandShares({ met: 1, near: 1, missed: 1, unknown: 0 });
+    expect(shares.stack).toEqual([33.33, 66.67, 100]);
   });
 
-  test('una banda en cero no produce un rectángulo de alto cero', () => {
-    const [bar] = stackedBar100([[0, 0, 4, 0]], { width: 100, height: 200 });
-    expect(bar.parts.map((p) => p.band)).toEqual(['missed']);
+  test('sin series comparables el share es null, no 0', () => {
+    const shares = bandShares({ met: 0, near: 0, missed: 0, unknown: 0 });
+    expect(shares.total).toBe(0);
+    expect(shares.metShare).toBeNull();
+    expect(shares.withinShare).toBeNull();
+    expect(shares.missedShare).toBeNull();
+    expect(shares.unknownShare).toBeNull();
+    // La pila también es null: corta el apilado en vez de dibujar un período en 0.
+    expect(shares.stack).toEqual([null, null, null]);
   });
 
-  test('horizontal reparte sobre el ancho y apila las filas', () => {
-    const [bar] = stackedBar100([[5, 5]], { width: 300, height: 40, horizontal: true });
-    expect(bar).toEqual(expect.objectContaining({ x: 0, y: 0, width: 300, height: 40 }));
-    expect(bar.parts.map((p) => [p.x, p.width])).toEqual([[0, 150], [150, 150]]);
-  });
-
-  test('un conteo ausente o negativo cuenta como cero, sin NaN', () => {
-    const [bar] = stackedBar100([[null, 3, -2, undefined]], { width: 100, height: 200 });
-    expect(bar.total).toBe(3);
-    expect(bar.parts.map((p) => p.band)).toEqual(['near']);
-    bar.parts.forEach((p) => expect(Number.isFinite(p.height) && Number.isFinite(p.share)).toBe(true));
+  test('un conteo ausente, no numérico o negativo cuenta como cero', () => {
+    const shares = bandShares({ met: null, near: -3, missed: 'x' });
+    expect(shares.total).toBe(0);
+    expect(shares.metShare).toBeNull();
   });
 
   test('el orden de bandas es el del contrato y tiene su etiqueta', () => {
     expect(DASHBOARD_BANDS).toEqual(['met', 'near', 'missed', 'unknown']);
     DASHBOARD_BANDS.forEach((band) => expect(typeof BAND_LABELS[band]).toBe('string'));
   });
+});
 
-  test('sin datos o sin recuadro medido no dibuja nada', () => {
-    expect(stackedBar100([], { width: 100, height: 100 })).toEqual([]);
-    expect(stackedBar100(null, { width: 100, height: 100 })).toEqual([]);
-    expect(stackedBar100(buckets, { width: 0, height: 100 })).toEqual([]);
+describe('areaPath', () => {
+  const points = [
+    { x: 0, y: 10 },
+    { x: 10, y: 0 },
+    { x: 20, y: 5 },
+  ];
+
+  test('cierra el área contra la línea base', () => {
+    const [d] = areaPath(points, 20);
+    expect(d).toBe('M0 20 L0 10 L10 0 L20 5 L20 20 Z');
+  });
+
+  test('un hueco parte el área en dos tramos en vez de puentearlo', () => {
+    const paths = areaPath([points[0], points[1], { x: 15, y: null }, points[2], { x: 30, y: 1 }], 20);
+    expect(paths).toHaveLength(2);
+    expect(paths[0]).toBe('M0 20 L0 10 L10 0 L10 20 Z');
+    expect(paths[1]).toBe('M20 20 L20 5 L30 1 L30 20 Z');
+  });
+
+  test('un tramo de un solo punto no tiene área', () => {
+    expect(areaPath([{ x: 5, y: 5 }], 10)).toEqual([]);
+    expect(areaPath([], 10)).toEqual([]);
+  });
+
+  test('sin línea base finita no dibuja nada', () => {
+    expect(areaPath(points, null)).toEqual([]);
+  });
+});
+
+describe('bandPath', () => {
+  const top = [{ x: 0, y: 10 }, { x: 10, y: 5 }];
+  const bottom = [{ x: 0, y: 20 }, { x: 10, y: 15 }];
+
+  test('cierra el polígono entre las dos series', () => {
+    expect(bandPath(top, bottom)).toEqual(['M0 10L0 10L10 5L10 15L0 20 Z']);
+  });
+
+  test('un hueco en cualquiera de las dos series parte la banda en tramos', () => {
+    const tops = [...top, { x: 20, y: null }, { x: 30, y: 2 }, { x: 40, y: 1 }];
+    const bottoms = [...bottom, { x: 20, y: 12 }, { x: 30, y: 10 }, { x: 40, y: 8 }];
+    const paths = bandPath(tops, bottoms);
+    expect(paths).toHaveLength(2);
+    expect(paths[0]).toBe('M0 10L0 10L10 5L10 15L0 20 Z');
+    expect(paths[1]).toBe('M30 2L30 2L40 1L40 8L30 10 Z');
+  });
+
+  test('un tramo de un solo punto no tiene banda', () => {
+    expect(bandPath([{ x: 5, y: 5 }], [{ x: 5, y: 9 }])).toEqual([]);
+    // Largo dispar: manda el más corto, igual que una serie cortada antes que la otra.
+    expect(bandPath([...top, { x: 20, y: 1 }], [bottom[0]])).toEqual([]);
+  });
+
+  test('sin punto en la serie de abajo no hay banda que cerrar', () => {
+    const bottoms = [{ x: 0, y: 20 }, { x: 10, y: null }];
+    expect(bandPath(top, bottoms)).toEqual([]);
+  });
+});
+
+describe('donutSlices', () => {
+  test('reparte el anillo por conteo y arranca a las 12', () => {
+    const ring = donutSlices({ met: 1, near: 1, missed: 0, unknown: 2 }, { radius: 100, gap: 0 });
+    expect(ring.slices.map((slice) => slice.band)).toEqual(['met', 'near', 'unknown']);
+    expect(ring.slices.map((slice) => slice.share)).toEqual([25, 25, 50]);
+    expect(ring.slices[0].start).toBe(0);
+    expect(ring.slices[1].start).toBeCloseTo(ring.circumference / 4, 1);
+    // met arranca a las 12 y ocupa un cuarto: su ángulo medio es -45°.
+    expect(ring.slices[0].midAngle).toBeCloseTo(-Math.PI / 4, 5);
+  });
+
+  test('la banda en cero no se dibuja y no deja hueco con una sola porción', () => {
+    const ring = donutSlices({ met: 3, near: 0, missed: 0, unknown: 0 }, { radius: 60 });
+    expect(ring.slices.map((slice) => slice.band)).toEqual(['met']);
+    expect(ring.slices[0].gapLength).toBe(0);
+    expect(ring.slices[0].length).toBe(ring.circumference);
+  });
+
+  test('el hueco se descuenta de cada porción', () => {
+    const ring = donutSlices({ met: 1, near: 1, missed: 0, unknown: 0 }, { radius: 60, gap: 4 });
+    ring.slices.forEach((slice) => expect(slice.length).toBeCloseTo(ring.circumference / 2 - 4, 1));
+  });
+
+  test('sin conteos no hay porciones, sin NaN', () => {
+    expect(donutSlices({ met: 0, near: 0, missed: 0, unknown: 0 }, { radius: 60 }).slices).toEqual([]);
+    expect(donutSlices(null, { radius: 60 }).slices).toEqual([]);
+    expect(donutSlices({ met: 1 }, { radius: 0 }).slices).toEqual([]);
   });
 });
 
@@ -510,6 +591,14 @@ describe('lineSeries', () => {
     expect(series.points[1].x).toBe(90);
   });
 
+  test('yInset deja aire vertical sin correr el eje X', () => {
+    const series = lineSeries([0, 100], { width: 100, height: 100, domain: [0, 100], minimumRange: 0, yInset: 8 });
+    // El 0 y el 100 quedan a 8 px de los bordes en vez de pegados.
+    expect(series.points[0].y).toBe(92);
+    expect(series.points[1].y).toBe(8);
+    expect(series.points.map((point) => point.x)).toEqual([0, 100]);
+  });
+
   test('sin ancho o sin alto no devuelve coordenadas', () => {
     expect(lineSeries([1, 2], { width: 0, height: 100 }).points).toEqual([]);
     expect(lineSeries([1, 2], { width: 100, height: 0 }).path).toBeNull();
@@ -615,8 +704,15 @@ describe('ningún helper devuelve NaN', () => {
       walk(linePath(v));
       walk(barPath(v, { width: v, height: v, gap: v }));
       walk(barPath([v, v, v], { width: 100, height: 100 }));
-      walk(stackedBar100([v], { width: 100, height: 100, gap: v }));
-      walk(stackedBar100([[v, v]], { width: 100, height: 100 }));
+      walk(bandShares({ met: v, near: v, missed: v, unknown: v }));
+      walk(bandShares(v));
+      walk(areaPath([{ x: v, y: v }], v));
+      walk(areaPath(v, v));
+      walk(bandPath([{ x: v, y: v }], [{ x: v, y: v }]));
+      walk(bandPath(v, v));
+      walk(donutSlices({ met: v, near: v }, { radius: v, gap: v }));
+      walk(donutSlices(v, { radius: v }));
+      walk(tickIndexes(v));
       walk(dotPoints([{ x: v, y: v }], { width: 100, height: 100 }));
       walk(dotPoints(v, { width: 100, height: 100 }));
       walk(boxPlotStats(v));

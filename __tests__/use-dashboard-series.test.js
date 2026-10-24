@@ -49,14 +49,21 @@ describe('useDashboardSeries', () => {
     expect(query.enabled).toBe(false);
   });
 
-  it('no dispara sin groupId', () => {
+  it('no exige grupo: el endpoint acepta el scope sin group_id', () => {
     const { query } = callHook({ groupId: null });
-    expect(query.enabled).toBe(false);
+    expect(query.enabled).toBe(true);
   });
 
   it('no exige rol de entrenador: el detalle es del corredor que mira su progresión', () => {
     const { query } = callHook();
     expect(query.enabled).toBe(true);
+  });
+
+  it('el scope de la key incluye el equipo y el corredor elegido', () => {
+    const { query } = callHook({ teamId: 4, athleteUserId: 24 });
+    const scopeKey = query.queryKey[3].split('|');
+    expect(scopeKey[0]).toBe('4');
+    expect(scopeKey[2]).toBe('24');
   });
 
   it('manda la tolerancia por default en la query key', () => {
@@ -91,14 +98,14 @@ describe('useDashboardSeries', () => {
     expect(query.getNextPageParam(undefined)).toBeUndefined();
   });
 
-  it('aplana las páginas y expone axis y has_target', () => {
+  it('aplana los items de las páginas y expone axis y has_target', () => {
     const api = {
       isLoading: false, isFetchingNextPage: false, isError: false, error: null,
       hasNextPage: false, fetchNextPage: jest.fn(), refetch: jest.fn(),
       data: {
         pages: [
-          { series: [{ feedback_id: 1 }], total: 2, units: { speed: 'km/h' }, axis: 'distance_and_time', has_target: true },
-          { series: [{ feedback_id: 2 }] },
+          { items: [{ feedback_id: 1 }], total: 2, units: { speed: 'km/h' }, axis: 'distance_and_time', has_target: true },
+          { items: [{ feedback_id: 2 }] },
         ],
       },
     };

@@ -13,16 +13,18 @@ import { PALETTE_CASES, describePalette } from '../../utils/dashboard-palette.js
 // Se renderiza UNO u otro. El contenedor y los KPIs de arriba quedan fuera de acá,
 // en la pantalla, así que conmutar no remonta la pantalla ni pierde el scroll
 // (design.md D3).
-export function PaletteSwitch({ id = 'dashboard-palette', summary, timeseries, kind, ...rest }) {
+export function PaletteSwitch({ id = 'dashboard-palette', summary, timeseries, kind, seriesSamples = null, seriesPoints = null, ...rest }) {
   const palette = describePalette(summary, kind);
 
   if (palette.case === PALETTE_CASES.withoutTarget) {
-    return <PaletteWithoutTarget {...rest} id={id} summary={summary} timeseries={timeseries} />;
+    // El dot plot grafica pares tiempo/velocidad, no solo velocidades: de ahí
+    // el nombre distinto de la prop (ver DashboardScreen).
+    return <PaletteWithoutTarget {...rest} id={id} seriesPoints={seriesPoints} summary={summary} timeseries={timeseries} />;
   }
 
   if (palette.case === PALETTE_CASES.reducedTarget) {
-    return <PaletteReducedTarget {...rest} id={id} kind={kind} summary={summary} timeseries={timeseries} />;
+    return <PaletteReducedTarget {...rest} id={id} kind={kind} seriesSamples={seriesSamples} summary={summary} timeseries={timeseries} />;
   }
 
-  return <PaletteWithTarget {...rest} id={id} kind={kind} pacePieces summary={summary} timeseries={timeseries} />;
+  return <PaletteWithTarget {...rest} id={id} kind={kind} pacePieces seriesSamples={seriesSamples} summary={summary} timeseries={timeseries} />;
 }

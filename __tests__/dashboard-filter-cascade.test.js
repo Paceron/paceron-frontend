@@ -1,5 +1,6 @@
 import {
   METRIC_KINDS,
+  availableMetricKinds,
   exercisesForKind,
   reconcileExercise,
 } from '../utils/dashboard-filter-cascade.js';
@@ -75,5 +76,21 @@ describe('dashboard filter cascade — reconciliar el ejercicio al cambiar de ti
 
   test('un ejercicio que no está en la lista se deselecciona', () => {
     expect(reconcileExercise(EXERCISES, 'ritmo_continuo', 999)).toBeNull();
+  });
+});
+describe('dashboard filter cascade — tipos ofrecidos según el catálogo', () => {
+  test('solo los tipos que tienen al menos un ejercicio', () => {
+    expect(availableMetricKinds(EXERCISES)).toEqual(METRIC_KINDS);
+    const catalogWithoutTimeSpeed = EXERCISES.filter((exercise) => exercise.kind !== 'velocidad_tiempo');
+    expect(availableMetricKinds(catalogWithoutTimeSpeed)).toEqual(['ritmo_continuo', 'velocidad_distancia']);
+  });
+
+  test('liviano y elongacion no cuentan aunque existan en el catálogo', () => {
+    expect(availableMetricKinds([{ id: 1, kind: 'liviano' }, { id: 2, kind: 'elongacion' }])).toEqual([]);
+  });
+
+  test('sin catálogo no ofrece ningún tipo', () => {
+    expect(availableMetricKinds(undefined)).toEqual([]);
+    expect(availableMetricKinds([])).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardSummary } from '../services/dashboard.js';
 import { DEFAULT_TOLERANCE } from '../utils/dashboard-format.js';
-import { DASHBOARD_KEYS, DASHBOARD_POLL_INTERVAL_MS, dashboardRetry } from './use-dashboard-query.js';
+import { DASHBOARD_KEYS, DASHBOARD_METRIC_QUERY_OPTIONS, DASHBOARD_POLL_INTERVAL_MS, dashboardRetry } from './use-dashboard-query.js';
 
 // GET /dashboard/metrics/summary: los KPIs del período (totales, cumplimiento,
 // mejor tiempo, consistencia, tendencia y estado de los datos).
@@ -9,10 +9,12 @@ import { DASHBOARD_KEYS, DASHBOARD_POLL_INTERVAL_MS, dashboardRetry } from './us
 // Sondea cada 90 s (spec: 60-120 s). `loading` sale de `isLoading`, que en
 // TanStack Query v5 es `isPending && isFetching`: durante un sondeo hay datos en
 // pantalla y `loading` sigue en false, así que la pantalla NO vuelve al skeleton
-// en cada ciclo (D7). Para el fondo se usa `refreshing`.
+// en cada ciclo (D7). Para el fondo se usa `refreshing`. Un cambio de filtro
+// tampoco vuelve al skeleton, por `DASHBOARD_METRIC_QUERY_OPTIONS`.
 export function useDashboardSummary({
   teamId,
   groupId,
+  athleteUserId,
   exerciseId,
   exerciseIds,
   kind,
@@ -25,8 +27,9 @@ export function useDashboardSummary({
   tolerance = DEFAULT_TOLERANCE,
   enabled = true,
 } = {}) {
-  const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
+  const scope = { teamId, groupId, athleteUserId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
   const query = useQuery({
+    ...DASHBOARD_METRIC_QUERY_OPTIONS,
     queryKey: DASHBOARD_KEYS.summary(scope),
     queryFn: () => getDashboardSummary(scope),
     enabled: enabled && Boolean(teamId),

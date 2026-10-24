@@ -50,7 +50,7 @@ La pantalla SHALL ofrecer tres casos de paleta distintos y conmutar automáticam
 
 La paleta se decide por una **tupla de tres campos de la respuesta**, no por el tipo de ejercicio: `(has_target, axis, target_speed_kph != null)`.
 
-Hacen falta los tres porque `has_target` solo no alcanza. Con `axis: "distance"` —un `velocidad_distancia` de 100 m, que son 4 de los 12 ejercicios del seed— hay objetivo **y** `has_target: true`, pero **no hay tiempo objetivo**, así que `target_speed_kph` viene `null`: la velocidad esperada es imposible de derivar de la distancia sola. Mostrar un gauge "ritmo vs objetivo" ahí sería inventar un objetivo que no existe.
+Hacen falta los tres porque `has_target` solo no alcanza. Con `axis: "distance"` —un `velocidad_distancia` de 100 m, uno de los 4 del seed— hay objetivo **y** `has_target: true`, pero **no hay tiempo objetivo**, así que `target_speed_kph` viene `null`: la velocidad esperada es imposible de derivar de la distancia sola. Mostrar un gauge "ritmo vs objetivo" ahí sería inventar un objetivo que no existe.
 
 | Caso | Condición | Número principal | Piezas de objetivo |
 |---|---|---|---|
@@ -62,7 +62,7 @@ Los tres tipos con métrica son `ritmo_continuo`, `velocidad_distancia` y `veloc
 
 `liviano` es la excepción al número principal: el tipo se define por **volumen, no por ritmo** (`utils/exercise-field-matrix.js:24-31`, `showSpeed: false`, sin ícono de velocidad). Mostrar 7,2 km/h como número principal de un calentamiento de 10 minutos sería medirlo con una vara que el producto no usa para ese tipo. Para `liviano`, el número principal es el **volumen** (distancia o tiempo, el que esté cargado) y las piezas de ritmo no se pintan.
 
-Aplica a **4 de los 12 ejercicios del seed** (Pasadas 1000/2000 m y Velocidad Máxima 100/200 m) el caso A reducido. Ninguno de los 12 llega a la paleta B, así que esa se cubre por robustez —filas previas a la migración de tipos, o un ejercicio que el entrenador dejó incompleto— y no por el seed.
+Aplica a **2 de los 13 ejercicios del seed** (Velocidad Máxima 100/200 m, que no tienen tiempo objetivo) el caso A reducido; Pasadas 1000/2000 llevan `minutes`, así que son A completo. Ninguno de los 13 llega a la paleta B, así que esa se cubre por robustez —filas previas a la migración de tipos, o un ejercicio que el entrenador dejó incompleto— y no por el seed.
 
 La pantalla SHALL **NOT** mostrar métricas de objetivo —delta, cumplimiento, ritmo esperado— para un ejercicio sin objetivo. Mostrarlas sería mostrar un cero como si fuera un resultado.
 
@@ -108,10 +108,20 @@ La pantalla SHALL mostrar el bloque `data_quality` que devuelve la API, con sus 
 
 Cuando `insufficient_data` sea verdadero, la pantalla SHALL ocultar los indicadores de tendencia y mostrar el motivo, en lugar de mostrar un porcentaje calculado sobre muy pocos datos.
 
+El estado de calidad SHALL ser un panel **propio y colapsable**, separado del panel de filtros: son dos preguntas distintas —"qué está mal en los datos" y "qué estoy mirando"— y un panel único obliga a meter una card dentro de otra. Colapsado, el panel SHALL seguir mostrando cuántos avisos hay en su badge, y NO SHALL renderizarse cuando no hay nada que avisar.
+
 #### Scenario: Tendencia sin volumen suficiente
 
 - **WHEN** la API devuelve `insufficient_data: true` y `trend_pct: null`
 - **THEN** la pantalla no muestra flecha de tendencia ni porcentaje, y explica que hay datos insuficientes
+
+#### Scenario: Calidad colapsada y sin avisos
+
+- **WHEN** el usuario colapsa "Calidad de los datos" habiendo tres series no calculables
+- **THEN** el contenido desaparece pero el header sigue diciendo "3 avisos", y el panel de filtros sigue abierto e intacto
+
+- **WHEN** `data_quality` no trae ningún defecto, no hay `insufficient_data` ni `legacy_sessions`
+- **THEN** el panel "Calidad de los datos" no se renderiza
 
 ### Requirement: El sistema SHALL indicar la fuente de cada número
 
@@ -129,6 +139,31 @@ Los valores crudos llegan en **milisegundos** —`best_time_ms`, `time_ms`— y 
 - **WHEN** el usuario consulta el tooltip del ritmo promedio
 - **THEN** ve la fórmula, la tolerancia efectivamente aplicada (`tolerance_applied`) y cuántas series entraron (`series_count`)
 
+### Requirement: Cada card SHALL explicar qué muestra desde su título
+
+Cada card con gráfico SHALL llevar un botón de información ("i") junto al título con la bajada de la card: qué muestra, cómo se lee y de dónde sale el número.
+
+El texto SHALL ser alcanzable sin hover: en web el botón SHALL responder al puntero y al foco de teclado, y en nativo al toque —donde el tooltip de hover no existe y la "i" no puede quedar sin respuesta. En las dos plataformas el texto SHALL llegar además por `accessibilityHint`, o el gráfico queda mudo para un lector de pantalla.
+
+El texto explicativo SHALL vivir en ese botón, no como subtítulo fijo. El subtítulo visibles SHALL quedar reservado a lo que hay que leer para entender el gráfico sin ningún gesto: la leyenda que distingue series (línea continua contra punteada) y el dato que condiciona la lectura (tolerancia aplicada, orden activo del ranking, rango comparado).
+
+La bajada SHALL describir el gráfico y no recalcular nada: las fórmulas viven en el tooltip de cada KPI. SHALL respetar la paleta vigente — en A reducido no puede mencionar la velocidad esperada, que no está cargada.
+
+#### Scenario: Bajada de un gráfico
+
+- **WHEN** el usuario consulta el "i" del título de "Cumplimiento por período"
+- **THEN** ve cómo se lee la card: qué es el área apilada, qué el anillo y por qué el eje vertical va fijo en 0–100 %
+
+#### Scenario: El subtítulo no repite la bajada
+
+- **WHEN** la card tiene una leyenda que hace falta para leer el gráfico (línea continua contra línea punteada)
+- **THEN** esa leyenda sigue visible como subtítulo, y la bajada del "i" no la repite
+
+#### Scenario: La "i" en nativo
+
+- **WHEN** el usuario toca la "i" en la app nativa
+- **THEN** el texto aparece en una tarjeta sobre un backdrop — no queda un control sin respuesta
+
 ### Requirement: El sistema SHALL comparar contra el período anterior y clasificar la señal
 
 La pantalla SHALL mostrar la comparación con el período anterior y clasificar la señal como **mejora**, **estable** o **retroceso**, usando el veredicto de la API.
@@ -139,6 +174,60 @@ La diferencia de cumplimiento SHALL mostrarse en **puntos porcentuales** —"−
 
 - **WHEN** el cumplimiento pasó de 64 % a 58 %
 - **THEN** la pantalla muestra "−6 pp" y la señal como retroceso, no "−9,4 %"
+
+### Requirement: El cumplimiento por período se lee como tendencia y como reparto
+
+La pantalla SHALL mostrar el cumplimiento por período en **dos piezas que comparten los mismos conteos**: un **área apilada de las cuatro bandas** con el eje Y **fijo de 0 a 100 %** —de abajo hacia arriba: cumplió, cerca, no cumplió y sin dato, con la línea de `met` arriba— y un anillo con el reparto total.
+
+El front SHALL **NO** recalcular los umbrales de las bandas: `band_counts` por bucket y los totales por banda salen de la API, y el único cálculo permitido es repartir sobre la suma de esos conteos.
+
+Las dos piezas SHALL compartir el denominador (`met + near + missed + unknown`), el mismo del `compliance_rate` del KPI: usar `valid_series` haría que el gráfico y el KPI se contradigan, porque las bandas solo existen para series con objetivo cargado.
+
+Cada banda SHALL tener grosor real en la pila: "no cumplió" no SHALL quedar representado sólo por la altura de la curva de cumplimiento ni mezclado en una misma región con "sin dato".
+
+#### Scenario: Período sin series comparables
+
+- **WHEN** un bucket no tiene ninguna serie con objetivo cargado
+- **THEN** la pila se corta en ese período en vez de caer a 0 %
+
+#### Scenario: Período con series no cumplidas
+
+- **WHEN** un período tiene series en la banda `missed`
+- **THEN** la pila muestra esa banda con su grosor, y no solo una curva de cumplimiento más baja
+
+#### Scenario: Reparto del anillo
+
+- **WHEN** el usuario posa el mouse (o toca) una porción del anillo
+- **THEN** el centro muestra la banda, su conteo y su porcentaje, y la leyenda sigue mostrando el conteo de las cuatro bandas sin hover
+
+#### Scenario: Detalle de un período
+
+- **WHEN** el usuario posa el mouse (o toca) un período de la pila
+- **THEN** el tooltip lista las cuatro bandas con su porcentaje y su conteo sobre el total del período
+
+### Requirement: La pantalla SHALL mostrar el mismo perfil a los dos roles, recortado a las series propias del corredor
+
+El cuerpo de la pantalla —KPIs, evolución, card de cinco ejes y cumplimiento por período— SHALL ser **el mismo** para entrenador y corredor.
+
+El recorte a las series propias de un corredor NO SHALL hacerse en el front: el backend ya scopea las métricas por el usuario que pregunta. Duplicar esa regla en la UI la vuelve a romper en cuanto cambie del lado del servidor, y además deja la pantalla mostrando datos ajenos si el recorte del backend falla.
+
+El **ranking del equipo** y la comparación **entre** corredores SHALL mostrarse solo al entrenador, y no SHALL montarse para un corredor (de modo que sus requests ni se hagan). Lo decide una capacidad (`utils/dashboard-capabilities.js`), no la forma del árbol de componentes.
+
+La comparación del **período** contra el anterior es dato propio del corredor y SHALL estar lista para mostrarse, pero SHALL permanecer apagada mientras el endpoint siga restringido a dueños del equipo (Gap 35 de `docs/BACKEND_API_GAPS.md`, interruptor `MEMBER_PERIOD_COMPARISON_ENABLED`).
+
+Los textos que nombran el scope SHALL decir "el equipo" solo cuando el scope es el equipo: para un corredor, la card del radar dice "Tu perfil" y el scope de los filtros, "Tus series". Los estados vacío y primer uso SHALL seguir la misma regla.
+
+#### Scenario: Corredor en el equipo
+
+- **WHEN** un miembro del equipo (no dueño) abre la pestaña Rendimiento
+- **THEN** ve los mismos gráficos que el entrenador, calculados solo sobre sus series
+- **AND** no ve el ranking del equipo ni la comparación entre corredores
+- **AND** no sale ningún request a `/dashboard/leaderboard` ni a `/dashboard/comparisons` desde la pantalla
+
+#### Scenario: Entrenador en el equipo
+
+- **WHEN** el dueño del equipo abre la pestaña Rendimiento
+- **THEN** además del cuerpo común ve el ranking del equipo y la comparación por período
 
 ### Requirement: El sistema SHALL ser accesible según WCAG 2.1 AA
 
@@ -179,7 +268,7 @@ Todos los campos se leen de la respuesta del resumen, con su contenedor real: `t
 
 Esto importa porque los `null` son el estado normal, no la excepción: `consistency.cv` es `null` con menos de 2 series, `trend.trend_pct` es `null` con menos de 3, y `totals.target_speed_kph` es `null` justamente en A reducido. En JavaScript `100 − (null × 100)` da **100**, así que sin esta regla un corredor con una sola serie vería "consistencia perfecta" y una progresión neutra sobre puntos que **no existen**: el radar comunicaría confianza con un dato que nunca se midió.
 
-Cuando un eje queda fuera, la arista del polígono **salta ese vértice** en vez de cerrar por el centro, y el valor real se marca como no disponible en la tabla de debajo.
+Cuando un eje queda fuera, la arista del polígono **salta ese vértice** en vez de cerrar por el centro, y el valor real se marca como no disponible en la barrita de ese eje.
 
 **Los cinco ejes se recortan a `[0, 100]`**, sin excepción: `100 − (cv × 100)` con `cv = 1,2` daría −20, y `50 + (trend_pct × 5)` con `trend_pct = +12` daría 110. Un polígono con vértices fuera del círculo se lee como "más que máximo", que no es un valor que el eje pueda tener.
 
@@ -187,16 +276,20 @@ El radar SHALL aparecer **solo en la paleta A**: en la paleta B no hay con qué 
 
 El eje Volumen se normaliza contra un **máximo fijo de 100 km por período**, y no contra el volumen máximo del scope: ningún endpoint expone ese máximo, y agregarlo al contrato solo para pintar un radar no vale la respuesta extra.
 
-El radar SHALL ser **accesible en tabla**: el SVG lleva `accessibilityRole="image"` y un `accessibilityLabel` que describa los cinco valores, porque un polígono no es legible por lector de pantalla, y debajo va una tabla con los valores crudos.
+El radar SHALL ser **accesible por lector de pantalla**: el SVG lleva `accessibilityRole="image"` y un `accessibilityLabel` que describa los cinco valores, porque un polígono no es legible por lector de pantalla.
 
-Cada eje SHALL mostrar su valor **real** junto al polígono. El área del radar es un resumen, no el dato: leer "volumen = 0,7" de la forma sin el número al lado inventa una precisión que el gráfico no tiene.
+Cada eje SHALL mostrar su valor **real**, en las barritas que van debajo del radar. El área del radar es un resumen, no el dato: leer "volumen = 0,7" de la forma sin el número al lado inventa una precisión que el gráfico no tiene.
+
+Los cinco valores crudos SHALL aparecer en **un solo lugar**: las barritas. El radar no repite una tabla propia con los mismos cinco números, y las barritas se acotan al ancho que ocupa el conjunto figura+polígono para que las dos piezas se lean como una sola columna.
+
+Cada eje SHALL declarar la **escala** de su 0-100 (`hint`), porque no es comparable entre ejes: el volumen se normaliza contra 100 km fijos y la progresión está centrada en 50. El ícono de información de cada barrita la muestra.
 
 Se elige radar y **no barras radar** porque en estas el área es proporcional al cuadrado del radio: el mismo eje se ve sistemáticamente más importante que los demás, convirtiendo una escala común en un ranking engañoso.
 
 #### Scenario: Radar en paleta A completa
 
 - **WHEN** el ejercicio tiene objetivo de ritmo y hay series suficientes
-- **THEN** el radar muestra los cinco ejes normalizados, con su valor real al lado
+- **THEN** el radar muestra los cinco ejes normalizados, con su valor real en las barritas de abajo
 
 #### Scenario: Consistencia invertida
 
@@ -211,7 +304,7 @@ Se elige radar y **no barras radar** porque en estas el área es proporcional al
 #### Scenario: Accesible por lector de pantalla
 
 - **WHEN** un lector de pantalla llega al radar
-- **THEN** anuncia los cinco valores por etiqueta, y la tabla de valores crudos queda disponible debajo
+- **THEN** anuncia los cinco valores por etiqueta, y los crudos quedan disponibles en las barritas de abajo
 
 ### Requirement: El sistema SHALL respetar la preferencia de movimiento reducido
 
@@ -227,33 +320,40 @@ Toda animación de la pantalla SHALL desactivarse cuando el usuario expresa pref
 El orden SHALL ser fijo y cada paso SHALL habilitar al siguiente:
 
 1. **Tipo** — desplegable de selección única, con "Todos" como valor **vacío**. Es el primer filtro y el único obligatorio: sin él no se sabe qué ejercicios ofrecer.
-2. **Ejercicio** — se completa con los del tipo elegido. Si el tipo está vacío, ofrece los de los tres tipos métricos.
-3. **Rangos de distancia y tiempo** — escribibles a mano y con valores sugeridos. Se habilitan cuando hay un ejercicio elegido, porque sin ejercicio el rango no tiene contra qué acotar.
+2. **Ejercicio** — se completa con los del tipo elegido. Si el tipo está vacío, ofrece los de los tipos métricos que el catálogo del equipo tenga.
+3. **Rangos de distancia y tiempo** — escribibles a mano y con valores sugeridos. Se habilitan con el **scope** (grupo o corredor), no con el ejercicio: acotan las series del scope y el backend aplica los cuatro parámetros por su cuenta. Depender del ejercicio los apagaba cada vez que la cascada lo deseleccionaba al cambiar de grupo o corredor, y el bloqueo se veía intermitente.
 4. **Fechas** — siempre disponibles.
 
 Cambiar el tipo SHALL **deseleccionar el ejercicio** si deja de estar en la nueva lista. Dejarlo puesto produce un estado imposible visible: un filtro que dice "velocidad en distancia" con un ejercicio de ritmo continuo elegido arriba.
 
 El filtro de tipo viaja al backend como `kind` **escalar**, no como el array `kinds[]` que había antes: la UI es de selección única, y el "todos" es la **ausencia** del parámetro.
 
+El desplegable de tipo SHALL ofrecer **solo los tipos con al menos un ejercicio** en el catálogo del equipo. El backend responde `404` a un `kind` que no resuelve a ningún ejercicio del owner (`catalogExercisesInScope`), así que ofrecer un tipo vacío termina en "recurso inexistente" al aplicar, no en un dashboard sin datos.
+
 #### Scenario: Elegir un tipo completa el ejercicio
 
 - **WHEN** el usuario elige `ritmo_continuo`
 - **THEN** el selector de ejercicio ofrece solo los `ritmo_continuo` del grupo
 
-#### Scenario: "Todos" ofrece los tres tipos
+#### Scenario: "Todos" ofrece los tipos disponibles
 
 - **WHEN** el usuario deja el tipo vacío
-- **THEN** el selector de ejercicio ofrece los ejercicios de los tres tipos métricos
+- **THEN** el selector de ejercicio ofrece los ejercicios de todos los tipos métricos que el catálogo del equipo tenga
+
+#### Scenario: Un tipo sin ejercicios no se ofrece
+
+- **WHEN** el catálogo del equipo no tiene ningún ejercicio de `velocidad_tiempo`
+- **THEN** ese tipo no aparece en el desplegable, en vez de ofrecer una opción que termina en `404` al aplicarla
 
 #### Scenario: Cambiar de tipo limpia el ejercicio
 
 - **WHEN** hay "Pasadas 1000 m" elegido y el usuario cambia a `ritmo_continuo`
 - **THEN** el ejercicio se deselcciona, porque no pertenece al tipo nuevo
 
-#### Scenario: El rango espera a un ejercicio
+#### Scenario: El rango no espera a un ejercicio
 
-- **WHEN** no hay ningún ejercicio elegido
-- **THEN** los cuatro campos de rango están deshabilitados
+- **WHEN** no hay ningún ejercicio elegido pero sí un grupo o corredor en el scope
+- **THEN** los cuatro campos de rango están habilitados
 
 ### Requirement: Los rangos de distancia y tiempo son escribibles y sugieren valores
 
@@ -270,20 +370,79 @@ Un valor escrito a mano fuera de la lista SHALL quedar seleccionado igual, para 
 
 Un rango invertido (desde mayor que hasta) SHALL mostrar el error **antes** de mandar, sin esperar el `400` del backend.
 
+El form SHALL ser un **borrador**: escribir o elegir un filtro NO SHALL disparar ninguna consulta. Las métricas SHALL recalcularse recién al presionar "Filtrar", nunca por tecla. Mientras el borrador tenga un rango inválido, "Filtrar" SHALL estar deshabilitado — no se manda un filtro a medias.
+
+Cada rango SHALL presentarse como **un solo grupo** —título "Distancia" (o "Tiempo") con los dos extremos debajo, lado a lado— para que los cuatro campos formen una grilla de 2×2 y no cuatro filas de ancho completo. El título NO SHALL repetir "desde / hasta": cada extremo ya lo dice en su propio rótulo visible ("Desde"/"Hasta"). El nombre accesible de cada extremo SHALL seguir siendo el completo ("Distancia desde"): hay dos "Desde" y dos "Hasta" en la misma pantalla y sin eso el lector de pantalla los confunde.
+
 #### Scenario: Escribir un valor fuera de la lista
 
-- **WHEN** el usuario escribe 3,5 en "Distancia desde"
+- **WHEN** el usuario escribe 3,5 en "Distancia desde" y presiona "Filtrar"
 - **THEN** el campo muestra `3,5 km` y el request manda `distance_from_m=3500`
 
 #### Scenario: Elegir de la lista
 
-- **WHEN** el usuario elige 21 en "Distancia hasta"
+- **WHEN** el usuario elige 21 en "Distancia hasta" y presiona "Filtrar"
 - **THEN** el request manda `distance_to_m=21000`
 
 #### Scenario: El rango invertido se avisa antes de mandar
 
 - **WHEN** el usuario pone 42 en "desde" y 5 en "hasta"
 - **THEN** el campo muestra el error sin necesidad de esperar la respuesta
+
+#### Scenario: Los dos rangos comparten una grilla
+
+- **WHEN** se abre la barra de filtros en ventana ancha
+- **THEN** los títulos de Distancia y de Tiempo quedan en la misma fila, cada uno con sus dos cajas de extremo debajo
+
+### Requirement: Las fechas van en un solo grupo y las acciones viven al pie del form
+
+Las dos fechas SHALL presentarse como **un solo grupo** —título "Fecha" con los dos extremos debajo, lado a lado— y no como dos campos con título propio, para que el form tenga una sola forma de mostrar un rango (fechas, distancia y tiempo). El título NO SHALL repetir "desde / hasta": cada extremo ya lo dice en su propio rótulo visible. El nombre accesible de cada extremo SHALL seguir siendo el completo ("Fecha desde").
+
+Los botones "Filtrar" y "Limpiar" SHALL vivir **al pie del form**, en la media fila que el grupo de fechas deja libre, y no en el header del panel colapsado: ahí quedaba arriba de todo, lejos de lo que limpia, y duplicaba el badge, que ya dice cuántos filtros hay. "Filtrar" SHALL ser la acción primaria (verde) y estar siempre visible, porque es la única forma de aplicar el borrador; "Limpiar" SHALL ser secundaria (gris) y mostrarse solo cuando hay filtros aplicados. "Limpiar" SHALL limpiar el borrador y aplicar el estado vacío en el mismo click.
+
+#### Scenario: Fechas y acciones comparten la última fila
+
+- **WHEN** se abre la barra de filtros en ventana ancha con al menos un filtro aplicado
+- **THEN** el grupo "Fecha" ocupa media fila y los botones "Limpiar" (gris, con ícono de escoba) y "Filtrar" (verde, con ícono de embudo con tilde) la otra media, sin "Limpiar" en el header del panel
+
+#### Scenario: Sin filtros puestos
+
+- **WHEN** no hay ningún filtro aplicado
+- **THEN** "Limpiar" no se muestra (no hay nada que limpiar) y "Filtrar" sigue visible
+
+#### Scenario: Escribir no consulta
+
+- **WHEN** el usuario modifica cualquier filtro del form sin presionar "Filtrar"
+- **THEN** no se dispara ninguna consulta de métricas y la pantalla sigue mostrando el resultado del último estado aplicado
+
+#### Scenario: Aplicar el borrador
+
+- **WHEN** el usuario presiona "Filtrar"
+- **THEN** las cinco consultas de métricas salen con los valores del borrador como nuevo scope
+
+#### Scenario: Cambiar el corredor se aplica con "Filtrar"
+
+- **WHEN** el entrenador elige otro corredor en el select "Corredor" y presiona "Filtrar"
+- **THEN** las cuatro consultas de métricas y el detalle de series mandan `athlete_user_id` y muestran solo las series de ese corredor
+
+### Requirement: Aplicar filtros muestra una espera
+
+Mientras las métricas del scope recién aplicado están en vuelo, la pantalla SHALL mostrar la animación de espera del corredor (el mismo asset GIF de la app) con el texto "Cargando métricas…", en una capa que bloquee los filtros. La capa SHALL aparecer solo cuando hay un fetch real disparado por "Filtrar"/"Limpiar" (no durante el sondeo de 90 s) y SHALL permanecer visible un mínimo de 450 ms, para que el cambio se registre aunque la respuesta llegue al instante. La carga inicial sigue usando el skeleton, no esta capa.
+
+#### Scenario: Aplicar un filtro con datos en camino
+
+- **WHEN** el usuario presiona "Filtrar" y las métricas tardan en responder
+- **THEN** se muestra la animación con "Cargando métricas…" hasta que llegan las respuestas del nuevo scope
+
+#### Scenario: El sondeo no muestra la capa
+
+- **WHEN** el sondeo de 90 s refresca las métricas sin que el usuario haya aplicado un filtro
+- **THEN** la capa de espera no aparece y los datos se actualizan en su lugar
+
+#### Scenario: Aplicar sin cambios
+
+- **WHEN** el usuario presiona "Filtrar" sin haber modificado el borrador
+- **THEN** no se dispara ninguna request y la capa de espera no aparece
 
 ### Requirement: La pantalla SHALL adaptarse a mobile sin perder la información principal
 
@@ -322,9 +481,19 @@ En web el PDF SHALL abrir el diálogo de impresión del navegador: la ruta de im
 - **WHEN** el usuario exporta a PDF en web
 - **THEN** se abre el diálogo de impresión del navegador con el documento del dashboard, no la aplicación completa
 
+#### Scenario: El CSV se arma con las series ya cargadas
+
+- **WHEN** el usuario presiona "Exportar CSV"
+- **THEN** el archivo se genera con las series que la pantalla ya precargó al elegir el ejercicio, sin pedir nada al backend en ese momento — en web una descarga disparada después de un `await` puede quedar bloqueada por el navegador
+
+#### Scenario: Sin ejercicio elegido
+
+- **WHEN** el usuario presiona "Exportar CSV" sin haber elegido un ejercicio del catálogo
+- **THEN** se le avisa que el detalle por serie se exporta de un ejercicio, y no se descarga un archivo con solo el encabezado. El PDF sigue disponible: es el resumen del período, no depende de un ejercicio
+
 ### Requirement: El sistema SHALL mantener el dashboard al día sin WebSocket
 
-La pantalla SHALL refrescar los datos por sondeo periódico, con un intervalo de entre 60 y 120 segundos, y SHALL refrescar de inmediato al cambiar los filtros.
+La pantalla SHALL refrescar los datos por sondeo periódico, con un intervalo de entre 60 y 120 segundos, y SHALL refrescar de inmediato al **aplicar** los filtros (botón "Filtrar" o "Limpiar"), no al editarlos.
 
 La actualización SHALL NOT los datos ya mostrados mientras llegan los nuevos: un parpadeo a skeleton en cada sondeo haría la pantalla inutilizable.
 

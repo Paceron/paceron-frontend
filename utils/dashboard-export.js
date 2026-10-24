@@ -15,6 +15,8 @@
 // - `null` es celda VACÍA. Ni la palabra "null" ni un 0: un 0 en la columna de
 //   tiempo sería un resultado que nunca se midió (design.md D5).
 
+import { toISODate } from './date-field-format.js';
+
 export const CSV_BOM = '\uFEFF';
 export const CSV_SEPARATOR = ';';
 export const CSV_EOL = '\r\n';
@@ -54,6 +56,29 @@ function headerOf(column, units) {
   return unit ? `${column.header} (${unit})` : column.header;
 }
 
+function resolveColumns(columns) {
+  return Array.isArray(columns) && columns.length ? columns : DASHBOARD_SERIES_COLUMNS;
+}
+
+// Los dos productos de las columnas se exponen por separado porque el PDF
+// imprime la MISMA tabla que el CSV: si cada documento armara sus encabezados
+// por su lado, un cambio de columna en uno dejaría al otro desincronizado sin
+// que nada falle (mismo criterio que `toCsv` recibiendo `columns`).
+export function seriesColumnHeaders({ units = {}, columns = DASHBOARD_SERIES_COLUMNS } = {}) {
+  return resolveColumns(columns).map((column) => headerOf(column, units));
+}
+
+// Una fila por serie, con las celdas ya convertidas a texto (o '' en vez de
+// `null`). El escapado RFC 4180 es del CSV; el PDF escapa HTML por su cuenta.
+export function seriesRows(series, { columns = DASHBOARD_SERIES_COLUMNS } = {}) {
+  const cols = resolveColumns(columns);
+  const rows = Array.isArray(series) ? series : [];
+  return rows.map((row) => {
+    const source = row && typeof row === 'object' ? row : {};
+    return cols.map((column) => cellValue(source[column.key]));
+  });
+}
+
 // Una celda nunca lleva un valor que no se pueda escribir: `null`/`undefined`
 // quedan vacíos, y un no-finito (NaN/Infinity) también — `NaN` en una planilla
 // es texto que después alguien suma. Los enums se copian crudo (`met`,
@@ -86,14 +111,33 @@ function escapeCell(text) {
 // Sin filas igual se emite el encabezado: un archivo con las columnas correctas
 // y cero datos todavía dice qué se iba a exportar.
 export function toCsv(series, { units = {}, columns = DASHBOARD_SERIES_COLUMNS } = {}) {
-  const cols = Array.isArray(columns) && columns.length ? columns : DASHBOARD_SERIES_COLUMNS;
-  const rows = Array.isArray(series) ? series : [];
-
-  const lines = [cols.map((column) => escapeCell(headerOf(column, units))).join(CSV_SEPARATOR)];
-  for (const row of rows) {
-    const source = row && typeof row === 'object' ? row : {};
-    lines.push(cols.map((column) => escapeCell(cellValue(source[column.key]))).join(CSV_SEPARATOR));
-  }
+  const lines = [
+    seriesColumnHeaders({ units, columns }).map(escapeCell).join(CSV_SEPARATOR),
+    ...seriesRows(series, { columns }).map((row) => row.map(escapeCell).join(CSV_SEPARATOR)),
+  ];
 
   return CSV_BOM + lines.join(CSV_EOL);
+}
+
+// Nombre del archivo exportado. `from`/`to` llegan como los emite `DateField`
+// ('DD/MM/AAAA') y se bajan a ISO en el nombre: así la planilla y el buscador
+// del sistema ordenan los archivos por fecha sin que nadie tenga que pensarlo.
+// El nombre del ejercicio va sin acentos ni espacios — es un nombre de archivo,
+// no un título.
+export function dashboardExportFileName({ exerciseName, from, to, extension = 'csv' } = {}) {
+  const parts = ['dashboard'];
+  const name = slugify(exerciseName);
+  if (name) parts.push(name);
+  const range = [toISODate(from), toISODate(to)].filter(Boolean).join('_');
+  if (range) parts.push(range);
+  return `${parts.join('-')}.${slugify(extension) || 'csv'}`;
+}
+
+function slugify(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }

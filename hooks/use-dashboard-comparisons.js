@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { postDashboardComparisons, postDashboardPeriods } from '../services/dashboard.js';
 import { useAuthStore } from '../store/auth-store.js';
 import { DEFAULT_TOLERANCE } from '../utils/dashboard-format.js';
-import { DASHBOARD_KEYS, dashboardRetry } from './use-dashboard-query.js';
+import { DASHBOARD_KEYS, DASHBOARD_METRIC_QUERY_OPTIONS, dashboardRetry } from './use-dashboard-query.js';
 
 // Los dos POST de comparación. Son solo del dueño del equipo —el backend
 // responde 403 a un corredor—, así que los dos hooks quedan deshabilitados para
@@ -35,6 +35,7 @@ export function useDashboardComparisons({
   const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
 
   const query = useQuery({
+    ...DASHBOARD_METRIC_QUERY_OPTIONS,
     queryKey: DASHBOARD_KEYS.comparisons(scope, athleteUserIds),
     queryFn: () => postDashboardComparisons({ ...scope, athleteUserIds }),
     enabled: enabled && Boolean(teamId) && activeRole === 'trainer',
@@ -74,6 +75,7 @@ export function useDashboardPeriodComparison({
   const ranges = { current, previous };
 
   const query = useQuery({
+    ...DASHBOARD_METRIC_QUERY_OPTIONS,
     queryKey: DASHBOARD_KEYS.periods(scope, ranges),
     queryFn: () => postDashboardPeriods({ ...scope, current, previous }),
     enabled: enabled && Boolean(teamId) && Boolean(current?.from) && activeRole === 'trainer',

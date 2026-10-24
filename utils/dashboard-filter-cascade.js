@@ -16,6 +16,15 @@ import { isSameId } from './id-match.js';
 // primero, el de ritmo último).
 export const METRIC_KINDS = ['ritmo_continuo', 'velocidad_distancia', 'velocidad_tiempo'];
 
+// Los tipos que tienen al menos un ejercicio en el catálogo del equipo. Un tipo
+// sin ejercicios no se ofrece: el backend responde 404 a un `kind` que no
+// resuelve a ningún ejercicio del owner (`catalogExercisesInScope`), así que
+// elegirlo llevaba a "recurso inexistente" en vez de a un dashboard vacío.
+export function availableMetricKinds(exercises) {
+  const present = new Set((exercises ?? []).map((exercise) => exercise?.kind));
+  return METRIC_KINDS.filter((kind) => present.has(kind));
+}
+
 // Los ejercicios que se ofrecen para un tipo. Sin tipo elegido —el "todos",
 // que es el valor vacío— ofrece los de los tres tipos métricos, nunca los cinco.
 export function exercisesForKind(exercises, kind) {

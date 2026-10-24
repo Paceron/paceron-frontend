@@ -27,6 +27,15 @@ describe('normalizeRadarAxes', () => {
     expect(axes.map((axis) => axis.unitKey)).toEqual(['speed', 'distance', null, 'compliance', 'delta']);
   });
 
+  test('cada eje trae su bajada, y la de volumen cita el mismo tope que la fórmula', () => {
+    const axes = normalizeRadarAxes(summary());
+    // El "i" de cada barrita muestra `hint` tal cual: un eje sin bajada queda con
+    // un tooltip vacío, y la de volumen tiene que hablar del tope real (100 km),
+    // no de otro número — si el tope cambia, la frase se relee desde acá.
+    expect(axes.every((axis) => typeof axis.hint === 'string' && axis.hint.trim().length > 0)).toBe(true);
+    expect(axisById(axes, 'volume').hint).toContain(`${RADAR_VOLUME_MAX_KM} km`);
+  });
+
   test('lee los tres contenedores reales, no un objeto plano', () => {
     const axes = normalizeRadarAxes(summary());
     expect(axisById(axes, 'speed').value).toBeCloseTo(93.75, 2);

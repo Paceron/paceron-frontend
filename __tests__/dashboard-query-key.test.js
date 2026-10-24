@@ -8,6 +8,7 @@ import { DASHBOARD_KEYS, dashboardScopeKey } from '../hooks/use-dashboard-query.
 const SCOPE = {
   teamId: 4,
   groupId: null,
+  athleteUserId: null,
   exerciseId: 5,
   kind: null,
   distanceFromM: null,
@@ -36,6 +37,13 @@ describe('dashboard query key — los cuatro de rango entran a la key', () => {
   test('el tipo y el ejercicio también cambian la key', () => {
     expect(dashboardScopeKey({ ...SCOPE, kind: 'ritmo_continuo' })).not.toBe(dashboardScopeKey(SCOPE));
     expect(dashboardScopeKey({ ...SCOPE, exerciseId: 6 })).not.toBe(dashboardScopeKey(SCOPE));
+  });
+
+  test('el corredor del scope cambia la key', () => {
+    expect(dashboardScopeKey({ ...SCOPE, athleteUserId: 24 })).not.toBe(dashboardScopeKey(SCOPE));
+    expect(dashboardScopeKey({ ...SCOPE, athleteUserId: '24' })).toBe(
+      dashboardScopeKey({ ...SCOPE, athleteUserId: 24 }),
+    );
   });
 
   test('"sin filtro" es una sola key: null y vacío no son dos búsquedas', () => {

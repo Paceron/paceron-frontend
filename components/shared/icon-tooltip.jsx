@@ -25,7 +25,12 @@ import { isWeb } from '../../utils/platform.js';
 // pill de la izquierda saca media burbuja fuera de la pantalla. `start` la
 // ancla a la izquierda del trigger (se abre hacia la derecha) y `end` a la
 // derecha (se abre hacia la izquierda) — para una fila, "hacia adentro".
-export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center', wrapperClassName = '' }) {
+//
+// `wrap` es para labels que son una FRASE y no un nombre de acción: el pill de
+// una línea sola (`numberOfLines={1}`, el default de los labels de ícono) crece
+// hacia los costados sin techo y con 80 caracteres se sale de la pantalla. Con
+// `wrap` la burbuja se acota a `maxWidth: 260` y el texto baja en varias líneas.
+export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center', wrapperClassName = '', wrap = false }) {
   const [hovered, setHovered] = useState(false);
   const [coords, setCoords] = useState(null);
   const wrapperRef = useRef(null);
@@ -89,10 +94,10 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom', al
           className="z-tooltip rounded-md bg-slate-800 px-2 py-1 shadow-lg dark:bg-slate-700"
           nativeID={`${idPrefix}-bubble`}
           pointerEvents="none"
-          style={bubbleStyle}
+          style={wrap ? { ...bubbleStyle, maxWidth: 260 } : bubbleStyle}
           testID={`${idPrefix}-bubble`}
         >
-          <Text className="text-xs text-white" nativeID={`${idPrefix}-bubble-label`} numberOfLines={1} testID={`${idPrefix}-bubble-label`}>
+          <Text className="text-xs text-white" nativeID={`${idPrefix}-bubble-label`} numberOfLines={wrap ? undefined : 1} testID={`${idPrefix}-bubble-label`}>
             {label}
           </Text>
         </View>,

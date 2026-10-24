@@ -36,6 +36,17 @@ export function extent(values) {
   return [Math.min(...nums), Math.max(...nums)];
 }
 
+// Hasta tres índices de etiqueta para un eje X: primera, del medio y última.
+// Con más de tres las etiquetas se pisan entre sí en mobile, donde no hay
+// wrapping posible. Vive acá y no en el gráfico porque lo comparten la línea de
+// evolución y la de cumplimiento.
+export function tickIndexes(length) {
+  const n = Number.isFinite(length) && length > 0 ? Math.floor(length) : 0;
+  if (n <= 0) return [];
+  if (n <= 3) return Array.from({ length: n }, (_, index) => index);
+  return [0, Math.floor((n - 1) / 2), n - 1];
+}
+
 // Escala lineal de dominio a rango, estilo d3 pero sin dependencias:
 //   const y = scaleLinear([0, 100], [height, 0]);
 //   y(50) → height / 2
@@ -156,8 +167,9 @@ export function barPath(values, { width, height, gap = 0, horizontal = false } =
   });
 }
 
-// Las cuatro bandas de cumplimiento. El orden es el de abajo hacia arriba en el
-// gráfico 100 % y el de las celdas del backend: `band_counts` por bucket.
+// Las cuatro bandas de cumplimiento. El orden es el del contrato —el mismo en el
+// que llegan las celdas de `band_counts`— y el del anillo del donut, que arranca
+// a las 12 y gira en sentido horario.
 // Los enums llegan en inglés y se muestran crudo — el front no traduce el
 // contrato, y un `met` traducido a "cumplió" deja de ser reconciliable con la
 // respuesta de la API.
@@ -170,67 +182,162 @@ export const BAND_LABELS = {
   unknown: 'Sin dato',
 };
 
-// Barras apiladas al 100 %: cada bucket se reparte según los conteos que llegan
-// calculados del backend (`band_counts` por bucket, `band` por serie). El front
-// NO recalcula los umbrales de `near` ni decide qué banda es cuál — solo
-// reparte el 100 % dentro de lo que le dieron.
+// Reparto de las cuatro bandas de un bucket: conteos + porcentajes. El
+// denominador es la SUMA de los conteos, no `valid_series`: las bandas solo
+// existen para series con objetivo cargado (el `bandOf` del backend devuelve
+// null para las que no lo tienen), y mezclar el denominador haría que este
+// porcentaje contradijera al `compliance_rate` del KPI, que es met/targeted.
 //
-// Un bucket puede venir como objeto ({ met, near, missed, unknown }) o como
-// arreglo en el orden de DASHBOARD_BANDS: se aceptan los dos porque el orden es
-// justo la clase de error que no se ve hasta que el gráfico sale al revés.
-export function stackedBar100(segments, { width, height, gap = 0, horizontal = false, bands = DASHBOARD_BANDS } = {}) {
-  const list = Array.isArray(segments) ? segments : [];
-  if (!list.length) return [];
-  const w = positiveOrZero(Number(width));
-  const h = positiveOrZero(Number(height));
-  if (w <= 0 || h <= 0) return [];
-
-  const along = horizontal ? w : h;
-  const spacing = finiteOrZero(gap);
-  const spread = horizontal ? h : w;
-  const slot = (spread - spacing * (list.length - 1)) / list.length;
-  const thickness = Math.max(0, slot);
-
-  const countsOf = (bucket) =>
-    bands.map((band, i) => {
-      const raw = Array.isArray(bucket) ? bucket[i] : bucket?.[band];
-      const n = finite(raw);
-      return n === null || n < 0 ? 0 : n;
-    });
-
-  return list.map((bucket, index) => {
-    const counts = countsOf(bucket);
-    const total = counts.reduce((acc, n) => acc + n, 0);
-    const offset = round(index * (slot + spacing));
-
-    let cursor = 0;
-    const parts = counts
-      .map((count, i) => ({ count, band: bands[i] ?? String(i), share: total > 0 ? count / total : 0 }))
-      .filter((part) => part.count > 0)
-      .map((part) => {
-        const size = part.share * along;
-        const at = round(cursor);
-        cursor += size;
-        const rect = {
-          band: part.band,
-          label: BAND_LABELS[part.band] ?? part.band,
-          count: part.count,
-          share: round(part.share * 100) / 100,
-        };
-        if (horizontal) {
-          return { ...rect, x: at, y: offset, width: round(size), height: round(thickness) };
-        }
-        return { ...rect, x: offset, y: round(along - cursor), width: round(thickness), height: round(size) };
-      });
-
-    // La barra completa mide todo el eje del 100 %, no el slot: el slot es la
-    // separación entre barras.
-    const bar = { index, total, parts };
-    if (horizontal) {
-      return { ...bar, x: 0, y: offset, width: round(along), height: round(thickness) };
-    }
-    return { ...bar, x: offset, y: 0, width: round(thickness), height: round(along) };
+// `metShare`/`withinShare` son null —nunca 0— sin series comparables: un 0
+// dibujaría una caída de cumplimiento que no pasó (D5).
+export function bandShares(counts, bands = DASHBOARD_BANDS) {
+  const list = Array.isArray(bands) ? bands : DASHBOARD_BANDS;
+  const byBand = {};
+  list.forEach((band) => {
+    const raw = finite(counts?.[band]);
+    byBand[band] = raw === null || raw < 0 ? 0 : raw;
   });
+  const total = list.reduce((sum, band) => sum + byBand[band], 0);
+  const percent = (n) => (total > 0 ? round((n / total) * 100) : null);
+  const met = byBand.met ?? 0;
+  const near = byBand.near ?? 0;
+  const missed = byBand.missed ?? 0;
+
+  return {
+    counts: byBand,
+    total,
+    metShare: percent(met),
+    nearShare: percent(near),
+    missedShare: percent(missed),
+    unknownShare: percent(byBand.unknown ?? 0),
+    // "Dentro o cerca": el borde de arriba de la zona de tolerancia. La franja
+    // entre esta y `metShare` ES la banda `near`.
+    withinShare: percent(met + near),
+    // Los tres bordes acumulados del área apilada (`met`, `met + near`,
+    // `met + near + missed`). Se calculan en una sola pasada sobre los conteos y
+    // NO sumando shares ya redondeados (33,33 + 33,33 + 33,33 daría 99,99 y
+    // dejaría una franja contra el techo que sí cierra en 100).
+    stack: [percent(met), percent(met + near), percent(met + near + missed)],
+  };
+}
+
+// Área bajo una serie hasta una línea base, en TRAMOS: un punto sin dato corta
+// el relleno en vez de puentearlo (mismo criterio que `linePath`), y un solo
+// path cerraría el polígono por el medio del hueco. Devuelve un `d` por tramo
+// contiguo de dos o más mediciones; con una sola no hay área que dibujar.
+export function areaPath(points, baselineY = 0) {
+  const list = Array.isArray(points) ? points : [];
+  const base = finite(baselineY);
+  if (base === null) return [];
+  const baseY = round(base);
+  const paths = [];
+  let run = [];
+
+  const flush = () => {
+    if (run.length >= 2) {
+      const first = run[0];
+      const last = run[run.length - 1];
+      paths.push(`M${first.x} ${baseY}${run.map((p) => ` L${p.x} ${p.y}`).join('')} L${last.x} ${baseY} Z`);
+    }
+    run = [];
+  };
+
+  list.forEach((point) => {
+    const x = finite(point?.x);
+    const y = finite(point?.y);
+    if (x === null || y === null) {
+      flush();
+      return;
+    }
+    run.push({ x: round(x), y: round(y) });
+  });
+  flush();
+  return paths;
+}
+
+// Banda entre DOS series: el polígono que encierran. Es lo que necesita el área
+// apilada, donde cada tramo tiene un borde de arriba y uno de abajo que se mueven
+// juntos — `areaPath` no sirve porque su base es un número fijo, no otra serie.
+// Igual que `areaPath`, un punto sin dato en CUALQUIERA de las dos series corta el
+// relleno (no se puentea el hueco) y un tramo de un solo punto no dibuja nada.
+export function bandPath(topPoints, bottomPoints) {
+  const top = Array.isArray(topPoints) ? topPoints : [];
+  const bottom = Array.isArray(bottomPoints) ? bottomPoints : [];
+  const paths = [];
+  let run = [];
+
+  const flush = () => {
+    if (run.length >= 2) {
+      const up = run.map((p) => `L${p.x} ${p.top}`).join('');
+      const down = [...run].reverse().map((p) => `L${p.x} ${p.bottom}`).join('');
+      paths.push(`M${run[0].x} ${run[0].top}${up}${down} Z`);
+    }
+    run = [];
+  };
+
+  const length = Math.min(top.length, bottom.length);
+  for (let index = 0; index < length; index += 1) {
+    const x = finite(top[index]?.x);
+    const upper = finite(top[index]?.y);
+    const lower = finite(bottom[index]?.y);
+    if (x === null || upper === null || lower === null) {
+      flush();
+      continue;
+    }
+    run.push({ x: round(x), top: round(upper), bottom: round(lower) });
+  }
+  flush();
+  return paths;
+}
+
+// Geometría del anillo (donut) de bandas. Devuelve, por banda con conteo > 0, el
+// `start`/`length` que la dibuja —la técnica de una `Circle` por porción con
+// `strokeDasharray`, sin matemática de arcos—, su porcentaje y el ángulo medio,
+// que es donde el componente ubica el hotspot.
+//
+// La banda en cero NO se devuelve: una porción de largo cero no se ve pero su
+// hotspot sí tapa el de al lado, que es el bug clásico del donut armado desde
+// metadata. El hueco de separación se descuenta de cada porción y NO se aplica
+// con una sola: un anillo completo con una muesca se lee como un error de dibujo.
+export function donutSlices(counts, { radius = 60, gap = 2, bands = DASHBOARD_BANDS } = {}) {
+  const r = positiveOrZero(Number(radius));
+  if (r <= 0) return { radius: 0, circumference: 0, slices: [] };
+  const circumference = 2 * Math.PI * r;
+  const list = Array.isArray(bands) ? bands : DASHBOARD_BANDS;
+  const present = list
+    .map((band) => {
+      const raw = finite(counts?.[band]);
+      return { band, count: raw === null || raw < 0 ? 0 : raw };
+    })
+    .filter((slice) => slice.count > 0);
+  const total = present.reduce((sum, slice) => sum + slice.count, 0);
+  if (total <= 0) return { radius: r, circumference: round(circumference), slices: [] };
+
+  // Tope del hueco: con 4 porciones del 25 % un hueco completo por porción
+  // comería un 8 % del anillo.
+  const gapLength = present.length > 1
+    ? Math.min(finiteOrZero(gap), circumference / (present.length * 4))
+    : 0;
+
+  let cursor = 0;
+  const slices = present.map((slice) => {
+    const fraction = slice.count / total;
+    const start = cursor;
+    const length = fraction * circumference;
+    cursor += length;
+    return {
+      band: slice.band,
+      count: slice.count,
+      share: round(fraction * 100),
+      start: round(start),
+      length: round(Math.max(0, length - gapLength)),
+      gapLength: round(gapLength),
+      // -90° para que la primera porción arranque a las 12, como todo donut.
+      midAngle: ((start + length / 2) / circumference) * 2 * Math.PI - Math.PI / 2,
+    };
+  });
+
+  return { radius: r, circumference: round(circumference), slices };
 }
 
 // Dispersión (dot plot): un punto por serie, con el eje X y el Y escalados
@@ -351,7 +458,7 @@ export function boxPlotStats(values, { k = 1.5 } = {}) {
 //
 // Un valor ausente (null) deja el punto con `y: null` en vez de `0`: `round(null)`
 // da 0 y dibujaría un punto pegado al piso, que es un dato que no existe.
-export function lineSeries(values, { width, height, domain, minimumRange = 1, inset = 0 } = {}) {
+export function lineSeries(values, { width, height, domain, minimumRange = 1, inset = 0, yInset = 0 } = {}) {
   const list = Array.isArray(values) ? values : [];
   const w = positiveOrZero(Number(width));
   const h = positiveOrZero(Number(height));
@@ -365,8 +472,9 @@ export function lineSeries(values, { width, height, domain, minimumRange = 1, in
   const resolvedDomain = found ? [found[0] - margin, found[1] + margin] : [0, 1];
 
   const pad = positiveOrZero(Number(inset));
+  const padY = positiveOrZero(Number(yInset));
   const x = scaleLinear([0, Math.max(1, list.length - 1)], [pad, Math.max(pad, w - pad)]);
-  const y = scaleLinear(resolvedDomain, [h, 0]);
+  const y = scaleLinear(resolvedDomain, [Math.max(padY, h - padY), padY]);
 
   const points = nums.map((value, index) => {
     const py = y(value);
@@ -391,12 +499,43 @@ const RADAR_VOLUME_MAX_M = RADAR_VOLUME_MAX_KM * 1000;
 // front no inventa ni convierte unidades (D4). Consistencia no tiene `unitKey`:
 // el contrato no declara ninguna clave para el coeficiente de variación, así que
 // se escribe sin sufijo en vez de inventar una.
+//
+// `hint` es la bajada de cada eje: qué muestra y cómo se calcula, en una frase.
+// Vive acá, pegada a la fórmula de `normalizeRadarAxes`, y no en los componentes
+// que la muestran (las barritas del perfil, y su tooltip) porque es exactamente
+// lo que hay que releer cuando la fórmula cambia: un "100 es el tope" en un
+// tooltip que quedó apuntando a otra escala es peor que no tener tooltip.
 export const RADAR_AXES = [
-  { id: 'speed', label: 'Ritmo', unitKey: 'speed' },
-  { id: 'volume', label: 'Volumen', unitKey: 'distance' },
-  { id: 'consistency', label: 'Consistencia', unitKey: null },
-  { id: 'compliance', label: 'Cumplimiento', unitKey: 'compliance' },
-  { id: 'trend', label: 'Progresión', unitKey: 'delta' },
+  {
+    id: 'speed',
+    label: 'Ritmo',
+    unitKey: 'speed',
+    hint: 'Ritmo logrado contra el esperado del objetivo: 100 es correr exactamente al ritmo esperado.',
+  },
+  {
+    id: 'volume',
+    label: 'Volumen',
+    unitKey: 'distance',
+    hint: `Distancia acumulada del período sobre un tope fijo de ${RADAR_VOLUME_MAX_KM} km: 100 es ${RADAR_VOLUME_MAX_KM} km o más.`,
+  },
+  {
+    id: 'consistency',
+    label: 'Consistencia',
+    unitKey: null,
+    hint: 'Qué tan parejo fue el ritmo entre series: sin variación es 100, y más dispersión resta.',
+  },
+  {
+    id: 'compliance',
+    label: 'Cumplimiento',
+    unitKey: 'compliance',
+    hint: 'Porcentaje de series que cumplieron el objetivo dentro de la tolerancia.',
+  },
+  {
+    id: 'trend',
+    label: 'Progresión',
+    unitKey: 'delta',
+    hint: 'Cambio contra el período anterior, centrado en 50: 50 es sin cambio y más alto es mejora.',
+  },
 ];
 
 // Normaliza los cinco ejes del radar a [0, 100] desde la respuesta del resumen,

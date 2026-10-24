@@ -1,17 +1,26 @@
 import { Text, View } from 'react-native';
 import { EMPTY_METRIC, formatMetric, hasMetric } from '../../../utils/dashboard-format.js';
 import { normalizeRadarAxes } from '../../../utils/dashboard-chart.js';
+import { InfoHint } from '../info-hint.jsx';
 
 // Los mismos cinco ejes del radar, en barritas.
 //
-// El radar responde "¿el perfil es-equilibrado?" — para eso la forma del
+// El radar responde "¿el perfil es equilibrado?" — para eso la forma del
 // polígono es la información. Las barras responden otra pregunta: "¿cuánto vale
 // cada eje?" — y para eso la longitud es la información. Comparar un 87 contra un
-// 64 es mucho más fácil en dos barras queBuscando un vértice en un polígono.
+// 64 es mucho más fácil en dos barras que buscando un vértice en un polígono.
 //
 // Ambos salen de `normalizeRadarAxes`, o sea que el 0-100 de la barra es
 // EXACTAMENTE el mismo número que alimenta el radio: no hay dos normalizaciones
 // que puedan desincronizarse.
+//
+// Cada eje lleva un "i" con la bajada de su escala (`axis.hint`, que sale de
+// `RADAR_AXES`): el 0-100 de la barra es un número con truco —volumen se mide
+// contra 100 km y progresión contra 50— y sin la escala al lado el "70 de 100"
+// se lee como si fuera comparable entre ejes, que es justo lo que no es.
+//
+// El "i" es el mismo `InfoHint` que usan los títulos de las cards: en web abre
+// por hover y en nativo por tap, así que el hint dejó de ser web-only.
 export function AxisBars({ id, summary, units }) {
   const axes = normalizeRadarAxes({
     totals: summary?.totals,
@@ -24,13 +33,21 @@ export function AxisBars({ id, summary, units }) {
       {axes.map((axis) => (
         <View key={axis.id} nativeID={`${id}-row-${axis.id}`} testID={`${id}-row-${axis.id}`}>
           <View className="mb-1 flex-row items-baseline justify-between" nativeID={`${id}-${axis.id}-header`} testID={`${id}-${axis.id}-header`}>
-            <Text
-              className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
-              nativeID={`${id}-${axis.id}-label`}
-              testID={`${id}-${axis.id}-label`}
-            >
-              {axis.label}
-            </Text>
+            <View className="flex-row items-center gap-1.5" nativeID={`${id}-${axis.id}-title`} testID={`${id}-${axis.id}-title`}>
+              <Text
+                className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                nativeID={`${id}-${axis.id}-label`}
+                testID={`${id}-${axis.id}-label`}
+              >
+                {axis.label}
+              </Text>
+              <InfoHint
+                accessibilityLabel={`Cómo se calcula ${axis.label}`}
+                description={axis.hint}
+                id={`${id}-${axis.id}-hint`}
+                title={axis.label}
+              />
+            </View>
             <Text
               className="text-xs font-semibold text-slate-700 dark:text-slate-200"
               nativeID={`${id}-${axis.id}-raw`}

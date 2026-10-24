@@ -18,10 +18,12 @@ export function BodyScanFigure({ id, height = HEIGHT }) {
     <Image
       accessibilityIgnoresInvertColors
       // Los GIF son 16:9. `contain` los deja enteros; el alto los ancla para que
-      // queden a la misma altura que el pentagono.
+      // queden a la misma altura que el pentagono. `maxWidth: '100%'` es el techo
+      // para la card angosta (mobile o web muy angosta): con `contain` la figura
+      // se achica y se centra dentro del rectangulo en vez de desbordar la card.
       resizeMode="contain"
       source={source}
-      style={{ height, width: height * (16 / 9) }}
+      style={{ height, maxWidth: '100%', width: height * (16 / 9) }}
       nativeID={id}
       testID={id}
     />

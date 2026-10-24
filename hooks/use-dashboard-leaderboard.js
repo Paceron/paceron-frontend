@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { getDashboardLeaderboard, DASHBOARD_LEADERBOARD_SORTS, DASHBOARD_ORDERS, DASHBOARD_DEFAULT_PAGE_SIZE } from '../services/dashboard.js';
 import { useAuthStore } from '../store/auth-store.js';
 import { DEFAULT_TOLERANCE } from '../utils/dashboard-format.js';
-import { DASHBOARD_KEYS, dashboardRetry } from './use-dashboard-query.js';
+import { DASHBOARD_KEYS, DASHBOARD_METRIC_QUERY_OPTIONS, dashboardRetry } from './use-dashboard-query.js';
 
 // GET /dashboard/leaderboard: el ranking paginado y ordenable del scope.
 //
@@ -19,6 +19,7 @@ import { DASHBOARD_KEYS, dashboardRetry } from './use-dashboard-query.js';
 export function useDashboardLeaderboard({
   teamId,
   groupId,
+  athleteUserId,
   exerciseId,
   exerciseIds,
   kind,
@@ -35,10 +36,11 @@ export function useDashboardLeaderboard({
   enabled = true,
 } = {}) {
   const activeRole = useAuthStore((state) => state.activeRole);
-  const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
+  const scope = { teamId, groupId, athleteUserId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
   const paging = { sort, order, pageSize };
 
   const query = useInfiniteQuery({
+    ...DASHBOARD_METRIC_QUERY_OPTIONS,
     queryKey: DASHBOARD_KEYS.leaderboard(scope, paging),
     queryFn: ({ pageParam }) => getDashboardLeaderboard({ ...scope, ...paging, page: pageParam }),
     initialPageParam: 1,

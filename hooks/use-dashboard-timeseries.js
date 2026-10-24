@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardTimeseries, DASHBOARD_GRANULARITIES } from '../services/dashboard.js';
 import { DEFAULT_TOLERANCE } from '../utils/dashboard-format.js';
-import { DASHBOARD_KEYS, DASHBOARD_POLL_INTERVAL_MS, dashboardRetry } from './use-dashboard-query.js';
+import { DASHBOARD_KEYS, DASHBOARD_METRIC_QUERY_OPTIONS, DASHBOARD_POLL_INTERVAL_MS, dashboardRetry } from './use-dashboard-query.js';
 
 // GET /dashboard/metrics/timeseries: la evolución, con los mismos KPIs del
 // resumen en cada bucket de calendario.
@@ -13,6 +13,7 @@ import { DASHBOARD_KEYS, DASHBOARD_POLL_INTERVAL_MS, dashboardRetry } from './us
 export function useDashboardTimeseries({
   teamId,
   groupId,
+  athleteUserId,
   exerciseId,
   exerciseIds,
   kind,
@@ -26,8 +27,9 @@ export function useDashboardTimeseries({
   granularity = DASHBOARD_GRANULARITIES[0],
   enabled = true,
 } = {}) {
-  const scope = { teamId, groupId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
+  const scope = { teamId, groupId, athleteUserId, exerciseId, exerciseIds, kind, distanceFromM, distanceToM, timeFromMin, timeToMin, from, to, tolerance };
   const query = useQuery({
+    ...DASHBOARD_METRIC_QUERY_OPTIONS,
     queryKey: DASHBOARD_KEYS.timeseries(scope, granularity),
     queryFn: () => getDashboardTimeseries({ ...scope, granularity }),
     enabled: enabled && Boolean(teamId),

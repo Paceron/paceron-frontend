@@ -1,12 +1,17 @@
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 import { RADAR_AXES, normalizeRadarAxes, radarPolygon } from '../../../utils/dashboard-chart.js';
 import { EMPTY_METRIC, formatDelta, formatMetric } from '../../../utils/dashboard-format.js';
 import { useThemeColors } from '../../../theme/colors.js';
 import { ChartSurface } from './chart-surface.jsx';
 
-const SIZE = 220;
+export const RADAR_SIZE = 220;
 const RINGS = 4;
+
+// Radio mínimo del SVG. Coincide con el piso del `Math.max` de abajo: por debajo
+// de esto el pentágono deja de leerse y conviene que el call site no le dé menos
+// ancho. Está exportado para que las cards puedan usarlo como `minWidth`.
+export const RADAR_MIN_SIZE = 120;
 
 // Radar de cinco ejes que resume el perfil del período. Aparece SOLO en la
 // paleta A: en la B no hay con qué normalizar la mayoría de los ejes y un radar
@@ -17,14 +22,22 @@ const RINGS = 4;
 //  1. Un eje con dato `null` queda FUERA del polígono. En JavaScript
 //     `100 − (null × 100)` da 100, así que sin esto un corredor con una sola
 //     serie vería "consistencia perfecta" sobre un punto que nunca se midió. El
-//     vértice se salta (utils/dashboard-chart.js#radarPolygon) y la tabla de
-//     abajo marca "s/d".
-//  2. Cada eje muestra su valor REAL junto al polígono. El área es un resumen,
-//     no el dato: leer "volumen = 0,7" de la forma sin el número al lado inventa
-//     una precisión que el gráfico no tiene.
-//  3. Accesible en tabla: el SVG lleva `accessibilityRole="image"` (viene de
-//     ChartSurface) con la descripción de los cinco valores, y abajo va la tabla
-//     con los crudos.
+//     vértice se salta (utils/dashboard-chart.js#radarPolygon) y la barrita de ese
+//     eje dice "sin dato" abajo.
+//  2. El área es un RESUMEN, no el dato: puede ser 0,7 del radio sin que el
+//     volumen sea chico. Los cinco crudos y su 0-100 viven en las barritas que
+//     arma `AxisBars`, que salen de la misma `normalizeRadarAxes` (no hay dos
+//     normalizaciones que se puedan desincronizar).
+//  3. Accesible: el SVG lleva `accessibilityRole="image"` (viene de
+//     ChartSurface) con la descripción de los cinco valores. Acá NO va ninguna
+//     tabla con los crudos: hasta 2026-10-17 había una debajo y repetía los
+//     mismos cinco números que las barritas — un solo lugar para el número.
+//
+// OJO CON EL ANCHO: esta superficie mide su propio layout y no tiene contenido
+// propio que la dimensione (la tabla que lo hacía ya no está), así que un padre
+// de ancho automático la colapsa a 0 y el pentágono desaparece sin ningún error.
+// El call site tiene que darle un ancho definido — ver las dos cards del perfil,
+// donde vive dentro de un slot con ancho explícito.
 export function RadarChart({ id, summary, units, label }) {
   const colors = useThemeColors();
   const axes = normalizeRadarAxes({
@@ -35,12 +48,12 @@ export function RadarChart({ id, summary, units, label }) {
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
-      <ChartSurface height={SIZE} id={id} label={radarDescription(axes, units)}>
+      <ChartSurface height={RADAR_SIZE} id={id} label={radarDescription(axes, units)}>
         {(width) => {
           // El radar se achica al ancho disponible en vez de desbordar: en un
           // viewport angosto un Svg de ancho fijo se sale de la pantalla, y la
           // spec pide que no haya scroll horizontal en mobile.
-          const size = Math.max(120, Math.min(width, SIZE));
+          const size = Math.max(RADAR_MIN_SIZE, Math.min(width, RADAR_SIZE));
           const cx = size / 2;
           const cy = size / 2;
           const radius = cx - 28;
@@ -120,28 +133,6 @@ export function RadarChart({ id, summary, units, label }) {
           );
         }}
       </ChartSurface>
-      <View className="mt-3" nativeID={`${id}-table`} testID={`${id}-table`}>
-        {axes.map((axis) => (
-          <View
-            className="flex-row items-center justify-between border-b border-slate-100 py-1.5 last:border-b-0 dark:border-slate-800"
-            key={axis.id}
-            nativeID={`${id}-table-${axis.id}`}
-            testID={`${id}-table-${axis.id}`}
-          >
-            <Text className="text-xs text-slate-600 dark:text-slate-300" nativeID={`${id}-table-${axis.id}-label`} testID={`${id}-table-${axis.id}-label`}>
-              {axis.label}
-            </Text>
-            <View className="flex-row items-center gap-2" nativeID={`${id}-table-${axis.id}-value-row`} testID={`${id}-table-${axis.id}-value-row`}>
-              <Text className="text-xs font-semibold text-slate-900 dark:text-white" nativeID={`${id}-table-${axis.id}-value`} testID={`${id}-table-${axis.id}-value`}>
-                {rawLabel(axis, units)}
-              </Text>
-              <Text className="w-14 text-right text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-table-${axis.id}-index`} testID={`${id}-table-${axis.id}-index`}>
-                {axis.available ? `${Math.round(axis.value)} / 100` : 's/d'}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
     </View>
   );
 }

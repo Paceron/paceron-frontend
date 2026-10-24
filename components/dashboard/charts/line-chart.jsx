@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
-import { extent, lineSeries } from '../../../utils/dashboard-chart.js';
+import { extent, lineSeries, tickIndexes } from '../../../utils/dashboard-chart.js';
 import { formatMetric } from '../../../utils/dashboard-format.js';
 import { useThemeColors } from '../../../theme/colors.js';
 import { ChartSurface } from './chart-surface.jsx';
@@ -176,12 +176,4 @@ export function LineChart({
       ) : null}
     </View>
   );
-}
-
-// Hasta tres etiquetas del eje X (primera, del medio y última): con más de tres
-// se pisan entre sí en mobile sin wrapping posible.
-function tickIndexes(length) {
-  if (length <= 0) return [];
-  if (length <= 3) return Array.from({ length }, (_, index) => index);
-  return [0, Math.floor((length - 1) / 2), length - 1];
 }

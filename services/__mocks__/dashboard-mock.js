@@ -166,8 +166,19 @@ const FIRST_SESSION_ID = 7100;
 const DEGRADED_TIME_BELOW = 0.18;
 const SELF_REPORTED_FROM = 0.3;
 const SELF_REPORTED_TO = 0.42;
+// Series con objetivo que quedaron LEJOS del objetivo: sin esto la peor banda
+// que aparece es `near` y el cumplimiento se ve con dos porciones, así que ni
+// `missed` ni la caída de la curva por debajo de la zona de tolerancia se pueden
+// verificar en el preview.
+const OFF_TARGET_FROM = 0.42;
+const OFF_TARGET_TO = 0.5;
 const LEGACY_FROM = 0.5;
 const LEGACY_TO = 0.62;
+// Series con objetivo cargado pero SIN medición usable en el eje del objetivo
+// (queda sin distancia, así que la velocidad no se puede derivar): el backend las
+// clasifica `unknown`, no `missed` — "no se pudo evaluar" no es "no cumplió".
+const NO_MEASURE_FROM = 0.62;
+const NO_MEASURE_TO = 0.7;
 const UNKNOWN_STATUS_FROM = 0.85;
 const INVALID_SERIES_FROM = 0.93;
 
@@ -276,6 +287,37 @@ function buildSeriesRow({ sessionInstanceId, daysAgo, exercise, athlete, setNumb
     if (axis === 'distance_and_time') {
       distanceMeters = Math.round(((targetSpeedKph(targets) * factor * durationMs) / MS_PER_HOUR) * 1000);
     }
+  }
+
+  // Los dos defectos de cumplimiento se calculan DIRECTAMENTE contra el objetivo
+  // (no contra el rendimiento ya derivado): así la banda que sale no depende del
+  // atleta ni del progreso, y la ventana del jitter predice el resultado.
+  const targeted = hasTarget(exercise.kind, targets);
+
+  if (targeted && jitter >= OFF_TARGET_FROM && jitter < OFF_TARGET_TO) {
+    if (axis === 'time') {
+      durationMs = Math.round(targetMinutes * 60_000 * 1.3); // 30 % más lento
+    } else if (axis === 'distance') {
+      distanceMeters = Math.round(targetDistanceM * 0.72); // 28 % más corto
+    } else {
+      const expectedKph = targetSpeedKph(targets);
+      if (expectedKph) {
+        distanceMeters = Math.round(targetDistanceM * (0.94 + 0.1 * jitter));
+        // 25 % por debajo de la velocidad objetivo: fuera del margen de `near`
+        // (objetivo × 0,90 con la tolerancia por defecto).
+        durationMs = Math.round((distanceMeters / 1000 / (expectedKph * 0.75)) * MS_PER_HOUR);
+      }
+    }
+  }
+
+  if (targeted && jitter >= NO_MEASURE_FROM && jitter < NO_MEASURE_TO && axis !== 'time') {
+    // Sin medición en el eje del objetivo: la serie tiene objetivo pero no es
+    // calculable, que es exactamente el caso que el backend marca `unknown`.
+    // Solo aplica a los ejes que exigen distancia — un tiempo logrado en cero no
+    // es "sin medición", es una serie que ni entra al set de tiempos (y con un
+    // `timeFromMin` puesto el DAO la descarta antes), así que sembrarla
+    // enmascararía ese comportamiento del filtro por tiempo.
+    distanceMeters = null;
   }
 
   const needsDistance = axis === 'distance' || axis === 'distance_and_time';
@@ -1512,10 +1554,23 @@ function derivePreviousPeriod(current) {
 // Un corredor solo ve las suyas: es el recorte que hace el DAO cuando quien
 // llama no es dueño del equipo.
 function athleteIdsFor(filters) {
-  if (ownsTeam(filters.teamId, filters.callerUserId)) return null;
-  return ATHLETES.some((athlete) => String(athlete.id) === String(filters.callerUserId))
-    ? [Number(filters.callerUserId)]
-    : [];
+  const owns = ownsTeam(filters.teamId, filters.callerUserId);
+  // El dueño ve todo el equipo; un corredor solo su propia entrada. `null` es
+  // "sin recorte por corredor" (el dueño sin filtro), no una lista vacía.
+  const scoped = owns
+    ? ATHLETES.map((athlete) => athlete.id)
+    : ATHLETES.some((athlete) => String(athlete.id) === String(filters.callerUserId))
+      ? [Number(filters.callerUserId)]
+      : [];
+  const requested = filters.athleteUserId;
+  if (requested === null || requested === undefined || requested === '') {
+    return owns ? null : scoped;
+  }
+  const athleteId = Number(requested);
+  if (!scoped.includes(athleteId)) {
+    throw dashboardError(403, 'ATHLETE_OUT_OF_SCOPE', `El corredor ${athleteId} no está entre los que podés ver`);
+  }
+  return [athleteId];
 }
 
 // ---------- helpers de test ----------

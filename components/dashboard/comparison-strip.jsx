@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { EMPTY_METRIC, formatDelta, formatMetric, formatVerdict, hasMetric, verdictIcon } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
+import { InfoHint } from './info-hint.jsx';
 
 // Período actual contra el anterior de la misma longitud.
 //
@@ -28,6 +29,12 @@ const VERDICT_STYLES = {
   regressing: { text: 'text-red-600 dark:text-red-400', icon: '#ba1a1a' },
 };
 
+const TITLE = 'Frente al período anterior';
+// La bajada va en la "i" del título (ver `InfoHint`); el rango comparado sigue
+// visible abajo, que es el dato sin el cual los deltas no significan nada.
+const DESCRIPTION =
+  'Compara el período elegido contra el anterior de la misma duración. La diferencia de cumplimiento va en puntos porcentuales (pp) y no como porcentaje relativo, que exagera las caídas cerca de valores altos; en Mejor tiempo el signo ya viene invertido, así que un número negativo es una mejora. El veredicto se marca con un umbral de 2 pp.';
+
 export function ComparisonStrip({ id = 'dashboard-comparison', data, rangeLabel }) {
   const colors = useThemeColors();
   if (!data) return null;
@@ -43,9 +50,12 @@ export function ComparisonStrip({ id = 'dashboard-comparison', data, rangeLabel 
     <View className="mb-4 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-surface" nativeID={id} testID={id}>
       <View className="flex-row items-center gap-2 border-b border-slate-100 p-4 dark:border-slate-800" nativeID={`${id}-header`} testID={`${id}-header`}>
         <MaterialCommunityIcons color={colors.primary} name="compare-horizontal" size={16} />
-        <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" nativeID={`${id}-title`} testID={`${id}-title`}>
-          Frente al período anterior
-        </Text>
+        <View className="min-w-0 flex-1 flex-row items-center gap-1.5" nativeID={`${id}-heading`} testID={`${id}-heading`}>
+          <Text className="min-w-0 shrink text-sm font-bold text-slate-900 dark:text-white" nativeID={`${id}-title`} testID={`${id}-title`}>
+            {TITLE}
+          </Text>
+          <InfoHint description={DESCRIPTION} id={`${id}-info`} title={TITLE} />
+        </View>
         {verdict ? (
           <View className="flex-row items-center gap-1" nativeID={`${id}-verdict`} testID={`${id}-verdict`}>
             <MaterialCommunityIcons color={style?.icon ?? colors.onSurfaceVariant} name={verdictIcon(verdict)} size={14} />

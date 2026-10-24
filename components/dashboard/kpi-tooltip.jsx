@@ -66,12 +66,18 @@ export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, va
           // ambar en los dos modos: un bubble claro se perdia sobre amber-50 en
           // modo claro, y las variantes `dark:` lo hacian translucido sobre el
           // fondo oscuro. Sin ramas de tema no hay nada que sincronizar.
-          className="absolute left-0 right-0 top-full mt-1.5 rounded-lg border-2 border-blue-500 bg-slate-800 bg-opacity-100 p-3 opacity-100 shadow-2xl"
-          // z-index max de int32: nada deberia quedar por encima de un tooltip
-          // abierto. Si algo lo tapa, es que ese algo sezio de un modo que no
-          // vamos a ir adivinando — con el max, cualquier card hermana queda
-          // debajo sin importar su posicion en el arbol.
-          style={{ zIndex: 2147483647 }}
+          //
+          // El fondo va TAMBIEN inline y opaco: `bg-slate-800` solo dejo pasar
+          // el fondo en oscuro en su momento, y este color no depende del tema,
+          // asi que fijarlo en `style` no tiene contraindicaciones.
+          className="absolute left-0 right-0 top-full mt-1.5 rounded-lg border-2 border-blue-500 bg-slate-800 p-3 shadow-2xl"
+          // `zIndex` aca solo ordena el bubble dentro de su celda. En web NO
+          // alcanza para salir de ella: react-native-web le pone `position:
+          // relative; z-index: 0` a TODO `View`, asi que cada una es su propio
+          // stacking context y un z-index maximo queda encerrado. Quien tiene
+          // que subir es la celda (y su fila) — ver `openCell`/`openRow` en las
+          // paletas.
+          style={{ backgroundColor: '#1e293b', zIndex: 2147483647 }}
           nativeID={`${id}-bubble`}
           testID={`${id}-bubble`}
         >

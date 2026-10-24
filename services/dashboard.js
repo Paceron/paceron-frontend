@@ -36,6 +36,10 @@ import {
 //   c.QueryArray, que solo entiende el parámetro REPETIDO: el swagger lo anota
 //   collectionFormat csv, pero mandarlo "3,5" llega como un único string "3,5" y
 //   no matchea nada (gin no separa comas en QueryArray).
+// - El filtro de CORREDOR viaja como `athlete_user_id` escalar en los cinco GET:
+//   es el scope de "qué corredor se está mirando", no una comparación. El
+//   backend responde 403 si el id no pertenece al scope del solicitante.
+//   (El POST de comparaciones usa el array `athlete_user_ids[]`, que es otra cosa.)
 // - El filtro de TIPO viaja como `kind` ESCALAR, no como el `kinds[]` que había
 //   antes: la UI es de selección única con una opción "todos", y el "todos" es la
 //   AUSENCIA del parámetro. Como `kind` y `exercise_id` son excluyentes entre sí
@@ -95,6 +99,7 @@ function normalizeMetricsFilters(filters = {}) {
   return {
     teamId: toId(filters.teamId),
     groupId: isBlank(filters.groupId) ? null : toId(filters.groupId),
+    athleteUserId: isBlank(filters.athleteUserId) ? null : toId(filters.athleteUserId),
     exerciseId: isBlank(filters.exerciseId) ? null : toId(filters.exerciseId),
     exerciseIds: toIdList(filters.exerciseIds),
     kind: isBlank(filters.kind) ? null : filters.kind,
@@ -141,6 +146,7 @@ function appendRangeBody(body, scope) {
 function appendMetricsFilters(params, filters) {
   params.set('team_id', filters.teamId);
   if (filters.groupId !== null) params.set('group_id', filters.groupId);
+  if (filters.athleteUserId !== null) params.set('athlete_user_id', filters.athleteUserId);
   if (filters.exerciseId !== null) params.set('exercise_id', filters.exerciseId);
   filters.exerciseIds.forEach((id) => params.append('exercise_ids', id));
   if (filters.kind !== null) params.set('kind', filters.kind);
@@ -165,7 +171,7 @@ export async function getDashboardFilters({ teamId } = {}) {
   return await api.get(`/dashboard/filters?${params.toString()}`);
 }
 
-// GET /api/v1/dashboard/metrics/summary?team_id&group_id&exercise_id&exercise_ids&kind&distance_from_m&distance_to_m&time_from_min&time_to_min&from&to&tolerance
+// GET /api/v1/dashboard/metrics/summary?team_id&group_id&athlete_user_id&exercise_id&exercise_ids&kind&distance_from_m&distance_to_m&time_from_min&time_to_min&from&to&tolerance
 // KPIs del período. `compliance_rate` es porcentaje 0-100 y `delta_pct` va con
 // signo positivo hacia la mejora, incluso en el eje temporal.
 export async function getDashboardSummary(filters = {}) {
@@ -207,7 +213,7 @@ export async function getDashboardLeaderboard(filters = {}) {
   return await api.get(`/dashboard/leaderboard${queryString(params)}`);
 }
 
-// GET /api/v1/dashboard/exercises/{id}/series?team_id&group_id&from&to&tolerance&page&page_size
+// GET /api/v1/dashboard/exercises/{id}/series?team_id&group_id&athlete_user_id&from&to&tolerance&page&page_size
 // Detalle serie por serie de un ejercicio de CATÁLOGO (el mismo `exercises.id`
 // que expone /dashboard/filters). Los objetivos son los CONGELADOS de cada
 // instancia, no los vigentes del catálogo.

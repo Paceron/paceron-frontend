@@ -3,6 +3,9 @@ import {
   CSV_EOL,
   CSV_SEPARATOR,
   DASHBOARD_SERIES_COLUMNS,
+  dashboardExportFileName,
+  seriesColumnHeaders,
+  seriesRows,
   toCsv,
 } from '../utils/dashboard-export.js';
 
@@ -216,5 +219,42 @@ describe('toCsv — escaping', () => {
     expect(csv).not.toMatch(/object Object/);
     const [head, row] = lines(csv);
     expect(row[head.indexOf('Cumplimiento')]).toBe('');
+  });
+});
+describe('seriesColumnHeaders / seriesRows', () => {
+  test('el PDF reusa exactamente los mismos encabezados que el CSV', () => {
+    const units = { time: 'ms', distance: 'km' };
+    const headers = seriesColumnHeaders({ units });
+    const csvHeader = lines(toCsv([], { units }))[0];
+    expect(headers).toEqual(csvHeader);
+    expect(headers).toContain('Distancia (km)');
+  });
+
+  test('las filas conservan el orden de las columnas y vacían los null', () => {
+    const rows = seriesRows([{ session_date: '2026-09-25', duration_ms: null }]);
+    const headers = seriesColumnHeaders({});
+    expect(rows).toHaveLength(1);
+    expect(rows[0][headers.indexOf('Fecha')]).toBe('2026-09-25');
+    expect(rows[0][headers.indexOf('Duración (ms)')]).toBe('');
+  });
+});
+
+describe('dashboardExportFileName', () => {
+  test('arma un nombre sin acentos ni espacios, con el rango en ISO', () => {
+    expect(dashboardExportFileName({
+      exerciseName: 'Pasadas 100 m — Velocidad',
+      from: '21/07/2026',
+      to: '19/10/2026',
+      extension: 'csv',
+    })).toBe('dashboard-pasadas-100-m-velocidad-2026-07-21_2026-10-19.csv');
+  });
+
+  test('sin ejercicio ni rango no queda un nombre vacío ni con guiones sueltos', () => {
+    expect(dashboardExportFileName({ extension: 'pdf' })).toBe('dashboard.pdf');
+  });
+
+  test('un rango incompleto no inventa la otra fecha', () => {
+    expect(dashboardExportFileName({ exerciseName: 'Elongación', from: '21/07/2026', extension: 'csv' }))
+      .toBe('dashboard-elongacion-2026-07-21.csv');
   });
 });

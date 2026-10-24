@@ -153,6 +153,29 @@ const summary = (extra = {}) => mockGetDashboardSummary({
   teamId: TEAM_WITH_DATA, callerUserId: TRAINER, tolerance: 0.05, ...RANGE, ...extra,
 });
 
+// ---------- filtro por corredor ----------
+
+describe('dashboard mock — el filtro de corredor acota el scope', () => {
+  test('el dueño ve solo las series del corredor pedido', async () => {
+    const rows = scopeRows(RANGE);
+    const athleteUserId = rows[0].athlete_user_id;
+    const data = await summary({ athleteUserId });
+    expect(data.totals.series).toBe(rows.filter((row) => row.athlete_user_id === athleteUserId).length);
+    expect(data.totals.series).toBeLessThan(rows.length);
+  });
+
+  test('un corredor fuera del scope es 403, no una lista vacía', async () => {
+    await expect(summary({ athleteUserId: 999999 }))
+      .rejects.toMatchObject({ status: 403, data: { code: 'ATHLETE_OUT_OF_SCOPE' } });
+  });
+
+  test('un corredor no puede pedir las series de un compañero', async () => {
+    const teammate = scopeRows(RANGE).find((row) => row.athlete_user_id !== RUNNER).athlete_user_id;
+    await expect(summary({ callerUserId: RUNNER, athleteUserId: teammate }))
+      .rejects.toMatchObject({ status: 403, data: { code: 'ATHLETE_OUT_OF_SCOPE' } });
+  });
+});
+
 // ---------- coherencia de los números ----------
 
 describe('dashboard mock — los números de la respuesta se reconstruyen desde las filas', () => {
@@ -224,11 +247,22 @@ describe('dashboard mock — los números de la respuesta se reconstruyen desde 
       expect(counted).toBeLessThanOrEqual(bucket.series);
       expect(Object.keys(bucket.band_counts).sort()).toEqual(['met', 'missed', 'near', 'unknown']);
     });
-    // Al menos un bucket tiene las cuatro bandas en uso: si no, el gráfico de
-    // barras apiladas se vería con una sola banda y no se probaría.
-    const withBands = timeseries.buckets.filter((bucket) => bucket.band_counts.near > 0
-      || bucket.band_counts.missed > 0 || bucket.band_counts.unknown > 0);
-    expect(withBands.length).toBeGreaterThan(0);
+    // Las CUATRO bandas aparecen en uso en el período: con dos o tres, el anillo
+    // del reparto (y la caída de la curva por debajo de la zona de tolerancia) no
+    // se podrían verificar en el preview.
+    const totals = timeseries.buckets.reduce((acc, bucket) => ({
+      met: acc.met + bucket.band_counts.met,
+      near: acc.near + bucket.band_counts.near,
+      missed: acc.missed + bucket.band_counts.missed,
+      unknown: acc.unknown + bucket.band_counts.unknown,
+    }), { met: 0, near: 0, missed: 0, unknown: 0 });
+    Object.entries(totals).forEach(([, count]) => {
+      expect(count).toBeGreaterThan(0);
+    });
+    // Y no como una porción anecdótica: `missed` y `unknown` tienen que llegar a
+    // verse en el anillo, no quedar en 1-2 series sobre más de 150.
+    expect(totals.missed).toBeGreaterThanOrEqual(5);
+    expect(totals.unknown).toBeGreaterThanOrEqual(5);
   });
 
   test('best_time_ms es el mínimo del tiempo logrado, no el más nuevo', async () => {

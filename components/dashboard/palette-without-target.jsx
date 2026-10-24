@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { formatDelta, hasMetric } from '../../utils/dashboard-format.js';
 import { describePalette } from '../../utils/dashboard-palette.js';
@@ -16,13 +17,17 @@ import { KpiTooltip } from './kpi-tooltip.jsx';
 // El `has_target: false` puede venir de un tipo sin objetivo, de una fila previa
 // a la migración de tipos o de un ejercicio que el entrenador dejó incompleto, y
 // la decisión se toma por el dato, no por el tipo.
-export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = null, granularity, onGranularityChange }) {
+export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = null, granularity, onGranularityChange }) {
   const palette = describePalette(summary);
   const units = summary?.units ?? {};
   const totals = summary?.totals ?? {};
   const primary = palette.primary;
   const buckets = timeseries?.buckets ?? [];
   const bestBuckets = buckets.map((bucket) => ({ label: bucket.period_start, value: bucket.best_time_ms }));
+  // Mismo criterio que la paleta con objetivo: sube la CELDA abierta (y la fila)
+  // porque react-native-web hace stacking context de cada `View` y un z-index
+  // alto en el bubble no sale de su celda.
+  const [openTooltip, setOpenTooltip] = useState(null);
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
@@ -37,7 +42,7 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
           web el `z-index` no cuenta si no hay `position`, por eso van juntos. */}
       <View
         className="-mx-1 -my-1 mb-6 flex-row flex-wrap"
-        style={{ position: 'relative' }}
+        style={{ position: 'relative', zIndex: openTooltip ? 1 : 0 }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
       >
@@ -86,10 +91,19 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
             hint: 'Este ejercicio no tiene objetivo cargado, así que no hay contra qué comparar.',
           },
         ].map((kpi) => (
-          <View className="w-1/3 p-1" key={kpi.key} nativeID={`${id}-kpi-cell-${kpi.key}`} testID={`${id}-kpi-cell-${kpi.key}`}>
+          <View
+            className="w-1/3 p-1"
+            key={kpi.key}
+            nativeID={`${id}-kpi-cell-${kpi.key}`}
+            style={{ zIndex: openTooltip === kpi.key ? 1 : 0 }}
+            testID={`${id}-kpi-cell-${kpi.key}`}
+          >
           <KpiTooltip
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
+            onOpenChange={(open) =>
+              setOpenTooltip((current) => (open ? kpi.key : current === kpi.key ? null : current))
+            }
           >
             {(hovered) => (
               <KpiTile
@@ -112,7 +126,7 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
           <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
         ) : null}
         icon="chart-line"
-        subtitle="Sin objetivo no hay línea de referencia: se muestra la mejor marca de cada período."
+        description="Mejor marca de cada período (el menor tiempo alcanzado entre las series válidas), agrupada según la granularidad elegida. En esta paleta el ejercicio no tiene objetivo cargado, así que la línea va sola: se lee contra los otros períodos, no contra una referencia."
         title="Evolución de la mejor marca"
       >
         <LineChart
@@ -124,17 +138,22 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesSamples = 
         />
       </ChartCard>
 
-      {seriesSamples && seriesSamples.length > 1 ? (
-        <ChartCard id={`${id}-dot-card`} icon="chart-scatter-plot" title="Dispersión de marcas">
+      {seriesPoints && seriesPoints.length > 1 ? (
+        <ChartCard
+          description="Cada punto es una serie del período: horizontal, el tiempo alcanzado (más a la izquierda, mejor); vertical, la velocidad. Muestra la dispersión y las marcas atípicas que un promedio esconde."
+          id={`${id}-dot-card`}
+          icon="chart-scatter-plot"
+          title="Dispersión de marcas"
+        >
           <DotPlot
             id={`${id}-dot`}
-            label={`Dispersión de ${seriesSamples.length} marcas medidas`}
+            label={`Dispersión de ${seriesPoints.length} marcas medidas`}
             pointLabel="Cada punto es una serie registrada."
             xUnit={units.time}
             xCaption="Tiempo (menor es mejor)"
             yUnit={units.speed}
             yCaption="Velocidad"
-            points={seriesSamples.map((sample) => ({ x: sample.time_ms, y: sample.speed_kph }))}
+            points={seriesPoints.map((sample) => ({ x: sample.time_ms, y: sample.speed_kph }))}
           />
         </ChartCard>
       ) : null}

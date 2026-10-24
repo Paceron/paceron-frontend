@@ -1,16 +1,16 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
 import { formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
-import { describePalette } from '../../utils/dashboard-palette.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { ChartCard } from './charts/chart-surface.jsx';
-import { BarChart } from './charts/bar-chart.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
 import { BulletChart } from './charts/bullet-chart.jsx';
+import { ComplianceDonut } from './charts/compliance-donut.jsx';
+import { ComplianceTrendChart } from './charts/compliance-trend.jsx';
 import { LineChart } from './charts/line-chart.jsx';
 import { GranularitySelect } from './granularity-select.jsx';
-import { StackedBarChart } from './charts/stacked-bar.jsx';
 import { KpiTile } from './kpi-tile.jsx';
 import { KpiTooltip } from './kpi-tooltip.jsx';
 
@@ -36,13 +36,37 @@ export function PaletteWithTarget({
   const colors = useThemeColors();
   // Sube la fila entera mientras haya un tooltip abierto: el de cada KPI vive
   // dentro de la fila y sin esto compite contra la card hermana de abajo.
-  const palette = describePalette(summary, kind);
+  //
+  // Quien sube es la CELDA y, con ella, la FILA — no el bubble. En web
+  // react-native-web le pone `position: relative; z-index: 0` a todo `View`, o
+  // sea que cada una es un stacking context: un `z-index` alto en el bubble
+  // queda encerrado en su celda y la celda de al lado (o la card de abajo, que
+  // se pinta despues) lo tapa igual.
+  const [openTooltip, setOpenTooltip] = useState(null);
+  // Ancho del cuerpo de la card de cumplimiento: decide si la curva y el anillo
+  // van en fila. Se mide la card y no el viewport porque el dashboard vive dentro
+  // del shell con sidebar, así que la ventana no es el ancho disponible (mismo
+  // criterio que la tabla del ranking).
+  const [periodsWidth, setPeriodsWidth] = useState(0);
   const units = summary?.units ?? {};
   const totals = summary?.totals ?? {};
-  const primary = palette.primary;
   const buckets = timeseries?.buckets ?? [];
   const speedBuckets = buckets.map((bucket) => ({ label: bucket.period_start, value: bucket.achieved_speed_kph }));
   const targetBuckets = buckets.map((bucket) => ({ label: bucket.period_start, value: bucket.target_speed_kph }));
+  const periodBuckets = buckets.map((bucket) => ({ label: shortLabel(bucket.period_start), counts: bucket.band_counts }));
+  // Totales del anillo: la suma de los conteos que ya vienen calculados por la
+  // API, uno por banda. El front no reclasifica nada.
+  const bandTotals = DASHBOARD_BANDS.reduce((acc, band) => {
+    acc[band] = buckets.reduce((sum, bucket) => sum + (Number(bucket?.band_counts?.[band]) || 0), 0);
+    return acc;
+  }, {});
+  const periodsWide = periodsWidth >= 620;
+  // La bajada de la evolución depende de la paleta: en A reducido no hay
+  // `target_speed_kph`, así que hablar de la referencia punteada sería describir
+  // una línea que no existe.
+  const evolutionDescription = pacePieces
+    ? 'Ritmo logrado período a período, agrupado según la granularidad elegida (sesión, semana, mes o trimestre). Los períodos sin series válidas cortan la línea en vez de caer a cero, y la referencia punteada es la velocidad esperada del objetivo vigente.'
+    : 'Ritmo logrado período a período, agrupado según la granularidad elegida (sesión, semana, mes o trimestre). Este ejercicio no tiene velocidad esperada cargada, así que la línea va sin referencia contra la que compararse.';
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
@@ -64,7 +88,7 @@ export function PaletteWithTarget({
           En web el `z-index` solo cuenta si hay `position`, por eso van juntos. */}
       <View
         className="-mx-1 -my-1 mb-6 flex-row flex-wrap"
-        style={{ position: 'relative' }}
+        style={{ position: 'relative', zIndex: openTooltip ? 1 : 0 }}
         nativeID={`${id}-kpis`}
         testID={`${id}-kpis`}
       >
@@ -119,11 +143,20 @@ export function PaletteWithTarget({
             icon: 'timer-outline',
           },
         ].map((kpi) => (
-          <View className="w-1/3 p-1" key={kpi.key} nativeID={`${id}-kpi-cell-${kpi.key}`} testID={`${id}-kpi-cell-${kpi.key}`}>
+          <View
+            className="w-1/3 p-1"
+            key={kpi.key}
+            nativeID={`${id}-kpi-cell-${kpi.key}`}
+            style={{ zIndex: openTooltip === kpi.key ? 1 : 0 }}
+            testID={`${id}-kpi-cell-${kpi.key}`}
+          >
           <KpiTooltip
             formula={FORMULAS[kpi.key === 'consistency' ? 'cv' : kpi.key]}
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
+            onOpenChange={(open) =>
+              setOpenTooltip((current) => (open ? kpi.key : current === kpi.key ? null : current))
+            }
             seriesCount={summary?.series_count ?? null}
             tolerance={summary?.tolerance_applied}
             unit={kpi.unit}
@@ -149,6 +182,7 @@ export function PaletteWithTarget({
       <ChartCard
         id={`${id}-compliance-card`}
         icon="gauge"
+        description="Porcentaje de las series con objetivo cargado que lo cumplieron dentro de la tolerancia aplicada. La barra no se estira más allá del objetivo: la escala termina en 100 %, y las muescas del track marcan 80 % (falta) y 95 % (cerca)."
         subtitle={hasMetric(summary?.tolerance_applied) ? `Tolerancia aplicada ${Math.round(summary.tolerance_applied * 1000) / 10} %` : undefined}
         title="Cumplimiento del objetivo"
       >
@@ -167,6 +201,7 @@ export function PaletteWithTarget({
         ) : null}
         id={`${id}-evolution-card`}
         icon="chart-line"
+        description={evolutionDescription}
         subtitle={pacePieces ? 'Línea continua: ritmo logrado. Línea punteada: velocidad esperada.' : undefined}
         title="Evolución del ritmo"
       >
@@ -182,9 +217,13 @@ export function PaletteWithTarget({
       </ChartCard>
 
       {seriesSamples && seriesSamples.length ? (
-        <ChartCard id={`${id}-box-card`} icon="chart-bell-curve" title="Distribución del ritmo por serie">
+        <ChartCard
+          description="Cómo se reparten las velocidades de las series del período: la caja abarca el 50 % central de las marcas, la línea del medio es la mediana y los bigotes llegan hasta el resto (los valores atípicos quedan marcados fuera). Es la geometría de la misma distribución de la que sale la consistencia del KPI."
+          id={`${id}-box-card`}
+          icon="chart-bell-curve"
+          title="Distribución del ritmo por serie"
+        >
           <BoxPlot
-            caption={`La consistencia del KPI sale del coeficiente de variación de la API; esta caja es la geometría de la distribución.`}
             id={`${id}-box`}
             label={`Distribución de ${seriesSamples.length} velocidades medidas`}
             unit={units.speed}
@@ -194,16 +233,45 @@ export function PaletteWithTarget({
       ) : null}
 
       <ChartCard
-        id={`${id}-bands-card`}
-        icon="chart-bar"
-        subtitle="Las cuatro bandas llegan calculadas por la API; el front no recalcula los umbrales."
-        title="Reparto de cumplimiento por período"
+        id={`${id}-periods-card`}
+        icon="chart-donut-variant"
+        description="El área apilada reparte cada período entre cumplió, cerca, no cumplió y sin dato sobre el total de series con objetivo de ese período; la línea que la recorre es el cumplimiento y el anillo, el total del rango. El eje vertical está fijo en 0–100 % para que dos períodos planos se comparen de verdad, y 'sin dato' se apila contra el techo porque es lo que no se pudo evaluar. Las bandas llegan calculadas por la API: el front no reclasifica nada."
+        title="Cumplimiento por período"
       >
-        <StackedBarChart
-          buckets={buckets.map((bucket) => ({ label: shortLabel(bucket.period_start), counts: bucket.band_counts }))}
-          id={`${id}-stacked`}
-          label={`Reparto de cumplimiento por período: ${DASHBOARD_BANDS.map((band) => BAND_LABELS[band]).join(', ')}`}
-        />
+        <View
+          nativeID={`${id}-periods-body`}
+          onLayout={(event) => setPeriodsWidth(Math.floor(event.nativeEvent.layout.width))}
+          testID={`${id}-periods-body`}
+        >
+          <View
+            className={periodsWide ? 'flex-row items-center gap-4' : ''}
+            nativeID={`${id}-periods-row`}
+            testID={`${id}-periods-row`}
+          >
+            <View
+              className={periodsWide ? 'flex-1' : ''}
+              nativeID={`${id}-trend-cell`}
+              testID={`${id}-trend-cell`}
+            >
+              <ComplianceTrendChart
+                buckets={periodBuckets}
+                id={`${id}-trend`}
+                label={`Cumplimiento por período: series que cumplieron, quedaron cerca, no cumplieron y sin dato, ${buckets.length} ${buckets.length === 1 ? 'período' : 'períodos'}`}
+              />
+            </View>
+            <View
+              nativeID={`${id}-donut-cell`}
+              style={periodsWide ? { width: 176 } : { marginTop: 12 }}
+              testID={`${id}-donut-cell`}
+            >
+              <ComplianceDonut
+                counts={bandTotals}
+                id={`${id}-donut`}
+                label={`Reparto de cumplimiento del período: ${DASHBOARD_BANDS.map((band) => `${BAND_LABELS[band]} ${bandTotals[band]}`).join(', ')}`}
+              />
+            </View>
+          </View>
+        </View>
       </ChartCard>
 
 
@@ -237,10 +305,6 @@ const FORMULAS = {
   compliance_rate: 'Series válidas que cumplen el objetivo según la tolerancia aplicada, sobre las series válidas que tienen objetivo cargado.',
   cv: 'Coeficiente de variación de la velocidad (σ ÷ μ) de las series válidas del período. Sin dato con menos de 2 series.',
 };
-
-function rankingLabel(key) {
-  return { best_time_ms: 'mejor tiempo', mean_speed_kph: 'ritmo medio', total_distance_m: 'distancia' }[key] ?? key;
-}
 
 function hasTarget(summary) {
   return Boolean(summary?.has_target);

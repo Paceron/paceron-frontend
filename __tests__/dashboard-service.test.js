@@ -112,10 +112,25 @@ describe('dashboard service — query string', () => {
     expect(queryOf(url).getAll('exercise_ids')).toEqual(['3', '5']);
   });
 
-  test('los filtros vacíos no van: group_id vacío, exercise_id vacío ni listas vacías', async () => {
-    await getDashboardSummary({ teamId: 4, ...RANGE, groupId: '', exerciseId: null, exerciseIds: [], kind: '' });
+  test('el corredor del scope viaja como athlete_user_id en los cuatro GET', async () => {
+    await getDashboardSummary({ teamId: 4, ...RANGE, athleteUserId: '24' });
+    expect(queryOf(lastGet()).get('athlete_user_id')).toBe('24');
+
+    await getDashboardTimeseries({ teamId: 4, ...RANGE, athleteUserId: 24 });
+    expect(queryOf(lastGet()).get('athlete_user_id')).toBe('24');
+
+    await getDashboardLeaderboard({ teamId: 4, ...RANGE, athleteUserId: 24 });
+    expect(queryOf(lastGet()).get('athlete_user_id')).toBe('24');
+
+    await getDashboardExerciseSeries({ exerciseId: 5, teamId: 4, ...RANGE, athleteUserId: 24 });
+    expect(queryOf(lastGet()).get('athlete_user_id')).toBe('24');
+  });
+
+  test('los filtros vacíos no van: group_id, athlete_user_id, exercise_id vacío ni listas vacías', async () => {
+    await getDashboardSummary({ teamId: 4, ...RANGE, groupId: '', athleteUserId: '', exerciseId: null, exerciseIds: [], kind: '' });
     const query = queryOf(lastGet());
     expect(query.has('group_id')).toBe(false);
+    expect(query.has('athlete_user_id')).toBe(false);
     expect(query.has('exercise_id')).toBe(false);
     expect(query.has('exercise_ids')).toBe(false);
     expect(query.has('kind')).toBe(false);
@@ -229,6 +244,7 @@ describe('dashboard service — rama de mocks', () => {
     expect(mockGetDashboardSummary).toHaveBeenCalledWith({
       teamId: 4,
       groupId: 41,
+      athleteUserId: null,
       exerciseId: null,
       exerciseIds: [],
       kind: 'ritmo_continuo',

@@ -1,3 +1,4 @@
+import { keepPreviousData } from '@tanstack/react-query';
 import { resolveDashboardError } from '../utils/dashboard-error-codes.js';
 
 // Piezas compartidas por los hooks del dashboard. Existe para no repetir seis
@@ -19,6 +20,18 @@ export const DASHBOARD_MAX_RETRIES = 1;
 export function dashboardRetry(failureCount, error) {
   return failureCount < DASHBOARD_MAX_RETRIES && resolveDashboardError(error).retryable;
 }
+
+// `keepPreviousData` en las cinco consultas de métricas, y no es cosmético: los
+// cuatro filtros de rango cambian la CLAVE de la query en cada tecla, así que sin
+// esto la consulta nueva arranca sin datos, `isLoading` se prende (la pantalla
+// vuelve al skeleton y —peor— `dashboard-content` se desmonta porque `summary`
+// queda en `undefined`) y todo el panel de filtros desaparece y reaparece: el
+// parpadeo que se ve al elegir un valor sugerido. Con el placeholder, la consulta
+// nueva hereda el resultado anterior: `isPending` queda en false, `isLoading`
+// también, `isFetching` en true (que los hooks exponen como `refreshing`) y el
+// usuario ve los números viejos con los nuevos en camino, como corresponde a un
+// refetch por filtro.
+export const DASHBOARD_METRIC_QUERY_OPTIONS = { placeholderData: keepPreviousData };
 
 // Sondeo de 90 s, en el medio del rango de 60-120 s que fija la spec. Va con
 // TanStack Query y no con WebSocket: el WS del repo publica por sesión
@@ -45,6 +58,7 @@ export function dashboardScopeKey(scope = {}) {
   return [
     keyPart(scope.teamId),
     keyPart(scope.groupId),
+    keyPart(scope.athleteUserId),
     keyPart(scope.exerciseId),
     listPart(scope.exerciseIds),
     keyPart(scope.kind),

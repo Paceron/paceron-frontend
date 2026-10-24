@@ -1717,3 +1717,36 @@ dato de "novedad" vive junto al recurso que la genera, no en un servicio aparte)
     tiene cargada (`useTeams`/`useMyMemberTeams`, hooks existentes) — sin pedir un endpoint
     cross-team aparte. El punto rojo de la pestaña Competencias DENTRO de un equipo puntual usa
     directamente el `has_unseen` de ESE equipo, sin agregación.
+
+## Gap 35 — `/dashboard/comparisons/periods` restringido al dueño del equipo (bloquea la comparación por período del corredor)
+
+**Contexto.** La card "Frente al período anterior" de la pantalla de rendimiento
+(`components/dashboard/comparison-strip.jsx`) consume `POST /dashboard/comparisons/periods`.
+El endpoint responde **403** cuando el llamador no es el dueño del equipo — mismo criterio que
+`/dashboard/leaderboard` y `/dashboard/comparisons`, que sí exponen datos de **otros** corredores.
+
+La diferencia es que éste *no necesita* exponer a nadie más: es el mismo scope de
+`/summary`/`/timeseries`, agregado por período. Si el backend lo recorta al usuario que pregunta
+(el mismo `athleteIdsFor` que ya usan esas tres), el resultado para un corredor sería "mis series
+ahora contra mis series antes" — datos propios, sin riesgo de privacidad. Da la impresión de que
+quedó owner-only por arrastre de los otros dos, no por decisión de datos. **Hoy no está recortado
+por usuario**: en el mock espejo (`services/__mocks__/dashboard-mock.js#mockPostDashboardPeriods`)
+las dos ventanas se seleccionan con `athleteIds: null`, o sea todas las series del team — abrir el
+endpoint sin ese recorte le mostraría a un corredor los números del equipo entero.
+
+**Pedido concreto.** (1) Abrir `POST /dashboard/comparisons/periods` a **miembros** del equipo y
+(2) scoping por usuario cuando el llamador no es el dueño, igual que `/summary`, `/timeseries` y
+`/distribution`. `/leaderboard` y `/comparisons` quedan como están (owner-only: esos sí muestran a
+otros corredores).
+
+**Estado del frontend — listo para cuando abra.** La decisión está aislada en un interruptor:
+`MEMBER_PERIOD_COMPARISON_ENABLED` (`utils/dashboard-capabilities.js`, hoy `false`). La sección
+(`PeriodComparisonSection` en `components/dashboard/dashboard-screen.jsx`) ya se monta sola cuando
+la capacidad devuelve `true`; el cambio pendiente es ese flag + el caso del test
+`__tests__/dashboard-capabilities.test.js` que lo fija. No hay que tocar la pantalla.
+
+**Estado del frontend — listo para cuando abra.** La decisión está aislada en un interruptor:
+`MEMBER_PERIOD_COMPARISON_ENABLED` (`utils/dashboard-capabilities.js`, hoy `false`). La sección
+(`PeriodComparisonSection` en `components/dashboard/dashboard-screen.jsx`) ya se monta sola cuando
+la capacidad devuelve `true`; el cambio pendiente es ese flag + el caso del test
+`__tests__/dashboard-capabilities.test.js` que lo fija. No hay que tocar la pantalla.

@@ -43,10 +43,18 @@ export async function mockRemoveRole(_userId, roleId) {
   return { message: 'Rol removido correctamente.' };
 }
 
+// La cuenta demo (id 1) es la que prueba el flujo de activación/desactivación de
+// rol, así que es la única que lee la asignación mutable de arriba. El corredor
+// demo (`corredor@paceron.com`, ver auth-mock.js) es corredor y nada más: si el
+// mock le devolviera también 'entrenador', `useRoleReconciliation` lo dejaría
+// cambiar de rol y la pantalla dejaría de representar lo que ve un corredor real.
+const RUNNER_ONLY_USER_ID = 101;
+
 export async function mockGetPermissions(userId) {
+  const assigned = String(userId) === String(RUNNER_ONLY_USER_ID) ? ['corredor'] : mockAssignedRoles;
   return {
     user_id: userId,
-    roles: mockAssignedRoles.map((name) => ({
+    roles: assigned.map((name) => ({
       id: ROLES_CATALOG.find((r) => r.name === name).id,
       name,
       tier: 'base',

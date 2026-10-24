@@ -23,6 +23,8 @@ import { useThemeColors } from '../../theme/colors.js';
 export function NumberFieldWithSuggestions({
   idPrefix,
   label,
+  accessibilityLabel,
+  labelClassName = FIELD_LABEL,
   value,
   onChange,
   unit,
@@ -36,6 +38,12 @@ export function NumberFieldWithSuggestions({
 }) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
+
+  // El rótulo visible puede quedar corto ("Desde") cuando un título de grupo ya
+  // dice de qué es el rango; el nombre accesible tiene que seguir siendo el
+  // completo ("Distancia desde") o hay dos campos iguales para el lector de
+  // pantalla.
+  const a11yLabel = accessibilityLabel ?? label;
 
   const parsed = parseNumber(value);
   const inList = parsed !== null && suggestions.some((item) => Number(item) === parsed);
@@ -62,7 +70,7 @@ export function NumberFieldWithSuggestions({
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={idPrefix} testID={idPrefix}>
       {!hideLabel && (
-        <Text className={FIELD_LABEL} nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
+        <Text className={labelClassName} nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
           {label}
         </Text>
       )}
@@ -72,7 +80,7 @@ export function NumberFieldWithSuggestions({
         testID={`${idPrefix}-box`}
       >
         <TextInput
-          accessibilityLabel={label}
+          accessibilityLabel={a11yLabel}
           // `min-w-0` con `flex-1` (y no el `INPUT_CLASS` de los campos sueltos):
           // un flex item tiene `min-width: auto`, así que nunca baja del ancho
           // intrínseco del <input> — y en web ese ancho es de ~20 caracteres,
@@ -96,7 +104,7 @@ export function NumberFieldWithSuggestions({
         {/* Botón aparte, del ancho de un touch target completo: el desplegable
             es un control propio, no un detalle del input. */}
         <Pressable
-          accessibilityLabel={`Valores sugeridos para ${label}`}
+          accessibilityLabel={`Valores sugeridos para ${a11yLabel}`}
           accessibilityRole="button"
           accessibilityState={{ disabled, expanded: open }}
           aria-expanded={open}
