@@ -14,6 +14,7 @@ import { rankMeta } from '../../utils/leaderboard-rank-meta.js';
 import { toISODate } from '../../utils/date-field-format.js';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
+import { isWeb } from '../../utils/platform.js';
 
 const PERIOD_OPTIONS = [
   { id: 'week', name: 'Última semana' },
@@ -136,12 +137,13 @@ export function LeaderboardTab({ teamId }) {
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="leaderboard-tab-root" testID="leaderboard-tab-root">
-      <View className="mb-3 flex-row items-start gap-2" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
-        <View className="flex-1" nativeID="leaderboard-tab-metric-wrap" testID="leaderboard-tab-metric-wrap">
-          <ResponsiveSelectField className="mb-0" dense hideErrorRow label="Métrica" onChange={setActiveMetric} options={METRIC_OPTIONS} plain required value={activeMetric} />
+      <View className="mb-3 flex-row items-center gap-3" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
+        <View nativeID="leaderboard-tab-metric-wrap" testID="leaderboard-tab-metric-wrap">
+          <ResponsiveSelectField className={isWeb ? 'flex-row items-center gap-2' : 'mb-0'} hideErrorRow label="Métrica" onChange={setActiveMetric} options={METRIC_OPTIONS} outline required value={activeMetric} />
         </View>
-        <View className="flex-1" nativeID="leaderboard-tab-period-wrap" testID="leaderboard-tab-period-wrap">
-          <ResponsiveSelectField className="mb-0" dense hideErrorRow label="Período" onChange={handlePeriodChange} options={PERIOD_OPTIONS} plain required value={period} />
+        <View className="h-6 w-px bg-slate-200 dark:bg-slate-700" nativeID="leaderboard-tab-header-divider" testID="leaderboard-tab-header-divider" />
+        <View nativeID="leaderboard-tab-period-wrap" testID="leaderboard-tab-period-wrap">
+          <ResponsiveSelectField className={isWeb ? 'flex-row items-center gap-2' : 'mb-0'} hideErrorRow label="Período" onChange={handlePeriodChange} options={PERIOD_OPTIONS} outline required value={period} />
         </View>
       </View>
 
