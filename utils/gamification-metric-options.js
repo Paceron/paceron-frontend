@@ -7,7 +7,7 @@
 export const METRIC_OPTIONS = [
   { id: 'distance', name: 'Distancia', icon: 'map-marker-distance' },
   { id: 'duration', name: 'Tiempo de entrenamiento', icon: 'clock-outline' },
-  { id: 'pace', name: 'Mejor ritmo', icon: 'speedometer' },
+  { id: 'pace', name: 'Mejor ritmo (min/km)', icon: 'speedometer' },
   { id: 'peak_speed', name: 'Velocidad pico', icon: 'flash' },
   { id: 'sessions_count', name: 'Entrenamientos realizados', icon: 'run' },
   { id: 'attendance_count', name: 'Asistencias', icon: 'account-check-outline' },
