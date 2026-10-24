@@ -116,13 +116,13 @@ export function LeaderboardTab({ teamId }) {
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="leaderboard-tab-root" testID="leaderboard-tab-root">
-      <View className="mb-3 flex-row items-center gap-2" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
+      <View className="flex-row items-center gap-2" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
         <View className="min-w-0 flex-1" nativeID="leaderboard-tab-subtabs-wrap" testID="leaderboard-tab-subtabs-wrap">
           <TabBar active={activeMetric} onChange={setActiveMetric} scope="leaderboard-tab-subtabs" tabs={METRIC_TABS} variant="compact" />
         </View>
         <View className="h-6 w-px bg-slate-200 dark:bg-slate-700" nativeID="leaderboard-tab-header-divider" testID="leaderboard-tab-header-divider" />
         <Pressable
-          className="h-9 max-w-[140px] flex-row items-center gap-1 rounded-lg border border-slate-200 px-2.5 hover:bg-slate-50 active:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 dark:active:bg-slate-700"
+          className="mb-4 gap-4 h-9 max-w-[140px] flex-row items-center gap-1 rounded-lg border border-slate-200 px-2.5 hover:bg-slate-50 active:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 dark:active:bg-slate-700"
           nativeID="leaderboard-tab-period-trigger"
           onPress={() => setPeriodModalVisible(true)}
           testID="leaderboard-tab-period-trigger"
