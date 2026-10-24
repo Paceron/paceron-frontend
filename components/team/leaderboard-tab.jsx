@@ -1,11 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
-import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
-import { LeaderboardDateRangeModal } from './leaderboard-date-range-modal.jsx';
+import { LeaderboardPeriodModal } from './leaderboard-period-modal.jsx';
 import { useTeamLeaderboard } from '../../hooks/use-team-leaderboard.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
@@ -83,42 +81,21 @@ export function LeaderboardTab({ teamId }) {
   const [period, setPeriod] = useState('month');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [rangeModalVisible, setRangeModalVisible] = useState(false);
-  // Período justo antes de abrir el modal de rango -- si el usuario
-  // cancela sin aplicar, se restaura este valor. Cuando se abre desde el
-  // lápiz del chip (ya en 'custom') esto es un no-op: cancelar deja
-  // `period` como estaba. Cuando se abre por elegir 'custom' en el select
-  // desde otro período, cancelar vuelve a ese período anterior -- así
-  // nunca queda trabado en 'custom' sin rango confirmado.
-  const periodBeforeCustomRef = useRef('month');
+  const [periodModalVisible, setPeriodModalVisible] = useState(false);
 
-  const handlePeriodChange = (next) => {
-    if (next === 'custom') {
-      periodBeforeCustomRef.current = period;
-      setRangeModalVisible(true);
-    }
-    setPeriod(next);
-  };
-
-  const openRangeModal = () => {
-    periodBeforeCustomRef.current = period;
-    setRangeModalVisible(true);
-  };
-
-  const cancelRangeModal = () => {
-    setRangeModalVisible(false);
-    setPeriod(periodBeforeCustomRef.current);
-  };
-
-  const applyRangeModal = (from, to) => {
+  // Todo el borrador (período + rango) vive local al modal -- Cancelar no
+  // toca nada acá, Aplicar pisa los 3 juntos de una (ver
+  // leaderboard-period-modal.jsx).
+  const applyPeriod = (nextPeriod, from, to) => {
+    setPeriod(nextPeriod);
     setFromDate(from);
     setToDate(to);
-    setRangeModalVisible(false);
+    setPeriodModalVisible(false);
   };
 
   const from = period === 'custom' && fromDate ? toISODate(fromDate) : undefined;
   const to = period === 'custom' && toDate ? toISODate(toDate) : undefined;
-  const hasConfirmedRange = period === 'custom' && Boolean(fromDate) && Boolean(toDate);
+  const periodLabel = period === 'custom' ? `${fromDate} – ${toDate}` : (PERIOD_OPTIONS.find((p) => p.id === period)?.name ?? '');
 
   const { leaderboard, loading, error } = useTeamLeaderboard(teamId, { metric: activeMetric, period, from, to });
 
@@ -139,33 +116,24 @@ export function LeaderboardTab({ teamId }) {
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="leaderboard-tab-root" testID="leaderboard-tab-root">
-      <View className="flex-row items-start justify-between gap-3" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
-        <View className="flex-1" nativeID="leaderboard-tab-subtabs-wrap" testID="leaderboard-tab-subtabs-wrap">
+      <View className="mb-3 flex-row items-center gap-2" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
+        <View className="min-w-0 flex-1" nativeID="leaderboard-tab-subtabs-wrap" testID="leaderboard-tab-subtabs-wrap">
           <TabBar active={activeMetric} onChange={setActiveMetric} scope="leaderboard-tab-subtabs" tabs={METRIC_TABS} variant="compact" />
         </View>
-        <View nativeID="leaderboard-tab-period-wrap" style={{ width: 160 }} testID="leaderboard-tab-period-wrap">
-          <ResponsiveSelectField className="mb-0" dense hideErrorRow hideLabel label="Período" onChange={handlePeriodChange} options={PERIOD_OPTIONS} plain required value={period} />
-        </View>
-      </View>
-
-      {hasConfirmedRange && (
-        <View className="mb-3 flex-row items-center gap-2" nativeID="leaderboard-tab-range-chip" testID="leaderboard-tab-range-chip">
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-range" size={14} />
-          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="leaderboard-tab-range-chip-label" testID="leaderboard-tab-range-chip-label">
-            {fromDate} – {toDate}
+        <View className="h-6 w-px bg-slate-200 dark:bg-slate-700" nativeID="leaderboard-tab-header-divider" testID="leaderboard-tab-header-divider" />
+        <Pressable
+          className="h-9 max-w-[140px] flex-row items-center gap-1 rounded-lg border border-slate-200 px-2.5 hover:bg-slate-50 active:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 dark:active:bg-slate-700"
+          nativeID="leaderboard-tab-period-trigger"
+          onPress={() => setPeriodModalVisible(true)}
+          testID="leaderboard-tab-period-trigger"
+        >
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-month-outline" size={14} />
+          <Text className="flex-1 text-xs font-medium text-slate-700 dark:text-slate-200" nativeID="leaderboard-tab-period-trigger-label" numberOfLines={1} testID="leaderboard-tab-period-trigger-label">
+            {periodLabel}
           </Text>
-          <IconTooltip idPrefix="leaderboard-tab-range-edit-tooltip" label="Editar rango" position="bottom">
-            <Pressable
-              className="h-6 w-6 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="leaderboard-tab-range-edit-button"
-              onPress={openRangeModal}
-              testID="leaderboard-tab-range-edit-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={14} />
-            </Pressable>
-          </IconTooltip>
-        </View>
-      )}
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={14} />
+        </Pressable>
+      </View>
 
       <View className="border-t border-slate-100 pt-3 dark:border-slate-800" nativeID="leaderboard-tab-body" testID="leaderboard-tab-body">
         {loading && (
@@ -198,12 +166,14 @@ export function LeaderboardTab({ teamId }) {
         )}
       </View>
 
-      <LeaderboardDateRangeModal
-        initialFrom={fromDate}
-        initialTo={toDate}
-        onCancel={cancelRangeModal}
-        onConfirm={applyRangeModal}
-        visible={rangeModalVisible}
+      <LeaderboardPeriodModal
+        fromDate={fromDate}
+        onApply={applyPeriod}
+        onCancel={() => setPeriodModalVisible(false)}
+        options={PERIOD_OPTIONS}
+        period={period}
+        toDate={toDate}
+        visible={periodModalVisible}
       />
     </View>
   );
