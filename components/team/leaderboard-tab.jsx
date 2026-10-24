@@ -153,6 +153,16 @@ export function LeaderboardTab({ teamId }) {
         ...(leaderboard?.rows ?? []).filter((row) => row.rank !== 1),
       ]
     : (leaderboard?.rows ?? []);
+  // Indicador de salto (pedido real 2026-10-24): el viewer fuera del top
+  // mostrado siempre se agrega como fila aparte (ver abajo) -- pero un
+  // salto de 1 posición (ej. top hasta el 5°, viewer 6°) es una
+  // continuación lógica, no un salto real. Recién a partir de 2+
+  // posiciones de diferencia (viewer 7° o peor) hay huecos genuinos entre
+  // lo mostrado y el viewer, y eso se refleja con un separador "⋯". Se
+  // compara contra el ÚLTIMO rank mostrado (no un 5 fijo) para que
+  // equipos con menos de 5 miembros sigan funcionando igual.
+  const lastShownRank = visibleRows[visibleRows.length - 1]?.rank ?? 0;
+  const showRankGap = Boolean(leaderboard?.viewerRank) && !viewerInTop && leaderboard.viewerRank.rank - lastShownRank > 1;
 
   return (
     <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="leaderboard-tab-root" testID="leaderboard-tab-root">
@@ -210,7 +220,16 @@ export function LeaderboardTab({ teamId }) {
               <LeaderboardRow idPrefix={`leaderboard-tab-row-${row.userId}`} isRecord={isHistoric && row.rank === 1} key={row.userId} metric={activeMetric} row={row} />
             ))}
             {leaderboard.viewerRank && !viewerInTop && (
-              <LeaderboardRow accent idPrefix="leaderboard-tab-viewer-row" metric={activeMetric} row={{ ...leaderboard.viewerRank, name: viewerName }} />
+              <>
+                {showRankGap && (
+                  <View className="items-center py-0.5" nativeID="leaderboard-tab-rank-gap" testID="leaderboard-tab-rank-gap">
+                    <Text className="text-base leading-none tracking-widest text-slate-300 dark:text-slate-600" nativeID="leaderboard-tab-rank-gap-label" testID="leaderboard-tab-rank-gap-label">
+                      ⋯
+                    </Text>
+                  </View>
+                )}
+                <LeaderboardRow accent idPrefix="leaderboard-tab-viewer-row" metric={activeMetric} row={{ ...leaderboard.viewerRank, name: viewerName }} />
+              </>
             )}
           </View>
         )}
