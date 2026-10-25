@@ -4,6 +4,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
 import { computeBounds, expandBounds } from '../../utils/map-bounds.js';
+import { ROUTE_MARKER_META } from '../../utils/route-marker-meta.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} };
@@ -11,20 +12,35 @@ const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinate
 // Marcador con tooltip al hover -- mismo patrón que buildMarker en
 // route-map-preview.web.jsx (tooltip colgado de document.body, no hijo del
 // wrapper del mapa, para que no quede cortado por su overflow-hidden).
-function buildMarker(color, label) {
+// El dot suma un ícono adentro (pedido real 2026-10-24) -- mismo font
+// 'material-community' que usa <MaterialCommunityIcons/> en nativo,
+// verificado en vivo que el codepoint renderiza contenido real (no un
+// glyph faltante) antes de escribir esto.
+function buildMarker(meta) {
   const dot = document.createElement('div');
-  dot.style.width = '14px';
-  dot.style.height = '14px';
-  dot.style.borderRadius = '7px';
-  dot.style.backgroundColor = color;
+  dot.style.width = '22px';
+  dot.style.height = '22px';
+  dot.style.borderRadius = '11px';
+  dot.style.backgroundColor = meta.color;
   dot.style.border = '2px solid #ffffff';
   dot.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+  dot.style.display = 'flex';
+  dot.style.alignItems = 'center';
+  dot.style.justifyContent = 'center';
+
+  const icon = document.createElement('span');
+  icon.style.fontFamily = 'material-community';
+  icon.style.fontSize = '12px';
+  icon.style.color = '#ffffff';
+  icon.style.lineHeight = '1';
+  icon.textContent = String.fromCodePoint(meta.iconCodepoint);
+  dot.appendChild(icon);
 
   const tooltip = document.createElement('div');
-  tooltip.textContent = label;
+  tooltip.textContent = meta.label;
   tooltip.style.position = 'fixed';
   tooltip.style.zIndex = '70'; // Z_INDEX.tooltip, tailwind.config.js
-  tooltip.style.backgroundColor = color;
+  tooltip.style.backgroundColor = meta.color;
   tooltip.style.color = '#ffffff';
   tooltip.style.fontSize = '12px';
   tooltip.style.fontWeight = '600';
@@ -48,9 +64,55 @@ function buildMarker(color, label) {
   return { element: dot, destroy: () => tooltip.remove() };
 }
 
-export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
+// Marcador de "acá estoy" -- círculo con foto de perfil (fallback a
+// iniciales), rehecho a mano en DOM crudo porque AvatarPicker es un
+// componente RN y un maplibregl.Marker necesita un HTMLElement real (no
+// se puede montar un componente RN ahí, ver spec de esta rama). Mismos
+// colores que AvatarPicker (tailwind.config.js: primary-tint #dcec9e,
+// on-primary-tint #3c6b12) para que se vea igual que en nativo.
+function buildCurrentPositionMarker(photoUrl, initials) {
+  const SIZE = 32;
+  const circle = document.createElement('div');
+  circle.style.width = `${SIZE}px`;
+  circle.style.height = `${SIZE}px`;
+  circle.style.borderRadius = '50%';
+  circle.style.border = '2px solid #ffffff';
+  circle.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+  circle.style.overflow = 'hidden';
+  circle.style.display = 'flex';
+  circle.style.alignItems = 'center';
+  circle.style.justifyContent = 'center';
+  circle.style.backgroundColor = '#dcec9e';
+
+  const showInitials = () => {
+    circle.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = initials ?? '';
+    span.style.color = '#3c6b12';
+    span.style.fontWeight = '700';
+    span.style.fontSize = `${SIZE * 0.35}px`;
+    circle.appendChild(span);
+  };
+
+  if (photoUrl) {
+    const img = document.createElement('img');
+    img.src = photoUrl;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.onerror = showInitials;
+    circle.appendChild(img);
+  } else {
+    showInitials();
+  }
+
+  return circle;
+}
+
+export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const currentPositionMarkerRef = useRef(null);
 
   useEffect(() => {
     const initialCenter = traveledPoints?.[0] ? [traveledPoints[0].longitude, traveledPoints[0].latitude] : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
@@ -71,12 +133,12 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
         map.addLayer({ id: 'live-trajectory-map-reference-layer', type: 'line', source: 'live-trajectory-map-reference', paint: { 'line-color': '#94a3b8', 'line-width': 3, 'line-dasharray': [2, 2] } });
       }
       if (refCoords.length >= 1) {
-        const start = buildMarker('#ef4444', 'Punto de inicio');
+        const start = buildMarker(ROUTE_MARKER_META.start);
         new maplibregl.Marker({ element: start.element, anchor: 'bottom' }).setLngLat(refCoords[0]).addTo(map);
         markerCleanups.push(start.destroy);
       }
       if (refCoords.length >= 2) {
-        const end = buildMarker('#2563eb', 'Punto de llegada');
+        const end = buildMarker(ROUTE_MARKER_META.end);
         new maplibregl.Marker({ element: end.element, anchor: 'bottom' }).setLngLat(refCoords[refCoords.length - 1]).addTo(map);
         markerCleanups.push(end.destroy);
       }
@@ -85,6 +147,8 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
     mapRef.current = map;
     return () => {
       markerCleanups.forEach((destroy) => destroy());
+      currentPositionMarkerRef.current?.remove();
+      currentPositionMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -130,6 +194,27 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
     if (map.loaded()) applyFit();
     else map.once('load', applyFit);
   }, [traveledPoints, referenceRoute]);
+
+  // Marcador de posición actual -- se crea una sola vez (al llegar el
+  // primer currentPosition) y después solo se reposiciona
+  // (`setLngLat`), no se recrea en cada punto -- recrear un Marker en
+  // cada punto GPS (varias veces por segundo con el intervalo bajado en
+  // esta misma rama) sería carísimo y parpadearía.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !currentPosition) return;
+    const lngLat = [currentPosition.longitude, currentPosition.latitude];
+    if (currentPositionMarkerRef.current) {
+      currentPositionMarkerRef.current.setLngLat(lngLat);
+      return;
+    }
+    const element = buildCurrentPositionMarker(currentUserPhotoUrl, currentUserInitials);
+    const marker = new maplibregl.Marker({ element, anchor: 'center' }).setLngLat(lngLat);
+    if (map.loaded()) marker.addTo(map);
+    else map.once('load', () => marker.addTo(map));
+    currentPositionMarkerRef.current = marker;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPosition]);
 
   return (
     <View className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">

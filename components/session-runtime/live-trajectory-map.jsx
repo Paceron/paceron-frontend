@@ -3,6 +3,9 @@ import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
 import { computeBounds, expandBounds } from '../../utils/map-bounds.js';
+import { ROUTE_MARKER_META } from '../../utils/route-marker-meta.js';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // Mismo ancho de banda que RouteMarker en route-map-preview.jsx -- sin esto
@@ -14,18 +17,42 @@ const LABEL_BAND_WIDTH = 200;
 // Marcador con tooltip por tap -- mismo patrón que RouteMarker en
 // route-map-preview.jsx, simplificado (label fijo, sin resolución de
 // dirección -- acá no hace falta abrir Google Maps desde el tooltip).
-function TrajectoryMarker({ point, color, label, idPrefix, active, onToggle, labelBelow }) {
+// El dot pasa a tener un ícono adentro (pedido real 2026-10-24) --
+// agrandado de 14 a 22px para que el ícono entre legible, mismo color
+// de fondo que antes.
+function TrajectoryMarker({ point, meta, idPrefix, active, onToggle, labelBelow }) {
   return (
     <Marker anchor="bottom" id={idPrefix} lngLat={point} onPress={onToggle}>
       <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH }} testID={idPrefix}>
-        <View nativeID={`${idPrefix}-dot`} style={{ backgroundColor: color, borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID={`${idPrefix}-dot`} />
+        <View
+          className="items-center justify-center"
+          nativeID={`${idPrefix}-dot`}
+          style={{ backgroundColor: meta.color, borderColor: '#ffffff', borderRadius: 11, borderWidth: 2, height: 22, width: 22 }}
+          testID={`${idPrefix}-dot`}
+        >
+          <MaterialCommunityIcons color="#ffffff" name={meta.icon} size={12} />
+        </View>
         {active && (
-          <View className="absolute left-0 right-0 items-center" nativeID={`${idPrefix}-label-wrap`} style={labelBelow ? { top: 18 } : { bottom: 18 }} testID={`${idPrefix}-label-wrap`}>
-            <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: color }} testID={`${idPrefix}-label`}>
-              <Text className="text-xs font-semibold text-white" nativeID={`${idPrefix}-label-text`} numberOfLines={1} testID={`${idPrefix}-label-text`}>{label}</Text>
+          <View className="absolute left-0 right-0 items-center" nativeID={`${idPrefix}-label-wrap`} style={labelBelow ? { top: 26 } : { bottom: 26 }} testID={`${idPrefix}-label-wrap`}>
+            <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: meta.color }} testID={`${idPrefix}-label`}>
+              <Text className="text-xs font-semibold text-white" nativeID={`${idPrefix}-label-text`} numberOfLines={1} testID={`${idPrefix}-label-text`}>{meta.label}</Text>
             </View>
           </View>
         )}
+      </View>
+    </Marker>
+  );
+}
+
+// Marcador de "acá estoy" -- avatar de solo lectura (sin onPick/onRemove),
+// mismo componente que el resto de la app usa para fotos ajenas. Borde
+// blanco para distinguirse del fondo del mapa, mismo criterio que los
+// dots de inicio/fin.
+function CurrentPositionMarker({ point, photoUrl, initials }) {
+  return (
+    <Marker anchor="center" id="live-trajectory-map-current-position" lngLat={point}>
+      <View className="overflow-hidden rounded-full border-2 border-white" nativeID="live-trajectory-map-current-position-ring" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3 }} testID="live-trajectory-map-current-position-ring">
+        <AvatarPicker accessibilityLabel="Tu posición actual" fallbackIcon="account" idPrefix="live-trajectory-map-current-position-avatar" initials={initials} size={32} uri={photoUrl} />
       </View>
     </Marker>
   );
@@ -54,7 +81,14 @@ function TrajectoryMarker({ point, color, label, idPrefix, active, onToggle, lab
 // `referenceRoute` (dot simple, sin tooltip -- esto es una vista en vivo o
 // un resumen estático, no necesita tap-to-toggle) -- antes no tenía
 // ninguno, bug real reportado.
-export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
+//
+// `currentPosition`/`currentUserPhotoUrl`/`currentUserInitials` (pedido
+// real 2026-10-24) -- ícono de "acá estoy" con la foto de perfil del
+// usuario, fallback a iniciales. `currentPosition` ya viene SUAVIZADO
+// (ver utils/distance.js#smoothGpsPoint) por el caller -- este
+// componente no sabe ni le importa de dónde salió el punto, solo lo
+// dibuja.
+export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials }) {
   const cameraRef = useRef(null);
   const [activeMarker, setActiveMarker] = useState(null);
   // Mismo guard que RouteMapPreview -- Marker.onPress no consume el tap
@@ -95,6 +129,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
   const midLat = bounds ? (bounds[1] + bounds[3]) / 2 : null;
   const startLabelBelow = midLat != null && referenceCoords[0] ? referenceCoords[0][1] > midLat : false;
   const endLabelBelow = midLat != null && referenceCoords[referenceCoords.length - 1] ? referenceCoords[referenceCoords.length - 1][1] > midLat : false;
+  const currentPositionLngLat = currentPosition ? [currentPosition.longitude, currentPosition.latitude] : null;
 
   return (
     <View className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
@@ -148,10 +183,9 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
         {referenceCoords.length >= 1 && (
           <TrajectoryMarker
             active={activeMarker === 'start'}
-            color="#ef4444"
             idPrefix="live-trajectory-map-start-marker"
-            label="Punto de inicio"
             labelBelow={startLabelBelow}
+            meta={ROUTE_MARKER_META.start}
             onToggle={() => handleMarkerToggle('start')}
             point={referenceCoords[0]}
           />
@@ -159,13 +193,15 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute }) {
         {referenceCoords.length >= 2 && (
           <TrajectoryMarker
             active={activeMarker === 'end'}
-            color="#2563eb"
             idPrefix="live-trajectory-map-end-marker"
-            label="Punto de llegada"
             labelBelow={endLabelBelow}
+            meta={ROUTE_MARKER_META.end}
             onToggle={() => handleMarkerToggle('end')}
             point={referenceCoords[referenceCoords.length - 1]}
           />
+        )}
+        {currentPositionLngLat && (
+          <CurrentPositionMarker initials={currentUserInitials} photoUrl={currentUserPhotoUrl} point={currentPositionLngLat} />
         )}
       </Map>
     </View>
