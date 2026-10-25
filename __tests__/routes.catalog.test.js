@@ -1,4 +1,4 @@
-import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, attendanceRoute, checkinRoute, paymentsRoute } from '../routes/catalog.js';
+import { homeRoute, navigationRoutes, getRoutesByRole, teamsRoute, notificationsRoute, trainingPlansRoute, attendanceRoute, checkinRoute, paymentsRoute } from '../routes/catalog.js';
 
 describe('routes catalog', () => {
   test('exposes the home route as the first navigation route', () => {
@@ -18,22 +18,19 @@ describe('getRoutesByRole', () => {
     expect(routes[0]).toBe(homeRoute);
   });
 
-  test('excludes role-gated routes (Mis planes / Planes de entrenamiento) when there is no active role', () => {
+  test('excludes role-gated routes (Planes de entrenamiento) when there is no active role', () => {
     const routes = getRoutesByRole(null);
-    expect(routes).not.toContainEqual(myPlansRoute);
     expect(routes).not.toContainEqual(trainingPlansRoute);
   });
 
-  test('shows "Mis planes" for runner, not "Planes de entrenamiento"', () => {
+  test('does not show "Planes de entrenamiento" for runner', () => {
     const routes = getRoutesByRole('runner');
-    expect(routes).toContainEqual(myPlansRoute);
     expect(routes).not.toContainEqual(trainingPlansRoute);
   });
 
-  test('shows "Planes de entrenamiento" for trainer, not "Mis planes"', () => {
+  test('shows "Planes de entrenamiento" for trainer', () => {
     const routes = getRoutesByRole('trainer');
     expect(routes).toContainEqual(trainingPlansRoute);
-    expect(routes).not.toContainEqual(myPlansRoute);
   });
 
   test('routes without a role restriction (home, teams, notifications) show for every role', () => {
@@ -77,14 +74,6 @@ describe('notificationsRoute', () => {
   test('uses the English route key and href', () => {
     expect(notificationsRoute.name).toBe('notifications');
     expect(notificationsRoute.href).toBe('/notifications');
-  });
-});
-
-describe('myPlansRoute', () => {
-  test('is scoped to the runner role', () => {
-    expect(myPlansRoute.name).toBe('plans');
-    expect(myPlansRoute.href).toBe('/plans');
-    expect(myPlansRoute.role).toBe('runner');
   });
 });
 

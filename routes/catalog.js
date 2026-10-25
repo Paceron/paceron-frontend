@@ -23,21 +23,12 @@ export const notificationsRoute = {
   icon: 'bell-outline',
 };
 
-// Sin dominio de planes de entrenamiento todavía (ver FUNCTIONAL_PROPOSE.md,
-// "Planificación de entrenamientos" sigue siendo un módulo reservado) — por
-// ahora son pantallas "Próximamente", mismo patrón que ya usa
-// TierUpgradeScreen. `role` filtra por activeRole ('runner'/'trainer'),
-// nunca los dos a la vez: un corredor ve sus propios planes asignados, un
-// entrenador ve los planes que arma para sus equipos — son conceptos
-// distintos, no la misma pantalla con otro título.
-export const myPlansRoute = {
-  name: 'plans',
-  label: 'Mis planes',
-  href: '/plans',
-  icon: 'clipboard-text-outline',
-  role: 'runner',
-};
-
+// `role: 'trainer'` -- un corredor no tiene pantalla propia de planes:
+// "Mis planes" (asignación individual corredor↔plan, `/plans`) se dio de
+// baja 2026-10-24, nunca llegó a tener backend real (el modelo se
+// reemplazó por el calendario de grupo antes de implementarse, ver
+// docs/BACKEND_TRAINING_PLANS_SPEC.md §3.6) y quedó superada por el
+// calendario (`myCalendarRoute` abajo), que sí muestra datos reales.
 export const trainingPlansRoute = {
   name: 'training-plans',
   label: 'Catálogo',
@@ -100,7 +91,7 @@ export const paymentsRoute = {
   icon: 'cash-multiple',
 };
 
-export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, myPlansRoute, trainingPlansRoute, myCalendarRoute, administeredCalendarRoute, attendanceRoute, checkinRoute, paymentsRoute];
+export const navigationRoutes = [homeRoute, teamsRoute, notificationsRoute, trainingPlansRoute, myCalendarRoute, administeredCalendarRoute, attendanceRoute, checkinRoute, paymentsRoute];
 
 // `role` es el activeRole actual ('runner'/'trainer'/null) — no el rol
 // asignado, el que se está viendo ahora mismo (ver store/auth-store.js,

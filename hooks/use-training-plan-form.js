@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { buildEmptyPlanDays } from '../store/training-plan-store.js';
+import { buildEmptyPlanDays } from '../utils/training-plan-days.js';
 
 // Estado + validación del formulario de crear/editar un plan de
 // entrenamiento — mismo patrón que hooks/use-team-general-info-form.js
