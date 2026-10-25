@@ -41,7 +41,7 @@ export function AuthenticatedHomeScreen() {
     >
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="authenticated-home-screen-container" testID="authenticated-home-screen-container">
         <Text
-          className="mb-6 text-2xl text-slate-900 dark:text-white"
+          className="mb-4 text-2xl text-slate-900 dark:text-white"
           nativeID="authenticated-home-screen-greeting"
           style={{ fontFamily: 'Orbitron_700Bold' }}
           testID="authenticated-home-screen-greeting"

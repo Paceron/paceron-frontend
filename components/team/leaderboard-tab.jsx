@@ -222,8 +222,8 @@ export function LeaderboardTab({ teamId }) {
             {leaderboard.viewerRank && !viewerInTop && (
               <>
                 {showRankGap && (
-                  <View className="items-center py-0.5" nativeID="leaderboard-tab-rank-gap" testID="leaderboard-tab-rank-gap">
-                    <Text className="text-base leading-none tracking-widest text-slate-300 dark:text-slate-600" nativeID="leaderboard-tab-rank-gap-label" testID="leaderboard-tab-rank-gap-label">
+                  <View className="items-center -m-3 -mb-1" nativeID="leaderboard-tab-rank-gap" testID="leaderboard-tab-rank-gap">
+                    <Text className="text-xl leading-none tracking-widest text-slate-300 dark:text-slate-600" nativeID="leaderboard-tab-rank-gap-label" testID="leaderboard-tab-rank-gap-label">
                       ⋯
                     </Text>
                   </View>
