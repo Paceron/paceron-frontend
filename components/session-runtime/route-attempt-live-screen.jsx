@@ -14,7 +14,7 @@ import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { formatStopwatch, toIsoUtc } from '../../utils/time.js';
-import { acceptGpsLeg, formatMeters } from '../../utils/distance.js';
+import { acceptGpsLeg, formatMeters, smoothGpsPoint } from '../../utils/distance.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import {
   cancelRun,
@@ -35,6 +35,8 @@ import {
 import { syncRun } from '../../services/session-sync.js';
 import { useStopwatch } from '../../hooks/use-stopwatch.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
+import { useUser } from '../../hooks/use-user.js';
+import { getUserInitials } from '../../utils/user-initials.js';
 import { useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { computeRouteTimeoutMs, distanceToRouteMeters, totalRouteMeters } from '../../utils/route-geometry.js';
@@ -329,6 +331,7 @@ function RouteAttemptLiveScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
+  const { user } = useUser(userId);
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const setSessionStarted = useLiveSessionStore((s) => s.setSessionStarted);
   const clearLiveSession = useLiveSessionStore((s) => s.clearLiveSession);
@@ -356,6 +359,11 @@ function RouteAttemptLiveScreenContent() {
   const startedAtRef = useRef(null);
   const gpsActiveRef = useRef(false);
   const lastPointRef = useRef(null);
+  // Punto suavizado (ver utils/distance.js#smoothGpsPoint) -- en paralelo
+  // a lastPointRef (que sigue siendo la referencia CRUDA para el gate de
+  // acceptGpsLeg, sin cambios). Este es el que se dibuja (trazo + ícono
+  // de posición), nunca el que calcula distancia.
+  const lastSmoothedPointRef = useRef(null);
   const pointOrderRef = useRef(0);
   const distanceRef = useRef(null);
   const countdownRef = useRef(3);
@@ -435,20 +443,23 @@ function RouteAttemptLiveScreenContent() {
     const point = { latitude, longitude, timestamp, accuracy };
     if (!lastPointRef.current) {
       lastPointRef.current = point;
+      lastSmoothedPointRef.current = { latitude, longitude };
       pointOrderRef.current = 0;
       await insertGpsPoint(set.id, 0, latitude, longitude, timestamp ?? Date.now());
       distanceRef.current = 0;
       setDistance(0);
       await updateSetDistance(set.id, 0);
-      setTracePoints((prev) => [...prev, { latitude, longitude }]);
+      setTracePoints((prev) => [...prev, lastSmoothedPointRef.current]);
       return;
     }
     const leg = acceptGpsLeg({ from: lastPointRef.current, to: point });
     if (leg == null) return;
     lastPointRef.current = point;
+    const smoothed = smoothGpsPoint(lastSmoothedPointRef.current, point);
+    lastSmoothedPointRef.current = smoothed;
     pointOrderRef.current += 1;
     await insertGpsPoint(set.id, pointOrderRef.current, latitude, longitude, timestamp ?? Date.now());
-    setTracePoints((prev) => [...prev, { latitude, longitude }]);
+    setTracePoints((prev) => [...prev, smoothed]);
     const driftMeters = distanceToRouteMeters({ lat: latitude, lng: longitude }, routeAttempt.route?.coordinates ?? []);
     const driftThreshold = routeAttempt.acceptanceRadiusMeters * 3;
     if (driftMeters > driftThreshold) {
@@ -657,7 +668,13 @@ function RouteAttemptLiveScreenContent() {
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-live-screen-root" testID="route-attempt-live-screen-root">
       <View className="flex-1 px-4 pt-2" nativeID="route-attempt-live-screen-map-wrap" testID="route-attempt-live-screen-map-wrap">
-        <LiveTrajectoryMap referenceRoute={routeAttempt.route} traveledPoints={tracePoints} />
+        <LiveTrajectoryMap
+          currentPosition={tracePoints[tracePoints.length - 1] ?? null}
+          currentUserInitials={getUserInitials(user)}
+          currentUserPhotoUrl={user?.photoUrl ?? null}
+          referenceRoute={routeAttempt.route}
+          traveledPoints={tracePoints}
+        />
       </View>
 
       <View className="items-center gap-1 px-4 py-2" nativeID="route-attempt-live-screen-stats-row" testID="route-attempt-live-screen-stats-row">
