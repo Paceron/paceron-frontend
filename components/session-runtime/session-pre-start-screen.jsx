@@ -453,7 +453,7 @@ function SessionPreStartScreenContent() {
       </ScrollView>
 
       {/* Botonera fija fuera del ScrollView: la lista scrollea sin arrastrarlo. */}
-      <View className="border-t border-slate-100 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="session-pre-start-screen-footer" testID="session-pre-start-screen-footer">
+      <View className="px-4 pb-4 pt-3 dark:border-slate-800" nativeID="session-pre-start-screen-footer" testID="session-pre-start-screen-footer">
         {showReview ? (
           <View className="items-center" nativeID="session-pre-start-screen-review-container" testID="session-pre-start-screen-review-container">
             <Pressable

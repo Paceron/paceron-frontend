@@ -211,7 +211,7 @@ function RouteAttemptPreStartScreenContent() {
         <RouteMapPreview coordinates={routeAttempt.route?.coordinates ?? []} interactive nativeID="route-attempt-pre-start-screen-map" testID="route-attempt-pre-start-screen-map" />
       </View>
 
-      <View className="items-center gap-2 border-t border-slate-100 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="route-attempt-pre-start-screen-footer" testID="route-attempt-pre-start-screen-footer">
+      <View className="items-center gap-2 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="route-attempt-pre-start-screen-footer" testID="route-attempt-pre-start-screen-footer">
         <Text className="px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-pre-start-screen-gps-hint" testID="route-attempt-pre-start-screen-gps-hint">
           {gpsHint}
         </Text>

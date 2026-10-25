@@ -201,7 +201,7 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
   const endAddressLabel = interactive ? (endAddress?.label ?? (endAddressLoading ? 'Resolviendo dirección…' : null)) : null;
 
   return (
-    <View className="h-full w-full overflow-hidden rounded-xl" nativeID={nativeID} testID={testID}>
+    <View className="h-full w-full overflow-hidden rounded-xl border-2 border-gray-200" nativeID={nativeID} testID={testID}>
       <Map
         attribution={false}
         doubleTapHoldZoom={false}
