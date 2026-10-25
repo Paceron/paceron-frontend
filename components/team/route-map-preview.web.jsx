@@ -4,6 +4,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
 import { computeBounds } from '../../utils/map-bounds.js';
+import { ROUTE_MARKER_META } from '../../utils/route-marker-meta.js';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 
@@ -23,20 +24,31 @@ const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // reposicionado en cada hover contra el rect real del punto -- así nunca
 // queda encerrado por el contenedor de la preview, sea cual sea su
 // tamaño o dónde esté el punto.
-function buildMarker(color, label) {
+function buildMarker(meta) {
   const dot = document.createElement('div');
-  dot.style.width = '14px';
-  dot.style.height = '14px';
-  dot.style.borderRadius = '7px';
-  dot.style.backgroundColor = color;
+  dot.style.width = '22px';
+  dot.style.height = '22px';
+  dot.style.borderRadius = '11px';
+  dot.style.backgroundColor = meta.color;
   dot.style.border = '2px solid #ffffff';
   dot.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+  dot.style.display = 'flex';
+  dot.style.alignItems = 'center';
+  dot.style.justifyContent = 'center';
+
+  const icon = document.createElement('span');
+  icon.style.fontFamily = 'material-community';
+  icon.style.fontSize = '12px';
+  icon.style.color = '#ffffff';
+  icon.style.lineHeight = '1';
+  icon.textContent = String.fromCodePoint(meta.iconCodepoint);
+  dot.appendChild(icon);
 
   const tooltip = document.createElement('div');
-  tooltip.textContent = label;
+  tooltip.textContent = meta.label;
   tooltip.style.position = 'fixed';
   tooltip.style.zIndex = '70'; // Z_INDEX.tooltip, tailwind.config.js
-  tooltip.style.backgroundColor = color;
+  tooltip.style.backgroundColor = meta.color;
   tooltip.style.color = '#ffffff';
   tooltip.style.fontSize = '12px';
   tooltip.style.fontWeight = '600';
@@ -86,12 +98,12 @@ export function RouteMapPreview({ coordinates, nativeID, testID }) {
       if (bounds) map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], { padding: 24, duration: 0 });
 
       if (points[0]) {
-        const start = buildMarker('#ef4444', 'Punto de inicio');
+        const start = buildMarker(ROUTE_MARKER_META.start);
         new maplibregl.Marker({ element: start.element, anchor: 'bottom' }).setLngLat(points[0]).addTo(map);
         markerCleanups.push(start.destroy);
       }
       if (points.length > 1) {
-        const end = buildMarker('#2563eb', 'Punto de llegada');
+        const end = buildMarker(ROUTE_MARKER_META.end);
         new maplibregl.Marker({ element: end.element, anchor: 'bottom' }).setLngLat(points[points.length - 1]).addTo(map);
         markerCleanups.push(end.destroy);
       }

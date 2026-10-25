@@ -5,6 +5,8 @@ import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
 import { computeBounds, expandBounds } from '../../utils/map-bounds.js';
 import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
+import { ROUTE_MARKER_META } from '../../utils/route-marker-meta.js';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // Placeholder para cuando el GeoJSONSource de la línea (siempre montado,
@@ -72,7 +74,7 @@ const LABEL_BAND_WIDTH = 200;
 // solo ver el label fijo. Segunda línea, pressable, debajo/arriba de la
 // píldora de label (mismo `label-wrap` -- se apilan en columna, sin romper
 // el anclaje del dot, que no depende de `label-wrap` en absoluto).
-function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBelow, addressLabel }) {
+function RouteMarker({ point, meta, idPrefix, active, onToggle, labelBelow, addressLabel }) {
   return (
     <Marker anchor="bottom" id={idPrefix} lngLat={point} onPress={onToggle}>
       {/* El dot es el ÚNICO hijo en flujo normal -- `anchor="bottom"` ancla
@@ -81,20 +83,29 @@ function RouteMarker({ point, color, label, idPrefix, active, onToggle, labelBel
           normal DESPUÉS del dot (caso labelBelow), el punto visualmente ya
           no coincidiría con la coordenada real. La etiqueta va `absolute`
           (no participa del cálculo de anchor), arriba o abajo del dot
-          según `labelBelow`, con offset fijo (18 = 14px dot + 2px border
-          x2) en vez de porcentual. */}
+          según `labelBelow`, con offset fijo (26 = 22px dot + 2px border
+          x2) en vez de porcentual. Dot agrandado de 14 a 22px y con un
+          ícono adentro (pedido real 2026-10-24, mismo tratamiento que
+          live-trajectory-map.jsx -- ver ROUTE_MARKER_META). */}
       <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH }} testID={idPrefix}>
-        <View nativeID={`${idPrefix}-dot`} style={{ backgroundColor: color, borderColor: '#ffffff', borderRadius: 7, borderWidth: 2, height: 14, width: 14 }} testID={`${idPrefix}-dot`} />
+        <View
+          className="items-center justify-center"
+          nativeID={`${idPrefix}-dot`}
+          style={{ backgroundColor: meta.color, borderColor: '#ffffff', borderRadius: 11, borderWidth: 2, height: 22, width: 22 }}
+          testID={`${idPrefix}-dot`}
+        >
+          <MaterialCommunityIcons color="#ffffff" name={meta.icon} size={12} />
+        </View>
         {active && (
           <View
             className="absolute left-0 right-0 items-center"
             nativeID={`${idPrefix}-label-wrap`}
-            style={labelBelow ? { top: 18 } : { bottom: 18 }}
+            style={labelBelow ? { top: 26 } : { bottom: 26 }}
             testID={`${idPrefix}-label-wrap`}
           >
-            <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: color }} testID={`${idPrefix}-label`}>
+            <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: meta.color }} testID={`${idPrefix}-label`}>
               <Text className="text-xs font-semibold text-white" nativeID={`${idPrefix}-label-text`} numberOfLines={1} testID={`${idPrefix}-label-text`}>
-                {label}
+                {meta.label}
               </Text>
             </View>
             {addressLabel && (
@@ -246,10 +257,9 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
           <RouteMarker
             active={activeMarker === 'start'}
             addressLabel={startAddressLabel}
-            color="#ef4444"
             idPrefix={`${nativeID}-start-marker`}
-            label="Punto de inicio"
             labelBelow={startLabelBelow}
+            meta={ROUTE_MARKER_META.start}
             onToggle={() => handleMarkerToggle('start')}
             point={points[0]}
           />
@@ -258,10 +268,9 @@ export function RouteMapPreview({ coordinates, interactive = false, nativeID, te
           <RouteMarker
             active={activeMarker === 'end'}
             addressLabel={endAddressLabel}
-            color="#2563eb"
             idPrefix={`${nativeID}-end-marker`}
             labelBelow={endLabelBelow}
-            label="Punto de llegada"
+            meta={ROUTE_MARKER_META.end}
             onToggle={() => handleMarkerToggle('end')}
             point={points[points.length - 1]}
           />
