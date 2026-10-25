@@ -1,4 +1,4 @@
-import { acceptGpsLeg, haversineMeters } from '../utils/distance.js';
+import { acceptGpsLeg, haversineMeters, smoothGpsPoint } from '../utils/distance.js';
 
 describe('haversineMeters', () => {
   test('mismo punto da 0 metros', () => {
@@ -119,5 +119,53 @@ describe('acceptGpsLeg', () => {
     const punto = { from: at(0, 0, 0, 50), to: at(0, 0.00001, 1000, 50) };
     expect(acceptGpsLeg(punto)).toBeNull();
     expect(acceptGpsLeg({ ...punto, maxAccuracyMeters: 100 })).not.toBeNull();
+  });
+});
+describe('smoothGpsPoint', () => {
+  test('sin punto previo, devuelve el crudo tal cual (sin historial para suavizar)', () => {
+    const result = smoothGpsPoint(null, { latitude: -34.6, longitude: -58.4, accuracy: 5 });
+    expect(result).toEqual({ latitude: -34.6, longitude: -58.4 });
+  });
+
+  test('buena precisión (accuracy bajo) pesa cerca de alphaMax hacia el punto crudo', () => {
+    const previous = { latitude: 0, longitude: 0 };
+    const raw = { latitude: 1, longitude: 0, accuracy: 5 }; // k=4 default, 4/5=0.8=alphaMax
+    const result = smoothGpsPoint(previous, raw);
+    expect(result.latitude).toBeCloseTo(0.8, 5);
+  });
+
+  test('precisión mala (accuracy alto, pero ya pasó el gate) se clampea a alphaMin', () => {
+    const previous = { latitude: 0, longitude: 0 };
+    const raw = { latitude: 1, longitude: 0, accuracy: 29 }; // 4/29 ≈ 0.138, clamp a 0.2
+    const result = smoothGpsPoint(previous, raw);
+    expect(result.latitude).toBeCloseTo(0.2, 5);
+  });
+
+  test('accuracy intermedio interpola entre alphaMin y alphaMax', () => {
+    const previous = { latitude: 0, longitude: 0 };
+    const raw = { latitude: 1, longitude: 0, accuracy: 10 }; // 4/10 = 0.4
+    const result = smoothGpsPoint(previous, raw);
+    expect(result.latitude).toBeCloseTo(0.4, 5);
+  });
+
+  test('sin accuracy en el punto, usa alphaMax (no penaliza un dato que no puede evaluar)', () => {
+    const previous = { latitude: 0, longitude: 0 };
+    const raw = { latitude: 1, longitude: 0 };
+    const result = smoothGpsPoint(previous, raw);
+    expect(result.latitude).toBeCloseTo(0.8, 5);
+  });
+
+  test('longitude se suaviza con el mismo alpha que latitude', () => {
+    const previous = { latitude: 0, longitude: 0 };
+    const raw = { latitude: 0, longitude: 2, accuracy: 5 };
+    const result = smoothGpsPoint(previous, raw);
+    expect(result.longitude).toBeCloseTo(1.6, 5);
+  });
+
+  test('opciones custom (k/alphaMin/alphaMax) se respetan', () => {
+    const previous = { latitude: 0, longitude: 0 };
+    const raw = { latitude: 1, longitude: 0, accuracy: 5 };
+    const result = smoothGpsPoint(previous, raw, { k: 1, alphaMin: 0, alphaMax: 1 });
+    expect(result.latitude).toBeCloseTo(0.2, 5); // 1/5 = 0.2, sin clamp porque alphaMax=1
   });
 });
