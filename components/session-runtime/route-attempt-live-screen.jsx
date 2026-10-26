@@ -5,6 +5,7 @@ import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRe
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { usePreventRemove } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
@@ -330,6 +331,7 @@ function ConfirmCancelModal({ visible, onCancel, onConfirm }) {
 function RouteAttemptLiveScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
+  const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
@@ -404,6 +406,7 @@ function RouteAttemptLiveScreenContent() {
           userId,
           gpsEnabled: true,
           exercises: sessionInstance.exercises ?? [],
+          competitionId: routeAttempt.competitionId,
         });
         runRow = await getRun(createdId);
       }
@@ -567,10 +570,25 @@ function RouteAttemptLiveScreenContent() {
   // (mismo mecanismo que bypassGuard en use-unsaved-changes-guard.js).
   const goToResult = () => {
     clearLiveSession();
+    // Bug real reportado 2026-10-25: `attemptMutation` (use-competitions.js)
+    // invalida ['competition-attempts', ...] en el intake (al presionar
+    // Play, antes de que exista cualquier runner_session) -- esto, en
+    // cambio, es el único invalidate que importa de verdad: corre DESPUÉS
+    // de que syncRun() dejó el runner_session 'finished'/'interrupted' con
+    // `competition_id`. Sin esto, competitions-tab.jsx/AttemptsListModal
+    // seguían viendo el intento intake-time (vacío) hasta que el
+    // `staleTime` global (60s, `lib/query-client.js`) expirara solo --
+    // el corredor podía volver a jugar la misma trayectoria mientras tanto.
+    // Corre para finish Y cancel (goToResult es el exit común de las dos) --
+    // un intento cancelado también consume el cupo (mismo criterio que el
+    // mock, que cuenta cualquier fila sin filtrar por status).
+    queryClient.invalidateQueries({ queryKey: ['competition-attempts', routeAttempt.competitionId, String(userId)] });
+    queryClient.invalidateQueries({ queryKey: ['competition', routeAttempt.competitionId] });
     pendingExitRef.current = () => router.replace({
       pathname: '/route-attempt-detail',
       params: {
         competitionId: routeAttempt.competitionId,
+        athleteUserId: String(userId),
         setId: String(set.id),
         distanceMeters: String(distanceRef.current ?? 0),
         durationMs: String(savedTimingsRef.current.wallMs ?? 0),
@@ -678,7 +696,7 @@ function RouteAttemptLiveScreenContent() {
       </View>
 
       <View className="items-center gap-1 px-4 py-2" nativeID="route-attempt-live-screen-stats-row" testID="route-attempt-live-screen-stats-row">
-        <Text className="text-4xl" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID="route-attempt-live-screen-timer" testID="route-attempt-live-screen-timer">
+        <Text className="text-4xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID="route-attempt-live-screen-timer" testID="route-attempt-live-screen-timer">
           {showTimer ? formatStopwatch(stopwatch.wallMs) : '00:00:00'}
         </Text>
         {/* Siempre montado (no condicionado a `distance != null`) -- bug

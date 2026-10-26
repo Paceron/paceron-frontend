@@ -1164,6 +1164,13 @@ export function toCompetitionDetailModel(dto) {
       complianceRatio: p.compliance_ratio ?? null,
       durationMs: p.duration_ms ?? null,
       sessionInstanceId: p.session_instance_id != null ? String(p.session_instance_id) : null,
+      // `hasAttempt` -- distingue "intentó pero compliance_ratio no se
+      // pudo calcular" (ej. menos de 2 puntos GPS) de "nunca intentó";
+      // ausente del lado real todavía (el backend no calcula esto, ver
+      // Gap 36 en docs/BACKEND_API_GAPS.md) -- `Boolean(undefined)` cae en
+      // `false`, mismo comportamiento de hoy (siempre "Sin intentos") para
+      // ese caso, no rompe nada contra el backend real.
+      hasAttempt: Boolean(p.has_attempt),
     })),
   };
 }

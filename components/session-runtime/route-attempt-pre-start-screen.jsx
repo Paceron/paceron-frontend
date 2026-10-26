@@ -140,6 +140,10 @@ function RouteAttemptPreStartScreenContent() {
       : withinRange
         ? 'Estás en el punto de inicio.'
         : `Estás a ${formatMeters(distanceToStart)} del punto de inicio (necesitás estar a ${acceptanceRadiusMeters} m o menos).`;
+  // Solo el caso "lejos del punto de inicio" se destaca con badge de aviso --
+  // los otros 3 (sin permiso, buscando fix, ya en rango) son texto informativo
+  // de paso, no una advertencia que requiera llamar la atención.
+  const isFarFromStart = gpsPermissionGranted === true && distanceToStart != null && !withinRange;
 
   // El intake real (POST /competitions/{id}/attempts) se dispara ACÁ, no al
   // tocar "Correr esta trayectoria" en la lista (ver competitions-tab.jsx)
@@ -152,7 +156,18 @@ function RouteAttemptPreStartScreenContent() {
   const handlePlay = async () => {
     if (!canPlay || starting) return;
     setStarting(true);
-    const result = await mutations.createCompetitionAttempt(routeAttempt.competitionId, userId);
+    // String(userId) -- bug real reportado 2026-10-25: competitions-tab.jsx
+    // y attempts-list-modal.jsx cachean/comparan athleteUserId como string
+    // (roster normalizado, ver CLAUDE.md), pero `userId` acá viene de
+    // auth-store.js sin coerción (número crudo del login). La invalidación
+    // de ['competition-attempts', id, athleteUserId] en
+    // use-competitions.js#useCompetitionMutations usa el MISMO valor que se
+    // le pasa a esta mutación como parte de su query key -- con el tipo
+    // distinto, TanStack Query trata number/string como cache keys
+    // diferentes y nunca invalida la que de verdad está en pantalla: el
+    // cupo restante/lista de intentos quedaba desactualizado y el corredor
+    // podía volver a jugar la misma trayectoria.
+    const result = await mutations.createCompetitionAttempt(routeAttempt.competitionId, String(userId));
     if (!result.success) {
       setStarting(false);
       notifyError();
@@ -212,9 +227,18 @@ function RouteAttemptPreStartScreenContent() {
       </View>
 
       <View className="items-center gap-2 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="route-attempt-pre-start-screen-footer" testID="route-attempt-pre-start-screen-footer">
-        <Text className="px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-pre-start-screen-gps-hint" testID="route-attempt-pre-start-screen-gps-hint">
-          {gpsHint}
-        </Text>
+        {isFarFromStart ? (
+          <View className="flex-row items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 dark:bg-amber-900/20" nativeID="route-attempt-pre-start-screen-gps-hint-badge" testID="route-attempt-pre-start-screen-gps-hint-badge">
+            <MaterialCommunityIcons color="#d97706" name="alert-circle-outline" size={14} />
+            <Text className="text-xs font-medium text-amber-700 dark:text-amber-400" nativeID="route-attempt-pre-start-screen-gps-hint" testID="route-attempt-pre-start-screen-gps-hint">
+              {gpsHint}
+            </Text>
+          </View>
+        ) : (
+          <Text className="px-6 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-pre-start-screen-gps-hint" testID="route-attempt-pre-start-screen-gps-hint">
+            {gpsHint}
+          </Text>
+        )}
         <Animated.View nativeID="route-attempt-pre-start-screen-play-button-pulse" style={pulseStyle} testID="route-attempt-pre-start-screen-play-button-pulse">
           <Pressable
             className={`h-24 w-24 items-center justify-center rounded-full ${playState === 'ready' ? 'bg-primary active:opacity-80' : 'bg-slate-200 dark:bg-slate-800'}`}

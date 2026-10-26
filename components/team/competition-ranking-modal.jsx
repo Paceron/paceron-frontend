@@ -64,9 +64,16 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
           ) : (
             <ScrollView className="max-h-[60vh]" nativeID="competition-ranking-modal-scroll" testID="competition-ranking-modal-scroll">
               <View className="gap-2" nativeID="competition-ranking-modal-list" testID="competition-ranking-modal-list">
-                {ranked.map((entry, index) => (
+                {ranked.map((entry, index) => {
+                  // Una fila "Sin intentos" no tiene ningún intento real que
+                  // mostrar en el detalle -- navegar igual era un dead-end
+                  // confuso (bug real reportado 2026-10-25). `hasAttempt`
+                  // cubre el caso "intentó pero sin compliance calculable"
+                  // (sigue siendo un intento real, con detalle para ver).
+                  const canOpenDetail = competition?.type === 'route' && (entry.complianceRatio != null || entry.hasAttempt);
+                  return (
                   <Pressable
-                    className={`flex-row items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900 ${competition?.type === 'route' ? 'active:opacity-70' : ''}`}
+                    className={`flex-row items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900 ${canOpenDetail ? 'active:opacity-70' : ''}`}
                     key={entry.userId}
                     nativeID={`competition-ranking-modal-row-${entry.userId}`}
                     // Solo ruta tiene "detalle de intento" -- metric no tiene
@@ -84,7 +91,7 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
                     // nativo), así que el useState local de
                     // `rankingCompetition` NO sobrevive solo -- de ahí la
                     // necesidad real de este store.
-                    onPress={competition?.type === 'route' ? () => {
+                    onPress={canOpenDetail ? () => {
                       setReopenModal({ type: 'ranking', competitionId: competition.id });
                       router.push({ pathname: '/route-attempt-detail', params: { competitionId: competition.id, athleteUserId: entry.userId } });
                     } : undefined}
@@ -99,10 +106,17 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
                     <Text className="text-sm font-semibold text-primary" nativeID={`competition-ranking-modal-row-${entry.userId}-value`} testID={`competition-ranking-modal-row-${entry.userId}-value`}>
                       {competition?.type === 'metric'
                         ? formatMetricValue(competition.metric, entry.value)
-                        : entry.complianceRatio != null ? `${Math.round(entry.complianceRatio)}%` : 'Sin intentos'}
+                        : entry.complianceRatio != null
+                          ? `${Math.round(entry.complianceRatio)}%`
+                          // Intentó pero sin datos suficientes para medir
+                          // cumplimiento (ej. arrancó y terminó en el mismo
+                          // punto) -- distinto de "nunca intentó" (ver
+                          // hasAttempt en toCompetitionDetailModel).
+                          : entry.hasAttempt ? '—' : 'Sin intentos'}
                     </Text>
                   </Pressable>
-                ))}
+                  );
+                })}
                 {ranked.length === 0 && (
                   <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="competition-ranking-modal-empty" testID="competition-ranking-modal-empty">
                     Todavía no hay participantes.

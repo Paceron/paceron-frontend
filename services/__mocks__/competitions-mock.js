@@ -323,11 +323,20 @@ export async function mockGetCompetitionAttempts(competitionId, athleteUserId) {
 // que comparar. null en los 3 campos si el atleta no tiene ningún intento
 // terminado -- no un 0%/duración inventada.
 function computeRouteProgress(competition, userId) {
-  const attempts = buildAttemptSummaries(competition, userId)
-    .filter((a) => a.status === 'finished')
-    .map((a) => ({ complianceRatio: a.compliance_ratio, durationMs: a.duration_ms, sessionInstanceId: a.session_instance_id }));
+  const finished = buildAttemptSummaries(competition, userId).filter((a) => a.status === 'finished');
+  const attempts = finished.map((a) => ({ complianceRatio: a.compliance_ratio, durationMs: a.duration_ms, sessionInstanceId: a.session_instance_id }));
   const best = pickBestAttempt(attempts);
   return {
+    // `has_attempt` -- bug real reportado 2026-10-25: un intento terminado
+    // con menos de 2 puntos GPS (arrancó y terminó parado en el mismo
+    // lugar) da compliance_ratio null (computeRouteComplianceRatio, "no
+    // hay nada que comparar todavía") -- `pickBestAttempt` lo descarta
+    // (mismo criterio, correcto para elegir "el mejor" entre varios), así
+    // que `best` queda `null` aunque SÍ exista un intento real. Sin esta
+    // bandera, independiente del filtro de pickBestAttempt, el ranking no
+    // podía distinguir "nunca intentó" de "intentó pero sin datos
+    // suficientes" -- las dos mostraban "Sin intentos".
+    has_attempt: finished.length > 0,
     compliance_ratio: best?.complianceRatio ?? null,
     duration_ms: best?.durationMs ?? null,
     session_instance_id: best?.sessionInstanceId ?? null,

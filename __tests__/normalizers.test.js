@@ -1421,6 +1421,22 @@ describe('toCompetitionDetailModel -- progress de type=route', () => {
     expect(entry.complianceRatio).toBeNull();
     expect(entry.durationMs).toBeNull();
     expect(entry.sessionInstanceId).toBeNull();
+    expect(entry.hasAttempt).toBe(false);
+  });
+
+  test('hasAttempt distingue "intentó sin compliance calculable" de "nunca intentó"', () => {
+    const dto = {
+      id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+      start_at: '2026-10-20T10:00:00Z', end_at: null,
+      route: null, acceptance_radius_meters: 50, max_attempts: 3,
+      participant_user_ids: [1], created_by_user_id: 99, created_by_role: 'trainer',
+      status: 'active', approved_by_user_id: null, rejection_reason: null,
+      winner_user_ids: [], finished_at: null, session_instance_id: 9000,
+      progress: [{ user_id: 1, value: null, compliance_ratio: null, duration_ms: null, session_instance_id: null, has_attempt: true }],
+    };
+    const entry = toCompetitionDetailModel(dto).progress[0];
+    expect(entry.complianceRatio).toBeNull();
+    expect(entry.hasAttempt).toBe(true);
   });
 });
 

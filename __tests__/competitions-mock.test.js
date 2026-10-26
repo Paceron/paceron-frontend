@@ -296,11 +296,25 @@ describe('mockGetCompetition -- progress de type=route (Gap 36)', () => {
     expect(own.duration_ms).toBe(107000);
   });
 
-  test('un participante sin intentos tiene compliance_ratio/duration_ms/session_instance_id null', async () => {
+  test('un participante sin intentos tiene compliance_ratio/duration_ms/session_instance_id null y has_attempt false', async () => {
     const { data } = await mockGetCompetition(7);
     const noAttempts = data.progress.find((p) => p.user_id === 102);
     expect(noAttempts.compliance_ratio).toBeNull();
     expect(noAttempts.duration_ms).toBeNull();
     expect(noAttempts.session_instance_id).toBeNull();
+    expect(noAttempts.has_attempt).toBe(false);
+  });
+
+  // Bug real reportado 2026-10-25: un intento terminado sin feedback/puntos
+  // GPS (arrancó y terminó parado en el mismo lugar) da compliance_ratio
+  // null -- antes el ranking lo mostraba igual que "nunca intentó". `user_id
+  // 1` participa de la seed 7 pero no tiene ningún `__seedRunnerSession` en
+  // el beforeEach de arriba -- se agrega acá, sin feedback asociado.
+  test('un intento terminado sin feedback (compliance no calculable) tiene has_attempt true aunque compliance_ratio sea null', async () => {
+    __seedRunnerSession({ id: 9002, session_instance_id: 9020, athlete_user_id: 1, status: 'finished', start_date: '2026-10-20T10:00:00Z', end_date: '2026-10-20T10:00:05Z', competition_id: 7 });
+    const { data } = await mockGetCompetition(7);
+    const own = data.progress.find((p) => p.user_id === 1);
+    expect(own.compliance_ratio).toBeNull();
+    expect(own.has_attempt).toBe(true);
   });
 });
