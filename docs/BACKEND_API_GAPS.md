@@ -1718,7 +1718,56 @@ dato de "novedad" vive junto al recurso que la genera, no en un servicio aparte)
     cross-team aparte. El punto rojo de la pestaña Competencias DENTRO de un equipo puntual usa
     directamente el `has_unseen` de ESE equipo, sin agregación.
 
-## Gap 35 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta [RESUELTO y mergeado a `develop`]
+## Gap 35 — comparación planificado vs realizado: objetivos de cada ejercicio y cumplimiento por sesión y por rango [RESUELTO del lado backend, rama `feature/comparacion-planificado-realizado`]
+
+> Numeración: los Gaps 30-34 son los del módulo de gamificación (arriba).
+
+**Contexto.** HU "Comparar planificado vs realizado": el corredor quiere ver si cumplió lo que tenía planificado, sesión por sesión y en un rango de fechas, con un % de cumplimiento, un gráfico, filtros por tipo y período, y exportación a PDF y CSV. El front no puede armarlo solo:
+
+1. `GET /session-instances/:id` trae de cada ejercicio solo `repeat_count`, `role` y `rest_minutes`. Los objetivos (`minutes`, `distance_m`, `speed_kph`, `kind`, `intensity`) viven en `exercise_instances` y no tienen endpoint para el corredor.
+2. El historial (`/users/{id}/workout-feedback-history`) trae lo realizado pero no lo planificado, y no incluye las sesiones que no se hicieron.
+3. Cruzar las dos cosas tiene trampas de datos: `workout_feedback.assigned_exercise_id` es el `exercise_instance_id` (no el id de `session_exercise_instances`, aunque en 62 de 95 filas coinciden por casualidad), las filas anteriores al 2026-09-30 tienen `set_number` en base 0, y una misma serie puede tener una fila del corredor y otra del entrenador.
+
+**Contrato** (change de OpenSpec `comparacion-planificado-realizado`):
+
+```
+GET /api/v1/activities/comparison/:sessionInstanceId?athlete_user_id=
+→ 200 { session_instance_id, athlete_user_id, date, session_name, team_id, team_name,
+        group_id, group_name, is_presencial, started_at, ended_at,
+        status (finished|wip|interrupted|none), kinds[],
+        exercises: [{ exercise_instance_id, name, role, kind, intensity, has_target,
+                      planned: { sets, minutes, distance_m, speed_kph, pace_sec_per_km },
+                      sets: [{ set_number, status (completed|skipped|unregistered), extra,
+                               feedback_id, duration_ms, distance_meters, pace_sec_per_km,
+                               rpe, compliance_pct, deviation_duration_ms, deviation_distance_m }],
+                      completed_sets, skipped_sets, compliance_pct }],
+        totals: { planned_sets, completed_sets, skipped_sets, unregistered_sets,
+                  planned_duration_ms, actual_duration_ms, planned_distance_m, actual_distance_m },
+        compliance_pct }
+→ 400 INVALID_QUERY · 401 · 403 · 404 · 500 ("error interno")
+
+GET /api/v1/activities/comparison?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&team_id=&group_id=&kind=&athlete_user_id=
+→ 200 { date_from, date_to,
+        sessions: [{ session_instance_id, date, session_name, team_id, team_name, group_id,
+                     group_name, is_presencial, kinds[], status, planned_sets, completed_sets,
+                     skipped_sets, unregistered_sets, planned_duration_ms, actual_duration_ms,
+                     planned_distance_m, actual_distance_m, compliance_pct, counts_for_average }],
+        summary: { sessions_planned, sessions_with_activity, sessions_averaged, avg_compliance_pct } }
+→ 400 INVALID_QUERY (rango faltante, invertido, > 366 días o posterior a hoy; kind desconocido;
+  group_id sin team_id; otro atleta sin team_id) · 401 · 403 · 500
+```
+
+Reglas que importan del lado del front:
+
+- **Cumplimiento por serie, con tope de 100%:** con minutos, duración (activa si existe) / planificada; si no, distancia / planificada; sin objetivo, 100% si se completó. Salteada o sin registro: 0%. Ejercicio y sesión: promedio de sus series planificadas, a 1 decimal. Las series de más vienen con `extra: true` y `compliance_pct: null`.
+- `deviation_*` y `planned_duration_ms`/`planned_distance_m` son `null` cuando no hay objetivo de ese tipo: se muestran como "sin objetivo", nunca como 0.
+- La lista incluye los días de entrenamiento donde el corredor era miembro **en esa fecha** aunque no haya registrado nada (0%, `status: none`), más las sesiones con feedback suyo que no tengan un día así.
+- **El promedio del rango no cuenta las sesiones de hoy sin terminar** (2026-10-17, pedido del equipo): una sesión de hoy que no está `finished` viene con `counts_for_average: false` y no entra en `avg_compliance_pct` ni en `sessions_averaged` (el divisor). Las de días anteriores cuentan siempre, aunque no se hayan ejecutado. `sessions_planned` sigue contando todas. Backend: design.md D9.
+- Sin `athlete_user_id` compara al usuario autenticado. Un entrenador puede pasar el de un corredor suyo (en la lista, con `team_id` de un equipo propio).
+
+**Impacto en frontend:** `services/activity-comparison.js`, `hooks/use-activity-comparison.js`, pantallas `/training-comparison` y `/training-comparison/session` (spec `docs/superpowers/specs/2026-10-13-training-comparison-design.md`). Entradas: botón en el historial, opción en el menú de cada fila y "Ver comparación" al terminar la ejecución.
+
+## Gap 36 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta [RESUELTO y mergeado a `develop`]
 
 **Actualización 2026-10-23 — corrección de la nota de abajo, que había quedado desactualizada:**
 confirmado (`cmd/api/domains/competition/competition.go`, campo `SessionInstanceID` presente en
@@ -1757,7 +1806,7 @@ originó" — ver `docs/superpowers/specs/2026-10-20-route-attempt-detail-screen
 "intento recién terminado, todavía en este mismo dispositivo" no depende de este gap (usa el id
 que ya tiene en memoria/SQLite).
 
-## Gap 36 — competencias de ruta: intentos múltiples configurables (`max_attempts`) [RESUELTO del lado backend, mergeado a `develop`]
+## Gap 37 — competencias de ruta: intentos múltiples configurables (`max_attempts`) [RESUELTO del lado backend, mergeado a `develop`]
 
 **Actualización 2026-10-23 — implementado y confirmado contra código real** (backend
 pasó el detalle completo, ver `docs/FRONTEND_IMPACTO_INSTANCIACION.md` §19 del repo
@@ -1856,7 +1905,7 @@ actual — funciona sin este campo, pero es más barato con él si en algún
 momento se agrega.
 
 **Impacto en frontend:** bloquea la versión real (no-mock) de todo el flujo de
-intentos múltiples — mismo patrón que Gap 18/35, el frontend ya está
+intentos múltiples — mismo patrón que Gap 18/36, el frontend ya está
 construido y probado contra mocks (branch `feature/route-competitions-polish`,
 ver el plan de implementación en
 `docs/superpowers/plans/2026-10-21-route-competition-multi-attempt.md`) y
