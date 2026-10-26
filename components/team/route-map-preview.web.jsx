@@ -25,6 +25,21 @@ const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // queda encerrado por el contenedor de la preview, sea cual sea su
 // tamaño o dónde esté el punto.
 function buildMarker(meta) {
+  // `hitArea` es el elemento que se le pasa a `maplibregl.Marker` --
+  // agranda la zona de toque (pedido real 2026-10-25) sin mover el dot
+  // visualmente: `anchor: 'bottom'` ancla contra el borde inferior de ESTE
+  // elemento, así que el padding solo va arriba/a los costados, nunca
+  // abajo (agregar padding abajo correría el dot respecto de la
+  // coordenada real).
+  const hitArea = document.createElement('div');
+  hitArea.style.display = 'flex';
+  hitArea.style.alignItems = 'flex-end';
+  hitArea.style.justifyContent = 'center';
+  hitArea.style.paddingTop = '14px';
+  hitArea.style.paddingLeft = '10px';
+  hitArea.style.paddingRight = '10px';
+  hitArea.style.cursor = 'pointer';
+
   const dot = document.createElement('div');
   dot.style.width = '22px';
   dot.style.height = '22px';
@@ -43,6 +58,7 @@ function buildMarker(meta) {
   icon.style.lineHeight = '1';
   icon.textContent = String.fromCodePoint(meta.iconCodepoint);
   dot.appendChild(icon);
+  hitArea.appendChild(dot);
 
   const tooltip = document.createElement('div');
   tooltip.textContent = meta.label;
@@ -66,10 +82,10 @@ function buildMarker(meta) {
     tooltip.style.top = `${rect.top - 8}px`;
     tooltip.style.transform = 'translate(-50%, -100%)';
   };
-  dot.addEventListener('mouseenter', () => { positionTooltip(); tooltip.style.opacity = '1'; });
-  dot.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  hitArea.addEventListener('mouseenter', () => { positionTooltip(); tooltip.style.opacity = '1'; });
+  hitArea.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
 
-  return { element: dot, destroy: () => tooltip.remove() };
+  return { element: hitArea, destroy: () => tooltip.remove() };
 }
 
 export function RouteMapPreview({ coordinates, nativeID, testID }) {

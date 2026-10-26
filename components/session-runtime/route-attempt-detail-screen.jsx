@@ -5,10 +5,13 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAttemptDetail } from '../../hooks/use-attempt-detail.js';
 import { useTeam } from '../../hooks/use-teams.js';
+import { useUser } from '../../hooks/use-user.js';
+import { getUserInitials } from '../../utils/user-initials.js';
 import { formatMeters } from '../../utils/distance.js';
 import { formatStopwatch } from '../../utils/time.js';
 import { isWeb } from '../../utils/platform.js';
 import { LiveTrajectoryMap } from './live-trajectory-map';
+import { AvatarPicker } from '../shared/avatar-picker.jsx';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 // % de cumplimiento (tiempo dentro del radio de aceptación) desde el que se
@@ -41,10 +44,14 @@ function formatAttemptDate(iso) {
   return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
-function StatBox({ idPrefix, label, value }) {
+function StatBox({ idPrefix, icon, label, value }) {
+  const colors = useThemeColors();
   return (
     <View className="flex-1 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
-      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>{label}</Text>
+      <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-label-row`} testID={`${idPrefix}-label-row`}>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={icon} size={14} />
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>{label}</Text>
+      </View>
       <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-value`} numberOfLines={1} testID={`${idPrefix}-value`}>{value}</Text>
     </View>
   );
@@ -113,6 +120,8 @@ function RouteAttemptDetailScreenContent() {
     sessionInstanceId: params.sessionInstanceId,
   });
   const { team } = useTeam(detail.teamId);
+  const { user: athlete } = useUser(params.athleteUserId);
+  const athleteName = athlete ? `${athlete.name ?? ''} ${athlete.surname ?? ''}`.trim() : null;
 
   const justFinished = Boolean(params.setId);
   const attemptDate = formatAttemptDate(detail.startedAt);
@@ -192,6 +201,29 @@ function RouteAttemptDetailScreenContent() {
 
       {(detail.status === 'local' || detail.status === 'synced') && (
         <View className="flex-1 gap-3" nativeID="route-attempt-detail-screen-content" testID="route-attempt-detail-screen-content">
+          <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="route-attempt-detail-screen-athlete-row" testID="route-attempt-detail-screen-athlete-row">
+            <AvatarPicker accessibilityLabel={athleteName ?? 'Corredor'} fallbackIcon="account" idPrefix="route-attempt-detail-screen-athlete-avatar" initials={getUserInitials(athlete)} size={40} uri={athlete?.photoUrl} />
+            <View className="flex-1 gap-0.5" nativeID="route-attempt-detail-screen-athlete-info" testID="route-attempt-detail-screen-athlete-info">
+              <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-athlete-name" numberOfLines={1} testID="route-attempt-detail-screen-athlete-name">
+                {athleteName || '—'}
+              </Text>
+              <View className="flex-row flex-wrap items-center gap-3" nativeID="route-attempt-detail-screen-athlete-meta" testID="route-attempt-detail-screen-athlete-meta">
+                <View className="flex-row items-center gap-1" nativeID="route-attempt-detail-screen-athlete-date" testID="route-attempt-detail-screen-athlete-date">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-clock" size={14} />
+                  <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-detail-screen-athlete-date-label" testID="route-attempt-detail-screen-athlete-date-label">
+                    {attemptDate ?? '—'}
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-1" nativeID="route-attempt-detail-screen-athlete-team" testID="route-attempt-detail-screen-athlete-team">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={14} />
+                  <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="route-attempt-detail-screen-athlete-team-label" numberOfLines={1} testID="route-attempt-detail-screen-athlete-team-label">
+                    {team?.name ?? '—'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
           <View className="flex-1 w-full" nativeID="route-attempt-detail-screen-map-wrap" testID="route-attempt-detail-screen-map-wrap">
             <LiveTrajectoryMap referenceRoute={detail.referenceRoute} traveledPoints={detail.traveledPoints} />
           </View>
@@ -204,12 +236,8 @@ function RouteAttemptDetailScreenContent() {
               met={met}
             />
             <View className="flex-row gap-2" nativeID="route-attempt-detail-screen-stats-row-2" testID="route-attempt-detail-screen-stats-row-2">
-              <StatBox idPrefix="route-attempt-detail-screen-duration" label="Tiempo" value={formatStopwatch(detail.durationMs ?? 0)} />
-              <StatBox idPrefix="route-attempt-detail-screen-pace" label="Ritmo" value={formatPaceMinPerKm(paceMinPerKm)} />
-            </View>
-            <View className="flex-row gap-2" nativeID="route-attempt-detail-screen-stats-row-3" testID="route-attempt-detail-screen-stats-row-3">
-              <StatBox idPrefix="route-attempt-detail-screen-date" label="Fecha y hora" value={attemptDate ?? '—'} />
-              <StatBox idPrefix="route-attempt-detail-screen-team" label="Equipo" value={team?.name ?? '—'} />
+              <StatBox icon="clock-outline" idPrefix="route-attempt-detail-screen-duration" label="Tiempo" value={formatStopwatch(detail.durationMs ?? 0)} />
+              <StatBox icon="speedometer" idPrefix="route-attempt-detail-screen-pace" label="Ritmo" value={formatPaceMinPerKm(paceMinPerKm)} />
             </View>
           </View>
         </View>

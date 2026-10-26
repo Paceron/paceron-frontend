@@ -13,6 +13,10 @@ const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
 // aplasta contra el ancho del dot (~18px), texto invisible aunque el fondo
 // de color sí se vea (bug ya documentado ahí).
 const LABEL_BAND_WIDTH = 200;
+// Mismo criterio que DOT_HIT_PADDING_TOP en route-map-preview.jsx: padding
+// solo arriba agranda la zona de toque sin mover el dot respecto de la
+// coordenada real (`anchor="bottom"` ancla contra el borde inferior).
+const DOT_HIT_PADDING_TOP = 14;
 
 // Marcador con tooltip por tap -- mismo patrón que RouteMarker en
 // route-map-preview.jsx, simplificado (label fijo, sin resolución de
@@ -23,7 +27,7 @@ const LABEL_BAND_WIDTH = 200;
 function TrajectoryMarker({ point, meta, idPrefix, active, onToggle, labelBelow }) {
   return (
     <Marker anchor="bottom" id={idPrefix} lngLat={point} onPress={onToggle}>
-      <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH }} testID={idPrefix}>
+      <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH, paddingTop: DOT_HIT_PADDING_TOP }} testID={idPrefix}>
         <View
           className="items-center justify-center"
           nativeID={`${idPrefix}-dot`}
@@ -33,7 +37,7 @@ function TrajectoryMarker({ point, meta, idPrefix, active, onToggle, labelBelow 
           <MaterialCommunityIcons color="#ffffff" name={meta.icon} size={12} />
         </View>
         {active && (
-          <View className="absolute left-0 right-0 items-center" nativeID={`${idPrefix}-label-wrap`} style={labelBelow ? { top: 26 } : { bottom: 26 }} testID={`${idPrefix}-label-wrap`}>
+          <View className="absolute left-0 right-0 items-center" nativeID={`${idPrefix}-label-wrap`} style={labelBelow ? { top: DOT_HIT_PADDING_TOP + 26 } : { bottom: 26 }} testID={`${idPrefix}-label-wrap`}>
             <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: meta.color }} testID={`${idPrefix}-label`}>
               <Text className="text-xs font-semibold text-white" nativeID={`${idPrefix}-label-text`} numberOfLines={1} testID={`${idPrefix}-label-text`}>{meta.label}</Text>
             </View>
@@ -47,12 +51,13 @@ function TrajectoryMarker({ point, meta, idPrefix, active, onToggle, labelBelow 
 // Marcador de "acá estoy" -- avatar de solo lectura (sin onPick/onRemove),
 // mismo componente que el resto de la app usa para fotos ajenas. Borde
 // blanco para distinguirse del fondo del mapa, mismo criterio que los
-// dots de inicio/fin.
+// dots de inicio/fin. Tamaño (24, bajado de 32 -- pedido real 2026-10-25)
+// para que matchee con esos dots (22px + 2px de borde).
 function CurrentPositionMarker({ point, photoUrl, initials }) {
   return (
     <Marker anchor="center" id="live-trajectory-map-current-position" lngLat={point}>
       <View className="overflow-hidden rounded-full border-2 border-white" nativeID="live-trajectory-map-current-position-ring" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3 }} testID="live-trajectory-map-current-position-ring">
-        <AvatarPicker accessibilityLabel="Tu posición actual" fallbackIcon="account" idPrefix="live-trajectory-map-current-position-avatar" initials={initials} size={32} uri={photoUrl} />
+        <AvatarPicker accessibilityLabel="Tu posición actual" fallbackIcon="account" idPrefix="live-trajectory-map-current-position-avatar" initials={initials} size={24} uri={photoUrl} />
       </View>
     </Marker>
   );

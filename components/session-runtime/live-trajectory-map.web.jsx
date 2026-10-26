@@ -17,6 +17,19 @@ const EMPTY_LINE = { type: 'Feature', geometry: { type: 'LineString', coordinate
 // verificado en vivo que el codepoint renderiza contenido real (no un
 // glyph faltante) antes de escribir esto.
 function buildMarker(meta) {
+  // `hitArea` -- mismo criterio que route-map-preview.web.jsx: agranda la
+  // zona de toque (pedido real 2026-10-25) sin mover el dot visualmente,
+  // padding solo arriba/costados (nunca abajo, `anchor: 'bottom'` ancla
+  // contra el borde inferior de este elemento).
+  const hitArea = document.createElement('div');
+  hitArea.style.display = 'flex';
+  hitArea.style.alignItems = 'flex-end';
+  hitArea.style.justifyContent = 'center';
+  hitArea.style.paddingTop = '14px';
+  hitArea.style.paddingLeft = '10px';
+  hitArea.style.paddingRight = '10px';
+  hitArea.style.cursor = 'pointer';
+
   const dot = document.createElement('div');
   dot.style.width = '22px';
   dot.style.height = '22px';
@@ -35,6 +48,7 @@ function buildMarker(meta) {
   icon.style.lineHeight = '1';
   icon.textContent = String.fromCodePoint(meta.iconCodepoint);
   dot.appendChild(icon);
+  hitArea.appendChild(dot);
 
   const tooltip = document.createElement('div');
   tooltip.textContent = meta.label;
@@ -58,10 +72,10 @@ function buildMarker(meta) {
     tooltip.style.top = `${rect.top - 8}px`;
     tooltip.style.transform = 'translate(-50%, -100%)';
   };
-  dot.addEventListener('mouseenter', () => { positionTooltip(); tooltip.style.opacity = '1'; });
-  dot.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  hitArea.addEventListener('mouseenter', () => { positionTooltip(); tooltip.style.opacity = '1'; });
+  hitArea.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
 
-  return { element: dot, destroy: () => tooltip.remove() };
+  return { element: hitArea, destroy: () => tooltip.remove() };
 }
 
 // Marcador de "acá estoy" -- círculo con foto de perfil (fallback a
@@ -71,7 +85,9 @@ function buildMarker(meta) {
 // colores que AvatarPicker (tailwind.config.js: primary-tint #dcec9e,
 // on-primary-tint #3c6b12) para que se vea igual que en nativo.
 function buildCurrentPositionMarker(photoUrl, initials) {
-  const SIZE = 32;
+  // 24, bajado de 32 -- pedido real 2026-10-25: matchear con el tamaño de
+  // los dots de inicio/fin (22px + 2px de borde).
+  const SIZE = 24;
   const circle = document.createElement('div');
   circle.style.width = `${SIZE}px`;
   circle.style.height = `${SIZE}px`;

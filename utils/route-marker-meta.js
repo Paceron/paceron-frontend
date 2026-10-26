@@ -9,6 +9,6 @@
 // para la verificación de que ese font-family y esos codepoints son
 // reales, no copiados de memoria).
 export const ROUTE_MARKER_META = {
-  start: { color: '#ef4444', label: 'Punto de inicio', icon: 'flag-outline', iconCodepoint: 0xf023d },
-  end: { color: '#2563eb', label: 'Punto de llegada', icon: 'flag-checkered', iconCodepoint: 0xf023c },
+  start: { color: '#16a34a', label: 'Punto de inicio', icon: 'flag-outline', iconCodepoint: 0xf023d },
+  end: { color: '#f97316', label: 'Punto de llegada', icon: 'flag-checkered', iconCodepoint: 0xf023c },
 };

@@ -67,6 +67,13 @@ const EMPTY_GEOJSON = { type: 'GeometryCollection', geometries: [] };
 // de dirección (ver `addressLabel` abajo), que suele ser más larga que el
 // label fijo ("Punto de inicio"/"Punto de llegada").
 const LABEL_BAND_WIDTH = 200;
+// Pedido real 2026-10-25: "aumentemos el radio de pulsación" de los puntos
+// de inicio/fin. Solo arriba del dot, nunca abajo -- `anchor="bottom"`
+// ancla contra el borde INFERIOR de esta View, así que agregar padding
+// abajo correría el dot visualmente respecto de la coordenada real (rompe
+// el "siempre pegado a la coordenada" documentado arriba). Padding arriba
+// agranda la zona de toque sin mover nada visible.
+const DOT_HIT_PADDING_TOP = 14;
 
 // `addressLabel` -- solo lo pasa el caller cuando `interactive` (ver
 // RouteMapPreview), pedido real 2026-10-19: el pre-start de un intento de
@@ -87,7 +94,7 @@ function RouteMarker({ point, meta, idPrefix, active, onToggle, labelBelow, addr
           x2) en vez de porcentual. Dot agrandado de 14 a 22px y con un
           ícono adentro (pedido real 2026-10-24, mismo tratamiento que
           live-trajectory-map.jsx -- ver ROUTE_MARKER_META). */}
-      <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH }} testID={idPrefix}>
+      <View className="items-center" nativeID={idPrefix} style={{ width: LABEL_BAND_WIDTH, paddingTop: DOT_HIT_PADDING_TOP }} testID={idPrefix}>
         <View
           className="items-center justify-center"
           nativeID={`${idPrefix}-dot`}
@@ -100,7 +107,7 @@ function RouteMarker({ point, meta, idPrefix, active, onToggle, labelBelow, addr
           <View
             className="absolute left-0 right-0 items-center"
             nativeID={`${idPrefix}-label-wrap`}
-            style={labelBelow ? { top: 26 } : { bottom: 26 }}
+            style={labelBelow ? { top: DOT_HIT_PADDING_TOP + 26 } : { bottom: 26 }}
             testID={`${idPrefix}-label-wrap`}
           >
             <View className="rounded-md px-2 py-1" nativeID={`${idPrefix}-label`} style={{ backgroundColor: meta.color }} testID={`${idPrefix}-label`}>

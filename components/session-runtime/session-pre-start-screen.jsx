@@ -382,6 +382,15 @@ function SessionPreStartScreenContent() {
           )}
         </View>
 
+        {isWeb && (
+          <View className="mb-3 flex-row items-center justify-center gap-1.5 self-center rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-web-notice" testID="session-pre-start-screen-web-notice">
+            <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
+            <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-web-notice-label" testID="session-pre-start-screen-web-notice-label">
+              El inicio y registro del entrenamiento solo está disponible en la app nativa
+            </Text>
+          </View>
+        )}
+
         <View className="mb-6 mt-4 items-center" nativeID="session-pre-start-screen-title-block" testID="session-pre-start-screen-title-block">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-date" testID="session-pre-start-screen-date">
             {formatWeekdayLabel(pendingSession.date)}, {formatDisplayDate(pendingSession.date)}
@@ -489,14 +498,7 @@ function SessionPreStartScreenContent() {
               {gateLoading ? 'Verificando si la sesión ya está abierta…' : 'Sala de espera — esperando que el entrenador inicie la sesión.'}
             </Text>
           </View>
-        ) : isWeb ? (
-          <View className="flex-row items-center gap-1.5 self-center rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-web-notice" testID="session-pre-start-screen-web-notice">
-            <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
-            <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-web-notice-label" testID="session-pre-start-screen-web-notice-label">
-              El inicio y registro del entrenamiento solo está disponible en la app nativa
-            </Text>
-          </View>
-        ) : (
+        ) : isWeb ? null : (
           <Pressable
             className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
             disabled={starting || runnerSessionLoading}
