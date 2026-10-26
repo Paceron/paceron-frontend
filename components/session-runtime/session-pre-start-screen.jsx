@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { notifySuccess } from '../../utils/haptics.js';
@@ -24,8 +23,8 @@ import { syncRun } from '../../services/session-sync.js';
 import { isPastSessionDate } from '../../utils/session-start-window.js';
 import { findActiveMetricCompetitionId } from '../../utils/competition-match.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
-import { logDebug } from '../../utils/debug-log.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
+import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();
@@ -323,16 +322,7 @@ function SessionPreStartScreenContent() {
     // watchPositionAsync, una API distinta que no bloquea nada -- si el GPS
     // realmente no consigue un fix, simplemente no llegan puntos, mismo
     // resultado gracioso que cuando el permiso se niega.
-    const gpsStartedAt = Date.now();
-    let gpsEnabled = false;
-    try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      logDebug(`[pre-start] permiso GPS resuelto (${Date.now() - gpsStartedAt}ms) granted=${permission.granted}`);
-      gpsEnabled = Boolean(permission.granted);
-    } catch (error) {
-      logDebug(`[pre-start] GPS ERROR (${Date.now() - gpsStartedAt}ms): ${error.message}`);
-      gpsEnabled = false;
-    }
+    const gpsEnabled = await requestSessionGpsPermission('[pre-start]');
     setGpsEnabled(gpsEnabled);
     router.push(pendingSession.isPresencial ? '/training-session-live' : '/training-session-active');
   };
@@ -391,6 +381,15 @@ function SessionPreStartScreenContent() {
             </Pressable>
           )}
         </View>
+
+        {isWeb && (
+          <View className="mb-3 flex-row items-center justify-center gap-1.5 self-center rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-web-notice" testID="session-pre-start-screen-web-notice">
+            <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
+            <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-web-notice-label" testID="session-pre-start-screen-web-notice-label">
+              El inicio y registro del entrenamiento solo está disponible en la app nativa
+            </Text>
+          </View>
+        )}
 
         <View className="mb-6 mt-4 items-center" nativeID="session-pre-start-screen-title-block" testID="session-pre-start-screen-title-block">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-date" testID="session-pre-start-screen-date">
@@ -463,7 +462,7 @@ function SessionPreStartScreenContent() {
       </ScrollView>
 
       {/* Botonera fija fuera del ScrollView: la lista scrollea sin arrastrarlo. */}
-      <View className="border-t border-slate-100 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="session-pre-start-screen-footer" testID="session-pre-start-screen-footer">
+      <View className="px-4 pb-4 pt-3 dark:border-slate-800" nativeID="session-pre-start-screen-footer" testID="session-pre-start-screen-footer">
         {showReview ? (
           <View className="items-center" nativeID="session-pre-start-screen-review-container" testID="session-pre-start-screen-review-container">
             <Pressable
@@ -499,14 +498,7 @@ function SessionPreStartScreenContent() {
               {gateLoading ? 'Verificando si la sesión ya está abierta…' : 'Sala de espera — esperando que el entrenador inicie la sesión.'}
             </Text>
           </View>
-        ) : isWeb ? (
-          <View className="flex-row items-center gap-1.5 self-center rounded-full bg-emerald-50 px-3 py-1.5 dark:bg-emerald-900/20" nativeID="session-pre-start-screen-web-notice" testID="session-pre-start-screen-web-notice">
-            <MaterialCommunityIcons color="#16a34a" name="cellphone-check" size={14} />
-            <Text className="text-xs font-medium text-emerald-700 dark:text-emerald-400" nativeID="session-pre-start-screen-web-notice-label" testID="session-pre-start-screen-web-notice-label">
-              El inicio y registro del entrenamiento solo está disponible en la app nativa
-            </Text>
-          </View>
-        ) : (
+        ) : isWeb ? null : (
           <Pressable
             className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
             disabled={starting || runnerSessionLoading}

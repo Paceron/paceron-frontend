@@ -51,24 +51,8 @@ function buildSeedPlans() {
   ];
 }
 
-// Asignación individual del corredor demo (user_id 1) al primer plan, y
-// marcado como "actual" por default — así el hero de "sesión de hoy" en
-// Mis planes se ve poblado desde el primer `npm run web`, sin tener que
-// asignar/marcar nada a mano. Ver docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
-function buildSeedRunnerPlanAssignments() {
-  return [{ id: 1, plan_id: 1, user_id: 1, assigned_at: new Date().toISOString() }];
-}
-
-function buildSeedCurrentPlanMarks() {
-  return [{ id: 1, plan_id: 1, user_id: 1, marked_at: new Date().toISOString() }];
-}
-
 let mockPlans = buildSeedPlans();
-let mockRunnerPlanAssignments = buildSeedRunnerPlanAssignments();
-let mockCurrentPlanMarks = buildSeedCurrentPlanMarks();
 let nextId = 3;
-let nextAssignmentId = 2;
-let nextCurrentMarkId = 2;
 
 function findPlanOrThrow(planId) {
   const plan = mockPlans.find((p) => String(p.id) === String(planId));
@@ -138,16 +122,11 @@ export async function mockUpdateTrainingPlan(planId, updates) {
 
 export async function mockDeleteTrainingPlan(planId) {
   mockPlans = mockPlans.filter((p) => String(p.id) !== String(planId));
-  mockRunnerPlanAssignments = mockRunnerPlanAssignments.filter((a) => String(a.plan_id) !== String(planId));
-  mockCurrentPlanMarks = mockCurrentPlanMarks.filter((m) => String(m.plan_id) !== String(planId));
   return null;
 }
 
 // Copia profunda de los días — nombre con sufijo "(copia)" para que se
 // distinga de entrada en la lista, editable después como cualquier otro.
-// Nace sin ninguna asignación (ni de grupo — eso lo resuelve
-// training-plan-store.js del lado de team-store — ni individual, la
-// lista de abajo arranca vacía para el nuevo id).
 export async function mockCloneTrainingPlan(planId) {
   const original = findPlanOrThrow(planId);
   const now = new Date().toISOString();
@@ -163,67 +142,7 @@ export async function mockCloneTrainingPlan(planId) {
   return clone;
 }
 
-export async function mockListRunnerPlanAssignments({ userId, planId } = {}) {
-  let result = mockRunnerPlanAssignments;
-  if (userId != null) result = result.filter((a) => a.user_id === Number(userId));
-  if (planId != null) result = result.filter((a) => String(a.plan_id) === String(planId));
-  return [...result];
-}
-
-// Un corredor tiene una sola asignación individual activa a la vez —
-// asignar reemplaza la anterior. findPlanOrThrow valida que el plan
-// exista antes de asignarlo.
-export async function mockAssignPlanToRunner(planId, userId) {
-  findPlanOrThrow(planId);
-  mockRunnerPlanAssignments = mockRunnerPlanAssignments.filter((a) => a.user_id !== Number(userId));
-  const assignment = { id: nextAssignmentId++, plan_id: Number(planId), user_id: Number(userId), assigned_at: new Date().toISOString() };
-  mockRunnerPlanAssignments.push(assignment);
-  return assignment;
-}
-
-export async function mockUnassignPlanFromRunner(userId) {
-  mockRunnerPlanAssignments = mockRunnerPlanAssignments.filter((a) => a.user_id !== Number(userId));
-  return null;
-}
-
-// "Plan actual" — preferencia del corredor sobre cuáles de sus planes ya
-// asignados destacar arriba de todo en "Mis planes" (hero de sesión de
-// hoy), no una asignación nueva. Tope de 2 por corredor, se hace cumplir
-// acá (no solo deshabilitando el botón del lado de la UI) — mismo
-// criterio defensivo que validatePlanDays. Ver
-// docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
-export async function mockListCurrentPlanMarks({ userId } = {}) {
-  let result = mockCurrentPlanMarks;
-  if (userId != null) result = result.filter((m) => m.user_id === Number(userId));
-  return [...result];
-}
-
-export async function mockMarkPlanAsCurrent(userId, planId) {
-  findPlanOrThrow(planId);
-  const existing = mockCurrentPlanMarks.filter((m) => m.user_id === Number(userId));
-  if (existing.some((m) => String(m.plan_id) === String(planId))) {
-    return existing.find((m) => String(m.plan_id) === String(planId));
-  }
-  if (existing.length >= 2) {
-    const error = new Error('Ya tenés 2 planes marcados como actuales — desmarcá uno primero.');
-    error.status = 422;
-    throw error;
-  }
-  const mark = { id: nextCurrentMarkId++, plan_id: Number(planId), user_id: Number(userId), marked_at: new Date().toISOString() };
-  mockCurrentPlanMarks.push(mark);
-  return mark;
-}
-
-export async function mockUnmarkPlanAsCurrent(userId, planId) {
-  mockCurrentPlanMarks = mockCurrentPlanMarks.filter((m) => !(m.user_id === Number(userId) && String(m.plan_id) === String(planId)));
-  return null;
-}
-
 export function __resetMockTrainingPlans() {
   mockPlans = buildSeedPlans();
-  mockRunnerPlanAssignments = buildSeedRunnerPlanAssignments();
-  mockCurrentPlanMarks = buildSeedCurrentPlanMarks();
   nextId = 3;
-  nextAssignmentId = 2;
-  nextCurrentMarkId = 2;
 }

@@ -46,13 +46,23 @@ export function useRouteDrawPicker({ value, onChange }) {
   // de Toast/haptics acá (hook agnóstico de plataforma, cada picker
   // decide cómo avisar el error) -- devuelve {lat,lng} o null, el caller
   // mueve SU PROPIA cámara (ref nativo vs maplibregl.Map en web).
-  const locateMe = useCallback(async () => {
-    setLocating(true);
-    setLocateError(null);
+  //
+  // `silent` (pedido real, 2026-10-17: "quiero que el mapa enfoque por
+  // defecto en la ubicacion actual... en todas las plataformas") -- el
+  // intento automático al abrir el picker no debe prender el spinner del
+  // botón "mi ubicación" ni mostrar un mensaje de error si el permiso
+  // está denegado (es un intento silencioso de fondo, no una acción del
+  // usuario); el botón explícito sigue llamando sin opciones (silent por
+  // default en false) y se comporta exactamente igual que antes.
+  const locateMe = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLocating(true);
+      setLocateError(null);
+    }
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setLocateError('Necesitamos permiso de ubicación para esto.');
+        if (!silent) setLocateError('Necesitamos permiso de ubicación para esto.');
         return null;
       }
       let position;
@@ -62,15 +72,15 @@ export function useRouteDrawPicker({ value, onChange }) {
         position = await Location.getLastKnownPositionAsync();
       }
       if (!position) {
-        setLocateError('No pudimos obtener tu ubicación actual.');
+        if (!silent) setLocateError('No pudimos obtener tu ubicación actual.');
         return null;
       }
       return { lat: position.coords.latitude, lng: position.coords.longitude };
     } catch {
-      setLocateError('No pudimos obtener tu ubicación actual.');
+      if (!silent) setLocateError('No pudimos obtener tu ubicación actual.');
       return null;
     } finally {
-      setLocating(false);
+      if (!silent) setLocating(false);
     }
   }, []);
 

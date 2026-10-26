@@ -47,6 +47,7 @@ const CREATE_SESSION_RUNS = `
     session_date             TEXT NOT NULL,
     team_id                  INTEGER,
     athlete_user_id          INTEGER,
+    competition_id           INTEGER,
     report_source            TEXT NOT NULL DEFAULT 'corredor',
     gps_enabled              INTEGER NOT NULL DEFAULT 0,
     started_at               TEXT,
@@ -61,10 +62,14 @@ const CREATE_SESSION_RUNS = `
 
 // Migración liviana para bases existentes (CREATE TABLE IF NOT EXISTS no agrega
 // columnas). Los ALTER se corren en try/catch: si la columna ya existe, SQLite
-// tira "duplicate column name" y se ignora.
+// tira "duplicate column name" y se ignora. El nombre quedó de cuando solo
+// cubría las 2 columnas de runner_session -- `competition_id` se suma acá
+// mismo (mismo mecanismo, cualquier columna nueva de session_runs entra por
+// esta lista).
 const RUNNER_SESSION_COLUMN_MIGRATIONS = [
   'ALTER TABLE session_runs ADD COLUMN runner_session_created INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE session_runs ADD COLUMN runner_session_finished INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE session_runs ADD COLUMN competition_id INTEGER',
 ];
 
 const CREATE_EXERCISE_SETS = `
@@ -117,13 +122,13 @@ export async function initSessionDb() {
 
 // Crea el run y siembra TODAS las series de la sesión como `pending` (los ids
 // de ejercicios son del backend: exercise_instance_id). Devuelve el runId.
-export async function createRun({ sessionInstanceId, sessionName, sessionDate, teamId, userId, gpsEnabled, exercises }) {
+export async function createRun({ sessionInstanceId, sessionName, sessionDate, teamId, userId, gpsEnabled, exercises, competitionId }) {
   const db = await getDb();
   const result = await db.runAsync(
     `INSERT INTO session_runs
-       (session_instance_id, session_name, session_date, team_id, athlete_user_id, gps_enabled, started_at, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [toNumberOrNull(sessionInstanceId), sessionName, sessionDate, toNumberOrNull(teamId), toNumberOrNull(userId), gpsEnabled ? 1 : 0, toIsoUtc(), RUN_STATUS.IN_PROGRESS]
+       (session_instance_id, session_name, session_date, team_id, athlete_user_id, gps_enabled, started_at, status, competition_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [toNumberOrNull(sessionInstanceId), sessionName, sessionDate, toNumberOrNull(teamId), toNumberOrNull(userId), gpsEnabled ? 1 : 0, toIsoUtc(), RUN_STATUS.IN_PROGRESS, toNumberOrNull(competitionId)]
   );
   const runId = result.lastInsertRowId;
   let displayOrder = 0;

@@ -8,18 +8,12 @@ import {
   cloneTrainingPlan as cloneTrainingPlanService,
 } from '../services/trainingPlans.js';
 import { toTrainingPlanModel, toCreateTrainingPlanPayload, toUpdateTrainingPlanPayload } from '../services/normalizers.js';
-import { useTrainingPlanStore } from '../store/training-plan-store.js';
 
 // Catálogo de planes de entrenamiento — TanStack Query, no Zustand (ver
 // CLAUDE.md). Última pieza del catálogo (ejercicios/sesiones ya
 // migrados) en pasar a Query, ahora que el diseño de TrainingPlan quedó
 // estable (duración variable, sin caducidad) y el backend real está
-// cableado (ver docs/BACKEND_API_GAPS.md gap 4). `store/training-plan-store.js`
-// sigue existiendo para lo que NO es catálogo puro: `myPlans`/`fetchMyPlans`
-// (asignación individual al corredor, vieja y mockeada, ver la nota de
-// obsolescencia en docs/BACKEND_TRAINING_PLANS_SPEC.md §3.6) y "plan
-// actual". La asignación a un grupo se retiró 2026-09-21 — el mecanismo
-// real es el calendario de grupo.
+// cableado (ver docs/BACKEND_API_GAPS.md gap 4).
 
 export function useTrainingPlans(ownerId) {
   const query = useQuery({
@@ -101,7 +95,6 @@ export function useTrainingPlanMutations() {
     onSuccess: (result, variables) => {
       if (result.success) {
         invalidate(variables.ownerId, variables.planId);
-        useTrainingPlanStore.getState().cleanupAfterPlanDeleted(variables.planId);
       }
     },
   });

@@ -7,7 +7,6 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useTrainingPlanStore } from '../../store/training-plan-store.js';
 import { useTrainingPlan, useTrainingPlanMutations } from '../../hooks/use-training-plans.js';
 import { useSessions } from '../../hooks/use-sessions.js';
 import { useExercises } from '../../hooks/use-exercises.js';
@@ -134,22 +133,13 @@ function TrainingPlanDetailScreenContent({ planId }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const activeRole = useAuthStore((s) => s.activeRole);
-  // myPlans (corredor viendo un plan asignado a su grupo/persona) sigue
-  // siendo Zustand — no es catálogo del entrenador, es la composición
-  // client-side de asignaciones (ver store). Se usa como fallback
-  // mientras el query resuelve, y como única fuente si el query devuelve
-  // vacío (ej. el corredor no es owner, cachear por owner no aplica).
-  const myPlanFallback = useTrainingPlanStore((s) => s.myPlans.find((p) => p.id === planId));
-  const { plan: queriedPlan, loading: queryLoading } = useTrainingPlan(planId);
+  const { plan, loading } = useTrainingPlan(planId);
   const { deletePlan, clonePlan } = useTrainingPlanMutations();
-  const plan = queriedPlan ?? myPlanFallback;
   // Sesiones/ejercicios son del catálogo de QUIEN CREÓ el plan
   // (plan.ownerId) — no del usuario que está mirando la pantalla, que
   // puede ser un corredor viendo un plan que no es suyo.
   const { sessions } = useSessions(plan?.ownerId);
   const { exercises } = useExercises(plan?.ownerId);
-
-  const loading = queryLoading && !myPlanFallback;
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [cloning, setCloning] = useState(false);
 

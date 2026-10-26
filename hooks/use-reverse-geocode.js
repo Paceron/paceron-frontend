@@ -6,11 +6,11 @@ import { reverseGeocode } from '../services/geocoding.js';
 // (['reverse-geocode', lat, lng]), así que reabrir/re-expandir la misma fila
 // no vuelve a pegarle a Nominatim (que pide explícitamente no pasar de
 // ~1 request/segundo, ver services/geocoding.js).
-export function useReverseGeocode(lat, lng) {
+export function useReverseGeocode(lat, lng, enabled = true) {
   const query = useQuery({
     queryKey: ['reverse-geocode', lat, lng],
     queryFn: () => reverseGeocode(lat, lng),
-    enabled: typeof lat === 'number' && typeof lng === 'number',
+    enabled: enabled && typeof lat === 'number' && typeof lng === 'number',
     staleTime: Infinity,
   });
 

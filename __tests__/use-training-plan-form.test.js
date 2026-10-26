@@ -1,20 +1,4 @@
 import { renderHook, act } from '@testing-library/react-native';
-
-jest.mock('../services/trainingPlans.js', () => ({
-  listTrainingPlans: jest.fn(),
-  getTrainingPlan: jest.fn(),
-  createTrainingPlan: jest.fn(),
-  updateTrainingPlan: jest.fn(),
-  deleteTrainingPlan: jest.fn(),
-  cloneTrainingPlan: jest.fn(),
-  listRunnerPlanAssignments: jest.fn(),
-  assignPlanToRunner: jest.fn(),
-  unassignPlanFromRunner: jest.fn(),
-  listCurrentPlanMarks: jest.fn(),
-  markPlanAsCurrent: jest.fn(),
-  unmarkPlanAsCurrent: jest.fn(),
-}));
-
 import { useTrainingPlanForm } from '../hooks/use-training-plan-form.js';
 
 test('validate rechaza un día presencial sin horario completo', () => {

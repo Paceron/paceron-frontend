@@ -1,27 +1,25 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
 import { useRouteDrawPicker } from '../../hooks/use-route-draw-picker.js';
+import { useUser } from '../../hooks/use-user.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { formatMeters } from '../../utils/distance.js';
 import { buildRadiusHaloWidthExpression } from '../../utils/map-radius-expression.js';
 import { FIELD_LABEL } from '../forms/fields.jsx';
 
 const DEFAULT_CENTER = { lat: -34.6037, lng: -58.3816 };
-// Placeholder para los 3 GeoJSONSource de abajo mientras no hay dato real
-// todavía -- causa real del crash (maplibre/maplibre-react-native#594,
-// confirmado 2026-10-17 con logs reales: el commit de React llegaba bien,
-// el crash nativo pasaba recién al montar el source+layer juntos la
-// PRIMERA vez CON datos reales, no por timing de carga -- `mapReady` ya
-// estaba en true). El fix documentado en ese issue (resuelto para el caso
-// de visibilidad en v11.0.0, pero el patrón de origen -- fuente+capa
-// agregados juntos por primera vez con geometría real -- es el mismo que
-// gatilla este crash en Android): el GeoJSONSource NUNCA se monta/desmonta
-// condicionalmente -- se monta UNA SOLA VEZ (gateado solo por `mapReady`,
-// cuando no hay riesgo de carrera con el estilo) con este shape vacío, y
-// después solo cambia el contenido de `shape` en vivo.
+// Placeholder para cuando un GeoJSONSource (siempre montado, ver más abajo)
+// todavía no tiene dato real que mostrar. BUG REAL encontrado 2026-10-18:
+// un `Feature` con geometría `LineString`/`Point` y `coordinates: []` NO es
+// válido para el SDK nativo ("A line string must have two or more
+// coordinate points" / "coordinates array must have at least 2 numbers",
+// error real de MapLibre Native en logcat) -- `GeometryCollection` con
+// `geometries: []` sí es válido vacío, es el único placeholder que
+// funciona para cualquier tipo de geometría.
 const EMPTY_GEOJSON = { type: 'GeometryCollection', geometries: [] };
 
 // Dibujo de ruta por tap (Spec 4c, type='route') -- cada tap sobre el mapa
@@ -32,32 +30,49 @@ const EMPTY_GEOJSON = { type: 'GeometryCollection', geometries: [] };
 // `acceptanceRadiusMeters` (pedido real, 2026-10-16) solo se usa acá para
 // dibujar el halo -- el campo real sigue viviendo en create-competition-
 // modal.jsx, este componente no lo posee.
-export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
+//
+// CAUSA REAL de un crash nativo largo de investigar (ver CLAUDE.md, sección
+// maplibre-react-native): `GeoJSONSource` necesita el prop `data`, no
+// `shape` -- `shape` no existe en esta versión de la librería, se ignoraba
+// en silencio y el campo nativo quedaba siempre null, cayendo a un
+// fallback (`uri!!`) que explotaba con NullPointerException. `mapReady`
+// (abajo) sigue siendo necesario -- evita llamar a getStyle() antes de que
+// el mapa exista.
+export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters, onMapTouchStart, onMapTouchEnd }) {
   const colors = useThemeColors();
   const picker = useRouteDrawPicker({ value, onChange });
   const cameraRef = useRef(null);
-  // Crash real en Android, 2026-10-17 (NullPointerException en
-  // MLRNSource.addToMap -> MapLibreMap.getStyle(), confirmado por
-  // screenshot del error nativo): agregar un GeoJSONSource ANTES de que
-  // el estilo nativo del mapa termine de cargar deja `getStyle()` en null
-  // adentro de la librería. Pasaba al tocar el mapa para plantar el
-  // primer punto -- el nuevo source del punto de inicio se montaba en el
-  // mismo render que agregaba el punto, sin esperar a que el mapa
-  // avisara que ya estaba listo. Gatear TODOS los GeoJSONSource (no solo
-  // el nuevo) detrás de este flag -- el mismo riesgo existía ya para la
-  // línea/halo, solo que nunca se disparó en la práctica porque esos
-  // necesitan 2+ puntos (más tiempo para que el mapa termine de cargar).
   const [mapReady, setMapReady] = useState(false);
+  const currentUserId = useAuthStore((s) => s.userId);
+  const { user } = useUser(currentUserId);
 
-  // Logs de diagnóstico temporales (2026-10-17) -- pedido real: "sumemos
-  // todos los logs posibles... para detectar cada accion o escenario".
-  if (__DEV__) {
-    console.log('[MAP-DEBUG draw-picker] render', { confirmed: picker.confirmed, mapReady, pointsLen: picker.points.length });
-  }
+  // Centro por defecto: GPS real -> dirección del perfil -> Buenos Aires
+  // (pedido real, 2026-10-17: "en todas las plataformas"). Silencioso
+  // (`silent: true`) -- un intento automático al abrir el picker no debe
+  // mostrar el spinner del botón ni un mensaje de error si el permiso
+  // está denegado; el botón "mi ubicación" sigue sirviendo para pedirlo
+  // explícito. Solo corre si todavía no hay una ruta cargada (editar una
+  // ya confirmada no debería mover la cámara del usuario).
+  useEffect(() => {
+    if (picker.points.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      const gps = await picker.locateMe({ silent: true });
+      if (cancelled) return;
+      if (gps) {
+        cameraRef.current?.flyTo({ center: [gps.lng, gps.lat], zoom: 15, duration: 600 });
+        return;
+      }
+      if (user?.lat != null && user?.lng != null) {
+        cameraRef.current?.flyTo({ center: [user.lng, user.lat], zoom: 13, duration: 600 });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleMapPress = (event) => {
     const [lng, lat] = event.nativeEvent.lngLat;
-    if (__DEV__) console.log('[MAP-DEBUG draw-picker] onPress (tap sobre el mapa)', { lat, lng, mapReady, pointsBefore: picker.points.length, t: Date.now() });
     picker.addPoint(lat, lng);
   };
 
@@ -97,29 +112,46 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
         <View
           className={`h-72 overflow-hidden rounded-xl border dark:border-slate-700 ${picker.confirmed ? 'border-2 border-primary' : 'border-slate-200'}`}
           nativeID="route-draw-picker-map-wrapper"
-          onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG draw-picker] map-wrapper onTouchEnd (toque crudo llegó hasta acá)', { t: Date.now() }); }}
-          onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG draw-picker] map-wrapper onTouchStart (toque crudo llegó hasta acá)', { t: Date.now() }); }}
+          onTouchCancel={onMapTouchEnd}
+          onTouchEnd={onMapTouchEnd}
+          onTouchStart={onMapTouchStart}
           testID="route-draw-picker-map-wrapper"
         >
           <Map
+            attribution={false}
+            logo={false}
             mapStyle={OPENFREEMAP_STYLE_URL}
             nativeID="route-draw-picker-map"
-            onDidFailLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onDidFailLoadingMap'); }}
-            onDidFinishLoadingMap={() => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onDidFinishLoadingMap', { t: Date.now() }); setMapReady(true); }}
+            onDidFinishLoadingMap={() => setMapReady(true)}
             onPress={handleMapPress}
+            // Logs de diagnóstico temporales (2026-10-18) -- pedido real:
+            // tap para plantar puntos anda bien, pero pan/pinch-zoom no
+            // responden dentro del modal. Si `onRegionIsChanging` NUNCA
+            // aparece al deslizar/pellizcar, el gesto no está llegando a
+            // MapLibre -- compararlo contra `onPress`, que si llega.
             onRegionDidChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionDidChange (fin de pan/pinch)', e.nativeEvent); }}
-            onRegionIsChanging={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionIsChanging (pan/pinch en curso -- si NUNCA aparece este log al deslizar/pellizcar, el gesto no está llegando a MapLibre)', e.nativeEvent); }}
+            onRegionIsChanging={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionIsChanging (pan/pinch en curso)', e.nativeEvent); }}
             onRegionWillChange={(e) => { if (__DEV__) console.log('[MAP-DEBUG draw-picker] onRegionWillChange (arranca pan/pinch)', e.nativeEvent); }}
             style={{ flex: 1 }}
             testID="route-draw-picker-map"
           >
             <Camera initialViewState={{ center: initialCenter, zoom: 13 }} ref={cameraRef} />
-            {/* Los 3 GeoJSONSource de abajo se montan UNA SOLA VEZ (gateados
-                solo por `mapReady`) -- nunca condicionados por
-                points.length/confirmed, eso es justo el patrón que crashea
-                (ver EMPTY_GEOJSON arriba). Solo cambia `shape` en vivo. */}
+            {/* Los 3 GeoJSONSource (y el halo-Layer de adentro del primero)
+                se montan UNA SOLA VEZ, gateados solo por `mapReady` -- NUNCA
+                condicionados por points.length/confirmed/showHalo, eso
+                causaba un crash real distinto del de `shape` vs `data` (ver
+                CLAUDE.md): sacar un sibling del MEDIO (ej. el halo, o el
+                line-source al deshacer de 2 puntos a 1) desplaza el índice
+                nativo del resto, y la librería reclama "`id` cannot be
+                changed" al intentar reasignarle el id equivocado al vecino
+                que quedó corrido. Reproducido real: crasheaba al vaciar el
+                campo de radio de aceptación (showHalo pasa a false, el halo
+                Layer se desmontaba). Mientras tanto el `data`/`lineOpacity`
+                sí cambian en vivo sin problema -- eso es una actualización
+                de props sobre un source/layer que ya existe, no un
+                mount/unmount. */}
             {mapReady && (
-              <GeoJSONSource id="route-draw-picker-line-source" shape={picker.points.length > 1 ? lineGeojson : EMPTY_GEOJSON}>
+              <GeoJSONSource data={picker.points.length > 1 ? lineGeojson : EMPTY_GEOJSON} id="route-draw-picker-line-source">
                 <Layer
                   id="route-draw-picker-halo-layer"
                   // `lineCap`/`lineJoin: 'round'` -- pedido real: "controlemos
@@ -136,8 +168,7 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                   // da gratis vía style spec, haría falta calcular la
                   // geometría a mano. Fuera de alcance por ahora (el
                   // usuario lo marcó como "no grave"); esto es una mitigación
-                  // parcial, no la solución estructural. `lineOpacity` (no
-                  // mount/unmount) decide si se ve.
+                  // parcial, no la solución estructural.
                   style={{ lineCap: 'round', lineColor: '#8cc63e', lineJoin: 'round', lineOpacity: showHalo ? 0.35 : 0, lineWidth: buildRadiusHaloWidthExpression(radiusMeters, centerLat) }}
                   type="line"
                 />
@@ -158,12 +189,12 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
                 "el último punto" todavía no es definitivo, puede seguir
                 agregando. */}
             {mapReady && (
-              <GeoJSONSource id="route-draw-picker-start-source" shape={picker.points.length >= 1 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} } : EMPTY_GEOJSON}>
+              <GeoJSONSource data={picker.points.length >= 1 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[0].lng, picker.points[0].lat] }, properties: {} } : EMPTY_GEOJSON} id="route-draw-picker-start-source">
                 <Layer id="route-draw-picker-start-layer" style={{ circleColor: '#ef4444', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}
             {mapReady && (
-              <GeoJSONSource id="route-draw-picker-end-source" shape={picker.confirmed && picker.points.length >= 2 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} } : EMPTY_GEOJSON}>
+              <GeoJSONSource data={picker.confirmed && picker.points.length >= 2 ? { type: 'Feature', geometry: { type: 'Point', coordinates: [picker.points[picker.points.length - 1].lng, picker.points[picker.points.length - 1].lat] }, properties: {} } : EMPTY_GEOJSON} id="route-draw-picker-end-source">
                 <Layer id="route-draw-picker-end-layer" style={{ circleColor: '#2563eb', circleRadius: 6, circleStrokeColor: '#ffffff', circleStrokeWidth: 2 }} type="circle" />
               </GeoJSONSource>
             )}

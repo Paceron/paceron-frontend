@@ -17,6 +17,47 @@ export function __resetRunnerSessionMock() {
   nextRunnerSessionId = 1;
 }
 
+// Seed de un intento de competencia de ruta ya completado y sincronizado
+// (athlete_user_id 101, Lucía Fernández, participante de la competición
+// seed 7 de competitions-mock.js, session_instance_id 9000) -- pedido
+// real 2026-10-21: poder verificar en web el camino 'synced' del detalle
+// de intento (hasta ahora solo probable con el camino local/recién
+// terminado, mobile-only). Vive FUERA de __resetRunnerSessionMock (que
+// los tests existentes esperan que limpie a vacío) -- se agrega una sola
+// vez acá, al cargar el módulo; cualquier test que llame al reset la
+// borra igual que el resto del estado, sin romper nada.
+runnerSessions.push({
+  id: 9000,
+  session_instance_id: 9000,
+  athlete_user_id: 101,
+  status: 'finished',
+  start_date: '2026-10-18T14:02:00Z',
+  end_date: '2026-10-18T14:03:47Z',
+  competition_id: 7,
+});
+// Segundo intento de la MISMA atleta contra la MISMA competencia -- pedido
+// real 2026-10-21 (Gap 36, intentos múltiples configurables): necesita
+// existir un atleta con MÁS de un intento contra la misma competencia para
+// poder probar pickBestAttempt/AttemptsListModal contra datos reales, no
+// solo tests unitarios aislados. session_instance_id 9010, no 9001 -- el
+// rango 9001+ lo usa nextSyntheticInstanceId de competitions-mock.js para
+// instancias creadas EN RUNTIME (nueva competencia, o segundo+ intento real
+// vía mockCreateCompetitionAttempt); un id fijo en el bloque "reservado para
+// seeds" (9000 = seed 7 intento 1, 9100 = seed 8) evita cualquier colisión
+// futura. Peor que el intento 9000 a propósito (ver el feedback/puntos
+// correspondientes en workoutFeedback-mock.js) -- así pickBestAttempt tiene
+// un ganador real y verificable, no dos intentos empatados por accidente.
+runnerSessions.push({
+  id: 9001,
+  session_instance_id: 9010,
+  athlete_user_id: 101,
+  status: 'finished',
+  start_date: '2026-10-19T09:00:00Z',
+  end_date: '2026-10-19T09:03:05Z',
+  competition_id: 7,
+});
+nextRunnerSessionId = 9002;
+
 // Seed para pruebas deterministas de la pantalla de revisión.
 export function __seedRunnerSession(dto) {
   const row = { id: nextRunnerSessionId++, status: 'wip', end_date: null, ...dto };
@@ -35,6 +76,17 @@ export function __countFinishedRunnerSessionsByCompetition(competitionId, athlet
   return runnerSessions.filter(
     (r) => r.competition_id === Number(competitionId) && r.athlete_user_id === Number(athleteUserId) && r.status === 'finished',
   ).length;
+}
+
+// Lista CRUDA (sin joins) de las filas de runner_session de UN atleta contra
+// UNA competencia -- base de GET /competitions/{id}/attempts (Gap 36,
+// intentos múltiples). A diferencia de __countFinishedRunnerSessionsByCompetition
+// (que solo cuenta 'finished'), esto devuelve TODAS las filas sin filtrar por
+// status -- el caller (competitions-mock.js) decide qué hacer con cada una.
+export function __listRunnerSessionsByCompetitionAndAthlete(competitionId, athleteUserId) {
+  return runnerSessions.filter(
+    (r) => r.competition_id === Number(competitionId) && r.athlete_user_id === Number(athleteUserId),
+  );
 }
 
 function findRow(sessionInstanceId, athleteUserId) {

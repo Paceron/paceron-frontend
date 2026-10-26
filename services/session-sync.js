@@ -36,9 +36,19 @@ export async function syncRun(runId) {
 
   if (!run.runner_session_created) {
     try {
+      // `competitionId` -- bug real reportado 2026-10-25: faltaba acá, así
+      // que ningún intento de competencia de ruta quedaba tageado con su
+      // competition_id en el runner_session real. Sin el tag, GET
+      // /competitions/{id}/attempts (Gap 36, usado por competitions-tab.jsx
+      // para el cupo restante y por AttemptsListModal) nunca encontraba el
+      // intento recién corrido -- se podía volver a jugar la misma
+      // trayectoria indefinidamente. `run.competition_id` viene de
+      // session-db.js (columna sumada en la misma fecha), seteada por
+      // route-attempt-live-screen.jsx al crear el run local.
       await createRunnerSession(run.session_instance_id, {
         startDate: run.started_at ?? undefined,
         athleteUserId: run.athlete_user_id ?? undefined,
+        competitionId: run.competition_id ?? undefined,
       });
       await markRunnerSessionCreated(runId);
     } catch (error) {
