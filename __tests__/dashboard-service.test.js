@@ -13,6 +13,8 @@ jest.mock('../services/__mocks__/dashboard-mock.js', () => ({
   mockGetDashboardExerciseSeries: jest.fn(async () => ({})),
   mockPostDashboardComparisons: jest.fn(async () => ({})),
   mockPostDashboardPeriods: jest.fn(async () => ({})),
+  mockPostDashboardSessionComparison: jest.fn(async () => ({})),
+  mockGetDashboardGroupAthletes: jest.fn(async () => []),
 }));
 
 // El store de sesión usa SecureStore y el theme provider, que no existen bajo
@@ -36,6 +38,8 @@ import {
   getDashboardExerciseSeries,
   postDashboardComparisons,
   postDashboardPeriods,
+  postDashboardSessionComparison,
+  getDashboardGroupAthletes,
 } from '../services/dashboard.js';
 import {
   mockGetDashboardSummary,
@@ -226,6 +230,34 @@ describe('dashboard service — cuerpos de los POST', () => {
     expect(body.current.from).toBe('2026-09-15');
     expect(body.from).toBeUndefined();
     expect(body.to).toBeUndefined();
+  });
+
+  test('la comparación de sesiones manda ambas referencias completas y fechas ISO', async () => {
+    await postDashboardSessionComparison({
+      teamId: '4',
+      from: '15/09/2026',
+      to: '13/10/2026',
+      a: { groupId: '41', athleteUserId: '101', sessionInstanceId: '7100', exerciseId: '5' },
+      b: { groupId: 42, athleteUserId: 105, sessionInstanceId: 7101, exerciseId: 8 },
+    });
+
+    const [path, body] = api.post.mock.calls[0];
+    expect(path).toBe('/dashboard/comparisons/sessions');
+    expect(body).toEqual({
+      team_id: 4,
+      from: '2026-09-15',
+      to: '2026-10-13',
+      a: { group_id: 41, athlete_user_id: 101, session_instance_id: 7100, exercise_id: 5 },
+      b: { group_id: 42, athlete_user_id: 105, session_instance_id: 7101, exercise_id: 8 },
+    });
+    expect(body).not.toHaveProperty('distance_from_m');
+    expect(body).not.toHaveProperty('time_to_min');
+  });
+
+  test('el roster del grupo usa el endpoint existente y devuelve solo sus ids', async () => {
+    api.get.mockResolvedValueOnce([{ user_id: 101 }, { user_id: 102 }]);
+    await getDashboardGroupAthletes({ teamId: 4, groupId: 41 });
+    expect(lastGet()).toBe('/groups/41/users');
   });
 });
 

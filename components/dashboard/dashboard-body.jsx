@@ -2,9 +2,8 @@ import { View } from 'react-native';
 import { PaletteSwitch } from './palette-switch.jsx';
 
 // El cuerpo de la pantalla de rendimiento: la paleta de métricas (KPIs + grilla
-// de gráficos) y lo que le pase el llamador. Desde 2026-10-23 el llamador pasa
-// el panel de pestañas con el perfil de cinco ejes, el ranking y la comparación
-// por período; así esas tres piezas comparten panel en vez de apilarse.
+// de gráficos) y lo que le pase el llamador. El panel de pestañas agrupa el perfil,
+// el ranking y la comparación (sesiones A/B y períodos) en vez de apilarlos.
 //
 // Antes había dos variantes enteras, una por rol, y la única diferencia real
 // entre ellas era qué secciones se agregaban al final: los mismos KPIs, la misma

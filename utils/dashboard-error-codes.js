@@ -26,7 +26,7 @@ export const DASHBOARD_ERROR_CODES = {
   },
   INVALID_RANGE: {
     action: 'narrow_range',
-    message: 'El rango pedido supera los 2 años. Acortalo para ver las métricas.',
+    message: 'Las fechas o los límites del rango no son válidos. Revisá los valores ingresados.',
   },
   INVALID_TOLERANCE: {
     action: 'reset_tolerance',
@@ -60,12 +60,13 @@ export function resolveDashboardError(error) {
     const known = code && Object.prototype.hasOwnProperty.call(DASHBOARD_ERROR_CODES, code)
       ? DASHBOARD_ERROR_CODES[code]
       : null;
+    const backendMessage = typeof error?.data?.message === 'string' ? error.data.message.trim() : '';
     return {
       status,
       code,
       kind: 'invalid',
       action: known?.action ?? 'none',
-      message: known?.message ?? GENERIC_400,
+      message: (code === 'INVALID_RANGE' && backendMessage) || known?.message || GENERIC_400,
       retryable: false,
     };
   }

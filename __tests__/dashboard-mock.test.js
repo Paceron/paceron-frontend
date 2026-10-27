@@ -6,6 +6,8 @@ import {
   mockGetDashboardExerciseSeries,
   mockPostDashboardComparisons,
   mockPostDashboardPeriods,
+  mockPostDashboardSessionComparison,
+  mockGetDashboardGroupAthletes,
   __getMockDashboardSeed,
   __setMockDashboardToday,
   __resetMockDashboard,
@@ -28,6 +30,7 @@ const GROUP_AVANZADO = 42;
 
 const ELONGACION = 2; // sin objetivo cargado → has_target false (paleta B)
 const RITMO_10K = 5; // ritmo_continuo con objetivo de tiempo y distancia
+const VELOCIDAD_DISTANCIA = 8; // distancia con tiempo logrado para derivar velocidad
 const VMAX_100 = 10; // velocidad_distancia: objetivo de distancia sin tiempo
 const V_TIEMPO_60 = 12; // velocidad_tempo: sin distancia → sin velocidad
 
@@ -605,6 +608,66 @@ describe('dashboard mock — comparaciones', () => {
     expect(data.delta).toBeNull();
     // Presentarlo como "estable" sería mentir sobre datos que no existen.
     expect(data.verdict).toBe('stable');
+  });
+
+  test('la comparación A/B agrupa cada sesión y entrega KPIs, extremos, RPE y puntos', async () => {
+    const seed = __getMockDashboardSeed();
+    const aSession = seed.sessions.find((session) => session.group_id === GROUP_GENERAL && session.status !== 'wip'
+      && seed.series.some((row) => row.session_instance_id === session.id && row.athlete_user_id === 101 && row.exercise_id === RITMO_10K));
+    const bSession = seed.sessions.find((session) => session.group_id === GROUP_AVANZADO && session.status !== 'wip'
+      && seed.series.some((row) => row.session_instance_id === session.id && row.athlete_user_id === 105
+        && row.exercise_id === VELOCIDAD_DISTANCIA && isValid(row) && speedOf(row) !== null));
+
+    const response = await mockPostDashboardSessionComparison({
+      team_id: TEAM_WITH_DATA,
+      callerUserId: TRAINER,
+      from: '2026-07-01',
+      to: TODAY,
+      a: { group_id: GROUP_GENERAL, athlete_user_id: 101, session_instance_id: aSession.id, exercise_id: RITMO_10K },
+      b: { group_id: GROUP_AVANZADO, athlete_user_id: 105, session_instance_id: bSession.id, exercise_id: VELOCIDAD_DISTANCIA },
+    });
+
+    const rowsA = seed.series.filter((row) => row.session_instance_id === aSession.id && row.athlete_user_id === 101 && row.exercise_id === RITMO_10K);
+    expect(response.a.series_count).toBe(rowsA.length);
+    expect(response.a.valid_series).toBe(rowsA.filter(isValid).length);
+    expect(response.a.session_instance_id).toBe(aSession.id);
+    expect(response.a.athlete_name).toBe('Lucía');
+    expect(response.a.series).toHaveLength(rowsA.length);
+    expect(response.a.rpe_count).toBe(rowsA.filter((row) => row.rpe !== null).length);
+    expect(response.a.mean_rpe).not.toBeNull();
+    expect(response.b.kind).toBe('velocidad_distancia');
+    expect(response.b.best).not.toBeNull();
+    expect(response.delta.direction).toBe('b_minus_a');
+    expect(response.units).toEqual({ duration: 'ms', distance: 'm', speed: 'km/h', rpe: '1-10' });
+  });
+
+  test('el mock permite al corredor comparar sus sesiones y rechaza atletas ajenos', async () => {
+    const seed = __getMockDashboardSeed();
+    const session = seed.sessions.find((candidate) => candidate.group_id === GROUP_GENERAL && candidate.status !== 'wip'
+      && seed.series.some((row) => row.session_instance_id === candidate.id && row.athlete_user_id === RUNNER && row.exercise_id === RITMO_10K));
+    const request = {
+      team_id: TEAM_WITH_DATA,
+      callerUserId: RUNNER,
+      from: '2026-07-01',
+      to: TODAY,
+      a: { group_id: GROUP_GENERAL, athlete_user_id: RUNNER, session_instance_id: session.id, exercise_id: RITMO_10K },
+      b: { group_id: GROUP_GENERAL, athlete_user_id: RUNNER, session_instance_id: session.id, exercise_id: RITMO_10K },
+    };
+
+    const response = await mockPostDashboardSessionComparison(request);
+    expect(response.a.athlete_user_id).toBe(RUNNER);
+
+    await expect(mockPostDashboardSessionComparison({
+      ...request,
+      b: { ...request.b, athlete_user_id: 102 },
+    })).rejects.toMatchObject({ status: 403 });
+  });
+
+  test('el roster por grupo queda limitado al team y al rol caller', async () => {
+    await expect(mockGetDashboardGroupAthletes({ teamId: TEAM_WITH_DATA, groupId: GROUP_GENERAL, callerUserId: TRAINER }))
+      .resolves.toEqual([101, 102, 103]);
+    await expect(mockGetDashboardGroupAthletes({ teamId: TEAM_WITH_DATA, groupId: GROUP_GENERAL, callerUserId: RUNNER }))
+      .resolves.toEqual([RUNNER]);
   });
 });
 

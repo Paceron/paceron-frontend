@@ -182,7 +182,7 @@ export function PaletteWithTarget({
       {/* Los gráficos arrancan minimizados en una grilla de dos columnas. El
           estado de qué está maximizado vive en `ChartGrid` y no en cada tarjeta:
           el control "Maximizar todos" necesita el conjunto completo. */}
-      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesSamples)}>
+      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesSamples)} initialExpandedId={`${id}-evolution-card`}>
         <ChartGridItem
           description="Porcentaje de las series con objetivo cargado que lo cumplieron dentro de la tolerancia aplicada. La barra no se estira más allá del objetivo: la escala termina en 100 %, y las muescas del track marcan 80 % (falta) y 95 % (cerca)."
           icon="gauge"
@@ -211,6 +211,7 @@ export function PaletteWithTarget({
           description={evolutionDescription}
           icon="chart-line"
           id={`${id}-evolution-card`}
+          mobileOrder={-1}
           preview={(
             <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-evolution-preview`} testID={`${id}-evolution-preview`}>
               {`${formatMetric(totals.achieved_speed_kph, units.speed)} · ${speedBuckets.length} ${speedBuckets.length === 1 ? 'período' : 'períodos'}`}

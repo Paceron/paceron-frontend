@@ -1,5 +1,6 @@
 import {
   MEMBER_PERIOD_COMPARISON_ENABLED,
+  canCompareSessions,
   canReadPeriodComparison,
   canReadTeamRanking,
 } from '../utils/dashboard-capabilities.js';
@@ -39,5 +40,16 @@ describe('dashboard capabilities — comparación por período', () => {
     ['', 'owner', undefined, null].forEach((role) => {
       expect(canReadPeriodComparison(role)).toBe(MEMBER_PERIOD_COMPARISON_ENABLED);
     });
+  });
+});
+
+describe('dashboard capabilities — comparación A/B por sesión', () => {
+  test('entrenador y corredor pueden comparar dentro de su scope', () => {
+    expect(canCompareSessions('trainer')).toBe(true);
+    expect(canCompareSessions('runner')).toBe(true);
+  });
+
+  test('no se monta para roles desconocidos', () => {
+    ['', 'owner', undefined, null].forEach((role) => expect(canCompareSessions(role)).toBe(false));
   });
 });

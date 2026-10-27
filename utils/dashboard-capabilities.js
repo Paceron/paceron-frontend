@@ -18,6 +18,13 @@ export function canReadTeamRanking(activeRole) {
   return activeRole === 'trainer';
 }
 
+// La comparación A/B permite al entrenador elegir atletas de su scope y al
+// corredor comparar únicamente su propio historial. El backend vuelve a validar
+// ambos lados; este guard solo evita montar la sección para roles desconocidos.
+export function canCompareSessions(activeRole) {
+  return activeRole === 'trainer' || activeRole === 'runner';
+}
+
 // Interruptor único del gap de backend de arriba. Explícito y exportado para que
 // el día que el endpoint abra sea un solo `true` y no una condición escondida en
 // el JSX de la pantalla.

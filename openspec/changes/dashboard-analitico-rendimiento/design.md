@@ -90,6 +90,70 @@ El selector de tipificación es visualmente un grupo de botones, y semánticamen
 
 La paleta de gráficos cambia por la tupla `(has_target, axis, target_speed_kph != null)` de la respuesta, no por el tipo. La paleta de **color** no: verde = mejoró, ámbar = estable, rojo = empeoró. Mismo criterio semántico en toda la app —ámbar es "te falta hacer algo", rojo es destructivo— para que el color signifique lo mismo en el dashboard que en el resto.
 
+### D11: Comparación de dos ejecuciones, agregada por el backend
+
+La comparación actual de períodos se conserva. La nueva comparación de sesiones es un segundo modo dentro de la pestaña `Comparación`, y selecciona dos ejecuciones concretas (`A` y `B`), no dos agregados de fecha. El rango propio de A/B no se hereda ni modifica el rango global del dashboard.
+
+El comparador tiene un **rango de fechas propio**, común a A y B porque el endpoint recibe una única ventana. Se inicializa con el rango real de datos de `/dashboard/filters`; modificarlo no cambia el período ni los KPIs del dashboard principal. Cambiar este rango limpia las sesiones elegidas y actualiza las opciones de ambos lados.
+
+Cada lado elige un grupo, un corredor según el rol, un ejercicio del catálogo y una `SessionInstance` con feedback para ese ejercicio. Al elegir el ejercicio, la lista de sesiones candidatas se obtiene con el `GET /dashboard/exercises/{id}/series` ya existente, paginando las filas del ejercicio en ese grupo/corredor y el `from/to` propio del comparador, y agrupándolas por `session_instance_id` —la fecha es etiqueta, no clave, porque podría haber más de una instancia en el mismo día. Los filtros numéricos de distancia/tiempo del dashboard no restringen las opciones ni el detalle A/B: se comparan las series completas del ejercicio en cada sesión elegida. Solo se ofrecen ejercicios `role=main` y sesiones `finished`/`interrupted` o sin `runner_session` (histórico legacy); `wip`, calentamientos y vueltas a la calma quedan fuera como en el resto del dashboard.
+
+El resumen y las series comparadas **no se agregan en React**. El frontend manda los dos lados al nuevo `POST /dashboard/comparisons/sessions`:
+
+```json
+{
+  "team_id": 29,
+  "from": "2026-07-20",
+  "to": "2026-10-24",
+  "a": { "group_id": 39, "athlete_user_id": 24, "session_instance_id": 501, "exercise_id": 8 },
+  "b": { "group_id": 39, "athlete_user_id": 24, "session_instance_id": 527, "exercise_id": 8 }
+}
+```
+
+El backend valida **cada lado** contra el team/group del solicitante, la membresía del corredor en la fecha de la sesión, el ejercicio congelado de esa instancia y el filtro `role=main`. El ejercicio del catálogo se resuelve por `source_exercise_id`, con el fallback de nombre normalizado y limitado al mismo owner para instancias legacy. El corredor solo puede comparar sesiones propias; el entrenador puede usar el modo mismo-corredor o dos corredores dentro del scope. El `session_instance_id` nunca se acepta como permiso por sí solo.
+
+El response devuelve para A y B los metadatos de sesión, `series_count` (filas registradas), `valid_series`, distancia total, velocidad media ponderada por distancia, RPE medio en escala 1–10 con su muestra, mejor/peor serie y puntos por `set_number` para el gráfico. Los campos no calculables son `null`, no cero. El backend calcula las métricas y las reglas de mejor/peor según `kind`:
+
+| Tipo | Mejor / peor serie |
+|---|---|
+| `ritmo_continuo` | menor / mayor tiempo activo (fallback a `duration_ms`), mostrando también la distancia realmente recorrida |
+| `velocidad_distancia` | mayor / menor velocidad derivada de distancia y tiempo |
+| `velocidad_tiempo` | mayor / menor distancia lograda dentro del tiempo prescrito |
+
+La comparación de velocidad se expresa como `B.mean_speed_kph − A.mean_speed_kph`: positivo = ganó velocidad, negativo = perdió. La distancia se muestra por separado para A y B, con diferencia absoluta. El RPE medio es el dato adicional de esfuerzo y nunca se inventa si las series no lo traen.
+
+#### Dirección visual
+
+- Fondo y superficies usan los tokens actuales (claro `#FFFFFF`, oscuro `#111518`); A usa el verde Paceron `#8CC63E` y B un azul `#38BDF8`. La ganancia/pérdida conserva verde/rojo semánticos existentes; texto e icono acompañan siempre al color.
+- La tipografía del producto permanece en controles y texto; `Orbitron_700Bold` se reserva para el delta central de velocidad, como cifra de rendimiento, no para todos los labels.
+- El punto focal es un delta `B − A` grande entre los dos contextos, no un hero decorativo. A y B quedan alineados como una sola comparación.
+- Los puntos y las barras son blancos interactivos: en web el hover revela el detalle sin cambiar el rango, y en mobile el toque lo deja visible. El tooltip de cada serie muestra contexto (A/B, ejercicio y fecha) más velocidad, distancia y tiempo; el de distancia muestra el total y el delta `B − A`.
+
+```text
+[ Sesiones A/B | Períodos ]
+[ Mismo corredor | Dos corredores (solo entrenador) ]
+
+┌ Sesión A: grupo · corredor · ejercicio · fecha ┐
+┌ Sesión B: grupo · corredor · ejercicio · fecha ┐
+                  [Comparar sesiones]
+                 +0,8 km/h · B vs A
+
+       Series por set: A (verde) / B (azul)
+  Distancia total A vs B       Mejor / peor       RPE medio
+```
+
+En ancho los selectores de A y B se muestran en dos columnas y el delta las ancla al centro; en angosto se apilan A → delta → B, sin scroll horizontal. El gráfico compara velocidad por serie en un eje común; la distancia total se muestra en una pareja aparte, no en un doble eje confuso. La comparación por período existente permanece disponible en el segundo modo. No se agrega una librería de gráficos: se reutiliza `react-native-svg` y la geometría testeable de `utils/dashboard-chart.js`.
+
+En mobile, el tab `Filtros` abre una hoja inferior segura para el área de sistema, con el formulario en scroll y cierre al aplicar, limpiar, tocar el fondo o usar atrás. El orden inicial deja las KPIs seguidas de la evolución del período, abierta; los otros gráficos muestran previews y el ranking permanece oculto detrás de su tab hasta que se solicite.
+
+### D12: Selector de fecha único para el dashboard web/mobile
+
+Los dos rangos de la pantalla —el global de filtros y el propio de la comparación A/B— SHALL usar el mismo `DashboardDateField`. El campo SHALL permitir escribir la fecha y abrir un calendario visual tanto en web como en mobile; no SHALL delegar el formato visible a `input[type=date]` ni variar entre plataformas. El rango inicial sale de `date_range`; si el historial completo supera 731 días, ambos formularios SHALL iniciar en la ventana más reciente aceptada por el backend.
+
+El valor controlado y el texto mostrado SHALL ser `DD/MM/AAAA`. En el límite de la request, `services/dashboard.js` SHALL convertirlo a `YYYY-MM-DD` con `toISODate`; los componentes no SHALL construir ISO ni cambiar el formato visible para hablar con el backend. La fecha SHALL validarse como fecha real de calendario (incluidos años bisiestos); el rango SHALL rechazar fechas inválidas, `from > to` y ventanas mayores al máximo del endpoint (731 días) antes de consultar. En el rango global `to` puede seguir opcional como permite la API; A/B requiere ambos extremos.
+
+Elegir un día en el calendario SHALL actualizar el campo en `DD/MM/AAAA`. Web y mobile SHALL compartir el mismo calendario, con navegación de mes, días accesibles por toque y teclado, foco visible y sin movimiento ornamental.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |

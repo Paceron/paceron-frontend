@@ -4,20 +4,19 @@ import { TabBar } from '../shared/tab-bar.jsx';
 import { ProfileRadarCard } from './profile-radar-card.jsx';
 
 // El perfil de cinco ejes dejó de ser una card más apilada debajo de los
-// gráficos: ahora comparte panel con el ranking del equipo y la comparación por
-// período, cada uno en su pestaña.
+// gráficos: ahora comparte panel con el ranking y la comparación de sesiones,
+// cada uno en su pestaña.
 //
-// Por qué una pestaña y no tres cards apiladas: las tres piezas contestan "¿cómo
-// está el equipo?" desde ángulos distintos y ninguna depende de leer las otras
+// Por qué una pestaña y no tres cards apiladas: las secciones contestan preguntas
+// distintas y ninguna depende de leer las otras
 // al mismo tiempo. Apiladas empujaban el ranking cientos de píxeles abajo; en
 // pestañas se llega a cualquiera sin scrollear la pantalla entera. La primera
 // pestaña es el radar, así que el estado inicial sigue siendo el mismo que antes.
 //
 // Las secciones que dependen del rol se pasan como elementos y NO se montan en
-// esta pieza: `ranking`/`comparison` llegan en null cuando la capacidad no está
-// habilitada (utils/dashboard-capabilities.js). Además, la pestaña inactiva no
-// se renderiza, así que su hook —y su request— existe recién cuando se abre.
-// Eso es intencional: un corredor no monta ni el ranking ni la comparación.
+// esta pieza: `ranking` llega en null para un corredor y la comparación A/B
+// decide adentro si ofrece el submodo owner-only de períodos. La pestaña inactiva
+// no se renderiza, así que sus hooks y requests solo existen al abrirla.
 export function DashboardInsightsPanel({
   id = 'dashboard-insights',
   summary,

@@ -79,4 +79,18 @@ describe('dashboard query key — los cuatro de rango entran a la key', () => {
       expect(ranged[index].join('|')).not.toBe(key.join('|'));
     });
   });
+
+  test('la comparación A/B separa por cada referencia y el rango', () => {
+    const base = {
+      teamId: 4,
+      from: '2026-09-01',
+      to: '2026-10-01',
+      a: { groupId: 41, athleteUserId: 101, sessionInstanceId: 7101, exerciseId: 5 },
+      b: { groupId: 42, athleteUserId: 105, sessionInstanceId: 7102, exerciseId: 10 },
+    };
+    const key = DASHBOARD_KEYS.sessionComparison(base).join('|');
+    expect(DASHBOARD_KEYS.sessionComparison({ ...base, a: { ...base.a, sessionInstanceId: 7103 } }).join('|')).not.toBe(key);
+    expect(DASHBOARD_KEYS.sessionComparison({ ...base, b: { ...base.b, athleteUserId: 106 } }).join('|')).not.toBe(key);
+    expect(DASHBOARD_KEYS.sessionComparison({ ...base, to: '2026-10-02' }).join('|')).not.toBe(key);
+  });
 });

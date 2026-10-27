@@ -79,5 +79,10 @@ export const DASHBOARD_KEYS = {
   leaderboard: (scope, paging) => ['dashboard', 'leaderboard', dashboardScopeKey(scope), keyPart(paging.page), keyPart(paging.sort), keyPart(paging.order)],
   comparisons: (scope, athleteUserIds) => ['dashboard', 'comparisons', dashboardScopeKey(scope), listPart(athleteUserIds)],
   periods: (scope, ranges) => ['dashboard', 'periods', dashboardScopeKey(scope), keyPart(ranges?.current?.from), keyPart(ranges?.current?.to), keyPart(ranges?.previous?.from), keyPart(ranges?.previous?.to)],
+  sessionComparison: (request) => [
+    'dashboard', 'session-comparison', keyPart(request?.teamId), keyPart(request?.from), keyPart(request?.to),
+    keyPart(request?.a?.groupId), keyPart(request?.a?.athleteUserId), keyPart(request?.a?.sessionInstanceId), keyPart(request?.a?.exerciseId),
+    keyPart(request?.b?.groupId), keyPart(request?.b?.athleteUserId), keyPart(request?.b?.sessionInstanceId), keyPart(request?.b?.exerciseId),
+  ],
   series: (scope, exerciseId, paging) => ['dashboard', 'series', keyPart(exerciseId), dashboardScopeKey(scope), keyPart(paging.pageSize)],
 };

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { TabBar } from '../shared/tab-bar.jsx';
 
 // Filtros y Calidad de los datos en UN panel con dos pestañas al mismo nivel.
@@ -25,8 +26,10 @@ export function DashboardUtilityPanel({
   filterCount = 0,
   qualityBadge = null,
   meta = null,
+  onOpenFilters = () => {},
 }) {
   const colors = useThemeColors();
+  const narrow = useIsNarrowWeb();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState('filters');
 
@@ -48,6 +51,12 @@ export function DashboardUtilityPanel({
   // lo cierra, y tocar la otra cambia de contenido sin cerrarlo. Así el gesto
   // de "quiero ver esto" no obliga a apuntar después al chevron.
   const selectTab = (tabId) => {
+    if (narrow && tabId === 'filters') {
+      setActive('filters');
+      setOpen(false);
+      onOpenFilters();
+      return;
+    }
     if (tabId === current && open) {
       setOpen(false);
       return;
@@ -72,7 +81,7 @@ export function DashboardUtilityPanel({
             wrapClassName="flex-row flex-wrap gap-2"
           />
         </View>
-        <Pressable
+        {(!narrow || current === 'quality') ? <Pressable
           accessibilityHint={open ? 'Oculta el contenido del panel' : 'Muestra el contenido del panel'}
           accessibilityLabel={open ? 'Minimizar filtros y calidad' : 'Maximizar filtros y calidad'}
           accessibilityRole="button"
@@ -84,7 +93,7 @@ export function DashboardUtilityPanel({
           testID={`${id}-toggle`}
         >
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'chevron-up' : 'chevron-down'} size={20} />
-        </Pressable>
+        </Pressable> : null}
       </View>
 
       {meta ? (
@@ -98,7 +107,7 @@ export function DashboardUtilityPanel({
         </Text>
       ) : null}
 
-      {open ? (
+      {open && !(narrow && current === 'filters') ? (
         <View className="mt-3" nativeID={`${id}-content`} testID={`${id}-content`}>
           {current === 'filters' ? filtersContent : qualityContent}
         </View>

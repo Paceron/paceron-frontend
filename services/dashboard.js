@@ -3,6 +3,7 @@ import { USE_MOCKS } from '../config/env.js';
 import { useAuthStore } from '../store/auth-store.js';
 import { toISODate } from '../utils/date-field-format.js';
 import { resolveTolerance } from '../utils/dashboard-format.js';
+import { getGroupUsers } from './groups.js';
 import {
   mockGetDashboardFilters,
   mockGetDashboardSummary,
@@ -11,9 +12,11 @@ import {
   mockGetDashboardExerciseSeries,
   mockPostDashboardComparisons,
   mockPostDashboardPeriods,
+  mockPostDashboardSessionComparison,
+  mockGetDashboardGroupAthletes,
 } from './__mocks__/dashboard-mock.js';
 
-// Dashboard analítico de rendimiento: los 7 endpoints de /dashboard.
+// Dashboard analítico de rendimiento: endpoints de /dashboard.
 //
 // Contrato leído del backend YA IMPLEMENTADO (paceron-backend, rama develop):
 // los DTOs en cmd/api/domains/dashboard/dto.go, los handlers en
@@ -23,7 +26,7 @@ import {
 //
 // Reglas del contrato que esta capa tiene que respetar y no reimplementar:
 //
-// - `team_id` es obligatorio en los 7 endpoints y es la ancla de la
+// - `team_id` es obligatorio en los 8 endpoints del dashboard y es la ancla de la
 //   autorización: el usuario llega desde la pestaña del detalle de equipo, así
 //   que siempre lo tiene.
 // - `from` es obligatorio en los cinco GET de métricas y en /comparisons; `to`
@@ -69,10 +72,9 @@ export const DASHBOARD_ORDERS = ['asc', 'desc'];
 export const DASHBOARD_DEFAULT_PAGE_SIZE = 20;
 export const DASHBOARD_MAX_PAGE_SIZE = 100;
 
-// El backend deriva el llamador del token; el mock necesita el id explícito para
-// reproducir el 403 de scope (los tres endpoints de comparación solo responden
-// para el dueño del equipo). Se lee del store únicamente en la rama de mocks: la
-// request real ya viaja autenticada.
+// El backend deriva el llamador del token; los mocks necesitan el id explícito
+// para reproducir los errores de scope. Se lee del store únicamente en la rama
+// de mocks: la request real ya viaja autenticada.
 function currentUserId() {
   return useAuthStore.getState().userId ?? null;
 }
@@ -273,4 +275,48 @@ export async function postDashboardPeriods({ current, previous, ...filters } = {
   if (scope.kind !== null) body.kind = scope.kind;
   appendRangeBody(body, scope);
   return await api.post('/dashboard/comparisons/periods', body);
+}
+
+// GET existente /groups/{id}/users, limitado al lado entrenador. Los nombres se
+// resuelven desde /dashboard/filters; acá solo hace falta saber qué IDs
+// pertenecen al grupo seleccionado, para no ofrecer combinaciones inválidas.
+export async function getDashboardGroupAthletes({ teamId, groupId } = {}) {
+  if (USE_MOCKS) {
+    return await mockGetDashboardGroupAthletes({
+      teamId: toId(teamId),
+      groupId: toId(groupId),
+      callerUserId: currentUserId(),
+    });
+  }
+  const members = await getGroupUsers(toId(groupId));
+  return (members ?? []).map((member) => toId(member.user_id));
+}
+
+// POST /api/v1/dashboard/comparisons/sessions. A/B son referencias completas a
+// ejecuciones; los filtros de distancia/tiempo no se mandan porque el endpoint
+// compara todas las series de cada sesión elegida.
+export async function postDashboardSessionComparison({ teamId, from, to, a, b } = {}) {
+  const request = {
+    team_id: toId(teamId),
+    from: toISODate(from),
+    to: toISODate(to),
+    a: normalizeSessionExerciseRef(a),
+    b: normalizeSessionExerciseRef(b),
+  };
+  if (USE_MOCKS) {
+    return await mockPostDashboardSessionComparison({
+      ...request,
+      callerUserId: currentUserId(),
+    });
+  }
+  return await api.post('/dashboard/comparisons/sessions', request);
+}
+
+function normalizeSessionExerciseRef(ref = {}) {
+  return {
+    group_id: toId(ref.groupId),
+    athlete_user_id: toId(ref.athleteUserId),
+    session_instance_id: toId(ref.sessionInstanceId),
+    exercise_id: toId(ref.exerciseId),
+  };
 }

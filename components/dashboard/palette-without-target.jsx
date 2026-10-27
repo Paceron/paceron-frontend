@@ -120,7 +120,7 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = n
         ))}
       </View>
 
-      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesPoints)}>
+      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesPoints)} initialExpandedId={`${id}-evolution-card`}>
         <ChartGridItem
           action={onGranularityChange ? (
             <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />

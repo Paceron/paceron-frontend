@@ -234,7 +234,7 @@ El cuerpo de la pantalla —KPIs, gráficos de la paleta y panel de insights con
 
 El recorte a las series propias de un corredor NO SHALL hacerse en el front: el backend ya scopea las métricas por el usuario que pregunta. Duplicar esa regla en la UI la vuelve a romper en cuanto cambie del lado del servidor, y además deja la pantalla mostrando datos ajenos si el recorte del backend falla.
 
-El **ranking del equipo** y la comparación **entre** corredores SHALL mostrarse solo al entrenador, y no SHALL montarse para un corredor (de modo que sus requests ni se hagan). Lo decide una capacidad (`utils/dashboard-capabilities.js`), no la forma del árbol de componentes.
+El **ranking del equipo** y la comparación **entre corredores distintos** SHALL mostrarse solo al entrenador, y no SHALL montarse para un corredor (de modo que sus requests ni se hagan). La comparación **entre sesiones del mismo corredor** SHALL estar disponible para ambos roles: el entrenador elige un corredor de su scope y el corredor solo puede comparar sus propias sesiones. Lo deciden capacidades (`utils/dashboard-capabilities.js`), no la forma del árbol de componentes.
 
 La comparación del **período** contra el anterior es dato propio del corredor y SHALL estar lista para mostrarse, pero SHALL permanecer apagada mientras el endpoint siga restringido a dueños del equipo (Gap 35 de `docs/BACKEND_API_GAPS.md`, interruptor `MEMBER_PERIOD_COMPARISON_ENABLED`).
 
@@ -245,16 +245,23 @@ Los textos que nombran el scope SHALL decir "el equipo" solo cuando el scope es 
 - **WHEN** un miembro del equipo (no dueño) abre la pestaña Rendimiento
 - **THEN** ve los mismos gráficos que el entrenador, calculados solo sobre sus series
 - **AND** no ve el ranking del equipo ni la comparación entre corredores
-- **AND** no sale ningún request a `/dashboard/leaderboard` ni a `/dashboard/comparisons` desde la pantalla
+- **AND** no sale ningún request a `/dashboard/leaderboard`, `/dashboard/comparisons` ni `/dashboard/comparisons/periods`
+- **AND** solo al abrir `Sesiones A/B` puede pedir `/dashboard/comparisons/sessions`, fijado a su propio atleta
 
 #### Scenario: Entrenador en el equipo
 
 - **WHEN** el dueño del equipo abre la pestaña Rendimiento
 - **THEN** además del cuerpo común ve el ranking del equipo y la comparación por período
+- **AND** puede comparar dos sesiones del mismo corredor o de dos corredores de su scope
+
+#### Scenario: Corredor compara sus sesiones
+
+- **WHEN** un miembro abre la comparación de sesiones
+- **THEN** ambos lados quedan limitados a sus propias sesiones y no puede elegir a otro corredor
 
 ### Requirement: El radar SHALL compartir panel con las secciones que dependen del rol
 
-El radar SHALL compartir un panel con pestañas con el ranking del equipo y la comparación por período. La pestaña del radar SHALL ser la activa por defecto y SHALL ser la única sección montada hasta que el usuario cambie de pestaña; el ranking y la comparación SHALL montarse solo al abrir su pestaña. Para un corredor, las pestañas de ranking y comparación NO SHALL existir cuando las capacidades no las habilitan, y sus requests NO SHALL hacerse.
+El radar SHALL compartir un panel con pestañas con el ranking y la comparación. Dentro de comparación SHALL existir un selector entre `Sesiones A/B` y `Períodos`; el modo de período se conserva. La pestaña del radar SHALL ser la activa por defecto y SHALL ser la única sección montada hasta que el usuario cambie de pestaña. Los componentes y requests SHALL montarse solo al abrir su pestaña/modo. Para un corredor, el ranking y la comparación por período NO SHALL existir mientras sigan owner-only; la comparación A/B SHALL existir solo en modo de mismo corredor.
 
 #### Scenario: Radar por defecto
 
@@ -269,7 +276,7 @@ El radar SHALL compartir un panel con pestañas con el ranking del equipo y la c
 #### Scenario: Corredor sin pestañas ajenas
 
 - **WHEN** un corredor abre el panel de insights
-- **THEN** solo ve la pestaña del radar, sin ranking ni comparación
+- **THEN** ve el radar y puede abrir su comparación A/B de sesiones propias, sin ranking, comparación entre corredores ni comparación por período owner-only
 
 ### Requirement: El sistema SHALL ser accesible según WCAG 2.1 AA
 
@@ -571,3 +578,155 @@ La opción activa SHALL estar marcada con `aria-selected`, y la que no, con `tab
 
 - **WHEN** el usuario navega con `Tab` hasta el grupo de filtros
 - **THEN** el foco entra una vez al grupo, y desde ahí se mueve con flechas
+
+### Requirement: La comparación SHALL permitir contrastar dos ejercicios de sesiones reales
+
+La pestaña `Comparación` SHALL conservar la comparación actual entre períodos y agregar un modo `Sesiones A/B`. El selector de modo SHALL permitir volver al cálculo por períodos sin perderlo.
+
+Cada lado SHALL seleccionar un grupo, un ejercicio principal del catálogo y una sesión real dentro del **rango propio de fechas A/B**, independiente de las fechas del dashboard principal. El rango A/B SHALL iniciar con `date_range` disponible; si supera el máximo de 731 días, SHALL iniciar con la ventana más reciente admitida. Se aplica a las candidatas de ambos lados. Las opciones de sesión SHALL provenir de series registradas, identificadas por `session_instance_id` (la fecha es solo la etiqueta); SHALL excluir planes sin feedback y sesiones `wip`, pero SHALL conservar histórico sin fila `runner_session`. Los grupos SHALL limitarse al team de la ruta. A y B pueden pertenecer al mismo grupo o a grupos distintos dentro del scope.
+
+El modo de corredores SHALL ofrecer `Mismo corredor` y `Dos corredores` al entrenador. En `Mismo corredor`, un corredor elegido se aplica a ambos lados; en `Dos corredores`, cada lado elige el suyo. Un corredor autenticado SHALL comparar exclusivamente sus propias sesiones y NO SHALL poder activar `Dos corredores` ni seleccionar identidades ajenas.
+
+El selector de sesión SHALL actualizarse al cambiar grupo, corredor o ejercicio; si la selección anterior ya no pertenece a las opciones, SHALL limpiarse. La comparación SHALL estar deshabilitada hasta que los dos lados tengan una sesión y ejercicio válidos.
+
+La comparación SHALL tener una acción explícita **`Comparar sesiones`**. Completar o cambiar selectores no SHALL enviar `POST /dashboard/comparisons/sessions`; el POST SHALL ocurrir solo al presionar la acción con ambas referencias y el rango válidos. El request llevará team, ventana A/B propia y las dos referencias (`group_id`, `athlete_user_id`, `session_instance_id`, `exercise_id`). El backend SHALL validar cada referencia por separado dentro del scope y SHALL rechazar recursos ajenos sin devolver datos parciales. La UI SHALL mostrar el error y conservar los selectores para corregirlo.
+
+El botón SHALL permanecer deshabilitado hasta que A y B estén completos y la sesión elegida siga dentro de las opciones cargadas. Cambiar grupo, corredor, ejercicio, sesión o fechas SHALL ocultar el resultado anterior y requerir una nueva confirmación; SHALL limpiar solo la sesión invalidada, conservando la otra selección y el resto del dashboard.
+
+#### Scenario: Un ejercicio no tiene sesiones en el período
+
+- **WHEN** el usuario elige un grupo y ejercicio sin series registradas en el rango aplicado
+- **THEN** el selector de sesión ofrece el estado vacío y no deja comparar una sesión planificada sin datos
+
+#### Scenario: Cambiar el ejercicio invalida la sesión previa
+
+- **WHEN** el usuario cambia el ejercicio A y la sesión A seleccionada no contiene ese ejercicio
+- **THEN** la sesión A se limpia y la comparación queda deshabilitada hasta elegir una opción válida
+
+#### Scenario: Selecciones completas requieren confirmación
+
+- **WHEN** ambas sesiones están elegidas, pero el usuario todavía no presionó `Comparar sesiones`
+- **THEN** no se envía el POST A/B y el botón queda habilitado
+
+#### Scenario: Aplicar la comparación
+
+- **WHEN** A y B están completos y el usuario presiona `Comparar sesiones`
+- **THEN** se envía una única request A/B; durante la respuesta el botón muestra carga y evita un envío duplicado
+
+#### Scenario: Cambiar una selección después de comparar
+
+- **WHEN** el usuario cambia un grupo, corredor, ejercicio, sesión o fecha después de ver resultados
+- **THEN** se oculta el resultado anterior y no se consulta la nueva combinación hasta volver a presionar `Comparar sesiones`
+
+#### Scenario: El entrenador compara dos corredores
+
+- **WHEN** el entrenador activa `Dos corredores` y selecciona un corredor distinto para A y B
+- **THEN** ambos IDs se envían en las referencias A/B y el backend valida cada grupo, atleta y sesión dentro del team
+
+#### Scenario: El corredor solo compara sus propias sesiones
+
+- **WHEN** un corredor abre `Sesiones A/B`
+- **THEN** ambos lados quedan fijados a su usuario y no existe selector de otros corredores
+
+#### Scenario: La sesión está fuera del rango A/B
+
+- **WHEN** una sesión A o B cae fuera de las fechas propias del comparador
+- **THEN** no aparece como opción y el backend también rechaza una referencia enviada manualmente fuera del rango
+
+#### Scenario: Cambiar el rango global no cambia el rango A/B
+
+- **WHEN** el usuario aplica otras fechas en los filtros principales del dashboard
+- **THEN** el comparador conserva su propio rango y sus sesiones; sus KPIs siguen usando únicamente las fechas A/B
+
+#### Scenario: El historial real supera dos años
+
+- **WHEN** `date_range` abarca más de 731 días
+- **THEN** el rango global y el A/B se inicializan en la ventana más reciente de hasta 731 días, para que la primera consulta cumpla el contrato
+
+#### Scenario: No aparecen sesiones
+
+- **WHEN** el grupo, corredor y ejercicio no tienen series dentro del rango A/B
+- **THEN** el selector explica que no hay sesiones registradas y recomienda ampliar las fechas del comparador
+
+### Requirement: La comparación SHALL mostrar métricas por tipo sin recalcular KPIs en el front
+
+El endpoint de comparación SHALL devolver para A y B: cantidad de series registradas, series válidas, distancia total de series válidas, velocidad media, RPE medio cuando exista, mejor y peor serie, y puntos por `set_number` para visualizar la distribución. El RPE SHALL expresarse en su escala de 1 a 10 y SHALL incluir su muestra válida. Un valor no calculable SHALL ser `null` y SHALL mostrarse como `—`, nunca como cero.
+
+La selección de mejor/peor serie SHALL respetar el eje del ejercicio:
+
+| Tipo | Mejor | Peor |
+|---|---|---|
+| `ritmo_continuo` | menor tiempo activo (fallback a duración), mostrando también distancia recorrida | mayor tiempo, mostrando también distancia recorrida |
+| `velocidad_distancia` | mayor `speed_kph` derivada | menor `speed_kph` derivada |
+| `velocidad_tiempo` | mayor distancia lograda en el tiempo objetivo | menor distancia lograda en el tiempo objetivo |
+
+La velocidad media SHALL calcularse en el backend sobre las series válidas con distancia y tiempo. La diferencia SHALL ser `B − A` en km/h y porcentaje relativo: positiva significa que B fue más veloz, negativa que perdió velocidad. La distancia total se SHALL mostrar para cada lado y su diferencia absoluta. El esfuerzo medio SHALL mostrarse como RPE cuando existan mediciones válidas, con su muestra; no SHALL derivarse del tipo ni inventar valores faltantes.
+
+#### Scenario: Comparación de `ritmo_continuo`
+
+- **WHEN** A y B son sesiones de ejercicios `ritmo_continuo`
+- **THEN** mejor/peor se expresa como tiempo logrado acompañado de la distancia realmente recorrida; la tarjeta también compara velocidad y distancia total
+
+#### Scenario: Comparación de `velocidad_distancia`
+
+- **WHEN** A o B es `velocidad_distancia`
+- **THEN** mejor/peor se ordena por velocidad derivada de distancia y tiempo, no por menor duración sin considerar la distancia
+
+#### Scenario: Comparación de `velocidad_tiempo`
+
+- **WHEN** A o B es `velocidad_tiempo`
+- **THEN** mejor/peor se ordena por la mayor/menor distancia recorrida durante el tiempo objetivo
+
+#### Scenario: B gana velocidad
+
+- **WHEN** la velocidad media de B supera la de A
+- **THEN** `B − A` se muestra como ganancia positiva en km/h y porcentaje; si es menor, se muestra como pérdida negativa
+
+#### Scenario: Datos insuficientes para velocidad o RPE
+
+- **WHEN** una sesión no contiene series válidas con distancia y tiempo, o ninguna serie tiene RPE
+- **THEN** la magnitud correspondiente se muestra como `—` y no como `0`
+
+### Requirement: La comparación SHALL visualizar las series y mantener el contexto A/B
+
+El modo `Sesiones A/B` SHALL mostrar un gráfico de velocidad por serie con puntos identificados como A y B, eje X por número de serie y tooltip con fecha, ejercicio, tiempo, distancia y velocidad. SHALL mostrar además la distancia total de cada lado en una comparación pareada y el RPE medio cuando esté disponible.
+
+La identidad SHALL ser legible sin depender solo del color: A y B SHALL conservar su etiqueta y marcador además del color. En viewport ancho los selectores y resúmenes A/B SHALL alinearse en dos columnas con la diferencia al centro; en viewport angosto SHALL apilarse A → diferencia → B y el gráfico SHALL ocupar una columna sin scroll horizontal.
+
+La geometría SHALL reutilizar `utils/dashboard-chart.js` y `react-native-svg`, sin incorporar otra librería. El gráfico SHALL tener descripción accesible y tooltips alcanzables por teclado y toque.
+
+#### Scenario: Comparación cargada
+
+- **WHEN** ambas sesiones responden con series
+- **THEN** el gráfico distingue A de B, el resumen conserva fecha/grupo/corredor de cada lado y las tarjetas muestran conteos, mejor/peor, velocidad, distancia y esfuerzo disponible
+
+#### Scenario: Carga, error o falta de series
+
+- **WHEN** una consulta A/B está en vuelo, falla o devuelve cero series
+- **THEN** solo el panel correspondiente muestra carga/error/estado vacío; la comparación por período y el resto del dashboard no se desmontan
+
+### Requirement: Los selectores de fecha SHALL compartir calendario web/mobile y conservar ISO en el backend
+
+Todos los selectores de fecha del dashboard —`Desde`/`Hasta` de filtros globales y del rango A/B— SHALL usar el mismo componente visual y permitir tanto escritura manual como selección en calendario en web y mobile. El valor visible y controlado SHALL ser `DD/MM/AAAA`; `services/dashboard.js` SHALL convertir a `YYYY-MM-DD` únicamente al serializar una request. El rango A/B SHALL mantenerse separado del rango global.
+
+El calendario SHALL permitir navegar meses, marcar el día seleccionado y limitar días futuros según el comportamiento actual del dashboard. La entrada manual y la selección del calendario SHALL validar fechas reales (incluidos años bisiestos). Antes de solicitar métricas o comparación, la pantalla SHALL rechazar fechas inválidas, `from > to` y rangos superiores a 731 días; en el rango global `to` puede omitirse si el contrato lo permite, mientras que A/B requiere ambos extremos.
+
+#### Scenario: El mismo formato visible en web y mobile
+
+- **WHEN** se abre cualquiera de los selectores de fecha del dashboard en web o mobile
+- **THEN** el campo y el calendario muestran la fecha en `DD/MM/AAAA`, con la misma interacción esencial
+
+#### Scenario: Seleccionar una fecha en el calendario
+
+- **WHEN** se elige un día en el calendario de filtros globales o A/B
+- **THEN** el campo muestra ese día en `DD/MM/AAAA` y una request posterior lo serializa como `YYYY-MM-DD`
+
+#### Scenario: Escribir una fecha inválida o invertir el rango
+
+- **WHEN** la fecha no existe en el calendario (por ejemplo `31/02/2026`) o `Desde` es posterior a `Hasta`
+- **THEN** se muestra el error junto al campo y no se envía ninguna request
+
+#### Scenario: Rango mayor al máximo del backend
+
+- **WHEN** un rango supera 731 días
+- **THEN** aplicar/comparar permanece deshabilitado hasta acotarlo, sin esperar un `400`

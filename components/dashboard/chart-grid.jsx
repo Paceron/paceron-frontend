@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { Children, createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -19,12 +19,22 @@ import { ChartCard } from './charts/chart-surface.jsx';
 // gráficos de 150 px.
 const ChartGridContext = createContext(null);
 
-export function ChartGrid({ id, ids = [], children }) {
+export function ChartGrid({ id, ids = [], initialExpandedId = null, children }) {
   const colors = useThemeColors();
   const narrow = useIsNarrowWeb();
-  const [expanded, setExpanded] = useState(() => new Set());
+  const [expanded, setExpanded] = useState(() => (
+    narrow && initialExpandedId && ids.includes(initialExpandedId) ? new Set([initialExpandedId]) : new Set()
+  ));
   const anyExpanded = ids.some((itemId) => expanded.has(itemId));
   const allExpanded = ids.length > 0 && !ids.some((itemId) => !expanded.has(itemId));
+  const visibleChildren = useMemo(() => {
+    const items = Children.toArray(children);
+    if (!narrow) return items;
+    return items
+      .map((child, index) => ({ child, index, order: child?.props?.mobileOrder ?? 0 }))
+      .sort((a, b) => a.order - b.order || a.index - b.index)
+      .map(({ child }) => child);
+  }, [children, narrow]);
 
   const toggle = useCallback((itemId) => {
     setExpanded((current) => {
@@ -102,7 +112,7 @@ export function ChartGrid({ id, ids = [], children }) {
       </View>
 
       <View className="-mx-2 flex-row flex-wrap" nativeID={id} testID={id}>
-        {children}
+        {visibleChildren}
       </View>
     </ChartGridContext.Provider>
   );

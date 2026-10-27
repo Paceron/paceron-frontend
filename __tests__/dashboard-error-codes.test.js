@@ -39,6 +39,14 @@ describe('resolveDashboardError con 400', () => {
     expect(resolveDashboardError(err(400, 'INVALID_RANGE')).action).toBe('narrow_range');
   });
 
+  test('INVALID_RANGE conserva el detalle que devuelve el backend', () => {
+    const resolved = resolveDashboardError({
+      status: 400,
+      data: { code: 'INVALID_RANGE', message: 'to no puede ser anterior a from' },
+    });
+    expect(resolved.message).toBe('to no puede ser anterior a from');
+  });
+
   test('INVALID_TOLERANCE avisa y vuelve al valor por defecto', () => {
     const resolved = resolveDashboardError(err(400, 'INVALID_TOLERANCE'));
     expect(resolved.action).toBe('reset_tolerance');

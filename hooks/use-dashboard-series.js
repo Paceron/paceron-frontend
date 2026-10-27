@@ -64,8 +64,9 @@ export function useDashboardSeries({
     hasTarget: pages[0]?.has_target ?? null,
     dataQuality: pages[0]?.data_quality ?? null,
     hasMore: Boolean(query.hasNextPage),
-    loadMore: () => query.fetchNextPage(),
+    loadMore: query.fetchNextPage,
     loading: query.isLoading,
+    refreshing: query.isFetching,
     loadingMore: query.isFetchingNextPage,
     // `isError` solo cubre el primer fetch: en un infinite query una página
     // posterior que falla deja `status` en 'success'. Si el hook no lo dijera,

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Row, Col, DateField, FIELD_LABEL } from '../forms/fields.jsx';
+import { Row, Col, FIELD_LABEL } from '../forms/fields.jsx';
 import { NumberFieldWithSuggestions } from '../forms/number-field-with-suggestions.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
@@ -9,6 +9,7 @@ import { DISTANCE_SUGGESTIONS_KM, TIME_SUGGESTIONS_MIN } from '../../utils/dashb
 import { formatKind } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { TypeFilter } from './type-filter.jsx';
+import { DashboardDateField } from './dashboard-date-field.jsx';
 
 // Rótulo de cada extremo de un rango: el título del grupo ya dice de qué es el
 // rango ("Distancia", "Tiempo", "Fecha"), así que acá va chico y en gris para
@@ -71,6 +72,7 @@ export function FiltersBar({
   onChangeTimeFrom,
   onChangeTimeTo,
   rangeErrors = {},
+  dateErrors = {},
   hasActiveFilters = false,
   onApply,
   onClear,
@@ -274,15 +276,13 @@ export function FiltersBar({
               nativeID={`${id}-date-range-inputs`}
               testID={`${id}-date-range-inputs`}
             >
-              {/* `hideErrorRow`: las fechas no tienen error propio (el rango
-                  invertido lo validan los dos rangos de números), así que el
-                  slot del mensaje solo sumaba alto. */}
               <View className="flex-1" nativeID={`${id}-date-from-slot`} testID={`${id}-date-from-slot`}>
-                <DateField
+                <DashboardDateField
                   className=""
                   dense
                   disableFutureLimit
-                  hideErrorRow
+                  error={dateErrors.from}
+                  idPrefix={`${id}-date-from`}
                   label="Desde"
                   labelClassName={RANGE_SUBLABEL}
                   onChange={onChangeFrom}
@@ -290,11 +290,12 @@ export function FiltersBar({
                 />
               </View>
               <View className="flex-1" nativeID={`${id}-date-to-slot`} testID={`${id}-date-to-slot`}>
-                <DateField
+                <DashboardDateField
                   className=""
                   dense
                   disableFutureLimit
-                  hideErrorRow
+                  error={dateErrors.to}
+                  idPrefix={`${id}-date-to`}
                   label="Hasta"
                   labelClassName={RANGE_SUBLABEL}
                   onChange={onChangeTo}

@@ -18,7 +18,7 @@ import {
 } from '../../services/dashboard.js';
 // SIN extensión: en web tiene que cargar `dashboard-capture.web.js`.
 import { captureDashboardView } from '../../services/dashboard-capture';
-import { canReadPeriodComparison, canReadTeamRanking } from '../../utils/dashboard-capabilities.js';
+import { canCompareSessions, canReadPeriodComparison, canReadTeamRanking } from '../../utils/dashboard-capabilities.js';
 import { resolveDashboardError } from '../../utils/dashboard-error-codes.js';
 import {
   DEFAULT_TOLERANCE,
@@ -28,11 +28,12 @@ import {
   hasInsufficientData,
   isLegacyNote,
 } from '../../utils/dashboard-format.js';
-import { fromISODate, toISODate } from '../../utils/date-field-format.js';
+import { defaultDashboardDateRange, resolveDashboardDateRange } from '../../utils/date-field-format.js';
 import { availableMetricKinds, exercisesForKind, reconcileExercise } from '../../utils/dashboard-filter-cascade.js';
 import { resolveDashboardRange } from '../../utils/dashboard-range.js';
 import { ComparisonStrip } from './comparison-strip.jsx';
 import { DashboardBody } from './dashboard-body.jsx';
+import { DashboardFiltersSheet } from './dashboard-filters-sheet.jsx';
 import { DashboardInsightsPanel } from './dashboard-insights-panel.jsx';
 import { DashboardUtilityPanel } from './dashboard-utility-panel.jsx';
 import { DashboardLoadingOverlay } from './dashboard-loading-overlay.jsx';
@@ -40,6 +41,7 @@ import { ExportActions } from './export-actions.jsx';
 import { FiltersBar } from './filters-bar.jsx';
 import { LeaderboardTable } from './leaderboard-table.jsx';
 import { QualityBanner } from './quality-banner.jsx';
+import { SessionExerciseComparison } from './session-exercise-comparison.jsx';
 import { StateEmpty } from './state-empty.jsx';
 import { StateError } from './state-error.jsx';
 import { StateForbidden } from './state-forbidden.jsx';
@@ -71,10 +73,9 @@ const EMPTY_FILTERS = {
 // mismo árbol: el CUERPO es uno solo (`DashboardBody` — paleta, card de cinco
 // ejes y cumplimiento, todo dato del scope que pide la pantalla) y lo que cambia
 // por rol son dos secciones que se AGREGAN al final, decididas por capacidad
-// (`utils/dashboard-capabilities.js`). Para un corredor no se montan, así que sus
-// hooks (leaderboard, comparación por período) ni siquiera se llaman. El backend
-// además responde 403 a `/leaderboard` y a `/comparisons*` para quien no es dueño
-// del equipo, así que la regla no queda solo en la UI.
+// (`utils/dashboard-capabilities.js`). Para un corredor no se montan el ranking ni
+// la comparación por período (sus hooks tampoco se llaman). La comparación A/B sí
+// existe para ambos roles: el backend limita al corredor a sus propias sesiones.
 //
 // El contenedor, el header y los paneles de filtros/calidad están FUERA de la
 // región que depende de las métricas: cambiar de rango o de tipo no debe
@@ -101,6 +102,7 @@ export function DashboardScreen({ teamId }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [applied, setApplied] = useState(EMPTY_FILTERS);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   // `granularidad`, `sort` y `order` NO son filtros: reconfiguran gráficos que
   // ya están filtrados, así que se aplican al toque (el panel no los muestra).
   const [granularity, setGranularity] = useState(DASHBOARD_GRANULARITIES[0]);
@@ -120,7 +122,7 @@ export function DashboardScreen({ teamId }) {
     const range = filtersData?.date_range;
     if (!range?.min) return;
     rangeSeeded.current = true;
-    const seeded = { ...EMPTY_FILTERS, from: fromISODate(range.min), to: fromISODate(range.max) };
+    const seeded = { ...EMPTY_FILTERS, ...defaultDashboardDateRange(range) };
     setFrom(seeded.from);
     setTo(seeded.to);
     setApplied(seeded);
@@ -136,11 +138,15 @@ export function DashboardScreen({ teamId }) {
     () => resolveDashboardRange({ distanceFrom, distanceTo, timeFrom, timeTo }),
     [distanceFrom, distanceTo, timeFrom, timeTo],
   );
+  const draftDateRange = useMemo(
+    () => resolveDashboardDateRange({ from, to }),
+    [from, to],
+  );
   const hasRangeErrors = Object.values(draftRange.errors).some(Boolean);
   // "Desde" es obligatorio (sin él el backend responde MISSING_FROM), así que un
   // borrador con la fecha incompleta no se aplica: se deshabilita el botón en vez
   // de entrar al estado de "request inválida".
-  const applyDisabled = hasRangeErrors || !toISODate(from);
+  const applyDisabled = hasRangeErrors || !draftDateRange.valid;
   const appliedRange = useMemo(() => resolveDashboardRange(applied), [applied]);
 
   const exerciseOptions = useMemo(() => exercisesForKind(exercises, kind), [exercises, kind]);
@@ -372,7 +378,7 @@ export function DashboardScreen({ teamId }) {
   const widenRange = useCallback(() => {
     const range = filtersData?.date_range;
     if (!range?.min || !range?.max) return;
-    const cleared = { ...EMPTY_FILTERS, from: fromISODate(range.min), to: fromISODate(range.max) };
+    const cleared = { ...EMPTY_FILTERS, ...defaultDashboardDateRange(range) };
     setFrom(cleared.from);
     setTo(cleared.to);
     applyMinUntilRef.current = Date.now() + 450;
@@ -384,7 +390,7 @@ export function DashboardScreen({ teamId }) {
     // Un rango con error no se aplica (el botón queda deshabilitado): se evita
     // mandar la request con un filtro a medias y que el error "desaparezca" del
     // form sin que el usuario entienda por qué.
-    if (hasRangeErrors) return;
+    if (hasRangeErrors || !draftDateRange.valid) return;
     const draft = { groupId, athleteUserId, exerciseId, kind, distanceFrom, distanceTo, timeFrom, timeTo, from, to };
     // Sin cambios no hay request nueva: no se muestra la capa de espera.
     const unchanged = Object.keys(EMPTY_FILTERS).every(
@@ -395,7 +401,7 @@ export function DashboardScreen({ teamId }) {
     setApplying(true);
     setApplied(draft);
   }, [
-    hasRangeErrors, groupId, athleteUserId, exerciseId, kind,
+    hasRangeErrors, draftDateRange.valid, groupId, athleteUserId, exerciseId, kind,
     distanceFrom, distanceTo, timeFrom, timeTo, from, to, applied,
   ]);
 
@@ -431,6 +437,51 @@ export function DashboardScreen({ teamId }) {
     setSort(column);
     setOrder(column === 'mean_speed_kph' || column === 'total_distance_m' ? 'desc' : 'asc');
   }, [sort]);
+
+  const applyFiltersAndCloseSheet = useCallback(() => {
+    applyFilters();
+    setMobileFiltersOpen(false);
+  }, [applyFilters]);
+  const resetFiltersAndCloseSheet = useCallback(() => {
+    resetFilters();
+    setMobileFiltersOpen(false);
+  }, [resetFilters]);
+  const filtersContent = (
+    <FiltersBar
+      athleteUserId={athleteUserId}
+      athletes={filtersData?.athletes ?? []}
+      distanceFrom={distanceFrom}
+      distanceTo={distanceTo}
+      exerciseId={exerciseId}
+      exercises={exerciseOptions}
+      from={from}
+      groupId={groupId}
+      groups={filtersData?.groups ?? []}
+      hasActiveFilters={activeFilterCount > 0}
+      kind={kind}
+      kinds={availableKinds}
+      loading={filtersQuery.loading}
+      onChangeAthlete={setAthleteUserId}
+      onChangeDistanceFrom={setDistanceFrom}
+      onChangeDistanceTo={setDistanceTo}
+      onChangeExercise={(value) => setExerciseId(value ?? '')}
+      onChangeFrom={setFrom}
+      onChangeGroup={(value) => setGroupId(value ?? '')}
+      onChangeKind={changeKind}
+      onChangeTimeFrom={setTimeFrom}
+      onChangeTimeTo={setTimeTo}
+      onChangeTo={setTo}
+      onApply={isNarrow ? applyFiltersAndCloseSheet : applyFilters}
+      onClear={isNarrow ? resetFiltersAndCloseSheet : resetFilters}
+      applyDisabled={applyDisabled}
+      rangeErrors={draftRange.errors}
+      dateErrors={draftDateRange.errors}
+      showAthlete={isTrainer}
+      timeFrom={timeFrom}
+      timeTo={timeTo}
+      to={to}
+    />
+  );
 
   return (
     // Sin `flex-1`: la pantalla se monta dentro del ScrollView del detalle de
@@ -487,43 +538,10 @@ export function DashboardScreen({ teamId }) {
                 badge combinado— y el contenido de cada una se arma acá. */}
             <DashboardUtilityPanel
               filterCount={activeFilterCount}
-              filtersContent={(
-                <FiltersBar
-                  athleteUserId={athleteUserId}
-                  athletes={filtersData?.athletes ?? []}
-                  distanceFrom={distanceFrom}
-                  distanceTo={distanceTo}
-                  exerciseId={exerciseId}
-                  exercises={exerciseOptions}
-                  from={from}
-                  groupId={groupId}
-                  groups={filtersData?.groups ?? []}
-                  hasActiveFilters={activeFilterCount > 0}
-                  kind={kind}
-                  kinds={availableKinds}
-                  loading={filtersQuery.loading}
-                  onChangeAthlete={setAthleteUserId}
-                  onChangeDistanceFrom={setDistanceFrom}
-                  onChangeDistanceTo={setDistanceTo}
-                  onChangeExercise={(value) => setExerciseId(value ?? '')}
-                  onChangeFrom={setFrom}
-                  onChangeGroup={(value) => setGroupId(value ?? '')}
-                  onChangeKind={changeKind}
-                  onChangeTimeFrom={setTimeFrom}
-                  onChangeTimeTo={setTimeTo}
-                  onChangeTo={setTo}
-                  onApply={applyFilters}
-                  onClear={resetFilters}
-                  applyDisabled={applyDisabled}
-                  rangeErrors={draftRange.errors}
-                  showAthlete={isTrainer}
-                  timeFrom={timeFrom}
-                  timeTo={timeTo}
-                  to={to}
-                />
-              )}
+              filtersContent={filtersContent}
               id="dashboard-utility"
               meta={describeScope(isTrainer, selectedExercise, effectiveKind)}
+              onOpenFilters={() => setMobileFiltersOpen(true)}
               qualityBadge={qualityBadge(summary.data_quality)}
               qualityContent={hasQualityNotes(summary.data_quality) ? (
                 // La pestaña es neutral, pero el aviso conserva la identidad
@@ -541,12 +559,14 @@ export function DashboardScreen({ teamId }) {
                 </Text>
               )}
             />
+            <DashboardFiltersSheet onClose={() => setMobileFiltersOpen(false)} visible={mobileFiltersOpen}>
+              {filtersContent}
+            </DashboardFiltersSheet>
 
-            {/* Un solo cuerpo para los dos roles. Después de los gráficos, el
-                perfil de cinco ejes comparte panel con las secciones que
-                dependen del rol, cada una en su pestaña. La decisión de montar
-                (o no) ranking y comparación sigue viviendo en las capacidades:
-                para un corredor llegan en null y sus hooks no se llaman. */}
+        {/* Un solo cuerpo para los dos roles. Después de los gráficos, el
+                perfil comparte panel con ranking y comparación. A/B está
+                disponible a ambos roles; su modo por período conserva el guard
+                owner-only. */}
             <DashboardBody
               captureRef={captureViewRef}
               granularity={granularity}
@@ -562,8 +582,20 @@ export function DashboardScreen({ teamId }) {
                 // Mismo cuerpo, título en primera persona para el corredor: el
                 // backend ya recortó el scope a sus series, así que "perfil del
                 // equipo" sobre un solo corredor sería mentir.
-                comparison={canReadPeriodComparison(activeRole) ? (
-                  <PeriodComparisonSection from={applied.from} scope={scope} to={applied.to} />
+                comparison={canCompareSessions(activeRole) ? (
+                  <SessionExerciseComparison
+                    athletes={filtersData?.athletes ?? []}
+                    availableDateRange={filtersData?.date_range ?? null}
+                    exercises={filtersData?.exercises ?? []}
+                    groups={filtersData?.groups ?? []}
+                    id={isTrainer ? 'dashboard-trainer-session-comparison' : 'dashboard-runner-session-comparison'}
+                    isNarrow={isNarrow}
+                    isTrainer={isTrainer}
+                    periodComparison={canReadPeriodComparison(activeRole) ? (
+                      <PeriodComparisonSection from={applied.from} scope={scope} to={applied.to} />
+                    ) : null}
+                    teamId={teamId}
+                  />
                 ) : null}
                 id={isTrainer ? 'dashboard-trainer-insights' : 'dashboard-runner-insights'}
                 kind={effectiveKind}
@@ -680,7 +712,7 @@ function describeScope(isTrainer, selectedExercise, kind) {
   return parts.join(' · ');
 }
 
-// `from`/`to` ya están en 'DD/MM/YYYY' (lo que emite DateField) y el backend los
+// `from`/`to` ya están en 'DD/MM/YYYY' (lo que emite DashboardDateField) y el backend los
 // normaliza a ISO en el borde de la request (services/dashboard.js), así que acá
 // se muestran tal cual.
 function rangeCaption(from, to) {

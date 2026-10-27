@@ -323,6 +323,7 @@ function buildSeriesRow({ sessionInstanceId, daysAgo, exercise, athlete, setNumb
   const needsDistance = axis === 'distance' || axis === 'distance_and_time';
   const degraded = jitter < DEGRADED_TIME_BELOW;
   const selfReported = jitter >= SELF_REPORTED_FROM && jitter < SELF_REPORTED_TO;
+  const rpe = jitter < 0.12 ? null : 2 + Math.floor(jitter * 9);
 
   return {
     session_instance_id: sessionInstanceId,
@@ -332,6 +333,7 @@ function buildSeriesRow({ sessionInstanceId, daysAgo, exercise, athlete, setNumb
     // exportado por el entrenador lleva las dos columnas.
     feedback_owner_user_id: selfReported ? athlete.id : TRAINER_USER_ID,
     set_number: setNumber,
+    feedback_id: sessionInstanceId * 1_000_000 + athlete.id * 100 + exercise.id * 10 + setNumber,
     exercise_id: exercise.id,
     kind: exercise.kind,
     duration_ms: durationMs,
@@ -343,6 +345,7 @@ function buildSeriesRow({ sessionInstanceId, daysAgo, exercise, athlete, setNumb
     // `invalid_series`.
     distance_meters: needsDistance && jitter >= INVALID_SERIES_FROM ? null : distanceMeters,
     completion_status: jitter >= UNKNOWN_STATUS_FROM ? 'a medias' : 'completa',
+    rpe,
     target_minutes: targetMinutes,
     target_distance_m: targetDistanceM,
     // Sin fila en runner_session la serie entra igual a los KPI y solo se cuenta
@@ -1393,6 +1396,18 @@ export async function mockGetDashboardFilters({ teamId, callerUserId } = {}) {
   };
 }
 
+// Roster del grupo para elegir atletas sin ofrecer combinaciones group/athlete
+// que el backend luego rechazaría. El dashboard mock tiene sus propios IDs de
+// grupos, independientes de los mocks del CRUD de grupos.
+export async function mockGetDashboardGroupAthletes({ teamId, groupId, callerUserId } = {}) {
+  requireGroup(teamId, groupId, callerUserId);
+  const owner = ownsTeam(teamId, callerUserId);
+  return ATHLETES
+    .filter((athlete) => athlete.groupId === Number(groupId))
+    .filter((athlete) => owner || String(athlete.id) === String(callerUserId))
+    .map((athlete) => athlete.id);
+}
+
 function rowsInTeam(teamId) {
   const sessionById = new Map(mockSessions.map((session) => [session.id, session]));
   return mockSeries.filter((row) => {
@@ -1544,6 +1559,145 @@ export async function mockPostDashboardPeriods(filters = {}) {
       toMs: current.toMs,
     })),
   );
+}
+
+export async function mockPostDashboardSessionComparison(request = {}) {
+  const teamId = request.team_id;
+  const callerUserId = request.callerUserId;
+  requireScope(teamId, callerUserId);
+  const range = resolveRange(request.from, request.to);
+  const a = mockSessionComparisonSide(request.a, teamId, callerUserId, range);
+  const b = mockSessionComparisonSide(request.b, teamId, callerUserId, range);
+
+  const speedDeltaKph = a.mean_speed_kph === null || b.mean_speed_kph === null
+    ? null
+    : b.mean_speed_kph - a.mean_speed_kph;
+  const speedDeltaPct = speedDeltaKph === null || !(a.mean_speed_kph > 0)
+    ? null
+    : (speedDeltaKph / a.mean_speed_kph) * 100;
+  const distanceDeltaM = a.total_distance_m === null || b.total_distance_m === null
+    ? null
+    : b.total_distance_m - a.total_distance_m;
+
+  return {
+    a,
+    b,
+    delta: {
+      direction: 'b_minus_a',
+      speed_delta_kph: speedDeltaKph,
+      speed_delta_pct: speedDeltaPct,
+      distance_delta_m: distanceDeltaM,
+    },
+    units: { duration: 'ms', distance: 'm', speed: 'km/h', rpe: '1-10' },
+  };
+}
+
+function mockSessionComparisonSide(ref, teamId, callerUserId, range) {
+  const ids = ['group_id', 'athlete_user_id', 'session_instance_id', 'exercise_id'];
+  if (!ref || ids.some((key) => !Number.isInteger(Number(ref[key])) || Number(ref[key]) <= 0)) {
+    throw paramError('INVALID_REQUEST', 'cada lado requiere IDs positivos');
+  }
+  requireGroup(teamId, ref.group_id, callerUserId);
+  const owner = ownsTeam(teamId, callerUserId);
+  if (!owner && String(ref.athlete_user_id) !== String(callerUserId)) {
+    throw forbidden('Un corredor solo puede comparar sus propias sesiones');
+  }
+
+  const group = GROUPS.find((candidate) => candidate.id === Number(ref.group_id));
+  const athlete = ATHLETES.find((candidate) => (
+    candidate.id === Number(ref.athlete_user_id) && candidate.groupId === Number(ref.group_id)
+  ));
+  if (!athlete) throw forbidden('El corredor no pertenece al grupo seleccionado');
+  const exercise = EXERCISE_BY_ID.get(Number(ref.exercise_id));
+  if (!exercise) throw notFound('No encontramos ese ejercicio');
+  if (!['ritmo_continuo', 'velocidad_distancia', 'velocidad_tiempo'].includes(exercise.kind)) {
+    throw notFound('El ejercicio no es un bloque principal comparable');
+  }
+  const session = mockSessions.find((candidate) => candidate.id === Number(ref.session_instance_id));
+  if (!session || session.group_id !== Number(ref.group_id) || session.status === 'wip') {
+    throw notFound('No encontramos esa sesión ejecutada');
+  }
+  const dateMs = parseISODate(session.date);
+  if (dateMs < range.fromMs || dateMs > range.toMs) throw notFound('La sesión está fuera del rango aplicado');
+
+  const rows = mockSeries.filter((row) => (
+    row.session_instance_id === session.id &&
+    row.athlete_user_id === Number(ref.athlete_user_id) &&
+    row.exercise_id === exercise.id
+  ));
+  if (!rows.length) throw notFound('La sesión no contiene series de ese ejercicio');
+
+  const metrics = metricsOf(rows);
+  const distanceRows = metrics.validRows.filter((row) => positiveFloat(row.distance_meters) !== null);
+  const rpeRows = rows.filter((row) => Number.isInteger(row.rpe) && row.rpe >= 1 && row.rpe <= 10);
+  const meanRpe = rpeRows.length
+    ? rpeRows.reduce((sum, row) => sum + row.rpe, 0) / rpeRows.length
+    : null;
+  const extremes = mockSessionComparisonExtremes(rows, exercise.kind);
+
+  return {
+    team_id: Number(teamId),
+    group_id: group.id,
+    group_name: group.name,
+    athlete_user_id: athlete.id,
+    athlete_name: athlete.name,
+    athlete_surname: athlete.surname,
+    session_instance_id: session.id,
+    session_date: session.date,
+    exercise_id: exercise.id,
+    exercise_name: exercise.name,
+    kind: exercise.kind,
+    series_count: rows.length,
+    valid_series: metrics.validSeries,
+    total_distance_m: distanceRows.length ? metrics.totalDistanceM : null,
+    mean_speed_kph: achievedSpeedKph(metrics),
+    mean_rpe: meanRpe,
+    rpe_count: rpeRows.length,
+    best: extremes.best,
+    worst: extremes.worst,
+    series: rows
+      .slice()
+      .sort((left, right) => left.set_number - right.set_number || left.feedback_id - right.feedback_id)
+      .map(mockSessionComparisonPoint),
+  };
+}
+
+function mockSessionComparisonPoint(row) {
+  return {
+    feedback_id: row.feedback_id,
+    set_number: row.set_number,
+    duration_ms: row.duration_ms,
+    active_duration_ms: row.active_duration_ms,
+    distance_meters: row.distance_meters,
+    speed_kph: achievedOf(row).speedKph,
+    target_minutes: row.target_minutes,
+    target_distance_m: row.target_distance_m,
+    rpe: row.rpe,
+  };
+}
+
+function mockSessionComparisonExtremes(rows, kind) {
+  const candidates = rows.filter((row) => {
+    if (!isValidSeries(row)) return false;
+    if (kind === 'ritmo_continuo') return achievedTimeMs(row) > 0;
+    if (kind === 'velocidad_distancia') return achievedOf(row).speedKph !== null;
+    return positiveFloat(row.distance_meters) !== null;
+  });
+  const valueOf = (row) => {
+    if (kind === 'ritmo_continuo') return achievedTimeMs(row);
+    if (kind === 'velocidad_distancia') return achievedOf(row).speedKph;
+    return row.distance_meters;
+  };
+  const preferLower = kind === 'ritmo_continuo';
+  const ordered = candidates.slice().sort((left, right) => {
+    const difference = valueOf(left) - valueOf(right);
+    if (difference !== 0) return preferLower ? difference : -difference;
+    return left.session_date.localeCompare(right.session_date) || left.set_number - right.set_number || left.feedback_id - right.feedback_id;
+  });
+  return {
+    best: ordered.length ? mockSessionComparisonPoint(ordered[0]) : null,
+    worst: ordered.length ? mockSessionComparisonPoint(ordered[ordered.length - 1]) : null,
+  };
 }
 
 function derivePreviousPeriod(current) {
