@@ -7,12 +7,20 @@ const ROLES_CATALOG = [
 // diferencia de los demás mocks del proyecto (que son puros), este
 // necesita estado para que el flujo de activación se pueda probar de
 // punta a punta con EXPO_PUBLIC_USE_MOCKS=true. Arranca con los dos roles
-// activos (antes solo 'corredor') -- pedido real 2026-10-15: la cuenta
-// demo necesita poder cambiar a entrenador sin pasar primero por el flujo
-// de activación (contraseña + alias) cada vez que se reinicia el mock. El
-// flujo de activación/desactivación se sigue pudiendo probar igual
+// activos (antes solo 'corredor'), por dos razones que se refuerzan:
+//   - pedido real 2026-10-15: la cuenta demo tiene que poder cambiar a
+//     entrenador sin pasar primero por el flujo de activación (contraseña +
+//     alias) cada vez que se reinicia el mock;
+//   - en el mock es dueño de los equipos (owner_id 1 en teams-mock), así que
+//     sin 'entrenador' la reconciliación de use-user.js#useRoleReconciliation
+//     lo reboca a 'runner' cada vez que se activa entrenador — el rol no se
+//     podía sostener entre reinicios.
+// El flujo de activación/desactivación se sigue pudiendo probar igual
 // (mockDeactivateTrainerRole quita 'entrenador', mockActivateTrainerRole
 // lo vuelve a agregar).
+//
+// `activeRole` sigue siendo estado local y persiste; esto solo hace que el
+// backend simulado reporte la asignación correcta.
 let mockAssignedRoles = ['corredor', 'entrenador'];
 
 export async function mockGetRoles() {
@@ -35,10 +43,18 @@ export async function mockRemoveRole(_userId, roleId) {
   return { message: 'Rol removido correctamente.' };
 }
 
+// La cuenta demo (id 1) es la que prueba el flujo de activación/desactivación de
+// rol, así que es la única que lee la asignación mutable de arriba. El corredor
+// demo (`corredor@paceron.com`, ver auth-mock.js) es corredor y nada más: si el
+// mock le devolviera también 'entrenador', `useRoleReconciliation` lo dejaría
+// cambiar de rol y la pantalla dejaría de representar lo que ve un corredor real.
+const RUNNER_ONLY_USER_ID = 101;
+
 export async function mockGetPermissions(userId) {
+  const assigned = String(userId) === String(RUNNER_ONLY_USER_ID) ? ['corredor'] : mockAssignedRoles;
   return {
     user_id: userId,
-    roles: mockAssignedRoles.map((name) => ({
+    roles: assigned.map((name) => ({
       id: ROLES_CATALOG.find((r) => r.name === name).id,
       name,
       tier: 'base',

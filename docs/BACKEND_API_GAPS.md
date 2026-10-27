@@ -1910,3 +1910,53 @@ construido y probado contra mocks (branch `feature/route-competitions-polish`,
 ver el plan de implementación en
 `docs/superpowers/plans/2026-10-21-route-competition-multi-attempt.md`) y
 solo falta el flip a datos reales cuando esto se mergee.
+
+## Gap 38 — `/dashboard/comparisons/periods` restringido al dueño del equipo (bloquea la comparación por período del corredor)
+
+**Contexto.** La card "Frente al período anterior" de la pantalla de rendimiento
+(`components/dashboard/comparison-strip.jsx`) consume `POST /dashboard/comparisons/periods`.
+El endpoint responde **403** cuando el llamador no es el dueño del equipo — mismo criterio que
+`/dashboard/leaderboard` y `/dashboard/comparisons`, que sí exponen datos de **otros** corredores.
+
+La diferencia es que éste *no necesita* exponer a nadie más: es el mismo scope de
+`/summary`/`/timeseries`, agregado por período. Si el backend lo recorta al usuario que pregunta
+(el mismo `athleteIdsFor` que ya usan esas tres), el resultado para un corredor sería "mis series
+ahora contra mis series antes" — datos propios, sin riesgo de privacidad. Da la impresión de que
+quedó owner-only por arrastre de los otros dos, no por decisión de datos. **Hoy no está recortado
+por usuario**: en el mock espejo (`services/__mocks__/dashboard-mock.js#mockPostDashboardPeriods`)
+las dos ventanas se seleccionan con `athleteIds: null`, o sea todas las series del team — abrir el
+endpoint sin ese recorte le mostraría a un corredor los números del equipo entero.
+
+**Pedido concreto.** (1) Abrir `POST /dashboard/comparisons/periods` a **miembros** del equipo y
+(2) scoping por usuario cuando el llamador no es el dueño, igual que `/summary`, `/timeseries` y
+`/distribution`. `/leaderboard` y `/comparisons` quedan como están (owner-only: esos sí muestran a
+otros corredores).
+
+**Estado del frontend — listo para cuando abra.** La decisión está aislada en un interruptor:
+`MEMBER_PERIOD_COMPARISON_ENABLED` (`utils/dashboard-capabilities.js`, hoy `false`). La sección
+(`PeriodComparisonSection` en `components/dashboard/dashboard-screen.jsx`) ya se monta sola cuando
+la capacidad devuelve `true`; el cambio pendiente es ese flag + el caso del test
+`__tests__/dashboard-capabilities.test.js` que lo fija. No hay que tocar la pantalla.
+
+## Comparación A/B de ejercicios entre sesiones — contrato backend
+
+**Actualización 2026-10-26 — endpoint implementado y API local reiniciada contra la base de testing, con mocks apagados y seeding desactivado; falta merge/deploy en Render.**
+El contrato es `POST /api/v1/dashboard/comparisons/sessions`. OpenSpec coordinado:
+`paceron-backend/openspec/changes/comparacion-sesiones-ejercicios/`.
+
+Request: `team_id`, rango inclusivo `from`/`to`, y referencias `a`/`b`, cada una con
+`group_id`, `athlete_user_id`, `session_instance_id` y `exercise_id` (ID del catálogo, no de la
+instancia). Entrenadores pueden comparar el mismo atleta o dos atletas dentro de su scope; un
+corredor solo puede enviar su propio ID en ambos lados. Cada referencia se valida por separado y
+una inválida rechaza toda la respuesta.
+
+Cada lado devuelve identidad de grupo/corredor/sesión/ejercicio, `kind`, `series_count`,
+`valid_series`, `total_distance_m`, `mean_speed_kph`, `mean_rpe`/`rpe_count`, `best`, `worst` y
+`series[]` con número de serie, tiempos, distancia, velocidad derivada, RPE y objetivos congelados.
+`delta.direction` es `b_minus_a`; las diferencias de velocidad y distancia son B−A. `units` declara
+duración (ms), distancia (m), velocidad (km/h) y RPE (1–10). Métricas no calculables vienen `null`.
+
+El backend excluye `wip`, `warmup` y `cooldown`, conserva feedback legacy sin `runner_session`, y
+resuelve ejercicios históricos sin `source_exercise_id` por nombre normalizado del mismo owner.
+Mejor/peor: ritmo continuo por tiempo con distancia lograda; velocidad-distancia por velocidad;
+velocidad-tiempo por distancia. RPE faltante no invalida otras métricas.

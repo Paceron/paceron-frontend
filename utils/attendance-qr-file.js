@@ -218,7 +218,7 @@ const PRINT_IFRAME_CLEANUP_DELAY_MS = 1000;
 // entrenador se lleva un cartel en papel lleno de interfaz, creyendo que es el
 // documento. El caller (7.8) ya tiene el camino de error del spec ("La descarga
 // falla": aviso + el modal sigue abierto).
-export function openBrowserPrintDialog(html) {
+export function openBrowserPrintDialog(html, { title = 'Impresión del documento' } = {}) {
   const documentHtml = String(html ?? '').trim();
   if (!documentHtml) {
     return Promise.reject(new Error('No hay documento para imprimir'));
@@ -230,7 +230,7 @@ export function openBrowserPrintDialog(html) {
   return new Promise((resolve, reject) => {
     const frame = document.createElement('iframe');
     frame.setAttribute('aria-hidden', 'true');
-    frame.setAttribute('title', 'Impresión del documento de asistencia');
+    frame.setAttribute('title', String(title));
     frame.style.position = 'fixed';
     frame.style.right = '0';
     frame.style.bottom = '0';

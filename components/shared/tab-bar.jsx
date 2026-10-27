@@ -34,7 +34,7 @@ import { isWeb } from '../../utils/platform.js';
 // de primer nivel.
 const VARIANT = {
   default: {
-    wrapClassName: 'mb-5 flex-row gap-2',
+    wrapClassName: 'mb-5 flex-row flex-wrap gap-2',
     tabClassName: 'gap-1.5 rounded-lg px-3.5 py-2.5',
     iconSize: 16,
     activeClassName: 'bg-primary-tint-subtle dark:bg-primary/10',
@@ -55,8 +55,9 @@ const VARIANT = {
   },
 };
 
-export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {}, variant = 'default' }) {
+export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {}, variant = 'default', wrapClassName = null }) {
   const style = VARIANT[variant] ?? VARIANT.default;
+  const wrapClass = wrapClassName ?? style.wrapClassName;
   const colors = useThemeColors();
   const refs = useRef({});
 
@@ -88,13 +89,24 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {},
 
   // `flex-1` (ancho parejo, sin scroll) se probó y se descartó (pedido
   // real 2026-10-15, "sin afectar a mobile" + "que se adapten al ancho de
-  // su contenido") -- volvió al ancho natural por contenido. Mobile queda
-  // EXACTAMENTE como estaba antes de tocar nada hoy (ScrollView horizontal,
-  // sin cambios). Solo WEB suma: cada tab puede encogerse (`shrink`) en vez
-  // de desbordar sin límite, el label corta con "…" (`numberOfLines={1}`)
-  // si no entra. Sin tooltip -- a diferencia de un botón solo-ícono, la tab
-  // YA tiene su label visible; repetirlo en un tooltip no aporta nada
-  // (pedido real, 2026-10-15, "no tienen sentido").
+  // su contenido") -- volvió al ancho natural por contenido.
+  //
+  // `flex-wrap` es lo que hace que un listado largo (TeamDetailScreen con 6-7
+  // tabs) baje a una segunda fila en vez de encogerse hasta cortar el label con
+  // "…", que era el estado anterior: el shrink resolvía el desborde pero
+  // dejaba las tabs ilegibles (pedido real, 2026-10-17, "los botones del tope
+  // no entran en la pantalla"). El `shrink` + `numberOfLines={1}` se quedan
+  // como red de seguridad —solo entran en juego si UNA tab no cabe ni en su
+  // propia fila—; en desktop no cambia nada, las tabs cortas siguen en una
+  // sola línea.
+  //
+  // Mobile sigue con el ScrollView horizontal, sin cambios: ahí el scroll
+  // táctil ya resuelve el desborde, y cambiar a wrap tocaría el layout de las
+  // cuatro pantallas que usan la barra sin poder verificarse en device.
+  //
+  // Sin tooltip -- a diferencia de un botón solo-ícono, la tab YA tiene su
+  // label visible; repetirlo en un tooltip no aporta nada (pedido real,
+  // 2026-10-15, "no tienen sentido").
   const tabContent = (tab, index) => {
     const isActive = tab.id === active;
     return (
@@ -140,7 +152,7 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {},
     return (
       <ScrollView
         accessibilityRole="tablist"
-        className={style.wrapClassName}
+        className={wrapClass}
         contentContainerClassName={`flex-row ${variant === 'compact' ? 'gap-4' : 'gap-2'}`}
         horizontal
         nativeID={scope}
@@ -153,7 +165,7 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {},
   }
 
   return (
-    <View accessibilityRole="tablist" className={style.wrapClassName} nativeID={scope} testID={scope}>
+    <View accessibilityRole="tablist" className={wrapClass} nativeID={scope} testID={scope}>
       {tabs.map((tab, index) => tabContent(tab, index))}
     </View>
   );

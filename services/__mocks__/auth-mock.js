@@ -1,18 +1,36 @@
 import { getMockBankAlias, __lookupCatalogUser } from './user-mock.js';
 
-// Datos fake con la MISMA shape que el backend real, para desarrollar sin backend.
+// Dos cuentas demo, y la diferencia importa: la de arriba es la dueña de los
+// equipos 1/4 (id 1) y la de abajo es una CORREDORA del equipo 4 (id 101, Lucía,
+// miembro del roster en teams-mock) que NO es dueña de nada. Sin la segunda no
+// había forma de ver en el preview lo que ve un corredor de verdad: con la cuenta
+// dueña, el backend simulado recorta el scope a "todo el equipo" (porque el
+// llamador ES dueño) aunque `activeRole` sea 'runner', así que la pantalla de
+// rendimiento mostraba la variante del corredor con los datos de todos.
+//
+// Elegir el email es lo que elige la cuenta: cualquier otro email sigue siendo la
+// cuenta demo de siempre (id 1), que es la que usan los demás flujos. El nombre y
+// el apellido no se repiten acá: salen del mismo catálogo del que los saca el
+// roster (user-mock.js), así no hay dos lugares que se puedan desincronizar.
+const RUNNER_DEMO = {
+  email: 'corredor@paceron.com',
+  user_id: 101,
+};
+
 export async function mockLogin(email, _password) {
+  const isRunnerDemo = String(email ?? '').trim().toLowerCase() === RUNNER_DEMO.email;
+  const runnerDemoUser = isRunnerDemo ? __lookupCatalogUser(RUNNER_DEMO.user_id) : null;
   return {
     access_token: 'mock-access-token',
     refresh_token: 'mock-refresh-token',
     expires_in: 3600,
     user: {
-      user_id: 1,
-      name: 'Demo',
-      surname: 'User',
+      user_id: isRunnerDemo ? RUNNER_DEMO.user_id : 1,
+      name: runnerDemoUser?.name ?? 'Demo',
+      surname: runnerDemoUser?.surname ?? 'User',
       email,
-      dni: '12345678',
-      birth_date: '01/01/1990',
+      dni: isRunnerDemo ? '30111222' : '12345678',
+      birth_date: isRunnerDemo ? '14/03/1990' : '01/01/1990',
       status: 'active',
       bank_alias: null,
     },

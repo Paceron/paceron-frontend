@@ -56,3 +56,29 @@ describe('mockGetUser', () => {
     expect(res.surname).toBe('55555');
   });
 });
+
+// La cuenta de corredor existe para poder ver en el preview lo que ve un
+// corredor de verdad: la cuenta demo (id 1) es DUEÑA del equipo demo, así que el
+// mock le scopeaba el equipo entero aunque `activeRole` fuera 'runner'.
+describe('mockLogin — cuenta de corredor', () => {
+  test('corredor@paceron.com entra como el 101 del roster, no como la cuenta dueña', async () => {
+    const res = await mockLogin('corredor@paceron.com', 'pw');
+    expect(res.user.user_id).toBe(101);
+    // El nombre sale del mismo catálogo del que lo saca el roster (user-mock.js):
+    // no hay un segundo lugar donde pueda quedar desincronizado.
+    expect(res.user.name).toBe('Lucía');
+    expect(res.user.surname).toBe('Fernández');
+    expect(res.access_token).toEqual(expect.any(String));
+  });
+
+  test('el email se compara sin importar mayúsculas ni espacios', async () => {
+    const res = await mockLogin('  Corredor@Paceron.com ', 'pw');
+    expect(res.user.user_id).toBe(101);
+  });
+
+  test('cualquier otro email sigue siendo la cuenta demo de siempre (id 1)', async () => {
+    const res = await mockLogin('demo@paceron.com', 'pw');
+    expect(res.user.user_id).toBe(1);
+    expect(res.user.name).toBe('Demo');
+  });
+});

@@ -40,6 +40,7 @@ import { LeaderboardTab } from './leaderboard-tab.jsx';
 import { CompetitionsTab } from './competitions-tab.jsx';
 import { useCompetitions } from '../../hooks/use-competitions.js';
 import { TeamSubscriptionPendingBanner } from './team-subscription-pending-banner.jsx';
+import { DashboardScreen } from '../dashboard/dashboard-screen.jsx';
 import { useTeamSubscription } from '../../hooks/use-team-subscription.js';
 
 // Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
@@ -62,14 +63,13 @@ const TEAM_STATUS_META = {
   inactivo: { label: 'Inactivo', bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-600 dark:text-slate-300' },
 };
 
-// Sin dominio de entrenamientos/actividades todavía (ver FUNCTIONAL_PROPOSE.md,
-// "Planificación de entrenamientos" y "Registro y seguimiento de actividades"
-// siguen siendo módulos reservados) — valores mock fijos.
-const MOCK_TEAM_METRICS = { trainingsCompleted: 210, goalsCompleted: 96 };
-
 // Pestañas, en las dos plataformas (antes solo en web, mobile apilaba las
 // 4 secciones en una sola pantalla sin navegación por pestañas -- misma
 // pieza de TabBar que ya usaba web, solo se sacó el gate de isWeb).
+//
+// `rendimiento` NO pasa por `visibleTabs`: ese filtro solo saca `grupos` y
+// `solicitudes`, así que la pestaña nueva aparece para los dos roles sola — que es
+// lo que quiere, cada uno con su variante de la pantalla de rendimiento.
 const TABS = [
   { id: 'general', label: 'General', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
@@ -77,6 +77,7 @@ const TABS = [
   { id: 'leaderboard', label: 'Leaderboard', icon: 'podium-gold' },
   { id: 'competencias', label: 'Competencias', icon: 'sword-cross' },
   { id: 'solicitudes', label: 'Solicitudes', icon: 'account-question-outline' },
+  { id: 'rendimiento', label: 'Rendimiento', icon: 'chart-timeline-variant' },
 ];
 
 const DASH = '—';
@@ -847,10 +848,35 @@ function TeamDetailScreenContent({ teamId }) {
       </SectionCard>
 
       <SectionCard icon="chart-line" title="Estadísticas del equipo">
+        {/* Los dos tiles de adentro eran `MOCK_TEAM_METRICS` —210 entrenamientos y
+            96 objetivos, números escritos a mano que no venían de ningún lado. Se
+            fueron con el dashboard de rendimiento: los conteos de verdad salen de
+            `/dashboard/metrics/summary` (series válidas, cumplimiento, tendencia)
+            y ese es el lugar donde ahora se muestran, con el detalle y los filtros
+            que les corresponden. Acá queda el único número que esta pantalla ya
+            tenía real —el roster— y una entrada a la pestaña que sí trae las
+            estadísticas. */}
         <View className="flex-row gap-2" nativeID="team-detail-stats-row" testID="team-detail-stats-row">
           <StatTile colors={colors} icon="account-group" idPrefix="team-detail-stat" label="Corredores" value={filteredMembers.length} />
-          <StatTile colors={colors} icon="run" idPrefix="team-detail-stat" label="Entrenamientos realizados" value={MOCK_TEAM_METRICS.trainingsCompleted} />
-          <StatTile colors={colors} icon="flag-checkered" idPrefix="team-detail-stat" label="Objetivos cumplidos" value={MOCK_TEAM_METRICS.goalsCompleted} />
+          <Pressable
+            accessibilityLabel="Ver analítica de rendimiento"
+            accessibilityRole="button"
+            className="flex-1 items-center rounded-2xl border border-slate-200 px-2 py-4 hover:bg-slate-50 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
+            nativeID="team-detail-open-dashboard"
+            onPress={() => setActiveTab('rendimiento')}
+            testID="team-detail-open-dashboard"
+          >
+            <MaterialCommunityIcons color={colors.primary} name="chart-timeline-variant" size={22} />
+            <Text className="mt-1.5 text-center text-sm font-bold text-slate-900 dark:text-white" nativeID="team-detail-open-dashboard-title" testID="team-detail-open-dashboard-title">
+              Rendimiento
+            </Text>
+            <View className="mt-1 flex-row items-center" nativeID="team-detail-open-dashboard-hint" testID="team-detail-open-dashboard-hint">
+              <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID="team-detail-open-dashboard-hint-label" testID="team-detail-open-dashboard-hint-label">
+                Ver detalle
+              </Text>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={14} />
+            </View>
+          </Pressable>
         </View>
       </SectionCard>
     </>
@@ -1112,6 +1138,7 @@ function TeamDetailScreenContent({ teamId }) {
         {activeTab === 'leaderboard' && leaderboardContent}
         {activeTab === 'competencias' && competitionsContent}
         {activeTab === 'solicitudes' && solicitudesContent}
+        {activeTab === 'rendimiento' && <DashboardScreen teamId={team.id} />}
       </View>
 
       {canDeleteTeam && (
