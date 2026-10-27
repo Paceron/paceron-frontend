@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
 // Con extensión explícita, a propósito: esta página siempre corre en un
@@ -50,8 +50,18 @@ export function CheckoutWebPage() {
     );
   }
 
+  // ScrollView y no View: el root de Expo web ocupa la pantalla con overflow
+  // hidden, así que un formulario más alto que el WebView (el Brick con todos
+  // los medios de pago y "Completá tu información") quedaba cortado y no se
+  // podía bajar hasta el botón de pagar.
   return (
-    <View className="flex-1 bg-paper p-4 dark:bg-ink" nativeID="checkout-page-root" testID="checkout-page-root">
+    <ScrollView
+      className="flex-1 bg-paper dark:bg-ink"
+      contentContainerClassName="p-4 pb-12"
+      keyboardShouldPersistTaps="handled"
+      nativeID="checkout-page-root"
+      testID="checkout-page-root"
+    >
       <CheckoutBrick
         amount={Number(params.amount)}
         concept={params.concept}
@@ -62,6 +72,6 @@ export function CheckoutWebPage() {
         preferenceId={params.preferenceId}
         publicKey={params.publicKey}
       />
-    </View>
+    </ScrollView>
   );
 }

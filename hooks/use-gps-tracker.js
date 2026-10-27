@@ -53,11 +53,12 @@ export function useGpsTracker(enabled) {
             // y velocidad). High = alta precisión sin pedir la tasa máxima del
             // hardware, que es la que dispara el ruido.
             accuracy: Location.Accuracy.High,
-            // 1s / 1m: no tiene sentido pedir más puntos que los que el
-            // movimiento real genera — corriendo a ~3 m/s eso da ~3 pts/s, de
-            // sobra. Los filtros de acceptGpsLeg son la segunda barrera para
-            // el ruido.
-            timeInterval: 1000,
+            // 500ms / 1m: con el suavizado por accuracy (ver utils/distance.js#smoothGpsPoint,
+            // que atenúa el ruido de muestras más frecuentes) tiene sentido pedir el
+            // doble de densidad que antes para un trazo/ícono más fluidos. Los
+            // filtros de acceptGpsLeg siguen siendo la primera barrera para el
+            // ruido, el suavizado es la segunda, solo para lo que se dibuja.
+            timeInterval: 500,
             distanceInterval: 1,
           },
           (position) => {

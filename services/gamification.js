@@ -24,6 +24,10 @@ export async function ackGamificationSeen(userId, section, teamId) {
     if (section === 'achievements') mockAckAchievements();
     return;
   }
-  const body = teamId != null ? { section, team_id: teamId } : { section };
+  // `teamId` llega como string (toTeamModel normaliza `id: String(dto.id)`)
+  // -- el backend rechaza `team_id` no numérico en el body ("cannot
+  // unmarshal string into... int64"), bug real 2026-10-24, mismo patrón ya
+  // documentado en CLAUDE.md para `addGroupUser`.
+  const body = teamId != null ? { section, team_id: Number(teamId) } : { section };
   return await api.post(`/users/${userId}/gamification/seen`, body);
 }

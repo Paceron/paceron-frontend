@@ -455,27 +455,6 @@ export function toUpdateTrainingPlanPayload(form) {
   return payload;
 }
 
-export function toRunnerPlanAssignmentModel(dto) {
-  if (!dto) return null;
-  return {
-    id: String(dto.id),
-    planId: String(dto.plan_id),
-    userId: dto.user_id,
-    assignedAt: dto.assigned_at,
-  };
-}
-
-// "Plan actual" — ver docs/superpowers/specs/2026-09-03-my-plans-today-session-design.md.
-export function toCurrentPlanMarkModel(dto) {
-  if (!dto) return null;
-  return {
-    id: String(dto.id),
-    planId: String(dto.plan_id),
-    userId: dto.user_id,
-    markedAt: dto.marked_at,
-  };
-}
-
 // ---------------------------------------------------------------------
 // Tiers — catálogo real GET /api/v1/tiers (ver
 // docs/superpowers/specs/2026-09-02-payments-fase0-frontend-design.md).
@@ -1044,6 +1023,111 @@ export function toSessionMessagePayload({ type, recipientMode, recipientUserIds,
   return payload;
 }
 
+// --- Comparación planificado vs realizado (Gap 35) ---------------------------
+// Contrato del change comparacion-planificado-realizado del backend. Los
+// objetivos y desviaciones que no aplican vienen null y se conservan null: el
+// front los muestra como "sin objetivo", nunca como 0.
+
+const idOrNull = (value) => (value == null ? null : String(value));
+const numOrNull = (value) => (value == null ? null : Number(value));
+
+function toComparisonTotals(dto) {
+  return {
+    plannedSets: dto?.planned_sets ?? 0,
+    completedSets: dto?.completed_sets ?? 0,
+    skippedSets: dto?.skipped_sets ?? 0,
+    unregisteredSets: dto?.unregistered_sets ?? 0,
+    plannedDurationMs: numOrNull(dto?.planned_duration_ms),
+    actualDurationMs: dto?.actual_duration_ms ?? 0,
+    plannedDistanceM: numOrNull(dto?.planned_distance_m),
+    actualDistanceM: dto?.actual_distance_m ?? 0,
+  };
+}
+
+function toComparisonHeader(dto) {
+  return {
+    sessionInstanceId: String(dto.session_instance_id),
+    date: dto.date,
+    sessionName: dto.session_name ?? '',
+    teamId: idOrNull(dto.team_id),
+    teamName: dto.team_name ?? null,
+    groupId: idOrNull(dto.group_id),
+    groupName: dto.group_name ?? null,
+    isPresencial: Boolean(dto.is_presencial),
+    kinds: dto.kinds ?? [],
+    status: dto.status ?? 'none',
+    compliancePct: dto.compliance_pct ?? 0,
+  };
+}
+
+function toComparisonSetModel(dto) {
+  return {
+    setNumber: dto.set_number,
+    status: dto.status,
+    extra: Boolean(dto.extra),
+    feedbackId: idOrNull(dto.feedback_id),
+    durationMs: numOrNull(dto.duration_ms),
+    distanceMeters: numOrNull(dto.distance_meters),
+    paceSecPerKm: numOrNull(dto.pace_sec_per_km),
+    rpe: numOrNull(dto.rpe),
+    compliancePct: numOrNull(dto.compliance_pct),
+    deviationDurationMs: numOrNull(dto.deviation_duration_ms),
+    deviationDistanceM: numOrNull(dto.deviation_distance_m),
+  };
+}
+
+function toComparisonExerciseModel(dto) {
+  return {
+    exerciseInstanceId: String(dto.exercise_instance_id),
+    name: dto.name ?? '',
+    role: dto.role ?? null,
+    kind: dto.kind ?? null,
+    intensity: dto.intensity ?? null,
+    hasTarget: Boolean(dto.has_target),
+    planned: {
+      sets: dto.planned?.sets ?? 1,
+      minutes: numOrNull(dto.planned?.minutes),
+      distanceM: numOrNull(dto.planned?.distance_m),
+      speedKph: numOrNull(dto.planned?.speed_kph),
+      paceSecPerKm: numOrNull(dto.planned?.pace_sec_per_km),
+    },
+    sets: (dto.sets ?? []).map(toComparisonSetModel),
+    completedSets: dto.completed_sets ?? 0,
+    skippedSets: dto.skipped_sets ?? 0,
+    compliancePct: dto.compliance_pct ?? 0,
+  };
+}
+
+export function toSessionComparisonModel(dto) {
+  if (!dto) return null;
+  return {
+    ...toComparisonHeader(dto),
+    athleteUserId: idOrNull(dto.athlete_user_id),
+    startedAt: dto.started_at ?? null,
+    endedAt: dto.ended_at ?? null,
+    exercises: (dto.exercises ?? []).map(toComparisonExerciseModel),
+    totals: toComparisonTotals(dto.totals),
+  };
+}
+
+export function toComparisonListModel(dto) {
+  if (!dto) return null;
+  return {
+    dateFrom: dto.date_from,
+    dateTo: dto.date_to,
+    // En la lista los totales vienen aplanados en cada sesión.
+    // Una sesión de hoy sin terminar se lista pero no entra al promedio. Sin el
+    // campo (backend anterior), cuenta.
+    sessions: (dto.sessions ?? []).map((s) => ({ ...toComparisonHeader(s), totals: toComparisonTotals(s), countsForAverage: s.counts_for_average ?? true })),
+    summary: {
+      sessionsPlanned: dto.summary?.sessions_planned ?? 0,
+      sessionsWithActivity: dto.summary?.sessions_with_activity ?? 0,
+      sessionsAveraged: dto.summary?.sessions_averaged ?? dto.summary?.sessions_planned ?? 0,
+      avgCompliancePct: dto.summary?.avg_compliance_pct ?? 0,
+    },
+  };
+}
+
 // Rachas del corredor (Gap 30). `hasUnseen` alimenta el punto rojo
 // transversal (Gap 34) -- hooks/use-gamification-badge.js lo lee de acá.
 export function toStreaksModel(dto) {
@@ -1144,7 +1228,16 @@ export function toCompetitionModel(dto) {
     startAt: dto.start_at,
     endAt: dto.end_at ?? null,
     route: dto.route ?? null,
+    // Gap 35 -- instancia sintética de una competencia de ruta, null para
+    // type='metric'. Sin esto no hay forma de pedir el detalle de un
+    // intento viejo por API (ver route-attempt-detail-screen.jsx).
+    sessionInstanceId: dto.session_instance_id != null ? String(dto.session_instance_id) : null,
     acceptanceRadiusMeters: dto.acceptance_radius_meters ?? null,
+    // Gap 36 -- tope de intentos de una competencia de ruta, null para
+    // type='metric'. Default 1 ya lo aplica el backend/mock si viene
+    // ausente -- este normalizer no inventa un default propio, solo
+    // refleja lo que llegó.
+    maxAttempts: dto.max_attempts ?? null,
     participantUserIds: (dto.participant_user_ids ?? []).map((id) => String(id)),
     createdByUserId: String(dto.created_by_user_id),
     createdByRole: dto.created_by_role,
@@ -1166,8 +1259,45 @@ export function toCompetitionDetailModel(dto) {
   if (!dto) return null;
   return {
     ...toCompetitionModel(dto),
-    progress: (dto.progress ?? []).map((p) => ({ userId: String(p.user_id), value: p.value })),
+    // Gap 36 -- compliance_ratio/duration_ms/session_instance_id solo
+    // llegan con datos reales para type='route' (el mejor intento de ese
+    // atleta); quedan null/ausentes para type='metric', donde `value` sigue
+    // siendo el campo real.
+    progress: (dto.progress ?? []).map((p) => ({
+      userId: String(p.user_id),
+      value: p.value,
+      complianceRatio: p.compliance_ratio ?? null,
+      durationMs: p.duration_ms ?? null,
+      sessionInstanceId: p.session_instance_id != null ? String(p.session_instance_id) : null,
+      // `hasAttempt` -- distingue "intentó pero compliance_ratio no se
+      // pudo calcular" (ej. menos de 2 puntos GPS) de "nunca intentó";
+      // ausente del lado real todavía (el backend no calcula esto, ver
+      // Gap 36 en docs/BACKEND_API_GAPS.md) -- `Boolean(undefined)` cae en
+      // `false`, mismo comportamiento de hoy (siempre "Sin intentos") para
+      // ese caso, no rompe nada contra el backend real.
+      hasAttempt: Boolean(p.has_attempt),
+    })),
   };
+}
+
+// Un intento de competencia de ruta (GET /competitions/{id}/attempts, Gap
+// 36) -- usado por AttemptsListModal y por competitions-tab.jsx para contar
+// cupo restante del usuario actual.
+export function toCompetitionAttemptModel(dto) {
+  return {
+    runnerSessionId: String(dto.runner_session_id),
+    sessionInstanceId: String(dto.session_instance_id),
+    status: dto.status,
+    startedAt: dto.started_at,
+    finishedAt: dto.finished_at ?? null,
+    distanceMeters: dto.distance_meters ?? null,
+    durationMs: dto.duration_ms ?? null,
+    complianceRatio: dto.compliance_ratio ?? null,
+  };
+}
+
+export function toCompetitionAttemptListModel(list) {
+  return (list ?? []).map(toCompetitionAttemptModel);
 }
 
 // Payload de creación (Gap 33) -- SIN created_by_user_id/created_by_role,
@@ -1185,6 +1315,10 @@ export function toCreateCompetitionPayload(form) {
   if (form.type === 'route') {
     payload.route = form.route;
     payload.acceptance_radius_meters = Number(form.acceptanceRadiusMeters);
+    // Gap 36 -- tope de intentos, solo para competencias de ruta. Opcional,
+    // dato extra -- confirmado por backend 2026-10-23: ausente/null = sin
+    // límite (no un default de 1). Vacío en el form -> null, no 0/NaN.
+    payload.max_attempts = form.maxAttempts ? Number(form.maxAttempts) : null;
   } else {
     payload.metric = form.metric;
     payload.end_at = form.endAt;

@@ -22,3 +22,26 @@ export function computeBounds(points) {
 
   return [west, south, east, north];
 }
+
+const METERS_PER_DEGREE_LAT = 111320;
+
+// Agranda un rectángulo [west,south,east,north] un `marginRatio` de su
+// propio span por lado, con un piso en metros (`minMarginMeters`) para que
+// una ruta muy corta (o degenerada, un solo punto) no quede con un área de
+// pan prácticamente del tamaño del punto mismo. Pensado para
+// `Camera.maxBounds` de @maplibre/maplibre-react-native (mismo formato
+// [west,south,east,north] que `computeBounds`, confirmado en
+// types/LngLatBounds.d.ts) -- restringe el panning del pre-start de un
+// intento de ruta a una zona razonable alrededor del trazado, sin dejar
+// pan infinito.
+export function expandBounds(bounds, { marginRatio = 0.5, minMarginMeters = 150 } = {}) {
+  if (!bounds) return null;
+  const [west, south, east, north] = bounds;
+  const midLat = (north + south) / 2;
+  const lngMetersPerDegree = METERS_PER_DEGREE_LAT * Math.cos((midLat * Math.PI) / 180);
+  const lngSpanMeters = (east - west) * lngMetersPerDegree;
+  const latSpanMeters = (north - south) * METERS_PER_DEGREE_LAT;
+  const lngMarginDeg = Math.max(lngSpanMeters * marginRatio, minMarginMeters) / lngMetersPerDegree;
+  const latMarginDeg = Math.max(latSpanMeters * marginRatio, minMarginMeters) / METERS_PER_DEGREE_LAT;
+  return [west - lngMarginDeg, south - latMarginDeg, east + lngMarginDeg, north + latMarginDeg];
+}

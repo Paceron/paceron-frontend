@@ -73,7 +73,7 @@ export function NextTrainingBanner() {
   };
 
   return (
-    <View className="mb-6" nativeID="next-training-banner-root" testID="next-training-banner-root">
+    <View className="mb-3" nativeID="next-training-banner-root" testID="next-training-banner-root">
       {/* Sin label de sección arriba -- el contenido de la card ya se
           explica solo (fecha/nombre/equipo o el aviso de "no hay nada
           programado"). Loading/vacío usan el mismo estilo que las cards de

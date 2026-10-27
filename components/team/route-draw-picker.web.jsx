@@ -6,6 +6,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { OPENFREEMAP_STYLE_URL } from '../../config/maps.js';
 import { useRouteDrawPicker } from '../../hooks/use-route-draw-picker.js';
+import { useUser } from '../../hooks/use-user.js';
+import { useAuthStore } from '../../store/auth-store.js';
 import { formatMeters } from '../../utils/distance.js';
 import { buildRadiusHaloWidthExpression } from '../../utils/map-radius-expression.js';
 import { FIELD_LABEL } from '../forms/fields.jsx';
@@ -21,6 +23,8 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   const picker = useRouteDrawPicker({ value, onChange });
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const currentUserId = useAuthStore((s) => s.userId);
+  const { user } = useUser(currentUserId);
   // Puntos/radio en un ref -- los handlers de maplibre-gl (click/mousemove)
   // se registran UNA vez al montar el mapa y closurean sobre lo que sea
   // que `picker.points`/`acceptanceRadiusMeters` valían en ESE momento; sin
@@ -37,7 +41,12 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
   // recrear el mapa cuando cambia la lista de puntos.
   useEffect(() => {
     const initialCenter = picker.points[0] ? [picker.points[0].lng, picker.points[0].lat] : [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat];
-    const map = new maplibregl.Map({ container: containerRef.current, style: OPENFREEMAP_STYLE_URL, center: initialCenter, zoom: 13 });
+    // `attributionControl: false` -- pedido real 2026-10-20, reemplaza el
+    // compromiso anterior de "compact: true" (icono colapsado): "no quiero
+    // la marca de agua de maplibre en ningun mapa en ningun lado". La
+    // atribución de OSM/ODbL sigue cumplida fuera del mapa, ver
+    // data/legal/terms-and-conditions.md.
+    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_STYLE_URL, center: initialCenter, zoom: 13 });
     map.on('load', () => {
       map.addSource('route-draw-picker-halo', { type: 'geojson', data: EMPTY_LINE });
       // `line-cap`/`line-join: 'round'` -- mitiga el solape EN LOS VÉRTICES,
@@ -78,6 +87,28 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters }) {
     requestAnimationFrame(() => map.resize());
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Centro por defecto: GPS real -> dirección del perfil -> Buenos Aires
+  // (pedido real, 2026-10-17: "en todas las plataformas"). Mismo criterio
+  // que route-draw-picker.jsx (nativo) -- silencioso, solo si no hay ruta
+  // cargada todavía.
+  useEffect(() => {
+    if (picker.points.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      const gps = await picker.locateMe({ silent: true });
+      if (cancelled) return;
+      if (gps) {
+        mapRef.current?.flyTo({ center: [gps.lng, gps.lat], zoom: 15, duration: 600 });
+        return;
+      }
+      if (user?.lat != null && user?.lng != null) {
+        mapRef.current?.flyTo({ center: [user.lng, user.lat], zoom: 13, duration: 600 });
+      }
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

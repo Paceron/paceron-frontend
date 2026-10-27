@@ -54,6 +54,26 @@ export function acceptGpsLeg({ from, to, maxSpeedMps = MAX_PLAUSIBLE_SPEED_MPS, 
   return leg;
 }
 
+// Media móvil exponencial ponderada por `accuracy` -- SOLO para el trazo
+// dibujado y el ícono de posición, nunca para la distancia total (esa
+// sigue saliendo de `acceptGpsLeg`, crudo-a-crudo, sin cambios -- la
+// distancia de un intento alimenta compliance_ratio y se persiste al
+// backend, no se toca con una heurística de suavizado nueva). Mejor
+// precisión (accuracy bajo) pesa más hacia el punto crudo nuevo; peor
+// precisión (pero que ya pasó el filtro de acceptGpsLeg) pesa más hacia
+// el historial ya suavizado. Sin `accuracy`, usa alphaMax -- no penaliza
+// un dato que no puede evaluar, mismo criterio permisivo que ya usa
+// acceptGpsLeg con accuracy ausente.
+export function smoothGpsPoint(previousSmoothed, rawPoint, { k = 4, alphaMin = 0.2, alphaMax = 0.8 } = {}) {
+  if (!previousSmoothed) return { latitude: rawPoint.latitude, longitude: rawPoint.longitude };
+  const { accuracy } = rawPoint;
+  const alpha = Number.isFinite(accuracy) ? Math.min(alphaMax, Math.max(alphaMin, k / Math.max(accuracy, 1))) : alphaMax;
+  return {
+    latitude: previousSmoothed.latitude + alpha * (rawPoint.latitude - previousSmoothed.latitude),
+    longitude: previousSmoothed.longitude + alpha * (rawPoint.longitude - previousSmoothed.longitude),
+  };
+}
+
 // Formato "X m" / "X.XX km" para distancias — usado por la toma en vivo y por
 // la pantalla de revisión (spec session-registration-review: reusar, no
 // duplicar). Extraído 2026-09-24 desde training-session-active-screen.jsx.

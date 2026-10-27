@@ -9,6 +9,8 @@ import {
   mockCloseCompetition,
   mockCreateCompetitionAttempt,
   mockGetCompetition,
+  mockGetCompetitionAttempts,
+  mockSeedDynamicRouteCompetitionStart,
 } from './__mocks__/competitions-mock.js';
 
 // GET /api/v1/teams/{id}/competitions -- Gap 33.
@@ -64,4 +66,24 @@ export async function getCompetition(id) {
 export async function createCompetitionAttempt(id, athleteUserId) {
   if (USE_MOCKS) return await mockCreateCompetitionAttempt(id, athleteUserId);
   return await api.post(`/competitions/${id}/attempts`, {});
+}
+
+// GET /api/v1/competitions/{id}/attempts -- listado de intentos de un
+// atleta contra una competencia de ruta (Gap 36, intentos múltiples
+// configurables, endpoint todavía no mergeado al backend real).
+// `athleteUserId` opcional -- default caller del lado real (no se manda
+// query param); en mocks siempre explícito, no hay token real que simular.
+export async function getCompetitionAttempts(competitionId, athleteUserId) {
+  if (USE_MOCKS) return await mockGetCompetitionAttempts(competitionId, athleteUserId);
+  const query = athleteUserId ? `?athlete_user_id=${Number(athleteUserId)}` : '';
+  return await api.get(`/competitions/${competitionId}/attempts${query}`);
+}
+
+// Solo mocks -- no existe contraparte real (reubicar el trazado de una
+// competencia real no es un caso de uso, es puramente para poder probar
+// el gate de GPS del pre-start contra una ubicación real sin backend de
+// por medio). No-op devolviendo false contra el backend real.
+export function seedDynamicRouteCompetitionStart(lat, lng) {
+  if (!USE_MOCKS) return false;
+  return mockSeedDynamicRouteCompetitionStart(lat, lng);
 }

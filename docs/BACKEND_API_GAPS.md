@@ -1718,7 +1718,200 @@ dato de "novedad" vive junto al recurso que la genera, no en un servicio aparte)
     cross-team aparte. El punto rojo de la pestaña Competencias DENTRO de un equipo puntual usa
     directamente el `has_unseen` de ESE equipo, sin agregación.
 
-## Gap 35 — `/dashboard/comparisons/periods` restringido al dueño del equipo (bloquea la comparación por período del corredor)
+## Gap 35 — comparación planificado vs realizado: objetivos de cada ejercicio y cumplimiento por sesión y por rango [RESUELTO del lado backend, rama `feature/comparacion-planificado-realizado`]
+
+> Numeración: los Gaps 30-34 son los del módulo de gamificación (arriba).
+
+**Contexto.** HU "Comparar planificado vs realizado": el corredor quiere ver si cumplió lo que tenía planificado, sesión por sesión y en un rango de fechas, con un % de cumplimiento, un gráfico, filtros por tipo y período, y exportación a PDF y CSV. El front no puede armarlo solo:
+
+1. `GET /session-instances/:id` trae de cada ejercicio solo `repeat_count`, `role` y `rest_minutes`. Los objetivos (`minutes`, `distance_m`, `speed_kph`, `kind`, `intensity`) viven en `exercise_instances` y no tienen endpoint para el corredor.
+2. El historial (`/users/{id}/workout-feedback-history`) trae lo realizado pero no lo planificado, y no incluye las sesiones que no se hicieron.
+3. Cruzar las dos cosas tiene trampas de datos: `workout_feedback.assigned_exercise_id` es el `exercise_instance_id` (no el id de `session_exercise_instances`, aunque en 62 de 95 filas coinciden por casualidad), las filas anteriores al 2026-09-30 tienen `set_number` en base 0, y una misma serie puede tener una fila del corredor y otra del entrenador.
+
+**Contrato** (change de OpenSpec `comparacion-planificado-realizado`):
+
+```
+GET /api/v1/activities/comparison/:sessionInstanceId?athlete_user_id=
+→ 200 { session_instance_id, athlete_user_id, date, session_name, team_id, team_name,
+        group_id, group_name, is_presencial, started_at, ended_at,
+        status (finished|wip|interrupted|none), kinds[],
+        exercises: [{ exercise_instance_id, name, role, kind, intensity, has_target,
+                      planned: { sets, minutes, distance_m, speed_kph, pace_sec_per_km },
+                      sets: [{ set_number, status (completed|skipped|unregistered), extra,
+                               feedback_id, duration_ms, distance_meters, pace_sec_per_km,
+                               rpe, compliance_pct, deviation_duration_ms, deviation_distance_m }],
+                      completed_sets, skipped_sets, compliance_pct }],
+        totals: { planned_sets, completed_sets, skipped_sets, unregistered_sets,
+                  planned_duration_ms, actual_duration_ms, planned_distance_m, actual_distance_m },
+        compliance_pct }
+→ 400 INVALID_QUERY · 401 · 403 · 404 · 500 ("error interno")
+
+GET /api/v1/activities/comparison?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD&team_id=&group_id=&kind=&athlete_user_id=
+→ 200 { date_from, date_to,
+        sessions: [{ session_instance_id, date, session_name, team_id, team_name, group_id,
+                     group_name, is_presencial, kinds[], status, planned_sets, completed_sets,
+                     skipped_sets, unregistered_sets, planned_duration_ms, actual_duration_ms,
+                     planned_distance_m, actual_distance_m, compliance_pct, counts_for_average }],
+        summary: { sessions_planned, sessions_with_activity, sessions_averaged, avg_compliance_pct } }
+→ 400 INVALID_QUERY (rango faltante, invertido, > 366 días o posterior a hoy; kind desconocido;
+  group_id sin team_id; otro atleta sin team_id) · 401 · 403 · 500
+```
+
+Reglas que importan del lado del front:
+
+- **Cumplimiento por serie, con tope de 100%:** con minutos, duración (activa si existe) / planificada; si no, distancia / planificada; sin objetivo, 100% si se completó. Salteada o sin registro: 0%. Ejercicio y sesión: promedio de sus series planificadas, a 1 decimal. Las series de más vienen con `extra: true` y `compliance_pct: null`.
+- `deviation_*` y `planned_duration_ms`/`planned_distance_m` son `null` cuando no hay objetivo de ese tipo: se muestran como "sin objetivo", nunca como 0.
+- La lista incluye los días de entrenamiento donde el corredor era miembro **en esa fecha** aunque no haya registrado nada (0%, `status: none`), más las sesiones con feedback suyo que no tengan un día así.
+- **El promedio del rango no cuenta las sesiones de hoy sin terminar** (2026-10-17, pedido del equipo): una sesión de hoy que no está `finished` viene con `counts_for_average: false` y no entra en `avg_compliance_pct` ni en `sessions_averaged` (el divisor). Las de días anteriores cuentan siempre, aunque no se hayan ejecutado. `sessions_planned` sigue contando todas. Backend: design.md D9.
+- Sin `athlete_user_id` compara al usuario autenticado. Un entrenador puede pasar el de un corredor suyo (en la lista, con `team_id` de un equipo propio).
+
+**Impacto en frontend:** `services/activity-comparison.js`, `hooks/use-activity-comparison.js`, pantallas `/training-comparison` y `/training-comparison/session` (spec `docs/superpowers/specs/2026-10-13-training-comparison-design.md`). Entradas: botón en el historial, opción en el menú de cada fila y "Ver comparación" al terminar la ejecución.
+
+## Gap 36 — `CompetitionResponse` no expone el `session_instance_id` sintético de una competencia de ruta [RESUELTO y mergeado a `develop`]
+
+**Actualización 2026-10-23 — corrección de la nota de abajo, que había quedado desactualizada:**
+confirmado (`cmd/api/domains/competition/competition.go`, campo `SessionInstanceID` presente en
+los 3 structs de respuesta) que esto SÍ está mergeado a `develop` -- la nota original decía lo
+contrario, probablemente escrita antes de que el merge terminara de aterrizar. El frontend ya
+está cableado contra este campo (no es un mock) desde la spec de
+`route-attempt-detail-screen.jsx` (`services/normalizers.js#toCompetitionModel`, campo
+`sessionInstanceId`) -- este gap está 100% resuelto, backend y frontend, sin pendientes.
+
+**Actualización 2026-10-20:** backend confirma implementado — `GET /teams/{id}/competitions` (cada
+fila) y `GET /competitions/{id}` ahora incluyen `session_instance_id: number` (>0) para
+competencias de ruta, `null` para métrica. El id coincide con el que ya devuelve el intake (`POST
+/competitions/{id}/attempts`) — "sobrevive al SQLite local".
+
+**Contexto (original).** Confirmado leyendo el frontend (2026-10-20): un intento de competencia de ruta
+corre por el mismo pipeline que una sesión de entrenamiento normal — `POST
+/competitions/{id}/attempts` crea el `session_instance` sintético (Gap 33 punto 26) y el
+frontend guarda localmente un `run`/`set` (SQLite) contra ese `session_instance_id`, sincronizado
+después con el `syncRun()` genérico (`POST /workout-feedback` + `POST /workout-feedback/:id/points`).
+Mientras el intento está recién hecho, el frontend tiene ese id en memoria (vino de la respuesta
+del intake). El propio texto de la Spec 4b ya anticipaba el problema: "No la expone en
+`CompetitionResponse` (si algún día necesitan suscribirse antes de abrir intento, se puede
+exponer)".
+
+**Pedido concreto:** ese día llegó — **`GET /competitions/{id}` necesita devolver el
+`session_instance_id` sintético** (ej. campo `session_instance_id` en el body, o anidado si
+en algún momento se expone el objeto completo). Sin esto, no hay forma de pedir
+`GET /session-instances/:id/feedback` ni `GET /workout-feedback/:id/points` para un intento VIEJO
+ya sincronizado (y por lo tanto ya borrado de SQLite local) — solo funciona mientras el id sigue
+vivo en memoria del dispositivo que corrió el intento.
+
+**Impacto en frontend:** bloquea la pantalla de detalle de intento (`route-attempt-result-screen.jsx`,
+en rediseño hacia una vista de detalle genérica, reusable fuera del flujo "recién terminado") para
+el caso "ver un intento pasado desde cualquier dispositivo/plataforma, sin el estado local que lo
+originó" — ver `docs/superpowers/specs/2026-10-20-route-attempt-detail-screen-design.md`. El caso
+"intento recién terminado, todavía en este mismo dispositivo" no depende de este gap (usa el id
+que ya tiene en memoria/SQLite).
+
+## Gap 37 — competencias de ruta: intentos múltiples configurables (`max_attempts`) [RESUELTO del lado backend, mergeado a `develop`]
+
+**Actualización 2026-10-23 — implementado y confirmado contra código real** (backend
+pasó el detalle completo, ver `docs/FRONTEND_IMPACTO_INSTANCIACION.md` §19 del repo
+`paceron-backend`, change `competencias-ruta-intentos-multiples`, ya en `develop`).
+2 diferencias reales respecto al pedido original de abajo, a tener en cuenta cuando
+el frontend deje de construirse contra mocks (ver
+`docs/superpowers/specs/2026-10-21-route-competition-multi-attempt-design.md`, hoy
+implementado contra mocks con *otro* comportamiento default):
+
+1. **`max_attempts` ausente/null = SIN LÍMITE, no 1.** El pedido original asumía
+   default 1 (mismo comportamiento que sin esta feature); el backend implementó lo
+   contrario — ausente = ilimitado. El mock de este repo (`competitions-mock.js`)
+   hoy default-ea a 1 cuando no viene en el payload — hay que invertir ese default
+   (y el form de creación, que hoy siempre manda un número 1-10, sin opción de "sin
+   límite") antes de integrar contra el backend real.
+2. **`attempts_used`/`can_attempt` SON campos reales y garantizados** (no el
+   "nice-to-have" que pedíamos) — vienen en el detalle, el listado, y las
+   mutaciones de aprobar/rechazar/cerrar (no en cancel). `can_attempt` reemplaza
+   por completo la lógica que el frontend tuvo que inventar client-side
+   (`useCompetitionAttempts` + resta contra `maxAttempts` en
+   `competitions-tab.jsx`) para decidir si mostrar/deshabilitar "Correr esta
+   trayectoria" — al integrar, usar directo ese campo en vez de la cuenta propia.
+
+El resto (instancia nueva por intento 2+, endpoint de lista, shape de `progress`,
+reglas de `winner_user_ids`) coincide con lo pedido — ver el documento del backend
+para los shapes exactos (algunos nombres de campo en el endpoint de lista difieren
+de lo que el frontend asumió al mockear: `id` no `runner_session_id`, `ended_at` no
+`finished_at` — corregir el normalizer al integrar).
+
+**Pedido concreto (original).** Hoy una competencia `type='route'` admite un solo intento por
+corredor (Gap 33 punto 28, `400` en el segundo). Se pide hacerlo configurable: el
+creador de la competencia elige un `max_attempts` al crearla, y cada participante
+puede correr la ruta hasta esa cantidad de veces. El ranking usa, para cada
+corredor, el mejor de sus intentos propios (mayor % de cumplimiento de la
+trayectoria, empate por menor duración).
+
+**Arquitectura elegida (ver spec completa en
+`docs/superpowers/specs/2026-10-21-route-competition-multi-attempt-design.md`):
+un `session_instance` nuevo por cada intento, no uno compartido por toda la
+competencia.** Hoy `CreateAttempt` (`competition_service.go`) reusa la única
+`session_instance` sintética de la competencia (`comp.RouteSessionInstanceID`,
+Gap 33 punto 26) para el primer y único intento permitido. Para intentos
+adicionales del MISMO atleta, hace falta crear una `session_instance` nueva (la
+compartida ya quedó "ocupada" por ese atleta en su primer intento, y el índice
+único genérico de `runner_session` — `session_instance_id, athlete_user_id` —
+rige TODAS las sesiones del sistema, no solo competencias, así que no se toca).
+El primer intento de CUALQUIER atleta sigue reusando la instancia compartida
+sin cambios — el comportamiento de hoy para "un solo intento" queda intacto.
+
+**Campo nuevo en `Competition`:** `max_attempts: number`, solo para
+`type='route'` (`null`/ausente para `type='metric'`). Pregunta abierta: ¿cuál es
+el rango mínimo/máximo válido? El frontend valida client-side `[1, 10]` con
+default 3 mientras no haya respuesta (mismo criterio que
+`acceptance_radius_meters`, Gap 33 punto 31).
+
+**`CreateAttempt` cambia de regla:** de "¿existe ya un intento de este atleta
+contra esta competencia? → 400" a "`COUNT(runner_session WHERE competition_id=X
+AND athlete_user_id=Y) >= max_attempts` → 400". El primer intento de un atleta
+(count=0) sigue usando `comp.RouteSessionInstanceID`; el segundo en adelante
+crea una `session_instance` nueva.
+
+**Endpoint nuevo: `GET /competitions/{id}/attempts?athlete_user_id=X`**
+(`athlete_user_id` opcional, default = caller) → lista de intentos de ESE
+atleta contra esa competencia, mismo criterio de visibilidad que el ranking
+(cualquiera que vea la competencia puede pedir los intentos de cualquier
+participante, no solo los propios):
+
+```json
+[{
+  "runner_session_id": 123,
+  "session_instance_id": 9001,
+  "status": "finished",
+  "started_at": "2026-10-21T10:00:00Z",
+  "finished_at": "2026-10-21T10:15:00Z",
+  "distance_meters": 2850,
+  "duration_ms": 900000,
+  "compliance_ratio": 94.2
+}]
+```
+
+**`progress` del detalle de competencia (`GET /competitions/{id}`) deja de ser
+inútil para `type='route'`.** Hoy `progress: [{user_id, value}]` con `value`
+siempre sin semántica real para ruta. Pasa a llevar, por atleta, el MEJOR
+intento (mismo comparador de arriba): `{user_id, compliance_ratio, duration_ms,
+session_instance_id}` en vez de `value` — el `session_instance_id` es el de ESE
+mejor intento, imprescindible para que la navegación desde el ranking (que no
+elige un intento específico) pueda seguir pidiendo
+`GET /session-instances/:id/feedback` sin depender del endpoint de lista.
+
+**Nice-to-have, no bloqueante:** exponer `attempts_used`/`remaining_attempts`
+del caller en la fila de la competencia misma (listado o detalle), para que el
+frontend no tenga que pedir el endpoint de lista completo solo para decidir si
+mostrar el botón "Correr esta trayectoria". El frontend de esta ronda (ver
+spec) resuelve esto pidiendo el endpoint de lista igual, filtrado al usuario
+actual — funciona sin este campo, pero es más barato con él si en algún
+momento se agrega.
+
+**Impacto en frontend:** bloquea la versión real (no-mock) de todo el flujo de
+intentos múltiples — mismo patrón que Gap 18/36, el frontend ya está
+construido y probado contra mocks (branch `feature/route-competitions-polish`,
+ver el plan de implementación en
+`docs/superpowers/plans/2026-10-21-route-competition-multi-attempt.md`) y
+solo falta el flip a datos reales cuando esto se mergee.
+
+## Gap 38 — `/dashboard/comparisons/periods` restringido al dueño del equipo (bloquea la comparación por período del corredor)
 
 **Contexto.** La card "Frente al período anterior" de la pantalla de rendimiento
 (`components/dashboard/comparison-strip.jsx`) consume `POST /dashboard/comparisons/periods`.
