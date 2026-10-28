@@ -6,39 +6,25 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
-import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
-import { useAuthStore } from '../../store/auth-store.js';
-import { useUser, useUserMutations } from '../../hooks/use-user.js';
+import { useUserMutations } from '../../hooks/use-user.js';
 import { useMpConnectStatus } from '../../hooks/use-mp-connect.js';
 import { resolveMpConnectErrorText } from '../../utils/mp-connect-messages.js';
 // Sin extensión, a propósito: hay split de plataforma (.jsx / .web.jsx) y
 // Metro solo resuelve por plataforma cuando el specifier no la trae.
 import { MpConnectButton } from '../payments/mp-connect-button';
-import { InputField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ActivateTrainerPasswordModal } from './activate-trainer-password-modal.jsx';
 
 export function ActivateTrainerScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
   const { activateTrainerRole } = useUserMutations();
 
-  // Si el usuario ya tuvo el perfil de entrenador activo antes (dado de
-  // baja, no borra el alias — ver auth-store.js), se pre-completa acá para
-  // no obligar a retipearlo si es el mismo.
-  const [trainerAlias, setTrainerAlias] = useState(user?.bankAlias ?? '');
-  const [touched, setTouched] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
-  const hasPreviousAlias = Boolean(user?.bankAlias);
   const { connected: mpConnected, loading: mpLoading, failed: mpFailed, refetch: refetchMpStatus } = useMpConnectStatus();
 
-  const aliasError = touched ? validateTrainerAlias(trainerAlias) : null;
-  const aliasOk = !validateTrainerAlias(trainerAlias);
-  // Para activar hacen falta las dos cosas: alias válido y cuenta de Mercado
-  // Pago conectada (sin ella no se puede cobrar con split).
-  const canSubmit = aliasOk && mpConnected;
+  // Para activar hace falta la cuenta de Mercado Pago conectada para los cobros.
+  const canSubmit = mpConnected;
 
   const missingHint = (() => {
     if (canSubmit || mpLoading) return null;
@@ -46,13 +32,11 @@ export function ActivateTrainerScreen() {
     // en realidad no sabemos si ya está conectada lo manda a repetir un paso
     // que quizás ya hizo.
     if (mpFailed) return 'No pudimos verificar el estado de tu cuenta de Mercado Pago. Reintentá para poder activar el perfil.';
-    if (!aliasOk && !mpConnected) return 'Completá tu alias de pagos y conectá tu cuenta de Mercado Pago para activar el perfil.';
     if (!mpConnected) return 'Conectá tu cuenta de Mercado Pago para activar el perfil.';
-    return 'Completá un alias de pagos válido para activar el perfil.';
+    return null;
   })();
 
   const handleSubmit = () => {
-    setTouched(true);
     if (!canSubmit) return;
     setPasswordModalVisible(true);
   };
@@ -71,7 +55,7 @@ export function ActivateTrainerScreen() {
   };
 
   const handleConfirmActivate = async (password) => {
-    const result = await activateTrainerRole({ bankAlias: trainerAlias, password });
+    const result = await activateTrainerRole({ password });
     setPasswordModalVisible(false);
     if (result.success) {
       Toast.show({ type: 'success', text1: '¡Perfil de entrenador activado!', text2: 'Ya podés alternar entre corredor y entrenador.' });
@@ -115,17 +99,6 @@ export function ActivateTrainerScreen() {
             entrenador cuando quieras.
           </Text>
 
-          <InputField
-            autoCapitalize="none"
-            error={aliasError}
-            hint={hasPreviousAlias ? 'Detectamos un alias guardado de una activación anterior — podés cambiarlo si querés.' : undefined}
-            label="Alias de pagos *"
-            onBlur={() => setTouched(true)}
-            onChange={setTrainerAlias}
-            placeholder="Tu alias de pagos"
-            touched={touched}
-            value={trainerAlias}
-          />
         </SectionCard>
 
         <SectionCard icon="link-variant" title="Cobros con Mercado Pago" variant="amber">

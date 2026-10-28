@@ -5,7 +5,7 @@ import { notifyWarning } from '../../utils/haptics.js';
 
 // Confirmación liviana (a diferencia de DeactivateAccountModal, que exige
 // tipear el email porque borra la cuenta entera) — esto es reversible y no
-// pierde datos (el alias de pagos se mantiene guardado), un click alcanza.
+// pierde datos personales, un click alcanza.
 export function DeactivateTrainerModal({ visible, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +35,7 @@ export function DeactivateTrainerModal({ visible, onCancel, onConfirm }) {
           </View>
 
           <Text nativeID="deactivate-trainer-modal-description" testID="deactivate-trainer-modal-description" className="mb-5 text-sm leading-5 text-slate-600 dark:text-slate-300">
-            Vas a dejar de tener acceso a las funciones de entrenador y volvés a ver solo tu perfil de corredor. Podés volver a activarlo cuando quieras — tu alias de pagos queda guardado para entonces.
+            Vas a dejar de tener acceso a las funciones de entrenador y volvés a ver solo tu perfil de corredor. Podés volver a activarlo cuando quieras.
           </Text>
 
           <View nativeID="deactivate-trainer-modal-actions" testID="deactivate-trainer-modal-actions" className="flex-row gap-3">

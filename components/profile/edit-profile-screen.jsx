@@ -9,12 +9,11 @@ import { isWeb } from '../../utils/platform.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { validateBirthDate } from '../../utils/date-validators.js';
 import { validateDNI } from '../../utils/dni-validators.js';
-import { validateTrainerAlias } from '../../utils/trainer-alias-validators.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { toAddressFormFields } from '../../utils/location-to-address-fields.js';
 import { toLocationPickerValue, hasLegacyAddressWithoutCoordinates, formatLegacyAddressLabel } from '../../utils/address-fields-to-location.js';
 import { useAuthStore } from '../../store/auth-store.js';
-import { useUser, usePermissions, useUserMutations } from '../../hooks/use-user.js';
+import { useUser, useUserMutations } from '../../hooks/use-user.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { Row, Col, InputField, DateField } from '../forms/fields.jsx';
@@ -90,9 +89,6 @@ export function EditProfileScreen() {
 function EditProfileForm({ user }) {
   const router = useRouter();
   const colors = useThemeColors();
-  const userId = useAuthStore((s) => s.userId);
-  const { roles } = usePermissions(userId);
-  const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
   const { updateUser } = useUserMutations();
 
   const [firstName, setFirstName] = useState(user.name ?? '');
@@ -105,7 +101,6 @@ function EditProfileForm({ user }) {
   const [email, setEmail] = useState(user.email ?? '');
   const [phone, setPhone] = useState(user.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(user.phoneContact ?? '');
-  const [trainerAlias, setTrainerAlias] = useState(user.bankAlias ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -139,7 +134,7 @@ function EditProfileForm({ user }) {
     : { country: user.country, province: user.province, city: user.city, street: user.street, number: user.number, lat: user.lat, lng: user.lng };
 
   const isDirty = useFormDirty({
-    firstName, lastName, dni, birthDate, email, phone, phoneContact, trainerAlias, locationValue,
+    firstName, lastName, dni, birthDate, email, phone, phoneContact, locationValue,
   });
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
 
@@ -157,8 +152,6 @@ function EditProfileForm({ user }) {
   const currentPasswordError = emailChanged && touched.currentPassword && !currentPassword
     ? 'Ingresá tu contraseña actual para cambiar el email.'
     : null;
-  const trainerAliasError = touched.trainerAlias && validateTrainerAlias(trainerAlias);
-
   const personalOk =
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
@@ -166,8 +159,7 @@ function EditProfileForm({ user }) {
     !validateBirthDate(birthDate) &&
     validateEmailFormat(email) &&
     !isDisposableEmail(email);
-  const trainerOk = !hasTrainerRole || !validateTrainerAlias(trainerAlias);
-  const canSubmit = personalOk && trainerOk && (!emailChanged || currentPassword.length > 0);
+  const canSubmit = personalOk && (!emailChanged || currentPassword.length > 0);
 
   const handleSubmit = async () => {
     if (loading) return;
@@ -177,10 +169,8 @@ function EditProfileForm({ user }) {
     touch('birthDate');
     touch('email');
     if (emailChanged) touch('currentPassword');
-    if (hasTrainerRole) touch('trainerAlias');
 
     if (!personalOk) return;
-    if (!trainerOk) return;
     if (emailChanged && !currentPassword) return;
 
     setLoading(true);
@@ -194,7 +184,6 @@ function EditProfileForm({ user }) {
         phone,
         phoneContact,
         ...addressFieldsToSubmit,
-        bankAlias: hasTrainerRole ? trainerAlias : user.bankAlias,
       });
       const result = await updateUser({
         id: user.userId,
@@ -373,21 +362,6 @@ function EditProfileForm({ user }) {
         )}
         <LocationPicker onChange={handleLocationChange} value={locationValue} variant="card" />
         </SectionCard>
-
-        {hasTrainerRole && (
-          <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
-            <InputField
-              autoCapitalize="none"
-              error={trainerAliasError}
-              label="Alias de pagos *"
-              onBlur={() => touch('trainerAlias')}
-              onChange={setTrainerAlias}
-              placeholder="Tu alias de pagos"
-              touched={touched.trainerAlias}
-              value={trainerAlias}
-            />
-          </SectionCard>
-        )}
 
         <Pressable
           nativeID="edit-profile-screen-submit-button"

@@ -40,8 +40,7 @@ export async function assignRole(userId, roleName) {
   }
 }
 
-// DELETE /api/v1/users/{id}/roles/{role_id} — no toca bank_alias, se
-// mantiene guardado a propósito para una reactivación futura.
+// DELETE /api/v1/users/{id}/roles/{role_id} — solo cambia la asignación del rol.
 export async function removeRole(userId, roleName) {
   const roleId = await getRoleIdByName(roleName);
   if (USE_MOCKS) return await mockRemoveRole(userId, roleId);
@@ -56,17 +55,16 @@ export async function getPermissions(userId) {
 }
 
 // POST /api/v1/users/{id}/trainer-role — userrole.ActivateEntrenadorRequest
-// {password, bank_alias}. Endpoint dedicado para el rol entrenador
-// específicamente (valida contraseña, persiste el alias en 1 sola
-// llamada) — reemplaza el flujo genérico (assignRole + updateUser) que
+// {password}. Endpoint dedicado para el rol entrenador que verifica la
+// contraseña — reemplaza el flujo genérico (assignRole + updateUser) que
 // usaba antes. 'corredor' sigue usando el flujo genérico sin cambios.
 // skipAuthRefresh: un 401 acá es "contraseña incorrecta" (negocio), no
 // "sesión vencida" — sin este flag, el interceptor de services/api.js
 // dispararía un refresh de sesión innecesario (y en el peor caso un
 // logout espurio) solo porque el usuario tipeó mal la contraseña.
-export async function activateTrainerRole(userId, { password, bankAlias }) {
-  if (USE_MOCKS) return await mockActivateTrainerRole(userId, { password, bankAlias });
-  return await api.post(`/users/${userId}/trainer-role`, { password, bank_alias: bankAlias }, { skipAuthRefresh: true });
+export async function activateTrainerRole(userId, { password }) {
+  if (USE_MOCKS) return await mockActivateTrainerRole(userId, { password });
+  return await api.post(`/users/${userId}/trainer-role`, { password }, { skipAuthRefresh: true });
 }
 
 // DELETE /api/v1/users/{id}/trainer-role — a diferencia del DELETE

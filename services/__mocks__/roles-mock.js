@@ -66,7 +66,7 @@ export async function mockGetPermissions(userId) {
 // POST /users/{id}/trainer-role — a diferencia de mockAssignRole (genérico,
 // sin password), este simula la validación de contraseña que el endpoint
 // real exige.
-export async function mockActivateTrainerRole(userId, { password, bankAlias }) {
+export async function mockActivateTrainerRole(userId, { password }) {
   if (!password) {
     const error = new Error('La contraseña es requerida.');
     error.status = 400;

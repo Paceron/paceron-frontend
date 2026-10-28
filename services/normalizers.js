@@ -25,7 +25,6 @@ export function toUserModel(dto) {
     number: dto.number,
     lat: dto.lat ?? null,
     lng: dto.lng ?? null,
-    bankAlias: dto.bank_alias,
     photoUrl: dto.photo_url ?? null,
     defaultTheme: dto.default_theme ?? null,
     allowTeamInvitations: dto.allow_team_invitations ?? true,
@@ -67,7 +66,7 @@ export function toRegisterPayload(form) {
 }
 
 // camelCase form -> UserUpdateRequest (snake_case). Set completo editable
-// (sin password ni status, que no se actualizan por PUT).
+// sin password, status ni el alias legado, que ya no se edita desde el perfil.
 export function toUpdatePayload(form) {
   const payload = {
     name: form.firstName,
@@ -82,7 +81,6 @@ export function toUpdatePayload(form) {
     phone_contact: form.phoneContact ?? '',
     province: form.province ?? '',
     street: form.street ?? '',
-    bank_alias: form.bankAlias ?? '',
     // null explícito (no se omite) -- si el usuario borra la ubicación
     // elegida, PUT manda null para limpiarla, igual que el resto de este
     // payload que siempre manda el set completo.

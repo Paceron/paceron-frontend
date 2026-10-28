@@ -51,11 +51,11 @@ function FieldGrid({ children }) {
 }
 
 // Etiqueta + contenido de un campo, con el mismo ancho que el resto de la grilla.
-function FieldShell({ label, slug, children }) {
+function FieldShell({ label, slug, children, fullWidth = false }) {
   const isNarrowWeb = useIsNarrowWeb();
   const isDesktopWeb = isWeb && !isNarrowWeb;
   return (
-    <View className={isDesktopWeb ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
+    <View className={isDesktopWeb && !fullWidth ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
       <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
         <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
         {children}
@@ -176,7 +176,7 @@ const MP_STATE_TONE = {
 
 // Estado de la cuenta de Mercado Pago con la que el entrenador cobra: si está
 // conectada y hasta cuándo (el token dura 180 días y no se renueva solo).
-function MpConnectionField() {
+function MpConnectionField({ fullWidth = false }) {
   const colors = useThemeColors();
   const status = useMpConnectStatus();
   const slug = 'profile-screen-field-mercado-pago';
@@ -207,18 +207,17 @@ function MpConnectionField() {
   }
 
   return (
-    <FieldShell label="Cuenta de Mercado Pago" slug={slug}>
+    <FieldShell fullWidth={fullWidth} label="Cuenta de Mercado Pago" slug={slug}>
       {body}
     </FieldShell>
   );
 }
 
-function TrainerDataSection({ bankAlias }) {
+function TrainerDataSection() {
   return (
     <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
       <FieldGrid>
-        <Field label="Alias de pagos" value={display(bankAlias)} />
-        <MpConnectionField />
+        <MpConnectionField fullWidth />
       </FieldGrid>
     </SectionCard>
   );
@@ -389,7 +388,7 @@ export function ProfileScreen() {
           onRemovePhoto={handleRemovePhoto}
         />
 
-        {hasTrainerRole && <TrainerDataSection bankAlias={user.bankAlias} />}
+        {hasTrainerRole && <TrainerDataSection />}
 
         {showPayments ? <PaymentsSummaryCard /> : <PaymentsHistoryCard />}
 
