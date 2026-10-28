@@ -37,7 +37,6 @@ function buildFullPayload(user, overrides) {
     city: user.city,
     street: user.street,
     number: user.number,
-    bankAlias: user.bankAlias,
     defaultTheme: user.defaultTheme,
     allowTeamInvitations: user.allowTeamInvitations,
     ...overrides,

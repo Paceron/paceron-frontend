@@ -53,6 +53,11 @@ describe('toUserModel', () => {
     expect(model.allowTeamInvitations).toBe(false);
   });
 
+  test('does not expose the legacy bank alias in the frontend user model', () => {
+    const model = toUserModel({ user_id: 1, bank_alias: 'alias.legacy' });
+    expect(model).not.toHaveProperty('bankAlias');
+  });
+
   test('defaults allowTeamInvitations to true when absent', () => {
     const dto = { user_id: 1, name: 'A', surname: 'B' };
     expect(toUserModel(dto).allowTeamInvitations).toBe(true);
@@ -80,6 +85,11 @@ describe('toUpdatePayload — default_theme / allow_team_invitations', () => {
   test('omite allow_team_invitations si es undefined', () => {
     const payload = toUpdatePayload(BASE_FORM);
     expect(payload.allow_team_invitations).toBeUndefined();
+  });
+
+  test('omits bank_alias from profile update payloads', () => {
+    const payload = toUpdatePayload({ ...BASE_FORM, bankAlias: 'alias.legacy' });
+    expect(payload).not.toHaveProperty('bank_alias');
   });
 
   test('manda lat/lng cuando son números finitos, incluso 0', () => {

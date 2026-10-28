@@ -114,10 +114,10 @@ export function useUserMutations() {
   });
 
   const activateTrainerRoleMutation = useMutation({
-    mutationFn: async ({ bankAlias, password }) => {
+    mutationFn: async ({ password }) => {
       if (!userId) return { success: false, error: 'No hay sesión activa.' };
       try {
-        await activateTrainerRoleService(userId, { password, bankAlias });
+        await activateTrainerRoleService(userId, { password });
         return { success: true };
       } catch (error) {
         return { success: false, error: error.message };

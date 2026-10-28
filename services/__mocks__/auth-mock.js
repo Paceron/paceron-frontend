@@ -1,4 +1,4 @@
-import { getMockBankAlias, __lookupCatalogUser } from './user-mock.js';
+import { __lookupCatalogUser } from './user-mock.js';
 
 // Dos cuentas demo, y la diferencia importa: la de arriba es la dueña de los
 // equipos 1/4 (id 1) y la de abajo es una CORREDORA del equipo 4 (id 101, Lucía,
@@ -32,7 +32,6 @@ export async function mockLogin(email, _password) {
       dni: isRunnerDemo ? '30111222' : '12345678',
       birth_date: isRunnerDemo ? '14/03/1990' : '01/01/1990',
       status: 'active',
-      bank_alias: null,
     },
   };
 }
@@ -78,7 +77,6 @@ export async function mockGetUser({ id, email }) {
     dni: '12345678',
     birth_date: '01/01/1990',
     status: 'active',
-    bank_alias: getMockBankAlias(),
     country: 'ARG',
     province: 'BA',
     city: 'La Plata',
