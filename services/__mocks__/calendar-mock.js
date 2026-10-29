@@ -105,6 +105,29 @@ export async function mockGetGroupCalendar(groupId, from, to) {
   );
 }
 
+// GET /session-instances/:id standalone (Gap 14) -- bug real 2026-10-29,
+// mismo patrón ya encontrado y arreglado 2026-10-21 en
+// getWorkoutFeedbackPoints (ver services/runnerSession.js): services/
+// sessionInstances.js#getSessionInstance no tenía rama de mocks, pegaba
+// siempre contra el backend real y 401eaba con el token mock, lo que
+// disparaba el interceptor de 401/refresh de services/api.js y terminaba
+// deslogueando -- encontrado al verificar session-review-screen.jsx (F5 /
+// entrada directa por URL, único caso real donde el slot no trae
+// sessionInstance embebido y la pantalla necesita este fetch). No hay una
+// tabla separada de "instancias" en este mock -- cada session_instance
+// vive embebida dentro de un día de calendario, así que se busca por id
+// entre todos los días conocidos.
+export async function mockGetSessionInstance(sessionInstanceId) {
+  const id = Number(sessionInstanceId);
+  const day = Object.values(mockCalendarDays).find((d) => d.session_instance?.id === id);
+  if (!day) {
+    const error = new Error('instancia de sesión no encontrada');
+    error.status = 404;
+    throw error;
+  }
+  return day.session_instance;
+}
+
 export async function mockUpsertCalendarDay(groupId, date, payload) {
   const key = keyFor(groupId, date);
   const now = new Date().toISOString();
