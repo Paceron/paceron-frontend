@@ -5,11 +5,9 @@
 // iframe), porque en web `expo-print` imprime la app entera — ver
 // utils/attendance-qr-file.js.
 //
-// El documento NO dibuja los gráficos: `react-native-svg` no se puede inlinear
-// en un HTML de impresión sin arrastrar un serializador, y el valor de esta
-// exportación está en los NÚMEROS (el CSV cubre el detalle fila por fila). El
-// PDF es un resumen de una o dos hojas: contexto, captura de la pantalla, KPIs
-// y la misma tabla de series que el CSV.
+// Los gráficos y las secciones visuales llegan rasterizados como capturas por
+// sección; la parte textual (contexto, KPIs y series) se construye acá para que
+// el HTML no dependa del contrato de la API ni de React Native.
 //
 // La captura llega YA rasterizada como data URI (`react-native-view-shot`, ver
 // services/dashboard-capture.js): este builder es puro y no sabe de views. El
@@ -51,10 +49,16 @@ function logoHtml(logoDataUri) {
 // la view, el PDF sale igual (con los números y la tabla). Se restringe a los
 // formatos que produce `react-native-view-shot` y se evita aceptar cualquier
 // `data:` que llegue por error.
-function screenshotHtml(screenshotDataUri) {
-  const source = String(screenshotDataUri ?? '').trim();
-  if (!/^data:image\/(?:png|jpe?g|webp);base64,/i.test(source)) return '';
-  return `<figure class="screenshot"><img src="${escapeHtml(source)}" alt="Captura del dashboard" /></figure>`;
+function screenshotHtml(screenshotDataUri, screenshotDataUris) {
+  const sources = [
+    ...(Array.isArray(screenshotDataUris) ? screenshotDataUris : []),
+    ...(screenshotDataUri ? [screenshotDataUri] : []),
+  ].map((item) => String(item ?? '').trim())
+    .filter((source) => /^data:image\/(?:png|jpe?g|webp);base64,/i.test(source));
+  if (!sources.length) return '';
+  return sources.map((source, index) => (
+    `<figure class="screenshot${index ? ' screenshot-next-page' : ''}"><img src="${escapeHtml(source)}" alt="Sección ${index + 1} del reporte" /></figure>`
+  )).join('');
 }
 
 // "Filtros aplicados" es una lista explícita de lo que recorta el documento.
@@ -114,6 +118,7 @@ export function buildDashboardPdfHtml({
   generatedAt = '',
   logoDataUri = '',
   screenshotDataUri = '',
+  screenshotDataUris = [],
   filters = [],
 } = {}) {
   const titleHtml = escapeHtml(title);
@@ -134,8 +139,9 @@ export function buildDashboardPdfHtml({
   .subtitle { margin: 0; color: #40484c; font-size: 12px; }
   .logo { display: block; max-height: 13mm; max-width: 42mm; }
   .wordmark { color: #6d9e2f; font-size: 16px; font-weight: 700; letter-spacing: .08em; }
-  .screenshot { margin: 0 0 18px; padding: 0; }
-  .screenshot img { display: block; width: auto; height: auto; max-width: 100%; max-height: 150mm; margin: 0 auto; border: 1px solid #dfe5e7; border-radius: 2px; background: #fff; }
+  .screenshot { margin: 0 0 18px; padding: 0; break-inside: avoid; }
+  .screenshot-next-page { break-before: page; page-break-before: always; }
+  .screenshot img { display: block; width: auto; height: auto; max-width: 100%; max-height: 255mm; margin: 0 auto; border: 1px solid #dfe5e7; border-radius: 2px; background: #fff; }
   .meta { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 0 0 18px; }
   .meta-label { display: block; color: #6b7378; font-size: 9px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
   .meta-value { display: block; margin-top: 2px; font-size: 11px; }
@@ -161,9 +167,9 @@ export function buildDashboardPdfHtml({
   ${logoHtml(logoDataUri)}
 </div>
 ${metaHtml(meta)}
-${screenshotHtml(screenshotDataUri)}
 ${filtersHtml(filters)}
 ${kpisHtml(kpis)}
+${screenshotHtml(screenshotDataUri, screenshotDataUris)}
 ${seriesHtml(series, units, columns)}
 ${generatedAt ? `<footer>Generado el ${escapeHtml(generatedAt)} · Paceron</footer>` : ''}
 </body>

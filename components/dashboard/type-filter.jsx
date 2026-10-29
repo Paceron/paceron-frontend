@@ -12,7 +12,7 @@ import { METRIC_KINDS } from '../../utils/dashboard-filter-cascade.js';
 // "Todos" es el valor VACÍO y no un id más: viaja al backend como la AUSENCIA
 // del parámetro `kind`, que es lo que acepta el contrato (`kind` es escalar, no
 // `kinds[]`).
-export function TypeFilter({ kind = '', onChange, disabled = false, kinds = METRIC_KINDS }) {
+export function TypeFilter({ kind = '', onChange, disabled = false, kinds = METRIC_KINDS, className }) {
   const options = kinds.map((value) => ({ id: value, name: EXERCISE_KIND_META[value]?.label ?? value }));
 
   // Sin `idPrefix`: SelectField y PickerField no lo tienen — los dos derivan el
@@ -20,6 +20,7 @@ export function TypeFilter({ kind = '', onChange, disabled = false, kinds = METR
   return (
     <ResponsiveSelectField
       dense
+      className={className}
       disabled={disabled}
       label="Tipo de ejercicio"
       onChange={onChange}

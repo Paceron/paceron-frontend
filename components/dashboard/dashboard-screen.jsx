@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
+import { TabBar } from '../shared/tab-bar.jsx';
 import { useDashboardPeriodComparison } from '../../hooks/use-dashboard-comparisons.js';
 import { useDashboardFilters } from '../../hooks/use-dashboard-filters.js';
 import { useDashboardLeaderboard } from '../../hooks/use-dashboard-leaderboard.js';
@@ -34,7 +35,7 @@ import { resolveDashboardRange } from '../../utils/dashboard-range.js';
 import { ComparisonStrip } from './comparison-strip.jsx';
 import { DashboardBody } from './dashboard-body.jsx';
 import { DashboardFiltersSheet } from './dashboard-filters-sheet.jsx';
-import { DashboardInsightsPanel } from './dashboard-insights-panel.jsx';
+import { DashboardMetricsPanel } from './dashboard-metrics-panel.jsx';
 import { DashboardUtilityPanel } from './dashboard-utility-panel.jsx';
 import { DashboardLoadingOverlay } from './dashboard-loading-overlay.jsx';
 import { ExportActions } from './export-actions.jsx';
@@ -66,26 +67,24 @@ const EMPTY_FILTERS = {
   to: '',
 };
 
-// Orquestación de la pantalla de rendimiento: estados, filtros y el cuerpo
-// compartido por los dos roles.
-//
-// Las dos variantes NO se distinguen por un flag de visibilidad escondido en un
-// mismo árbol: el CUERPO es uno solo (`DashboardBody` — paleta, card de cinco
-// ejes y cumplimiento, todo dato del scope que pide la pantalla) y lo que cambia
-// por rol son dos secciones que se AGREGAN al final, decididas por capacidad
-// (`utils/dashboard-capabilities.js`). Para un corredor no se montan el ranking ni
-// la comparación por período (sus hooks tampoco se llaman). La comparación A/B sí
-// existe para ambos roles: el backend limita al corredor a sus propias sesiones.
-//
-// El contenedor, el header y los paneles de filtros/calidad están FUERA de la
-// región que depende de las métricas: cambiar de rango o de tipo no debe
-// desmontarlos (era el parpadeo que se arregló con `keepPreviousData`).
+// Orquesta las dos pestañas principales de Rendimiento. Métricas deportivas
+// conserva el cuerpo compartido por roles; Comparación contiene sesiones A/B y,
+// cuando la capacidad lo permite, el submodo de períodos.
 export function DashboardScreen({ teamId }) {
   const isNarrow = useIsNarrowWeb();
   const activeRole = useAuthStore((state) => state.activeRole);
   const isTrainer = activeRole === 'trainer';
+  const [activeDashboardTab, setActiveDashboardTab] = useState('metrics');
+  const [pdfReportMode, setPdfReportMode] = useState(false);
+  useEffect(() => {
+    setActiveDashboardTab('metrics');
+  }, [teamId, activeRole]);
   // Región que se rasteriza para el PDF (ver DashboardBody).
-  const captureViewRef = useRef(null);
+  const comparisonCaptureRef = useRef(null);
+  const capturePageRefs = useRef({});
+  const reportRenderResolver = useRef(null);
+  const rankingReadyResolver = useRef(null);
+  const rankingIsReady = useRef(false);
 
   // Los campos del form son "borrador": escribir no dispara ninguna query. El
   // request sale del estado APLICADO, que solo cambia al presionar "Filtrar"
@@ -103,6 +102,13 @@ export function DashboardScreen({ teamId }) {
   const [to, setTo] = useState('');
   const [applied, setApplied] = useState(EMPTY_FILTERS);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const dashboardTabs = [
+    { id: 'metrics', label: 'Métricas deportivas', icon: 'chart-timeline-variant' },
+    ...(canCompareSessions(activeRole) ? [{ id: 'comparison', label: 'Comparación', icon: 'compare-horizontal' }] : []),
+  ];
+  const currentDashboardTab = dashboardTabs.some((tab) => tab.id === activeDashboardTab)
+    ? activeDashboardTab
+    : 'metrics';
   // `granularidad`, `sort` y `order` NO son filtros: reconfiguran gráficos que
   // ya están filtrados, así que se aplican al toque (el panel no los muestra).
   const [granularity, setGranularity] = useState(DASHBOARD_GRANULARITIES[0]);
@@ -370,7 +376,58 @@ export function DashboardScreen({ teamId }) {
 
   // Se pasa como callback (no el ref) para que ExportActions no sepa de
   // `react-native-view-shot` ni de la estructura del dashboard.
-  const captureDashboardScreenshot = useCallback(() => captureDashboardView(captureViewRef), []);
+  const capturePageRefFor = useCallback((key) => (node) => {
+    if (node) capturePageRefs.current[key] = node;
+    else delete capturePageRefs.current[key];
+  }, []);
+  const notifyRankingReady = useCallback(() => {
+    rankingIsReady.current = true;
+    rankingReadyResolver.current?.();
+  }, []);
+
+  useEffect(() => {
+    if (!pdfReportMode) return undefined;
+    const frame = setTimeout(() => reportRenderResolver.current?.(), 180);
+    return () => clearTimeout(frame);
+  }, [pdfReportMode]);
+
+  const captureDashboardReport = useCallback(async () => {
+    if (currentDashboardTab === 'comparison') {
+      return captureDashboardView(comparisonCaptureRef);
+    }
+
+    rankingIsReady.current = false;
+    setPdfReportMode(true);
+    try {
+      await new Promise((resolve) => { reportRenderResolver.current = resolve; });
+      if (canReadTeamRanking(activeRole) && !rankingIsReady.current) {
+        await new Promise((resolve) => { rankingReadyResolver.current = resolve; });
+      }
+      const pageKeys = [
+        'dashboard-report-kpis-page',
+        'dashboard-report-profile-page',
+        'dashboard-report-charts-page',
+        ...(canReadTeamRanking(activeRole) ? ['dashboard-report-ranking-page'] : []),
+      ];
+      const pages = [];
+      for (const key of pageKeys) {
+        const target = capturePageRefs.current[key];
+        if (!target) continue;
+        try {
+          const page = await captureDashboardView(target);
+          if (page) pages.push(page);
+        } catch {
+          // Una sección que no se pudo rasterizar no bloquea las demás.
+        }
+      }
+      return pages;
+    } finally {
+      setPdfReportMode(false);
+      reportRenderResolver.current = null;
+      rankingReadyResolver.current = null;
+      rankingIsReady.current = false;
+    }
+  }, [activeRole, currentDashboardTab]);
 
   // "Ver todo el período" y "Limpiar" son acciones, no borradores: aplican en el
   // mismo click. Vuelven el rango al `date_range` real del scope y dejan el resto
@@ -498,118 +555,186 @@ export function DashboardScreen({ teamId }) {
               acciones sobre TODO lo que se ve, no un filtro más. Aparecen
               recién con datos cargados (un botón que exporta un esqueleto no
               existe). */}
-          {summary ? (
+          {(summary || currentDashboardTab === 'comparison') ? (
             <ExportActions
               exerciseName={selectedExercise?.name ?? ''}
               from={applied.from}
               id="dashboard-export"
-              onCapture={captureDashboardScreenshot}
-              pdfModel={pdfModel}
+              onCapture={captureDashboardReport}
+              pdfModel={currentDashboardTab === 'comparison' ? {
+                title: 'Comparación de rendimiento',
+                subtitle: 'Comparación de sesiones o períodos',
+                meta: [
+                  { label: 'Grupo', value: applied.groupId ? filtersData?.groups?.find((item) => String(item.id) === String(applied.groupId))?.name : (isTrainer ? 'Todo el equipo' : 'Tus series') },
+                  { label: 'Rango principal', value: applied.from && applied.to ? `${applied.from} → ${applied.to}` : '' },
+                ],
+                kpis: [],
+                series: [],
+                units: {},
+              } : pdfModel}
               preparing={seriesQuery.loading || loadingMoreSeries || hasMoreSeries}
               series={series}
               seriesFailed={seriesFailed}
-              units={seriesQuery.units ?? summary.units}
+              showCsv={currentDashboardTab === 'metrics'}
+              units={seriesQuery.units ?? summary?.units}
               to={applied.to}
             />
           ) : null}
         </View>
 
-        <ScreenBody
-          error={filtersQuery.failed ? filtersQuery.error : null}
-          filtersLoading={filtersQuery.loading}
-          hasDateRange={Boolean(filtersData?.date_range)}
-          isTrainer={isTrainer}
-          metricsError={metricsError}
-          metricsLoading={metricsLoading}
-          onRetry={filtersQuery.refetch}
-          onResetFilters={resetFilters}
-          onWidenRange={widenRange}
-          seriesCount={summary?.series_count ?? null}
-          summary={summary}
+        <TabBar
+          active={currentDashboardTab}
+          onChange={(nextTab) => {
+            setActiveDashboardTab(nextTab);
+            setMobileFiltersOpen(false);
+          }}
+          scope="dashboard-main-tabs"
+          tabs={dashboardTabs}
         />
 
-        {summary ? (
-          <View nativeID="dashboard-content" testID="dashboard-content">
-            {/* Filtros y calidad comparten UN panel con dos pestañas y arranca
-                minimizado (2026-10-23). Antes eran dos `FilterPanel` hermanos,
-                cada uno con su card, su chevron y su badge: dos tarjetas para
-                dos preguntas que se consultan juntas y que, apiladas, empujaban
-                los gráficos. Cada pestaña conserva su propio conteo —nunca un
-                badge combinado— y el contenido de cada una se arma acá. */}
-            <DashboardUtilityPanel
-              filterCount={activeFilterCount}
-              filtersContent={filtersContent}
-              id="dashboard-utility"
-              meta={describeScope(isTrainer, selectedExercise, effectiveKind)}
-              onOpenFilters={() => setMobileFiltersOpen(true)}
-              qualityBadge={qualityBadge(summary.data_quality)}
-              qualityContent={hasQualityNotes(summary.data_quality) ? (
-                // La pestaña es neutral, pero el aviso conserva la identidad
-                // ámbar: sigue siendo una advertencia, no un dato más.
-                <View
-                  className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20"
-                  nativeID="dashboard-quality-callout"
-                  testID="dashboard-quality-callout"
-                >
-                  <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
-                </View>
-              ) : (
-                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="dashboard-quality-empty" testID="dashboard-quality-empty">
-                  Sin avisos de calidad en el período.
-                </Text>
-              )}
-            />
-            <DashboardFiltersSheet onClose={() => setMobileFiltersOpen(false)} visible={mobileFiltersOpen}>
-              {filtersContent}
-            </DashboardFiltersSheet>
+        <View
+          aria-labelledby={`dashboard-main-tabs-${currentDashboardTab}`}
+          nativeID={`dashboard-main-tabpanel-${currentDashboardTab}`}
+          role="tabpanel"
+          testID={`dashboard-main-tabpanel-${currentDashboardTab}`}
+        >
+          {currentDashboardTab === 'metrics' ? (
+            <View nativeID="dashboard-metrics-tab-content" testID="dashboard-metrics-tab-content">
+              <ScreenBody
+                error={filtersQuery.failed ? filtersQuery.error : null}
+                filtersLoading={filtersQuery.loading}
+                hasDateRange={Boolean(filtersData?.date_range)}
+                isTrainer={isTrainer}
+                metricsError={metricsError}
+                metricsLoading={metricsLoading}
+                onRetry={filtersQuery.refetch}
+                onResetFilters={resetFilters}
+                onWidenRange={widenRange}
+                seriesCount={summary?.series_count ?? null}
+                summary={summary}
+              />
 
-        {/* Un solo cuerpo para los dos roles. Después de los gráficos, el
-                perfil comparte panel con ranking y comparación. A/B está
-                disponible a ambos roles; su modo por período conserva el guard
-                owner-only. */}
-            <DashboardBody
-              captureRef={captureViewRef}
+              {summary ? (
+                <View nativeID="dashboard-content" testID="dashboard-content">
+                  {/* Filtros y calidad comparten un panel con pestañas propias y
+                      arranca minimizado; cada contenido se arma acá. */}
+                  <DashboardUtilityPanel
+                    filterCount={activeFilterCount}
+                    filtersContent={filtersContent}
+                    id="dashboard-utility"
+                    meta={isTrainer && !selectedExercise && !effectiveKind ? null : describeScope(isTrainer, selectedExercise, effectiveKind)}
+                    onOpenFilters={() => setMobileFiltersOpen(true)}
+                    qualityBadge={qualityBadge(summary.data_quality)}
+                    qualityContent={hasQualityNotes(summary.data_quality) ? (
+                      <View
+                        className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20"
+                        nativeID="dashboard-quality-callout"
+                        testID="dashboard-quality-callout"
+                      >
+                        <QualityBanner id="dashboard-quality-banner" quality={summary.data_quality} />
+                      </View>
+                    ) : (
+                      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="dashboard-quality-empty" testID="dashboard-quality-empty">
+                        Sin avisos de calidad en el período.
+                      </Text>
+                    )}
+                  />
+                  <DashboardFiltersSheet onClose={() => setMobileFiltersOpen(false)} visible={mobileFiltersOpen}>
+                    {filtersContent}
+                  </DashboardFiltersSheet>
+
+                  <DashboardBody id={isTrainer ? 'dashboard-trainer' : 'dashboard-runner'}>
+                    <DashboardMetricsPanel
+                      granularity={granularity}
+                      id={isTrainer ? 'dashboard-trainer-metrics-panel' : 'dashboard-runner-metrics-panel'}
+                      kind={effectiveKind}
+                      onGranularityChange={setGranularity}
+                      radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
+                      renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null }) => (
+                        <TeamRankingSection
+                          captureRef={captureRef}
+                          onReportReady={onReportReady}
+                          order={order}
+                          reportMode={reportMode}
+                          scope={scope}
+                          sort={sort}
+                          summaryUnits={summary?.units}
+                          toggleSort={toggleSort}
+                        />
+                      ) : null}
+                      seriesPoints={seriesPoints}
+                      seriesSamples={seriesSamples}
+                      summary={summary}
+                      timeseries={timeseries}
+                    />
+                  </DashboardBody>
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            <View nativeID="dashboard-comparison-tab-content" testID="dashboard-comparison-tab-content">
+              {filtersQuery.loading ? <StateSkeleton id="dashboard-comparison-loading" /> : null}
+              {!filtersQuery.loading && filtersQuery.failed ? (
+                <DashboardErrorState error={filtersQuery.error} onRetry={filtersQuery.refetch} />
+              ) : null}
+              {!filtersQuery.loading && !filtersQuery.failed ? (
+                <View collapsable={false} nativeID="dashboard-comparison-capture" ref={comparisonCaptureRef} testID="dashboard-comparison-capture">
+                <SessionExerciseComparison
+                  athletes={filtersData?.athletes ?? []}
+                  availableDateRange={filtersData?.date_range ?? null}
+                  exercises={filtersData?.exercises ?? []}
+                  groups={filtersData?.groups ?? []}
+                  id={isTrainer ? 'dashboard-trainer-session-comparison' : 'dashboard-runner-session-comparison'}
+                  isNarrow={isNarrow}
+                  isTrainer={isTrainer}
+                  periodComparison={canReadPeriodComparison(activeRole) ? (
+                    <PeriodComparisonSection from={applied.from} scope={scope} to={applied.to} />
+                  ) : null}
+                  teamId={teamId}
+                />
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+        {summary && pdfReportMode ? (
+          <View
+            collapsable={false}
+            pointerEvents="none"
+            style={{ position: 'absolute', left: -10000, top: 0, width: 768 }}
+            nativeID="dashboard-pdf-report-staging"
+            testID="dashboard-pdf-report-staging"
+          >
+            <DashboardMetricsPanel
+              capturePageRefFor={capturePageRefFor}
               granularity={granularity}
-              id={isTrainer ? 'dashboard-trainer' : 'dashboard-runner'}
+              id="dashboard-report"
               kind={effectiveKind}
               onGranularityChange={setGranularity}
+              radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
+              renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null }) => (
+                <TeamRankingSection
+                  captureRef={captureRef}
+                  onReportReady={onReportReady}
+                  order={order}
+                  reportMode={reportMode}
+                  scope={scope}
+                  sort={sort}
+                  summaryUnits={summary?.units}
+                  toggleSort={toggleSort}
+                />
+              ) : null}
+              reportMode
               seriesPoints={seriesPoints}
               seriesSamples={seriesSamples}
               summary={summary}
               timeseries={timeseries}
-            >
-              <DashboardInsightsPanel
-                // Mismo cuerpo, título en primera persona para el corredor: el
-                // backend ya recortó el scope a sus series, así que "perfil del
-                // equipo" sobre un solo corredor sería mentir.
-                comparison={canCompareSessions(activeRole) ? (
-                  <SessionExerciseComparison
-                    athletes={filtersData?.athletes ?? []}
-                    availableDateRange={filtersData?.date_range ?? null}
-                    exercises={filtersData?.exercises ?? []}
-                    groups={filtersData?.groups ?? []}
-                    id={isTrainer ? 'dashboard-trainer-session-comparison' : 'dashboard-runner-session-comparison'}
-                    isNarrow={isNarrow}
-                    isTrainer={isTrainer}
-                    periodComparison={canReadPeriodComparison(activeRole) ? (
-                      <PeriodComparisonSection from={applied.from} scope={scope} to={applied.to} />
-                    ) : null}
-                    teamId={teamId}
-                  />
-                ) : null}
-                id={isTrainer ? 'dashboard-trainer-insights' : 'dashboard-runner-insights'}
-                kind={effectiveKind}
-                radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
-                ranking={canReadTeamRanking(activeRole) ? (
-                  <TeamRankingSection order={order} scope={scope} sort={sort} summaryUnits={summary?.units} toggleSort={toggleSort} />
-                ) : null}
-                summary={summary}
-              />
-            </DashboardBody>
+              onReportReady={notifyRankingReady}
+            />
           </View>
         ) : null}
       </View>
-      <DashboardLoadingOverlay visible={applying} />
+      <DashboardLoadingOverlay visible={applying && currentDashboardTab === 'metrics'} />
     </View>
   );
 }
@@ -668,23 +793,47 @@ function DashboardErrorState({ error, onRetry, onResetFilters }) {
 // Ranking del equipo. En su propio componente para que el hook —y con él el
 // request— exista solo cuando la capacidad lo habilita: no es un `enabled: false`
 // colgado de un hook que se llama igual.
-function TeamRankingSection({ scope, sort, order, toggleSort, summaryUnits }) {
+function TeamRankingSection({ scope, sort, order, toggleSort, summaryUnits, reportMode = false, captureRef = null, onReportReady = null }) {
   const leaderboard = useDashboardLeaderboard({ ...scope, sort, order });
-  const units = leaderboard.units ?? summaryUnits ?? {};
-  const selfPosition = leaderboard.items.find((item) => item.is_self)?.position ?? null;
+  const {
+    failed,
+    hasMore,
+    items,
+    loadMore,
+    loading,
+    loadingMore,
+    order: leaderboardOrder,
+    sort: leaderboardSort,
+    total,
+    units: leaderboardUnits,
+  } = leaderboard;
+  const units = leaderboardUnits ?? summaryUnits ?? {};
+  const selfPosition = items.find((item) => item.is_self)?.position ?? null;
+
+  useEffect(() => {
+    if (reportMode && hasMore && !loadingMore && !failed) {
+      loadMore();
+      return;
+    }
+    if (reportMode && (!loading && !loadingMore) && (!hasMore || failed)) {
+      onReportReady?.();
+    }
+  }, [reportMode, hasMore, loading, loadingMore, failed, loadMore, onReportReady]);
 
   return (
     <LeaderboardTable
-      hasMore={leaderboard.hasMore}
-      items={leaderboard.items}
-      loadingMore={leaderboard.loadingMore}
-      onLoadMore={leaderboard.loadMore}
+      captureRef={captureRef}
+      hasMore={hasMore}
+      items={items}
+      loadingMore={loadingMore}
+      onLoadMore={loadMore}
       onSort={toggleSort}
-      order={leaderboard.order}
+      order={leaderboardOrder}
       selfPosition={selfPosition}
-      sort={leaderboard.sort}
-      total={leaderboard.total}
+      sort={leaderboardSort}
+      total={total}
       units={units}
+      hideLoadMore={reportMode}
     />
   );
 }

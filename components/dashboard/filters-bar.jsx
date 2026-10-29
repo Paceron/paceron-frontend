@@ -8,6 +8,7 @@ import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { DISTANCE_SUGGESTIONS_KM, TIME_SUGGESTIONS_MIN } from '../../utils/dashboard-range.js';
 import { formatKind } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { TypeFilter } from './type-filter.jsx';
 import { DashboardDateField } from './dashboard-date-field.jsx';
 
@@ -80,6 +81,7 @@ export function FiltersBar({
   loading = false,
 }) {
   const colors = useThemeColors();
+  const isNarrow = useIsNarrowWeb();
   const groupOptions = groups.map((group) => ({ id: group.id, name: group.name }));
   const athleteOptions = athletes.map((athlete) => ({ id: athlete.id, name: `${athlete.name} ${athlete.surname}`.trim() }));
   const exerciseOptions = exercises.map((exercise) => ({ id: exercise.id, name: exercise.name }));
@@ -98,14 +100,12 @@ export function FiltersBar({
 
   return (
     <View nativeID={id} testID={id}>
-      {/* Alcance y cascada en una sola fila de 4 columnas en ancho: Grupo,
-          Corredor, Tipo y Ejercicio. En angosto cada uno cae a ancho completo.
-          Antes eran dos filas de 2; juntarlas es lo que permite que el form
-          abierto ocupe solo dos filas en desktop sin esconder ningún filtro. */}
+      {/* Alcance y cascada: en ancho, cuatro columnas. En angosto se apilan. */}
       <Row>
         <Col>
           <ResponsiveSelectField
             dense
+            className="mb-1"
             idPrefix={`${id}-group`}
             label="Grupo"
             onChange={onChangeGroup}
@@ -118,6 +118,7 @@ export function FiltersBar({
           <Col>
             <ResponsiveSelectField
               dense
+              className="mb-1"
               idPrefix={`${id}-athlete`}
               label="Corredor"
               onChange={onChangeAthlete}
@@ -128,12 +129,14 @@ export function FiltersBar({
           </Col>
         ) : null}
         <Col>
-          <TypeFilter kind={kind} kinds={kinds} onChange={onChangeKind} />
+          <TypeFilter className="mb-1" kind={kind} kinds={kinds} onChange={onChangeKind} />
         </Col>
         <Col>
           <SearchablePickerField
             dense
+            className="mb-1"
             idPrefix={`${id}-exercise`}
+            emptyOptionLabel="Todos los ejercicios"
             label="Ejercicio"
             loading={loading}
             onChange={onChangeExercise}
@@ -148,22 +151,9 @@ export function FiltersBar({
         </Col>
       </Row>
 
-      {/* Distancia, Tiempo y Fecha comparten la segunda fila en ancho: son tres
-          grupos más un bloque de acciones debajo de la fecha. Cada grupo es UNA
-          pregunta con dos extremos, con un solo título ("Distancia", "Tiempo",
-          "Fecha") y las dos cajas debajo; el título NO repite "desde / hasta"
-          porque cada caja ya lo dice. Así el form entero queda en dos filas en
-          desktop sin recortar los campos numéricos (el `dense` de web achica el
-          toggle de sugerencias a 36 px y el padding del input; en táctil se
-          mantienen los 44 px) ni las fechas.
-
-          Los dos extremos van en un `flex-row` con slots `flex-1` propios, no en
-          `Row`/`Col`: el `flex: 1` de `Col` solo aplica en ventana ancha
-          (components/forms/fields.jsx), y acá los dos extremos tienen que quedar
-          50/50 en cualquier ancho (si no, un `<input>` con `min-w-0` se encoge a
-          su contenido). El `Row`/`Col` de afuera sí queda, para apilar los tres
-          grupos en angosto. */}
-      <Row>
+      {/* Distancia y Tiempo comparten una fila. Cada grupo tiene dos extremos
+          50/50; en angosto la fila apila los grupos. */}
+      <Row narrowClassName="gap-1">
         <Col>
           <View nativeID={`${id}-distance-range`} testID={`${id}-distance-range`}>
             <Text
@@ -184,6 +174,7 @@ export function FiltersBar({
                   dense
                   disabled={rangesDisabled}
                   error={rangeErrors.distanceFrom}
+                  className="mb-1"
                   idPrefix={`${id}-distance-from`}
                   label="Desde"
                   labelClassName={RANGE_SUBLABEL}
@@ -200,6 +191,7 @@ export function FiltersBar({
                   dense
                   disabled={rangesDisabled}
                   error={rangeErrors.distanceTo}
+                  className="mb-1"
                   idPrefix={`${id}-distance-to`}
                   label="Hasta"
                   labelClassName={RANGE_SUBLABEL}
@@ -233,6 +225,7 @@ export function FiltersBar({
                   dense
                   disabled={rangesDisabled}
                   error={rangeErrors.timeFrom}
+                  className="mb-1"
                   idPrefix={`${id}-time-from`}
                   label="Desde"
                   labelClassName={RANGE_SUBLABEL}
@@ -249,6 +242,7 @@ export function FiltersBar({
                   dense
                   disabled={rangesDisabled}
                   error={rangeErrors.timeTo}
+                  className="mb-1"
                   idPrefix={`${id}-time-to`}
                   label="Hasta"
                   labelClassName={RANGE_SUBLABEL}
@@ -262,6 +256,11 @@ export function FiltersBar({
             </View>
           </View>
         </Col>
+      </Row>
+
+      {/* El rango de fechas tiene su propia fila para que cada control tenga
+          ancho suficiente para DD/MM/AAAA y el botón del calendario. */}
+      <Row narrowClassName="gap-1">
         <Col>
           <View nativeID={`${id}-date-range`} testID={`${id}-date-range`}>
             <Text
@@ -272,11 +271,11 @@ export function FiltersBar({
               Fecha
             </Text>
             <View
-              className="flex-row gap-3"
+              className={isNarrow ? 'gap-1' : 'flex-row gap-3'}
               nativeID={`${id}-date-range-inputs`}
               testID={`${id}-date-range-inputs`}
             >
-              <View className="flex-1" nativeID={`${id}-date-from-slot`} testID={`${id}-date-from-slot`}>
+              <View className={isNarrow ? '' : 'flex-1'} nativeID={`${id}-date-from-slot`} testID={`${id}-date-from-slot`}>
                 <DashboardDateField
                   className=""
                   dense
@@ -289,7 +288,7 @@ export function FiltersBar({
                   value={from ?? ''}
                 />
               </View>
-              <View className="flex-1" nativeID={`${id}-date-to-slot`} testID={`${id}-date-to-slot`}>
+              <View className={isNarrow ? '' : 'flex-1'} nativeID={`${id}-date-to-slot`} testID={`${id}-date-to-slot`}>
                 <DashboardDateField
                   className=""
                   dense
@@ -304,57 +303,44 @@ export function FiltersBar({
               </View>
             </View>
           </View>
-
-          {/* Las acciones cierran el form debajo de la fecha, alineadas a la
-              derecha: siguen al pie (no en el header, donde estaban lejos de lo
-              que limpian) y no necesitan una fila propia. "Limpiar" (gris,
-              secundaria) va primero; "Filtrar" (verde, primaria) cierra. */}
-          <View
-            className="mt-3 flex-row items-center justify-end gap-2"
-            nativeID={`${id}-actions-slot`}
-            testID={`${id}-actions-slot`}
-          >
-            {hasActiveFilters ? (
-              <Pressable
-                accessibilityLabel="Limpiar los filtros"
-                className="h-9 flex-row items-center gap-1.5 rounded-full bg-slate-200 px-4 active:opacity-80 dark:bg-slate-700"
-                nativeID={`${id}-clear`}
-                onPress={onClear}
-                testID={`${id}-clear`}
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="broom" size={16} />
-                <Text
-                  className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200"
-                  nativeID={`${id}-clear-label`}
-                  testID={`${id}-clear-label`}
-                >
-                  Limpiar
-                </Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              accessibilityLabel="Aplicar los filtros"
-              accessibilityState={{ disabled: applyDisabled }}
-              className={`h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-4 ${
-                applyDisabled ? 'opacity-50' : 'active:opacity-80'
-              }`}
-              disabled={applyDisabled}
-              nativeID={`${id}-apply`}
-              onPress={onApply}
-              testID={`${id}-apply`}
-            >
-              <MaterialCommunityIcons color={colors.onPrimary} name="filter-check" size={16} />
-              <Text
-                className="text-xs font-semibold uppercase tracking-wide text-[#111518]"
-                nativeID={`${id}-apply-label`}
-                testID={`${id}-apply-label`}
-              >
-                Filtrar
-              </Text>
-            </Pressable>
-          </View>
         </Col>
       </Row>
+
+      {/* Acciones debajo del rango, siempre al margen derecho. */}
+      <View className="mt-2 flex-row items-center justify-end gap-2" nativeID={`${id}-actions-slot`} testID={`${id}-actions-slot`}>
+        {hasActiveFilters ? (
+          <Pressable
+            accessibilityLabel="Limpiar los filtros"
+            className="h-9 flex-row items-center gap-1.5 rounded-full bg-slate-200 px-4 active:opacity-80 dark:bg-slate-700"
+            nativeID={`${id}-clear`}
+            onPress={onClear}
+            testID={`${id}-clear`}
+          >
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="broom" size={16} />
+            <Text
+              className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200"
+              nativeID={`${id}-clear-label`}
+              testID={`${id}-clear-label`}
+            >
+              Limpiar
+            </Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          accessibilityLabel="Aplicar los filtros"
+          accessibilityState={{ disabled: applyDisabled }}
+          className={`h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-4 ${applyDisabled ? 'opacity-50' : 'active:opacity-80'}`}
+          disabled={applyDisabled}
+          nativeID={`${id}-apply`}
+          onPress={onApply}
+          testID={`${id}-apply`}
+        >
+          <MaterialCommunityIcons color={colors.onPrimary} name="filter-check" size={16} />
+          <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${id}-apply-label`} testID={`${id}-apply-label`}>
+            Filtrar
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

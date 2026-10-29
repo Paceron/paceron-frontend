@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { getDashboardLeaderboard, DASHBOARD_LEADERBOARD_SORTS, DASHBOARD_ORDERS, DASHBOARD_DEFAULT_PAGE_SIZE } from '../services/dashboard.js';
 import { useAuthStore } from '../store/auth-store.js';
@@ -52,6 +53,7 @@ export function useDashboardLeaderboard({
   });
 
   const pages = query.data?.pages ?? [];
+  const loadMore = useCallback(() => query.fetchNextPage(), [query.fetchNextPage]);
 
   return {
     items: pages.flatMap((page) => page.items ?? []),
@@ -61,7 +63,7 @@ export function useDashboardLeaderboard({
     units: pages[0]?.units ?? null,
     dataQuality: pages[0]?.data_quality ?? null,
     hasMore: Boolean(query.hasNextPage),
-    loadMore: () => query.fetchNextPage(),
+    loadMore,
     loading: query.isLoading,
     loadingMore: query.isFetchingNextPage,
     failed: query.isError,

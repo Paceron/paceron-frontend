@@ -17,7 +17,16 @@ import { KpiTooltip } from './kpi-tooltip.jsx';
 // El `has_target: false` puede venir de un tipo sin objetivo, de una fila previa
 // a la migración de tipos o de un ejercicio que el entrenador dejó incompleto, y
 // la decisión se toma por el dato, no por el tipo.
-export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = null, granularity, onGranularityChange }) {
+export function PaletteWithoutTarget({
+  id,
+  summary,
+  timeseries,
+  seriesPoints = null,
+  granularity,
+  onGranularityChange,
+  section = 'all',
+  forceExpandCharts = false,
+}) {
   const palette = describePalette(summary);
   const units = summary?.units ?? {};
   const totals = summary?.totals ?? {};
@@ -31,6 +40,8 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = n
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
+      {section !== 'charts' ? (
+        <>
       {/* Las SEIS cifras, mismo tamaño, dos filas de tres — igual que la paleta
           con objetivo. En esta paleta no hay velocidad esperada que mostrar, y
           en su lugar aparece la diferencia contra el objetivo: sin objetivo no
@@ -120,7 +131,21 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = n
         ))}
       </View>
 
-      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesPoints)} initialExpandedId={`${id}-evolution-card`}>
+      <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
+        {hasMetric(totals.delta_pct)
+          ? `Delta ${formatDelta(totals.delta_pct, units.delta)}.`
+          : 'Sin objetivo cargado: no se calculan delta, cumplimiento ni ritmo esperado.'}
+      </Text>
+        </>
+      ) : null}
+
+      {section !== 'kpis' ? (
+      <ChartGrid
+        forceExpanded={forceExpandCharts}
+        id={`${id}-chart-grid`}
+        ids={chartGridIds(id, seriesPoints)}
+        initialExpandedId={`${id}-evolution-card`}
+      >
         <ChartGridItem
           action={onGranularityChange ? (
             <GranularitySelect enabled={Boolean(timeseries)} id={`${id}-granularity`} onChange={onGranularityChange} value={granularity} />
@@ -169,13 +194,7 @@ export function PaletteWithoutTarget({ id, summary, timeseries, seriesPoints = n
           </ChartGridItem>
         ) : null}
       </ChartGrid>
-
-
-      <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
-        {hasMetric(totals.delta_pct)
-          ? `Delta ${formatDelta(totals.delta_pct, units.delta)}.`
-          : 'Sin objetivo cargado: no se calculan delta, cumplimiento ni ritmo esperado.'}
-      </Text>
+      ) : null}
     </View>
   );
 }

@@ -1,4 +1,4 @@
-// Convierte YYYY-MM-DD (input date web) a DD/MM/YYYY. Deja DD/MM/AAAA como esta.
+// Convierte el formato ISO legado/YYYY-MM-DD a DD/MM/YYYY. Deja DD/MM/AAAA como está.
 function toBackendDate(value) {
   if (!value) return value;
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

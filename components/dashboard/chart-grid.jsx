@@ -19,7 +19,7 @@ import { ChartCard } from './charts/chart-surface.jsx';
 // gráficos de 150 px.
 const ChartGridContext = createContext(null);
 
-export function ChartGrid({ id, ids = [], initialExpandedId = null, children }) {
+export function ChartGrid({ id, ids = [], initialExpandedId = null, forceExpanded = false, children }) {
   const colors = useThemeColors();
   const narrow = useIsNarrowWeb();
   const [expanded, setExpanded] = useState(() => (
@@ -48,7 +48,7 @@ export function ChartGrid({ id, ids = [], initialExpandedId = null, children }) 
   const expandAll = useCallback(() => setExpanded(new Set(ids)), [ids]);
   const collapseAll = useCallback(() => setExpanded(new Set()), []);
 
-  const value = useMemo(() => ({ expanded, toggle }), [expanded, toggle]);
+  const value = useMemo(() => ({ expanded, toggle, forceExpanded }), [expanded, toggle, forceExpanded]);
 
   return (
     <ChartGridContext.Provider value={value}>
@@ -63,7 +63,7 @@ export function ChartGrid({ id, ids = [], initialExpandedId = null, children }) 
             Gráficos
           </Text>
         </View>
-        {ids.length ? (
+        {ids.length && !forceExpanded ? (
           <View className="flex-row flex-wrap items-center justify-end gap-1" nativeID={`${id}-bulk-actions`} testID={`${id}-bulk-actions`}>
             {/* Dos acciones explícitas, no un único toggle: con dos tarjetas
                 abiertas de cuatro, "Maximizar todos" no es lo mismo que
@@ -136,7 +136,8 @@ export function ChartGridItem({
   const context = useContext(ChartGridContext);
   const narrow = useIsNarrowWeb();
   const colors = useThemeColors();
-  const expanded = context?.expanded?.has(id) ?? false;
+  const forceExpanded = context?.forceExpanded ?? false;
+  const expanded = forceExpanded || (context?.expanded?.has(id) ?? false);
 
   return (
     <View
@@ -145,7 +146,7 @@ export function ChartGridItem({
       testID={`${id}-slot`}
     >
       <ChartCard
-        action={(
+        action={forceExpanded ? null : (
           <View className="flex-row items-center gap-2" nativeID={`${id}-actions`} testID={`${id}-actions`}>
             {expanded ? action : null}
             <Pressable

@@ -6,7 +6,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { formatDurationInput } from '../../utils/time.js';
-import { formatDateInput } from '../../utils/date-field-format.js';
+import { CalendarDateField } from './calendar-date-field.jsx';
 import { BREAKPOINTS } from '../../theme/tokens.js';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
@@ -60,12 +60,6 @@ const SELECT_CLASS_PLAIN = 'bg-white dark:bg-surface border-0 pl-0 pr-4 py-1 tex
 // con "…" en vez de desbordar.
 const SELECT_CLASS_OUTLINE = 'overflow-hidden text-ellipsis whitespace-nowrap px-3 py-1.5 text-center text-sm font-semibold text-slate-900 dark:text-white rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none cursor-pointer';
 const DATE_BASE = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
-// Variante compacta de DATE_BASE -- `dense` de DateField (no de TimeField,
-// que sigue usando DATE_BASE sin tocar). Pensada para selects incrustados
-// en una fila angosta (ej. rango personalizado del leaderboard): el
-// min-h-12 normal hacía crecer esa fila al aparecer, salto real pedido
-// 2026-10-15.
-const DATE_BASE_DENSE = 'min-h-8 flex-1 px-3 py-1 text-sm text-slate-900 dark:text-white rounded-xl border outline-none appearance-none';
 
 // Slugifica un label para usarlo como parte de un id estable y legible.
 function slugify(label) {
@@ -207,48 +201,29 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
     : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
 
   if (isWeb) {
-    // Input de texto enmascarado en vez de <input type="date"> nativo: ese
-    // control exige el VALOR en ISO por spec de HTML, pero el formato VISUAL
-    // (y el orden día/mes al tipear) lo decide el navegador/SO según su
-    // configuración regional — no hay forma de forzarlo por CSS/HTML. Con un
-    // navegador en inglés (en-US) eso se ve mm/dd/aaaa sin que podamos
-    // evitarlo. Acá el formato es 100% nuestro (ver utils/date-field-format.js),
-    // igual que ya pasaba en mobile nativo — que nunca delegó el render del
-    // valor al picker del sistema. `value` queda en 'DD/MM/YYYY' en cualquier
-    // plataforma (antes era 'YYYY-MM-DD' solo en web).
-    const handleWebChange = (e) => {
-      const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
-      onChange(formatDateInput(digits));
-    };
-
+    // Mantiene el tipeo enmascarado DD/MM/AAAA y suma el calendario compartido
+    // con Métricas. El branch nativo de abajo conserva los pickers del sistema.
     return (
-      <View className={className ?? 'mb-5'} nativeID={`date-field-${slug}`} testID={`date-field-${slug}`}>
-        {!hideLabel && <Text className={labelClassName} nativeID={`date-field-${slug}-label`} testID={`date-field-${slug}-label`}>{label}</Text>}
-        <View
-          className="flex-row items-center gap-2"
-          nativeID={`date-field-${slug}-row`}
-          testID={`date-field-${slug}-row`}
-        >
-          <View className="flex-1 relative" nativeID={`date-field-${slug}-input-wrapper`} testID={`date-field-${slug}-input-wrapper`}>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="DD/MM/AAAA"
-              maxLength={10}
-              className={`${dense ? DATE_BASE_DENSE : DATE_BASE} ${borderClass}`}
-              value={value}
-              onChange={handleWebChange}
-              onBlur={onBlur}
-              disabled={disabled}
-            />
-          </View>
-        </View>
-        {!hideErrorRow && (
-          <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
-            {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
-          </View>
-        )}
-      </View>
+      <CalendarDateField
+        className={className ?? 'mb-5'}
+        compactControl={dense}
+        dense={dense}
+        // `DateField` has the inverse legacy meaning: true means allow dates
+        // beyond today. The shared/dashboard calendar uses true to cap at today.
+        disableFutureLimit={!disableFutureLimit}
+        disabled={disabled}
+        error={error}
+        hideErrorRow={hideErrorRow}
+        hideLabel={hideLabel}
+        idPrefix={`date-field-${slug}`}
+        label={label}
+        labelClassName={labelClassName}
+        minimumDate={minimumDate}
+        onBlur={onBlur}
+        onChange={onChange}
+        touched={touched}
+        value={value}
+      />
     );
   }
 
