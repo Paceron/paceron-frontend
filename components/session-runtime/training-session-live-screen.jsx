@@ -962,43 +962,46 @@ function TrainingSessionLiveScreenContent() {
           />
         </View>
 
-        {!fullscreenMap && (
-          <View className="flex-1" nativeID="training-session-live-content-wrap" testID="training-session-live-content-wrap">
-            {currentSet ? (
-              <LiveSeriesView
-                activePhase={activePhase}
-                distance={distanceBySetId.get(currentSet.id)}
-                key={currentSet.id}
-                onAdvance={advance}
-                onBack={() => setMode('overview')}
-                onCancelConfirmed={handleCancelConfirmed}
-                onFinish={async (setId) => {
-                  const snap = await handleFinishSet(setId);
-                  return snap;
-                }}
-                onPause={pauseSet}
-                onResume={resumeSet}
-                onSkipExercise={handleSkipExercise}
-                onSkipSeries={handleSkipSet}
-                onStart={startSet}
-                set={currentSet}
-                totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
-                wallMs={stopwatchWallMs}
-              />
-            ) : (
-              <LiveOverviewView
-                activePhase={activePhase}
-                activeSetId={activeSetId}
-                onCancel={handleCancelConfirmed}
-                onOpenMessages={() => setMessagesVisible(true)}
-                onOpenSet={handleOpenSet}
-                router={router}
-                run={run}
-                sets={sets}
-              />
-            )}
-          </View>
-        )}
+        {/* Nunca se desmonta -- se oculta con `display: 'none'` en vez de
+            sacarlo del árbol, mismo criterio que training-session-active-screen.jsx
+            (ahí sí era un bug real de pérdida de tiempo; acá el estado local de
+            LiveSeriesView es solo de UI -- cronómetro/fase viven en el hook, no en
+            este componente -- pero se unifica el mecanismo en las dos pantallas). */}
+        <View className="flex-1" nativeID="training-session-live-content-wrap" style={fullscreenMap ? { display: 'none' } : undefined} testID="training-session-live-content-wrap">
+          {currentSet ? (
+            <LiveSeriesView
+              activePhase={activePhase}
+              distance={distanceBySetId.get(currentSet.id)}
+              key={currentSet.id}
+              onAdvance={advance}
+              onBack={() => setMode('overview')}
+              onCancelConfirmed={handleCancelConfirmed}
+              onFinish={async (setId) => {
+                const snap = await handleFinishSet(setId);
+                return snap;
+              }}
+              onPause={pauseSet}
+              onResume={resumeSet}
+              onSkipExercise={handleSkipExercise}
+              onSkipSeries={handleSkipSet}
+              onStart={startSet}
+              set={currentSet}
+              totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
+              wallMs={stopwatchWallMs}
+            />
+          ) : (
+            <LiveOverviewView
+              activePhase={activePhase}
+              activeSetId={activeSetId}
+              onCancel={handleCancelConfirmed}
+              onOpenMessages={() => setMessagesVisible(true)}
+              onOpenSet={handleOpenSet}
+              router={router}
+              run={run}
+              sets={sets}
+            />
+          )}
+        </View>
 
         <Modal animationType="fade" nativeID="training-session-live-complete-modal" onRequestClose={() => { clearLiveSession(); router.back(); }} testID="training-session-live-complete-modal" transparent visible={sessionComplete}>
           <Pressable

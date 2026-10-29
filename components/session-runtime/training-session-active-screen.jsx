@@ -714,7 +714,7 @@ function OverviewView({ sets, run, onOpenSet, onCancel }) {
   );
 }
 
-function SeriesView({ set, runId, gpsEnabled, distance, totalSeriesForExercise, onAdvance, onBack, onCancelConfirmed, onDataChanged, onPhaseChange }) {
+function SeriesView({ set, runId, gpsEnabled, distance, getCurrentDistance, totalSeriesForExercise, onAdvance, onBack, onCancelConfirmed, onDataChanged, onPhaseChange }) {
   const colors = useThemeColors();
   const stopwatch = useStopwatch();
   const [phase, setPhase] = useState(() => (set.status === 'started' && !set.ended_at ? 'paused' : 'ready'));
@@ -851,16 +851,19 @@ function SeriesView({ set, runId, gpsEnabled, distance, totalSeriesForExercise, 
     setBusy(true);
     try {
       const snap = phase === 'running' ? stopwatch.pause() : savedTimingsRef.current;
+      // Fresca, no la prop `distance` (va un render detrás del acumulador real
+      // del padre) -- bug real encontrado en la revisión final de esta rama.
+      const finalDistance = getCurrentDistance();
       clearGpsGrace();
       setGpsWarning(false);
       await finishSet(set.id, {
         endedAtIso: toIsoUtc(),
         durationMs: snap.wallMs,
         activeDurationMs: snap.activeMs,
-        distanceMeters: distance,
+        distanceMeters: finalDistance,
       });
-      logDebug(`finishSet set=${set.id} persistido wall=${snap.wallMs} active=${snap.activeMs} dist=${distance}`);
-      setSummary({ wallMs: snap.wallMs, activeMs: snap.activeMs, distanceMeters: distance });
+      logDebug(`finishSet set=${set.id} persistido wall=${snap.wallMs} active=${snap.activeMs} dist=${finalDistance}`);
+      setSummary({ wallMs: snap.wallMs, activeMs: snap.activeMs, distanceMeters: finalDistance });
       setPhase('finishing');
       await onDataChanged();
     } catch (error) {
@@ -927,6 +930,7 @@ function SeriesView({ set, runId, gpsEnabled, distance, totalSeriesForExercise, 
       clearInterval(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
+    const finalDistance = getCurrentDistance();
     if (phase === 'running') {
       const snap = stopwatch.pause();
       savedTimingsRef.current = { wallMs: snap.wallMs, activeMs: snap.activeMs };
@@ -934,14 +938,14 @@ function SeriesView({ set, runId, gpsEnabled, distance, totalSeriesForExercise, 
         endedAtIso: toIsoUtc(),
         durationMs: snap.wallMs,
         activeDurationMs: snap.activeMs,
-        distanceMeters: distance,
+        distanceMeters: finalDistance,
       });
     } else if (phase === 'paused') {
       await markSetInterrupted(set.id, {
         endedAtIso: toIsoUtc(),
         durationMs: savedTimingsRef.current.wallMs,
         activeDurationMs: savedTimingsRef.current.activeMs,
-        distanceMeters: distance,
+        distanceMeters: finalDistance,
       });
     }
     clearGpsGrace();
@@ -1322,27 +1326,33 @@ function TrainingSessionActiveScreenContent() {
                 tracePoints={tracePoints}
               />
             </View>
-            {!fullscreenMap && (
-              <View className="flex-1" nativeID="training-session-active-screen-content-wrap" testID="training-session-active-screen-content-wrap">
-                {currentSet ? (
-                  <SeriesView
-                    distance={distanceBySetId.get(currentSet.id) ?? null}
-                    gpsEnabled={storeGpsEnabled}
-                    key={currentSet.id}
-                    onAdvance={handleAdvance}
-                    onBack={() => setMode('overview')}
-                    onCancelConfirmed={handleCancelConfirmed}
-                    onDataChanged={reloadSets}
-                    onPhaseChange={(phase) => { activePhaseRef.current = phase; }}
-                    runId={run.id}
-                    set={currentSet}
-                    totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
-                  />
-                ) : (
-                  <OverviewView onCancel={handleCancelConfirmed} onOpenSet={handleOpenSet} run={run} sets={sets} />
-                )}
-              </View>
-            )}
+            {/* Nunca se desmonta -- se oculta con `display: 'none'` en vez de
+                sacarlo del árbol. SeriesView guarda su cronómetro/fase como
+                estado local sin persistencia periódica (solo en pausa/fin
+                explícitos) -- desmontarlo a mitad de una serie corriendo
+                perdía en silencio todo el tiempo transcurrido desde la
+                última pausa (bug real, encontrado en la revisión final de
+                esta rama). */}
+            <View className="flex-1" nativeID="training-session-active-screen-content-wrap" style={fullscreenMap ? { display: 'none' } : undefined} testID="training-session-active-screen-content-wrap">
+              {currentSet ? (
+                <SeriesView
+                  distance={distanceBySetId.get(currentSet.id) ?? null}
+                  getCurrentDistance={() => distanceRef.current.get(currentSet.id) ?? null}
+                  gpsEnabled={storeGpsEnabled}
+                  key={currentSet.id}
+                  onAdvance={handleAdvance}
+                  onBack={() => setMode('overview')}
+                  onCancelConfirmed={handleCancelConfirmed}
+                  onDataChanged={reloadSets}
+                  onPhaseChange={(phase) => { activePhaseRef.current = phase; }}
+                  runId={run.id}
+                  set={currentSet}
+                  totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
+                />
+              ) : (
+                <OverviewView onCancel={handleCancelConfirmed} onOpenSet={handleOpenSet} run={run} sets={sets} />
+              )}
+            </View>
           </>
         )}
 
