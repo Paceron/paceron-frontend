@@ -43,6 +43,7 @@ export function ExportActions({
   onCapture = null,
   preparing = false,
   seriesFailed = false,
+  showCsv = true,
 }) {
   const colors = useThemeColors();
   // Mientras se rasteriza la pantalla y se lee el logo (web puede tardar un
@@ -128,12 +129,15 @@ export function ExportActions({
           return null;
         }
       };
-      const [logoDataUri, screenshotDataUri] = await Promise.all([
+      const [logoDataUri, capturedScreenshots] = await Promise.all([
         resolveLogoDataUri(),
         captureScreenshot(),
       ]);
+      const screenshotDataUris = Array.isArray(capturedScreenshots)
+        ? capturedScreenshots
+        : capturedScreenshots ? [capturedScreenshots] : [];
 
-      const html = buildDashboardPdfHtml({ ...pdfModel, generatedAt, logoDataUri, screenshotDataUri });
+      const html = buildDashboardPdfHtml({ ...pdfModel, generatedAt, logoDataUri, screenshotDataUris });
       const fileName = dashboardExportFileName({ exerciseName, from, to, extension: 'pdf' });
 
       await saveDashboardPdf(html, fileName);
@@ -154,14 +158,16 @@ export function ExportActions({
       nativeID={`${id}-actions`}
       testID={`${id}-actions`}
     >
-      <ExportButton
-        disabled={!exerciseName || preparing || seriesFailed}
-        icon="file-delimited-outline"
-        id={`${id}-csv`}
-        label="CSV"
-        onPress={exportCsv}
-        tint={colors.onSurfaceVariant}
-      />
+      {showCsv ? (
+        <ExportButton
+          disabled={!exerciseName || preparing || seriesFailed}
+          icon="file-delimited-outline"
+          id={`${id}-csv`}
+          label="CSV"
+          onPress={exportCsv}
+          tint={colors.onSurfaceVariant}
+        />
+      ) : null}
       <ExportButton
         disabled={exportingPdf}
         icon="file-pdf-box"

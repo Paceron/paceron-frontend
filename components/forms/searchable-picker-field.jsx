@@ -41,6 +41,7 @@ export function SearchablePickerField({
   onChange,
   idPrefix,
   placeholder = 'Elegir',
+  emptyOptionLabel,
   disabled = false,
   loading = false,
   emptyMessage = 'Sin coincidencias',
@@ -73,6 +74,8 @@ export function SearchablePickerField({
   // filtro es por nombre y no por otro campo. La normalización de acentos y
   // mayúsculas vive en filterByName (ya testeada) — no se reimplementa.
   const filtered = useMemo(() => filterByName(items, query, 'name'), [items, query]);
+  const hasEmptyOption = Boolean(emptyOptionLabel);
+  const resultCount = filtered.length + (hasEmptyOption ? 1 : 0);
 
   const selected = items.find((option) => isSameId(option.id, value));
 
@@ -141,6 +144,11 @@ export function SearchablePickerField({
     // Se devuelve el id de la opción, nunca el del `value`: el caller siempre
     // recibe el tipo que trae la lista de opciones (ver isSameId).
     onChange(option.id);
+    closePicker();
+  };
+
+  const chooseEmptyOption = () => {
+    onChange('');
     closePicker();
   };
 
@@ -317,11 +325,11 @@ export function SearchablePickerField({
               >
                 {loading
                   ? 'Buscando opciones'
-                  : filtered.length === 0
+                  : resultCount === 0
                     ? query
                       ? 'Sin coincidencias'
                       : 'Sin opciones para elegir'
-                    : `${filtered.length} ${filtered.length === 1 ? 'opción' : 'opciones'}`}
+                    : `${resultCount} ${resultCount === 1 ? 'opción' : 'opciones'}`}
               </Text>
 
               {/* keyboardShouldPersistTaps="handled" es LA pieza que hace que
@@ -352,7 +360,7 @@ export function SearchablePickerField({
                   >
                     <ActivityIndicator color={colors.primary} />
                   </View>
-                ) : filtered.length === 0 ? (
+                ) : filtered.length === 0 && !hasEmptyOption ? (
                   <Text
                     className="py-8 text-center text-sm text-slate-500 dark:text-slate-400"
                     nativeID={`${idPrefix}-modal-empty`}
@@ -385,6 +393,32 @@ export function SearchablePickerField({
                     role="listbox"
                     testID={`${idPrefix}-modal-list`}
                   >
+                    {hasEmptyOption ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: !hasValue }}
+                        aria-selected={!hasValue}
+                        className={`flex-row items-center gap-2 rounded-xl border px-3 py-2.5 active:opacity-70 ${
+                          !hasValue
+                            ? 'border-primary bg-primary/10'
+                            : 'border-slate-200 bg-white hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+                        }`}
+                        key={`${idPrefix}-empty-option`}
+                        nativeID={`${idPrefix}-modal-empty-option`}
+                        onPress={chooseEmptyOption}
+                        role="option"
+                        testID={`${idPrefix}-modal-empty-option`}
+                      >
+                        <Text
+                          className="flex-1 text-sm font-semibold text-slate-900 dark:text-white"
+                          nativeID={`${idPrefix}-modal-empty-option-label`}
+                          testID={`${idPrefix}-modal-empty-option-label`}
+                        >
+                          {emptyOptionLabel}
+                        </Text>
+                        {!hasValue ? <MaterialCommunityIcons color={colors.primary} name="check-circle" size={18} /> : null}
+                      </Pressable>
+                    ) : null}
                     {filtered.map((option) => {
                       const optionIds = `${idPrefix}-modal-option-${optionSlug(option.id)}`;
                       const isSelected = isSameId(option.id, value);

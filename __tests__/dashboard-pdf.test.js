@@ -125,6 +125,22 @@ describe('buildDashboardPdfHtml', () => {
       .not.toContain('class="screenshot"');
   });
 
+  test('imprime las capturas del reporte en páginas consecutivas y omite las inválidas', () => {
+    const html = buildDashboardPdfHtml({
+      ...MODEL,
+      screenshotDataUris: [
+        'data:image/png;base64,KPIS',
+        'not-an-image',
+        'data:image/jpeg;base64,CHARTS',
+      ],
+    });
+
+    expect(html).toContain('src="data:image/png;base64,KPIS"');
+    expect(html).toContain('class="screenshot screenshot-next-page"');
+    expect(html).toContain('src="data:image/jpeg;base64,CHARTS"');
+    expect(html).not.toContain('src="not-an-image"');
+  });
+
   test('el logo se embebe si es un data URI de imagen; si no, cae al wordmark de texto', () => {
     const withLogo = buildDashboardPdfHtml({ ...MODEL, logoDataUri: 'data:image/png;base64,LOGO' });
     expect(withLogo).toContain('<img class="logo" src="data:image/png;base64,LOGO"');

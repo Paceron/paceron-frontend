@@ -75,6 +75,8 @@ export function LeaderboardTable({
   onSort,
   onLoadMore,
   selfPosition = null,
+  captureRef = null,
+  hideLoadMore = false,
 }) {
   const colors = useThemeColors();
   const [width, setWidth] = useState(0);
@@ -198,8 +200,10 @@ export function LeaderboardTable({
   return (
     <View
       className="mb-4 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-surface"
+      collapsable={false}
       nativeID={id}
       onLayout={(event) => setWidth(Math.floor(event.nativeEvent.layout.width))}
+      ref={captureRef}
       testID={id}
     >
       <View className="border-b border-slate-100 p-4 dark:border-slate-800" nativeID={`${id}-header`} testID={`${id}-header`}>
@@ -315,7 +319,7 @@ export function LeaderboardTable({
         );
       })}
 
-      {hasMore ? (
+      {hasMore && !hideLoadMore ? (
         <Pressable
           accessibilityLabel="Cargar más corredores"
           accessibilityRole="button"

@@ -32,6 +32,8 @@ export function PaletteWithTarget({
   seriesSamples = null,
   granularity,
   onGranularityChange,
+  section = 'all',
+  forceExpandCharts = false,
 }) {
   const colors = useThemeColors();
   // Sube la fila entera mientras haya un tooltip abierto: el de cada KPI vive
@@ -70,6 +72,8 @@ export function PaletteWithTarget({
 
   return (
     <View nativeID={`${id}-root`} testID={`${id}-root`}>
+      {section !== 'charts' ? (
+        <>
       {/* Las SEIS cifras de la pantalla, del mismo tamaño y en dos filas de tres.
           Ritmo promedio y Velocidad esperada son dos tarjetas y no un velocímetro:
           el gauge mostraba exactamente esos dos números en un dial, o sea que la
@@ -179,10 +183,32 @@ export function PaletteWithTarget({
         ))}
       </View>
 
+      <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
+        {hasMetric(totals.delta_pct)
+          ? `Delta ${formatDelta(totals.delta_pct, units.delta)} contra el objetivo (positivo es mejora).`
+          : 'Sin objetivo cargado en el período: el delta no se calcula.'}
+      </Text>
+      {!hasTarget(summary) ? (
+        <View className="mt-1 flex-row items-center gap-1" nativeID={`${id}-no-target-note`} testID={`${id}-no-target-note`}>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={13} />
+          <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-no-target-note-text`} testID={`${id}-no-target-note-text`}>
+            El objetivo de este ejercicio no está cargado en el período.
+          </Text>
+        </View>
+      ) : null}
+        </>
+      ) : null}
+
       {/* Los gráficos arrancan minimizados en una grilla de dos columnas. El
           estado de qué está maximizado vive en `ChartGrid` y no en cada tarjeta:
           el control "Maximizar todos" necesita el conjunto completo. */}
-      <ChartGrid id={`${id}-chart-grid`} ids={chartGridIds(id, seriesSamples)} initialExpandedId={`${id}-evolution-card`}>
+      {section !== 'kpis' ? (
+      <ChartGrid
+        forceExpanded={forceExpandCharts}
+        id={`${id}-chart-grid`}
+        ids={chartGridIds(id, seriesSamples)}
+        initialExpandedId={`${id}-evolution-card`}
+      >
         <ChartGridItem
           description="Porcentaje de las series con objetivo cargado que lo cumplieron dentro de la tolerancia aplicada. La barra no se estira más allá del objetivo: la escala termina en 100 %, y las muescas del track marcan 80 % (falta) y 95 % (cerca)."
           icon="gauge"
@@ -299,20 +325,6 @@ export function PaletteWithTarget({
           </View>
         </ChartGridItem>
       </ChartGrid>
-
-
-      <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
-        {hasMetric(totals.delta_pct)
-          ? `Delta ${formatDelta(totals.delta_pct, units.delta)} contra el objetivo (positivo es mejora).`
-          : 'Sin objetivo cargado en el período: el delta no se calcula.'}
-      </Text>
-      {!hasTarget(summary) ? (
-        <View className="mt-1 flex-row items-center gap-1" nativeID={`${id}-no-target-note`} testID={`${id}-no-target-note`}>
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={13} />
-          <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-no-target-note-text`} testID={`${id}-no-target-note-text`}>
-            El objetivo de este ejercicio no está cargado en el período.
-          </Text>
-        </View>
       ) : null}
     </View>
   );

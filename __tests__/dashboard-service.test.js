@@ -131,7 +131,7 @@ describe('dashboard service — query string', () => {
   });
 
   test('los filtros vacíos no van: group_id, athlete_user_id, exercise_id vacío ni listas vacías', async () => {
-    await getDashboardSummary({ teamId: 4, ...RANGE, groupId: '', athleteUserId: '', exerciseId: null, exerciseIds: [], kind: '' });
+    await getDashboardSummary({ teamId: 4, ...RANGE, groupId: '', athleteUserId: '', exerciseId: '', exerciseIds: [], kind: '' });
     const query = queryOf(lastGet());
     expect(query.has('group_id')).toBe(false);
     expect(query.has('athlete_user_id')).toBe(false);
