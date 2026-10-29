@@ -14,9 +14,12 @@ import { useTeam } from '../../hooks/use-teams.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useLiveSessionRuntime } from '../../hooks/use-live-session-runtime.js';
 import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-session-messages.js';
+import { useUser } from '../../hooks/use-user.js';
 import { SessionMessagesModal } from './session-messages-modal.jsx';
+import { LiveSessionMapPanel } from './live-session-map-panel.jsx';
 import { formatStopwatch } from '../../utils/time.js';
 import { formatMeters } from '../../utils/distance.js';
+import { getUserInitials } from '../../utils/user-initials.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import { isWeb } from '../../utils/platform.js';
 import { logDebug } from '../../utils/debug-log.js';
@@ -60,6 +63,7 @@ function AttendanceQuickAccessButton({ router, idPrefix }) {
   const colors = useThemeColors();
   return (
     <Pressable
+      accessibilityLabel="Registrar asistencia"
       className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
       nativeID={`${idPrefix}-attendance-button`}
       onPress={() => router.push({ pathname: '/attendance/register', params: { returnTo: '/training-session-live' } })}
@@ -135,6 +139,8 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
 
   return (
     <Pressable
+      accessibilityHint="Mantené presionado para cancelar la sesión completa"
+      accessibilityLabel="Cancelar sesión"
       className={`min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 bg-red-50 px-4 dark:border-red-900/60 dark:bg-red-950/40 ${disabled ? 'opacity-50' : ''}`}
       disabled={disabled}
       nativeID={`${idPrefix}-cancel-button`}
@@ -249,6 +255,8 @@ function DragToFinishButton({ onTrigger, disabled, idPrefix, label, icon = 'flag
   return (
     <GestureDetector gesture={pan}>
       <View
+        accessibilityHint="Arrastrá hasta el final para confirmar"
+        accessibilityLabel={label}
         className={`h-24 flex-1 rounded-full border ${colors.trackBg} ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => { widthSV.value = Math.round(event.nativeEvent.layout.width); }}
@@ -663,7 +671,7 @@ function LiveSeriesView({
               </Text>
             </View>
           )}
-          <Text className="text-6xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
+          <Text className="text-4xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
             {showTimer ? formatStopwatch(wallMs) : '00:00:00'}
           </Text>
           <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-timer-hint`} testID={`${idPrefix}-timer-hint`}>
@@ -739,6 +747,7 @@ function TrainingSessionLiveScreenContent() {
   const router = useRouter();
   const clearLiveSession = useLiveSessionStore((s) => s.clearLiveSession);
   const myUserId = useAuthStore((s) => s.userId);
+  const { user: myUser } = useUser(myUserId);
   const {
     booted,
     bootError,
@@ -749,6 +758,7 @@ function TrainingSessionLiveScreenContent() {
     pendingControl,
     clearPendingControl,
     distanceBySetId,
+    tracePoints,
     activeSetId,
     activePhase,
     stopwatchWallMs,
@@ -766,6 +776,7 @@ function TrainingSessionLiveScreenContent() {
   const [finishing, setFinishing] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [openingComparison, setOpeningComparison] = useState(false);
+  const [fullscreenMap, setFullscreenMap] = useState(false);
 
   // "Ver comparación" (Gap 35): en presencial las series se suben de a una en
   // segundo plano y finalizeSession no espera la última. Antes de abrir la
@@ -940,38 +951,53 @@ function TrainingSessionLiveScreenContent() {
           {connectionStatus && <ConnectionBanner status={connectionStatus} />}
         </View>
 
-        {currentSet ? (
-          <LiveSeriesView
-            activePhase={activePhase}
-            distance={distanceBySetId.get(currentSet.id)}
-            key={currentSet.id}
-            onAdvance={advance}
-            onBack={() => setMode('overview')}
-            onCancelConfirmed={handleCancelConfirmed}
-            onFinish={async (setId) => {
-              const snap = await handleFinishSet(setId);
-              return snap;
-            }}
-            onPause={pauseSet}
-            onResume={resumeSet}
-            onSkipExercise={handleSkipExercise}
-            onSkipSeries={handleSkipSet}
-            onStart={startSet}
-            set={currentSet}
-            totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
-            wallMs={stopwatchWallMs}
+        <View className="flex-1 px-4" nativeID="training-session-live-map-wrap" testID="training-session-live-map-wrap">
+          <LiveSessionMapPanel
+            currentUserInitials={getUserInitials(myUser)}
+            currentUserPhotoUrl={myUser?.photoUrl ?? null}
+            finished={sessionComplete}
+            fullscreen={fullscreenMap}
+            onToggleFullscreen={() => setFullscreenMap((v) => !v)}
+            tracePoints={tracePoints}
           />
-        ) : (
-          <LiveOverviewView
-            activePhase={activePhase}
-            activeSetId={activeSetId}
-            onCancel={handleCancelConfirmed}
-            onOpenMessages={() => setMessagesVisible(true)}
-            onOpenSet={handleOpenSet}
-            router={router}
-            run={run}
-            sets={sets}
-          />
+        </View>
+
+        {!fullscreenMap && (
+          <View className="flex-1" nativeID="training-session-live-content-wrap" testID="training-session-live-content-wrap">
+            {currentSet ? (
+              <LiveSeriesView
+                activePhase={activePhase}
+                distance={distanceBySetId.get(currentSet.id)}
+                key={currentSet.id}
+                onAdvance={advance}
+                onBack={() => setMode('overview')}
+                onCancelConfirmed={handleCancelConfirmed}
+                onFinish={async (setId) => {
+                  const snap = await handleFinishSet(setId);
+                  return snap;
+                }}
+                onPause={pauseSet}
+                onResume={resumeSet}
+                onSkipExercise={handleSkipExercise}
+                onSkipSeries={handleSkipSet}
+                onStart={startSet}
+                set={currentSet}
+                totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
+                wallMs={stopwatchWallMs}
+              />
+            ) : (
+              <LiveOverviewView
+                activePhase={activePhase}
+                activeSetId={activeSetId}
+                onCancel={handleCancelConfirmed}
+                onOpenMessages={() => setMessagesVisible(true)}
+                onOpenSet={handleOpenSet}
+                router={router}
+                run={run}
+                sets={sets}
+              />
+            )}
+          </View>
         )}
 
         <Modal animationType="fade" nativeID="training-session-live-complete-modal" onRequestClose={() => { clearLiveSession(); router.back(); }} testID="training-session-live-complete-modal" transparent visible={sessionComplete}>
