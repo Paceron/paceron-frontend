@@ -144,6 +144,12 @@ describe('runner-kpis — formato de valores', () => {
     expect(formatRunnerKpiValue('best_speed_kph', 112.4)).not.toContain('%');
   });
 
+  test('la velocidad siempre muestra un decimal, también en enteros', () => {
+    expect(formatRunnerKpiValue('best_speed_kph', 20)).toBe('20,0 km/h');
+    expect(formatRunnerKpiValue('average_speed_kph', 0)).toBe('0,0 km/h');
+    expect(formatRunnerKpiValue('best_speed_kph', null)).toBe('—');
+  });
+
   test('el tiempo se escribe como reloj', () => {
     expect(formatRunnerKpiValue('best_time_ms', 1380000)).toBe('23:00');
     expect(formatRunnerKpiValue('best_time_ms', 3930000)).toBe('1:05:30');

@@ -87,6 +87,13 @@ const KM_FORMATTER = new Intl.NumberFormat('es-AR', {
   minimumFractionDigits: 1,
 });
 
+// La velocidad también va con un decimal fijo ("20,0 km/h"), como la distancia.
+// formatMetric('km/h') usa mínimo 0 y mostraría "20 km/h".
+const SPEED_FORMATTER = new Intl.NumberFormat('es-AR', {
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 1,
+});
+
 function toNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -156,8 +163,11 @@ export function formatRunnerKpiValue(field, value) {
       const text = fromISODate(value);
       return text || EMPTY_METRIC;
     }
-    case 'speed':
-      return formatMetric(value, 'km/h');
+    case 'speed': {
+      const speed = toNumber(value);
+      if (speed === null) return EMPTY_METRIC;
+      return `${SPEED_FORMATTER.format(speed).replace('-', '−')} km/h`;
+    }
     case 'time':
       return formatMetric(value, 'ms');
     default:

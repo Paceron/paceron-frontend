@@ -174,7 +174,7 @@ Formatos:
 | Magnitud | Función | Regla |
 |---|---|---|
 | Distancia | `formatDistanceM` | `< 1000` → metros enteros; `>= 1000` → km con un decimal |
-| Velocidad | `formatMetric(value, 'km/h')` | un decimal |
+| Velocidad | `SPEED_FORMATTER` | km/h con un decimal fijo (`20,0 km/h`) |
 | Tiempo | `formatMetric(value, 'ms')` | `formatClock`: `m:ss` o `h:mm:ss` |
 | Fecha | `fromISODate` | `DD/MM/YYYY` |
 | Ausencia | `formatMetric` / `EMPTY_METRIC` | `—` |
@@ -182,9 +182,9 @@ Formatos:
 `null` se evalúa antes de formatear y NUNCA se convierte a `0`. Un `0` real se
 muestra como `0 m`, porque `formatMetric` ya distingue `null` de `0`.
 
-El redondeo de km se delega a `Intl.NumberFormat('es-AR')` dentro de
-`formatMetric`; la función de distancia solo decide la unidad y reutiliza el
-mismo formateador para no mezclar comas y puntos en la misma tabla.
+El formateo de km y de km/h usa `Intl.NumberFormat('es-AR')` con un decimal
+fijo dentro de `utils/runner-kpis.js`; así la tabla no mezcla comas y puntos y
+`20` se lee `20,0 km/h` igual que `12` se lee `12,0 km`.
 
 ### D7: Estados de error y vacío explícitos
 

@@ -54,8 +54,8 @@
 
 - [x] 6.1 Ejecutar `npm test -- --runInBand` y corregir cualquier fallo de los tests nuevos o existentes.
 - [x] 6.2 Ejecutar `npm run lint` y corregir los avisos introducidos por los archivos nuevos.
-- [ ] 6.3 Verificar manualmente contra el backend local: Home de corredor con datos en dos equipos, mes/semana/día y las cuatro pestañas.
-- [ ] 6.4 Verificar manualmente los estados: primera carga con el GIF, revalidación sin capa, error de red con `Reintentar`, `400` sin botón y período sin datos.
-- [ ] 6.5 Verificar en web con teclado que las pestañas y el selector de período se activan y anuncian el estado seleccionado.
-- [ ] 6.6 Verificar en mobile de 360 px que la tabla se lee completa y que las pestañas no desbordan la tarjeta.
+- [x] 6.3 Verificar manualmente contra el backend local: Home de corredor con datos en dos equipos, mes/semana/día y las cuatro pestañas.
+- [x] 6.4 Verificar manualmente los estados: primera carga con el GIF, revalidación sin capa, error de red con `Reintentar`, `400` sin botón y período sin datos.
+- [x] 6.5 Verificar en web con teclado que las pestañas y el selector de período se activan y anuncian el estado seleccionado.
+- [x] 6.6 Verificar en mobile de 360 px que la tabla se lee completa y que las pestañas no desbordan la tarjeta.
 - [x] 6.7 Confirmar que no se modificó ningún archivo de `components/dashboard/`, `services/dashboard.js` ni los hooks del dashboard.
