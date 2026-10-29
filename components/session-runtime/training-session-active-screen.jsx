@@ -36,8 +36,11 @@ import {
 import { syncRun } from '../../services/session-sync.js';
 import { useStopwatch } from '../../hooks/use-stopwatch.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
+import { useUser } from '../../hooks/use-user.js';
+import { getUserInitials } from '../../utils/user-initials.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { DebugLogPanel } from './debug-log-panel.jsx';
+import { LiveSessionMapPanel } from './live-session-map-panel.jsx';
 
 const HOLD_MS = 3000;
 
@@ -110,6 +113,8 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
 
   return (
     <Pressable
+      accessibilityHint="Mantené presionado para cancelar la sesión completa"
+      accessibilityLabel="Cancelar sesión"
       className={`min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 bg-red-50 px-4 dark:border-red-900/60 dark:bg-red-950/40 ${disabled ? 'opacity-50' : ''}`}
       disabled={disabled}
       nativeID={`${idPrefix}-cancel-button`}
@@ -263,6 +268,8 @@ function DragToFinishButton({
   return (
     <GestureDetector gesture={pan}>
       <View
+        accessibilityHint="Arrastrá hasta el final para confirmar"
+        accessibilityLabel={label}
         className={`h-24 flex-1 rounded-full border ${colors.trackBg} ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => {
@@ -981,7 +988,7 @@ function SeriesView({ set, runId, gpsEnabled, distance, totalSeriesForExercise, 
               <Text className="text-xs font-semibold text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-gps-warning-label`} testID={`${idPrefix}-gps-warning-label`}>Sin señal GPS — esta serie no registra distancia</Text>
             </View>
           )}
-          <Text className="text-6xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
+          <Text className="text-4xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
             {showTimer ? formatStopwatch(stopwatch.wallMs) : '00:00:00'}
           </Text>
           <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-timer-hint`} testID={`${idPrefix}-timer-hint`}>
@@ -1079,6 +1086,8 @@ function TrainingSessionActiveScreenContent() {
   const [sessionCompleteVisible, setSessionCompleteVisible] = useState(false);
   const [distanceBySetId, setDistanceBySetId] = useState(new Map());
   const [tracePoints, setTracePoints] = useState([]);
+  const [fullscreenMap, setFullscreenMap] = useState(false);
+  const { user } = useUser(userId);
   const activeSetIdRef = useRef(null);
   const activePhaseRef = useRef('idle');
   const lastPointRef = useRef(null);
@@ -1301,22 +1310,40 @@ function TrainingSessionActiveScreenContent() {
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="training-session-active-screen-error-back-label" testID="training-session-active-screen-error-back-label">Volver</Text>
             </Pressable>
           </View>
-        ) : currentSet ? (
-          <SeriesView
-            distance={distanceBySetId.get(currentSet.id) ?? null}
-            gpsEnabled={storeGpsEnabled}
-            key={currentSet.id}
-            onAdvance={handleAdvance}
-            onBack={() => setMode('overview')}
-            onCancelConfirmed={handleCancelConfirmed}
-            onDataChanged={reloadSets}
-            onPhaseChange={(phase) => { activePhaseRef.current = phase; }}
-            runId={run.id}
-            set={currentSet}
-            totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
-          />
         ) : (
-          <OverviewView onCancel={handleCancelConfirmed} onOpenSet={handleOpenSet} run={run} sets={sets} />
+          <>
+            <View className="flex-1 px-4 pt-2" nativeID="training-session-active-screen-map-wrap" testID="training-session-active-screen-map-wrap">
+              <LiveSessionMapPanel
+                currentUserInitials={getUserInitials(user)}
+                currentUserPhotoUrl={user?.photoUrl ?? null}
+                finished={sessionCompleteVisible}
+                fullscreen={fullscreenMap}
+                onToggleFullscreen={() => setFullscreenMap((v) => !v)}
+                tracePoints={tracePoints}
+              />
+            </View>
+            {!fullscreenMap && (
+              <View className="flex-1" nativeID="training-session-active-screen-content-wrap" testID="training-session-active-screen-content-wrap">
+                {currentSet ? (
+                  <SeriesView
+                    distance={distanceBySetId.get(currentSet.id) ?? null}
+                    gpsEnabled={storeGpsEnabled}
+                    key={currentSet.id}
+                    onAdvance={handleAdvance}
+                    onBack={() => setMode('overview')}
+                    onCancelConfirmed={handleCancelConfirmed}
+                    onDataChanged={reloadSets}
+                    onPhaseChange={(phase) => { activePhaseRef.current = phase; }}
+                    runId={run.id}
+                    set={currentSet}
+                    totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
+                  />
+                ) : (
+                  <OverviewView onCancel={handleCancelConfirmed} onOpenSet={handleOpenSet} run={run} sets={sets} />
+                )}
+              </View>
+            )}
+          </>
         )}
 
         <SessionCompleteModal
