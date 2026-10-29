@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -90,6 +91,18 @@ function SessionPreStartScreenContent() {
   // sesión) exime de la sala de espera de abajo -- es resumir lo que ya
   // arrancó, no un ingreso nuevo que el entrenador todavía no abrió.
   const [hasLocalInProgressRun, setHasLocalInProgressRun] = useState(false);
+
+  // Mismo patrón que route-attempt-pre-start-screen.jsx -- invita a tocar
+  // sin molestar mientras el botón está deshabilitado/cargando.
+  const playReady = !starting && !runnerSessionLoading;
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = playReady
+      ? withRepeat(withTiming(1.06, { duration: 650 }), -1, true)
+      : withTiming(1, { duration: 200 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playReady]);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   // El store (Zustand, sin persist) es el camino rápido -- siempre
   // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
@@ -357,6 +370,7 @@ function SessionPreStartScreenContent() {
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
           <Pressable
+            accessibilityLabel="Volver"
             className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
             nativeID="session-pre-start-screen-back-button"
             onPress={() => router.back()}
@@ -372,6 +386,7 @@ function SessionPreStartScreenContent() {
               modal de gestión completo, no un scanner de cámara. */}
           {pendingSession.isPresencial && !isWeb && (
             <Pressable
+              accessibilityLabel="Registrar asistencia"
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
               nativeID="session-pre-start-screen-attendance-button"
               onPress={handleOpenAttendance}
@@ -450,9 +465,12 @@ function SessionPreStartScreenContent() {
         </View>
 
         <View className="mb-4" nativeID="session-pre-start-screen-exercise-container" testID="session-pre-start-screen-exercise-container">
-          <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-exercise-container-label" testID="session-pre-start-screen-exercise-container-label">
-            Ejercicios de la sesión ({exercises.length})
-          </Text>
+          <View className="mb-2 flex-row items-center gap-1.5" nativeID="session-pre-start-screen-exercise-container-header" testID="session-pre-start-screen-exercise-container-header">
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dumbbell" size={14} />
+            <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-pre-start-screen-exercise-container-label" testID="session-pre-start-screen-exercise-container-label">
+              Ejercicios de la sesión ({exercises.length})
+            </Text>
+          </View>
           <View className="gap-2" nativeID="session-pre-start-screen-exercise-list" testID="session-pre-start-screen-exercise-list">
             {exercises.map((exercise) => (
               <ExerciseRow exercise={exercise} idPrefix="session-pre-start-screen" key={exercise.id} />
@@ -466,6 +484,8 @@ function SessionPreStartScreenContent() {
         {showReview ? (
           <View className="items-center" nativeID="session-pre-start-screen-review-container" testID="session-pre-start-screen-review-container">
             <Pressable
+              accessibilityHint="Abre la pantalla para ver o editar lo registrado"
+              accessibilityLabel="Registro de Sesión"
               className="h-14 w-56 flex-row items-center justify-center gap-2 rounded-full bg-primary active:opacity-80"
               nativeID={reviewButtonId}
               onPress={handleOpenReview}
@@ -499,15 +519,19 @@ function SessionPreStartScreenContent() {
             </Text>
           </View>
         ) : isWeb ? null : (
-          <Pressable
-            className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
-            disabled={starting || runnerSessionLoading}
-            nativeID="session-pre-start-screen-play-button"
-            onPress={handlePlay}
-            testID="session-pre-start-screen-play-button"
-          >
-            {runnerSessionLoading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
-          </Pressable>
+          <Animated.View className="self-center" nativeID="session-pre-start-screen-play-button-pulse" style={pulseStyle} testID="session-pre-start-screen-play-button-pulse">
+            <Pressable
+              accessibilityHint="Arranca el entrenamiento"
+              accessibilityLabel="Iniciar entrenamiento"
+              className={`h-24 w-24 items-center justify-center rounded-full bg-primary active:opacity-80 ${starting || runnerSessionLoading ? 'opacity-50' : ''}`}
+              disabled={starting || runnerSessionLoading}
+              nativeID="session-pre-start-screen-play-button"
+              onPress={handlePlay}
+              testID="session-pre-start-screen-play-button"
+            >
+              {runnerSessionLoading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
+            </Pressable>
+          </Animated.View>
         )}
       </View>
       </View>
