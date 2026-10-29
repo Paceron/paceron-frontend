@@ -92,18 +92,6 @@ function SessionPreStartScreenContent() {
   // arrancó, no un ingreso nuevo que el entrenador todavía no abrió.
   const [hasLocalInProgressRun, setHasLocalInProgressRun] = useState(false);
 
-  // Mismo patrón que route-attempt-pre-start-screen.jsx -- invita a tocar
-  // sin molestar mientras el botón está deshabilitado/cargando.
-  const playReady = !starting && !runnerSessionLoading;
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    pulse.value = playReady
-      ? withRepeat(withTiming(1.06, { duration: 650 }), -1, true)
-      : withTiming(1, { duration: 200 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playReady]);
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-
   // El store (Zustand, sin persist) es el camino rápido -- siempre
   // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
   // 2026-10-05): ahí se reconstruye desde los params de la URL (puestos por
@@ -116,6 +104,25 @@ function SessionPreStartScreenContent() {
 
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const { runnerSession, loading: runnerSessionLoading, refetch } = useRunnerSession(sessionInstanceId, userId);
+
+  // Mismo patrón que route-attempt-pre-start-screen.jsx -- invita a tocar
+  // sin molestar mientras el botón está deshabilitado/cargando. Va DESPUÉS de
+  // useRunnerSession a propósito: necesita leer `runnerSessionLoading`, que
+  // recién existe desde esa línea (bug real encontrado en la verificación
+  // final de esta rama -- antes este bloque estaba más arriba y referenciaba
+  // `runnerSessionLoading` antes de su `const`, lo que tira
+  // "Cannot access 'runnerSessionLoading' before initialization" en TODOS
+  // los renders de esta pantalla).
+  const playReady = !starting && !runnerSessionLoading;
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = playReady
+      ? withRepeat(withTiming(1.06, { duration: 650 }), -1, true)
+      : withTiming(1, { duration: 200 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playReady]);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   // Spec 4b (Gap 33 punto 29) -- si el Play cae dentro de la ventana de una
   // competencia type='metric' activa en la que este corredor participa, el
   // entrenamiento cuenta para el progreso de esa competencia.
