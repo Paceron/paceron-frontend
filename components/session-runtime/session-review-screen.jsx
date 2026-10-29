@@ -27,8 +27,10 @@ import { formatMeters } from '../../utils/distance.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { composeDateTime, deriveDurationMs, mirrorEndIfEmpty, splitDateTime } from '../../utils/datetime-parts.js';
 import { DateField, DurationField, InputField, TimeField } from '../forms/fields.jsx';
-import { TrajectorySketch } from './trajectory-sketch.jsx';
+import { SeriesTrajectoryMap } from './series-trajectory-map.jsx';
 import { VoiceAnnotationControls } from './voice-annotation-controls.jsx';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 const ROW_STATUS = {
   completed: { label: 'Completada', color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle' },
@@ -166,7 +168,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
       <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="session-review-screen-scroll">
         <View className="flex-row items-center justify-between" nativeID="session-review-screen-top-row" testID="session-review-screen-top-row">
-          <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
+          <Pressable accessibilityLabel="Volver" className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           </Pressable>
           {athleteFullName && (
@@ -327,6 +329,7 @@ function DataField({ editable, editing, id, label, hint, children, onToggleEdit 
 
 function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSaved }) {
   const colors = useThemeColors();
+  const isNarrowWeb = useIsNarrowWeb();
   const feedback = row.feedback;
 
   // "Sin registro" es editable en AMBOS modos, no solo en manual: una sesión
@@ -503,8 +506,8 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-detail-root" testID="session-review-detail-root">
-      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" testID="session-review-detail-scroll">
-        <Pressable className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
+      <ScrollView className={`flex-1 w-full self-center ${!isWeb ? '' : isNarrowWeb ? 'max-w-3xl' : 'max-w-5xl'}`} contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" testID="session-review-detail-scroll">
+        <Pressable accessibilityLabel="Volver" className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
         </Pressable>
 
@@ -535,183 +538,197 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
           </View>
         )}
 
-        <View className="mb-4 gap-2.5" nativeID="session-review-detail-fields" testID="session-review-detail-fields">
-          <DataField
-            editable={editable}
-            editing={editing}
-            id={`${fieldId}-started`}
-            label="Inicio (started_at)"
-            onToggleEdit={() => setEditing((v) => !v)}
-          >
-            {editing ? (
-              <View className="gap-2" nativeID={`${fieldId}-started-editor`} testID={`${fieldId}-started-editor`}>
-                <DateField
-                  disableFutureLimit
-                  label="Fecha de inicio"
-                  onChange={handleStartDateChange}
-                  value={startedDate}
-                />
-                <TimeField
-                  className="mb-0"
-                  hideErrorRow
-                  label="Hora de inicio"
-                  onChange={handleStartTimeChange}
-                  value={startedTime}
-                />
-              </View>
-            ) : (
-              formatDayTime(feedback?.startedAt)
-            )}
-          </DataField>
+        <View className={isNarrowWeb ? 'gap-4' : 'flex-row gap-4'} nativeID="session-review-detail-columns" testID="session-review-detail-columns">
+          <View className={isNarrowWeb ? '' : 'flex-1'} nativeID="session-review-detail-columns-data" testID="session-review-detail-columns-data">
+            <View className="mb-4 gap-2.5" nativeID="session-review-detail-fields" testID="session-review-detail-fields">
+              <DataField
+                editable={editable}
+                editing={editing}
+                id={`${fieldId}-started`}
+                label="Inicio (started_at)"
+                onToggleEdit={() => setEditing((v) => !v)}
+              >
+                {editing ? (
+                  <View className="gap-2" nativeID={`${fieldId}-started-editor`} testID={`${fieldId}-started-editor`}>
+                    <DateField
+                      disableFutureLimit
+                      label="Fecha de inicio"
+                      onChange={handleStartDateChange}
+                      value={startedDate}
+                    />
+                    <TimeField
+                      className="mb-0"
+                      hideErrorRow
+                      label="Hora de inicio"
+                      onChange={handleStartTimeChange}
+                      value={startedTime}
+                    />
+                  </View>
+                ) : (
+                  formatDayTime(feedback?.startedAt)
+                )}
+              </DataField>
 
-          <DataField
-            editable={editable}
-            editing={editing}
-            id={`${fieldId}-ended`}
-            label="Fin (ended_at)"
-            onToggleEdit={() => setEditing((v) => !v)}
-          >
-            {editing ? (
-              <View className="gap-2" nativeID={`${fieldId}-ended-editor`} testID={`${fieldId}-ended-editor`}>
-                <DateField
-                  disableFutureLimit
-                  label="Fecha de fin"
-                  onChange={handleEndDateChange}
-                  value={endedDate}
-                />
-                <TimeField
-                  className="mb-0"
-                  hideErrorRow
-                  label="Hora de fin"
-                  onChange={handleEndTimeChange}
-                  value={endedTime}
-                />
-              </View>
-            ) : (
-              formatDayTime(feedback?.endedAt)
-            )}
-          </DataField>
+              <DataField
+                editable={editable}
+                editing={editing}
+                id={`${fieldId}-ended`}
+                label="Fin (ended_at)"
+                onToggleEdit={() => setEditing((v) => !v)}
+              >
+                {editing ? (
+                  <View className="gap-2" nativeID={`${fieldId}-ended-editor`} testID={`${fieldId}-ended-editor`}>
+                    <DateField
+                      disableFutureLimit
+                      label="Fecha de fin"
+                      onChange={handleEndDateChange}
+                      value={endedDate}
+                    />
+                    <TimeField
+                      className="mb-0"
+                      hideErrorRow
+                      label="Hora de fin"
+                      onChange={handleEndTimeChange}
+                      value={endedTime}
+                    />
+                  </View>
+                ) : (
+                  formatDayTime(feedback?.endedAt)
+                )}
+              </DataField>
 
-          <DataField
-            editable={editable}
-            editing={editing}
-            hint={durationHint}
-            id={`${fieldId}-duration`}
-            label="Duración"
-            onToggleEdit={() => setEditing((v) => !v)}
-          >
-            {editing ? (
-              <DurationField
-                className="mb-0"
-                hideErrorRow
-                hideLabel
+              <DataField
+                editable={editable}
+                editing={editing}
+                hint={durationHint}
+                id={`${fieldId}-duration`}
                 label="Duración"
-                onChange={setDurationText}
-                placeholder="330 → 3:30"
-                value={durationText}
-              />
-            ) : (
-              displayDuration(feedback?.durationMs)
-            )}
-          </DataField>
+                onToggleEdit={() => setEditing((v) => !v)}
+              >
+                {editing ? (
+                  <DurationField
+                    className="mb-0"
+                    hideErrorRow
+                    hideLabel
+                    label="Duración"
+                    onChange={setDurationText}
+                    placeholder="330 → 3:30"
+                    value={durationText}
+                  />
+                ) : (
+                  displayDuration(feedback?.durationMs)
+                )}
+              </DataField>
 
-          <DataField
-            editable={editable}
-            editing={editing}
-            id={`${fieldId}-active`}
-            label="Tiempo activo (active_duration_ms)"
-            onToggleEdit={() => setEditing((v) => !v)}
-          >
-            {editing ? (
-              <DurationField
-                className="mb-0"
-                hideErrorRow
-                hideLabel
-                label="Tiempo activo"
-                onChange={setActiveText}
-                placeholder="320 → 3:20"
-                value={activeText}
-              />
-            ) : (
-              displayDuration(feedback?.activeDurationMs)
-            )}
-          </DataField>
+              <DataField
+                editable={editable}
+                editing={editing}
+                id={`${fieldId}-active`}
+                label="Tiempo activo (active_duration_ms)"
+                onToggleEdit={() => setEditing((v) => !v)}
+              >
+                {editing ? (
+                  <DurationField
+                    className="mb-0"
+                    hideErrorRow
+                    hideLabel
+                    label="Tiempo activo"
+                    onChange={setActiveText}
+                    placeholder="320 → 3:20"
+                    value={activeText}
+                  />
+                ) : (
+                  displayDuration(feedback?.activeDurationMs)
+                )}
+              </DataField>
 
-          <DataField
-            editable={editable}
-            editing={editing}
-            id={`${fieldId}-distance`}
-            label="Distancia (m)"
-            onToggleEdit={() => setEditing((v) => !v)}
-          >
-            {editing ? (
-              <InputField dense hideLabel keyboardType="number-pad" label="Distancia (metros)" onChange={setDistanceText} placeholder="Ej. 1200" value={distanceText} />
-            ) : (
-              feedback?.distanceMeters != null ? formatMeters(feedback.distanceMeters) : DASH
-            )}
-          </DataField>
+              <DataField
+                editable={editable}
+                editing={editing}
+                id={`${fieldId}-distance`}
+                label="Distancia (m)"
+                onToggleEdit={() => setEditing((v) => !v)}
+              >
+                {editing ? (
+                  <InputField dense hideLabel keyboardType="number-pad" label="Distancia (metros)" onChange={setDistanceText} placeholder="Ej. 1200" value={distanceText} />
+                ) : (
+                  feedback?.distanceMeters != null ? formatMeters(feedback.distanceMeters) : DASH
+                )}
+              </DataField>
 
-          <DataField
-            editable={editable}
-            editing={editing}
-            id={`${fieldId}-annotations`}
-            label="Anotaciones"
-            onToggleEdit={() => setEditing((v) => !v)}
-          >
-            {editing ? (
-              <View className="gap-2" nativeID={`${fieldId}-annotations-editor`} testID={`${fieldId}-annotations-editor`}>
-                <View className="max-h-40" nativeID={`${fieldId}-annotations-scroll-box`} testID={`${fieldId}-annotations-scroll-box`}>
-                  <ScrollView nestedScrollEnabled nativeID={`${fieldId}-annotations-scroll`} testID={`${fieldId}-annotations-scroll`}>
-                    <InputField dense hideLabel label="Anotaciones" multiline numberOfLines={4} onChange={setAnnotations} placeholder="Notas sobre esta serie…" value={annotations} />
+              <DataField
+                editable={editable}
+                editing={editing}
+                id={`${fieldId}-annotations`}
+                label="Anotaciones"
+                onToggleEdit={() => setEditing((v) => !v)}
+              >
+                {editing ? (
+                  <View className="gap-2" nativeID={`${fieldId}-annotations-editor`} testID={`${fieldId}-annotations-editor`}>
+                    <View className="max-h-40" nativeID={`${fieldId}-annotations-scroll-box`} testID={`${fieldId}-annotations-scroll-box`}>
+                      <ScrollView nestedScrollEnabled nativeID={`${fieldId}-annotations-scroll`} testID={`${fieldId}-annotations-scroll`}>
+                        <InputField dense hideLabel label="Anotaciones" multiline numberOfLines={4} onChange={setAnnotations} placeholder="Notas sobre esta serie…" value={annotations} />
+                      </ScrollView>
+                    </View>
+                    <VoiceAnnotationControls onAppendText={setAnnotations} text={annotations} />
+                  </View>
+                ) : feedback?.annotations ? (
+                  <ScrollView nestedScrollEnabled className="max-h-32" nativeID={`${fieldId}-annotations-readonly-scroll`} testID={`${fieldId}-annotations-readonly-scroll`}>
+                    <Text className="text-sm text-slate-800 dark:text-slate-100" nativeID={`${fieldId}-annotations-readonly-text`} testID={`${fieldId}-annotations-readonly-text`}>
+                      {feedback.annotations}
+                    </Text>
                   </ScrollView>
-                </View>
-                <VoiceAnnotationControls onAppendText={setAnnotations} text={annotations} />
-              </View>
-            ) : feedback?.annotations ? (
-              <ScrollView nestedScrollEnabled className="max-h-32" nativeID={`${fieldId}-annotations-readonly-scroll`} testID={`${fieldId}-annotations-readonly-scroll`}>
-                <Text className="text-sm text-slate-800 dark:text-slate-100" nativeID={`${fieldId}-annotations-readonly-text`} testID={`${fieldId}-annotations-readonly-text`}>
-                  {feedback.annotations}
-                </Text>
-              </ScrollView>
-            ) : (
-              DASH
-            )}
-          </DataField>
-        </View>
+                ) : (
+                  DASH
+                )}
+              </DataField>
+            </View>
 
-        {feedback && (
-          <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-persisted" testID="session-review-detail-persisted">
-            <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-label" testID="session-review-detail-persisted-label">
-              Metadatos
-            </Text>
-            <View className="gap-1.5" nativeID="session-review-detail-persisted-values" testID="session-review-detail-persisted-values">
-              <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-gps" testID="session-review-detail-persisted-gps">
-                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-gps-label" testID="session-review-detail-persisted-gps-label">Puntos GPS</Text>
-                <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-gps-value" testID="session-review-detail-persisted-gps-value">
-                  {feedback.pointsCount > 0 ? `${feedback.pointsCount} punto(s)` : 'Sin puntos'}
-                </Text>
+            {feedback && (
+              <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-persisted" testID="session-review-detail-persisted">
+                <View className="mb-2 flex-row items-center gap-1.5" nativeID="session-review-detail-persisted-header" testID="session-review-detail-persisted-header">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={14} />
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-label" testID="session-review-detail-persisted-label">
+                    Metadatos
+                  </Text>
+                </View>
+                <View className="gap-1.5" nativeID="session-review-detail-persisted-values" testID="session-review-detail-persisted-values">
+                  <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-gps" testID="session-review-detail-persisted-gps">
+                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-gps-label" testID="session-review-detail-persisted-gps-label">Puntos GPS</Text>
+                    <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-gps-value" testID="session-review-detail-persisted-gps-value">
+                      {feedback.pointsCount > 0 ? `${feedback.pointsCount} punto(s)` : 'Sin puntos'}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-source" testID="session-review-detail-persisted-source">
+                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-source-label" testID="session-review-detail-persisted-source-label">Origen</Text>
+                    <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-source-value" testID="session-review-detail-persisted-source-value">
+                      {feedback.reportSource ?? DASH}
+                    </Text>
+                  </View>
+                </View>
               </View>
-              <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-source" testID="session-review-detail-persisted-source">
-                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-source-label" testID="session-review-detail-persisted-source-label">Origen</Text>
-                <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-source-value" testID="session-review-detail-persisted-source-value">
-                  {feedback.reportSource ?? DASH}
-                </Text>
+            )}
+          </View>
+
+          {feedback && (
+            <View className={isNarrowWeb ? 'mt-4' : 'flex-1'} nativeID="session-review-detail-columns-map" testID="session-review-detail-columns-map">
+              <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-trajectory-card" testID="session-review-detail-trajectory-card">
+                <View className="flex-row items-center gap-1.5" nativeID="session-review-detail-trajectory-card-header" testID="session-review-detail-trajectory-card-header">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-path" size={14} />
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-trajectory-card-label" testID="session-review-detail-trajectory-card-label">
+                    Trayectoria
+                  </Text>
+                </View>
+                <Animated.View entering={FadeIn.duration(220)} nativeID="session-review-detail-trajectory-card-anim" testID="session-review-detail-trajectory-card-anim">
+                  <SeriesTrajectoryMap feedbackId={feedback.id} pointsCount={feedback.pointsCount} />
+                </Animated.View>
               </View>
             </View>
-          </View>
-        )}
-
-        {feedback && (
-          <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-trajectory-card" testID="session-review-detail-trajectory-card">
-            <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-trajectory-card-label" testID="session-review-detail-trajectory-card-label">
-              Trayectoria
-            </Text>
-            <TrajectorySketch feedbackId={feedback.id} pointsCount={feedback.pointsCount} />
-          </View>
-        )}
+          )}
+        </View>
 
         {editable && (
-          <View className="gap-2" nativeID="session-review-detail-actions" testID="session-review-detail-actions">
+          <View className="mt-4 gap-2" nativeID="session-review-detail-actions" testID="session-review-detail-actions">
             {error && (
               <Text className="text-xs text-red-500 dark:text-red-400" nativeID="session-review-detail-error" testID="session-review-detail-error">{error}</Text>
             )}
