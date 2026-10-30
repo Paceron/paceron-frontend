@@ -164,8 +164,12 @@ export function LeaderboardTab({ teamId }) {
   const lastShownRank = visibleRows[visibleRows.length - 1]?.rank ?? 0;
   const showRankGap = Boolean(leaderboard?.viewerRank) && !viewerInTop && leaderboard.viewerRank.rank - lastShownRank > 1;
 
+  // Sin borde -- vive dentro de team-detail-screen-container, que ya tiene
+  // el suyo del mismo color; con los dos, doble línea redundante. Mismo
+  // fondo "tenue" (bg-slate-50/dark:bg-surface-2) que las demás secciones
+  // de esta pantalla (ver SectionCard variant="nested").
   return (
-    <View className="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="leaderboard-tab-root" testID="leaderboard-tab-root">
+    <View className="rounded-2xl bg-slate-50 p-4 shadow-sm dark:bg-surface-2" nativeID="leaderboard-tab-root" testID="leaderboard-tab-root">
       <View className="mb-3 flex-row items-center gap-2" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
         <View className="flex-1 items-center" nativeID="leaderboard-tab-metric-wrap" testID="leaderboard-tab-metric-wrap">
           <ResponsiveSelectField className={fieldClassName} fixedWidth={fieldFixedWidth} hideErrorRow label="Métrica" onChange={setActiveMetric} options={METRIC_OPTIONS} outline required value={activeMetric} />

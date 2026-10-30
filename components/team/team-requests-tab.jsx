@@ -91,7 +91,7 @@ export function TeamRequestsTab({ teamId }) {
   };
 
   return (
-    <SectionCard icon="account-question-outline" title="Solicitudes">
+    <SectionCard icon="account-question-outline" title="Solicitudes" variant="nested">
       {loading ? (
         <View className="items-center py-6" nativeID="team-requests-tab-loading" testID="team-requests-tab-loading">
           <ActivityIndicator color={colors.primary} />
