@@ -87,7 +87,6 @@ describe('runner-kpis — contrato de tabs y filas', () => {
     expect(RUNNER_KPI_ROWS.general.map((row) => row.field)).toEqual([
       'total_distance_m',
       'best_day_distance_m',
-      'best_day_date',
       'best_speed_kph',
       'average_speed_kph',
     ]);
@@ -121,7 +120,17 @@ describe('runner-kpis — contrato de tabs y filas', () => {
       expect(row.icon.length).toBeGreaterThan(0);
       expect(typeof row.formula).toBe('string');
       expect(row.formula.length).toBeGreaterThan(0);
+      if (row.detail) {
+        expect(typeof row.detail.field).toBe('string');
+        expect(typeof row.detail.label).toBe('string');
+      }
     });
+  });
+
+  test('la fecha del mejor día es detalle de la mayor distancia, no una card', () => {
+    const row = RUNNER_KPI_ROWS.general.find((candidate) => candidate.field === 'best_day_distance_m');
+    expect(row.detail).toEqual({ field: 'best_day_date', label: 'Fecha del mejor día' });
+    expect(RUNNER_KPI_ROWS.general.some((candidate) => candidate.field === 'best_day_date')).toBe(false);
   });
 
   test('la pestaña de distancia se llama "Velocidad en distancia"', () => {

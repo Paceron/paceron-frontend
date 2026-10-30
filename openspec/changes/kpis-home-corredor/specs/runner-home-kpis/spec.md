@@ -136,7 +136,6 @@ tamaño y la misma interacción. Las métricas SHALL ser:
 |---|---|
 | Distancia recorrida | `metrics.total_distance_m` |
 | Mayor distancia en un día | `metrics.best_day_distance_m` |
-| Fecha del mejor día | `metrics.best_day_date` |
 | Mejor velocidad | `metrics.best_speed_kph` |
 | Velocidad promedio | `metrics.average_speed_kph` |
 
@@ -165,8 +164,9 @@ tamaño y la misma interacción. Las métricas SHALL ser:
 | Velocidad promedio | `metrics.average_speed_kph` |
 | Mejor velocidad | `metrics.best_speed_kph` |
 
-La card de fecha del mejor día SHALL mostrar `—` si `best_day_date` es `null` y
-SHALL formatearse como `DD/MM/YYYY`.
+La fecha del mejor día NO SHALL ser una card propia: SHALL mostrarse como línea
+del tooltip de `Mayor distancia en un día`, formateada como `DD/MM/YYYY`. Si
+`best_day_date` es `null`, esa línea SHALL omitirse.
 
 En `Números generales`, el valor de `metrics.average_speed_kph` SHALL mostrarse
 bajo el label corto `Velocidad promedio`: el backend define ese campo en esa
@@ -177,9 +177,10 @@ promedio de todos los tipos.
 Cada card SHALL tener un tooltip que explique la fórmula de su métrica. El
 tooltip SHALL abrirse por hover y foco de teclado en web y por tap en touch, y
 SHALL mostrar `Series usadas: <valid_series>` y `Sesiones: <sessions>` cuando la
-respuesta tenga datos. NO SHALL mostrar la tolerancia del dashboard, que no
-aplica a estas métricas. El tooltip NO SHALL quedar recortado por la tarjeta ni
-por la card vecina.
+respuesta tenga datos. El tooltip de `Mayor distancia en un día` SHALL agregar
+`Fecha del mejor día: <DD/MM/YYYY>` antes de esos contadores. NO SHALL mostrar
+la tolerancia del dashboard, que no aplica a estas métricas. El tooltip NO SHALL
+quedar recortado por la tarjeta ni por la card vecina.
 
 La grilla SHALL usar dos columnas en mobile y tres en desktop, sin scroll
 horizontal.
@@ -190,7 +191,12 @@ métricas. Solo SHALL leer el campo y formatearlo.
 #### Scenario: Números generales
 
 - **WHEN** la API devuelve `total_distance_m=84250`, `best_day_distance_m=12000`, `best_day_date="2026-10-11"` y `best_speed_kph=16.4`
-- **THEN** las cards muestran `84,3 km`, `12,0 km`, `11/10/2026` y `16,4 km/h`
+- **THEN** las cards muestran `84,3 km`, `12,0 km` y `16,4 km/h`, y el tooltip de la mayor distancia muestra `Fecha del mejor día: 11/10/2026`
+
+#### Scenario: Fecha del mejor día sin dato
+
+- **WHEN** `best_day_date` viene `null`
+- **THEN** no aparece la línea de fecha en el tooltip y la card sigue mostrando la mayor distancia
 
 #### Scenario: Promedio general de ritmo continuo
 

@@ -165,7 +165,7 @@ asset: lo importa el overlay existente.
 
 - `buildPeriodTitle({ period, from, to, daysConsidered })`;
 - `RUNNER_KPI_TABS` (orden, label y `tab` del contrato);
-- `RUNNER_KPI_ROWS` (label, campo, ícono y fórmula de cada card por pestaña);
+- `RUNNER_KPI_ROWS` (label, campo, ícono, fórmula y detalle opcional de cada card por pestaña);
 - `formatRunnerKpiValue(field, value)`;
 - `formatDistanceM(value)`;
 - `runnerKpisQueryKey({ period, referenceDate, tab })`.
@@ -276,6 +276,13 @@ El tooltip muestra la fórmula, `Series usadas: <valid_series>` y
 Con `has_data=false` no se muestran series ni sesiones: `0` se leería como un
 resultado en vez de ausencia de datos.
 
+La fecha del mejor día no es una card: es el detalle de `Mayor distancia en un
+día` y se muestra como primera línea de su tooltip (`Fecha del mejor día:
+11/10/2026`). Una card propia para una fecha obligaba a comparar una métrica de
+tiempo con distancias y velocidades, y dejaba una celda vacía en la grilla de
+tres columnas. El detalle viaja como `detail` en la fila de `RUNNER_KPI_ROWS` y
+se omite si el backend devuelve `best_day_date=null`.
+
 La tarjeta raíz pierde `overflow-hidden` para no recortar los tooltips. Como
 contrapartida, `DashboardLoadingOverlay` suma `rounded-2xl` para que la capa de
 carga respete las esquinas de la tarjeta.
@@ -324,7 +331,7 @@ El front no envía `team_id`, `group_id` ni `athlete_user_id`, y no deriva
 |---|---|---|
 | Distancia recorrida | `total_distance_m` | `850 m` / `84,3 km` |
 | Mayor distancia en un día | `best_day_distance_m` | idem |
-| Fecha del mejor día | `best_day_date` | `DD/MM/YYYY` |
+| Fecha del mejor día | `best_day_date` | `DD/MM/YYYY`; va en el tooltip de `Mayor distancia en un día`, no como card |
 | Mejor velocidad | `best_speed_kph` | `16,4 km/h` |
 | Velocidad promedio | `average_speed_kph` | `10,8 km/h`; en `general`, solo ritmo continuo |
 | Mejor tiempo | `best_time_ms` | `23:00` |
@@ -361,8 +368,9 @@ aplica y viene `null` se muestra con `—`.
   `USE_MOCKS=true` delega en el mock.
 - **Mock:** devuelve las métricas de las filas del caller para la pestaña pedida
   y `has_data=false` cuando no hay filas.
-- **Componente:** render de las cinco cards de `general`, valores formateados,
-  tooltip al presionar con fórmula/series/sesiones, vacío con `—` y error con
-  reintento. Verificación manual en 360 px y desktop, hover, teclado y tap.
+- **Componente:** render de las cuatro cards de `general`, valores formateados,
+  tooltip al presionar con fórmula/series/sesiones, fecha del mejor día dentro
+  del tooltip de la mayor distancia, vacío con `—` y error con reintento.
+  Verificación manual en 360 px y desktop, hover, teclado y tap.
 - **Regresión:** `npm test` completo; el dashboard existente no cambia porque no
   se tocan sus archivos.

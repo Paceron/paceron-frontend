@@ -44,9 +44,10 @@ export const PERIOD_OPTIONS = [
 // `metrics` que se lee tal cual; el formato sale de FIELD_FORMAT (abajo), no de
 // una condición escrita en cada card.
 //
-// `icon` y `formula` viajan con la fila para que la card y su tooltip se armen
-// desde los mismos datos: el texto de la fórmula explica de dónde sale el
-// número (el front no recalcula nada) y no se repite en el JSX.
+// `icon`, `formula` y `detail` viajan con la fila para que la card y su tooltip
+// se armen desde los mismos datos: la fórmula explica de dónde sale el número,
+// `detail` agrega contexto que no merece card propia (la fecha del mejor día) y
+// nada de eso se repite en el JSX.
 export const RUNNER_KPI_ROWS = {
   general: [
     {
@@ -60,12 +61,9 @@ export const RUNNER_KPI_ROWS = {
       field: 'best_day_distance_m',
       icon: 'calendar-star',
       formula: 'La mayor distancia sumada en un mismo día. Si hay empate, se toma el día más antiguo.',
-    },
-    {
-      label: 'Fecha del mejor día',
-      field: 'best_day_date',
-      icon: 'calendar-check-outline',
-      formula: 'Fecha del día con mayor distancia del período. Si hay empate, se toma el más antiguo.',
+      // La fecha no es una métrica propia: es el contexto de este número y va
+      // como línea extra del tooltip, no como card.
+      detail: { field: 'best_day_date', label: 'Fecha del mejor día' },
     },
     {
       label: 'Mejor velocidad',

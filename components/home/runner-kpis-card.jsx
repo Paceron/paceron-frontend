@@ -105,6 +105,20 @@ export function RunnerKpisCard() {
     ? [`Series usadas: ${data.valid_series}`, `Sesiones: ${data.sessions}`]
     : [];
 
+  // Algunas cards tienen un detalle que no merece card propia: la fecha del
+  // mejor día vive en el tooltip de "Mayor distancia en un día". Se formatea con
+  // el mismo helper y se omite si el backend no la devolvió.
+  const rowTooltipMeta = (row) => {
+    const detailValue = row.detail && !emptyPeriod ? metrics?.[row.detail.field] : null;
+    if (!row.detail || detailValue === null || detailValue === undefined || detailValue === '') {
+      return tooltipMeta;
+    }
+    return [
+      `${row.detail.label}: ${formatRunnerKpiValue(row.detail.field, detailValue)}`,
+      ...tooltipMeta,
+    ];
+  };
+
   // Sin `overflow-hidden`: los tooltips de las cards se dibujan fuera de la
   // tarjeta y quedarían recortados. El overlay de carga compensa con su propio
   // `rounded-2xl` (ver `DashboardLoadingOverlay`).
@@ -230,7 +244,7 @@ export function RunnerKpisCard() {
                   <KpiTooltip
                     formula={row.formula}
                     id={cardID}
-                    meta={tooltipMeta}
+                    meta={rowTooltipMeta(row)}
                     onOpenChange={(open) =>
                       setOpenTooltip((current) => (open ? row.field : current === row.field ? null : current))
                     }

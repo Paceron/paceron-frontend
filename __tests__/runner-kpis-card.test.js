@@ -70,13 +70,13 @@ describe('RunnerKpisCard — cards de métricas', () => {
 
   test('cada métrica de la pestaña es una card con su valor formateado', () => {
     mockKpis();
-    const { getByTestId } = render(<RunnerKpisCard />);
+    const { getByTestId, queryByTestId } = render(<RunnerKpisCard />);
 
     expect(getByTestId('runner-kpis-cards')).toBeTruthy();
     expect(getByTestId('runner-kpis-total_distance_m-tile-label').props.children).toBe('Distancia recorrida');
     expect(getByTestId('runner-kpis-total_distance_m-tile-value').props.children).toBe('84,3 km');
     expect(getByTestId('runner-kpis-best_day_distance_m-tile-value').props.children).toBe('12,0 km');
-    expect(getByTestId('runner-kpis-best_day_date-tile-value').props.children).toBe('11/10/2026');
+    expect(queryByTestId('runner-kpis-best_day_date-tile-value')).toBeNull();
     expect(getByTestId('runner-kpis-best_speed_kph-tile-value').props.children).toBe('16,4 km/h');
     expect(getByTestId('runner-kpis-average_speed_kph-tile-value').props.children).toBe('10,8 km/h');
   });
@@ -91,6 +91,19 @@ describe('RunnerKpisCard — cards de métricas', () => {
 
     expect(getByTestId('runner-kpis-average_speed_kph-bubble-formula').props.children)
       .toMatch(/solo con series de ritmo continuo/);
+  });
+
+  test('la fecha del mejor día vive en el tooltip de la mayor distancia', () => {
+    mockKpis();
+    const { getByTestId, queryByTestId } = render(<RunnerKpisCard />);
+
+    expect(queryByTestId('runner-kpis-best_day_date-cell')).toBeNull();
+
+    fireEvent.press(getByTestId('runner-kpis-best_day_distance_m-trigger'));
+
+    expect(getByTestId('runner-kpis-best_day_distance_m-bubble-meta-0').props.children)
+      .toBe('Fecha del mejor día: 11/10/2026');
+    expect(getByTestId('runner-kpis-best_day_distance_m-bubble-meta-1').props.children).toBe('Series usadas: 3');
   });
 
   test('el tooltip abre al presionar y muestra series y sesiones, no tolerancia', () => {
@@ -116,7 +129,7 @@ describe('RunnerKpisCard — cards de métricas', () => {
     const { getByTestId, queryByTestId } = render(<RunnerKpisCard />);
 
     expect(getByTestId('runner-kpis-total_distance_m-tile-value').props.children).toBe('—');
-    expect(getByTestId('runner-kpis-best_day_date-tile-value').props.children).toBe('—');
+    expect(getByTestId('runner-kpis-best_day_distance_m-tile-value').props.children).toBe('—');
     expect(getByTestId('runner-kpis-empty').props.children).toBe('Sin datos en este período.');
 
     fireEvent.press(getByTestId('runner-kpis-total_distance_m-trigger'));

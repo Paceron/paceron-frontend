@@ -70,3 +70,10 @@
 - [x] 7.6 Actualizar `__tests__/runner-kpis.test.js` y crear `__tests__/runner-kpis-card.test.js` (cards, valores, tooltip, vacío y error).
 - [x] 7.7 Verificar en 360 px y desktop: grilla, tooltips sin recorte, hover, teclado y tap.
 - [x] 7.8 Correr `npm test -- --runInBand` y `npm run lint`.
+
+## 8. Ajuste de la fecha del mejor día
+
+- [x] 8.1 Quitar `Fecha del mejor día` de las cards de `Números generales`.
+- [x] 8.2 Agregar `detail: { field, label }` a la fila de `Mayor distancia en un día` y renderizarlo como primera línea de su tooltip, con formato `DD/MM/YYYY`.
+- [x] 8.3 Omitir la línea de fecha cuando `best_day_date` viene `null`.
+- [x] 8.4 Actualizar tests de filas y de componente, y correr `npm test` + `npm run lint`.
