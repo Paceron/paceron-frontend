@@ -182,7 +182,10 @@ respuesta tenga datos. El tooltip de `Mayor distancia en un día` SHALL agregar
 la tolerancia del dashboard, que no aplica a estas métricas. El tooltip NO SHALL
 quedar recortado por la tarjeta ni por la card vecina.
 
-La grilla SHALL usar dos columnas en mobile y tres en desktop, sin scroll
+En desktop, la grilla SHALL adaptar las columnas a la cantidad de cards de la
+pestaña: 4 cards SHALL ir 2×2, 3 cards SHALL ir en una sola línea y 5 o 6 cards
+SHALL ir 3 arriba y 2 o 3 abajo. En mobile SHALL usar siempre dos columnas para
+que los valores formateados no se corten. La grilla NO SHALL generar scroll
 horizontal.
 
 El frontend NO SHALL sumar, promediar, agrupar ni derivar ninguna de estas
@@ -338,7 +341,7 @@ Cada elemento interactivo nuevo SHALL tener `nativeID` y `testID`, según la reg
 #### Scenario: Mobile angosto
 
 - **WHEN** la tarjeta se muestra en un viewport de 360 px
-- **THEN** las cards se leen completas, entran en dos columnas y no aparece scroll horizontal de página
+- **THEN** las cards se leen completas, en mobile entran en dos columnas y no aparece scroll horizontal de página
 
 ### Requirement: La consulta SHALL respetar el contrato del backend
 

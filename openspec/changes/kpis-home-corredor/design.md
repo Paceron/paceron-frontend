@@ -266,7 +266,12 @@ Las extensiones son aditivas y con defaults que dejan el dashboard igual:
   `labelNumberOfLines` (labels de dos líneas en cards angostas) y `h-full` (las
   cards de una fila igualan altura). El dashboard no cambia.
 
-La grilla es `w-1/2 lg:w-1/3`, o sea dos columnas en mobile y tres en desktop.
+La grilla usa dos columnas en mobile y, en desktop, columnas según la cantidad
+de cards: 4 van 2×2, 3 van en una línea y 5/6 van 3+2/3. La regla evita la card
+huérfana que dejaba 4 en 3+1. Se resuelve con `w-1/2` para las pestañas de 4 y
+`w-1/2 lg:w-1/3` para el resto; mobile no cambia porque tres columnas a 360 px
+cortarían valores como `10,8 km/h`.
+
 Cada celda sube su `zIndex` cuando su tooltip está abierto, y la grilla también,
 para que el bubble no quede debajo de la card vecina: react-native-web le pone
 `z-index: 0` a todo `View` y cada celda es su propio stacking context.
@@ -368,7 +373,8 @@ aplica y viene `null` se muestra con `—`.
   `USE_MOCKS=true` delega en el mock.
 - **Mock:** devuelve las métricas de las filas del caller para la pestaña pedida
   y `has_data=false` cuando no hay filas.
-- **Componente:** render de las cuatro cards de `general`, valores formateados,
+- **Componente:** render de las cuatro cards de `general` (2×2), tres cards en
+  una línea en `velocidad_tiempo`, valores formateados,
   tooltip al presionar con fórmula/series/sesiones, fecha del mejor día dentro
   del tooltip de la mayor distancia, vacío con `—` y error con reintento.
   Verificación manual en 360 px y desktop, hover, teclado y tap.

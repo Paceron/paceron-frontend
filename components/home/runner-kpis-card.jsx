@@ -94,6 +94,11 @@ export function RunnerKpisCard() {
   };
 
   const rows = RUNNER_KPI_ROWS[tab] ?? RUNNER_KPI_ROWS.general;
+  // La cantidad de cards manda en desktop: 4 van 2×2 (sin dejar una huérfana en
+  // una segunda fila), 3 van en una línea y 5/6 quedan 3+2/3. En mobile siempre
+  // son 2 columnas: con 3, los valores como "10,8 km/h" no entran.
+  const desktopColumns = rows.length === 4 ? 2 : 3;
+  const cellClass = desktopColumns === 2 ? 'w-1/2 p-1' : 'w-1/2 p-1 lg:w-1/3';
   const metrics = data?.metrics ?? null;
   const emptyPeriod = Boolean(data) && data.has_data === false;
   const resolvedError = failed ? resolveDashboardError(error) : null;
@@ -235,7 +240,7 @@ export function RunnerKpisCard() {
                 // la paleta del dashboard: cada View de react-native-web es un
                 // stacking context propio).
                 <View
-                  className="w-1/2 p-1 lg:w-1/3"
+                  className={cellClass}
                   key={row.field}
                   nativeID={`${cardID}-cell`}
                   style={{ zIndex: openTooltip === row.field ? 1 : 0 }}

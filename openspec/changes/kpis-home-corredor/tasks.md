@@ -77,3 +77,10 @@
 - [x] 8.2 Agregar `detail: { field, label }` a la fila de `Mayor distancia en un día` y renderizarlo como primera línea de su tooltip, con formato `DD/MM/YYYY`.
 - [x] 8.3 Omitir la línea de fecha cuando `best_day_date` viene `null`.
 - [x] 8.4 Actualizar tests de filas y de componente, y correr `npm test` + `npm run lint`.
+
+## 9. Grilla según cantidad de cards
+
+- [x] 9.1 En desktop, 4 cards van en 2×2, 3 cards en una línea y 5/6 en 3+2/3.
+- [x] 9.2 Mantener dos columnas en mobile para no cortar valores formateados.
+- [x] 9.3 Agregar test de las clases de celda para una pestaña de 4 y otra de 3.
+- [x] 9.4 Correr `npm test` y `npm run lint`.

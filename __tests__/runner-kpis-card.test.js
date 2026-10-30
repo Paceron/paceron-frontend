@@ -81,6 +81,27 @@ describe('RunnerKpisCard — cards de métricas', () => {
     expect(getByTestId('runner-kpis-average_speed_kph-tile-value').props.children).toBe('10,8 km/h');
   });
 
+  test('la grilla pone 4 cards en 2×2 y 3 cards en una línea', () => {
+    useRunnerKpis.mockImplementation(({ tab }) => ({
+      data: { ...DATA, tab },
+      loading: false,
+      refreshing: false,
+      failed: false,
+      error: null,
+      refetch: jest.fn(),
+    }));
+    const { getByTestId } = render(<RunnerKpisCard />);
+
+    // general tiene 4: dos columnas también en desktop, sin card huérfana.
+    expect(getByTestId('runner-kpis-total_distance_m-cell').props.className).toBe('w-1/2 p-1');
+    expect(getByTestId('runner-kpis-average_speed_kph-cell').props.className).toBe('w-1/2 p-1');
+
+    fireEvent.press(getByTestId('runner-kpis-tabs-velocidad_tiempo'));
+
+    // velocidad_tiempo tiene 3: las tres en la misma línea en desktop.
+    expect(getByTestId('runner-kpis-best_time_ms-cell').props.className).toBe('w-1/2 p-1 lg:w-1/3');
+  });
+
   test('el label corto del promedio deja el alcance en el tooltip', () => {
     mockKpis();
     const { getByTestId } = render(<RunnerKpisCard />);
