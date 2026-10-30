@@ -78,6 +78,36 @@ otro alcance y este pedido no la incluye.
 - **WHEN** el backend devuelve `days_considered=29` para febrero de 2028
 - **THEN** el título dice `29 días considerados`, sin recalcular el mes en el front
 
+### Requirement: El encabezado SHALL explicar el alcance y linkear a equipos
+
+Junto al kicker `Tus números` SHALL haber un botón de información cuyo tooltip
+SHALL explicar que la tarjeta es un resumen y SHALL ofrecer el link a la
+pestaña de rendimiento de los equipos.
+
+El texto SHALL ser: `Resumen de tu rendimiento. Para más detalle, mirá la
+pestaña de rendimiento de tus equipos.` La frase `pestaña de rendimiento de tus
+equipos` SHALL ser un link a `/teams`.
+
+El tooltip SHALL abrirse por click/tap y NO SHALL abrirse solo por hover: al
+tener un link interactivo, cerrarse al mover el mouse hacia el link lo haría
+inusable. En web, el foco SHALL poder pasar del trigger al link sin que el
+tooltip se cierre.
+
+#### Scenario: Abrir la ayuda del encabezado
+
+- **WHEN** el corredor toca o hace click en el ícono de información de `Tus números`
+- **THEN** se abre el tooltip con el texto de resumen y el link a la pestaña de rendimiento
+
+#### Scenario: Ir a equipos desde la ayuda
+
+- **WHEN** el corredor activa el link `pestaña de rendimiento de tus equipos`
+- **THEN** la app navega a `/teams`
+
+#### Scenario: Foco de teclado en el tooltip
+
+- **WHEN** el corredor enfoca el trigger con Tab y vuelve a presionar Tab
+- **THEN** el foco pasa al link sin que el tooltip se cierre
+
 ### Requirement: Las pestañas SHALL cargarse bajo demanda
 
 La tarjeta SHALL tener cuatro pestañas:

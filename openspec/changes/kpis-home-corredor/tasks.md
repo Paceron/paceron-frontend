@@ -84,3 +84,11 @@
 - [x] 9.2 Mantener dos columnas en mobile para no cortar valores formateados.
 - [x] 9.3 Agregar test de las clases de celda para una pestaña de 4 y otra de 3.
 - [x] 9.4 Correr `npm test` y `npm run lint`.
+
+## 10. Ayuda del encabezado con link a equipos
+
+- [x] 10.1 Agregar un botón de información junto a `Tus números` con tooltip de resumen.
+- [x] 10.2 Incluir el link `pestaña de rendimiento de tus equipos` a `/teams` dentro del tooltip.
+- [x] 10.3 Abrir el tooltip por click/tap (no hover) y mantener el foco al tabular hacia el link en web.
+- [x] 10.4 Elevar el `zIndex` del header y del tooltip mientras está abierto para que no quede debajo del título ni de las pestañas.
+- [x] 10.5 Agregar test de apertura y navegación del link, y correr `npm test` + `npm run lint`.

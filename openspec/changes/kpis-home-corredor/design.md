@@ -292,6 +292,25 @@ La tarjeta raíz pierde `overflow-hidden` para no recortar los tooltips. Como
 contrapartida, `DashboardLoadingOverlay` suma `rounded-2xl` para que la capa de
 carga respete las esquinas de la tarjeta.
 
+### D12: El tooltip del encabezado reutiliza la interacción de KpiTooltip
+
+El kicker `Tus números` es el trigger de un `KpiTooltip` con contenido propio
+(`bubbleContent`), ancho propio (`bubbleClassName="w-72 max-w-full"`) y
+`openOnHover={false}`. Se reutiliza la interacción ya probada (click/tap, foco,
+`aria-expanded`) en vez de crear otro tooltip.
+
+El contenido tiene un link a `/teams`. Por eso no abre por hover: el primer
+movimiento del mouse hacia el link dispararía el `hoverOut` del trigger y
+cerraría el bubble. En web el foco se maneja en el contenedor del tooltip
+(trigger + bubble) y no en el trigger solo, para que Tab llegue al link sin que
+el bubble desaparezca. El `zIndex` del tooltip y del header suben mientras está
+abierto, porque react-native-web crea un stacking context por `View` y, sin eso,
+el título y las pestañas se pintaban encima del bubble.
+
+El link es un `Pressable` con `accessibilityRole="link"` que hace
+`router.push('/teams')`; no se agrega una pantalla nueva ni se toca la ruta de
+equipos.
+
 ## API Contract
 
 ```http
@@ -374,7 +393,8 @@ aplica y viene `null` se muestra con `—`.
 - **Mock:** devuelve las métricas de las filas del caller para la pestaña pedida
   y `has_data=false` cuando no hay filas.
 - **Componente:** render de las cuatro cards de `general` (2×2), tres cards en
-  una línea en `velocidad_tiempo`, valores formateados,
+  una línea en `velocidad_tiempo`, tooltip informativo con link a `/teams`,
+  valores formateados,
   tooltip al presionar con fórmula/series/sesiones, fecha del mejor día dentro
   del tooltip de la mayor distancia, vacío con `—` y error con reintento.
   Verificación manual en 360 px y desktop, hover, teclado y tap.

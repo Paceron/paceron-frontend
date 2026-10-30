@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { EMPTY_METRIC, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
 import { isWeb } from '../../utils/platform.js';
@@ -27,6 +27,13 @@ import { isWeb } from '../../utils/platform.js';
 // números), `meta` agrega líneas de contexto propias y `showTolerance`/
 // `showSeries` apagan las del dashboard cuando no aplican. Los defaults
 // mantienen intactos a los consumidores actuales.
+//
+// `bubbleContent` reemplaza el cuerpo del tooltip cuando el contenido no es una
+// fórmula (ej. el aviso del Home con un link) y `bubbleClassName` ajusta su
+// ancho. `openOnHover=false` convierte el tooltip en un popover de click/tap:
+// con un link adentro, abrir solo por hover haría que el bubble se cierre al
+// mover el mouse hacia el link. En web el foco se sigue dentro del tooltip
+// (trigger + bubble) para que Tab llegue al link sin cerrarlo.
 export function KpiTooltip({
   id,
   hint,
@@ -39,13 +46,18 @@ export function KpiTooltip({
   meta = [],
   showTolerance = true,
   showSeries = true,
+  bubbleContent,
+  bubbleClassName = '',
+  openOnHover = true,
+  hitSlop,
   children,
   onOpenChange,
 }) {
+  const rootRef = useRef(null);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [tapped, setTapped] = useState(false);
-  const open = hovered || focused || tapped;
+  const open = (openOnHover && hovered) || focused || tapped;
 
   // El padre necesita saber si hay ALGUN tooltip abierto para subir la fila de
   // KPIs por encima de la card hermana de abajo. Sin esto el tooltip se dibuja
@@ -63,17 +75,30 @@ export function KpiTooltip({
   const valueLabelResolved = valueLabel ?? (hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC);
 
   return (
-    <View className="relative" nativeID={`${id}-root`} testID={`${id}-root`}>
+    <View
+      className="relative"
+      nativeID={`${id}-root`}
+      onBlur={isWeb ? (event) => {
+        const next = event?.nativeEvent?.relatedTarget;
+        if (next && rootRef.current?.contains?.(next)) return;
+        setFocused(false);
+      } : undefined}
+      onFocus={isWeb ? () => setFocused(true) : undefined}
+      ref={rootRef}
+      style={{ zIndex: open ? 1 : 0 }}
+      testID={`${id}-root`}
+    >
       <Pressable
         accessibilityHint={hint ?? valueLabelResolved}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         aria-expanded={open}
+        hitSlop={hitSlop}
         nativeID={`${id}-trigger`}
-        onBlur={() => setFocused(false)}
-        onFocus={() => setFocused(true)}
-        onHoverIn={isWeb ? () => setHovered(true) : undefined}
-        onHoverOut={isWeb ? () => setHovered(false) : undefined}
+        onBlur={isWeb ? undefined : () => setFocused(false)}
+        onFocus={isWeb ? undefined : () => setFocused(true)}
+        onHoverIn={isWeb && openOnHover ? () => setHovered(true) : undefined}
+        onHoverOut={isWeb && openOnHover ? () => setHovered(false) : undefined}
         onPress={() => setTapped((current) => !current)}
         testID={`${id}-trigger`}
       >
@@ -90,7 +115,7 @@ export function KpiTooltip({
           // El fondo va TAMBIEN inline y opaco: `bg-slate-800` solo dejo pasar
           // el fondo en oscuro en su momento, y este color no depende del tema,
           // asi que fijarlo en `style` no tiene contraindicaciones.
-          className="absolute left-0 right-0 top-full mt-1.5 rounded-lg border-2 border-blue-500 bg-slate-800 p-3 shadow-2xl"
+          className={`absolute left-0 right-0 top-full mt-1.5 rounded-lg border-2 border-blue-500 bg-slate-800 p-3 shadow-2xl ${bubbleClassName}`}
           // `zIndex` aca solo ordena el bubble dentro de su celda. En web NO
           // alcanza para salir de ella: react-native-web le pone `position:
           // relative; z-index: 0` a TODO `View`, asi que cada una es su propio
@@ -132,6 +157,7 @@ export function KpiTooltip({
               ))}
             </View>
           ) : null}
+          {bubbleContent}
         </View>
       ) : null}
     </View>

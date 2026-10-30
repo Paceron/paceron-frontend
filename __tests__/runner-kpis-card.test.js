@@ -2,9 +2,13 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 
 jest.mock('../theme/colors.js', () => ({
-  useThemeColors: () => ({ warning: '#b45309' }),
+  useThemeColors: () => ({ onSurfaceVariant: '#666', warning: '#b45309' }),
 }));
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
+jest.mock('expo-router', () => {
+  const push = jest.fn();
+  return { __mockPush: push, useRouter: () => ({ push }) };
+});
 jest.mock('../hooks/use-runner-kpis.js', () => ({ useRunnerKpis: jest.fn() }));
 jest.mock('../components/shared/tab-bar.jsx', () => {
   const ReactModule = require('react');
@@ -79,6 +83,23 @@ describe('RunnerKpisCard — cards de métricas', () => {
     expect(queryByTestId('runner-kpis-best_day_date-tile-value')).toBeNull();
     expect(getByTestId('runner-kpis-best_speed_kph-tile-value').props.children).toBe('16,4 km/h');
     expect(getByTestId('runner-kpis-average_speed_kph-tile-value').props.children).toBe('10,8 km/h');
+  });
+
+  test('el encabezado abre el tooltip informativo y su link navega a equipos', () => {
+    mockKpis();
+    const { getByTestId, getByText, queryByTestId } = render(<RunnerKpisCard />);
+    const { __mockPush } = require('expo-router');
+    __mockPush.mockClear();
+
+    expect(queryByTestId('runner-kpis-info-bubble')).toBeNull();
+
+    fireEvent.press(getByTestId('runner-kpis-info-trigger'));
+
+    expect(getByTestId('runner-kpis-info-bubble-content')).toBeTruthy();
+    expect(getByText('pestaña de rendimiento de tus equipos')).toBeTruthy();
+
+    fireEvent.press(getByTestId('runner-kpis-info-link'));
+    expect(__mockPush).toHaveBeenCalledWith('/teams');
   });
 
   test('la grilla pone 4 cards en 2×2 y 3 cards en una línea', () => {

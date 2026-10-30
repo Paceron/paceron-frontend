@@ -4,6 +4,7 @@ import { TabBar } from '../shared/tab-bar.jsx';
 import { DashboardLoadingOverlay } from '../dashboard/dashboard-loading-overlay.jsx';
 import { KpiTile } from '../dashboard/kpi-tile.jsx';
 import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
+import { RunnerKpisInfoTooltip } from './runner-kpis-info-tooltip.jsx';
 import { useRunnerKpis } from '../../hooks/use-runner-kpis.js';
 import { isWeb } from '../../utils/platform.js';
 import { resolveDashboardError } from '../../utils/dashboard-error-codes.js';
@@ -55,6 +56,7 @@ export function RunnerKpisCard() {
   const [period, setPeriod] = useState('month');
   const [tab, setTab] = useState('general');
   const [openTooltip, setOpenTooltip] = useState(null);
+  const [infoTooltipOpen, setInfoTooltipOpen] = useState(false);
 
   const { data, loading, refreshing, failed, error, refetch } = useRunnerKpis({ period, referenceDate, tab });
 
@@ -133,15 +135,19 @@ export function RunnerKpisCard() {
       nativeID="runner-kpis-card"
       testID="runner-kpis-card"
     >
-      <View className="gap-3" nativeID="runner-kpis-header" testID="runner-kpis-header">
-        <View className="min-w-0 flex-1" nativeID="runner-kpis-header-text" testID="runner-kpis-header-text">
-          <Text
-            className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500"
-            nativeID="runner-kpis-kicker"
-            testID="runner-kpis-kicker"
-          >
-            Tus números
-          </Text>
+      <View
+        className="gap-3"
+        nativeID="runner-kpis-header"
+        style={{ zIndex: infoTooltipOpen ? 1 : 0 }}
+        testID="runner-kpis-header"
+      >
+        <View
+          className="min-w-0 flex-1"
+          nativeID="runner-kpis-header-text"
+          style={{ zIndex: infoTooltipOpen ? 1 : 0 }}
+          testID="runner-kpis-header-text"
+        >
+          <RunnerKpisInfoTooltip onOpenChange={setInfoTooltipOpen} />
           <Text
             className="mt-1 text-lg font-bold text-slate-900 dark:text-white"
             nativeID="runner-kpis-title"
