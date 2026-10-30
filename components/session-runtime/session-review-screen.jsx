@@ -7,7 +7,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
-import { reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
+import { buildReviewSlotNavParams, reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
@@ -166,20 +166,13 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
-      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="session-review-screen-scroll">
-        <View className="flex-row items-center justify-between" nativeID="session-review-screen-top-row" testID="session-review-screen-top-row">
-          <Pressable accessibilityLabel="Volver" className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
-          </Pressable>
-          {athleteFullName && (
-            <View className="flex-row items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-screen-athlete" testID="session-review-screen-athlete">
-              <ParticipantAvatar color={colorForUserId(slot.athleteUserId)} idPrefix="session-review-screen-athlete" name={athleteFullName} photoUrl={athleteUser.photoUrl} size={28} />
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-athlete-name" numberOfLines={1} testID="session-review-screen-athlete-name">
-                {athleteFullName}
-              </Text>
-            </View>
-          )}
-        </View>
+      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="session-review-screen-scroll">
+        <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-back-label" testID="session-review-screen-back-label">
+            Volver
+          </Text>
+        </Pressable>
 
         <View className="mb-5 mt-4" nativeID="session-review-screen-header" testID="session-review-screen-header">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-review-screen-date" testID="session-review-screen-date">
@@ -219,6 +212,30 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
             </View>
           )}
         </View>
+
+        {/* Entrenador-only (athleteFullName solo resuelve con slot.role ===
+            'trainer') -- antes flotaba como pill arriba a la derecha del
+            botón de volver, sin nada más en esa fila; pedido real, movida al
+            cuerpo como una fila más, mismo patrón que route-attempt-detail-
+            screen.jsx (`-athlete-row`: avatar + nombre + meta con ícono). */}
+        {athleteFullName && (
+          <View className="mb-4 flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-screen-athlete-row" testID="session-review-screen-athlete-row">
+            <ParticipantAvatar color={colorForUserId(slot.athleteUserId)} idPrefix="session-review-screen-athlete" name={athleteFullName} photoUrl={athleteUser.photoUrl} size={40} />
+            <View className="flex-1 gap-0.5" nativeID="session-review-screen-athlete-info" testID="session-review-screen-athlete-info">
+              <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="session-review-screen-athlete-name" numberOfLines={1} testID="session-review-screen-athlete-name">
+                {athleteFullName}
+              </Text>
+              {slot.teamName && (
+                <View className="flex-row items-center gap-1" nativeID="session-review-screen-athlete-team" testID="session-review-screen-athlete-team">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="shield-account-outline" size={14} />
+                  <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-screen-athlete-team-label" numberOfLines={1} testID="session-review-screen-athlete-team-label">
+                    {slot.teamName}{slot.groupName ? ` · ${slot.groupName}` : ''}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
 
         {loading && reviewModel.length === 0 ? (
           <View className="items-center justify-center py-12" nativeID="session-review-screen-loading" testID="session-review-screen-loading">
@@ -331,6 +348,12 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const feedback = row.feedback;
+  // Mismo workaround que create-competition-modal.jsx/RouteDrawPicker para
+  // el mapa dentro de un ScrollView (ver CLAUDE.md, sección maplibre-react-
+  // native): en nativo, un pan/pinch sobre el mapa queda atrapado por el
+  // ScrollView ancestro sin esto -- apaga el scroll mientras el dedo está
+  // sobre el mapa, para que no compita por el gesto.
+  const [mapInteracting, setMapInteracting] = useState(false);
 
   // "Sin registro" es editable en AMBOS modos, no solo en manual: una sesión
   // puede estar `finished` (todas las series completadas o salteadas) y aun así
@@ -506,9 +529,12 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-detail-root" testID="session-review-detail-root">
-      <ScrollView className={`flex-1 w-full self-center ${!isWeb ? '' : isNarrowWeb ? 'max-w-3xl' : 'max-w-5xl'}`} contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" testID="session-review-detail-scroll">
-        <Pressable accessibilityLabel="Volver" className="h-9 w-9 items-center justify-center self-start rounded-full active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
+      <ScrollView className={`flex-1 w-full self-center ${!isWeb ? '' : isNarrowWeb ? 'max-w-3xl' : 'max-w-5xl'}`} contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" scrollEnabled={!mapInteracting} showsVerticalScrollIndicator={false} testID="session-review-detail-scroll">
+        <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-detail-back-label" testID="session-review-detail-back-label">
+            Volver
+          </Text>
         </Pressable>
 
         <View className="mb-5 mt-4" nativeID="session-review-detail-header" testID="session-review-detail-header">
@@ -683,45 +709,51 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
                 )}
               </DataField>
             </View>
-
-            {feedback && (
-              <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-persisted" testID="session-review-detail-persisted">
-                <View className="mb-2 flex-row items-center gap-1.5" nativeID="session-review-detail-persisted-header" testID="session-review-detail-persisted-header">
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={14} />
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-label" testID="session-review-detail-persisted-label">
-                    Metadatos
-                  </Text>
-                </View>
-                <View className="gap-1.5" nativeID="session-review-detail-persisted-values" testID="session-review-detail-persisted-values">
-                  <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-gps" testID="session-review-detail-persisted-gps">
-                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-gps-label" testID="session-review-detail-persisted-gps-label">Puntos GPS</Text>
-                    <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-gps-value" testID="session-review-detail-persisted-gps-value">
-                      {feedback.pointsCount > 0 ? `${feedback.pointsCount} punto(s)` : 'Sin puntos'}
-                    </Text>
-                  </View>
-                  <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-source" testID="session-review-detail-persisted-source">
-                    <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-source-label" testID="session-review-detail-persisted-source-label">Origen</Text>
-                    <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-source-value" testID="session-review-detail-persisted-source-value">
-                      {feedback.reportSource ?? DASH}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
           </View>
 
+          {/* Metadatos vive acá, no en la columna de datos -- antes la
+              columna del mapa (más corta, un solo card) quedaba estirada por
+              el flex-row contra la de datos (6 DataFields), dejando un hueco
+              en blanco debajo de la Trayectoria (pedido real). Ahora la
+              columna del mapa tiene dos cards reales, más pareja con su
+              vecina. */}
           {feedback && (
             <View className={isNarrowWeb ? 'mt-4' : 'flex-1'} nativeID="session-review-detail-columns-map" testID="session-review-detail-columns-map">
-              <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-trajectory-card" testID="session-review-detail-trajectory-card">
-                <View className="flex-row items-center gap-1.5" nativeID="session-review-detail-trajectory-card-header" testID="session-review-detail-trajectory-card-header">
-                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-path" size={14} />
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-trajectory-card-label" testID="session-review-detail-trajectory-card-label">
-                    Trayectoria
-                  </Text>
+              <View className="gap-3" nativeID="session-review-detail-map-stack" testID="session-review-detail-map-stack">
+                <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-trajectory-card" testID="session-review-detail-trajectory-card">
+                  <View className="flex-row items-center gap-1.5" nativeID="session-review-detail-trajectory-card-header" testID="session-review-detail-trajectory-card-header">
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-path" size={14} />
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-trajectory-card-label" testID="session-review-detail-trajectory-card-label">
+                      Trayectoria
+                    </Text>
+                  </View>
+                  <Animated.View entering={FadeIn.duration(220)} nativeID="session-review-detail-trajectory-card-anim" testID="session-review-detail-trajectory-card-anim">
+                    <SeriesTrajectoryMap feedbackId={feedback.id} onMapTouchEnd={() => setMapInteracting(false)} onMapTouchStart={() => setMapInteracting(true)} pointsCount={feedback.pointsCount} />
+                  </Animated.View>
                 </View>
-                <Animated.View entering={FadeIn.duration(220)} nativeID="session-review-detail-trajectory-card-anim" testID="session-review-detail-trajectory-card-anim">
-                  <SeriesTrajectoryMap feedbackId={feedback.id} pointsCount={feedback.pointsCount} />
-                </Animated.View>
+
+                <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-persisted" testID="session-review-detail-persisted">
+                  <View className="mb-2 flex-row items-center gap-1.5" nativeID="session-review-detail-persisted-header" testID="session-review-detail-persisted-header">
+                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={14} />
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-label" testID="session-review-detail-persisted-label">
+                      Metadatos
+                    </Text>
+                  </View>
+                  <View className="gap-1.5" nativeID="session-review-detail-persisted-values" testID="session-review-detail-persisted-values">
+                    <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-gps" testID="session-review-detail-persisted-gps">
+                      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-gps-label" testID="session-review-detail-persisted-gps-label">Puntos GPS</Text>
+                      <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-gps-value" testID="session-review-detail-persisted-gps-value">
+                        {feedback.pointsCount > 0 ? `${feedback.pointsCount} punto(s)` : 'Sin puntos'}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center justify-between" nativeID="session-review-detail-persisted-source" testID="session-review-detail-persisted-source">
+                      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-source-label" testID="session-review-detail-persisted-source-label">Origen</Text>
+                      <Text className="text-xs font-semibold text-slate-800 dark:text-slate-100" nativeID="session-review-detail-persisted-source-value" testID="session-review-detail-persisted-source-value">
+                        {feedback.reportSource ?? DASH}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
               </View>
             </View>
           )}
@@ -770,11 +802,15 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
 
 // --- Flujo (Vista A ↔ Vista B) ---
 
-function ReviewFlow({ slot }) {
+function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   const router = useRouter();
   const colors = useThemeColors();
   const [selected, setSelected] = useState(null);
   const [completedNow, setCompletedNow] = useState(false);
+  // Resuelve la serie abierta por URL UNA sola vez al cargar (F5/entrada
+  // directa) -- el ref evita que vuelva a disparar después de que el propio
+  // onOpenRow/onBack de abajo actualicen esos mismos params.
+  const autoSelectedRef = useRef(false);
 
   const sessionInstanceId = slot.sessionInstanceId ?? slot.sessionInstance?.id;
   const { sessionInstance: fetchedSessionInstance, loading: instanceLoading } = useSessionInstance(sessionInstanceId, !slot.sessionInstance);
@@ -818,6 +854,20 @@ function ReviewFlow({ slot }) {
   const reviewModel = useMemo(() => buildSessionReviewModel(sessionInstance ?? {}, groups), [sessionInstance, groups]);
   const sessionName = slot.sessionName ?? sessionInstance?.name;
 
+  // F5/entrada directa con una serie abierta -- antes siempre volvía al
+  // listado, porque "cuál serie está abierta" solo vivía en `selected`
+  // (estado local), nunca en la URL (pedido real, 2026-10-29). Reconstruye
+  // la selección inicial apenas el modelo está listo, una sola vez.
+  useEffect(() => {
+    if (autoSelectedRef.current || !initialExerciseId || !initialSetNumber || reviewModel.length === 0) return;
+    autoSelectedRef.current = true;
+    const exercise = reviewModel.find((e) => String(e.exerciseId) === String(initialExerciseId));
+    const row = exercise?.rows.find((r) => String(r.setNumber) === String(initialSetNumber));
+    if (exercise && row) {
+      setSelected({ exerciseId: exercise.exerciseId, exerciseName: exercise.exerciseName, setNumber: row.setNumber, row });
+    }
+  }, [reviewModel, initialExerciseId, initialSetNumber]);
+
   // El segundo término evita el flash de "Sin registro" mientras el fetch de
   // feedback todavía está en vuelo -- buildSessionReviewModel ya corre con
   // `groups` en su default vacío ([]) antes de que la respuesta llegue, así
@@ -846,13 +896,19 @@ function ReviewFlow({ slot }) {
     );
   }
 
+  const navSlot = { ...slot, sessionName, sessionInstance, mode: completedNow ? 'review' : slot.mode };
+  const baseNavParams = buildReviewSlotNavParams(navSlot);
+
   if (selected) {
     return (
       <SetDetailView
         exerciseId={selected.exerciseId}
         exerciseName={selected.exerciseName}
         key={`${selected.exerciseId}-${selected.setNumber}`}
-        onBack={() => setSelected(null)}
+        onBack={() => {
+          setSelected(null);
+          router.replace({ params: baseNavParams, pathname: '/training-session-review' });
+        }}
         onSeriesSaved={() => {
           saveCountRef.current += 1;
         }}
@@ -866,11 +922,14 @@ function ReviewFlow({ slot }) {
     <ReviewListView
       completing={finishing}
       loading={loading}
-      onOpenRow={(payload) => setSelected(payload)}
+      onOpenRow={(payload) => {
+        setSelected(payload);
+        router.replace({ params: { ...baseNavParams, exerciseId: String(payload.exerciseId), setNumber: String(payload.setNumber) }, pathname: '/training-session-review' });
+      }}
       onRefresh={onRefresh}
       refreshing={refreshing}
       reviewModel={reviewModel}
-      slot={{ ...slot, sessionName, sessionInstance, mode: completedNow ? 'review' : slot.mode }}
+      slot={navSlot}
     />
   );
 }
@@ -894,5 +953,12 @@ function SessionReviewScreenContent() {
   const storeReviewSlot = useSessionReviewStore((s) => s.reviewSlot);
   const reviewSlot = storeReviewSlot ?? reviewSlotFromNavParams(navParams);
   if (!reviewSlot) return <Redirect href="/" />;
-  return <ReviewFlow key={`${reviewSlot.sessionInstanceId}-${reviewSlot.athleteUserId}-${reviewSlot.mode}`} slot={reviewSlot} />;
+  return (
+    <ReviewFlow
+      initialExerciseId={navParams.exerciseId}
+      initialSetNumber={navParams.setNumber}
+      key={`${reviewSlot.sessionInstanceId}-${reviewSlot.athleteUserId}-${reviewSlot.mode}`}
+      slot={reviewSlot}
+    />
+  );
 }

@@ -93,7 +93,7 @@ function CurrentPositionMarker({ point, photoUrl, initials }) {
 // (ver utils/distance.js#smoothGpsPoint) por el caller -- este
 // componente no sabe ni le importa de dónde salió el punto, solo lo
 // dibuja.
-export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal }) {
+export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal, onMapTouchStart, onMapTouchEnd }) {
   const cameraRef = useRef(null);
   const [activeMarker, setActiveMarker] = useState(null);
   // Mismo guard que RouteMapPreview -- Marker.onPress no consume el tap
@@ -146,7 +146,14 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
   }, [recenterSignal]);
 
   return (
-    <View className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
+    <View
+      className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200"
+      nativeID="live-trajectory-map-wrapper"
+      onTouchCancel={onMapTouchEnd}
+      onTouchEnd={onMapTouchEnd}
+      onTouchStart={onMapTouchStart}
+      testID="live-trajectory-map-wrapper"
+    >
       <Map
         attribution={false}
         logo={false}
