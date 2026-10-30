@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { DashboardLoadingOverlay } from '../dashboard/dashboard-loading-overlay.jsx';
+import { KpiTile } from '../dashboard/kpi-tile.jsx';
+import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
 import { useRunnerKpis } from '../../hooks/use-runner-kpis.js';
 import { isWeb } from '../../utils/platform.js';
 import { resolveDashboardError } from '../../utils/dashboard-error-codes.js';
@@ -41,10 +43,18 @@ function todayISODate() {
 // local elige período y tab, y la query key los incluye a los dos. No hay
 // prefetch ni sondeo, y no se usa `keepPreviousData` para no mostrar los
 // números de otra pestaña mientras llega la nueva.
+//
+// Cada métrica es una card reutilizada del dashboard (KpiTile + KpiTooltip):
+// mismo tamaño de fuentes, misma interacción de tooltip por hover/foco/tap y la
+// misma semántica de "el número se explica con su fórmula". La grilla es de 2
+// columnas en mobile y 3 en desktop; `openTooltip` sube la celda (y la grilla)
+// para que el bubble no quede debajo de la card vecina, igual que la paleta del
+// dashboard.
 export function RunnerKpisCard() {
   const [referenceDate] = useState(todayISODate);
   const [period, setPeriod] = useState('month');
   const [tab, setTab] = useState('general');
+  const [openTooltip, setOpenTooltip] = useState(null);
 
   const { data, loading, refreshing, failed, error, refetch } = useRunnerKpis({ period, referenceDate, tab });
 
@@ -88,10 +98,19 @@ export function RunnerKpisCard() {
   const emptyPeriod = Boolean(data) && data.has_data === false;
   const resolvedError = failed ? resolveDashboardError(error) : null;
   const showRefreshing = refreshing && !loading && Boolean(data) && !failed;
+  // Contexto de la pestaña para el tooltip: cuántas series entraron al cálculo y
+  // cuántas sesiones distintas las aportaron. Con el período vacío no se
+  // muestran: "Series usadas: 0" se leería como un resultado, no como ausencia.
+  const tooltipMeta = data && !emptyPeriod
+    ? [`Series usadas: ${data.valid_series}`, `Sesiones: ${data.sessions}`]
+    : [];
 
+  // Sin `overflow-hidden`: los tooltips de las cards se dibujan fuera de la
+  // tarjeta y quedarían recortados. El overlay de carga compensa con su propio
+  // `rounded-2xl` (ver `DashboardLoadingOverlay`).
   return (
     <View
-      className="relative mt-3 overflow-hidden rounded-2xl bg-white p-4 shadow-sm dark:bg-surface"
+      className="relative mt-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface"
       nativeID="runner-kpis-card"
       testID="runner-kpis-card"
     >
@@ -187,72 +206,49 @@ export function RunnerKpisCard() {
           </View>
         ) : (
           <View
-            className="mt-2"
-            nativeID="runner-kpis-table"
-            role={isWeb ? 'table' : undefined}
-            testID="runner-kpis-table"
+            className="-mx-1 -my-1 mt-2 flex-row flex-wrap"
+            nativeID="runner-kpis-cards"
+            style={{ position: 'relative', zIndex: openTooltip ? 1 : 0 }}
+            testID="runner-kpis-cards"
           >
-            {rows.map((row, index) => {
-              const rowID = `runner-kpis-row-${row.field}`;
+            {rows.map((row) => {
+              const cardID = `runner-kpis-${row.field}`;
               const value = metrics && !emptyPeriod ? formatRunnerKpiValue(row.field, metrics[row.field]) : EMPTY_METRIC;
-              const border = index < rows.length - 1 ? 'border-b border-slate-100 dark:border-slate-800' : '';
-
-              // En web la tabla expone row/cell reales. En nativo esos roles no
-              // existen en el delegate de Android: la fila se anuncia como un
-              // solo nodo con label y valor juntos.
-              if (isWeb) {
-                return (
-                  <View
-                    className={`flex-row items-start justify-between gap-4 py-2 ${border}`}
-                    key={row.field}
-                    nativeID={rowID}
-                    role="row"
-                    testID={rowID}
-                  >
-                    <Text
-                      className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300"
-                      nativeID={`${rowID}-label`}
-                      role="cell"
-                      testID={`${rowID}-label`}
-                    >
-                      {row.label}
-                    </Text>
-                    <Text
-                      className="text-right text-sm font-semibold text-slate-900 dark:text-white"
-                      nativeID={`${rowID}-value`}
-                      role="cell"
-                      testID={`${rowID}-value`}
-                    >
-                      {value}
-                    </Text>
-                  </View>
-                );
-              }
 
               return (
+                // La celda sube para que el bubble del tooltip no quede debajo
+                // de la card hermana que se pinta después (misma razón que en
+                // la paleta del dashboard: cada View de react-native-web es un
+                // stacking context propio).
                 <View
-                  accessible
-                  accessibilityLabel={`${row.label}: ${value}`}
-                  accessibilityRole="text"
-                  className={`flex-row items-start justify-between gap-4 py-2 ${border}`}
+                  className="w-1/2 p-1 lg:w-1/3"
                   key={row.field}
-                  nativeID={rowID}
-                  testID={rowID}
+                  nativeID={`${cardID}-cell`}
+                  style={{ zIndex: openTooltip === row.field ? 1 : 0 }}
+                  testID={`${cardID}-cell`}
                 >
-                  <Text
-                    className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300"
-                    nativeID={`${rowID}-label`}
-                    testID={`${rowID}-label`}
+                  <KpiTooltip
+                    formula={row.formula}
+                    id={cardID}
+                    meta={tooltipMeta}
+                    onOpenChange={(open) =>
+                      setOpenTooltip((current) => (open ? row.field : current === row.field ? null : current))
+                    }
+                    showSeries={false}
+                    showTolerance={false}
+                    valueLabel={value}
                   >
-                    {row.label}
-                  </Text>
-                  <Text
-                    className="text-right text-sm font-semibold text-slate-900 dark:text-white"
-                    nativeID={`${rowID}-value`}
-                    testID={`${rowID}-value`}
-                  >
-                    {value}
-                  </Text>
+                    {(hovered) => (
+                      <KpiTile
+                        formattedValue={value}
+                        hovered={hovered}
+                        icon={row.icon}
+                        id={`${cardID}-tile`}
+                        label={row.label}
+                        labelNumberOfLines={2}
+                      />
+                    )}
+                  </KpiTooltip>
                 </View>
               );
             })}

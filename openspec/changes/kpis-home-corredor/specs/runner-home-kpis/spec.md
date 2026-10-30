@@ -123,10 +123,12 @@ para que el corredor no lea dos pestañas con el mismo nombre.
 - **WHEN** el corredor cambia de `Mes` a `Día` estando en `Velocidad en tiempo`
 - **THEN** se pide `period=day&tab=velocidad_tiempo` y se mantiene la pestaña activa
 
-### Requirement: Cada pestaña SHALL mostrar una tabla de métricas
+### Requirement: Cada pestaña SHALL mostrar una grilla de cards de métricas
 
-La tarjeta SHALL mostrar una tabla de dos columnas por pestaña: nombre de la
-métrica y valor. Las filas SHALL ser:
+La tarjeta SHALL mostrar una grilla de cards, una por métrica, con nombre, ícono
+y valor. Cada card SHALL reutilizar `KpiTile` y su tooltip SHALL reutilizar
+`KpiTooltip`, ambos del dashboard, para mantener las mismas fuentes, el mismo
+tamaño y la misma interacción. Las métricas SHALL ser:
 
 **Números generales (`general`)**
 
@@ -136,7 +138,7 @@ métrica y valor. Las filas SHALL ser:
 | Mayor distancia en un día | `metrics.best_day_distance_m` |
 | Fecha del mejor día | `metrics.best_day_date` |
 | Mejor velocidad | `metrics.best_speed_kph` |
-| Velocidad promedio en ritmo continuo | `metrics.average_speed_kph` |
+| Velocidad promedio | `metrics.average_speed_kph` |
 
 **Ritmo continuo (`ritmo_continuo`)**
 
@@ -163,13 +165,24 @@ métrica y valor. Las filas SHALL ser:
 | Velocidad promedio | `metrics.average_speed_kph` |
 | Mejor velocidad | `metrics.best_speed_kph` |
 
-La fila de fecha del mejor día SHALL mostrar `—` si `best_day_date` es `null` y
+La card de fecha del mejor día SHALL mostrar `—` si `best_day_date` es `null` y
 SHALL formatearse como `DD/MM/YYYY`.
 
 En `Números generales`, el valor de `metrics.average_speed_kph` SHALL mostrarse
-bajo el label `Velocidad promedio en ritmo continuo`: el backend define ese campo
-en esa pestaña solo con las series de `ritmo_continuo`. El frontend NO SHALL
-recalcularlo ni sustituirlo por un promedio de todos los tipos.
+bajo el label corto `Velocidad promedio`: el backend define ese campo en esa
+pestaña solo con las series de `ritmo_continuo`. El alcance SHALL explicarse en
+el tooltip de la card. El frontend NO SHALL recalcularlo ni sustituirlo por un
+promedio de todos los tipos.
+
+Cada card SHALL tener un tooltip que explique la fórmula de su métrica. El
+tooltip SHALL abrirse por hover y foco de teclado en web y por tap en touch, y
+SHALL mostrar `Series usadas: <valid_series>` y `Sesiones: <sessions>` cuando la
+respuesta tenga datos. NO SHALL mostrar la tolerancia del dashboard, que no
+aplica a estas métricas. El tooltip NO SHALL quedar recortado por la tarjeta ni
+por la card vecina.
+
+La grilla SHALL usar dos columnas en mobile y tres en desktop, sin scroll
+horizontal.
 
 El frontend NO SHALL sumar, promediar, agrupar ni derivar ninguna de estas
 métricas. Solo SHALL leer el campo y formatearlo.
@@ -177,27 +190,32 @@ métricas. Solo SHALL leer el campo y formatearlo.
 #### Scenario: Números generales
 
 - **WHEN** la API devuelve `total_distance_m=84250`, `best_day_distance_m=12000`, `best_day_date="2026-10-11"` y `best_speed_kph=16.4`
-- **THEN** la tabla muestra `84,3 km`, `12,0 km`, `11/10/2026` y `16,4 km/h`
+- **THEN** las cards muestran `84,3 km`, `12,0 km`, `11/10/2026` y `16,4 km/h`
 
 #### Scenario: Promedio general de ritmo continuo
 
 - **WHEN** `general` devuelve `average_speed_kph=10.8`
-- **THEN** la fila `Velocidad promedio en ritmo continuo` muestra `10,8 km/h` sin recalcular el promedio con otras pestañas
+- **THEN** la card `Velocidad promedio` muestra `10,8 km/h` sin recalcular el promedio, y su tooltip aclara que solo usa series de ritmo continuo
 
 #### Scenario: Pestaña de velocidad en tiempo
 
 - **WHEN** la API devuelve `best_time_ms=1380000`
-- **THEN** la tabla muestra el tiempo como `23:00`, no como `1380000 ms`
+- **THEN** la card de tiempo muestra `23:00`, no `1380000 ms`
+
+#### Scenario: Tooltip de una card
+
+- **WHEN** el corredor apoya el cursor, enfoca con Tab o toca una card
+- **THEN** se abre su tooltip con la fórmula, `Series usadas` y `Sesiones`
 
 #### Scenario: Sin dato
 
 - **WHEN** un campo viene `null`
-- **THEN** la celda muestra `—` y no `0`, `NaN` ni una unidad suelta
+- **THEN** la card muestra `—` y no `0`, `NaN` ni una unidad suelta
 
 #### Scenario: Cero real
 
 - **WHEN** `total_distance_m` viene `0` con `has_data=true`
-- **THEN** la celda muestra `0 m`, porque el cero es un resultado real
+- **THEN** la card muestra `0 m`, porque el cero es un resultado real
 
 ### Requirement: El formato SHALL ser legible para una persona
 
@@ -212,7 +230,7 @@ El helper de formato SHALL usar locale `es-AR` y estas reglas:
 | Ausencia | `—` | `—` |
 
 El formato SHALL vivir en una función pura, testeable, y NO SHALL repetirse en
-cada celda del JSX. La unidad de distancia del contrato es metros; la conversión
+cada card del JSX. La unidad de distancia del contrato es metros; la conversión
 a km es solo de presentación.
 
 #### Scenario: Distancia corta
@@ -266,7 +284,7 @@ Si la API responde `400`, la tarjeta SHALL mostrar un mensaje de error sin botó
 de reintento, porque la misma request volvería a fallar. El frontend SHALL enviar
 solo valores válidos, así que este estado es una red de seguridad.
 
-Si `has_data=false`, la tarjeta SHALL mostrar las filas con `—` y una nota
+Si `has_data=false`, la tarjeta SHALL mostrar las cards con `—` y una nota
 `Sin datos en este período.` La tarjeta NO SHALL desaparecer ni mostrar una
 pantalla vacía que oculte las pestañas.
 
@@ -286,7 +304,7 @@ datos de otro usuario.
 #### Scenario: Período sin datos
 
 - **WHEN** la API responde `has_data=false`
-- **THEN** la tabla muestra `—` en sus valores y la nota `Sin datos en este período.`
+- **THEN** las cards muestran `—` en sus valores y la nota `Sin datos en este período.`
 
 ### Requirement: La tarjeta SHALL ser accesible y responsive
 
@@ -295,12 +313,13 @@ seleccionado) y SHALL poder activarse con teclado en web. El selector de períod
 SHALL exponer los tres valores y el activo.
 
 La capa de carga SHALL anunciar su texto con `accessibilityLiveRegion` y SHALL
-usar `accessibilityViewIsModal` mientras está visible. La tabla SHALL asociar
-cada label con su valor de forma legible por lector de pantalla.
+usar `accessibilityViewIsModal` mientras está visible. Cada card SHALL asociar
+su label con su valor de forma legible por lector de pantalla, y su tooltip
+SHALL anunciarse al abrirse.
 
 En ancho, la tarjeta SHALL respetar el mismo `max-w-3xl` del contenedor del Home.
 En mobile, las tabs SHALL entrar en una línea o permitir scroll horizontal
-interno sin desbordar la tarjeta; la tabla NO SHALL generar scroll horizontal.
+interno sin desbordar la tarjeta; la grilla NO SHALL generar scroll horizontal.
 
 Cada elemento interactivo nuevo SHALL tener `nativeID` y `testID`, según la regla
 `local/require-native-id` del repo.
@@ -313,7 +332,7 @@ Cada elemento interactivo nuevo SHALL tener `nativeID` y `testID`, según la reg
 #### Scenario: Mobile angosto
 
 - **WHEN** la tarjeta se muestra en un viewport de 360 px
-- **THEN** la tabla se lee completa y no aparece scroll horizontal de página
+- **THEN** las cards se leen completas, entran en dos columnas y no aparece scroll horizontal de página
 
 ### Requirement: La consulta SHALL respetar el contrato del backend
 

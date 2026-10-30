@@ -15,7 +15,7 @@ export function DashboardLoadingOverlay({ visible }) {
   return (
     <View
       accessibilityViewIsModal
-      className="absolute inset-0 items-center justify-center px-6"
+      className="absolute inset-0 items-center justify-center rounded-2xl px-6"
       nativeID="dashboard-loading-overlay"
       style={{ backgroundColor: 'rgba(15, 23, 42, 0.35)', pointerEvents: 'auto', zIndex: 50 }}
       testID="dashboard-loading-overlay"

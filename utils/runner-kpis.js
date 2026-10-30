@@ -40,32 +40,114 @@ export const PERIOD_OPTIONS = [
   { period: 'day', label: 'Día' },
 ];
 
-// Una fila por métrica visible, en el orden del spec. `field` es la clave de
+// Una card por métrica visible, en el orden del spec. `field` es la clave de
 // `metrics` que se lee tal cual; el formato sale de FIELD_FORMAT (abajo), no de
-// una condición escrita en cada celda.
+// una condición escrita en cada card.
+//
+// `icon` y `formula` viajan con la fila para que la card y su tooltip se armen
+// desde los mismos datos: el texto de la fórmula explica de dónde sale el
+// número (el front no recalcula nada) y no se repite en el JSX.
 export const RUNNER_KPI_ROWS = {
   general: [
-    { label: 'Distancia recorrida', field: 'total_distance_m' },
-    { label: 'Mayor distancia en un día', field: 'best_day_distance_m' },
-    { label: 'Fecha del mejor día', field: 'best_day_date' },
-    { label: 'Mejor velocidad', field: 'best_speed_kph' },
-    { label: 'Velocidad promedio en ritmo continuo', field: 'average_speed_kph' },
+    {
+      label: 'Distancia recorrida',
+      field: 'total_distance_m',
+      icon: 'map-marker-distance',
+      formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+    },
+    {
+      label: 'Mayor distancia en un día',
+      field: 'best_day_distance_m',
+      icon: 'calendar-star',
+      formula: 'La mayor distancia sumada en un mismo día. Si hay empate, se toma el día más antiguo.',
+    },
+    {
+      label: 'Fecha del mejor día',
+      field: 'best_day_date',
+      icon: 'calendar-check-outline',
+      formula: 'Fecha del día con mayor distancia del período. Si hay empate, se toma el más antiguo.',
+    },
+    {
+      label: 'Mejor velocidad',
+      field: 'best_speed_kph',
+      icon: 'speedometer',
+      formula: 'La mayor velocidad promedio entre las series válidas de esta pestaña.',
+    },
+    {
+      // El label corto entra en la grilla de cards; el alcance (solo ritmo
+      // continuo) vive en la fórmula del tooltip, que es donde el corredor lo
+      // busca al preguntarse por qué el promedio difiere del general.
+      label: 'Velocidad promedio',
+      field: 'average_speed_kph',
+      icon: 'chart-line',
+      formula: 'Velocidad promedio ponderada por distancia, solo con series de ritmo continuo: Σ(distancia × velocidad) ÷ Σ(distancia).',
+    },
   ],
   ritmo_continuo: [
-    { label: 'Distancia recorrida', field: 'total_distance_m' },
-    { label: 'Velocidad promedio', field: 'average_speed_kph' },
-    { label: 'Mejor velocidad', field: 'best_speed_kph' },
-    { label: 'Mayor distancia en un ejercicio', field: 'best_distance_m' },
+    {
+      label: 'Distancia recorrida',
+      field: 'total_distance_m',
+      icon: 'map-marker-distance',
+      formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+    },
+    {
+      label: 'Velocidad promedio',
+      field: 'average_speed_kph',
+      icon: 'chart-line',
+      formula: 'Velocidad promedio ponderada por distancia: Σ(distancia × velocidad) ÷ Σ(distancia).',
+    },
+    {
+      label: 'Mejor velocidad',
+      field: 'best_speed_kph',
+      icon: 'speedometer',
+      formula: 'La mayor velocidad promedio entre las series válidas de esta pestaña.',
+    },
+    {
+      label: 'Mayor distancia en un ejercicio',
+      field: 'best_distance_m',
+      icon: 'map-marker-radius',
+      formula: 'La mayor distancia lograda en un solo ejercicio.',
+    },
   ],
   velocidad_tiempo: [
-    { label: 'Distancia recorrida', field: 'total_distance_m' },
-    { label: 'Velocidad promedio', field: 'average_speed_kph' },
-    { label: 'Mejor tiempo', field: 'best_time_ms' },
+    {
+      label: 'Distancia recorrida',
+      field: 'total_distance_m',
+      icon: 'map-marker-distance',
+      formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+    },
+    {
+      label: 'Velocidad promedio',
+      field: 'average_speed_kph',
+      icon: 'chart-line',
+      formula: 'Velocidad promedio ponderada por distancia: Σ(distancia × velocidad) ÷ Σ(distancia).',
+    },
+    {
+      label: 'Mejor tiempo',
+      field: 'best_time_ms',
+      icon: 'timer-outline',
+      formula: 'El menor tiempo logrado entre las series de esta pestaña.',
+    },
   ],
   velocidad_distancia: [
-    { label: 'Distancia recorrida', field: 'total_distance_m' },
-    { label: 'Velocidad promedio', field: 'average_speed_kph' },
-    { label: 'Mejor velocidad', field: 'best_speed_kph' },
+    {
+      label: 'Distancia recorrida',
+      field: 'total_distance_m',
+      icon: 'map-marker-distance',
+      formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+    },
+    {
+      label: 'Velocidad promedio',
+      field: 'average_speed_kph',
+      icon: 'chart-line',
+      formula: 'Velocidad promedio ponderada por distancia: Σ(distancia × velocidad) ÷ Σ(distancia).',
+    },
+    {
+      label: 'Mejor velocidad',
+      field: 'best_speed_kph',
+      icon: 'speedometer',
+      formula: 'La mayor velocidad promedio entre las series válidas de esta pestaña.',
+    },
   ],
 };
 

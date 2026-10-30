@@ -21,7 +21,27 @@ import { isWeb } from '../../utils/platform.js';
 // El `accessibilityHint` del trigger lleva el valor y la unidad: en móvil el
 // tooltip no se abre solo y hace falta que el lector de pantalla lo anuncie sin
 // que el usuario tenga que descubrir que existe.
-export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, value, children, onOpenChange }) {
+//
+// Reutilizable fuera del dashboard (Home del corredor): `valueLabel` permite
+// pasar el valor YA formateado (el Home formatea fechas y relojes, no solo
+// números), `meta` agrega líneas de contexto propias y `showTolerance`/
+// `showSeries` apagan las del dashboard cuando no aplican. Los defaults
+// mantienen intactos a los consumidores actuales.
+export function KpiTooltip({
+  id,
+  hint,
+  formula,
+  tolerance,
+  seriesCount,
+  unit,
+  value,
+  valueLabel,
+  meta = [],
+  showTolerance = true,
+  showSeries = true,
+  children,
+  onOpenChange,
+}) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [tapped, setTapped] = useState(false);
@@ -40,12 +60,12 @@ export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, va
   // nodo tal cual.
   const child = typeof children === 'function' ? children(hovered) : children;
 
-  const valueLabel = hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC;
+  const valueLabelResolved = valueLabel ?? (hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC);
 
   return (
     <View className="relative" nativeID={`${id}-root`} testID={`${id}-root`}>
       <Pressable
-        accessibilityHint={hint ?? valueLabel}
+        accessibilityHint={hint ?? valueLabelResolved}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         aria-expanded={open}
@@ -86,14 +106,32 @@ export function KpiTooltip({ id, hint, formula, tolerance, seriesCount, unit, va
               {formula}
             </Text>
           ) : null}
-          <Text className="mt-1 text-[11px] leading-4 text-slate-100" nativeID={`${id}-bubble-tolerance`} testID={`${id}-bubble-tolerance`}>
-            {`Tolerancia aplicada: ${toleranceLabel(tolerance)}`}
-          </Text>
-          <Text className="text-[11px] leading-4 text-slate-100" nativeID={`${id}-bubble-series`} testID={`${id}-bubble-series`}>
-            {seriesCount === null || seriesCount === undefined
-              ? 'Series usadas: sin dato'
-              : `Series usadas: ${seriesCount}`}
-          </Text>
+          {showTolerance ? (
+            <Text className="mt-1 text-[11px] leading-4 text-slate-100" nativeID={`${id}-bubble-tolerance`} testID={`${id}-bubble-tolerance`}>
+              {`Tolerancia aplicada: ${toleranceLabel(tolerance)}`}
+            </Text>
+          ) : null}
+          {showSeries ? (
+            <Text className="text-[11px] leading-4 text-slate-100" nativeID={`${id}-bubble-series`} testID={`${id}-bubble-series`}>
+              {seriesCount === null || seriesCount === undefined
+                ? 'Series usadas: sin dato'
+                : `Series usadas: ${seriesCount}`}
+            </Text>
+          ) : null}
+          {meta.length ? (
+            <View className="mt-1" nativeID={`${id}-bubble-meta`} testID={`${id}-bubble-meta`}>
+              {meta.map((line, index) => (
+                <Text
+                  className="text-[11px] leading-4 text-slate-300"
+                  key={`${line}-${index}`}
+                  nativeID={`${id}-bubble-meta-${index}`}
+                  testID={`${id}-bubble-meta-${index}`}
+                >
+                  {line}
+                </Text>
+              ))}
+            </View>
+          ) : null}
         </View>
       ) : null}
     </View>

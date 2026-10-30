@@ -82,12 +82,13 @@ de los componentes anteriores.
 
 | Archivo | Responsabilidad |
 |---|---|
-| `components/home/runner-kpis-card.jsx` | Estado de período/pestaña, hook, tabla, loading y estados |
+| `components/home/runner-kpis-card.jsx` | Estado de período/pestaña, hook, grilla de cards, loading y estados |
 | `hooks/use-runner-kpis.js` | Query de TanStack, key y política de reintento |
 | `services/runner-kpis.js` | Request `GET /dashboard/runner-kpis` y rama de mocks |
 | `services/__mocks__/runner-kpis-mock.js` | Respuesta de demo derivada del seed del dashboard |
-| `utils/runner-kpis.js` | Tabs, filas, título del período, formatos y key pura |
-| `__tests__/runner-kpis.test.js` | Título, tabs, filas y formatos |
+| `utils/runner-kpis.js` | Tabs, filas (label/campo/ícono/fórmula), título del período, formatos y key pura |
+| `__tests__/runner-kpis.test.js` | Título, tabs, filas, íconos/fórmulas y formatos |
+| `__tests__/runner-kpis-card.test.js` | Render de cards, tooltip, vacío y error |
 | `__tests__/runner-kpis-service.test.js` | Parámetros de la request y query key |
 
 El servicio va aparte de `services/dashboard.js` para que el módulo del
@@ -164,7 +165,7 @@ asset: lo importa el overlay existente.
 
 - `buildPeriodTitle({ period, from, to, daysConsidered })`;
 - `RUNNER_KPI_TABS` (orden, label y `tab` del contrato);
-- `RUNNER_KPI_ROWS` (label, campo y tipo de formato por pestaña);
+- `RUNNER_KPI_ROWS` (label, campo, ícono y fórmula de cada card por pestaña);
 - `formatRunnerKpiValue(field, value)`;
 - `formatDistanceM(value)`;
 - `runnerKpisQueryKey({ period, referenceDate, tab })`.
@@ -183,8 +184,12 @@ Formatos:
 muestra como `0 m`, porque `formatMetric` ya distingue `null` de `0`.
 
 El formateo de km y de km/h usa `Intl.NumberFormat('es-AR')` con un decimal
-fijo dentro de `utils/runner-kpis.js`; así la tabla no mezcla comas y puntos y
+fijo dentro de `utils/runner-kpis.js`; así las cards no mezclan comas y puntos y
 `20` se lee `20,0 km/h` igual que `12` se lee `12,0 km`.
+
+La fórmula que explica cada métrica vive en la misma fila de `RUNNER_KPI_ROWS`
+que su label y su ícono: la card y su tooltip se arman con un solo dato y el
+texto no se repite en el JSX.
 
 ### D7: Estados de error y vacío explícitos
 
@@ -195,7 +200,7 @@ fijo dentro de `utils/runner-kpis.js`; así la tabla no mezcla comas y puntos y
   fallar.
 - **`401`:** no se maneja en la tarjeta; lo resuelve el flujo global de sesión
   del repo.
-- **`has_data=false`:** se muestran las filas con `—`, la nota
+- **`has_data=false`:** se muestran las cards con `—`, la nota
   `Sin datos en este período.` y las pestañas siguen visibles. La tarjeta no
   desaparece ni deja el Home con un hueco.
 
@@ -203,7 +208,7 @@ La clasificación usa `resolveDashboardError(error).retryable` de
 `utils/dashboard-error-codes.js`, la misma fuente que ya usa el dashboard, para
 no repetir la regla de qué status se reintenta.
 
-### D8: Las pestañas y la tabla tienen semántica accesible
+### D8: Las pestañas y las cards tienen semántica accesible
 
 - Cada pestaña es un `Pressable` con `accessibilityRole="tab"` —rol aceptado por
   Android, a diferencia de los roles web-only— y `accessibilityState={{ selected
@@ -211,15 +216,18 @@ no repetir la regla de qué status se reintenta.
   tablist.
 - El contenedor de pestañas usa `accessibilityRole="tablist"` solo en web; en
   nativo se omite porque no es un rol del delegate de Android.
-- La tabla usa `View` con `accessibilityRole="row"`/`"cell"` solo en web; en
-  nativo cada fila es un `Text` con `accessibilityLabel` que une label y valor,
-  para que el lector anuncie `Distancia recorrida: 12,4 km` de una sola vez.
+- Cada card es un `KpiTile` dentro de un `KpiTooltip`: el trigger es un
+  `Pressable` con `accessibilityRole="button"`, `aria-expanded` y un
+  `accessibilityHint` con el valor formateado, para que el lector anuncie
+  `Distancia recorrida: 84,3 km` y sepa que hay más información.
+- El tooltip se abre por hover, foco de teclado y tap; el foco no depende del
+  mouse.
 - El selector de período usa el mismo patrón de tabs, con tres opciones y estado
   seleccionado.
 - Todo elemento interactivo nuevo lleva `nativeID` y `testID`.
 - Las pestañas van en un `ScrollView horizontal` con `showsHorizontalScrollIndicator={false}`
-  para 360 px; la tabla no scrollea horizontal. La tarjeta respeta el
-  `max-w-3xl` que ya aplica el contenedor del Home en web.
+  para 360 px; la grilla no scrollea horizontal y usa dos columnas en mobile. La
+  tarjeta respeta el `max-w-3xl` que ya aplica el contenedor del Home en web.
 
 ### D9: El mock de demo deriva del seed del dashboard
 
@@ -239,6 +247,38 @@ más del mismo conjunto.
 pull-to-refresh, dentro del mismo guard de `activeRole === 'runner'`. El prefijo
 coincide con la key del hook, así que invalida todas las pestañas y períodos
 cacheados. La pestaña activa se vuelve a pedir al quedar stale.
+
+### D11: Cada métrica es una card reutilizada del dashboard
+
+La pestaña no usa una tabla: cada métrica es una card con ícono, label y número
+grande. Se reutilizan `components/dashboard/kpi-tile.jsx` (`KpiTile`) y
+`components/dashboard/kpi-tooltip.jsx` (`KpiTooltip`) porque son las cards del
+repo que ya tienen tooltip por hover, foco y tap, y la tipografía que el pedido
+quiere conservar. `attendance-metric-cards`/`StatTile` se descartan: no tienen
+tooltip ni fórmula.
+
+Las extensiones son aditivas y con defaults que dejan el dashboard igual:
+
+- `KpiTooltip` acepta `valueLabel` (valor ya formateado; acá hay fechas y
+  relojes), `meta` (líneas propias), `showTolerance` y `showSeries` (apagados en
+  el Home). El dashboard sigue pasando los mismos props.
+- `KpiTile` acepta `formattedValue` (evita reformatear en el componente),
+  `labelNumberOfLines` (labels de dos líneas en cards angostas) y `h-full` (las
+  cards de una fila igualan altura). El dashboard no cambia.
+
+La grilla es `w-1/2 lg:w-1/3`, o sea dos columnas en mobile y tres en desktop.
+Cada celda sube su `zIndex` cuando su tooltip está abierto, y la grilla también,
+para que el bubble no quede debajo de la card vecina: react-native-web le pone
+`z-index: 0` a todo `View` y cada celda es su propio stacking context.
+
+El tooltip muestra la fórmula, `Series usadas: <valid_series>` y
+`Sesiones: <sessions>`. No muestra tolerancia porque estas métricas no la usan.
+Con `has_data=false` no se muestran series ni sesiones: `0` se leería como un
+resultado en vez de ausencia de datos.
+
+La tarjeta raíz pierde `overflow-hidden` para no recortar los tooltips. Como
+contrapartida, `DashboardLoadingOverlay` suma `rounded-2xl` para que la capa de
+carga respete las esquinas de la tarjeta.
 
 ## API Contract
 
@@ -290,7 +330,7 @@ El front no envía `team_id`, `group_id` ni `athlete_user_id`, y no deriva
 | Mejor tiempo | `best_time_ms` | `23:00` |
 | Mayor distancia en un ejercicio | `best_distance_m` | `5,2 km` |
 
-Las filas visibles por pestaña son las del spec. Una clave que no aplica a la
+Las cards visibles por pestaña son las del spec. Una clave que no aplica a la
 pestaña no se muestra aunque el backend la devuelva en `null`; una clave que
 aplica y viene `null` se muestra con `—`.
 
@@ -298,18 +338,21 @@ aplica y viene `null` se muestra con `—`.
 
 | Riesgo | Mitigación |
 |---|---|
-| Cambiar de pestaña y ver por un instante los números de otra | No se usa `keepPreviousData` entre pestañas; la tabla solo pinta el `data` de la key activa |
+| Cambiar de pestaña y ver por un instante los números de otra | No se usa `keepPreviousData` entre pestañas; la grilla solo pinta el `data` de la key activa |
 | La capa de carga tapa el Home completo | El overlay se monta dentro del contenedor `relative` de la tarjeta y no en el `ScrollView` |
 | La fecha local del dispositivo difiere de la del servidor | El front manda siempre su fecha local; el default del servidor es solo fallback |
 | Cuatro requests al abrir el Home | Solo se pide `general`; las otras tres se piden al seleccionarlas |
 | El título del mes cambia según `Intl` | Tabla `MONTHS_ES` propia y test de los doce meses |
 | La tarjeta rompe el orden del Home | Se monta al final del fragment runner y se verifica que los tres componentes previos sigan en su lugar |
 | Duplicar formato con el dashboard | Se reutilizan `formatMetric`, `formatClock`, `fromISODate` y `EMPTY_METRIC`; solo la distancia agrega la regla m/km |
+| El tooltip se recorta o queda debajo de otra card | La tarjeta raíz no usa `overflow-hidden`, la celda abierta sube su `zIndex` y la grilla también se eleva |
+| Extender `KpiTile`/`KpiTooltip` cambia el dashboard | Las props nuevas tienen defaults que reproducen el comportamiento actual; se corre la suite completa del dashboard |
 
 ## Testing Strategy
 
 - **Utilidades puras:** los doce meses, febrero bisiesto, semana que cruza de
-  mes, singular/plural de días, las cuatro pestañas y sus filas, `null` vs `0`,
+  mes, singular/plural de días, las cuatro pestañas y sus cards (incluidos
+  ícono y fórmula), `null` vs `0`,
   `850 → 850 m`, `12400 → 12,4 km`, time `1380000 → 23:00` y fecha.
 - **Query key:** cambiar `period`, `referenceDate` o `tab` produce una key
   distinta; el prefijo es `runner-kpis` para que la invalidación lo alcance.
@@ -318,8 +361,8 @@ aplica y viene `null` se muestra con `—`.
   `USE_MOCKS=true` delega en el mock.
 - **Mock:** devuelve las métricas de las filas del caller para la pestaña pedida
   y `has_data=false` cuando no hay filas.
-- **Componente:** sin test de render, según la convención del repo. Verificación
-  manual de orden en el Home, cambio de pestaña con loading, error con y sin
-  reintento, vacío, teclado en web y 360 px.
+- **Componente:** render de las cinco cards de `general`, valores formateados,
+  tooltip al presionar con fórmula/series/sesiones, vacío con `—` y error con
+  reintento. Verificación manual en 360 px y desktop, hover, teclado y tap.
 - **Regresión:** `npm test` completo; el dashboard existente no cambia porque no
   se tocan sus archivos.

@@ -109,9 +109,19 @@ describe('runner-kpis — contrato de tabs y filas', () => {
     ]);
   });
 
-  test('el label del promedio general aclara que es de ritmo continuo', () => {
+  test('el label del promedio general es corto y el alcance vive en la fórmula', () => {
     const row = RUNNER_KPI_ROWS.general.find((candidate) => candidate.field === 'average_speed_kph');
-    expect(row.label).toBe('Velocidad promedio en ritmo continuo');
+    expect(row.label).toBe('Velocidad promedio');
+    expect(row.formula).toMatch(/solo con series de ritmo continuo/);
+  });
+
+  test('cada fila trae ícono y fórmula para la card y su tooltip', () => {
+    Object.values(RUNNER_KPI_ROWS).flat().forEach((row) => {
+      expect(typeof row.icon).toBe('string');
+      expect(row.icon.length).toBeGreaterThan(0);
+      expect(typeof row.formula).toBe('string');
+      expect(row.formula.length).toBeGreaterThan(0);
+    });
   });
 
   test('la pestaña de distancia se llama "Velocidad en distancia"', () => {

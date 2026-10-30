@@ -2,13 +2,13 @@
 
 ## 1. Utilidades puras de la tarjeta
 
-- [x] 1.1 Crear `utils/runner-kpis.js` con `RUNNER_KPI_TABS` (label, `tab` y orden), `RUNNER_KPI_ROWS` por pestaña y `PERIOD_OPTIONS` (`month`, `week`, `day` con labels `Mes`, `Semana`, `Día`).
+- [x] 1.1 Crear `utils/runner-kpis.js` con `RUNNER_KPI_TABS` (label, `tab` y orden), `RUNNER_KPI_ROWS` por pestaña (label, campo, ícono y fórmula) y `PERIOD_OPTIONS` (`month`, `week`, `day` con labels `Mes`, `Semana`, `Día`).
 - [x] 1.2 Implementar `buildPeriodTitle({ period, from, to, daysConsidered })` con `MONTHS_ES`, rango `DD/MM/YYYY` y singular/plural de días, sin depender de `Intl.DateTimeFormat`.
 - [x] 1.3 Implementar `formatDistanceM(value)`: `null → "—"`, `< 1000` en metros enteros y `>= 1000` en km con un decimal reutilizando el formateador de `utils/dashboard-format.js`.
 - [x] 1.4 Implementar `formatRunnerKpiValue(field, value)`: distancia y fecha con sus helpers; velocidad y tiempo con `formatMetric`; `null` siempre `—`.
 - [x] 1.5 Exportar `runnerKpisQueryKey({ period, referenceDate, tab })` con el prefijo `['runner-kpis']` que usa la invalidación del Home.
-- [x] 1.6 Crear `__tests__/runner-kpis.test.js`: doce meses, febrero bisiesto, semana que cruza de mes, `1 día` vs `31 días`, las cuatro pestañas y sus filas, `850 → "850 m"`, `12400 → "12,4 km"`, `0 → "0 m"`, `null → "—"`, `1380000 → "23:00"` y `112.4 → "112,4 %"`.
-- [x] 1.7 Agregar al mismo test que la fecha `2026-10-11` se muestra `11/10/2026` y que un `best_day_date` nulo no rompe la tabla.
+- [x] 1.6 Crear `__tests__/runner-kpis.test.js`: doce meses, febrero bisiesto, semana que cruza de mes, `1 día` vs `31 días`, las cuatro pestañas y sus cards (con ícono y fórmula), `850 → "850 m"`, `12400 → "12,4 km"`, `0 → "0 m"`, `null → "—"`, `1380000 → "23:00"` y `112.4 → "112,4 %"`.
+- [x] 1.7 Agregar al mismo test que la fecha `2026-10-11` se muestra `11/10/2026` y que un `best_day_date` nulo no rompe la card.
 - [x] 1.8 Agregar al mismo test que cambiar `period`, `referenceDate` o `tab` cambia la query key y que las tres keys comparten el prefijo `runner-kpis`.
 
 ## 2. Servicio y mock
@@ -35,13 +35,13 @@
 - [x] 4.2 Renderizar la cabecera con el título de `buildPeriodTitle`, el selector `Mes`/`Semana`/`Día` y las cuatro pestañas en el orden del contrato.
 - [x] 4.3 Implementar el handler de pestaña: setear `tab` y, si ya era la activa, llamar a `refetch()` para que cada selección consulte.
 - [x] 4.4 Implementar el cambio de período conservando la pestaña activa; la key nueva dispara la consulta sola.
-- [x] 4.5 Renderizar la tabla de dos columnas con las filas de la pestaña, usando `formatRunnerKpiValue` y sin cálculos en el JSX.
+- [x] 4.5 Renderizar una grilla de cards, una por métrica, usando `KpiTile` + `KpiTooltip` del dashboard, `formatRunnerKpiValue` y sin cálculos en el JSX.
 - [x] 4.6 Montar `DashboardLoadingOverlay` con `visible={loading}` dentro de un contenedor `relative` de la tarjeta; no cubrir el Home completo.
 - [x] 4.7 Mostrar un indicador discreto cuando `refreshing` sea verdadero y haya datos, sin montar la capa de carga.
 - [x] 4.8 Implementar error reintentable con `Reintentar` y error `400` sin botón, usando `resolveDashboardError`.
-- [x] 4.9 Implementar `has_data=false`: filas con `—`, nota `Sin datos en este período.` y pestañas visibles.
-- [x] 4.10 Agregar roles de tab, estado seleccionado, `role="tablist"` solo en web, etiqueta combinada por fila, `nativeID` y `testID` en cada control nuevo.
-- [x] 4.11 Ajustar responsive: `ScrollView horizontal` para las pestañas en 360 px, tabla sin scroll horizontal y `max-w-3xl` heredado del contenedor del Home.
+- [x] 4.9 Implementar `has_data=false`: cards con `—`, nota `Sin datos en este período.` y pestañas visibles.
+- [x] 4.10 Agregar roles de tab, estado seleccionado, `role="tablist"` solo en web, trigger accesible por card con valor en el hint, `nativeID` y `testID` en cada control nuevo.
+- [x] 4.11 Ajustar responsive: `ScrollView horizontal` para las pestañas en 360 px, grilla de 2 columnas en mobile y 3 en desktop, sin scroll horizontal, y `max-w-3xl` heredado del contenedor del Home.
 
 ## 5. Integración con el Home
 
@@ -57,5 +57,16 @@
 - [x] 6.3 Verificar manualmente contra el backend local: Home de corredor con datos en dos equipos, mes/semana/día y las cuatro pestañas.
 - [x] 6.4 Verificar manualmente los estados: primera carga con el GIF, revalidación sin capa, error de red con `Reintentar`, `400` sin botón y período sin datos.
 - [x] 6.5 Verificar en web con teclado que las pestañas y el selector de período se activan y anuncian el estado seleccionado.
-- [x] 6.6 Verificar en mobile de 360 px que la tabla se lee completa y que las pestañas no desbordan la tarjeta.
-- [x] 6.7 Confirmar que no se modificó ningún archivo de `components/dashboard/`, `services/dashboard.js` ni los hooks del dashboard.
+- [x] 6.6 Verificar en mobile de 360 px que las cards se leen completas y que las pestañas no desbordan la tarjeta.
+- [x] 6.7 Confirmar que los cambios en `components/dashboard/` son aditivos (defaults intactos) y que la suite del dashboard sigue verde; no se tocaron `services/dashboard.js` ni sus hooks.
+
+## 7. Rediseño de filas a cards con tooltip
+
+- [x] 7.1 Extender `KpiTooltip` con `valueLabel`, `meta`, `showTolerance` y `showSeries`, manteniendo los defaults que usa el dashboard.
+- [x] 7.2 Extender `KpiTile` con `formattedValue`, `labelNumberOfLines` y altura completa, sin cambiar el render del dashboard.
+- [x] 7.3 Sumar `icon` y `formula` a cada fila de `RUNNER_KPI_ROWS` y acortar el label general a `Velocidad promedio`, moviendo el alcance al tooltip.
+- [x] 7.4 Reemplazar la tabla por una grilla de cards (`w-1/2 lg:w-1/3`) con `KpiTooltip` por card, meta de series/sesiones y elevación de `zIndex` al abrir.
+- [x] 7.5 Quitar `overflow-hidden` de la tarjeta raíz y agregar `rounded-2xl` al overlay de carga para conservar las esquinas.
+- [x] 7.6 Actualizar `__tests__/runner-kpis.test.js` y crear `__tests__/runner-kpis-card.test.js` (cards, valores, tooltip, vacío y error).
+- [x] 7.7 Verificar en 360 px y desktop: grilla, tooltips sin recorte, hover, teclado y tap.
+- [x] 7.8 Correr `npm test -- --runInBand` y `npm run lint`.
