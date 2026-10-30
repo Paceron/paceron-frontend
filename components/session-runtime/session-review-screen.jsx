@@ -166,7 +166,15 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-screen-root" testID="session-review-screen-root">
-      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="session-review-screen-scroll">
+      {/* El `max-w-3xl`/`self-center` vivían en el ScrollView -- eso hacía
+          que su propio ancho (el panel que realmente scrollea) quedara
+          angosto y centrado, inset del borde real de `session-review-
+          screen-root`. El ScrollView ahora ocupa el ancho completo
+          (`flex-1` solo) y el límite de ancho se aplica adentro, en el
+          content container (`items-center` centra al hijo) + este wrapper
+          (`max-w-3xl`) -- pedido real 2026-10-30. */}
+      <ScrollView className="flex-1" contentContainerClassName={`px-4 py-6 ${isWeb ? 'items-center' : ''}`} nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="session-review-screen-scroll">
+      <View className={`w-full ${isWeb ? 'max-w-3xl' : ''}`} nativeID="session-review-screen-content" testID="session-review-screen-content">
         <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-back-label" testID="session-review-screen-back-label">
@@ -304,6 +312,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
             })}
           </View>
         )}
+      </View>
       </ScrollView>
     </View>
   );
@@ -529,7 +538,12 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-detail-root" testID="session-review-detail-root">
-      <ScrollView className={`flex-1 w-full self-center ${!isWeb ? '' : isNarrowWeb ? 'max-w-3xl' : 'max-w-5xl'}`} contentContainerClassName="px-4 py-6" nativeID="session-review-detail-scroll" scrollEnabled={!mapInteracting} showsVerticalScrollIndicator={false} testID="session-review-detail-scroll">
+      {/* Mismo motivo que session-review-screen-scroll (arriba en este
+          archivo): el límite de ancho se mueve del ScrollView (que así
+          queda angosto e inset del borde real) a un wrapper adentro del
+          content container. */}
+      <ScrollView className="flex-1" contentContainerClassName={`px-4 py-6 ${isWeb ? 'items-center' : ''}`} nativeID="session-review-detail-scroll" scrollEnabled={!mapInteracting} showsVerticalScrollIndicator={false} testID="session-review-detail-scroll">
+      <View className={`w-full ${!isWeb ? '' : isNarrowWeb ? 'max-w-3xl' : 'max-w-5xl'}`} nativeID="session-review-detail-content" testID="session-review-detail-content">
         <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-detail-back-label" testID="session-review-detail-back-label">
@@ -793,6 +807,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
         )}
 
         <View className="h-8" nativeID="session-review-detail-spacer" testID="session-review-detail-spacer" />
+      </View>
       </ScrollView>
 
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
