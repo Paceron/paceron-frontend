@@ -226,7 +226,7 @@ function RouteAttemptPreStartScreenContent() {
         <RouteMapPreview coordinates={routeAttempt.route?.coordinates ?? []} interactive nativeID="route-attempt-pre-start-screen-map" testID="route-attempt-pre-start-screen-map" />
       </View>
 
-      <View className="items-center gap-2 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="route-attempt-pre-start-screen-footer" testID="route-attempt-pre-start-screen-footer">
+      <View className="border-t border-slate-100 bg-white items-center gap-2 px-4 pb-4 pt-3 dark:border-slate-800 dark:bg-surface" nativeID="route-attempt-pre-start-screen-footer" testID="route-attempt-pre-start-screen-footer">
         {isFarFromStart ? (
           <View className="flex-row items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 dark:bg-amber-900/20" nativeID="route-attempt-pre-start-screen-gps-hint-badge" testID="route-attempt-pre-start-screen-gps-hint-badge">
             <MaterialCommunityIcons color="#d97706" name="alert-circle-outline" size={14} />

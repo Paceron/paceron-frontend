@@ -273,7 +273,7 @@ function TrainerSessionPreStartScreenContent() {
       </ScrollView>
 
       {!isWeb && (
-        <View className="border-t border-slate-100 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="trainer-session-pre-start-screen-footer" testID="trainer-session-pre-start-screen-footer">
+        <View className="border-t border-slate-100 bg-white px-4 pb-4 pt-3 dark:border-slate-800 dark:bg-surface" nativeID="trainer-session-pre-start-screen-footer" testID="trainer-session-pre-start-screen-footer">
           <View className="items-center" nativeID="trainer-session-pre-start-screen-play-container" testID="trainer-session-pre-start-screen-play-container">
             <Pressable
               className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
