@@ -8,6 +8,7 @@ import { isWeb, isMobile } from '../../utils/platform.js';
 import { NextTrainingBanner } from './next-training-banner.jsx';
 import { StreakBanner } from './streak-banner.jsx';
 import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
+import { RunnerKpisCard } from './runner-kpis-card.jsx';
 
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
@@ -28,6 +29,7 @@ export function AuthenticatedHomeScreen() {
     ...(activeRole === 'runner' ? [
       queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
       queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['runner-kpis'] }),
     ] : []),
   ]));
 
@@ -56,6 +58,7 @@ export function AuthenticatedHomeScreen() {
           <>
             <StreakBanner />
             <AchievementHighlightCard />
+            <RunnerKpisCard />
           </>
         )}
       </View>
