@@ -99,7 +99,18 @@ function RouteAttemptPreStartScreenContent() {
   const [distanceToStart, setDistanceToStart] = useState(null);
   const startPoint = routeAttempt?.route?.coordinates?.[0] ?? null;
 
-  useEffect(() => {
+  // `useFocusEffect`, no `useEffect` -- bug real reportado 2026-10-31
+  // (encontrado leyendo el log de device, no por síntoma visible): esta
+  // pantalla no se desmonta al pasar a route-attempt-live (sigue en el
+  // stack, mismo motivo que el reset de `starting` de arriba), así que un
+  // `useEffect` con cleanup-en-unmount dejaba el GPS corriendo en segundo
+  // plano para siempre después de un Play exitoso -- confirmado en el log:
+  // decenas de líneas `route-attempt-pre-start playState=loading` seguían
+  // apareciendo (cada fix GPS de esta pantalla, todavía activa de fondo)
+  // mucho después de `route-attempt-live bootstrap ok`. `useFocusEffect`
+  // corre el mismo start/stop en cada foco/desenfoque: para el watcher al
+  // navegar afuera, lo reinicia si el corredor vuelve (ej. tras cancelar).
+  useFocusEffect(useCallback(() => {
     if (gpsPermissionGranted !== true || !startPoint) return undefined;
     tracker.start({
       onPoint: (point) => {
@@ -112,7 +123,7 @@ function RouteAttemptPreStartScreenContent() {
     });
     return () => { tracker.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gpsPermissionGranted, startPoint]);
+  }, [gpsPermissionGranted, startPoint]));
 
   // withinRange/canPlay/playState/playReady calculados ANTES del guard de
   // abajo (en vez de al lado de acceptanceRadiusMeters/gpsHint, puramente
