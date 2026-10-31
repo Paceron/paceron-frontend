@@ -43,9 +43,9 @@ export function DashboardMetricsPanel({
         <View
           className="gap-2"
           collapsable={false}
-          nativeID={`${id}-report-kpis-page`}
-          ref={capturePageRefFor?.(`${id}-report-kpis-page`)}
-          testID={`${id}-report-kpis-page`}
+          nativeID={`${id}-kpis-page`}
+          ref={capturePageRefFor?.(`${id}-kpis-page`)}
+          testID={`${id}-kpis-page`}
         >
           <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID={`${id}-report-kpis-title`} testID={`${id}-report-kpis-title`}>
             KPIs
@@ -55,18 +55,18 @@ export function DashboardMetricsPanel({
 
         <View
           collapsable={false}
-          nativeID={`${id}-report-profile-page`}
-          ref={capturePageRefFor?.(`${id}-report-profile-page`)}
-          testID={`${id}-report-profile-page`}
+          nativeID={`${id}-profile-page`}
+          ref={capturePageRefFor?.(`${id}-profile-page`)}
+          testID={`${id}-profile-page`}
         >
           <ProfileRadarCard id={`${id}-profile`} kind={kind} summary={summary} title={radarTitle} />
         </View>
 
         <View
           collapsable={false}
-          nativeID={`${id}-report-charts-page`}
-          ref={capturePageRefFor?.(`${id}-report-charts-page`)}
-          testID={`${id}-report-charts-page`}
+          nativeID={`${id}-charts-page`}
+          ref={capturePageRefFor?.(`${id}-charts-page`)}
+          testID={`${id}-charts-page`}
         >
           <PaletteSwitch
             {...paletteProps}
@@ -77,7 +77,7 @@ export function DashboardMetricsPanel({
         </View>
 
         {renderRanking ? renderRanking({
-          captureRef: capturePageRefFor?.(`${id}-report-ranking-page`),
+          captureRef: capturePageRefFor?.(`${id}-ranking-page`),
           onReportReady,
           reportMode: true,
         }) : null}
