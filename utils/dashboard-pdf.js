@@ -139,9 +139,9 @@ export function buildDashboardPdfHtml({
   .subtitle { margin: 0; color: #40484c; font-size: 12px; }
   .logo { display: block; max-height: 13mm; max-width: 42mm; }
   .wordmark { color: #6d9e2f; font-size: 16px; font-weight: 700; letter-spacing: .08em; }
-  .screenshot { margin: 0 0 18px; padding: 0; break-inside: avoid; }
+  .screenshot { margin: 0 0 18px; padding: 0; }
   .screenshot-next-page { break-before: page; page-break-before: always; }
-  .screenshot img { display: block; width: auto; height: auto; max-width: 100%; max-height: 255mm; margin: 0 auto; border: 1px solid #dfe5e7; border-radius: 2px; background: #fff; }
+  .screenshot img { display: block; width: auto; height: auto; max-width: 100%; max-height: 200mm; margin: 0 auto; border: 1px solid #dfe5e7; border-radius: 2px; background: #fff; }
   .meta { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 0 0 18px; }
   .meta-label { display: block; color: #6b7378; font-size: 9px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
   .meta-value { display: block; margin-top: 2px; font-size: 11px; }
