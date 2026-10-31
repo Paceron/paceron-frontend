@@ -473,7 +473,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
       teamId,
       teamName,
       date: new Date().toISOString().slice(0, 10),
-      routeAttempt: { route: competition.route, acceptanceRadiusMeters: competition.acceptanceRadiusMeters, competitionId: competition.id },
+      routeAttempt: { route: competition.route, acceptanceRadiusMeters: competition.acceptanceRadiusMeters, competitionId: competition.id, sessionInstanceId: competition.sessionInstanceId },
     });
     router.push('/route-attempt-pre-start');
   };
