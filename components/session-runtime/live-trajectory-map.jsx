@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
@@ -134,7 +134,43 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
   const midLat = bounds ? (bounds[1] + bounds[3]) / 2 : null;
   const startLabelBelow = midLat != null && referenceCoords[0] ? referenceCoords[0][1] > midLat : false;
   const endLabelBelow = midLat != null && referenceCoords[referenceCoords.length - 1] ? referenceCoords[referenceCoords.length - 1][1] > midLat : false;
-  const currentPositionLngLat = currentPosition ? [currentPosition.longitude, currentPosition.latitude] : null;
+  // useMemo (no un literal plano) -- un array nuevo en cada render, aunque
+  // lat/lng no cambien, haría que los dos efectos de abajo (foco inicial y
+  // recenterSignal) lo vean como "cambiado" en cada render y disparen de
+  // más (warning real de exhaustive-deps, no solo cosmético acá: el efecto
+  // de foco inicial de abajo depende de esto para no repetirse).
+  const currentPositionLngLat = useMemo(
+    () => (currentPosition ? [currentPosition.longitude, currentPosition.latitude] : null),
+    // Deliberadamente lat/lng sueltos, no el objeto `currentPosition`
+    // entero -- el caller reconstruye ese objeto en cada punto GPS nuevo,
+    // así que memoizar contra la referencia completa anularía el propósito
+    // (un array "nuevo" en cada GPS fix de nuevo, el problema que esto
+    // existe para evitar).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentPosition?.longitude, currentPosition?.latitude]
+  );
+
+  // Bug real reportado 2026-10-31: en un entrenamiento (sin referenceRoute --
+  // LiveSessionMapPanel no pasa ruta, a diferencia de un intento de
+  // competencia) `bounds` es null hasta el primer punto GPS, así que
+  // `onDidFinishLoadingMap` de abajo no tiene nada que encuadrar y el mapa
+  // se queda clavado en initialCenter (Buenos Aires, DEFAULT_CENTER) hasta
+  // que el corredor toca "centrar" a mano. Esta ref marca si YA se encuadró
+  // algo real (ahí abajo, con la ruta de referencia o la trayectoria) para
+  // que el efecto de acá nunca pelee con ese fit -- solo entra en juego
+  // cuando no hubo nada que encuadrar al cargar el mapa.
+  const didInitialFitRef = useRef(false);
+
+  // Foco automático a la posición del corredor, UNA sola vez, apenas llega
+  // el primer punto -- solo si `onDidFinishLoadingMap` no encuadró ya algo
+  // real (caso de un intento de competencia, que sí tiene ruta desde el
+  // arranque). No se repite en cada punto GPS siguiente: competiría contra
+  // cualquier pan/zoom manual del corredor mientras corre.
+  useEffect(() => {
+    if (didInitialFitRef.current || !currentPositionLngLat) return;
+    didInitialFitRef.current = true;
+    cameraRef.current?.flyTo({ center: currentPositionLngLat, zoom: 16, duration: 500 });
+  }, [currentPositionLngLat]);
 
   // Gatillado por cambio de prop (un contador que el caller incrementa en su
   // botón de recentrar) en vez de exponer `cameraRef` hacia afuera -- este
@@ -142,6 +178,11 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
   useEffect(() => {
     if (recenterSignal == null || !currentPositionLngLat) return;
     cameraRef.current?.flyTo({ center: currentPositionLngLat, duration: 500 });
+    // Deliberadamente solo [recenterSignal] -- este efecto tiene que
+    // disparar únicamente cuando el corredor toca el botón de recentrar
+    // (el contador cambia), nunca solo porque la posición se movió (si no,
+    // volvería a pelear con cualquier pan/zoom manual en cada punto GPS,
+    // lo mismo que el efecto de foco inicial de arriba evita a propósito).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterSignal]);
 
@@ -170,7 +211,11 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
           // sin límite real en mobile (bug real reportado 2026-10-21) --
           // minZoom/maxBounds quedaban peleando contra un comando de
           // cámara que se repetía solo.
-          if (bounds) cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 40, left: 40, right: 40, top: 40 } });
+          if (didInitialFitRef.current) return;
+          if (bounds) {
+            cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 40, left: 40, right: 40, top: 40 } });
+            didInitialFitRef.current = true;
+          }
         }}
         onPress={() => {
           if (suppressMapCloseRef.current) { suppressMapCloseRef.current = false; return; }
