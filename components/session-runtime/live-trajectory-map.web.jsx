@@ -125,7 +125,7 @@ function buildCurrentPositionMarker(photoUrl, initials) {
   return circle;
 }
 
-export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials }) {
+export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const currentPositionMarkerRef = useRef(null);
@@ -144,7 +144,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
       map.addSource('live-trajectory-map-traveled', { type: 'geojson', data: EMPTY_LINE });
       map.addLayer({ id: 'live-trajectory-map-traveled-layer', type: 'line', source: 'live-trajectory-map-traveled', paint: { 'line-color': '#8cc63e', 'line-width': 4 } });
       const refCoords = referenceRoute?.coordinates ?? [];
-      if (refCoords.length > 1) {
+      if (!hideReferenceLine && refCoords.length > 1) {
         map.addSource('live-trajectory-map-reference', { type: 'geojson', data: { type: 'Feature', geometry: referenceRoute, properties: {} } });
         map.addLayer({ id: 'live-trajectory-map-reference-layer', type: 'line', source: 'live-trajectory-map-reference', paint: { 'line-color': '#94a3b8', 'line-width': 3, 'line-dasharray': [2, 2] } });
       }
@@ -231,6 +231,13 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
     currentPositionMarkerRef.current = marker;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPosition]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || recenterSignal == null || !currentPosition) return;
+    map.flyTo({ center: [currentPosition.longitude, currentPosition.latitude], duration: 500 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recenterSignal]);
 
   return (
     <View className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">

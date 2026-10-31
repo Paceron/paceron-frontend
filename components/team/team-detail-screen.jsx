@@ -841,13 +841,13 @@ function TeamDetailScreenContent({ teamId }) {
 
   const generalContent = (
     <>
-      <SectionCard icon="information-outline" title="Sobre el equipo">
+      <SectionCard icon="information-outline" title="Sobre el equipo" variant="nested">
         <Field label="Entrenador a cargo" value={display(ownerName)} />
         <Field label="Descripción" value={display(team.description)} />
         <Field label="Requisitos de pertenencia" value={display(team.requirements)} />
       </SectionCard>
 
-      <SectionCard icon="chart-line" title="Estadísticas del equipo">
+      <SectionCard icon="chart-line" title="Estadísticas del equipo" variant="nested">
         {/* Los dos tiles de adentro eran `MOCK_TEAM_METRICS` —210 entrenamientos y
             96 objetivos, números escritos a mano que no venían de ningún lado. Se
             fueron con el dashboard de rendimiento: los conteos de verdad salen de
@@ -884,6 +884,7 @@ function TeamDetailScreenContent({ teamId }) {
 
   const corredoresContent = (
     <SectionCard
+      variant="nested"
       headerRight={canManageTeam && (
         <View className="flex-row items-center gap-1" nativeID="team-detail-invite-actions" testID="team-detail-invite-actions">
           <IconTooltip idPrefix="team-detail-invite-pending-button-tooltip" label="Ver solicitudes pendientes">
@@ -989,6 +990,7 @@ function TeamDetailScreenContent({ teamId }) {
   // showGroupsToRunners), acá no hay excepción posible.
   const gruposContent = isTrainerView && (
     <SectionCard
+      variant="nested"
       headerRight={canManageTeam && (
         <IconTooltip idPrefix="team-detail-add-group-button-tooltip" label="Agregar grupo">
         <Pressable
@@ -1041,7 +1043,7 @@ function TeamDetailScreenContent({ teamId }) {
       showsVerticalScrollIndicator={false}
       testID="team-detail-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="team-detail-screen-container" testID="team-detail-screen-container">
+      <View className={`w-full self-center border border-slate-200 dark:border-slate-800 p-4 rounded-2xl bg-white dark:bg-surface ${isWeb ? 'max-w-3xl' : ''}`} nativeID="team-detail-screen-container" testID="team-detail-screen-container">
         <Pressable
           className="mb-6 flex-row items-center gap-1.5 self-start py-1 pr-1 hover:opacity-70 active:opacity-70"
           nativeID="team-detail-back-button"

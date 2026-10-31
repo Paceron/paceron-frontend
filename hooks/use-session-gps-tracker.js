@@ -39,7 +39,11 @@ export function useSessionGpsTracker(enabled) {
         const subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            timeInterval: 1000,
+            // 500ms -- mismo ajuste ya aplicado a use-gps-tracker.js (ver
+            // utils/distance.js#smoothGpsPoint, que atenúa el ruido de
+            // muestras más frecuentes): las dos modalidades miden con la
+            // misma frecuencia.
+            timeInterval: 500,
             distanceInterval: 1,
           },
           (position) => {

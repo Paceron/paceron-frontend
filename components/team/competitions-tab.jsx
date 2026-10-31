@@ -469,11 +469,14 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
 
   return (
     // Card única envolviendo todo -- mismas clases que SectionCard
-    // (components/forms/section-card.jsx, usado por Corredores/Solicitudes/
-    // etc.) para unificar estilos, pero SIN el componente en sí: éste
-    // fuerza un título+ícono de header que acá es redundante (la pestaña
-    // de arriba ya dice "Competencias") -- pedido real, 2026-10-15.
-    <View className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="competitions-tab-root" testID="competitions-tab-root">
+    // variant="nested" (components/forms/section-card.jsx, usado por
+    // Corredores/Solicitudes/etc. dentro de esta misma pantalla) para
+    // unificar estilos, pero SIN el componente en sí: éste fuerza un
+    // título+ícono de header que acá es redundante (la pestaña de arriba ya
+    // dice "Competencias") -- pedido real, 2026-10-15. Sin borde (solo
+    // fondo tenue) -- vive dentro de team-detail-screen-container, que ya
+    // tiene el suyo del mismo color.
+    <View className="rounded-2xl bg-slate-50 p-6 shadow-sm dark:bg-surface-2" nativeID="competitions-tab-root" testID="competitions-tab-root">
       {/* `items-start` (no `items-center`) -- TabBar trae su propio
           margin-bottom (separación respecto a la lista de abajo), que al
           centrarse por cross-axis junto al botón corriría la fila de tabs

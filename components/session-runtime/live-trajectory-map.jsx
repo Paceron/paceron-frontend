@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
@@ -93,7 +93,7 @@ function CurrentPositionMarker({ point, photoUrl, initials }) {
 // (ver utils/distance.js#smoothGpsPoint) por el caller -- este
 // componente no sabe ni le importa de dónde salió el punto, solo lo
 // dibuja.
-export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials }) {
+export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal, onMapTouchStart, onMapTouchEnd }) {
   const cameraRef = useRef(null);
   const [activeMarker, setActiveMarker] = useState(null);
   // Mismo guard que RouteMapPreview -- Marker.onPress no consume el tap
@@ -136,8 +136,24 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
   const endLabelBelow = midLat != null && referenceCoords[referenceCoords.length - 1] ? referenceCoords[referenceCoords.length - 1][1] > midLat : false;
   const currentPositionLngLat = currentPosition ? [currentPosition.longitude, currentPosition.latitude] : null;
 
+  // Gatillado por cambio de prop (un contador que el caller incrementa en su
+  // botón de recentrar) en vez de exponer `cameraRef` hacia afuera -- este
+  // componente sigue sin dar acceso a su cámara a quien lo usa.
+  useEffect(() => {
+    if (recenterSignal == null || !currentPositionLngLat) return;
+    cameraRef.current?.flyTo({ center: currentPositionLngLat, duration: 500 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recenterSignal]);
+
   return (
-    <View className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200" nativeID="live-trajectory-map-wrapper" testID="live-trajectory-map-wrapper">
+    <View
+      className="h-full w-full overflow-hidden rounded-2xl border-2 border-gray-200"
+      nativeID="live-trajectory-map-wrapper"
+      onTouchCancel={onMapTouchEnd}
+      onTouchEnd={onMapTouchEnd}
+      onTouchStart={onMapTouchStart}
+      testID="live-trajectory-map-wrapper"
+    >
       <Map
         attribution={false}
         logo={false}
@@ -175,7 +191,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
             en la versión web, para que las dos plataformas se sientan
             parecidas. */}
         <Camera initialViewState={{ center: initialCenter, zoom: 14 }} maxBounds={maxBounds} maxZoom={18} minZoom={12} ref={cameraRef} />
-        {referenceCoords.length > 1 && (
+        {!hideReferenceLine && referenceCoords.length > 1 && (
           <GeoJSONSource data={{ type: 'Feature', geometry: referenceRoute, properties: {} }} id="live-trajectory-map-reference-source">
             <Layer id="live-trajectory-map-reference-layer" style={{ lineColor: '#94a3b8', lineWidth: 3, lineDasharray: [2, 2] }} type="line" />
           </GeoJSONSource>
