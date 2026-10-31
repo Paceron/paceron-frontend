@@ -154,8 +154,17 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   const idPrefix = `competitions-tab-row-${competition.id}`;
 
   const isOwnPendingProposal = competition.status === 'pending_approval' && competition.createdByRole === 'runner' && competition.createdByUserId === currentUserId;
-  const canClose = isTrainerView && competition.status === 'active' && competition.endAt && competition.endAt < new Date().toISOString().slice(0, 10);
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // `now` (timestamp numérico), no un string de fecha truncado -- bug real
+  // reportado 2026-10-31: comparar un ISO datetime completo (`startAt`/
+  // `endAt`, RFC3339 con hora) contra un string de solo fecha
+  // ("2026-10-31") con `<`/`<=` es comparación LEXICOGRÁFICA de strings, no
+  // de fechas. Para cualquier competencia de HOY (con cualquier hora), el
+  // datetime completo compara como "mayor" que el string corto (más
+  // caracteres después del prefijo compartido) -- `hasStarted` daba
+  // `false` para una competencia recién creada con horario de inicio ya
+  // pasado, bloqueando "Correr esta trayectoria" sin ningún motivo real.
+  const now = Date.now();
+  const canClose = isTrainerView && competition.status === 'active' && competition.endAt && new Date(competition.endAt).getTime() < now;
   // `canRunBase` sigue siendo "¿esto es algo que este corredor podría
   // llegar a correr alguna vez?" (participante + ruta + activa) -- NO
   // incluye fecha/cupo. Eso decide si el botón se RENDERIZA en absoluto
@@ -173,22 +182,19 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   // Pedido real 2026-10-23: antes esto no chequeaba la fecha de inicio en
   // absoluto -- una competencia de ruta con `startAt` futuro igual
   // ofrecía "Correr esta trayectoria" como si ya se pudiera.
-  const hasStarted = competition.startAt <= todayIso;
+  const hasStarted = new Date(competition.startAt).getTime() <= now;
   const canPlayNow = hasStarted && remainingAttempts > 0;
   const runTooltipLabel = !hasStarted
     ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
     : remainingAttempts > 0
       ? `Correr esta trayectoria (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
       : 'Sin intentos disponibles';
-  // Diagnóstico sin comportamiento (2026-10-31): reporte real de un "Play"
-  // que no respondía en una competencia recién creada, sin intentos
-  // previos -- recorrido el conteo de intentos (DAO/service del backend,
-  // query key del frontend) sin encontrar la causa por lectura de código.
-  // Loguea solo cuando el valor relevante cambia (no en cada render) para
-  // que la próxima vez que pase, el log de Metro/DebugLogPanel diga de
-  // entrada si `canPlayNow` da false por intentos agotados, por fecha, o
-  // si en realidad es true (botón habilitado, el problema estaría en otro
-  // lado, no acá).
+  // Diagnóstico sin comportamiento (2026-10-31): el log que sigue fue lo
+  // que confirmó el `hasStarted` roto de arriba (competencia recién creada
+  // con `hasStarted=false` pese a horario de inicio ya pasado) -- se deja
+  // puesto, sigue sirviendo para distinguir de entrada si un futuro "Play
+  // no responde" es por fecha, por intentos agotados, o si en realidad da
+  // `true` (en cuyo caso el problema está en otro lado, no acá).
   useEffect(() => {
     if (!canRunBase) return;
     logDebug(`competitions-tab competencia=${competition.id} canPlayNow=${canPlayNow} hasStarted=${hasStarted} attemptsUsados=${myAttempts.length} maxAttempts=${maxAttempts ?? 'sin límite'}`);
