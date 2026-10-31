@@ -486,7 +486,14 @@ function SessionPreStartScreenContent() {
         </View>
       </ScrollView>
 
-      {/* Botonera fija fuera del ScrollView: la lista scrollea sin arrastrarlo. */}
+      {/* Botonera fija fuera del ScrollView: la lista scrollea sin arrastrarlo.
+          En web, sin ninguna de las ramas de abajo, no queda nada que
+          mostrar (el Play final es nativo-only) -- sin esta guarda la caja
+          se montaba igual, vacía, con borde y fondo propios (bug real,
+          encontrado en la revisión final de esta rama: el mismo pulido que
+          le agregó el borde/fondo a este footer fue lo que hizo visible el
+          hueco). Mismo criterio que trainer-session-pre-start-screen.jsx. */}
+      {(showReview || closedByTrainer || waitingForTrainer || gateLoading || !isWeb) && (
       <View className="border-t border-slate-100 bg-white px-4 pb-4 pt-3 dark:border-slate-800 dark:bg-surface" nativeID="session-pre-start-screen-footer" testID="session-pre-start-screen-footer">
         {showReview ? (
           <View className="items-center" nativeID="session-pre-start-screen-review-container" testID="session-pre-start-screen-review-container">
@@ -541,6 +548,7 @@ function SessionPreStartScreenContent() {
           </Animated.View>
         )}
       </View>
+      )}
       </View>
     </View>
   );
