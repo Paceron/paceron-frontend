@@ -21,6 +21,7 @@ import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-d
 import { notifyError } from '../../utils/haptics.js';
 import { RouteMapPreview } from '../team/route-map-preview';
 import { CompetitionRankingModal } from '../team/competition-ranking-modal.jsx';
+import { logDebug } from '../../utils/debug-log.js';
 
 // Pre-start dedicado de un intento de competencia por trayectoria (Spec
 // 4c probó en dispositivo que el pre-start genérico, session-pre-start-
@@ -123,6 +124,15 @@ function RouteAttemptPreStartScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playReady]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
+  // Diagnóstico sin comportamiento (2026-10-31), mismo motivo que el de
+  // competitions-tab.jsx -- este Play solo depende de permiso GPS +
+  // cercanía al punto de inicio, nada de intentos/cupo, así que si vuelve
+  // a reportarse "bloqueado" acá el log dice de entrada cuál de las dos
+  // cosas es.
+  useEffect(() => {
+    logDebug(`route-attempt-pre-start playState=${playState} gpsPermissionGranted=${gpsPermissionGranted} distanceToStart=${distanceToStart}`);
+  }, [playState, gpsPermissionGranted, distanceToStart]);
 
   if (!pendingSession || !routeAttempt) return <Redirect href="/" />;
 

@@ -23,6 +23,7 @@ import { RouteMapPreview } from './route-map-preview';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { logDebug } from '../../utils/debug-log.js';
 
 const STATUS_META = {
   pending_approval: { label: 'Pendiente de aprobación', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
@@ -179,6 +180,19 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
     : remainingAttempts > 0
       ? `Correr esta trayectoria (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
       : 'Sin intentos disponibles';
+  // Diagnóstico sin comportamiento (2026-10-31): reporte real de un "Play"
+  // que no respondía en una competencia recién creada, sin intentos
+  // previos -- recorrido el conteo de intentos (DAO/service del backend,
+  // query key del frontend) sin encontrar la causa por lectura de código.
+  // Loguea solo cuando el valor relevante cambia (no en cada render) para
+  // que la próxima vez que pase, el log de Metro/DebugLogPanel diga de
+  // entrada si `canPlayNow` da false por intentos agotados, por fecha, o
+  // si en realidad es true (botón habilitado, el problema estaría en otro
+  // lado, no acá).
+  useEffect(() => {
+    if (!canRunBase) return;
+    logDebug(`competitions-tab competencia=${competition.id} canPlayNow=${canPlayNow} hasStarted=${hasStarted} attemptsUsados=${myAttempts.length} maxAttempts=${maxAttempts ?? 'sin límite'}`);
+  }, [canRunBase, canPlayNow, hasStarted, myAttempts.length, maxAttempts, competition.id]);
   const canApproveReject = isTrainerView && competition.status === 'pending_approval';
   // Ranking: visible para CUALQUIERA que pueda ver la competencia mientras
   // esté activa -- a diferencia del resto de las acciones de acá, no

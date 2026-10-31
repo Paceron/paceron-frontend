@@ -340,6 +340,7 @@ function RouteAttemptLiveScreenContent() {
   const routeAttempt = pendingSession?.routeAttempt ?? null;
 
   const [booted, setBooted] = useState(false);
+  const [bootError, setBootError] = useState(null);
   const [run, setRun] = useState(null);
   const [set, setSet] = useState(null);
   const [phase, setPhase] = useState('ready'); // ready -> countdown -> running <-> paused
@@ -394,32 +395,54 @@ function RouteAttemptLiveScreenContent() {
   useEffect(() => {
     if (!pendingSession?.sessionInstance || !routeAttempt) return;
     (async () => {
-      await initSessionDb();
-      const sessionInstance = pendingSession.sessionInstance;
-      let runRow = await getActiveRun(sessionInstance.id, pendingSession.date, userId);
-      if (!runRow) {
-        const createdId = await createRun({
-          sessionInstanceId: sessionInstance.id,
-          sessionName: sessionInstance.name ?? 'Corrida',
-          sessionDate: pendingSession.date,
-          teamId: pendingSession.teamId,
-          userId,
-          gpsEnabled: true,
-          exercises: sessionInstance.exercises ?? [],
-          competitionId: routeAttempt.competitionId,
-        });
-        runRow = await getRun(createdId);
+      // Bug real reportado 2026-10-31: esta IIFE no tenía try/catch -- un
+      // cuelgue o un throw en cualquiera de los awaits de abajo (SQLite real
+      // en dispositivo, nunca ejercitado en el preview web porque expo-sqlite
+      // no corre ahí) dejaba `booted` en false para siempre: spinner infinito,
+      // sin ningún log ni aviso, Y el intento ya creado del lado del backend
+      // (POST /competitions/{id}/attempts, en el Play del pre-start, ANTES de
+      // llegar acá) quedaba en wip para siempre -- consumía el único intento
+      // permitido sin que el corredor pudiera terminarlo ni reintentarlo. El
+      // try/catch de acá adentro al menos saca al corredor del spinner con un
+      // aviso en vez de dejarlo colgado; no libera el intento del backend ya
+      // creado (eso necesita además extender el guard de salida más abajo
+      // para cubrir desde que se crea el intento, no solo desde que arranca
+      // a correr -- deliberadamente fuera de este cambio, ver nota aparte).
+      try {
+        logDebug('route-attempt-live bootstrap arranca');
+        await initSessionDb();
+        const sessionInstance = pendingSession.sessionInstance;
+        let runRow = await getActiveRun(sessionInstance.id, pendingSession.date, userId);
+        if (!runRow) {
+          logDebug(`route-attempt-live bootstrap sin run local activo, creando uno nuevo instance=${sessionInstance.id}`);
+          const createdId = await createRun({
+            sessionInstanceId: sessionInstance.id,
+            sessionName: sessionInstance.name ?? 'Corrida',
+            sessionDate: pendingSession.date,
+            teamId: pendingSession.teamId,
+            userId,
+            gpsEnabled: true,
+            exercises: sessionInstance.exercises ?? [],
+            competitionId: routeAttempt.competitionId,
+          });
+          logDebug(`route-attempt-live bootstrap run local creado id=${createdId}`);
+          runRow = await getRun(createdId);
+        }
+        setSessionStarted(runRow.id, true);
+        setRun(runRow);
+        const sets = await getSetsForRun(runRow.id);
+        const onlySet = sets[0];
+        setSet(onlySet);
+        setDistance(onlySet.distance_meters ?? null);
+        distanceRef.current = onlySet.distance_meters ?? null;
+        savedTimingsRef.current = { wallMs: onlySet.duration_ms ?? 0, activeMs: onlySet.active_duration_ms ?? 0 };
+        if (onlySet.status === 'started' && !onlySet.ended_at) setPhase('paused');
+        logDebug(`route-attempt-live bootstrap ok run=${runRow.id} set=${onlySet.id}`);
+        setBooted(true);
+      } catch (error) {
+        logDebug('route-attempt-live bootstrap error', error);
+        setBootError('No pudimos preparar el intento. Volvé e intentá de nuevo.');
       }
-      setSessionStarted(runRow.id, true);
-      setRun(runRow);
-      const sets = await getSetsForRun(runRow.id);
-      const onlySet = sets[0];
-      setSet(onlySet);
-      setDistance(onlySet.distance_meters ?? null);
-      distanceRef.current = onlySet.distance_meters ?? null;
-      savedTimingsRef.current = { wallMs: onlySet.duration_ms ?? 0, activeMs: onlySet.active_duration_ms ?? 0 };
-      if (onlySet.status === 'started' && !onlySet.ended_at) setPhase('paused');
-      setBooted(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -673,6 +696,19 @@ function RouteAttemptLiveScreenContent() {
   usePreventRemove((phase === 'running' || phase === 'paused') && !bypassingExit, () => setCancelVisible(true));
 
   if (!pendingSession || !routeAttempt) return <Redirect href="/" />;
+  if (bootError) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center gap-4 bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-live-screen-boot-error-root" testID="route-attempt-live-screen-boot-error-root">
+        <MaterialCommunityIcons color={colors.error} name="alert-circle-outline" size={40} />
+        <Text className="text-center text-sm text-slate-600 dark:text-slate-300" nativeID="route-attempt-live-screen-boot-error-label" testID="route-attempt-live-screen-boot-error-label">
+          {bootError}
+        </Text>
+        <Pressable className="h-11 items-center justify-center rounded-full border border-slate-300 px-6 dark:border-slate-600" nativeID="route-attempt-live-screen-boot-error-back" onPress={() => router.back()} testID="route-attempt-live-screen-boot-error-back">
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="route-attempt-live-screen-boot-error-back-label" testID="route-attempt-live-screen-boot-error-back-label">Volver</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
   if (!booted || !set) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-live-screen-loading-root" testID="route-attempt-live-screen-loading-root">
