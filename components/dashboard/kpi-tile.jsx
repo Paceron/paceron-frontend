@@ -5,6 +5,11 @@ import { useThemeColors } from '../../theme/colors.js';
 
 // Tile de un KPI: número grande, delta, veredicto y "—" ante `null`.
 //
+// `formattedValue` deja pasar un valor ya formateado (el Home del corredor
+// formatea fechas y relojes además de números) y `labelNumberOfLines` permite
+// que labels largos ocupen dos líneas en la grilla angosta del Home sin
+// truncarse. Los defaults conservan el uso del dashboard.
+//
 // NO reusa `components/shared/stat-tile.jsx`: ese no tiene slot de unidad, ni
 // delta, ni veredicto —meterlos ahí sería agregar props que ninguna de sus
 // pantallas actuales necesita, y el resultado sería el mismo componente con la
@@ -20,7 +25,7 @@ const VERDICT_STYLES = {
   regressing: { text: 'text-red-600 dark:text-red-400', icon: '#ba1a1a' },
 };
 
-export function KpiTile({ id, label, value, unit, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false }) {
+export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false, labelNumberOfLines = 1 }) {
   const colors = useThemeColors();
   const verdictStyle = VERDICT_STYLES[verdict] ?? null;
 
@@ -41,13 +46,13 @@ export function KpiTile({ id, label, value, unit, delta, deltaUnit, verdict, hin
 
   return (
     <View
-      className={`rounded-2xl border p-3 ${surfaceClass}`}
+      className={`h-full rounded-2xl border p-3 ${surfaceClass}`}
       nativeID={`${id}-root`}
       testID={`${id}-root`}
     >
       <View className="flex-row items-center gap-1" nativeID={`${id}-header`} testID={`${id}-header`}>
         {icon ? <MaterialCommunityIcons color={colors.warning ?? '#b45309'} name={icon} size={13} /> : null}
-        <Text className="flex-1 text-[11px] leading-4 text-amber-800 dark:text-amber-200" nativeID={`${id}-label`} numberOfLines={1} testID={`${id}-label`}>
+        <Text className="flex-1 text-[11px] leading-4 text-amber-800 dark:text-amber-200" nativeID={`${id}-label`} numberOfLines={labelNumberOfLines} testID={`${id}-label`}>
           {label}
         </Text>
       </View>
@@ -67,7 +72,7 @@ export function KpiTile({ id, label, value, unit, delta, deltaUnit, verdict, hin
           numberOfLines={1}
           testID={`${id}-value`}
         >
-          {hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC}
+          {formattedValue != null ? formattedValue : hasMetric(value) ? formatMetric(value, unit) : EMPTY_METRIC}
         </Text>
         {delta !== undefined ? (
           <Text
