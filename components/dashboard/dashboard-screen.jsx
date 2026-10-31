@@ -387,7 +387,7 @@ export function DashboardScreen({ teamId }) {
 
   useEffect(() => {
     if (!pdfReportMode) return undefined;
-    const frame = setTimeout(() => reportRenderResolver.current?.(), 180);
+    const frame = setTimeout(() => reportRenderResolver.current?.(), 500);
     return () => clearTimeout(frame);
   }, [pdfReportMode]);
 

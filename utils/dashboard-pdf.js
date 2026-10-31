@@ -169,8 +169,8 @@ export function buildDashboardPdfHtml({
 ${metaHtml(meta)}
 ${filtersHtml(filters)}
 ${kpisHtml(kpis)}
-${screenshotHtml(screenshotDataUri, screenshotDataUris)}
 ${seriesHtml(series, units, columns)}
+${screenshotHtml(screenshotDataUri, screenshotDataUris)}
 ${generatedAt ? `<footer>Generado el ${escapeHtml(generatedAt)} · Paceron</footer>` : ''}
 </body>
 </html>`;
