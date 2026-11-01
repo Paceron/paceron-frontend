@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useCalendarTabStore } from '../../store/calendar-tab-store.js';
 import { useMemberCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
@@ -15,6 +15,7 @@ import { FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionTabBar } from '../shared/section-tab-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
 import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
@@ -115,7 +116,7 @@ function MyCalendarScreenContent() {
         showsVerticalScrollIndicator={false}
         testID="my-calendar-screen-scroll"
       >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="my-calendar-screen-container" testID="my-calendar-screen-container">
+      <ScreenCard nativeID="my-calendar-screen-container" testID="my-calendar-screen-container">
         <View className="mb-6 flex-row flex-wrap items-center gap-2" nativeID="my-calendar-screen-header" testID="my-calendar-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -189,7 +190,7 @@ function MyCalendarScreenContent() {
         )}
 
         {activeTab === 'historial' && <TrainingsHistoryTab role="runner" />}
-      </View>
+      </ScreenCard>
       </ScrollView>
 
       <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="member" visible={dayModalVisible} />
