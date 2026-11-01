@@ -3,7 +3,7 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
@@ -13,6 +13,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { SessionsCatalogTab } from './sessions-catalog-tab.jsx';
 import { ExercisesCatalogTab } from './exercises-catalog-tab.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -77,6 +78,7 @@ function PlansTab() {
       )}
       icon="clipboard-text-outline"
       title="Tus planes"
+      variant="nested"
     >
       {loading ? (
         <View className="gap-2" nativeID="training-plans-loading" testID="training-plans-loading">
@@ -122,7 +124,7 @@ function TrainingPlansScreenContent() {
       showsVerticalScrollIndicator={false}
       testID="training-plans-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="training-plans-screen-container" testID="training-plans-screen-container">
+      <ScreenCard nativeID="training-plans-screen-container" testID="training-plans-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="training-plans-screen-header" testID="training-plans-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -142,7 +144,7 @@ function TrainingPlansScreenContent() {
         {activeTab === 'planes' && <PlansTab />}
         {activeTab === 'sesiones' && <SessionsCatalogTab />}
         {activeTab === 'ejercicios' && <ExercisesCatalogTab />}
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }
