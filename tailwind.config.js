@@ -6,11 +6,11 @@ module.exports = {
     extend: {
       colors: {
         primary: '#8cc63e',
-        ink: '#0d1013',
-        surface: '#111518',
-        'surface-2': '#1d2125',
-        'surface-3': '#282d31',
-        paper: '#f3efe4',
+        ink: '#020617',
+        surface: '#0f172a',
+        'surface-2': '#1e293b',
+        'surface-3': '#334155',
+        paper: '#cbd5e1',
         'primary-tint': '#dcec9e',
         'primary-tint-subtle': '#eef3dc',
         'on-primary-tint': '#3c6b12',
