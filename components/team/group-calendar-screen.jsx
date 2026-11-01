@@ -8,7 +8,7 @@ import Toast from 'react-native-toast-message';
 import '../../config/calendarLocale.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { usePermissions } from '../../hooks/use-user.js';
@@ -28,6 +28,7 @@ import { CalendarFadeIn } from '../calendar/calendar-fade-in.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
@@ -297,7 +298,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         showsVerticalScrollIndicator={false}
         testID="group-calendar-screen-scroll"
       >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="group-calendar-screen-container" testID="group-calendar-screen-container">
+      <ScreenCard nativeID="group-calendar-screen-container" testID="group-calendar-screen-container">
         <View className="mb-6 flex-row flex-wrap items-center gap-2" nativeID="group-calendar-screen-header" testID="group-calendar-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -358,7 +359,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         </View>
 
         <View
-          className="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
+          className="rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface-2"
           nativeID="group-calendar-month-view"
           testID="group-calendar-month-view"
         >
@@ -403,7 +404,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
             />
           </CalendarFadeIn>
         </View>
-      </View>
+      </ScreenCard>
       </ScrollView>
 
       <AnimatedDropdown
