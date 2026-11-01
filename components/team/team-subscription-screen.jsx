@@ -15,6 +15,7 @@ import { formatMonthlyFee, formatArs } from '../../utils/currency.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess } from '../../utils/haptics.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por plataforma
 // (.web.jsx antes que .jsx) cuando el specifier no trae extensión — ver quirk
@@ -30,10 +31,10 @@ function formatIsoDate(iso) {
 
 function StatusBadge({ status, hasDebt }) {
   const meta = hasDebt
-    ? { label: 'Cuota vencida', icon: 'alert-circle', className: 'border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-900/20', textClassName: 'text-rose-700 dark:text-rose-300', color: '#e11d48' }
+    ? { label: 'Cuota vencida', icon: 'alert-circle', className: 'border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-900/20', textClassName: 'text-rose-700 dark:text-rose-400', color: '#e11d48' }
     : status === 'active'
-      ? { label: 'Membresía activa', icon: 'check-circle', className: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20', textClassName: 'text-emerald-700 dark:text-emerald-300', color: '#059669' }
-      : { label: 'Pago pendiente', icon: 'clock-outline', className: 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20', textClassName: 'text-amber-700 dark:text-amber-300', color: '#d97706' };
+      ? { label: 'Membresía activa', icon: 'check-circle', className: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20', textClassName: 'text-emerald-700 dark:text-emerald-400', color: '#059669' }
+      : { label: 'Pago pendiente', icon: 'clock-outline', className: 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20', textClassName: 'text-amber-700 dark:text-amber-400', color: '#d97706' };
 
   return (
     <View className={`flex-row items-center gap-2 self-start rounded-full border px-3 py-1.5 ${meta.className}`} nativeID="team-subscription-status-badge" testID="team-subscription-status-badge">
@@ -166,6 +167,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
       testID="team-subscription-screen-scroll"
     >
       <View className={`w-full self-center ${isWeb ? 'max-w-2xl' : ''}`} nativeID="team-subscription-screen-container" testID="team-subscription-screen-container">
+      <ScreenCard nativeID="team-subscription-screen-card" testID="team-subscription-screen-card">
         <View className="mb-8 flex-row items-center gap-2" nativeID="team-subscription-screen-header" testID="team-subscription-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -185,7 +187,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
         </View>
 
         {confirming && (
-          <View className="mb-4 flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="team-subscription-confirming-banner" testID="team-subscription-confirming-banner">
+          <View className="mb-4 flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="team-subscription-confirming-banner" testID="team-subscription-confirming-banner">
             <ActivityIndicator color={colors.primary} />
             <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID="team-subscription-confirming-banner-label" testID="team-subscription-confirming-banner-label">
               Confirmando pago…
@@ -193,7 +195,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
           </View>
         )}
 
-        <SectionCard icon="cash-multiple" title="Membresía">
+        <SectionCard icon="cash-multiple" title="Membresía" variant="nested">
           {loading ? (
             <View className="items-center py-6" nativeID="team-subscription-screen-loading" testID="team-subscription-screen-loading">
               <ActivityIndicator color={colors.primary} />
@@ -272,6 +274,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
             publicKey={checkoutData.publicKey}
           />
         )}
+      </ScreenCard>
       </View>
     </ScrollView>
   );
