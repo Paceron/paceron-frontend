@@ -41,6 +41,22 @@ export function AuthenticatedHomeScreen() {
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       testID="authenticated-home-screen-root"
     >
+      {/* NO usa `ScreenCard` (ver docs/superpowers/specs/2026-10-31-visual-
+          design-refresh-design.md) a propósito -- evaluado en la Tarea 11 de
+          ese plan. A diferencia de una pantalla con contenido suelto, los
+          4 hijos de acá YA son cada uno su propia card individual, con la
+          MISMA combinación bg-white/dark:bg-surface que ScreenCard
+          introduciría (confirmado en next-training-banner.jsx, que incluso
+          documenta en su propio comentario que ese tono fue elegido a
+          propósito para igualar a Rachas/Logros). Envolver todo en
+          ScreenCard apilaría una card del mismo tono alrededor de otras
+          cards del mismo tono -- el mismo problema de "colisión de tono"
+          que este plan viene resolviendo en otras pantallas con
+          variant="nested"/bg-slate-50, pero sin ningún nivel más adentro
+          al que demotear: estas 4 ya SON el nivel de contenido, no una
+          card anidada dentro de otra. El único elemento realmente suelto
+          (el saludo de arriba) es una sola línea de texto, no contenido
+          de pantalla que amerite su propia card. */}
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="authenticated-home-screen-container" testID="authenticated-home-screen-container">
         <Text
           className="mb-4 text-2xl text-slate-900 dark:text-white"
