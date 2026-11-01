@@ -30,6 +30,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { DateField } from '../forms/fields.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { ComplianceBadge } from './compliance-badge.jsx';
 import { ComplianceChart } from './compliance-chart.jsx';
@@ -54,7 +55,7 @@ function SessionRow({ session, isWide, onPress }) {
   return (
     <Pressable
       accessibilityLabel={`${session.sessionName}, ${formatComparisonDate(session.date)}, cumplimiento ${formatCompliance(session.compliancePct)}`}
-      className="rounded-2xl border border-slate-200 bg-white p-4 hover:bg-slate-50 active:opacity-80 dark:border-slate-700 dark:bg-surface dark:hover:bg-slate-800"
+      className="rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:bg-slate-100 active:opacity-80 dark:border-transparent dark:bg-surface-2 dark:hover:bg-surface-3"
       nativeID={id}
       onPress={onPress}
       testID={id}
@@ -135,7 +136,7 @@ function TrainingComparisonContent() {
       showsVerticalScrollIndicator={false}
       testID="training-comparison-scroll"
     >
-      <View className={`w-full self-center ${isWide ? 'max-w-5xl' : ''}`} nativeID="training-comparison-container" testID="training-comparison-container">
+      <ScreenCard maxWidthClassName="max-w-5xl" nativeID="training-comparison-container" testID="training-comparison-container">
         <View className="mb-6 flex-row items-center gap-2" nativeID="training-comparison-header" testID="training-comparison-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -206,7 +207,7 @@ function TrainingComparisonContent() {
             </Pressable>
           </View>
         ) : list && sessions.length === 0 ? (
-          <View className="items-center rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-surface" nativeID="training-comparison-empty" testID="training-comparison-empty">
+          <View className="items-center rounded-2xl border border-slate-200 bg-slate-50 p-8 dark:border-transparent dark:bg-surface-2" nativeID="training-comparison-empty" testID="training-comparison-empty">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="scale-balance" size={32} />
             <Text className="mt-2 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="training-comparison-empty-label" testID="training-comparison-empty-label">
               {EMPTY_COMPARISON_MESSAGE}
@@ -220,7 +221,7 @@ function TrainingComparisonContent() {
               <StatTile icon="run" idPrefix="training-comparison-tile" label="Con actividad" value={String(list.summary.sessionsWithActivity)} />
             </View>
 
-            <View className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="training-comparison-chart-card" testID="training-comparison-chart-card">
+            <View className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="training-comparison-chart-card" testID="training-comparison-chart-card">
               <View className="mb-3 flex-row flex-wrap items-center justify-between gap-2" nativeID="training-comparison-chart-header" testID="training-comparison-chart-header">
                 <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100" nativeID="training-comparison-chart-title" testID="training-comparison-chart-title">
                   Cumplimiento por sesión
@@ -242,7 +243,7 @@ function TrainingComparisonContent() {
             </View>
           </View>
         ) : null}
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }
