@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
+import { ScreenCard } from '../shared/screen-card.jsx';
 // Con extensión explícita, a propósito: esta página siempre corre en un
 // bundle web (la carga el WebView nativo de checkout-flow.jsx, que ya
 // provee su propio chrome de modal) — quiere siempre el Brick sin chrome,
@@ -43,9 +44,11 @@ export function CheckoutWebPage() {
   if (!token) {
     return (
       <View className="flex-1 items-center justify-center bg-paper p-6 dark:bg-ink" nativeID="checkout-page-no-session" testID="checkout-page-no-session">
-        <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID="checkout-page-no-session-label" testID="checkout-page-no-session-label">
-          No pudimos validar tu sesión. Cerrá esta ventana e intentá de nuevo.
-        </Text>
+        <ScreenCard nativeID="checkout-page-no-session-container" testID="checkout-page-no-session-container">
+          <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID="checkout-page-no-session-label" testID="checkout-page-no-session-label">
+            No pudimos validar tu sesión. Cerrá esta ventana e intentá de nuevo.
+          </Text>
+        </ScreenCard>
       </View>
     );
   }
@@ -62,16 +65,18 @@ export function CheckoutWebPage() {
       nativeID="checkout-page-root"
       testID="checkout-page-root"
     >
-      <CheckoutBrick
-        amount={Number(params.amount)}
-        concept={params.concept}
-        installmentId={params.installmentId ? Number(params.installmentId) : undefined}
-        marketplace={params.marketplace === 'true'}
-        onApproved={(payment) => postToNative({ status: 'approved', payment })}
-        onError={(error) => postToNative({ status: 'error', message: error?.message ?? 'Error desconocido' })}
-        preferenceId={params.preferenceId}
-        publicKey={params.publicKey}
-      />
+      <ScreenCard nativeID="checkout-page-container" testID="checkout-page-container">
+        <CheckoutBrick
+          amount={Number(params.amount)}
+          concept={params.concept}
+          installmentId={params.installmentId ? Number(params.installmentId) : undefined}
+          marketplace={params.marketplace === 'true'}
+          onApproved={(payment) => postToNative({ status: 'approved', payment })}
+          onError={(error) => postToNative({ status: 'error', message: error?.message ?? 'Error desconocido' })}
+          preferenceId={params.preferenceId}
+          publicKey={params.publicKey}
+        />
+      </ScreenCard>
     </ScrollView>
   );
 }
