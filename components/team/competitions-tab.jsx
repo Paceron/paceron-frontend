@@ -23,6 +23,7 @@ import { RouteMapPreview } from './route-map-preview';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { logDebug } from '../../utils/debug-log.js';
 
 const STATUS_META = {
   pending_approval: { label: 'Pendiente de aprobación', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
@@ -153,8 +154,17 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   const idPrefix = `competitions-tab-row-${competition.id}`;
 
   const isOwnPendingProposal = competition.status === 'pending_approval' && competition.createdByRole === 'runner' && competition.createdByUserId === currentUserId;
-  const canClose = isTrainerView && competition.status === 'active' && competition.endAt && competition.endAt < new Date().toISOString().slice(0, 10);
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // `now` (timestamp numérico), no un string de fecha truncado -- bug real
+  // reportado 2026-10-31: comparar un ISO datetime completo (`startAt`/
+  // `endAt`, RFC3339 con hora) contra un string de solo fecha
+  // ("2026-10-31") con `<`/`<=` es comparación LEXICOGRÁFICA de strings, no
+  // de fechas. Para cualquier competencia de HOY (con cualquier hora), el
+  // datetime completo compara como "mayor" que el string corto (más
+  // caracteres después del prefijo compartido) -- `hasStarted` daba
+  // `false` para una competencia recién creada con horario de inicio ya
+  // pasado, bloqueando "Correr esta trayectoria" sin ningún motivo real.
+  const now = Date.now();
+  const canClose = isTrainerView && competition.status === 'active' && competition.endAt && new Date(competition.endAt).getTime() < now;
   // `canRunBase` sigue siendo "¿esto es algo que este corredor podría
   // llegar a correr alguna vez?" (participante + ruta + activa) -- NO
   // incluye fecha/cupo. Eso decide si el botón se RENDERIZA en absoluto
@@ -172,13 +182,23 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   // Pedido real 2026-10-23: antes esto no chequeaba la fecha de inicio en
   // absoluto -- una competencia de ruta con `startAt` futuro igual
   // ofrecía "Correr esta trayectoria" como si ya se pudiera.
-  const hasStarted = competition.startAt <= todayIso;
+  const hasStarted = new Date(competition.startAt).getTime() <= now;
   const canPlayNow = hasStarted && remainingAttempts > 0;
   const runTooltipLabel = !hasStarted
     ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
     : remainingAttempts > 0
       ? `Correr esta trayectoria (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
       : 'Sin intentos disponibles';
+  // Diagnóstico sin comportamiento (2026-10-31): el log que sigue fue lo
+  // que confirmó el `hasStarted` roto de arriba (competencia recién creada
+  // con `hasStarted=false` pese a horario de inicio ya pasado) -- se deja
+  // puesto, sigue sirviendo para distinguir de entrada si un futuro "Play
+  // no responde" es por fecha, por intentos agotados, o si en realidad da
+  // `true` (en cuyo caso el problema está en otro lado, no acá).
+  useEffect(() => {
+    if (!canRunBase) return;
+    logDebug(`competitions-tab competencia=${competition.id} canPlayNow=${canPlayNow} hasStarted=${hasStarted} attemptsUsados=${myAttempts.length} maxAttempts=${maxAttempts ?? 'sin límite'}`);
+  }, [canRunBase, canPlayNow, hasStarted, myAttempts.length, maxAttempts, competition.id]);
   const canApproveReject = isTrainerView && competition.status === 'pending_approval';
   // Ranking: visible para CUALQUIERA que pueda ver la competencia mientras
   // esté activa -- a diferencia del resto de las acciones de acá, no
@@ -453,7 +473,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
       teamId,
       teamName,
       date: new Date().toISOString().slice(0, 10),
-      routeAttempt: { route: competition.route, acceptanceRadiusMeters: competition.acceptanceRadiusMeters, competitionId: competition.id },
+      routeAttempt: { route: competition.route, acceptanceRadiusMeters: competition.acceptanceRadiusMeters, competitionId: competition.id, sessionInstanceId: competition.sessionInstanceId },
     });
     router.push('/route-attempt-pre-start');
   };
@@ -469,11 +489,14 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
 
   return (
     // Card única envolviendo todo -- mismas clases que SectionCard
-    // (components/forms/section-card.jsx, usado por Corredores/Solicitudes/
-    // etc.) para unificar estilos, pero SIN el componente en sí: éste
-    // fuerza un título+ícono de header que acá es redundante (la pestaña
-    // de arriba ya dice "Competencias") -- pedido real, 2026-10-15.
-    <View className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="competitions-tab-root" testID="competitions-tab-root">
+    // variant="nested" (components/forms/section-card.jsx, usado por
+    // Corredores/Solicitudes/etc. dentro de esta misma pantalla) para
+    // unificar estilos, pero SIN el componente en sí: éste fuerza un
+    // título+ícono de header que acá es redundante (la pestaña de arriba ya
+    // dice "Competencias") -- pedido real, 2026-10-15. Sin borde (solo
+    // fondo tenue) -- vive dentro de team-detail-screen-container, que ya
+    // tiene el suyo del mismo color.
+    <View className="rounded-2xl bg-slate-50 p-6 shadow-sm dark:bg-surface-2" nativeID="competitions-tab-root" testID="competitions-tab-root">
       {/* `items-start` (no `items-center`) -- TabBar trae su propio
           margin-bottom (separación respecto a la lista de abajo), que al
           centrarse por cross-axis junto al botón corriría la fila de tabs

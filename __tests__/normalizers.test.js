@@ -1373,6 +1373,37 @@ describe('toCompetitionModel', () => {
   });
 });
 
+describe('toCompetitionModel -- route/participants wire shape', () => {
+  // Bug real confirmado contra el backend 2026-10-29: `route` viaja como
+  // STRING GeoJSON (no objeto) y el campo de participantes se llama
+  // `participants` (no `participant_user_ids`) -- los dos nombres que el
+  // mock usaba internamente, nunca contrastados contra el backend real.
+  test('parsea route desde un string GeoJSON', () => {
+    const dto = {
+      id: 7, team_id: 5, group_id: null, type: 'route', metric: null,
+      start_at: '2026-10-20T10:00:00Z', end_at: null,
+      route: JSON.stringify({ type: 'LineString', coordinates: [[-58.365, -34.66], [-58.364, -34.661]] }),
+      acceptance_radius_meters: 50, participants: [1, 101],
+      created_by_user_id: 99, created_by_role: 'trainer', status: 'active',
+      approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null,
+    };
+    const model = toCompetitionModel(dto);
+    expect(model.route).toEqual({ type: 'LineString', coordinates: [[-58.365, -34.66], [-58.364, -34.661]] });
+    expect(model.participantUserIds).toEqual(['1', '101']);
+  });
+
+  test('route null (type=metric) se mantiene null, no explota parseando', () => {
+    const dto = {
+      id: 1, team_id: 5, group_id: null, type: 'metric', metric: 'distance',
+      start_at: '2026-10-20T10:00:00Z', end_at: '2026-10-27T10:00:00Z',
+      route: null, acceptance_radius_meters: null, participants: [1],
+      created_by_user_id: 99, created_by_role: 'trainer', status: 'active',
+      approved_by_user_id: null, rejection_reason: null, winner_user_ids: [], finished_at: null,
+    };
+    expect(toCompetitionModel(dto).route).toBeNull();
+  });
+});
+
 describe('toCompetitionModel -- maxAttempts', () => {
   test('maps max_attempts through for a route competition', () => {
     const dto = {
@@ -1453,14 +1484,15 @@ describe('toCompetitionDetailModel -- progress de type=route', () => {
 describe('toCompetitionAttemptListModel', () => {
   test('mapea cada intento, ids a string', () => {
     const list = [{
-      runner_session_id: 9000, session_instance_id: 9000, status: 'finished',
-      started_at: '2026-10-18T14:02:00Z', finished_at: '2026-10-18T14:03:47Z',
+      id: 9000, session_instance_id: 9000, status: 'finished',
+      started_at: '2026-10-18T14:02:00Z', ended_at: '2026-10-18T14:03:47Z',
       distance_meters: 287, duration_ms: 107000, compliance_ratio: 94.2,
     }];
     const [entry] = toCompetitionAttemptListModel(list);
     expect(entry.runnerSessionId).toBe('9000');
     expect(entry.sessionInstanceId).toBe('9000');
     expect(entry.status).toBe('finished');
+    expect(entry.finishedAt).toBe('2026-10-18T14:03:47Z');
     expect(entry.distanceMeters).toBe(287);
     expect(entry.durationMs).toBe(107000);
     expect(entry.complianceRatio).toBe(94.2);
@@ -1494,5 +1526,53 @@ describe('toCreateCompetitionPayload -- max_attempts', () => {
       acceptanceRadiusMeters: '50', maxAttempts: '', participantUserIds: ['1', '2'],
     });
     expect(payload.max_attempts).toBeNull();
+  });
+});
+
+describe('toCreateCompetitionPayload -- start_at/end_at RFC3339', () => {
+  // Bug real confirmado contra el backend 2026-10-29: start_at/end_at tipan
+  // time.Time del lado Go (`binding:"required"`), que exige RFC3339 completo
+  // -- un date-only 'YYYY-MM-DD' (lo que toISODate produce) no parsea y el
+  // backend rechaza la creación con 400. Nunca se había probado este flujo
+  // contra el backend real, solo contra mocks (que no validan formato).
+  test('start_at sale en RFC3339 completo, no date-only', () => {
+    const payload = toCreateCompetitionPayload({
+      type: 'route', startAt: '2026-11-01', route: { type: 'LineString', coordinates: [] },
+      acceptanceRadiusMeters: '50', participantUserIds: ['1', '2'],
+    });
+    expect(payload.start_at).toBe('2026-11-01T00:00:00.000Z');
+  });
+
+  test('end_at (type=metric) también sale en RFC3339 completo', () => {
+    const payload = toCreateCompetitionPayload({
+      type: 'metric', startAt: '2026-11-01', metric: 'distance', endAt: '2026-11-07',
+      participantUserIds: ['1', '2'],
+    });
+    expect(payload.start_at).toBe('2026-11-01T00:00:00.000Z');
+    expect(payload.end_at).toBe('2026-11-07T00:00:00.000Z');
+  });
+});
+
+describe('toCreateCompetitionPayload -- participants/route_geojson wire shape', () => {
+  // Bug real confirmado contra el backend 2026-10-29: "Field validation for
+  // 'ParticipantIDs' failed on the 'required' tag" al crear con el form
+  // completo -- el campo real es `participants`, no `participant_user_ids`;
+  // `route` real es `route_geojson`, un string, no un objeto anidado.
+  test('manda participants (no participant_user_ids), ids a Number', () => {
+    const payload = toCreateCompetitionPayload({
+      type: 'metric', startAt: '2026-11-01', metric: 'distance', endAt: '2026-11-07',
+      participantUserIds: ['1', '2'],
+    });
+    expect(payload.participants).toEqual([1, 2]);
+    expect(payload).not.toHaveProperty('participant_user_ids');
+  });
+
+  test('manda route_geojson como string serializado (no route objeto)', () => {
+    const route = { type: 'LineString', coordinates: [[-58.365, -34.66], [-58.364, -34.661]] };
+    const payload = toCreateCompetitionPayload({
+      type: 'route', startAt: '2026-11-01', route, acceptanceRadiusMeters: '50', participantUserIds: ['1', '2'],
+    });
+    expect(payload.route_geojson).toBe(JSON.stringify(route));
+    expect(payload).not.toHaveProperty('route');
   });
 });

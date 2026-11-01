@@ -4,7 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
-import { usePreventRemove } from '@react-navigation/native';
+import { usePreventRemove, useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -44,6 +44,23 @@ import { computeRouteTimeoutMs, distanceToRouteMeters, totalRouteMeters } from '
 import { LiveTrajectoryMap } from './live-trajectory-map';
 
 const COUNTDOWN_GIF_BG = '#979597';
+
+const BOOTSTRAP_TIMEOUT_MS = 15000;
+
+// Red de seguridad, no reemplaza encontrar la causa real -- si algún await
+// del bootstrap de abajo queda colgado para siempre (nunca resuelve NI
+// rechaza, así que un try/catch solo no alcanza), esto fuerza el error a los
+// BOOTSTRAP_TIMEOUT_MS en vez de dejar el spinner infinito (bug real
+// reportado 2026-10-31: el try/catch de `47b0f08` agarra un throw, pero no
+// un cuelgue puro). No cancela la operación real de adentro (expo-sqlite no
+// expone esa API) -- solo libera la UI para mostrar el error y deja loggeado
+// en qué paso se quedó, para la próxima corrida en dispositivo.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`timeout (${ms}ms) en ${label}`)), ms)),
+  ]);
+}
 
 function CountdownOverlay({ value, onCancelCountdown }) {
   return (
@@ -330,6 +347,7 @@ function ConfirmCancelModal({ visible, onCancel, onConfirm }) {
 
 function RouteAttemptLiveScreenContent() {
   const router = useRouter();
+  const navigation = useNavigation();
   const colors = useThemeColors();
   const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.userId);
@@ -340,6 +358,7 @@ function RouteAttemptLiveScreenContent() {
   const routeAttempt = pendingSession?.routeAttempt ?? null;
 
   const [booted, setBooted] = useState(false);
+  const [bootError, setBootError] = useState(null);
   const [run, setRun] = useState(null);
   const [set, setSet] = useState(null);
   const [phase, setPhase] = useState('ready'); // ready -> countdown -> running <-> paused
@@ -374,6 +393,12 @@ function RouteAttemptLiveScreenContent() {
   const offRouteStreakRef = useRef(0);
   const cancelingRef = useRef(false);
   const pendingExitRef = useRef(null);
+  // Salida pedida mientras el bootstrap todavía no terminó -- el bootstrap
+  // no tiene forma de cancelarse a mitad de camino (ver comentario en su
+  // propio useEffect), así que esta ref es cómo le avisa el guard de salida
+  // de más abajo: "si llegás a terminar, cancelá en vez de dejar el run
+  // activo". Ver handleEarlyExit.
+  const exitRequestedRef = useRef(false);
 
   // Poll de status de competencia (Gap 33) mientras el intento está en
   // curso -- si se cierra/cancela desde otro lado (entrenador, u otro
@@ -394,32 +419,79 @@ function RouteAttemptLiveScreenContent() {
   useEffect(() => {
     if (!pendingSession?.sessionInstance || !routeAttempt) return;
     (async () => {
-      await initSessionDb();
-      const sessionInstance = pendingSession.sessionInstance;
-      let runRow = await getActiveRun(sessionInstance.id, pendingSession.date, userId);
-      if (!runRow) {
-        const createdId = await createRun({
-          sessionInstanceId: sessionInstance.id,
-          sessionName: sessionInstance.name ?? 'Corrida',
-          sessionDate: pendingSession.date,
-          teamId: pendingSession.teamId,
-          userId,
-          gpsEnabled: true,
-          exercises: sessionInstance.exercises ?? [],
-          competitionId: routeAttempt.competitionId,
-        });
-        runRow = await getRun(createdId);
+      // Bug real reportado 2026-10-31: esta IIFE no tenía try/catch -- un
+      // cuelgue o un throw en cualquiera de los awaits de abajo (SQLite real
+      // en dispositivo, nunca ejercitado en el preview web porque expo-sqlite
+      // no corre ahí) dejaba `booted` en false para siempre: spinner infinito,
+      // sin ningún log ni aviso, Y el intento ya creado del lado del backend
+      // (POST /competitions/{id}/attempts, en el Play del pre-start, ANTES de
+      // llegar acá) quedaba en wip para siempre -- consumía el único intento
+      // permitido sin que el corredor pudiera terminarlo ni reintentarlo. El
+      // try/catch de acá adentro al menos saca al corredor del spinner con un
+      // aviso en vez de dejarlo colgado. `withTimeout` (ver arriba) cubre el
+      // caso de cuelgue puro, que un try/catch solo no agarra. El guard de
+      // salida de más abajo (handleEarlyExit/usePreventRemove) ahora SÍ cubre
+      // desde que se crea el intento -- ya no queda "deliberadamente fuera".
+      const t0 = Date.now();
+      const elapsed = () => `${Date.now() - t0}ms`;
+      try {
+        logDebug('route-attempt-live bootstrap arranca');
+        await withTimeout(initSessionDb(), BOOTSTRAP_TIMEOUT_MS, 'initSessionDb');
+        logDebug(`route-attempt-live bootstrap initSessionDb ok (${elapsed()})`);
+        const sessionInstance = pendingSession.sessionInstance;
+        let runRow = await withTimeout(getActiveRun(sessionInstance.id, pendingSession.date, userId), BOOTSTRAP_TIMEOUT_MS, 'getActiveRun');
+        logDebug(`route-attempt-live bootstrap getActiveRun ok runId=${runRow?.id ?? 'ninguno'} (${elapsed()})`);
+        if (!runRow) {
+          logDebug(`route-attempt-live bootstrap sin run local activo, creando uno nuevo instance=${sessionInstance.id}`);
+          const createdId = await withTimeout(createRun({
+            sessionInstanceId: sessionInstance.id,
+            sessionName: sessionInstance.name ?? 'Corrida',
+            sessionDate: pendingSession.date,
+            teamId: pendingSession.teamId,
+            userId,
+            gpsEnabled: true,
+            exercises: sessionInstance.exercises ?? [],
+            competitionId: routeAttempt.competitionId,
+          }), BOOTSTRAP_TIMEOUT_MS, 'createRun');
+          logDebug(`route-attempt-live bootstrap run local creado id=${createdId} (${elapsed()})`);
+          runRow = await withTimeout(getRun(createdId), BOOTSTRAP_TIMEOUT_MS, 'getRun');
+        }
+        const sets = await withTimeout(getSetsForRun(runRow.id), BOOTSTRAP_TIMEOUT_MS, 'getSetsForRun');
+        const onlySet = sets[0];
+        logDebug(`route-attempt-live bootstrap getSetsForRun ok set=${onlySet?.id} (${elapsed()})`);
+
+        // El bootstrap no se puede cancelar a mitad de camino (no hay AbortSignal
+        // para expo-sqlite) -- si el corredor ya pidió salir mientras esto
+        // corría (handleEarlyExit puso la ref en true y ya navegó), en vez de
+        // dejar el run recién creado `in_progress` huérfano para siempre, se
+        // cancela y sincroniza acá mismo, con lo que YA se tiene en memoria.
+        if (exitRequestedRef.current) {
+          logDebug(`route-attempt-live bootstrap terminó pero ya se había pedido salir -- cancelando run=${runRow.id} set=${onlySet.id}`);
+          try {
+            await markSetInterrupted(onlySet.id, { endedAtIso: toIsoUtc(), durationMs: 0, activeDurationMs: 0, distanceMeters: null });
+            await interruptStartedSets(runRow.id);
+            await cancelRun(runRow.id);
+            await syncRun(runRow.id);
+            logDebug(`route-attempt-live bootstrap cancelación tardía ok run=${runRow.id}`);
+          } catch (cancelError) {
+            logDebug('route-attempt-live bootstrap error cancelando tras salida tardía', cancelError);
+          }
+          return;
+        }
+
+        setSessionStarted(runRow.id, true);
+        setRun(runRow);
+        setSet(onlySet);
+        setDistance(onlySet.distance_meters ?? null);
+        distanceRef.current = onlySet.distance_meters ?? null;
+        savedTimingsRef.current = { wallMs: onlySet.duration_ms ?? 0, activeMs: onlySet.active_duration_ms ?? 0 };
+        if (onlySet.status === 'started' && !onlySet.ended_at) setPhase('paused');
+        logDebug(`route-attempt-live bootstrap ok run=${runRow.id} set=${onlySet.id} (${elapsed()} total)`);
+        setBooted(true);
+      } catch (error) {
+        logDebug(`route-attempt-live bootstrap error tras ${elapsed()}`, error);
+        setBootError('No pudimos preparar el intento. Volvé e intentá de nuevo.');
       }
-      setSessionStarted(runRow.id, true);
-      setRun(runRow);
-      const sets = await getSetsForRun(runRow.id);
-      const onlySet = sets[0];
-      setSet(onlySet);
-      setDistance(onlySet.distance_meters ?? null);
-      distanceRef.current = onlySet.distance_meters ?? null;
-      savedTimingsRef.current = { wallMs: onlySet.duration_ms ?? 0, activeMs: onlySet.active_duration_ms ?? 0 };
-      if (onlySet.status === 'started' && !onlySet.ended_at) setPhase('paused');
-      setBooted(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -650,6 +722,41 @@ function RouteAttemptLiveScreenContent() {
     goToResult();
   };
 
+  // Guard de salida ANTES de arrancar a correr -- el intento del backend ya
+  // existe desde que el corredor tocó Play en el pre-start (POST
+  // /competitions/{id}/attempts corre ahí, antes de llegar a esta pantalla).
+  // Bug real reportado 2026-10-31: sin esto, volver atrás durante el
+  // bootstrap o en fase 'ready'/'countdown' dejaba ese intento huérfano para
+  // siempre -- no había ningún run local corriendo que `handleCancelConfirmed`
+  // pudiera cancelar/sincronizar. Deliberadamente SIN el modal de confirmación
+  // de running/paused: acá todavía no hay tiempo/distancia real que perder.
+  const handleEarlyExit = async (action) => {
+    if (cancelingRef.current) return;
+    cancelingRef.current = true;
+    if (countdownTimerRef.current) { clearInterval(countdownTimerRef.current); countdownTimerRef.current = null; }
+    logDebug(`route-attempt-live salida temprana booted=${booted} phase=${phase} run=${run?.id ?? 'ninguno'}`);
+    try {
+      if (run && set) {
+        await markSetInterrupted(set.id, { endedAtIso: toIsoUtc(), durationMs: 0, activeDurationMs: 0, distanceMeters: null });
+        await interruptStartedSets(run.id);
+        await cancelRun(run.id);
+        await syncRun(run.id);
+        queryClient.invalidateQueries({ queryKey: ['competition-attempts', routeAttempt.competitionId, String(userId)] });
+        queryClient.invalidateQueries({ queryKey: ['competition', routeAttempt.competitionId] });
+      } else {
+        // Todavía bootstrapping -- no hay run local que cancelar todavía acá.
+        // El propio bootstrap, al terminar, revisa esta ref y cancela con lo
+        // que recién creó (ver el useEffect de bootstrap, más arriba).
+        exitRequestedRef.current = true;
+      }
+      Toast.show({ type: 'info', text1: 'Intento cancelado' });
+    } catch (error) {
+      logDebug('route-attempt-live handleEarlyExit error', error);
+    }
+    pendingExitRef.current = () => navigation.dispatch(action);
+    setBypassingExit(true);
+  };
+
   // Dispara la navegación diferida de goToResult() recién después de que el
   // render con bypassingExit=true ya haya commiteado -- usePreventRemove lee
   // su argumento booleano al momento en que la navegación se dispatchea, no
@@ -662,17 +769,40 @@ function RouteAttemptLiveScreenContent() {
     action();
   }, [bypassingExit]);
 
-  // Intercepta el back nativo/gesto mientras hay un intento en curso -- sin
-  // esto, volver a pre-start deja al corredor en una pantalla que reintentaría
-  // POST /competitions/{id}/attempts (rechazado, sin reintentos v1) en vez de
-  // simplemente cancelar lo que ya está corriendo. Mismo mecanismo que
-  // useUnsavedChangesGuard usa en otras pantallas (usePreventRemove de
-  // @react-navigation/native, ya viene con expo-router). `!bypassingExit`
-  // deja pasar la navegación de salida deliberada que goToResult() dispara
-  // (finish/cancel/auto-finalize) sin volver a mostrar el modal de cancelar.
-  usePreventRemove((phase === 'running' || phase === 'paused') && !bypassingExit, () => setCancelVisible(true));
+  // Intercepta el back nativo/gesto en TODA la vida de esta pantalla -- antes
+  // solo cubría running/paused (bug real reportado 2026-10-31, ver
+  // handleEarlyExit arriba): el intento del backend existe desde el Play del
+  // pre-start, antes de llegar acá, así que salir en CUALQUIER fase sin
+  // cancelar lo deja huérfano, no solo después de arrancar a correr.
+  // running/paused sigue mostrando el modal de "cancelar corrida" (hay
+  // tiempo/distancia real que se perdería); cualquier otra fase cancela
+  // directo sin confirmar (handleEarlyExit). Mismo mecanismo de fondo que
+  // useUnsavedChangesGuard (usePreventRemove de @react-navigation/native,
+  // `e.data.action` es la navegación bloqueada que se vuelve a disparar una
+  // vez cancelado). `!bypassingExit` deja pasar la navegación de salida
+  // deliberada que goToResult()/handleEarlyExit disparan, sin reinterceptarla.
+  usePreventRemove(!bypassingExit, (e) => {
+    if (phase === 'running' || phase === 'paused') {
+      setCancelVisible(true);
+      return;
+    }
+    handleEarlyExit(e.data.action);
+  });
 
   if (!pendingSession || !routeAttempt) return <Redirect href="/" />;
+  if (bootError) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center gap-4 bg-paper px-6 dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-live-screen-boot-error-root" testID="route-attempt-live-screen-boot-error-root">
+        <MaterialCommunityIcons color={colors.error} name="alert-circle-outline" size={40} />
+        <Text className="text-center text-sm text-slate-600 dark:text-slate-300" nativeID="route-attempt-live-screen-boot-error-label" testID="route-attempt-live-screen-boot-error-label">
+          {bootError}
+        </Text>
+        <Pressable className="h-11 items-center justify-center rounded-full border border-slate-300 px-6 dark:border-slate-600" nativeID="route-attempt-live-screen-boot-error-back" onPress={() => router.back()} testID="route-attempt-live-screen-boot-error-back">
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="route-attempt-live-screen-boot-error-back-label" testID="route-attempt-live-screen-boot-error-back-label">Volver</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
   if (!booted || !set) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-live-screen-loading-root" testID="route-attempt-live-screen-loading-root">

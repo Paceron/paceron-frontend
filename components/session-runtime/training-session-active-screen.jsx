@@ -13,7 +13,7 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatStopwatch, toIsoUtc } from '../../utils/time.js';
-import { acceptGpsLeg, formatMeters } from '../../utils/distance.js';
+import { acceptGpsLeg, formatMeters, smoothGpsPoint } from '../../utils/distance.js';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.js';
 import {
   cancelRun,
@@ -36,8 +36,11 @@ import {
 import { syncRun } from '../../services/session-sync.js';
 import { useStopwatch } from '../../hooks/use-stopwatch.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
+import { useUser } from '../../hooks/use-user.js';
+import { getUserInitials } from '../../utils/user-initials.js';
 import { logDebug } from '../../utils/debug-log.js';
 import { DebugLogPanel } from './debug-log-panel.jsx';
+import { LiveSessionMapPanel } from './live-session-map-panel.jsx';
 
 const HOLD_MS = 3000;
 
@@ -110,6 +113,8 @@ function HoldToCancelButton({ onTrigger, disabled, idPrefix }) {
 
   return (
     <Pressable
+      accessibilityHint="Mantené presionado para cancelar la sesión completa"
+      accessibilityLabel="Cancelar sesión"
       className={`min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 bg-red-50 px-4 dark:border-red-900/60 dark:bg-red-950/40 ${disabled ? 'opacity-50' : ''}`}
       disabled={disabled}
       nativeID={`${idPrefix}-cancel-button`}
@@ -263,6 +268,8 @@ function DragToFinishButton({
   return (
     <GestureDetector gesture={pan}>
       <View
+        accessibilityHint="Arrastrá hasta el final para confirmar"
+        accessibilityLabel={label}
         className={`h-24 flex-1 rounded-full border ${colors.trackBg} ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => {
@@ -707,13 +714,11 @@ function OverviewView({ sets, run, onOpenSet, onCancel }) {
   );
 }
 
-function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance, onBack, onCancelConfirmed, onDataChanged }) {
+function SeriesView({ set, runId, gpsEnabled, distance, getCurrentDistance, totalSeriesForExercise, onAdvance, onBack, onCancelConfirmed, onDataChanged, onPhaseChange }) {
   const colors = useThemeColors();
   const stopwatch = useStopwatch();
-  const gps = useGpsTracker(gpsEnabled);
   const [phase, setPhase] = useState(() => (set.status === 'started' && !set.ended_at ? 'paused' : 'ready'));
   const [countdown, setCountdown] = useState(3);
-  const [distance, setDistance] = useState(set.distance_meters ?? null);
   const [skipVisible, setSkipVisible] = useState(false);
   const [summary, setSummary] = useState(null);
   const [cancelVisible, setCancelVisible] = useState(false);
@@ -721,13 +726,11 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
   const [gpsWarning, setGpsWarning] = useState(false);
 
   const savedTimingsRef = useRef({ wallMs: set.duration_ms ?? 0, activeMs: set.active_duration_ms ?? 0 });
-  const gpsActiveRef = useRef(false);
-  const lastPointRef = useRef(null);
-  const pointOrderRef = useRef(0);
-  const distanceRef = useRef(set.distance_meters ?? null);
   const countdownRef = useRef(3);
   const countdownTimerRef = useRef(null);
   const gpsGraceTimerRef = useRef(null);
+  const latestDistanceRef = useRef(distance);
+  latestDistanceRef.current = distance;
 
   const clearGpsGrace = () => {
     if (gpsGraceTimerRef.current) {
@@ -744,52 +747,22 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
     setGpsWarning(false);
     gpsGraceTimerRef.current = setTimeout(() => {
       gpsGraceTimerRef.current = null;
-      if (distanceRef.current == null) setGpsWarning(true);
+      if (latestDistanceRef.current == null) setGpsWarning(true);
     }, 5000);
   };
 
   useEffect(() => {
     logDebug(`SeriesView montado set=${set.id} nombre="${set.exercise_name}" serie=${set.set_number + 1} status="${set.status}" wallMs=${set.duration_ms} activeMs=${set.active_duration_ms} dist=${set.distance_meters}`);
-    return () => { if (countdownTimerRef.current) clearInterval(countdownTimerRef.current); clearGpsGrace(); gps.stop(); };
+    return () => { if (countdownTimerRef.current) clearInterval(countdownTimerRef.current); clearGpsGrace(); };
   }, []);
+
+  useEffect(() => {
+    onPhaseChange(phase);
+  }, [phase, onPhaseChange]);
 
   const setCountdownValue = (value) => {
     countdownRef.current = value;
     setCountdown(value);
-  };
-
-  const handleGpsPoint = async ({ latitude, longitude, timestamp, accuracy }) => {
-    if (!gpsActiveRef.current) return;
-    const point = { latitude, longitude, timestamp, accuracy };
-    if (!lastPointRef.current) {
-      lastPointRef.current = point;
-      pointOrderRef.current = 0;
-      clearGpsGrace();
-      setGpsWarning(false);
-      await insertGpsPoint(set.id, 0, latitude, longitude, timestamp ?? Date.now());
-      distanceRef.current = 0;
-      setDistance(0);
-      await updateSetDistance(set.id, 0);
-      return;
-    }
-    // Filtro de calidad: si el punto se descarta (accuracy muy pobre o salto
-    // que implicaría una velocidad imposible), NO se suma distancia ni se
-    // persiste — pero tampoco se descarta como "último punto válido", para que
-    // el siguiente tramo se mida contra una referencia real y no contra ruido.
-    const leg = acceptGpsLeg({ from: lastPointRef.current, to: point });
-    if (leg == null) {
-      logDebug(`gps punto descartado acc=${accuracy} (ruido o salto)`);
-      return;
-    }
-    lastPointRef.current = point;
-    pointOrderRef.current += 1;
-    await insertGpsPoint(set.id, pointOrderRef.current, latitude, longitude, timestamp ?? Date.now());
-    if (leg > 0) {
-      const nextDistance = (distanceRef.current ?? 0) + leg;
-      distanceRef.current = nextDistance;
-      setDistance(nextDistance);
-      await updateSetDistance(set.id, nextDistance);
-    }
   };
 
   const beginSet = async () => {
@@ -801,12 +774,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
       stopwatch.start();
       setPhase('running');
       await onDataChanged();
-      if (gpsEnabled) {
-        gpsActiveRef.current = true;
-        pointOrderRef.current = 0;
-        armGpsGrace();
-        await gps.start({ onPoint: handleGpsPoint });
-      }
+      if (gpsEnabled) armGpsGrace();
     } catch (error) {
       logDebug('beginSet error', error);
       notifyError();
@@ -853,10 +821,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
       try {
         stopwatch.resumeFrom(savedTimingsRef.current);
         setPhase('running');
-        if (gpsActiveRef.current) {
-          if (distanceRef.current == null) armGpsGrace();
-          await gps.start({ onPoint: handleGpsPoint });
-        }
+        if (gpsEnabled && distance == null) armGpsGrace();
       } finally {
         setBusy(false);
       }
@@ -871,7 +836,6 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
       const snap = stopwatch.pause();
       savedTimingsRef.current = { wallMs: snap.wallMs, activeMs: snap.activeMs };
       await updateSetTimings(set.id, { durationMs: snap.wallMs, activeDurationMs: snap.activeMs });
-      await gps.stop();
       clearGpsGrace();
       setGpsWarning(false);
       setPhase('paused');
@@ -887,17 +851,19 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
     setBusy(true);
     try {
       const snap = phase === 'running' ? stopwatch.pause() : savedTimingsRef.current;
-      await gps.stop();
+      // Fresca, no la prop `distance` (va un render detrás del acumulador real
+      // del padre) -- bug real encontrado en la revisión final de esta rama.
+      const finalDistance = getCurrentDistance();
       clearGpsGrace();
       setGpsWarning(false);
       await finishSet(set.id, {
         endedAtIso: toIsoUtc(),
         durationMs: snap.wallMs,
         activeDurationMs: snap.activeMs,
-        distanceMeters: distanceRef.current,
+        distanceMeters: finalDistance,
       });
-      logDebug(`finishSet set=${set.id} persistido wall=${snap.wallMs} active=${snap.activeMs} dist=${distanceRef.current}`);
-      setSummary({ wallMs: snap.wallMs, activeMs: snap.activeMs, distanceMeters: distanceRef.current });
+      logDebug(`finishSet set=${set.id} persistido wall=${snap.wallMs} active=${snap.activeMs} dist=${finalDistance}`);
+      setSummary({ wallMs: snap.wallMs, activeMs: snap.activeMs, distanceMeters: finalDistance });
       setPhase('finishing');
       await onDataChanged();
     } catch (error) {
@@ -914,7 +880,6 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
     if (busy) return;
     setBusy(true);
     try {
-      await gps.stop();
       clearGpsGrace();
       setGpsWarning(false);
       await markSetSkipped(set.id);
@@ -931,7 +896,6 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
     if (busy) return;
     setBusy(true);
     try {
-      await gps.stop();
       clearGpsGrace();
       setGpsWarning(false);
       await skipSetsForExercise(runId, set.exercise_instance_id);
@@ -953,7 +917,6 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
       const snap = stopwatch.pause();
       savedTimingsRef.current = { wallMs: snap.wallMs, activeMs: snap.activeMs };
       await updateSetTimings(set.id, { durationMs: snap.wallMs, activeDurationMs: snap.activeMs });
-      await gps.stop();
     }
     clearGpsGrace();
     setGpsWarning(false);
@@ -967,6 +930,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
       clearInterval(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
+    const finalDistance = getCurrentDistance();
     if (phase === 'running') {
       const snap = stopwatch.pause();
       savedTimingsRef.current = { wallMs: snap.wallMs, activeMs: snap.activeMs };
@@ -974,17 +938,16 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
         endedAtIso: toIsoUtc(),
         durationMs: snap.wallMs,
         activeDurationMs: snap.activeMs,
-        distanceMeters: distanceRef.current,
+        distanceMeters: finalDistance,
       });
     } else if (phase === 'paused') {
       await markSetInterrupted(set.id, {
         endedAtIso: toIsoUtc(),
         durationMs: savedTimingsRef.current.wallMs,
         activeDurationMs: savedTimingsRef.current.activeMs,
-        distanceMeters: distanceRef.current,
+        distanceMeters: finalDistance,
       });
     }
-    await gps.stop();
     clearGpsGrace();
     setGpsWarning(false);
     await onDataChanged();
@@ -1029,7 +992,7 @@ function SeriesView({ set, runId, gpsEnabled, totalSeriesForExercise, onAdvance,
               <Text className="text-xs font-semibold text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-gps-warning-label`} testID={`${idPrefix}-gps-warning-label`}>Sin señal GPS — esta serie no registra distancia</Text>
             </View>
           )}
-          <Text className="text-6xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
+          <Text className="text-4xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
             {showTimer ? formatStopwatch(stopwatch.wallMs) : '00:00:00'}
           </Text>
           <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-timer-hint`} testID={`${idPrefix}-timer-hint`}>
@@ -1125,6 +1088,25 @@ function TrainingSessionActiveScreenContent() {
   const [mode, setMode] = useState('overview');
   const [currentSetId, setCurrentSetId] = useState(null);
   const [sessionCompleteVisible, setSessionCompleteVisible] = useState(false);
+  const [distanceBySetId, setDistanceBySetId] = useState(new Map());
+  const [tracePoints, setTracePoints] = useState([]);
+  const [fullscreenMap, setFullscreenMap] = useState(false);
+  const { user } = useUser(userId);
+  const activeSetIdRef = useRef(null);
+  const activePhaseRef = useRef('idle');
+  const lastPointRef = useRef(null);
+  const pointOrderRef = useRef(0);
+  const distanceRef = useRef(new Map());
+  const lastSmoothedPointRef = useRef(null);
+  const gps = useGpsTracker(storeGpsEnabled);
+
+  // `currentSet` se deriva ACÁ, antes de cualquier early-return (`if
+  // (!pendingSession)`/`if (!booted)` más abajo) -- los hooks de React no
+  // pueden depender de un valor calculado después de un return condicional,
+  // y los dos efectos de GPS de abajo necesitan `currentSet?.id` en cada
+  // render, booteado o no. Solo depende de `mode`/`currentSetId`/`sets`, ya
+  // disponibles en este punto.
+  const currentSet = mode === 'series' ? sets.find((s) => s.id === currentSetId) : null;
 
   const bootstrap = async () => {
     try {
@@ -1181,6 +1163,60 @@ function TrainingSessionActiveScreenContent() {
   const reloadSets = async () => {
     if (run) setSets(await getSetsForRun(run.id));
   };
+
+  // Mismo patrón que use-live-session-runtime.js (presencial) -- el GPS
+  // corre continuo de punta a punta, la distancia por serie se gatea aparte
+  // (activePhaseRef/activeSetIdRef), y el trazo para el mapa se acumula
+  // SIEMPRE, sin importar si hay una serie corriendo. `smoothGpsPoint`
+  // nunca toca el cálculo de distancia, que sigue sobre puntos crudos.
+  const handleGpsPoint = async (point) => {
+    const smoothed = smoothGpsPoint(lastSmoothedPointRef.current, point);
+    lastSmoothedPointRef.current = smoothed;
+    setTracePoints((prev) => [...prev, smoothed]);
+
+    const setId = activeSetIdRef.current;
+    if (!setId || activePhaseRef.current !== 'running') return;
+
+    if (!lastPointRef.current) {
+      lastPointRef.current = point;
+      pointOrderRef.current = 0;
+      await insertGpsPoint(setId, 0, point.latitude, point.longitude, point.timestamp ?? Date.now());
+      distanceRef.current.set(setId, 0);
+      setDistanceBySetId(new Map(distanceRef.current));
+      await updateSetDistance(setId, 0);
+      return;
+    }
+    const leg = acceptGpsLeg({ from: lastPointRef.current, to: point });
+    if (leg == null) return;
+    lastPointRef.current = point;
+    pointOrderRef.current += 1;
+    await insertGpsPoint(setId, pointOrderRef.current, point.latitude, point.longitude, point.timestamp ?? Date.now());
+    if (leg > 0) {
+      const nextTotal = (distanceRef.current.get(setId) ?? 0) + leg;
+      distanceRef.current.set(setId, nextTotal);
+      setDistanceBySetId(new Map(distanceRef.current));
+      await updateSetDistance(setId, nextTotal);
+    }
+  };
+
+  // Arranca una sola vez, al bootear -- nunca se detiene por pausar o
+  // cambiar de serie (mismo criterio que la presencial).
+  useEffect(() => {
+    if (!booted) return undefined;
+    gps.start({ onPoint: handleGpsPoint });
+    return () => { gps.stop(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booted]);
+
+  // `currentSet` (no el `currentSetId` crudo) -- se vuelve null también al
+  // volver al Overview, no solo al cambiar de serie, así que un punto
+  // perdido mientras no hay ninguna serie abierta no se le atribuye a la
+  // última que estuvo activa.
+  useEffect(() => {
+    activeSetIdRef.current = currentSet?.id ?? null;
+    lastPointRef.current = null;
+    pointOrderRef.current = 0;
+  }, [currentSet?.id]);
 
   const handleOpenSet = (set) => {
     logDebug(`handleOpenSet set=${set?.id} status="${set?.status}"`);
@@ -1265,8 +1301,6 @@ function TrainingSessionActiveScreenContent() {
     );
   }
 
-  const currentSet = mode === 'series' ? sets.find((s) => s.id === currentSetId) : null;
-
   return (
     <MobileOnlyRoute>
       <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="training-session-active-screen-root" testID="training-session-active-screen-root">
@@ -1280,20 +1314,46 @@ function TrainingSessionActiveScreenContent() {
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="training-session-active-screen-error-back-label" testID="training-session-active-screen-error-back-label">Volver</Text>
             </Pressable>
           </View>
-        ) : currentSet ? (
-          <SeriesView
-            gpsEnabled={storeGpsEnabled}
-            key={currentSet.id}
-            onAdvance={handleAdvance}
-            onBack={() => setMode('overview')}
-            onCancelConfirmed={handleCancelConfirmed}
-            onDataChanged={reloadSets}
-            runId={run.id}
-            set={currentSet}
-            totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
-          />
         ) : (
-          <OverviewView onCancel={handleCancelConfirmed} onOpenSet={handleOpenSet} run={run} sets={sets} />
+          <>
+            <View className="flex-1 px-4 pt-2" nativeID="training-session-active-screen-map-wrap" testID="training-session-active-screen-map-wrap">
+              <LiveSessionMapPanel
+                currentUserInitials={getUserInitials(user)}
+                currentUserPhotoUrl={user?.photoUrl ?? null}
+                finished={sessionCompleteVisible}
+                fullscreen={fullscreenMap}
+                onToggleFullscreen={() => setFullscreenMap((v) => !v)}
+                tracePoints={tracePoints}
+              />
+            </View>
+            {/* Nunca se desmonta -- se oculta con `display: 'none'` en vez de
+                sacarlo del árbol. SeriesView guarda su cronómetro/fase como
+                estado local sin persistencia periódica (solo en pausa/fin
+                explícitos) -- desmontarlo a mitad de una serie corriendo
+                perdía en silencio todo el tiempo transcurrido desde la
+                última pausa (bug real, encontrado en la revisión final de
+                esta rama). */}
+            <View className="flex-1" nativeID="training-session-active-screen-content-wrap" style={fullscreenMap ? { display: 'none' } : undefined} testID="training-session-active-screen-content-wrap">
+              {currentSet ? (
+                <SeriesView
+                  distance={distanceBySetId.get(currentSet.id) ?? null}
+                  getCurrentDistance={() => distanceRef.current.get(currentSet.id) ?? null}
+                  gpsEnabled={storeGpsEnabled}
+                  key={currentSet.id}
+                  onAdvance={handleAdvance}
+                  onBack={() => setMode('overview')}
+                  onCancelConfirmed={handleCancelConfirmed}
+                  onDataChanged={reloadSets}
+                  onPhaseChange={(phase) => { activePhaseRef.current = phase; }}
+                  runId={run.id}
+                  set={currentSet}
+                  totalSeriesForExercise={sets.filter((s) => s.exercise_instance_id === currentSet.exercise_instance_id).length}
+                />
+              ) : (
+                <OverviewView onCancel={handleCancelConfirmed} onOpenSet={handleOpenSet} run={run} sets={sets} />
+              )}
+            </View>
+          </>
         )}
 
         <SessionCompleteModal

@@ -15,6 +15,17 @@ const VARIANT = {
     title: 'text-amber-700 dark:text-amber-400',
     icon: '#f59e0b',
   },
+  // Para cuando la card vive DENTRO de otro wrapper ya bordeado (ej.
+  // team-detail-screen-container) -- el `border` de `default` ahí dibuja
+  // un doble borde contra el padre, del mismo color. Sin borde, mismo
+  // fondo "tenue" que ya usan las sub-cards internas de esta pantalla
+  // (`bg-slate-50`/`dark:bg-surface-2`) para separarse sin duplicar el
+  // límite.
+  nested: {
+    box: 'border-transparent bg-slate-50 dark:border-transparent dark:bg-surface-2',
+    title: 'text-slate-900 dark:text-white',
+    icon: null,
+  },
 };
 
 // Card de sección compartida por ProfileScreen, EditProfileScreen y
