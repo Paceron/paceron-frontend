@@ -19,10 +19,19 @@ import { isWeb } from '../../utils/platform.js';
 // hijo flex-1 tenga contra qué crecer (un `View` sin altura propia no
 // hereda el alto del padre solo por `className`, necesita su propio
 // `flex: 1`, que `w-full`/`self-center` no cubren).
-export function ScreenCard({ children, padded = true, nativeID, testID, style }) {
+//
+// `maxWidthClassName` es otro escape hatch puntual, aditivo (default
+// 'max-w-3xl', igual al valor fijo de siempre -- todo caller existente
+// rinde igual sin tocarlo). Pantallas con un layout genuinamente más ancho
+// (ej. payments-screen.jsx, que ya usaba `max-w-5xl` antes de adoptar esta
+// card) pasan su propia clase en vez de terminar angostadas por el ancho
+// fijo, o peor, re-implementando a mano las clases de ScreenCard para
+// esquivarlo (ver el comentario de session-review-screen.jsx que documenta
+// justo ese riesgo de drift).
+export function ScreenCard({ children, padded = true, nativeID, testID, style, maxWidthClassName = 'max-w-3xl' }) {
   return (
     <View
-      className={`w-full self-center rounded-2xl bg-white dark:border dark:border-surface-2 dark:bg-surface ${padded ? 'p-4' : ''} ${isWeb ? 'max-w-3xl' : ''}`}
+      className={`w-full self-center rounded-2xl bg-white dark:border dark:border-surface-2 dark:bg-surface ${padded ? 'p-4' : ''} ${isWeb ? maxWidthClassName : ''}`}
       nativeID={nativeID}
       style={style}
       testID={testID}
