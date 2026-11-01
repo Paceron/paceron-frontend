@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTrainingPlan, useTrainingPlanMutations } from '../../hooks/use-training-plans.js';
 import { useTrainingPlanForm } from '../../hooks/use-training-plan-form.js';
@@ -15,6 +15,7 @@ import { TrainingPlanFormFields } from './training-plan-form-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 // Separado en dos componentes (igual que EditTeamScreen): este resuelve
 // loading/not-found — el plan puede no estar todavía en el store si se
@@ -100,7 +101,7 @@ function EditTrainingPlanForm({ plan, planId }) {
         showsVerticalScrollIndicator={false}
         testID="edit-training-plan-screen-scroll"
       >
-        <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="edit-training-plan-screen-container" testID="edit-training-plan-screen-container">
+        <ScreenCard nativeID="edit-training-plan-screen-container" testID="edit-training-plan-screen-container">
           <View className="mb-8 flex-row items-center gap-2" nativeID="edit-training-plan-screen-header" testID="edit-training-plan-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -135,7 +136,7 @@ function EditTrainingPlanForm({ plan, planId }) {
               </>
             )}
           </Pressable>
-        </View>
+        </ScreenCard>
       </ScrollView>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
