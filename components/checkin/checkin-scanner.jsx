@@ -11,6 +11,7 @@ import { parseCheckinQrPayload } from '../../utils/checkin-qr-url.js';
 import { destinationForOutcome, toOutcome } from '../../utils/checkin-outcome.js';
 import { MIN_WAITING_MS, waitMinimum } from '../../utils/checkin-waiting.js';
 import { notifyError, notifySuccess } from '../../utils/haptics.js';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { CheckinWaitingOverlay } from './checkin-waiting-overlay.jsx';
 import { CheckinResult } from './checkin-result.jsx';
 
@@ -243,37 +244,41 @@ function CameraPermissionNotice({ onRequest }) {
 
   return (
     <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="checkin-permission-root" testID="checkin-permission-root">
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-off" size={40} />
-      <Text className="mt-4 text-center text-base font-bold text-slate-900 dark:text-white" nativeID="checkin-permission-title" testID="checkin-permission-title">
-        Necesitamos la cámara
-      </Text>
-      <Text className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="checkin-permission-hint" testID="checkin-permission-hint">
-        Para leer el QR de la sesión. El permiso se pide una sola vez por app instalada: si lo denegaste, hay que habilitarlo desde los ajustes del sistema.
-      </Text>
+      <ScreenCard nativeID="checkin-permission-container" testID="checkin-permission-container">
+        <View className="items-center" nativeID="checkin-permission-content" testID="checkin-permission-content">
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="camera-off" size={40} />
+          <Text className="mt-4 text-center text-base font-bold text-slate-900 dark:text-white" nativeID="checkin-permission-title" testID="checkin-permission-title">
+            Necesitamos la cámara
+          </Text>
+          <Text className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="checkin-permission-hint" testID="checkin-permission-hint">
+            Para leer el QR de la sesión. El permiso se pide una sola vez por app instalada: si lo denegaste, hay que habilitarlo desde los ajustes del sistema.
+          </Text>
 
-      <Pressable
-        accessibilityLabel="Abrir los ajustes del sistema"
-        className="mt-6 h-12 items-center justify-center rounded-full bg-primary px-6 active:opacity-80"
-        nativeID="checkin-permission-settings-button"
-        onPress={() => Linking.openSettings()}
-        testID="checkin-permission-settings-button"
-      >
-        <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="checkin-permission-settings-label" testID="checkin-permission-settings-label">
-          Abrir ajustes
-        </Text>
-      </Pressable>
+          <Pressable
+            accessibilityLabel="Abrir los ajustes del sistema"
+            className="mt-6 h-12 items-center justify-center rounded-full bg-primary px-6 active:opacity-80"
+            nativeID="checkin-permission-settings-button"
+            onPress={() => Linking.openSettings()}
+            testID="checkin-permission-settings-button"
+          >
+            <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="checkin-permission-settings-label" testID="checkin-permission-settings-label">
+              Abrir ajustes
+            </Text>
+          </Pressable>
 
-      <Pressable
-        accessibilityLabel="Volver a pedir el permiso"
-        className="mt-3 h-11 items-center justify-center rounded-full border border-slate-200 px-6 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-        nativeID="checkin-permission-retry-button"
-        onPress={onRequest}
-        testID="checkin-permission-retry-button"
-      >
-        <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="checkin-permission-retry-label" testID="checkin-permission-retry-label">
-          Volver a pedir
-        </Text>
-      </Pressable>
+          <Pressable
+            accessibilityLabel="Volver a pedir el permiso"
+            className="mt-3 h-11 items-center justify-center rounded-full border border-slate-200 px-6 active:opacity-70 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            nativeID="checkin-permission-retry-button"
+            onPress={onRequest}
+            testID="checkin-permission-retry-button"
+          >
+            <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="checkin-permission-retry-label" testID="checkin-permission-retry-label">
+              Volver a pedir
+            </Text>
+          </Pressable>
+        </View>
+      </ScreenCard>
     </View>
   );
 }
