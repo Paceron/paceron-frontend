@@ -17,6 +17,7 @@ import { toTierModel, toCreatePreferencePayload, toPreferenceResponseModel } fro
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { formatArs } from '../../utils/currency.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-modal.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por
 // plataforma (.web.jsx antes que .jsx) cuando el specifier no trae
@@ -297,7 +298,7 @@ export function TierUpgradeScreen() {
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
     >
-      <View nativeID="tier-upgrade-screen-container" testID="tier-upgrade-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
+      <ScreenCard nativeID="tier-upgrade-screen-container" testID="tier-upgrade-screen-container">
         <View nativeID="tier-upgrade-screen-header" testID="tier-upgrade-screen-header" className="mb-8 flex-row items-center gap-2">
           <Pressable
             nativeID="tier-upgrade-screen-back-button"
@@ -377,7 +378,7 @@ export function TierUpgradeScreen() {
           tierName={formatTierDisplayName(pendingSubscription?.tier?.name)}
           visible={cancellingConfirm}
         />
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }
