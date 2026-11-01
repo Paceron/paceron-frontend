@@ -52,7 +52,7 @@ export function SectionCard({ title, icon, children, collapsible = false, collap
   const Header = collapsible ? Pressable : View;
 
   return (
-    <View className={`mb-5 rounded-2xl border p-6 shadow-sm ${style.box}`} nativeID={scope} testID={scope}>
+    <View className={`mb-5 rounded-2xl border p-6 ${style.box}`} nativeID={scope} testID={scope}>
       <View className={`flex-row items-center gap-2 ${!collapsed || !collapsible ? 'mb-4' : ''}`} nativeID={`${scope}-header-row`} testID={`${scope}-header-row`}>
         <Header
           className={`flex-1 flex-row items-center gap-2 ${collapsible ? 'hover:opacity-70 active:opacity-70' : ''}`}
