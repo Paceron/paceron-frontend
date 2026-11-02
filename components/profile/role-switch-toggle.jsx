@@ -45,7 +45,7 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`transition-all items-center rounded-full px-3 ${wide ? 'flex-1 py-4' : 'py-1.5'} ${active ? activeBg : 'border border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600 animate-pulse'}`}
+      className={`transition-all items-center rounded-full px-3 ${wide ? 'flex-1 py-4' : 'py-1.5'} ${active ? activeBg : 'border border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600 hover:animate-pulse'}`}
       nativeID={id}
       onPress={onPress}
       testID={id}
