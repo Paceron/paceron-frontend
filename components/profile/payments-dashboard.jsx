@@ -17,9 +17,11 @@ import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { PaymentsAmountMode } from './payments-amount-mode.jsx';
 import { PaymentsMonthlyChart } from './payments-monthly-chart.jsx';
+import { PaymentsDueCard } from './payments-due-card.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
-// Dashboard de cobros: KPIs, evolución mensual y cobros por equipo.
+// Dashboard de cobros: KPIs, lo que hay por cobrar este mes, evolución mensual
+// (cobrado y pendiente) y cobros por equipo.
 // - Los tiles usan `summary` (la ventana que termina hoy): correr el gráfico no
 //   cambia "Cobrado en <mes actual>". El gráfico y cobros por equipo usan
 //   `windowSummary`, la ventana elegida con las flechas.
@@ -131,6 +133,8 @@ export function PaymentsDashboard({
         </View>
       </View>
 
+      <PaymentsDueCard amountMode={amountMode} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdueThisMonth={summary.overdueThisMonth} />
+
       <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-dashboard-panels" testID="payments-dashboard-panels">
         <View nativeID="payments-dashboard-chart-panel" style={isWide ? { flex: 3 } : undefined} testID="payments-dashboard-chart-panel">
           <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title={amountMode === 'net' ? 'Neto por mes' : 'Cobrado por mes'}>
@@ -142,9 +146,9 @@ export function PaymentsDashboard({
             ) : (
               <PaymentsMonthlyChart currentMonth={currentMonth} points={points} />
             )}
-            {netIncomplete ? (
+            {amountMode === 'net' ? (
               <Text className="mt-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-net-note" testID="payments-dashboard-net-note">
-                El neto es solo el que informó Mercado Pago. * neto parcial · s/d sin datos de neto.
+                {`Neto = lo cobrado menos la comisión de Paceron.${netIncomplete ? ' * neto parcial · s/d sin datos de neto.' : ''}`}
               </Text>
             ) : null}
           </SectionCard>

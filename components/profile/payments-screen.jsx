@@ -9,7 +9,7 @@ import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions, useUser } from '../../hooks/use-user.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
-import { usePaymentHistory, useReceivedPayments, useReceivedPaymentsSummary } from '../../hooks/use-payment-history.js';
+import { usePaymentHistory, useReceivedPayments, useReceivedPaymentsSummary, useUpcomingPayments } from '../../hooks/use-payment-history.js';
 import { buildReceiptHtml, receiptFileName } from '../../utils/receipt-html.js';
 import { canGoBack, shiftMonth } from '../../utils/payments-summary.js';
 // Sin extensión a propósito: hay split .js / .web.js y Metro solo resuelve por
@@ -21,6 +21,7 @@ import { ScreenCard } from '../shared/screen-card.jsx';
 import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
+import { PaymentsUpcomingCard } from './payments-upcoming-card.jsx';
 
 // Cuántos meses corre la ventana del gráfico cada flecha: los mismos que muestra.
 const WINDOW_MONTHS = 6;
@@ -66,12 +67,14 @@ function PaymentsScreenContent() {
   const windowSummary = until ? windowQuery.summary : summary.summary;
   const received = useReceivedPayments({ teamId, status: receivedStatus, enabled: isTrainer && activeTab === 'received' });
   const history = usePaymentHistory({ type: historyType, status: historyStatus, enabled: activeTab === 'history' });
+  const upcoming = useUpcomingPayments({ enabled: activeTab === 'history' });
   const activeList = activeTab === 'received' ? received : history;
 
   const { refreshing, onRefresh } = usePullToRefresh(() =>
     Promise.all([
       activeTab === 'received' ? summary.refetch() : null,
       activeTab === 'received' && until ? windowQuery.refetch() : null,
+      activeTab === 'history' ? upcoming.refetch() : null,
       activeList.refetch(),
     ])
   );
@@ -159,6 +162,7 @@ function PaymentsScreenContent() {
           </>
         ) : (
           <>
+            <PaymentsUpcomingCard failed={upcoming.failed} items={upcoming.items} loading={upcoming.loading} onRetry={() => upcoming.refetch()} />
             <Text className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="payments-screen-history-intro" testID="payments-screen-history-intro">
               Tus pagos de suscripción y lo que les pagaste a tus entrenadores. De los pagos aprobados podés descargar el comprobante en PDF.
             </Text>

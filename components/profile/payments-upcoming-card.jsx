@@ -1,0 +1,77 @@
+import { Pressable, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useThemeColors } from '../../theme/colors.js';
+import { formatArs } from '../../utils/currency.js';
+import { formatDueDate, overdueLabel } from '../../utils/payments-summary.js';
+import { SectionCard } from '../forms/section-card.jsx';
+import { SkeletonBlock } from '../shared/skeleton.jsx';
+
+const TABULAR = { fontVariant: ['tabular-nums'] };
+
+// "Próximos vencimientos" de la pestaña Pagos, para cualquier rol: la próxima
+// cuota sin pagar de cada equipo que paga el usuario y de cada tier (GET
+// /payments/upcoming, ordenadas por vencimiento). Sin nada que pagar, la
+// tarjeta no se muestra.
+export function PaymentsUpcomingCard({ items, loading, failed, onRetry }) {
+  const colors = useThemeColors();
+  if (loading) {
+    return <SkeletonBlock className="mb-5" height={120} nativeID="payments-upcoming-skeleton" rounded="rounded-2xl" testID="payments-upcoming-skeleton" />;
+  }
+  if (failed) {
+    return (
+      <View className="mb-5 flex-row items-center justify-between gap-3 rounded-2xl bg-rose-50 p-4 dark:bg-rose-900/20" nativeID="payments-upcoming-error" testID="payments-upcoming-error">
+        <Text className="flex-1 text-sm text-rose-700 dark:text-rose-300" nativeID="payments-upcoming-error-text" testID="payments-upcoming-error-text">
+          No pudimos cargar tus próximos vencimientos.
+        </Text>
+        <Pressable className="rounded-full bg-rose-100 px-3 py-1.5 hover:opacity-90 active:opacity-80 dark:bg-rose-900/40" nativeID="payments-upcoming-retry" onPress={onRetry} testID="payments-upcoming-retry">
+          <Text className="text-xs font-semibold text-rose-700 dark:text-rose-300" nativeID="payments-upcoming-retry-label" testID="payments-upcoming-retry-label">Reintentar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+  if (!items?.length) return null;
+
+  return (
+    <SectionCard icon="calendar-alert" scope="payments-upcoming-card" title="Próximos vencimientos">
+      <View className="gap-2" nativeID="payments-upcoming-list" testID="payments-upcoming-list">
+        {items.map((item) => {
+          const id = `payments-upcoming-${item.key}`;
+          const late = overdueLabel(item);
+          return (
+            <View
+              // El borde cambia de color entre al día y vencida, pero solo con
+              // clases de color: nada de sombras ni pseudo-estados condicionales
+              // (quirk de NativeWind en CLAUDE.md).
+              className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${item.overdue ? 'border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-900/20' : 'border-slate-100 dark:border-slate-800'}`}
+              key={item.key}
+              nativeID={id}
+              testID={id}
+            >
+              <MaterialCommunityIcons
+                color={item.overdue ? colors.error : colors.onSurfaceVariant}
+                name={item.type === 'subscription' ? 'star-circle-outline' : 'account-group-outline'}
+                size={22}
+              />
+              <View className="flex-1" nativeID={`${id}-main`} testID={`${id}-main`}>
+                <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={1} testID={`${id}-title`}>
+                  {item.title || (item.type === 'subscription' ? 'Tier' : 'Equipo')}
+                </Text>
+                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
+                  {[item.subtitle, `cuota ${item.installmentNumber}`].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+              <View className="items-end" nativeID={`${id}-side`} testID={`${id}-side`}>
+                <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>
+                  {formatArs(item.amount)}
+                </Text>
+                <Text className={`text-xs ${item.overdue ? 'font-semibold text-rose-700 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-due`} testID={`${id}-due`}>
+                  {late ? `${late} · ${formatDueDate(item.dueDate)}` : `vence ${formatDueDate(item.dueDate)}`}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </SectionCard>
+  );
+}

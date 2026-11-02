@@ -13,6 +13,9 @@ import {
   toChartPoints,
   monthTileContent,
   pendingFor,
+  formatDueDate,
+  formatFeeLabel,
+  overdueLabel,
 } from '../utils/payments-summary.js';
 
 const plain = (s) => s.replace(/ /g, ' ');
@@ -169,5 +172,26 @@ describe('pendiente por mes', () => {
   test('toChartPoints suma el pendiente a cada punto', () => {
     expect(toChartPoints([{ month: '2026-10', grossAmount: 5000, netAmount: 4750, approvedCount: 1, netKnownCount: 1, ...month }], 'net')[0])
       .toEqual(expect.objectContaining({ value: 4750, pending: 19000 }));
+  });
+});
+
+describe('vencimientos y comisión', () => {
+  test('formatDueDate corta el día en hora argentina', () => {
+    expect(formatDueDate('2026-11-07T02:37:47Z')).toBe('06/11/2026');
+    expect(formatDueDate('2026-11-06T15:00:00Z')).toBe('06/11/2026');
+    expect(formatDueDate(null)).toBe('');
+    expect(formatDueDate('no-es-fecha')).toBe('');
+  });
+
+  test('formatFeeLabel', () => {
+    expect(formatFeeLabel(5)).toBe('comisión 5%');
+    expect(formatFeeLabel(2.5)).toBe('comisión 2,5%');
+    expect(formatFeeLabel(null)).toBe('');
+  });
+
+  test('overdueLabel', () => {
+    expect(overdueLabel({ overdue: false, overdueCount: 0 })).toBe('');
+    expect(overdueLabel({ overdue: true, overdueCount: 1 })).toBe('vencida');
+    expect(overdueLabel({ overdue: true, overdueCount: 3 })).toBe('3 cuotas vencidas');
   });
 });

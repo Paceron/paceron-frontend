@@ -346,10 +346,22 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
 `/payments/received` y `/payments/received/summary` (change de OpenSpec
 `historial-pagos-cobros-entrenador` del backend).
 
-- **Nunca mostrar comisión ni estimar el neto.** La `marketplace_fee` del backend es
-  ficticia mientras el split no mande `application_fee`. El neto se muestra solo si
-  Mercado Pago lo informó (`net_amount` puede ser `null`); si no, "Neto no disponible"
-  o "Neto parcial … (x de y)" con `utils/payments-summary.js#formatNetLabel`.
+- **Neto = bruto − comisión de Paceron, y lo calcula el backend (2026-11-02).** Reemplaza
+  la regla anterior de "nunca mostrar comisión": cada cobro trae `fee_amount` y
+  `fee_percent` (los pagos viejos sin comisión guardada caen al 5%), y la fila muestra
+  "Neto $X · comisión 5%". El front no recalcula nada, solo muestra lo que llega.
+  `formatNetLabel` y el "s/d" del gráfico quedan por si un neto vuelve a venir `null`.
+- **Las cuotas que todavía no se pagaron no existen como filas.** El backend crea la
+  cuota N+1 recién cuando se paga la N, así que lo pendiente por mes del gráfico (barra
+  ámbar), "Por cobrar este mes" (Vencidos / A vencer, `payments-due-card.jsx`) y
+  "Próximos vencimientos" de la pestaña Pagos (`payments-upcoming-card.jsx`,
+  `GET /payments/upcoming`, para cualquier rol: cuota de cada equipo y tier) se calculan
+  en el backend desde la fecha de alta. Vencido es pasar el vencimiento, sin días de
+  gracia. Las fechas se muestran con `formatDueDate`, que corta el día en hora
+  argentina y no en la del dispositivo. Change de OpenSpec del backend:
+  `cobros-pendientes-y-vencimientos`.
+- **El entrenador no ve cobros de tier**: esos los cobra Paceron. En Cobros solo
+  aparecen cuotas de equipo; los tiers son pagos, de corredores y entrenadores.
 - **Dos consultas del resumen (2026-09-29).** `useReceivedPaymentsSummary()` sin `until`
   es la ventana que termina hoy: la usan los tiles y la tarjeta del perfil. El gráfico y
   "Cobros por equipo" se pueden correr de a 6 meses con ‹ ›, y cuando la ventana no es la

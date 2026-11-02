@@ -6,6 +6,7 @@ import { formatDMY } from '../../utils/datetime-parts.js';
 import { paymentStatusMeta } from '../../utils/payment-status.js';
 import { paymentMethodLabel, paymentTypeLabel } from '../../utils/payment-method.js';
 import { canHaveReceipt, receiptConcept } from '../../utils/receipt-html.js';
+import { formatFeeLabel } from '../../utils/payments-summary.js';
 
 const TONE_CLASSES = {
   success: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
@@ -108,7 +109,7 @@ function ReceivedRow({ payment, isWide, id, date }) {
           gross: <CellText id={`${id}-gross-text`} strong>{formatArs(payment.grossAmount)}</CellText>,
           net: payment.netAmount === null
             ? <CellText id={`${id}-net-text`} muted>—</CellText>
-            : <CellText id={`${id}-net-text`}>{formatArs(payment.netAmount, { decimals: 2 })}</CellText>,
+            : <CellText id={`${id}-net-text`}>{`${formatArs(payment.netAmount, { decimals: 2 })}${payment.feePercent !== null ? ` · ${payment.feePercent}%` : ''}`}</CellText>,
         }}
         id={id}
       />
@@ -126,7 +127,7 @@ function ReceivedRow({ payment, isWide, id, date }) {
       </View>
       {payment.netAmount !== null ? (
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-net`} style={TABULAR} testID={`${id}-net`}>
-          {`Neto ${formatArs(payment.netAmount, { decimals: 2 })}`}
+          {[`Neto ${formatArs(payment.netAmount, { decimals: 2 })}`, formatFeeLabel(payment.feePercent)].filter(Boolean).join(' · ')}
         </Text>
       ) : null}
     </View>

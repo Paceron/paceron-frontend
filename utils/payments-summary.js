@@ -128,3 +128,26 @@ export function isSummaryEmpty(summary) {
   const anyGross = (summary.monthly ?? []).some((m) => m.grossAmount > 0);
   return !anyGross && !summary.pendingCount && !summary.rejectedCount && !(summary.byTeam ?? []).length;
 }
+
+// Vencimiento como DD/MM/AAAA en hora argentina: el backend lo manda en UTC y
+// corta los días en Argentina, así que un vencimiento del 6/11 a las 23:37 llega
+// como 7/11 02:37Z. Con la zona del dispositivo se vería el día equivocado.
+export function formatDueDate(iso) {
+  if (!iso) return '';
+  const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+
+// "comisión 5%" (o "comisión 2,5%"). Sin porcentaje no hay texto.
+export function formatFeeLabel(feePercent) {
+  if (feePercent === null || feePercent === undefined) return '';
+  return `comisión ${String(Math.round(feePercent * 100) / 100).replace('.', ',')}%`;
+}
+
+// "vencida" o "3 cuotas vencidas" para la próxima cuota de un equipo o tier.
+export function overdueLabel({ overdue, overdueCount }) {
+  if (!overdue) return '';
+  return overdueCount > 1 ? `${overdueCount} cuotas vencidas` : 'vencida';
+}
