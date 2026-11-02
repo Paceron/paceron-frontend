@@ -14,6 +14,7 @@ import { buildCompetitionTitle } from '../../utils/competition-title.js';
 import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
+import { SectionCard } from '../forms/section-card.jsx';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
@@ -26,9 +27,9 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { logDebug } from '../../utils/debug-log.js';
 
 const STATUS_META = {
-  pending_approval: { label: 'Pendiente de aprobación', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+  pending_approval: { label: 'Pendiente de aprobación', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400' },
   active: { label: 'Activa', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  finished: { label: 'Finalizada', bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-700 dark:text-sky-400' },
+  finished: { label: 'Finalizada', bg: 'bg-sky-50 dark:bg-sky-900/20', text: 'text-sky-700 dark:text-sky-400' },
   rejected: { label: 'Rechazada', bg: 'bg-slate-200 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-300' },
 };
 
@@ -488,29 +489,27 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
   const visibleList = listByTab[subTab];
 
   return (
-    // Card única envolviendo todo -- mismas clases que SectionCard
-    // variant="nested" (components/forms/section-card.jsx, usado por
-    // Corredores/Solicitudes/etc. dentro de esta misma pantalla) para
-    // unificar estilos, pero SIN el componente en sí: éste fuerza un
-    // título+ícono de header que acá es redundante (la pestaña de arriba ya
-    // dice "Competencias") -- pedido real, 2026-10-15. Sin borde (solo
-    // fondo tenue) -- vive dentro de team-detail-screen-container, que ya
-    // tiene el suyo del mismo color.
-    <View className="rounded-2xl bg-slate-50 p-6 shadow-sm dark:bg-surface-2" nativeID="competitions-tab-root" testID="competitions-tab-root">
-      {/* `items-start` (no `items-center`) -- TabBar trae su propio
-          margin-bottom (separación respecto a la lista de abajo), que al
-          centrarse por cross-axis junto al botón corriría la fila de tabs
-          visualmente más arriba que el botón. Con `items-start` ambos
-          arrancan parejos en el techo de la fila. */}
-      <View className="mb-4 flex-row items-start justify-between gap-3" nativeID="competitions-tab-header" testID="competitions-tab-header">
-        <View className="flex-1" nativeID="competitions-tab-subtabs-wrap" testID="competitions-tab-subtabs-wrap">
-          <TabBar active={subTab} badges={{ pending: listByTab.pending.length > 0 }} onChange={setSubTab} scope="competitions-tab-subtabs" tabs={SUB_TABS} variant="compact" />
-        </View>
+    // SectionCard (components/forms/section-card.jsx, usado por
+    // Corredores/Solicitudes/etc. dentro de esta misma pantalla) unifica
+    // fondo/ícono/header con el resto de las pestañas de team-detail-screen
+    // -- pedido real, 2026-11-01. El botón de crear se mueve al
+    // `headerRight` del SectionCard, junto al título, en vez de compartir
+    // fila con las subtabs.
+    <SectionCard
+      headerRight={(
         <IconTooltip align="end" idPrefix="competitions-tab-create-tooltip" label="Nueva competencia" position="bottom">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-80" nativeID="competitions-tab-create-button" onPress={() => setCreateVisible(true)} testID="competitions-tab-create-button">
             <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
           </Pressable>
         </IconTooltip>
+      )}
+      icon="sword-cross"
+      scope="competitions-tab-root"
+      title="Competencias"
+      variant="nested"
+    >
+      <View className="mb-4" nativeID="competitions-tab-header" testID="competitions-tab-header">
+        <TabBar active={subTab} badges={{ pending: listByTab.pending.length > 0 }} onChange={setSubTab} scope="competitions-tab-subtabs" tabs={SUB_TABS} variant="compact" />
       </View>
 
       {loading && (
@@ -581,6 +580,6 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
         onClose={() => setAttemptsCompetition(null)}
         visible={attemptsCompetition != null}
       />
-    </View>
+    </SectionCard>
   );
 }
