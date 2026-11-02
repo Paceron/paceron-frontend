@@ -33,8 +33,8 @@ function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }
   const borderClass = isOtherMonth
     ? 'border-2 border-transparent'
     : state === 'today'
-      ? 'border-2 hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60'
-      : 'border-2 hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
+      ? 'transition-all border-2 hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60'
+      : 'transition-all border-2 hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
 
   return (
     <Pressable

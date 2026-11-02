@@ -45,7 +45,7 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`items-center rounded-full px-3 py-1.5 ${wide ? 'flex-1' : ''} ${active ? activeBg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
+      className={`transition-all items-center rounded-full px-3 ${wide ? 'flex-1 py-4' : 'py-1.5'} ${active ? activeBg : 'border border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600 animate-pulse'}`}
       nativeID={id}
       onPress={onPress}
       testID={id}
@@ -104,7 +104,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   if (!hasTrainerRole) {
     return (
       <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-        <View className={`flex-row items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+        <View className={`flex-row items-center rounded-full border-2 border-red-600 bg-slate-300 p-1 dark:bg-slate-700 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
           <Segment
             accessibilityLabel="Corredor"
             active
@@ -149,7 +149,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   return (
     <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-      <View className={`flex-row rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+      <View className={`flex-row rounded-full border border-slate-300 dark:border-slate-600 bg-slate-100 p-1 dark:bg-slate-700 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
         <Segment
           accessibilityLabel="Corredor"
           active={runnerActive}
