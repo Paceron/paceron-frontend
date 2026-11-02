@@ -12,6 +12,7 @@ import {
   amountFor,
   toChartPoints,
   monthTileContent,
+  pendingFor,
 } from '../utils/payments-summary.js';
 
 const plain = (s) => s.replace(/ /g, ' ');
@@ -136,8 +137,8 @@ describe('bruto o neto', () => {
   test('toChartPoints arma los puntos del gráfico en el modo elegido', () => {
     const points = toChartPoints([month(), month({ month: '2026-10', netAmount: null, netKnownCount: 0 })], 'net');
     expect(points).toEqual([
-      { month: '2026-09', value: 11000, partial: false, missing: false },
-      { month: '2026-10', value: null, partial: false, missing: true },
+      { month: '2026-09', value: 11000, partial: false, missing: false, pending: 0 },
+      { month: '2026-10', value: null, partial: false, missing: true, pending: 0 },
     ]);
     expect(toChartPoints(null, 'gross')).toEqual([]);
   });
@@ -152,5 +153,21 @@ describe('bruto o neto', () => {
     expect(plain(monthTileContent(month(), 'net').hint)).toBe('Bruto $ 12.000');
     expect(monthTileContent(month({ netAmount: null, netKnownCount: 0 }), 'net')).toEqual({ value: '—', hint: 'Sin datos de neto' });
     expect(plain(monthTileContent(null, 'net').value)).toBe('$ 0');
+  });
+});
+
+describe('pendiente por mes', () => {
+  const month = { month: '2026-10', pendingAmount: 20000, pendingNetAmount: 19000, pendingCount: 2 };
+
+  test('pendingFor elige bruto o neto según el modo', () => {
+    expect(pendingFor(month, 'gross')).toBe(20000);
+    expect(pendingFor(month, 'net')).toBe(19000);
+    expect(pendingFor({}, 'net')).toBe(0);
+    expect(pendingFor(null, 'gross')).toBe(0);
+  });
+
+  test('toChartPoints suma el pendiente a cada punto', () => {
+    expect(toChartPoints([{ month: '2026-10', grossAmount: 5000, netAmount: 4750, approvedCount: 1, netKnownCount: 1, ...month }], 'net')[0])
+      .toEqual(expect.objectContaining({ value: 4750, pending: 19000 }));
   });
 });

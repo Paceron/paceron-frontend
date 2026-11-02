@@ -73,9 +73,15 @@ export function amountFor(entry, mode) {
   return { value: entry.netAmount, partial: known < approved, missing: false };
 }
 
-// Puntos del gráfico mensual en el modo elegido.
+// Lo pendiente de un mes (cuotas sin pagar que vencen en él), en bruto o en
+// neto. El backend ya lo trae calculado en los dos modos.
+export function pendingFor(entry, mode) {
+  return (mode === 'net' ? entry?.pendingNetAmount : entry?.pendingAmount) ?? 0;
+}
+
+// Puntos del gráfico mensual en el modo elegido: lo cobrado y lo pendiente.
 export function toChartPoints(monthly, mode) {
-  return (monthly ?? []).map((m) => ({ month: m.month, ...amountFor(m, mode) }));
+  return (monthly ?? []).map((m) => ({ month: m.month, ...amountFor(m, mode), pending: pendingFor(m, mode) }));
 }
 
 // Valor y aclaración del tile "Cobrado en <mes>". En bruto la aclaración es el

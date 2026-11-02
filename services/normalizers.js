@@ -532,9 +532,9 @@ export function toPaymentModel(dto) {
   };
 }
 
-// Historial de pagos del entrenador (GET /payments/received y /payments/mine,
-// ver services/payment-history.js). `netAmount` queda null cuando Mercado Pago
-// no informó el neto: nunca se calcula en el cliente.
+// Historial de pagos del entrenador (GET /payments/received, ver
+// services/payment-history.js). `netAmount` es el bruto menos la comisión de
+// Paceron y lo calcula el backend; es null si el cobro no está aprobado.
 export function toReceivedPaymentModel(dto) {
   if (!dto) return null;
   const payerName = [dto.payer?.name, dto.payer?.surname].filter(Boolean).join(' ');
@@ -546,6 +546,8 @@ export function toReceivedPaymentModel(dto) {
     statusDetail: dto.status_detail,
     grossAmount: dto.gross_amount,
     netAmount: dto.net_amount ?? null,
+    feeAmount: dto.fee_amount ?? null,
+    feePercent: dto.fee_percent ?? null,
     currencyId: dto.currency_id,
     paymentMethodId: dto.payment_method_id,
     createdAt: dto.created_at,
@@ -598,14 +600,41 @@ function toAmountBucket(dto) {
   };
 }
 
+// Bloque de cuotas esperadas sin pagar del mes actual (a vencer o vencidas).
+function toObligationsBlock(dto) {
+  return {
+    count: dto?.count ?? 0,
+    amount: dto?.amount ?? 0,
+    netAmount: dto?.net_amount ?? 0,
+    items: (dto?.items ?? []).map((o) => ({
+      key: `${o.team?.id}-${o.payer?.id}-${o.installment_number}`,
+      teamId: String(o.team?.id ?? ''),
+      teamName: o.team?.name ?? '',
+      payerId: String(o.payer?.id ?? ''),
+      payerName: [o.payer?.name, o.payer?.surname].filter(Boolean).join(' '),
+      installmentNumber: o.installment_number,
+      amount: o.amount,
+      dueDate: o.due_date,
+    })),
+  };
+}
+
 // GET /payments/received/summary. `monthly` viene en orden y el último es el
-// mes actual.
+// mes actual. `pending*` son las cuotas esperadas sin pagar que vencen en cada
+// mes, y los dos bloques son lo que vence y lo que venció en el mes actual
+// (change cobros-pendientes-y-vencimientos del backend).
 export function toReceivedSummaryModel(dto) {
   if (!dto) return null;
   return {
     currencyId: dto.currency_id,
     months: dto.months,
-    monthly: (dto.monthly ?? []).map((m) => ({ month: m.month, ...toAmountBucket(m) })),
+    monthly: (dto.monthly ?? []).map((m) => ({
+      month: m.month,
+      ...toAmountBucket(m),
+      pendingAmount: m.pending_amount ?? 0,
+      pendingNetAmount: m.pending_net_amount ?? 0,
+      pendingCount: m.pending_count ?? 0,
+    })),
     byTeam: (dto.by_team ?? []).map((t) => ({
       teamId: String(t.team_id),
       teamName: t.team_name,
@@ -616,7 +645,30 @@ export function toReceivedSummaryModel(dto) {
     pendingCount: dto.pending_count ?? 0,
     rejectedCount: dto.rejected_count ?? 0,
     earliestMonth: dto.earliest_month ?? null,
+    dueThisMonth: toObligationsBlock(dto.due_this_month),
+    overdueThisMonth: toObligationsBlock(dto.overdue_this_month),
     generatedAt: dto.generated_at,
+  };
+}
+
+// Próxima cuota sin pagar de una membresía de equipo o de una suscripción de
+// tier (GET /payments/upcoming). `title`/`subtitle` ya vienen resueltos para la
+// tarjeta: equipo y entrenador, o tier y rol.
+export function toUpcomingPaymentModel(dto) {
+  if (!dto) return null;
+  const isTeam = dto.type === 'trainer_payment';
+  const trainerName = [dto.trainer?.name, dto.trainer?.surname].filter(Boolean).join(' ');
+  return {
+    key: `${dto.type}-${isTeam ? dto.team?.id : dto.tier?.id}`,
+    type: dto.type,
+    title: isTeam ? dto.team?.name ?? '' : dto.tier?.name ?? '',
+    subtitle: isTeam ? trainerName : dto.tier?.role_name ? `Tier ${dto.tier.role_name}` : 'Tier',
+    installmentNumber: dto.installment_number,
+    amount: dto.amount,
+    currencyId: dto.currency_id ?? 'ARS',
+    dueDate: dto.due_date,
+    overdue: Boolean(dto.overdue),
+    overdueCount: dto.overdue_count ?? 0,
   };
 }
 

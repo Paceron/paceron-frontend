@@ -1,11 +1,12 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth-store.js';
-import { getPaymentHistory, getReceivedPayments, getReceivedPaymentsSummary } from '../services/payment-history.js';
+import { getPaymentHistory, getReceivedPayments, getReceivedPaymentsSummary, getUpcomingPayments } from '../services/payment-history.js';
 import {
   toPaymentsPageModel,
   toReceivedPaymentModel,
   toReceivedSummaryModel,
   toHistoryPaymentModel,
+  toUpcomingPaymentModel,
 } from '../services/normalizers.js';
 
 // Estado de servidor del historial de pagos (de cualquier usuario) y de los
@@ -21,7 +22,25 @@ export const PAYMENT_HISTORY_KEYS = {
   summary: (userId) => ['payments-received-summary', userId],
   received: (userId) => ['payments-received', userId],
   history: (userId) => ['payments-history', userId],
+  upcoming: (userId) => ['payments-upcoming', userId],
 };
+
+// Próximos vencimientos del usuario (cuotas de equipo y de tier), para la
+// pestaña Pagos. Lo calcula el backend: el front no deriva cuotas.
+export function useUpcomingPayments({ enabled = true } = {}) {
+  const userId = useAuthStore((s) => s.userId);
+  const query = useQuery({
+    queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId),
+    queryFn: () => getUpcomingPayments().then((dto) => (dto?.items ?? []).map(toUpcomingPaymentModel)),
+    enabled: enabled && Boolean(userId),
+  });
+  return {
+    items: query.data ?? [],
+    loading: query.isLoading,
+    failed: query.isError,
+    refetch: query.refetch,
+  };
+}
 
 // `until` (YYYY-MM) corre la ventana hacia atrás; sin él termina en el mes
 // actual. Va en la query key: cada ventana se cachea aparte, y la de "hoy"
