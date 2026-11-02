@@ -2,6 +2,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import '../../config/calendarLocale.js';
+import { computeTodayIso } from '../../utils/calendar-today.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
@@ -17,7 +18,7 @@ function collisionSeverity(assignments) {
   return null;
 }
 
-function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }) {
+function AggregatedDayCell({ date, state, isToday, assignments, onPress, showCollisions }) {
   const colors = useThemeColors();
   const isOtherMonth = state === 'disabled';
   const hasAssignments = assignments.length > 0;
@@ -32,7 +33,7 @@ function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }
   const overflowCount = assignments.length - MAX_DOTS;
   const borderClass = isOtherMonth
     ? 'border-2 border-transparent'
-    : state === 'today'
+    : isToday
       ? 'transition-all hover:animate-pulse border-2 hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60'
       : 'transition-all hover:animate-pulse border-2 hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
 
@@ -45,7 +46,7 @@ function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }
       testID={`aggregated-calendar-day-${date.dateString}`}
     >
       <Text
-        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : state === 'today' ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
         nativeID={`aggregated-calendar-day-${date.dateString}-label`}
         testID={`aggregated-calendar-day-${date.dateString}-label`}
       >
@@ -100,6 +101,7 @@ function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }
 export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, onMonthChange, onDayPress, showCollisions, loading }) {
   const colors = useThemeColors();
   const { colorScheme } = useThemeMode();
+  const todayIso = computeTodayIso();
 
   return (
     <View
@@ -115,6 +117,7 @@ export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, 
             <AggregatedDayCell
               assignments={daysByDate[date.dateString] ?? []}
               date={date}
+              isToday={date.dateString === todayIso}
               onPress={onDayPress}
               showCollisions={showCollisions}
               state={state}
