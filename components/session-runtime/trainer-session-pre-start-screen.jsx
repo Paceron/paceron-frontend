@@ -22,13 +22,14 @@ import { pendingSessionFromNavParams } from '../../utils/pending-session-nav.js'
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
 import { ParticipantAvatar } from './participant-avatar.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 const PARTICIPANTS_COLLAPSED_COUNT = 5;
 
 function ExerciseRow({ exercise, idPrefix }) {
   const rowId = `${idPrefix}-exercise-${exercise.id}`;
   return (
-    <View className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={rowId} testID={rowId}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-transparent dark:bg-surface-2" nativeID={rowId} testID={rowId}>
       <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${rowId}-name`} testID={`${rowId}-name`}>
         {exercise.name}
       </Text>
@@ -42,7 +43,7 @@ function ExerciseRow({ exercise, idPrefix }) {
 function ParticipantRow({ member, idPrefix }) {
   const rowId = `${idPrefix}-participant-${member.userId}`;
   return (
-    <View className="flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={rowId} testID={rowId}>
+    <View className="flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-transparent dark:bg-surface-2" nativeID={rowId} testID={rowId}>
       {/* Mismo componente que los marcadores del mapa en vivo
           (trainer-session-live-screen.jsx) -- la versión hand-rolled que
           tenía esta fila antes nunca llegó a tener un <Image> real en la
@@ -149,6 +150,7 @@ function TrainerSessionPreStartScreenContent() {
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-pre-start-screen-root" testID="trainer-session-pre-start-screen-root">
       <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="trainer-session-pre-start-screen-width-container" testID="trainer-session-pre-start-screen-width-container">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="trainer-session-pre-start-screen-scroll" testID="trainer-session-pre-start-screen-scroll">
+      <ScreenCard nativeID="trainer-session-pre-start-screen-container" testID="trainer-session-pre-start-screen-container">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-pre-start-screen-header-row" testID="trainer-session-pre-start-screen-header-row">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="trainer-session-pre-start-screen-back-button" onPress={() => router.back()} testID="trainer-session-pre-start-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
@@ -270,6 +272,7 @@ function TrainerSessionPreStartScreenContent() {
             </Pressable>
           )}
         </View>
+      </ScreenCard>
       </ScrollView>
 
       {!isWeb && (

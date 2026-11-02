@@ -47,7 +47,7 @@ export function ThemeToggle() {
       accessibilityLabel={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       accessibilityRole="switch"
       accessibilityState={{ checked: isDark }}
-      className="rounded-full bg-slate-200 hover:opacity-90 dark:bg-slate-800"
+      className="rounded-full bg-slate-200 border border-slate-300 hover:opacity-90 dark:bg-slate-700 dark:border-slate-600"
       nativeID="theme-toggle"
       onPress={toggleThemeMode}
       style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT, padding: 2 }}

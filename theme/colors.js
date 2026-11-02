@@ -15,9 +15,9 @@ export const lightColors = {
 };
 
 export const darkColors = {
-  background: '#111518',
+  background: '#020617',
   onBackground: '#ffffff',
-  surface: '#111518',
+  surface: '#0f172a',
   onSurface: '#ffffff',
   onSurfaceVariant: '#c0c8cd',
   outlineVariant: '#40484c',

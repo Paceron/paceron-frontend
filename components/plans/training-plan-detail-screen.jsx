@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTrainingPlan, useTrainingPlanMutations } from '../../hooks/use-training-plans.js';
@@ -13,6 +13,7 @@ import { useExercises } from '../../hooks/use-exercises.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
 import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
@@ -219,7 +220,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
       showsVerticalScrollIndicator={false}
       testID="training-plan-detail-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="training-plan-detail-screen-container" testID="training-plan-detail-screen-container">
+      <ScreenCard nativeID="training-plan-detail-screen-container" testID="training-plan-detail-screen-container">
         <Pressable
           className="mb-6 flex-row items-center gap-1.5 self-start py-1 pr-1 hover:opacity-70 active:opacity-70"
           nativeID="training-plan-detail-back-button"
@@ -278,13 +279,13 @@ function TrainingPlanDetailScreenContent({ planId }) {
           </View>
         )}
 
-        <SectionCard icon="information-outline" title="Sobre el plan">
+        <SectionCard icon="information-outline" title="Sobre el plan" variant="nested">
           <Text className="text-sm leading-5 text-slate-700 dark:text-slate-200" nativeID="training-plan-detail-description" testID="training-plan-detail-description">
             {plan.description?.trim() ? plan.description : 'Sin descripción.'}
           </Text>
         </SectionCard>
 
-        <SectionCard icon="calendar-week" title="Días del plan">
+        <SectionCard icon="calendar-week" title="Días del plan" variant="nested">
           <View className="gap-2" nativeID="training-plan-detail-days-list" testID="training-plan-detail-days-list">
             {plan.days.map((day) => (
               <DayRow
@@ -296,7 +297,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
             ))}
           </View>
         </SectionCard>
-      </View>
+      </ScreenCard>
 
       <DeleteTrainingPlanModal
         onCancel={() => setDeleteModalVisible(false)}

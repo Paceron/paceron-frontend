@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeamSearchStore } from '../../store/team-search-store.js';
 import { useUser } from '../../hooks/use-user.js';
@@ -27,6 +27,7 @@ import { useTeamFees } from '../../hooks/use-team-fees.js';
 import { formatMonthlyFee } from '../../utils/currency.js';
 import { JoinTeamConfirmModal } from './join-team-confirm-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 function buttonState(team, myPendingTeamIds) {
   if (myPendingTeamIds.has(team.id)) return { disabled: true, label: 'Solicitud enviada' };
@@ -216,7 +217,7 @@ function TeamSearchScreenContent() {
 
   return (
     <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="team-search-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="team-search-screen-container" testID="team-search-screen-container">
+      <ScreenCard nativeID="team-search-screen-container" testID="team-search-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="team-search-screen-header" testID="team-search-screen-header">
           <Pressable className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70" nativeID="team-search-screen-back-button" onPress={() => router.back()} testID="team-search-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
@@ -226,7 +227,7 @@ function TeamSearchScreenContent() {
           </Text>
         </View>
 
-        <SectionCard collapsed={filtersCollapsed} collapsible icon="magnify" onToggle={() => setFiltersCollapsed((v) => !v)} scope="team-search-filters-section" title="Filtros">
+        <SectionCard collapsed={filtersCollapsed} collapsible icon="magnify" onToggle={() => setFiltersCollapsed((v) => !v)} scope="team-search-filters-section" title="Filtros" variant="nested">
           <View className="flex-row items-center gap-2" nativeID="team-search-quick-row" testID="team-search-quick-row">
             <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-search-name-wrapper" testID="team-search-name-wrapper">
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
@@ -342,7 +343,7 @@ function TeamSearchScreenContent() {
           teamName={confirmingTeam?.name}
           visible={Boolean(confirmingTeam)}
         />
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }

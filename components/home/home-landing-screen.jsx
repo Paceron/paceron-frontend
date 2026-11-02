@@ -41,6 +41,19 @@ export function HomeLandingScreen() {
   const router = useRouter();
   const colors = useThemeColors();
 
+  // NO usa `ScreenCard` (ver docs/superpowers/specs/2026-10-31-visual-design-
+  // refresh-design.md) a propósito -- evaluado en la Tarea 11 de ese plan.
+  // Esta es la landing de marketing para visitantes sin sesión (hero +
+  // features + panel de IA + audience cards + footer propio), no una
+  // pantalla de contenido (texto/listas/forms/datos de estado) -- la forma
+  // que ScreenCard está pensada para resolver. Cada sección ya es un bloque
+  // visual propio y deliberado (hero centrado sin card, grid de feature
+  // cards, panel de IA con su propio borde `primary/20`, audience cards, una
+  // franja de footer con su propio fondo `bg-white dark:bg-surface-2`) --
+  // forzar una sola card blanca envolviendo TODO el `max-w-5xl` de arriba
+  // aplanaría esa jerarquía de bloques contrastantes en una sola superficie
+  // uniforme, el patrón que una landing usa a propósito y que el spec no
+  // pide cambiar (fuera de alcance: "cambios de layout/estructura").
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
@@ -58,7 +71,7 @@ export function HomeLandingScreen() {
           testID="home-landing-screen-hero"
         >
           <View
-            className="mb-14 items-center"
+            className="-mt-6 mb-16 items-center p-10 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 hover:dark:bg-lime-950"
             nativeID="home-landing-screen-hero-brand"
             testID="home-landing-screen-hero-brand"
           >
@@ -102,13 +115,13 @@ export function HomeLandingScreen() {
               <MaterialCommunityIcons color={colors.onPrimary} name="arrow-right" size={18} />
             </Pressable>
             <Pressable
-              className="h-12 flex-row items-center gap-2 rounded-full bg-slate-100 px-8 hover:bg-slate-200 active:opacity-80 dark:bg-slate-800 dark:hover:bg-slate-700"
+              className="h-12 flex-row items-center gap-2 rounded-full border border-slate-300 px-8 hover:bg-slate-100 active:opacity-80 dark:border-surface-2 dark:hover:bg-surface-2"
               nativeID="home-landing-screen-hero-secondary-cta"
               testID="home-landing-screen-hero-secondary-cta"
               onPress={() => router.push('/login')}
             >
               <Text
-                className="text-sm font-semibold uppercase tracking-wide text-slate-900 dark:text-white"
+                className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200"
                 nativeID="home-landing-screen-hero-secondary-cta-label"
                 testID="home-landing-screen-hero-secondary-cta-label"
               >

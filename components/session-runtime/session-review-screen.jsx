@@ -31,6 +31,7 @@ import { SeriesTrajectoryMap } from './series-trajectory-map.jsx';
 import { VoiceAnnotationControls } from './voice-annotation-controls.jsx';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 const ROW_STATUS = {
   completed: { label: 'Completada', color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle' },
@@ -174,7 +175,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
           content container (`items-center` centra al hijo) + este wrapper
           (`max-w-3xl`) -- pedido real 2026-10-30. */}
       <ScrollView className="flex-1" contentContainerClassName={`px-4 py-6 ${isWeb ? 'items-center' : ''}`} nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="session-review-screen-scroll">
-      <View className={`w-full ${isWeb ? 'max-w-3xl' : ''}`} nativeID="session-review-screen-content" testID="session-review-screen-content">
+      <ScreenCard nativeID="session-review-screen-content" testID="session-review-screen-content">
         <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-back-label" testID="session-review-screen-back-label">
@@ -227,7 +228,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
             cuerpo como una fila más, mismo patrón que route-attempt-detail-
             screen.jsx (`-athlete-row`: avatar + nombre + meta con ícono). */}
         {athleteFullName && (
-          <View className="mb-4 flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-screen-athlete-row" testID="session-review-screen-athlete-row">
+          <View className="mb-4 flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-transparent dark:bg-surface-2" nativeID="session-review-screen-athlete-row" testID="session-review-screen-athlete-row">
             <ParticipantAvatar color={colorForUserId(slot.athleteUserId)} idPrefix="session-review-screen-athlete" name={athleteFullName} photoUrl={athleteUser.photoUrl} size={40} />
             <View className="flex-1 gap-0.5" nativeID="session-review-screen-athlete-info" testID="session-review-screen-athlete-info">
               <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="session-review-screen-athlete-name" numberOfLines={1} testID="session-review-screen-athlete-name">
@@ -258,7 +259,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
               const editableRows = exercise.rows.filter((row) => row.status === 'completed' || row.status === 'unregistered');
               const canBulkSave = editableRows.length > 1;
               return (
-              <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" key={exercise.exerciseId} nativeID={exerciseId} testID={exerciseId}>
+              <View className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-transparent dark:bg-surface-2" key={exercise.exerciseId} nativeID={exerciseId} testID={exerciseId}>
                 <View className="mb-1 flex-row items-center justify-between gap-2" nativeID={`${exerciseId}-header`} testID={`${exerciseId}-header`}>
                   <Text className="flex-1 text-sm font-bold text-slate-900 dark:text-white" nativeID={`${exerciseId}-name`} testID={`${exerciseId}-name`}>
                     {exercise.exerciseName}
@@ -285,7 +286,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
                       : '';
                     const rowId = `${exerciseId}-set-${row.setNumber}`;
                     return (
-                      <Pressable className="flex-row items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 active:opacity-70 dark:border-slate-800 dark:bg-slate-900/50" key={row.setNumber} nativeID={rowId} onPress={() => onOpenRow({ exerciseId: exercise.exerciseId, exerciseName: exercise.exerciseName, setNumber: row.setNumber, row })} testID={rowId}>
+                      <Pressable className="flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 active:opacity-70 dark:border-surface-2 dark:bg-surface" key={row.setNumber} nativeID={rowId} onPress={() => onOpenRow({ exerciseId: exercise.exerciseId, exerciseName: exercise.exerciseName, setNumber: row.setNumber, row })} testID={rowId}>
                         <MaterialCommunityIcons color={colors.primary} name={meta.icon} size={18} />
                         <View className="flex-1" nativeID={`${rowId}-text`} testID={`${rowId}-text`}>
                           <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100" nativeID={`${rowId}-label`} testID={`${rowId}-label`}>
@@ -312,7 +313,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
             })}
           </View>
         )}
-      </View>
+      </ScreenCard>
       </ScrollView>
     </View>
   );
@@ -322,7 +323,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
 
 function DataField({ editable, editing, id, label, hint, children, onToggleEdit }) {
   return (
-    <View className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-surface" nativeID={id} testID={id}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-transparent dark:bg-surface-2" nativeID={id} testID={id}>
       <View className="flex-row items-center justify-between gap-2" nativeID={`${id}-header`} testID={`${id}-header`}>
         <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-label`} testID={`${id}-label`}>
           {label}
@@ -541,9 +542,18 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
       {/* Mismo motivo que session-review-screen-scroll (arriba en este
           archivo): el límite de ancho se mueve del ScrollView (que así
           queda angosto e inset del borde real) a un wrapper adentro del
-          content container. */}
+          content container.
+          No usa <ScreenCard> acá a propósito: esta vista necesita
+          `max-w-5xl` en web ancho (columna de datos + mapa/metadatos lado
+          a lado), más ancho que el `max-w-3xl` fijo que ScreenCard trae
+          hardcodeado -- anidarlo igual lo haría ganar como constraint más
+          interno y angostaría la pantalla en desktop (regresión de layout
+          real, fuera de alcance de este lavado de cara). Se replica a mano
+          el mismo tratamiento visual (bg/borde/redondeo) que ScreenCard
+          aplica, para que la pantalla quede consistente con el resto sin
+          sacrificar el ancho que esta vista en particular necesita. */}
       <ScrollView className="flex-1" contentContainerClassName={`px-4 py-6 ${isWeb ? 'items-center' : ''}`} nativeID="session-review-detail-scroll" scrollEnabled={!mapInteracting} showsVerticalScrollIndicator={false} testID="session-review-detail-scroll">
-      <View className={`w-full ${!isWeb ? '' : isNarrowWeb ? 'max-w-3xl' : 'max-w-5xl'}`} nativeID="session-review-detail-content" testID="session-review-detail-content">
+      <View className={`w-full self-center rounded-2xl bg-white dark:border dark:border-surface-2 dark:bg-surface p-4 ${!isWeb ? '' : isNarrowWeb ? 'max-w-3xl' : 'max-w-5xl'}`} nativeID="session-review-detail-content" testID="session-review-detail-content">
         <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-detail-back-button" onPress={handleBack} testID="session-review-detail-back-button">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-detail-back-label" testID="session-review-detail-back-label">
@@ -734,7 +744,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
           {feedback && (
             <View className={isNarrowWeb ? 'mt-4' : 'flex-1'} nativeID="session-review-detail-columns-map" testID="session-review-detail-columns-map">
               <View className="gap-3" nativeID="session-review-detail-map-stack" testID="session-review-detail-map-stack">
-                <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-trajectory-card" testID="session-review-detail-trajectory-card">
+                <View className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-transparent dark:bg-surface-2" nativeID="session-review-detail-trajectory-card" testID="session-review-detail-trajectory-card">
                   <View className="flex-row items-center gap-1.5" nativeID="session-review-detail-trajectory-card-header" testID="session-review-detail-trajectory-card-header">
                     <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-path" size={14} />
                     <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-trajectory-card-label" testID="session-review-detail-trajectory-card-label">
@@ -746,7 +756,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
                   </Animated.View>
                 </View>
 
-                <View className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="session-review-detail-persisted" testID="session-review-detail-persisted">
+                <View className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-transparent dark:bg-surface-2" nativeID="session-review-detail-persisted" testID="session-review-detail-persisted">
                   <View className="mb-2 flex-row items-center gap-1.5" nativeID="session-review-detail-persisted-header" testID="session-review-detail-persisted-header">
                     <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={14} />
                     <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-review-detail-persisted-label" testID="session-review-detail-persisted-label">

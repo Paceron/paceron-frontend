@@ -26,6 +26,7 @@ import { findActiveMetricCompetitionId } from '../../utils/competition-match.js'
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();
@@ -34,7 +35,7 @@ function ExerciseRow({ exercise, idPrefix }) {
   const hasMultipleSeries = exercise.repeatCount > 1;
 
   return (
-    <View className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={rowId} testID={rowId}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-transparent dark:bg-surface-2" nativeID={rowId} testID={rowId}>
       <Pressable
         className="flex-row items-center justify-between"
         disabled={!hasMultipleSeries}
@@ -375,6 +376,7 @@ function SessionPreStartScreenContent() {
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
       <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="session-pre-start-screen-width-container" testID="session-pre-start-screen-width-container">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
+      <ScreenCard nativeID="session-pre-start-screen-container" testID="session-pre-start-screen-container">
         <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
           <Pressable
             accessibilityLabel="Volver"
@@ -484,6 +486,7 @@ function SessionPreStartScreenContent() {
             ))}
           </View>
         </View>
+      </ScreenCard>
       </ScrollView>
 
       {/* Botonera fija fuera del ScrollView: la lista scrollea sin arrastrarlo.

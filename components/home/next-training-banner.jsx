@@ -131,7 +131,7 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
       ))}
 
       <Pressable
-        className="relative overflow-hidden rounded-2xl bg-primary p-5 hover:opacity-90 active:opacity-90"
+        className="relative overflow-hidden rounded-2xl bg-primary shadow-sm p-5 hover:opacity-90 active:opacity-90"
         nativeID="next-training-banner-hero"
         onPress={onHeroPress}
         testID="next-training-banner-hero"

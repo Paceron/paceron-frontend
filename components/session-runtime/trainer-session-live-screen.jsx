@@ -202,7 +202,7 @@ const DRAG_VARIANTS = {
     // contra el ícono blanco sin depender de qué haya detrás.
     thumb: 'bg-emerald-500 border border-emerald-600/60',
     iconColor: '#ffffff',
-    label: 'text-emerald-700 dark:text-emerald-300',
+    label: 'text-emerald-700 dark:text-emerald-400',
   },
 };
 

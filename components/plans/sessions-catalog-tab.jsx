@@ -178,6 +178,7 @@ export function SessionsCatalogTab() {
         )}
         icon="clipboard-plus-outline"
         title="Tus sesiones"
+        variant="nested"
       >
         {loading ? (
           <View className="items-center py-6" nativeID="sessions-catalog-loading" testID="sessions-catalog-loading">

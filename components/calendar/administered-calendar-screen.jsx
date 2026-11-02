@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useCalendarTabStore } from '../../store/calendar-tab-store.js';
 import { useAdministeredCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
@@ -16,6 +16,7 @@ import { upcomingTrainingsRange, selectUpcomingTrainings } from '../../utils/upc
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionTabBar } from '../shared/section-tab-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
 import { TeamGroupPickerModal } from './team-group-picker-modal.jsx';
@@ -141,7 +142,7 @@ function AdministeredCalendarScreenContent() {
         showsVerticalScrollIndicator={false}
         testID="administered-calendar-screen-scroll"
       >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="administered-calendar-screen-container" testID="administered-calendar-screen-container">
+      <ScreenCard nativeID="administered-calendar-screen-container" testID="administered-calendar-screen-container">
         <View className="mb-6 flex-row flex-wrap items-center gap-2" nativeID="administered-calendar-screen-header" testID="administered-calendar-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -219,7 +220,7 @@ function AdministeredCalendarScreenContent() {
         )}
 
         {activeTab === 'historial' && <TrainingsHistoryTab role="trainer" />}
-      </View>
+      </ScreenCard>
       </ScrollView>
 
       <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="administered" visible={dayModalVisible} />

@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { validateBirthDate } from '../../utils/date-validators.js';
 import { validateDNI } from '../../utils/dni-validators.js';
@@ -19,6 +18,7 @@ import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js
 import { Row, Col, InputField, DateField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { LocationPicker } from '../shared/location-picker';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
@@ -218,7 +218,7 @@ function EditProfileForm({ user }) {
       enableOnAndroid
       extraScrollHeight={24}
     >
-      <View nativeID="edit-profile-screen-container" testID="edit-profile-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
+      <ScreenCard nativeID="edit-profile-screen-container" testID="edit-profile-screen-container">
         <View nativeID="edit-profile-screen-header" testID="edit-profile-screen-header" className="mb-8 flex-row items-center gap-2">
           <Pressable
             nativeID="edit-profile-screen-back-button"
@@ -385,7 +385,7 @@ function EditProfileForm({ user }) {
         )}
 
         {activeTab === 'password' && <ChangePasswordSection userId={user.userId} />}
-      </View>
+      </ScreenCard>
     </KeyboardAwareScrollView>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>

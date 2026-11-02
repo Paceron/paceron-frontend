@@ -30,7 +30,7 @@ export function AvatarPicker({ uri, onPick, onRemove, loading = false, size = 64
   const showInitials = !showImage && Boolean(initials);
 
   return (
-    <View className="relative border border-slate-300 dark:border-slate-600 rounded-full" nativeID={`${idPrefix}-wrapper`} testID={`${idPrefix}-wrapper`}>
+    <View className="relative border border-slate-200 dark:border-slate-700 rounded-full" nativeID={`${idPrefix}-wrapper`} testID={`${idPrefix}-wrapper`}>
       <Pressable
         accessibilityLabel={accessibilityLabel}
         className={`items-center justify-center overflow-hidden rounded-full hover:opacity-80 active:opacity-70 ${showInitials ? 'bg-primary-tint dark:bg-primary/15' : 'bg-slate-100 dark:bg-slate-800'}`}

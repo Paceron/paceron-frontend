@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { selectAdministeredTeams } from '../../store/team-store.js';
@@ -15,6 +15,7 @@ import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 function TeamRow({ team, onPress, hasPendingRequests }) {
   const colors = useThemeColors();
@@ -72,7 +73,7 @@ function TeamsListScreenContent() {
       showsVerticalScrollIndicator={false}
       testID="teams-list-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="teams-list-screen-container" testID="teams-list-screen-container">
+      <ScreenCard nativeID="teams-list-screen-container" testID="teams-list-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="teams-list-screen-header" testID="teams-list-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -113,7 +114,7 @@ function TeamsListScreenContent() {
           )}
         </View>
 
-        <SectionCard icon="account-group" title={activeRole === 'trainer' ? 'Equipos que administrás' : 'Equipos en los que participás'}>
+        <SectionCard icon="account-group" title={activeRole === 'trainer' ? 'Equipos que administrás' : 'Equipos en los que participás'} variant="nested">
           {loading ? (
             <View className="gap-2" nativeID="teams-list-loading" testID="teams-list-loading">
               {[0, 1, 2].map((i) => (
@@ -140,7 +141,7 @@ function TeamsListScreenContent() {
             </View>
           )}
         </SectionCard>
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }

@@ -22,6 +22,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InlinePicker, Row, Col } from '../forms/fields.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
@@ -54,8 +55,8 @@ const RUNNER_MENU_WIDTH = 208;
 // que STATUS_META en profile-screen.jsx para no inventar una paleta nueva.
 const SUBSCRIPTION_META = {
   activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  vencido: { label: 'Vencido', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
-  en_prueba: { label: 'En prueba', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+  vencido: { label: 'Vencido', bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400' },
+  en_prueba: { label: 'En prueba', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400' },
 };
 
 const TEAM_STATUS_META = {
@@ -220,7 +221,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
   const [expanded, setExpanded] = useState(false);
 
   const avatar = (
-    <View className="h-10 w-10 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`team-detail-runner-${member.id}-avatar`} testID={`team-detail-runner-${member.id}-avatar`}>
+    <View className="h-10 w-10 m-1 ml-2 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`team-detail-runner-${member.id}-avatar`} testID={`team-detail-runner-${member.id}-avatar`}>
       <MaterialCommunityIcons color={colors.primary} name="account" size={20} />
     </View>
   );
@@ -302,7 +303,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
   if (isWeb) {
     return (
       <View
-        className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+        className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900"
         nativeID={`team-detail-runner-${member.id}`}
         testID={`team-detail-runner-${member.id}`}
       >
@@ -917,7 +918,7 @@ function TeamDetailScreenContent({ teamId }) {
       {/* Sin corredores en el equipo (todavía, no por filtro) no tiene
           sentido mostrar el buscador — no hay nada para buscar. */}
       {(loadingRoster || members.length > 0) && (
-        <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
+        <View className="mb-4 rounded-xl bg-slate-50 p-1 dark:bg-slate-800" nativeID="team-detail-search-row" testID="team-detail-search-row">
           {/* Buscadores minimalistas (mismo criterio que
               ExercisesCatalogTab): sin label propio, el texto vive como
               placeholder adentro del campo — ninguno de los dos necesita
@@ -1043,7 +1044,7 @@ function TeamDetailScreenContent({ teamId }) {
       showsVerticalScrollIndicator={false}
       testID="team-detail-screen-scroll"
     >
-      <View className={`w-full self-center border border-slate-200 dark:border-slate-800 p-4 rounded-2xl bg-white dark:bg-surface ${isWeb ? 'max-w-3xl' : ''}`} nativeID="team-detail-screen-container" testID="team-detail-screen-container">
+      <ScreenCard nativeID="team-detail-screen-container" testID="team-detail-screen-container">
         <Pressable
           className="mb-6 flex-row items-center gap-1.5 self-start py-1 pr-1 hover:opacity-70 active:opacity-70"
           nativeID="team-detail-back-button"
@@ -1141,7 +1142,7 @@ function TeamDetailScreenContent({ teamId }) {
         {activeTab === 'competencias' && competitionsContent}
         {activeTab === 'solicitudes' && solicitudesContent}
         {activeTab === 'rendimiento' && <DashboardScreen teamId={team.id} />}
-      </View>
+      </ScreenCard>
 
       {canDeleteTeam && (
         <DeleteTeamModal

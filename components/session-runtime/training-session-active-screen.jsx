@@ -150,7 +150,7 @@ const DRAG_VARIANTS = {
     fill: 'bg-emerald-500/45',
     thumb: 'bg-emerald-500/70 border border-emerald-600/60',
     iconColor: '#ffffff',
-    label: 'text-emerald-700 dark:text-emerald-300',
+    label: 'text-emerald-700 dark:text-emerald-400',
   },
   neutral: {
     trackBorder: 'border-slate-200 dark:border-slate-700/60',

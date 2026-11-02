@@ -6,13 +6,13 @@ export function SectionTabBar({ tabs, active, onChange, idPrefix }) {
   const colors = useThemeColors();
 
   return (
-    <View className="mb-6 flex-row gap-2" nativeID={`${idPrefix}-tab-bar`} testID={`${idPrefix}-tab-bar`}>
+    <View className="mb-6 flex-row gap-2 p-1 rounded-xl bg-slate-200 dark:bg-slate-800" nativeID={`${idPrefix}-tab-bar`} testID={`${idPrefix}-tab-bar`}>
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
           <Pressable
             className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 ${
-              isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
             }`}
             key={tab.id}
             nativeID={`${idPrefix}-tab-${tab.id}`}

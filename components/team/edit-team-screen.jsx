@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
 import { getTeamMemberLimit } from '../../store/team-store.js';
@@ -18,6 +18,7 @@ import { useTeamGeneralInfoForm } from '../../hooks/use-team-general-info-form.j
 import { useTeamConfiguration } from '../../hooks/use-team-configuration.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
@@ -124,7 +125,7 @@ function EditTeamForm({ team, teamId }) {
         showsVerticalScrollIndicator={false}
         testID="edit-team-screen-scroll"
       >
-        <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="edit-team-screen-container" testID="edit-team-screen-container">
+        <ScreenCard nativeID="edit-team-screen-container" testID="edit-team-screen-container">
           <View className="mb-8 flex-row items-center gap-2" nativeID="edit-team-screen-header" testID="edit-team-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -139,11 +140,11 @@ function EditTeamForm({ team, teamId }) {
             </Text>
           </View>
 
-          <SectionCard icon="account-group" title="Datos del equipo">
+          <SectionCard icon="account-group" title="Datos del equipo" variant="nested">
             <TeamGeneralInfoFields form={generalForm} idPrefix="edit-team" maxAllowed={maxAllowed} minimumFee={minimumFee} />
           </SectionCard>
 
-          <SectionCard icon="shield-account-outline" title="Privacidad">
+          <SectionCard icon="shield-account-outline" title="Privacidad" variant="nested">
             <Pressable
               accessibilityLabel="Mostrar los grupos a los corredores"
               accessibilityRole="checkbox"
@@ -243,7 +244,7 @@ function EditTeamForm({ team, teamId }) {
               )}
             </Pressable>
           </SectionCard>
-        </View>
+        </ScreenCard>
       </ScrollView>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>

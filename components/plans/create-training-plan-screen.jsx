@@ -15,6 +15,7 @@ import { TrainingPlanFormFields } from './training-plan-form-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 function CreateTrainingPlanScreenContent() {
   const router = useRouter();
@@ -56,7 +57,7 @@ function CreateTrainingPlanScreenContent() {
         showsVerticalScrollIndicator={false}
         testID="create-training-plan-screen-scroll"
       >
-        <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="create-training-plan-screen-container" testID="create-training-plan-screen-container">
+        <ScreenCard nativeID="create-training-plan-screen-container" testID="create-training-plan-screen-container">
           <View className="mb-8 flex-row items-center gap-2" nativeID="create-training-plan-screen-header" testID="create-training-plan-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -91,7 +92,7 @@ function CreateTrainingPlanScreenContent() {
               </>
             )}
           </Pressable>
-        </View>
+        </ScreenCard>
       </ScrollView>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
 import { selectAdministeredTeams } from '../../store/team-store.js';
@@ -15,6 +15,7 @@ import { useMyJoinRequests, useJoinRequestMutations, useTeamsJoinRequestsMap } f
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { useTeamFees } from '../../hooks/use-team-fees.js';
@@ -148,7 +149,7 @@ function MyJoinRequestsSection() {
   };
 
   return (
-    <SectionCard collapsed={collapsed} collapsible icon="account-clock-outline" onToggle={() => setCollapsed((v) => !v)} scope="notifications-my-requests-section" title="Mis solicitudes enviadas">
+    <SectionCard collapsed={collapsed} collapsible icon="account-clock-outline" onToggle={() => setCollapsed((v) => !v)} scope="notifications-my-requests-section" title="Mis solicitudes enviadas" variant="nested">
       {loading ? (
         <View className="gap-2" nativeID="my-join-requests-loading" testID="my-join-requests-loading">
           {[0, 1].map((i) => <SkeletonBlock height={52} key={i} nativeID={`my-join-requests-loading-row-${i}`} testID={`my-join-requests-loading-row-${i}`} width="100%" />)}
@@ -189,7 +190,7 @@ function TrainerPendingRequestsSection() {
   const allPending = administeredTeamIds.flatMap((teamId) => byTeamId.get(teamId) ?? []);
 
   return (
-    <SectionCard collapsed={collapsed} collapsible icon="account-question-outline" onToggle={() => setCollapsed((v) => !v)} scope="notifications-pending-requests-section" title="Solicitudes pendientes">
+    <SectionCard collapsed={collapsed} collapsible icon="account-question-outline" onToggle={() => setCollapsed((v) => !v)} scope="notifications-pending-requests-section" title="Solicitudes pendientes" variant="nested">
       {loading ? (
         <View className="gap-2" nativeID="trainer-pending-requests-loading" testID="trainer-pending-requests-loading">
           {[0, 1].map((i) => <SkeletonBlock height={52} key={i} nativeID={`trainer-pending-requests-loading-row-${i}`} testID={`trainer-pending-requests-loading-row-${i}`} width="100%" />)}
@@ -294,7 +295,7 @@ function NotificationsScreenContent() {
       showsVerticalScrollIndicator={false}
       testID="notifications-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="notifications-screen-container" testID="notifications-screen-container">
+      <ScreenCard nativeID="notifications-screen-container" testID="notifications-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="notifications-screen-header" testID="notifications-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -309,7 +310,7 @@ function NotificationsScreenContent() {
           </Text>
         </View>
 
-        <SectionCard collapsed={invitationsCollapsed} collapsible icon="email-outline" onToggle={() => setInvitationsCollapsed((v) => !v)} scope="notifications-invitations-section" title="Invitaciones recibidas">
+        <SectionCard collapsed={invitationsCollapsed} collapsible icon="email-outline" onToggle={() => setInvitationsCollapsed((v) => !v)} scope="notifications-invitations-section" title="Invitaciones recibidas" variant="nested">
           {loadingInvitations ? (
             <View className="gap-2" nativeID="received-invitations-loading" testID="received-invitations-loading">
               {[0, 1].map((i) => <SkeletonBlock height={78} key={i} nativeID={`received-invitations-loading-row-${i}`} testID={`received-invitations-loading-row-${i}`} width="100%" />)}
@@ -336,7 +337,7 @@ function NotificationsScreenContent() {
 
         {activeRole === 'runner' && <MyJoinRequestsSection />}
         {activeRole === 'trainer' && <TrainerPendingRequestsSection />}
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }
