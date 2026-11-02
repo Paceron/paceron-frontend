@@ -17,19 +17,26 @@ import {
 } from '../services/competitions.js';
 import { toCompetitionModel, toCompetitionDetailModel, toCompetitionAttemptListModel, toCreateCompetitionPayload } from '../services/normalizers.js';
 
-// Listado de competencias de un equipo (Gap 33) -- `hasUnseen` alimenta el
-// punto rojo de la pestaña (ver hooks/use-gamification-badge.js, que NO
-// suma este término al OR global a propósito -- ver la spec, sección
-// "Alcance del punto rojo").
-export function useCompetitions(teamId, { status, groupId } = {}) {
-  const query = useQuery({
+// Factorizado para que useMyCompetitions (hooks/use-my-competitions.js) pueda
+// pedir el mismo recurso con useQueries (N equipos en paralelo) sin duplicar
+// la key/queryFn -- mismo patrón que teamQueryOptions en hooks/use-teams.js.
+export function competitionsQueryOptions(teamId, { status, groupId } = {}) {
+  return {
     queryKey: ['competitions', teamId, status, groupId],
     queryFn: () => listCompetitions(teamId, { status, groupId }).then((response) => ({
       competitions: (response.data ?? response).map(toCompetitionModel),
       hasUnseen: Boolean(response.has_unseen),
     })),
     enabled: Boolean(teamId),
-  });
+  };
+}
+
+// Listado de competencias de un equipo (Gap 33) -- `hasUnseen` alimenta el
+// punto rojo de la pestaña (ver hooks/use-gamification-badge.js, que NO
+// suma este término al OR global a propósito -- ver la spec, sección
+// "Alcance del punto rojo").
+export function useCompetitions(teamId, { status, groupId } = {}) {
+  const query = useQuery(competitionsQueryOptions(teamId, { status, groupId }));
 
   return {
     competitions: query.data?.competitions ?? [],
