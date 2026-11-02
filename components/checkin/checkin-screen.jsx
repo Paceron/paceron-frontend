@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
 import { CheckinScanner } from './checkin-scanner.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 // Gate de la pantalla de check-in del corredor: se entra con perfil corredor y
 // en mobile (requisito 1). La cámara, el overlay de espera y el resultado viven
@@ -54,8 +55,8 @@ function PlatformNotice() {
 
   return (
     <View className="flex-1 bg-paper px-4 py-8 dark:bg-ink" nativeID="checkin-web-root" testID="checkin-web-root">
-      <View className={`w-full self-center ${isWeb ? 'max-w-2xl' : ''}`} nativeID="checkin-web-container" testID="checkin-web-container">
-        <View className="rounded-2xl border border-slate-200 bg-white px-6 py-10 dark:border-slate-700 dark:bg-surface" nativeID="checkin-web-card" testID="checkin-web-card">
+      <ScreenCard maxWidthClassName="max-w-2xl" nativeID="checkin-web-container" padded={false} testID="checkin-web-container">
+        <View className="px-6 py-10" nativeID="checkin-web-card" testID="checkin-web-card">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="cellphone" size={28} />
           <Text className="mt-3 text-base font-bold text-slate-900 dark:text-white" nativeID="checkin-web-title" testID="checkin-web-title">
             Registrar asistencia es una función de la app
@@ -73,7 +74,7 @@ function PlatformNotice() {
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="checkin-web-back-label" testID="checkin-web-back-label">Volver</Text>
           </Pressable>
         </View>
-      </View>
+      </ScreenCard>
     </View>
   );
 }
@@ -86,8 +87,8 @@ function TrainerProfileNotice({ hasRunnerRole }) {
 
   return (
     <View className="flex-1 bg-paper px-4 py-8 dark:bg-ink" nativeID="checkin-role-root" testID="checkin-role-root">
-      <View className="w-full self-center max-w-2xl" nativeID="checkin-role-container" testID="checkin-role-container">
-        <View className="rounded-2xl border border-slate-200 bg-white px-6 py-10 dark:border-slate-700 dark:bg-surface" nativeID="checkin-role-card" testID="checkin-role-card">
+      <ScreenCard maxWidthClassName="max-w-2xl" nativeID="checkin-role-container" padded={false} testID="checkin-role-container">
+        <View className="px-6 py-10" nativeID="checkin-role-card" testID="checkin-role-card">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="whistle-outline" size={28} />
           <Text className="mt-3 text-base font-bold text-slate-900 dark:text-white" nativeID="checkin-role-title" testID="checkin-role-title">
             El registro por QR es del corredor
@@ -111,7 +112,7 @@ function TrainerProfileNotice({ hasRunnerRole }) {
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="checkin-role-back-label" testID="checkin-role-back-label">Volver</Text>
           </Pressable>
         </View>
-      </View>
+      </ScreenCard>
     </View>
   );
 }

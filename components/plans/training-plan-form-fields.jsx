@@ -315,12 +315,12 @@ export function TrainingPlanFormFields({ form, autoFocusName = false }) {
 
   return (
     <>
-      <SectionCard icon="clipboard-text-outline" title="Datos del plan">
+      <SectionCard icon="clipboard-text-outline" title="Datos del plan" variant="nested">
         <InputField autoFocus={autoFocusName} dense error={form.errors.name} label="Nombre del plan" onChange={form.setName} placeholder="Ej. Base 5K — nivel inicial" value={form.name} />
         <InputField dense hideErrorRow label="Descripción (opcional)" onChange={form.setDescription} placeholder="Para quién es, qué objetivo tiene." value={form.description} />
       </SectionCard>
 
-      <SectionCard icon="calendar-week" title="Días del plan">
+      <SectionCard icon="calendar-week" title="Días del plan" variant="nested">
         {form.errors.days && (
           <View className="mb-4 rounded-xl bg-red-50 px-4 py-3 dark:bg-red-900/20" nativeID="plan-days-error" testID="plan-days-error">
             <Text className="text-xs text-red-600 dark:text-red-400" nativeID="plan-days-error-text" testID="plan-days-error-text">{form.errors.days}</Text>

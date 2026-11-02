@@ -16,6 +16,22 @@ import { ThemeToggle } from '../theme/theme-toggle.jsx';
 // register-screen.jsx, mismas clases exactas, sin cambio visual.
 // `cardClassName` cubre lo que variaba entre esas dos pantallas (ancho máximo
 // y padding) — todo lo demás es fijo.
+//
+// NO usa `ScreenCard` (ver docs/superpowers/specs/2026-10-31-visual-design-
+// refresh-design.md) a propósito -- evaluado en la Tarea 11 de ese plan.
+// `cardClassName` empaqueta ancho Y padding juntos como un solo string, y dos
+// call sites (register-screen.jsx, reset-password-screen.jsx) lo varían por
+// plataforma (`isWeb ? 'max-w-4xl py-8 px-6' : 'max-w-md py-8 px-6'`) -- un
+// padding que cambia por plataforma, no solo el ancho que `maxWidthClassName`
+// de `ScreenCard` cubre. Además el botón "Volver" y el logo viven DENTRO de
+// la card, antes de `children` -- `ScreenCard` no tiene slot para contenido
+// no-children. Reemplazarlo habría significado enhebrar un prop más para
+// imitar lo que esta card ya hace. Sí se alinearon a mano los 3 valores de
+// color que se habían desviado de la paleta nueva: sin `shadow-lg` (ningún
+// nivel lleva sombra), sin borde en claro (el salto slate-300->blanco ya se
+// lee solo), y borde oscuro por el token `surface-2` en vez del literal
+// `slate-800` (mismo valor hoy, pero el resto de la app ya referencia el
+// token, no el literal, para no desincronizarse si el token vuelve a cambiar).
 export function AuthCardShell({ cardClassName = 'max-w-md p-8', children }) {
   const router = useRouter();
   const colors = useThemeColors();
@@ -59,7 +75,7 @@ export function AuthCardShell({ cardClassName = 'max-w-md p-8', children }) {
         extraScrollHeight={24}
       >
         <Animated.View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 48 }, animatedStyle]} nativeID="auth-card-shell-animated-wrapper" testID="auth-card-shell-animated-wrapper">
-          <View className={`w-full ${cardClassName} rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-surface`} nativeID="auth-card-shell-card" testID="auth-card-shell-card">
+          <View className={`w-full ${cardClassName} rounded-2xl bg-white dark:border dark:border-surface-2 dark:bg-surface`} nativeID="auth-card-shell-card" testID="auth-card-shell-card">
             <Pressable
               className="-ml-2 mb-4 flex-row items-center gap-1.5 self-start rounded-lg px-2 py-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
               onPress={handleBack}

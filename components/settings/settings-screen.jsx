@@ -5,11 +5,11 @@ import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
-import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, useUserMutations } from '../../hooks/use-user.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TermsModal } from '../legal/terms-modal.jsx';
@@ -88,7 +88,7 @@ function SettingsScreenContent() {
       showsVerticalScrollIndicator={false}
       testID="settings-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="settings-screen-container" testID="settings-screen-container">
+      <ScreenCard nativeID="settings-screen-container" testID="settings-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="settings-screen-header" testID="settings-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -103,7 +103,7 @@ function SettingsScreenContent() {
           </Text>
         </View>
 
-        <SectionCard icon="palette-outline" title="Apariencia">
+        <SectionCard icon="palette-outline" title="Apariencia" variant="nested">
           <View className="flex-row items-center gap-3" nativeID="settings-screen-theme-row" testID="settings-screen-theme-row">
             <View className="flex-1" nativeID="settings-screen-theme-picker-wrap" testID="settings-screen-theme-picker-wrap">
               <ResponsiveSelectField
@@ -122,7 +122,7 @@ function SettingsScreenContent() {
           </Text>
         </SectionCard>
 
-        <SectionCard icon="bell-outline" title="Notificaciones">
+        <SectionCard icon="bell-outline" title="Notificaciones" variant="nested">
           <Pressable
             accessibilityLabel="Permitir invitaciones a equipos"
             accessibilityRole="checkbox"
@@ -155,7 +155,7 @@ function SettingsScreenContent() {
           </Pressable>
         </SectionCard>
 
-        <SectionCard icon="file-document-outline" title="Legal">
+        <SectionCard icon="file-document-outline" title="Legal" variant="nested">
           <Pressable
             className="flex-row items-center justify-between py-1 active:opacity-70"
             nativeID="settings-screen-terms-row"
@@ -168,7 +168,7 @@ function SettingsScreenContent() {
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={20} />
           </Pressable>
         </SectionCard>
-      </View>
+      </ScreenCard>
 
       <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
     </ScrollView>

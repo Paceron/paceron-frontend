@@ -29,7 +29,7 @@ function StreakCard({ icon, title, current, best, idPrefix, selected, onPress })
   // por medio para esta propiedad.
   return (
     <Pressable
-      className="flex-1 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3"
+      className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:border-transparent dark:bg-surface-2 dark:hover:bg-surface-3 dark:active:bg-surface-3"
       nativeID={idPrefix}
       onPress={onPress}
       style={{ borderWidth: 2, borderColor: selected ? colors.primary : 'transparent' }}
@@ -127,7 +127,7 @@ export function StreaksTab() {
           seleccionada arriba (`selectedStreak`), no siempre la estricta.
           Todo dentro de una card (antes flotaba contra el fondo de la
           pantalla, se perdía -- pedido real 2026-10-15). */}
-      <View className="mt-5 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="streaks-tab-week-card" testID="streaks-tab-week-card">
+      <View className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="streaks-tab-week-card" testID="streaks-tab-week-card">
         <Text className="mb-3 text-xs text-slate-400 dark:text-slate-500" nativeID="streaks-tab-grid-subtitle" testID="streaks-tab-grid-subtitle">
           Mostrando: {selectedStreak === 'strict' ? 'Entrenamientos consecutivos' : 'Días entrenando'}
         </Text>

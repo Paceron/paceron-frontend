@@ -24,6 +24,7 @@ import { ParticipantAvatar } from './participant-avatar.jsx';
 import { RecordsFeedModal } from './records-feed-modal.jsx';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 // Resumen post-sesión del entrenador -- entra acá después de confirmar el
 // slide-to-finish (trainer-session-live-screen.jsx) o desde el calendario
@@ -44,7 +45,7 @@ function ParticipantRow({ participant, idPrefix, onPress }) {
   const meta = STATUS_META[participant.runnerStatus ?? 'none'];
   const rowId = `${idPrefix}-participant-${participant.userId}`;
   return (
-    <Pressable className="flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={rowId} onPress={onPress} testID={rowId}>
+    <Pressable className="flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-transparent dark:bg-surface-2" nativeID={rowId} onPress={onPress} testID={rowId}>
       <ParticipantAvatar color={colorForUserId(participant.userId)} idPrefix={rowId} name={participant.name} photoUrl={participant.photoUrl} size={36} />
       <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${rowId}-name`} numberOfLines={1} testID={`${rowId}-name`}>
         {participant.name}
@@ -142,7 +143,8 @@ function TrainerSessionReviewScreenContent() {
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-review-screen-root" testID="trainer-session-review-screen-root">
-      <ScrollView className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} contentContainerClassName="px-4 py-6" nativeID="trainer-session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="trainer-session-review-screen-scroll">
+      <ScrollView className="flex-1" contentContainerClassName={`px-4 py-6 ${isWeb ? 'items-center' : ''}`} nativeID="trainer-session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="trainer-session-review-screen-scroll">
+      <ScreenCard nativeID="trainer-session-review-screen-container" testID="trainer-session-review-screen-container">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-review-screen-header-row" testID="trainer-session-review-screen-header-row">
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" nativeID="trainer-session-review-screen-back-button" onPress={handleDone} testID="trainer-session-review-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
@@ -238,6 +240,7 @@ function TrainerSessionReviewScreenContent() {
             )}
           </View>
         </View>
+      </ScreenCard>
       </ScrollView>
 
       <AttendanceSessionModal

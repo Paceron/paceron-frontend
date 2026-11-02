@@ -22,6 +22,7 @@ import { useTeamConfiguration } from '../../hooks/use-team-configuration.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };
 const TOTAL_STEPS = 3;
@@ -189,7 +190,7 @@ function CreateTeamScreenContent() {
       contentContainerClassName="px-4 py-8"
       showsVerticalScrollIndicator={false}
     >
-      <View nativeID="create-team-screen-container" testID="create-team-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
+      <ScreenCard nativeID="create-team-screen-container" testID="create-team-screen-container">
         <View nativeID="create-team-screen-header" testID="create-team-screen-header" className="mb-8 flex-row items-center gap-2">
           <Pressable
             nativeID="create-team-screen-back-button"
@@ -215,7 +216,7 @@ function CreateTeamScreenContent() {
         </View>
 
         {step === 1 && (
-          <SectionCard icon="account-group" title="Datos del equipo">
+          <SectionCard icon="account-group" title="Datos del equipo" variant="nested">
             <TeamGeneralInfoFields autoFocusName={!isWeb} form={generalForm} idPrefix="create-team" maxAllowed={maxAllowed} minimumFee={minimumFee} />
 
             <StepNav nextLabel="Siguiente" onNext={handleContinueStep1} />
@@ -223,7 +224,7 @@ function CreateTeamScreenContent() {
         )}
 
         {step === 2 && (
-          <SectionCard icon="account-multiple" title="Grupos del equipo">
+          <SectionCard icon="account-multiple" title="Grupos del equipo" variant="nested">
             <Text className="mb-8 text-sm text-slate-500 dark:text-slate-400" nativeID="create-team-groups-hint" testID="create-team-groups-hint">
               Opcional — podés omitir este paso y crear grupos más adelante.
             </Text>
@@ -252,6 +253,7 @@ function CreateTeamScreenContent() {
               )}
               icon="account-multiple-check"
               title="Corredores a invitar"
+              variant="nested"
             >
               <InvitedEmailsList groups={groupsForInvite} onChange={setInvitedEmails} value={invitedEmails} />
 
@@ -270,7 +272,7 @@ function CreateTeamScreenContent() {
             />
           </>
         )}
-      </View>
+      </ScreenCard>
     </ScrollView>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>

@@ -6,8 +6,8 @@ import { complianceTone, formatCompliance } from '../../utils/comparison-format.
 // pantallas de la comparación, por eso vive acá y no repetido por pantalla.
 export const COMPLIANCE_TONE_CLASSES = {
   good: { bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  partial: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-800 dark:text-amber-300' },
-  low: { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300' },
+  partial: { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400' },
+  low: { bg: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-700 dark:text-rose-400' },
 };
 
 // Colores del SVG del gráfico, mismo criterio que los chips.

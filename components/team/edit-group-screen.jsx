@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
 import { useTeam } from '../../hooks/use-teams.js';
@@ -17,6 +17,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InputField } from '../forms/fields.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 // Formulario chico: nombre + descripción — mismos campos que ya usa
@@ -123,7 +124,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
       showsVerticalScrollIndicator={false}
       testID="edit-group-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="edit-group-screen-container" testID="edit-group-screen-container">
+      <ScreenCard nativeID="edit-group-screen-container" testID="edit-group-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="edit-group-screen-header" testID="edit-group-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -138,7 +139,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
           </Text>
         </View>
 
-        <SectionCard icon="account-multiple" title={`Datos de "${group.name}"`}>
+        <SectionCard icon="account-multiple" title={`Datos de "${group.name}"`} variant="nested">
           <InputField dense error={error} label="Nombre del grupo" onChange={(text) => { setName(text); if (error) setError(null); }} placeholder="Ej. Grupo avanzado" value={name} />
           <InputField dense label="Descripción del grupo (opcional)" multiline numberOfLines={2} onChange={setDescription} placeholder="Ej. Corredores con mayor volumen y ritmo." value={description} />
 
@@ -161,7 +162,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
             )}
           </Pressable>
         </SectionCard>
-      </View>
+      </ScreenCard>
     </ScrollView>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>

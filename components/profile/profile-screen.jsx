@@ -18,6 +18,7 @@ import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 import { mpConnectionState } from '../../utils/mp-connect-status.js';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
 import { RoleSwitchToggle } from './role-switch-toggle.jsx';
@@ -366,7 +367,7 @@ export function ProfileScreen() {
 
   return (
     <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="profile-screen">
-      <View className={`w-full ${isWeb ? 'max-w-3xl mx-auto' : ''}`} nativeID="profile-screen-content" testID="profile-screen-content">
+      <ScreenCard nativeID="profile-screen-content" testID="profile-screen-content">
         <Text
           style={{ fontFamily: 'Orbitron_700Bold' }}
           className="mb-6 text-2xl text-slate-900 dark:text-white"
@@ -431,7 +432,7 @@ export function ProfileScreen() {
           onConfirm={handleConfirmDeactivateTrainer}
           visible={confirmTrainerOpen}
         />
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }

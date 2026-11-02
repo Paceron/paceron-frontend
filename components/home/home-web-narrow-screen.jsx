@@ -47,6 +47,13 @@ export function HomeWebNarrowScreen() {
   const router = useRouter();
   const colors = useThemeColors();
 
+  // NO usa `ScreenCard` (ver docs/superpowers/specs/2026-10-31-visual-design-
+  // refresh-design.md) a propósito -- evaluado en la Tarea 11 de ese plan,
+  // misma razón que home-landing-screen.jsx (su variante web angosta de este
+  // mismo contenido de marketing). Hero sin card + grid de feature cards +
+  // panel de IA con borde propio + audience cards -- ya son bloques
+  // deliberadamente distintos entre sí, no contenido de pantalla suelto que
+  // necesite agruparse en una sola superficie uniforme.
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
@@ -105,13 +112,13 @@ export function HomeWebNarrowScreen() {
           </Pressable>
 
           <Pressable
-            className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-slate-100 hover:bg-slate-200 active:opacity-80 dark:bg-slate-800 dark:hover:bg-slate-700"
+            className="h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 hover:bg-slate-100 active:opacity-80 dark:border-surface-2 dark:hover:bg-surface-2"
             nativeID="home-web-narrow-screen-hero-secondary-cta"
             testID="home-web-narrow-screen-hero-secondary-cta"
             onPress={() => router.push('/login')}
           >
             <Text
-              className="text-sm font-semibold uppercase tracking-wide text-slate-950 dark:text-white"
+              className="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200"
               nativeID="home-web-narrow-screen-hero-secondary-cta-label"
               testID="home-web-narrow-screen-hero-secondary-cta-label"
             >

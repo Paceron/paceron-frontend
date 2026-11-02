@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
 import { useUserMutations } from '../../hooks/use-user.js';
 import { useMpConnectStatus } from '../../hooks/use-mp-connect.js';
 import { resolveMpConnectErrorText } from '../../utils/mp-connect-messages.js';
@@ -13,6 +12,7 @@ import { resolveMpConnectErrorText } from '../../utils/mp-connect-messages.js';
 // Metro solo resuelve por plataforma cuando el specifier no la trae.
 import { MpConnectButton } from '../payments/mp-connect-button';
 import { SectionCard } from '../forms/section-card.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { ActivateTrainerPasswordModal } from './activate-trainer-password-modal.jsx';
 
 export function ActivateTrainerScreen() {
@@ -76,7 +76,7 @@ export function ActivateTrainerScreen() {
       enableOnAndroid
       extraScrollHeight={24}
     >
-      <View nativeID="activate-trainer-screen-container" testID="activate-trainer-screen-container" className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}>
+      <ScreenCard nativeID="activate-trainer-screen-container" testID="activate-trainer-screen-container">
         <View nativeID="activate-trainer-screen-header" testID="activate-trainer-screen-header" className="mb-8 flex-row items-center gap-2">
           <Pressable
             nativeID="activate-trainer-screen-back-button"
@@ -146,7 +146,7 @@ export function ActivateTrainerScreen() {
             {missingHint}
           </Text>
         ) : null}
-      </View>
+      </ScreenCard>
 
       <ActivateTrainerPasswordModal
         onCancel={() => setPasswordModalVisible(false)}

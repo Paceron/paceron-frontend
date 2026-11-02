@@ -17,6 +17,7 @@ import { canGoBack, shiftMonth } from '../../utils/payments-summary.js';
 import { shareReceiptPdf } from '../../services/receipt';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
@@ -101,7 +102,7 @@ function PaymentsScreenContent() {
       showsVerticalScrollIndicator={false}
       testID="payments-screen-scroll"
     >
-      <View className={`w-full self-center ${isWide ? 'max-w-5xl' : ''}`} nativeID="payments-screen-container" testID="payments-screen-container">
+      <ScreenCard maxWidthClassName="max-w-5xl" nativeID="payments-screen-container" testID="payments-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="payments-screen-header" testID="payments-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -178,7 +179,7 @@ function PaymentsScreenContent() {
           receiptBusyId={receiptBusyId}
           variant={activeTab}
         />
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }

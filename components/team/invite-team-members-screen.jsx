@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useGroups } from '../../hooks/use-groups.js';
@@ -18,6 +18,7 @@ import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js
 import { SectionCard } from '../forms/section-card.jsx';
 import { InvitedEmailsList } from '../forms/fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -129,7 +130,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
       showsVerticalScrollIndicator={false}
       testID="invite-team-screen-scroll"
     >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="invite-team-screen-container" testID="invite-team-screen-container">
+      <ScreenCard nativeID="invite-team-screen-container" testID="invite-team-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="invite-team-screen-header" testID="invite-team-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -144,7 +145,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
           </Text>
         </View>
 
-        <SectionCard icon="email-check-outline" title="Solicitudes pendientes">
+        <SectionCard icon="email-check-outline" title="Solicitudes pendientes" variant="nested">
           {invitations.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="invite-pending-empty" testID="invite-pending-empty">
               Todavía no invitaste a nadie a este equipo.
@@ -174,6 +175,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
           )}
           icon="account-multiple-check"
           title="Corredores a invitar"
+          variant="nested"
         >
           <InvitedEmailsList groups={groups} onChange={setDraftInvites} value={draftInvites} />
 
@@ -196,7 +198,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
             )}
           </Pressable>
         </SectionCard>
-      </View>
+      </ScreenCard>
     </ScrollView>
     <InviteMemberModal
       existingEmails={draftInvites.map((invite) => invite.email)}

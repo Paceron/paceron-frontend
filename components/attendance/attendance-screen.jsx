@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueries } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { isMobile, isWeb } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { isSameId } from '../../utils/id-match.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -21,6 +21,7 @@ import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.j
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { AttendanceGrid } from './attendance-grid.jsx';
 import { AttendanceQrModal } from './attendance-qr-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -574,7 +575,7 @@ function AttendanceCascade() {
         showsVerticalScrollIndicator={false}
         testID={`${ID_PREFIX}-scroll`}
       >
-        <View className={`w-full self-center ${isWeb ? 'max-w-4xl' : ''}`} nativeID={`${ID_PREFIX}-container`} testID={`${ID_PREFIX}-container`}>
+        <ScreenCard maxWidthClassName="max-w-4xl" nativeID={`${ID_PREFIX}-container`} testID={`${ID_PREFIX}-container`}>
           <ScreenHeader />
 
           <AttendanceSelectionPanel
@@ -603,7 +604,7 @@ function AttendanceCascade() {
             link del spec pide "el nombre del equipo y de la sesión en el
             encabezado", y es lo que hace visible que el link se resolvió. */}
           {selectedSession ? (
-            <View className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID={`${ID_PREFIX}-session-card`} testID={`${ID_PREFIX}-session-card`}>
+            <View className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID={`${ID_PREFIX}-session-card`} testID={`${ID_PREFIX}-session-card`}>
               <View className="flex-row items-start" nativeID={`${ID_PREFIX}-session-card-header`} testID={`${ID_PREFIX}-session-card-header`}>
                 <View className="flex-1" nativeID={`${ID_PREFIX}-session-card-texts`} testID={`${ID_PREFIX}-session-card-texts`}>
                   <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-session-context`} testID={`${ID_PREFIX}-session-context`}>
@@ -657,7 +658,7 @@ function AttendanceCascade() {
             /* Sin sesión no se muestran las tarjetas de métricas (spec, escenario
                "Sin sesión seleccionada"), así que lo que corresponde es el
                mensaje pidiendo la selección completa, no un placeholder de grilla. */
-            <View className="rounded-2xl border border-slate-200 bg-white px-4 py-10 dark:border-slate-700 dark:bg-surface" nativeID={`${ID_PREFIX}-no-session`} testID={`${ID_PREFIX}-no-session`}>
+            <View className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 dark:border-transparent dark:bg-surface-2" nativeID={`${ID_PREFIX}-no-session`} testID={`${ID_PREFIX}-no-session`}>
               <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-no-session-text`} testID={`${ID_PREFIX}-no-session-text`}>
                 Elegí equipo, grupo y sesión para ver la asistencia.
               </Text>
@@ -721,7 +722,7 @@ function AttendanceCascade() {
             teamName={selectedTeam?.name}
             visible={qrModalVisible}
           />
-        </View>
+        </ScreenCard>
       </ScrollView>
     </View>
   );
@@ -769,10 +770,13 @@ function TrainerOnlyNotice({ hasTrainerRole }) {
 
   return (
     <View className="flex-1 bg-paper px-4 py-8 dark:bg-ink" nativeID={`${ID_PREFIX}-trainer-only-root`} testID={`${ID_PREFIX}-trainer-only-root`}>
-      <View className={`w-full self-center ${isWeb ? 'max-w-4xl' : ''}`} nativeID={`${ID_PREFIX}-trainer-only-container`} testID={`${ID_PREFIX}-trainer-only-container`}>
+      <ScreenCard maxWidthClassName="max-w-4xl" nativeID={`${ID_PREFIX}-trainer-only-container`} testID={`${ID_PREFIX}-trainer-only-container`}>
         <ScreenHeader />
 
-        <View className="rounded-2xl border border-slate-200 bg-white px-6 py-10 dark:border-slate-700 dark:bg-surface" nativeID={`${ID_PREFIX}-trainer-only-card`} testID={`${ID_PREFIX}-trainer-only-card`}>
+        {/* Tono anidado (`bg-slate-50`/`dark:bg-surface-2`), no el mismo tono
+            que el `ScreenCard` que la envuelve -- de lo contrario sería una
+            card del mismo color encimada sobre otra idéntica. */}
+        <View className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-10 dark:border-transparent dark:bg-surface-2" nativeID={`${ID_PREFIX}-trainer-only-card`} testID={`${ID_PREFIX}-trainer-only-card`}>
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="whistle-outline" size={28} />
           <Text className="mt-3 text-base font-bold text-slate-900 dark:text-white" nativeID={`${ID_PREFIX}-trainer-only-title`} testID={`${ID_PREFIX}-trainer-only-title`}>
             La gestión de asistencia es exclusiva del entrenador
@@ -787,7 +791,7 @@ function TrainerOnlyNotice({ hasTrainerRole }) {
               : 'Necesitás un perfil de entrenador para gestionar la asistencia de tus grupos.'}
           </Text>
         </View>
-      </View>
+      </ScreenCard>
     </View>
   );
 }
