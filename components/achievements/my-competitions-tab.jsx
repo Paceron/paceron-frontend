@@ -4,6 +4,8 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useMyCompetitions } from '../../hooks/use-my-competitions.js';
 import { sortCompetitionsForList } from '../../utils/competition-sort.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
+import { useThemeColors } from '../../theme/colors.js';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Mismo par de tonos fijo por color que el resto de la app (ver
 // docs/superpowers/specs/2026-10-31-visual-design-refresh-design.md,
@@ -26,27 +28,31 @@ function StatusBadge({ status }) {
 }
 
 function CompetitionRow({ competition, onPress }) {
+  const colors = useThemeColors();
   const idPrefix = `my-competitions-tab-row-${competition.id}`;
   return (
-    <View className="mb-2 flex-row items-center gap-3 rounded-xl bg-slate-200/50 p-3 dark:bg-slate-800/60" nativeID={idPrefix} testID={idPrefix}>
+    <View className="m-2 flex-row items-center justify-center gap-3 rounded-xl bg-slate-200/50 p-4 dark:bg-slate-800/60" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-1" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
         <Text className="font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
           {buildCompetitionTitle(competition)}
         </Text>
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-team`} numberOfLines={1} testID={`${idPrefix}-team`}>
-          {competition.teamName}
-        </Text>
+        <View className="flex-row items-center mt-2 gap-4">
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-team`} numberOfLines={1} testID={`${idPrefix}-team`}>
+            {competition.teamName}
+          </Text>
+          <StatusBadge status={competition.status} />
+        </View>
       </View>
-      <StatusBadge status={competition.status} />
       <Pressable
         accessibilityLabel={`Ver ${buildCompetitionTitle(competition)} en el equipo`}
         accessibilityRole="button"
-        className="rounded-full px-3 py-1.5 hover:bg-slate-200 dark:hover:bg-surface-3"
+        className="flex-row items-center rounded-full p-2 pl-4 bg-slate-50 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-surface-3"
         nativeID={`${idPrefix}-cta`}
         onPress={onPress}
         testID={`${idPrefix}-cta`}
       >
-        <Text className="text-xs font-bold text-primary" nativeID={`${idPrefix}-cta-label`} testID={`${idPrefix}-cta-label`}>Ver en el equipo</Text>
+        <Text className="text-xs font-bold text-slate-900 dark:text-slate-300" nativeID={`${idPrefix}-cta-label`} testID={`${idPrefix}-cta-label`}>Ver en el equipo</Text>
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={18} />
       </Pressable>
     </View>
   );
