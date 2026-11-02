@@ -167,7 +167,7 @@ export function LeaderboardTab({ teamId }) {
 
   return (
     <SectionCard icon="podium-gold" scope="leaderboard-tab-root" title="Leaderboard" variant="nested">
-      <View className="mb-3 flex-row items-center gap-2" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
+      <View className="mb-3 flex-row items-center gap-2 p-1 rounded-2xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" nativeID="leaderboard-tab-header" testID="leaderboard-tab-header">
         <View className="flex-1 items-center" nativeID="leaderboard-tab-metric-wrap" testID="leaderboard-tab-metric-wrap">
           <ResponsiveSelectField className={fieldClassName} fixedWidth={fieldFixedWidth} hideErrorRow label="Métrica" onChange={setActiveMetric} options={METRIC_OPTIONS} outline required value={activeMetric} />
         </View>
@@ -223,8 +223,8 @@ export function LeaderboardTab({ teamId }) {
             {leaderboard.viewerRank && !viewerInTop && (
               <>
                 {showRankGap && (
-                  <View className="items-center -m-3 -mb-1" nativeID="leaderboard-tab-rank-gap" testID="leaderboard-tab-rank-gap">
-                    <Text className="text-xl leading-none tracking-widest text-slate-300 dark:text-slate-600" nativeID="leaderboard-tab-rank-gap-label" testID="leaderboard-tab-rank-gap-label">
+                  <View className="items-center -m-2" nativeID="leaderboard-tab-rank-gap" testID="leaderboard-tab-rank-gap">
+                    <Text className="text-3xl leading-none tracking-widest text-slate-300 dark:text-slate-600" nativeID="leaderboard-tab-rank-gap-label" testID="leaderboard-tab-rank-gap-label">
                       ⋯
                     </Text>
                   </View>

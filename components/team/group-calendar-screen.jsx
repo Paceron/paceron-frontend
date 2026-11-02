@@ -67,12 +67,12 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
   const borderClass = isOtherMonth
     ? 'border-2 border-transparent'
     : selected
-      ? 'border-4 border-primary'
+      ? 'transition-all border-4 border-primary'
       : isMenuOpen
-        ? 'border-4 border-primary border-blue-200 bg-blue-100 dark:border-blue-900 dark:bg-blue-700'
+        ? 'transition-all border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500'
         : state === 'today'
-          ? 'border-2 hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60'
-          : 'border-2 hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
+          ? 'transition-all border-2 hover:animate-pulse hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60'
+          : 'transition-all border-2 hover:animate-pulse hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
 
   return (
     <Pressable

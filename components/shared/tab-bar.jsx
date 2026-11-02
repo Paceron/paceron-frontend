@@ -44,7 +44,7 @@ const VARIANT = {
     labelClassName: 'text-sm',
   },
   compact: {
-    wrapClassName: 'mb-4 flex-row gap-4 rounded-xl border-b border-slate-200 px-3 py-1.5 dark:border-surface-3',
+    wrapClassName: 'mb-4 flex-row gap-4 rounded-xl border-b-2 border-slate-300 px-3 py-1.5 dark:border-slate-700',
     tabClassName: 'gap-1 border-b-2 px-0.5 pb-2',
     iconSize: 13,
     activeClassName: 'border-primary',

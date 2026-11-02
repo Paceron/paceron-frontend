@@ -149,7 +149,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   return (
     <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-      <View className={`flex-row rounded-full border border-slate-300 dark:border-slate-600 bg-slate-100 p-1 dark:bg-slate-700 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+      <View className={`flex-row rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
         <Segment
           accessibilityLabel="Corredor"
           active={runnerActive}
