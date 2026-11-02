@@ -1960,3 +1960,27 @@ El backend excluye `wip`, `warmup` y `cooldown`, conserva feedback legacy sin `r
 resuelve ejercicios históricos sin `source_exercise_id` por nombre normalizado del mismo owner.
 Mejor/peor: ritmo continuo por tiempo con distancia lograda; velocidad-distancia por velocidad;
 velocidad-tiempo por distancia. RPE faltante no invalida otras métricas.
+
+## Gap 39 — política de asignación same-day: async-hoy debería quedar a discreción del entrenador
+
+**Contexto.** Decidido con el usuario junto con el fix de symptom #4 de
+`route-attempt-orphaned-attempt-bug-2026-10-31` (ver memoria de sesión): el bloqueo
+actual de asignación same-day no distingue presencial de asíncrono, y para
+asíncrono es más estricto de lo que el entrenador necesita.
+
+**Estado actual, confirmado** (`calendar_service.go#isCalendarDayClosed`, otro repo):
+una sesión asíncrona del día de HOY está cerrada para asignar, exactamente igual que
+un día ya pasado -- bloqueo duro, sin excepción. Una sesión presencial de hoy sigue
+abierta hasta que pasa su horario planificado (`presencial_time_from`); ese
+comportamiento ya es el correcto, sin cambios pedidos ahí.
+
+**Pedido:** que async-hoy sea asignable, a discreción del entrenador -- sin un
+bloqueo duro del sistema. "Es muy tarde en el día para asignar esto" no lo decide
+una regla nuestra: el entrenador ve el día de hoy en el calendario y decide si
+igual quiere asignar la sesión o esperar a mañana.
+
+**Alcance:** cambio de backend únicamente, en `isCalendarDayClosed`
+(`calendar_service.go`). Confirmado que el frontend no necesita ningún cambio de
+código una vez que el backend lo habilite -- la pantalla de asignación ya intenta la
+request tal cual hoy, el bloqueo es 100% del lado backend. Sin trabajo de frontend
+pendiente más allá de esta nota.
