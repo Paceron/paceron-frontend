@@ -31,7 +31,7 @@ import { isWeb } from '../../utils/platform.js';
 export function ScreenCard({ children, padded = true, nativeID, testID, style, maxWidthClassName = 'max-w-3xl' }) {
   return (
     <View
-      className={`w-full self-center rounded-2xl bg-white dark:border dark:border-surface-2 dark:bg-surface ${padded ? 'p-4' : ''} ${isWeb ? maxWidthClassName : ''}`}
+      className={`w-full self-center rounded-2xl bg-white dark:bg-surface ${padded ? 'p-4' : ''} ${isWeb ? maxWidthClassName : ''}`}
       nativeID={nativeID}
       style={style}
       testID={testID}
