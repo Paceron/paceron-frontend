@@ -86,7 +86,7 @@ function LoginForm() {
       </Text>
 
       {/* Email */}
-      <View className="mb-5" nativeID="login-screen-email-group" testID="login-screen-email-group">
+      <View className="mb-1 p-4 pb-2 rounded-xl bg-slate-100 dark:bg-slate-800/30" nativeID="login-screen-email-group" testID="login-screen-email-group">
         <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-email-label" testID="login-screen-email-label">Email</Text>
         <View className={`h-12 flex-row items-center rounded-xl border ${
           emailError
@@ -120,13 +120,13 @@ function LoginForm() {
             </View>
           )}
         </View>
-        <View className="h-5" nativeID="login-screen-email-error-slot" testID="login-screen-email-error-slot">
-          {emailError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID="login-screen-email-error" testID="login-screen-email-error">{emailError}</Text>}
-        </View>
+      </View>
+      <View className="h-5 mb-3" nativeID="login-screen-email-error-slot" testID="login-screen-email-error-slot">
+        {emailError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID="login-screen-email-error" testID="login-screen-email-error">{emailError}</Text>}
       </View>
 
       {/* Password */}
-      <View className="mb-6" nativeID="login-screen-password-group" testID="login-screen-password-group">
+      <View className="mb-6 p-4 pb-2 rounded-xl bg-slate-100 dark:bg-slate-800/30" nativeID="login-screen-password-group" testID="login-screen-password-group">
         <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-password-label" testID="login-screen-password-label">Contraseña</Text>
         <View className="h-12 flex-row items-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900" nativeID="login-screen-password-field-wrapper" testID="login-screen-password-field-wrapper">
           <TextInput
