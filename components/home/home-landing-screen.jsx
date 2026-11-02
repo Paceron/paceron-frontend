@@ -71,7 +71,7 @@ export function HomeLandingScreen() {
           testID="home-landing-screen-hero"
         >
           <View
-            className="mb-14 items-center"
+            className="-mt-6 mb-16 items-center p-10 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 hover:dark:bg-lime-950"
             nativeID="home-landing-screen-hero-brand"
             testID="home-landing-screen-hero-brand"
           >
