@@ -31,14 +31,14 @@ function AggregatedDayCell({ date, state, assignments, onPress, showCollisions }
   const visibleDots = assignments.slice(0, MAX_DOTS);
   const overflowCount = assignments.length - MAX_DOTS;
   const borderClass = isOtherMonth
-    ? 'border border-transparent'
+    ? 'border-2 border-transparent'
     : state === 'today'
-      ? 'border-2 border-dashed border-primary'
-      : 'border border-slate-200 dark:border-slate-700/40';
+      ? 'border-2 hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60'
+      : 'border-2 hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
 
   return (
     <Pressable
-      className={`h-14 w-full items-center justify-start gap-1 rounded-md pt-1 ${borderClass}`}
+      className={`h-14 w-full items-center p-1 gap-1 rounded-xl justify-startrounded-md ${borderClass}`}
       nativeID={`aggregated-calendar-day-${date.dateString}`}
       onPress={() => { if (!isOtherMonth) onPress(date.dateString); }}
       style={{ opacity: closed ? 0.7 : 1 }}

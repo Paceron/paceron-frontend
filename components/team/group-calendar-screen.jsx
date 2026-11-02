@@ -65,22 +65,22 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
   };
 
   const borderClass = isOtherMonth
-    ? 'border border-transparent'
+    ? 'border-2 border-transparent'
     : selected
-      ? 'border-2 border-primary'
+      ? 'border-4 border-primary'
       : isMenuOpen
-        ? 'border border-primary'
+        ? 'border-4 border-primary border-blue-200 bg-blue-100 dark:border-blue-900 dark:bg-blue-700'
         : state === 'today'
-          ? 'border-2 border-dashed border-primary'
-          : 'border border-slate-200 dark:border-slate-700/40';
+          ? 'border-2 hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60'
+          : 'border-2 hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
 
   return (
     <Pressable
       ref={cellRef}
-      className={`h-14 w-full items-center justify-start gap-1 rounded-md pt-1 ${borderClass}`}
+      className={`h-14 w-full items-center justify-start p-1 gap-1 rounded-xl ${borderClass}`}
       nativeID={`group-calendar-day-${date.dateString}`}
       onPress={handlePress}
-      style={{ backgroundColor: tintColor, opacity: selectionActive && !canSelect ? 0.35 : 1 }}
+      style={{ opacity: selectionActive && !canSelect ? 0.35 : 1 }}
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
@@ -359,7 +359,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         </View>
 
         <View
-          className="rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface-2"
+          className="rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
           nativeID="group-calendar-month-view"
           testID="group-calendar-month-view"
         >
