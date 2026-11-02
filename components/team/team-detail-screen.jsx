@@ -221,7 +221,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
   const [expanded, setExpanded] = useState(false);
 
   const avatar = (
-    <View className="h-10 w-10 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`team-detail-runner-${member.id}-avatar`} testID={`team-detail-runner-${member.id}-avatar`}>
+    <View className="h-10 w-10 m-1 ml-2 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`team-detail-runner-${member.id}-avatar`} testID={`team-detail-runner-${member.id}-avatar`}>
       <MaterialCommunityIcons color={colors.primary} name="account" size={20} />
     </View>
   );
@@ -303,7 +303,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
   if (isWeb) {
     return (
       <View
-        className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+        className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900"
         nativeID={`team-detail-runner-${member.id}`}
         testID={`team-detail-runner-${member.id}`}
       >
@@ -918,7 +918,7 @@ function TeamDetailScreenContent({ teamId }) {
       {/* Sin corredores en el equipo (todavía, no por filtro) no tiene
           sentido mostrar el buscador — no hay nada para buscar. */}
       {(loadingRoster || members.length > 0) && (
-        <View className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-row" testID="team-detail-search-row">
+        <View className="mb-4 rounded-xl bg-slate-50 p-1 dark:bg-slate-800" nativeID="team-detail-search-row" testID="team-detail-search-row">
           {/* Buscadores minimalistas (mismo criterio que
               ExercisesCatalogTab): sin label propio, el texto vive como
               placeholder adentro del campo — ninguno de los dos necesita
