@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { formatArs } from '../../utils/currency.js';
 import { formatDueDate, overdueLabel } from '../../utils/payments-summary.js';
+import { formatTierName } from '../../utils/tier-name.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 
@@ -54,7 +55,7 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry }) {
               />
               <View className="flex-1" nativeID={`${id}-main`} testID={`${id}-main`}>
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={1} testID={`${id}-title`}>
-                  {item.title || (item.type === 'subscription' ? 'Tier' : 'Equipo')}
+                  {item.type === 'subscription' ? formatTierName(item.title, 'Tier') : item.title || 'Equipo'}
                 </Text>
                 <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
                   {[item.subtitle, `cuota ${item.installmentNumber}`].filter(Boolean).join(' · ')}

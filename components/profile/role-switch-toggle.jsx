@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
+import { formatTierName } from '../../utils/tier-name.js';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
@@ -14,9 +15,7 @@ const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
 // matcheaba, así que siempre daba "BASE" aunque se hubiera pagado.
 // null cuando no hay dato = no dibuja la línea de tier en el segmento.
 function tierLabel(tierName) {
-  if (!tierName) return null;
-  const base = String(tierName).split('_')[0];
-  return base ? base.charAt(0).toUpperCase() + base.slice(1) : null;
+  return formatTierName(tierName) || null;
 }
 
 // El texto ya no indica el rol — la pantalla de destino muestra los

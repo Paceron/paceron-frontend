@@ -390,6 +390,10 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   el neto y el comprobante); las dos ramas habían extraído un `currency.js` propio y
   se unificaron en el merge. Para montos en pesos, usar estos en vez de otro
   `Intl.NumberFormat` inline.
+- **Nombre de un tier en pantalla: siempre `utils/tier-name.js#formatTierName`**
+  (`premium_corredor` → "Premium"). El backend manda el identificador con sufijo de
+  rol y guiones bajos; había tres formateadores distintos y una tarjeta que lo
+  mostraba crudo. Para comparar tiers se sigue usando el nombre sin formatear.
 - **Comprobantes en PDF con `expo-print` + `expo-sharing`, dos módulos nativos** sumados
   en esta feature: hay que **regenerar el dev client** (`npm run android:run`), un OTA no
   alcanza. **En web `expo-print` no sirve**: su implementación web es solo `window.print()`

@@ -16,6 +16,7 @@ import { createPreference } from '../../services/payments.js';
 import { toTierModel, toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { formatArs } from '../../utils/currency.js';
+import { formatTierName as formatTierDisplayName } from '../../utils/tier-name.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-modal.jsx';
@@ -34,13 +35,6 @@ function formatTierPrice(tierAmount, paymentRequired) {
 // El backend real devuelve el nombre del tier con el rol pegado como
 // sufijo (ej. "Base_corredor") — el rol ya se muestra en el título de
 // la sección ("Tiers de Corredor"), repetirlo en cada card es ruido.
-// Solo formatea el texto mostrado — nunca tocar tier.name en sí, se usa
-// para comparar contra el tier actual (roles[].tier).
-function formatTierDisplayName(name) {
-  if (!name) return name;
-  return name.replace(/_(corredor|entrenador)$/i, '');
-}
-
 // Card de un tier — "Tier actual" si coincide con roles[].tier del rol
 // activo; si no y es un tier pago, botón "Mejorar" que dispara el
 // flujo real (ver handleUpgrade en TierUpgradeScreen). Tiers gratis
