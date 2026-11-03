@@ -16,7 +16,7 @@ La vista de Pagos y cobros suma lo que falta cobrar, los próximos vencimientos 
 1. **Gráfico mensual:** junto a la barra de lo cobrado, una segunda barra por mes con lo pendiente (`pending_amount` o `pending_net_amount`, según bruto o neto), con leyenda "Cobrado / Pendiente". Pendiente = cuotas sin pagar que vencen en ese mes. Se navega con las mismas flechas.
 2. **"Por cobrar este mes":** una tarjeta nueva con dos columnas.
    - "A vencer": desde hoy hasta fin de mes (`due_this_month`).
-   - "Vencidos": desde el 1° hasta ayer (`overdue_this_month`).
+   - "Vencidos": todo lo que ya venció sin pagar, de este mes o de meses anteriores (`overdue`). Una cuota de octubre que no se pagó se sigue debiendo en noviembre.
 
    Cada columna muestra el total, la cantidad y la lista: corredor, equipo, número de cuota, monto y vencimiento.
 3. **Cada cobro muestra su comisión:** "Neto $X · comisión 5%" (`fee_amount`, `fee_percent`).

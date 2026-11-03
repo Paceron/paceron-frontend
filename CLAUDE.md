@@ -357,7 +357,10 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   "Próximos vencimientos" de la pestaña Pagos (`payments-upcoming-card.jsx`,
   `GET /payments/upcoming`, para cualquier rol: cuota de cada equipo y tier) se calculan
   en el backend desde la fecha de alta. Vencido es pasar el vencimiento, sin días de
-  gracia. Las fechas se muestran con `formatDueDate`, que corta el día en hora
+  gracia, y "Vencidos" (`overdue`) junta las de cualquier mes: una cuota de octubre
+  sin pagar se sigue debiendo en noviembre. Con ese mismo cálculo el backend no deja
+  que un corredor se vaya del equipo con cuotas que vencen hoy o antes, incluida la
+  #1 (`409`); el entrenador sí lo puede sacar. Las fechas se muestran con `formatDueDate`, que corta el día en hora
   argentina y no en la del dispositivo. Change de OpenSpec del backend:
   `cobros-pendientes-y-vencimientos`.
 - **El entrenador no ve cobros de tier**: esos los cobra Paceron. En Cobros solo

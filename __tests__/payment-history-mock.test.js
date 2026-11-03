@@ -240,16 +240,16 @@ describe('payment-history mock — pendientes y vencimientos', () => {
     withPending.forEach((m) => expect(m.pending_net_amount).toBe(Math.round(m.pending_amount * 95) / 100));
   });
 
-  test('a vencer es desde hoy y vencidos es antes de hoy, los dos del mes actual', async () => {
+  test('a vencer es desde hoy hasta fin de mes y vencidos es todo lo anterior a hoy', async () => {
     const summary = await mockGetReceivedPaymentsSummary({ months: 6 });
     const today = '2026-09-26';
     expect(summary.due_this_month.items.length).toBeGreaterThan(0);
-    expect(summary.overdue_this_month.items.length).toBeGreaterThan(0);
+    expect(summary.overdue.items.length).toBeGreaterThan(0);
     summary.due_this_month.items.forEach((o) => {
       expect(o.due_date.slice(0, 7)).toBe('2026-09');
       expect(o.due_date.slice(0, 10) >= today).toBe(true);
     });
-    summary.overdue_this_month.items.forEach((o) => expect(o.due_date.slice(0, 10) < today).toBe(true));
+    summary.overdue.items.forEach((o) => expect(o.due_date.slice(0, 10) < today).toBe(true));
     expect(summary.due_this_month.count).toBe(summary.due_this_month.items.length);
   });
 
@@ -274,7 +274,7 @@ describe('normalizers de pendientes y vencimientos', () => {
     expect(model.monthly[0]).toEqual(expect.objectContaining({ pendingAmount: expect.any(Number), pendingNetAmount: expect.any(Number), pendingCount: expect.any(Number) }));
     const item = model.dueThisMonth.items[0];
     expect(item).toEqual(expect.objectContaining({ teamName: expect.any(String), payerName: expect.any(String), installmentNumber: expect.any(Number), amount: expect.any(Number), dueDate: expect.any(String) }));
-    expect(model.overdueThisMonth.count).toBe(model.overdueThisMonth.items.length);
+    expect(model.overdue.count).toBe(model.overdue.items.length);
     const empty = toReceivedSummaryModel({ monthly: [], by_team: [] });
     expect(empty.dueThisMonth).toEqual({ count: 0, amount: 0, netAmount: 0, items: [] });
   });

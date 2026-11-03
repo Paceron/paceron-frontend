@@ -646,7 +646,7 @@ export function toReceivedSummaryModel(dto) {
     rejectedCount: dto.rejected_count ?? 0,
     earliestMonth: dto.earliest_month ?? null,
     dueThisMonth: toObligationsBlock(dto.due_this_month),
-    overdueThisMonth: toObligationsBlock(dto.overdue_this_month),
+    overdue: toObligationsBlock(dto.overdue),
     generatedAt: dto.generated_at,
   };
 }

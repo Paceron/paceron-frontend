@@ -133,7 +133,7 @@ export function PaymentsDashboard({
         </View>
       </View>
 
-      <PaymentsDueCard amountMode={amountMode} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdueThisMonth={summary.overdueThisMonth} />
+      <PaymentsDueCard amountMode={amountMode} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdue={summary.overdue} />
 
       <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-dashboard-panels" testID="payments-dashboard-panels">
         <View nativeID="payments-dashboard-chart-panel" style={isWide ? { flex: 3 } : undefined} testID="payments-dashboard-chart-panel">

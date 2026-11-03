@@ -5,18 +5,19 @@ import { SectionCard } from '../forms/section-card.jsx';
 
 const TABULAR = { fontVariant: ['tabular-nums'] };
 
-// "Por cobrar este mes": las cuotas esperadas sin pagar del mes actual, en dos
-// columnas. "A vencer" va desde hoy hasta fin de mes; "Vencidos", desde el 1°
-// hasta ayer. Vencido es pasar el vencimiento, sin contar los días de gracia.
+// "Por cobrar este mes": las cuotas esperadas sin pagar, en dos columnas. "A
+// vencer" va desde hoy hasta fin de mes; "Vencidos" es todo lo que ya venció sin
+// pagar, también de meses anteriores (una cuota de octubre sin pagar se sigue
+// debiendo en noviembre). Vencido es pasar el vencimiento, sin días de gracia.
 // Lo calcula el backend (change cobros-pendientes-y-vencimientos): las cuotas
 // de meses no pagados no existen como filas. `amountMode` elige bruto o neto
 // del total; cada cuota se muestra por su monto.
-export function PaymentsDueCard({ dueThisMonth, overdueThisMonth, amountMode = 'gross', isWide }) {
-  if (!dueThisMonth?.count && !overdueThisMonth?.count) return null;
+export function PaymentsDueCard({ dueThisMonth, overdue, amountMode = 'gross', isWide }) {
+  if (!dueThisMonth?.count && !overdue?.count) return null;
   return (
     <SectionCard icon="calendar-clock" scope="payments-due-card" title="Por cobrar este mes">
       <View className={isWide ? 'flex-row gap-6' : 'gap-5'} nativeID="payments-due-card-columns" testID="payments-due-card-columns">
-        <DueColumn amountMode={amountMode} block={overdueThisMonth} empty="Nada vencido este mes." id="payments-due-card-overdue" title="Vencidos" tone="overdue" />
+        <DueColumn amountMode={amountMode} block={overdue} empty="No hay cuotas vencidas." id="payments-due-card-overdue" title="Vencidos" tone="overdue" />
         <DueColumn amountMode={amountMode} block={dueThisMonth} empty="No hay cuotas por vencer este mes." id="payments-due-card-upcoming" title="A vencer" tone="upcoming" />
       </View>
     </SectionCard>

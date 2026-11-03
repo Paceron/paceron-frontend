@@ -317,7 +317,8 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
   const knownNet = (sum, count) => (count === 0 ? null : round2(sum));
 
   // Cuotas esperadas sin pagar: por mes de vencimiento, y las del mes actual en
-  // "a vencer" (desde hoy) o "vencidas" (antes de hoy).
+  // "a vencer" (desde hoy hasta fin de mes) o "vencidas" (antes de hoy, de
+  // cualquier mes: una cuota de octubre sin pagar se sigue debiendo en noviembre).
   monthly.forEach((m) => Object.assign(m, { pending_amount: 0, pending_net_amount: 0, pending_count: 0 }));
   const todayKey = (() => { const t = artParts(now()); return `${t.year}-${String(t.month + 1).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`; })();
   const currentKey = todayKey.slice(0, 7);
@@ -332,8 +333,9 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
       m.pending_net_amount += netOf(o.amount);
       m.pending_count += 1;
     }
-    if (key !== currentKey) return;
-    const target = o.due_date.slice(0, 10) < todayKey ? overdue : due;
+    const late = o.due_date.slice(0, 10) < todayKey;
+    if (!late && key !== currentKey) return;
+    const target = late ? overdue : due;
     target.count += 1;
     target.amount += o.amount;
     target.net_amount += netOf(o.amount);
@@ -353,7 +355,7 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
     rejected_count: rejected,
     earliest_month: earliest ? monthKeyART(earliest) : null,
     due_this_month: { ...due, amount: round2(due.amount), net_amount: round2(due.net_amount) },
-    overdue_this_month: { ...overdue, amount: round2(overdue.amount), net_amount: round2(overdue.net_amount) },
+    overdue: { ...overdue, amount: round2(overdue.amount), net_amount: round2(overdue.net_amount) },
     generated_at: now().toISOString(),
   };
 }
