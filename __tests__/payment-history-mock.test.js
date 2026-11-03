@@ -282,10 +282,10 @@ describe('normalizers de pendientes y vencimientos', () => {
   test('toUpcomingPaymentModel', () => {
     const team = toUpcomingPaymentModel({ type: 'trainer_payment', team: { id: 32, name: 'Flash' }, trainer: { id: 33, name: 'Pep', surname: 'Guardiola' }, tier: null,
       installment_number: 2, amount: 20000, currency_id: 'ARS', due_date: '2026-10-29T22:42:21Z', overdue: true, overdue_count: 1 });
-    expect(team).toEqual({ key: 'trainer_payment-32', type: 'trainer_payment', title: 'Flash', subtitle: 'Pep Guardiola', installmentNumber: 2, amount: 20000,
+    expect(team).toEqual({ key: 'trainer_payment-32', type: 'trainer_payment', teamId: 32, tierRoleName: null, title: 'Flash', subtitle: 'Pep Guardiola', installmentNumber: 2, amount: 20000,
       currencyId: 'ARS', dueDate: '2026-10-29T22:42:21Z', overdue: true, overdueCount: 1 });
     const tier = toUpcomingPaymentModel({ type: 'subscription', tier: { id: 4, name: 'premium_corredor', role_name: 'corredor' }, team: null, trainer: null, installment_number: 2, amount: 50000, due_date: '2026-11-20T23:10:09Z', overdue: false, overdue_count: 0 });
-    expect(tier).toEqual(expect.objectContaining({ key: 'subscription-4', title: 'premium_corredor', subtitle: 'Tier corredor' }));
+    expect(tier).toEqual(expect.objectContaining({ key: 'subscription-4', teamId: null, tierRoleName: 'corredor', title: 'premium_corredor', subtitle: 'Tier corredor' }));
     expect(toUpcomingPaymentModel(null)).toBeNull();
   });
 });

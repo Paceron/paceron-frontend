@@ -392,6 +392,18 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   `statusTileContent`). Pasar el mouse o tocar un mes del gráfico muestra cobrado con sus
   cuotas, comisión, neto y pendiente (`monthTooltipContent`), con el mismo mecanismo de
   hotspots `Pressable` que `line-chart-tooltip.jsx` del dashboard de rendimiento.
+- **Cuotas por vencer en el Home y "Pagar" directo (2026-11-03).** `HomePaymentsDueCard`
+  (`components/home/`) reusa `PaymentsUpcomingCard` con las cuotas vencidas o que vencen
+  en los próximos `HOME_DUE_WINDOW_DAYS` (10) días, para los dos roles; sin nada que avisar,
+  y mientras carga o si falla, no ocupa lugar. Cada fila (también en Pagos) tiene "Pagar",
+  que navega con `?pay=1` (`utils/payment-due.js#payRouteFor`): la cuota de equipo va a
+  `/teams/{id}/subscription` y la de tier a `/profile/tier-upgrade?role=<rol de esa
+  suscripción>`, porque no tiene por qué ser el rol activo. Con `pay=1` las dos pantallas
+  abren el checkout solas una vez y borran el param (un F5 no lo reabre). La pantalla de
+  tiers no tenía dónde pagar la cuota siguiente de un tier ya activo (solo el pago
+  pendiente de un cambio de tier): ahora muestra "Pagar cuota" y confirma por
+  `paid_installments`, porque el tier y el estado no cambian. Después de pagar se invalida
+  `PAYMENT_HISTORY_KEYS.upcoming`, si no el aviso del Home sigue hasta 60 s (staleTime).
 - **Reutilizables nuevos:** `components/shared/stat-tile.jsx` (extraído de
   `team-detail-screen.jsx`) y `formatARSCompact` en `utils/currency.js`. El historial
   usa el mismo `formatArs` que el pago de membresía de equipo (con `decimals: 2` para

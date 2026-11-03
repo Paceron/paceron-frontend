@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
@@ -9,6 +10,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useTeamSubscription } from '../../hooks/use-team-subscription.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 import { createPreference } from '../../services/payments.js';
 import { toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
 import { formatMonthlyFee, formatArs } from '../../utils/currency.js';
@@ -63,6 +65,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
+  const queryClient = useQueryClient();
 
   const { team } = useTeam(teamId);
   const { subscription, isActive, hasDebt, nextInstallment, loading, refetch } = useTeamSubscription(userId, teamId);
@@ -71,6 +74,11 @@ function TeamSubscriptionScreenContent({ teamId }) {
   const [checkoutData, setCheckoutData] = useState(null);
   const [starting, setStarting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // `?pay=1` (botón "Pagar" del Home y de Pagos): abre el checkout apenas
+  // llega la cuota, una sola vez. El param se borra para que un F5 o volver
+  // atrás no lo reabra.
+  const { pay } = useLocalSearchParams();
+  const autoStarted = useRef(false);
 
   const teamName = subscription?.team?.name ?? team?.name ?? 'el equipo';
   const membershipFee = subscription?.team?.membershipFee ?? team?.membershipFee ?? 0;
@@ -80,6 +88,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
 
   const startCheckout = () => {
     if (!nextInstallment) return;
+    autoStarted.current = true;
     setStarting(true);
     createPreference(toCreatePreferencePayload({
       // `concept: 'team_subscription'` es lo que hace que el backend resuelva el
@@ -120,6 +129,13 @@ function TeamSubscriptionScreenContent({ teamId }) {
       .finally(() => setStarting(false));
   };
 
+  useEffect(() => {
+    if (pay !== '1' || autoStarted.current || loading || !nextInstallment) return;
+    router.setParams({ pay: undefined });
+    startCheckout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pay, loading, nextInstallment]);
+
   // Confirmación post-pago: el webhook de Mercado Pago es asíncrono (y en local
   // sin túnel puede no llegar nunca), así que no se puede esperar sincrónico.
   // Mismo patrón que tier-upgrade-screen.jsx: un check a los 5s y, si no se
@@ -147,6 +163,8 @@ function TeamSubscriptionScreenContent({ teamId }) {
       }
     } finally {
       setConfirming(false);
+      // El aviso del Home y "Próximos vencimientos" de Pagos salen de acá.
+      queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId) });
     }
   };
 

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -11,6 +11,8 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { useTierSubscription } from '../../hooks/use-tier-subscription.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
+import { formatDueDate } from '../../utils/payments-summary.js';
 import { listTiers } from '../../services/tiers.js';
 import { createPreference } from '../../services/payments.js';
 import { toTierModel, toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
@@ -25,7 +27,7 @@ import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-moda
 // extensión — ver quirk en CLAUDE.md.
 import { CheckoutFlow } from '../payments/checkout-flow';
 
-const ROLE_LABEL = { runner: 'Corredor', trainer: 'Entrenador' };
+const ROLE_LABEL = { corredor: 'Corredor', entrenador: 'Entrenador' };
 
 function formatTierPrice(tierAmount, paymentRequired) {
   if (!paymentRequired || !tierAmount) return 'Gratis';
@@ -101,6 +103,38 @@ function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade }) {
 // por eso sigue apareciendo tras re-login. Lleva directo al checkout
 // reusando la cuota existente (Completar pago) o cancela el pendiente
 // para poder elegir otro tier (Cancelar).
+// Próxima cuota de un tier pago que ya está activo (renovación): `current`
+// trae la cuota sin pagar que sigue, y antes no había dónde pagarla.
+function RenewalBanner({ subscription, onPay, loading }) {
+  const tierName = formatTierDisplayName(subscription.tier?.name);
+  const due = formatDueDate(subscription.nextDueDate);
+  return (
+    <View className="mb-4 flex-row items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="tier-upgrade-renewal-banner" testID="tier-upgrade-renewal-banner">
+      <View className="flex-1" nativeID="tier-upgrade-renewal-banner-text" testID="tier-upgrade-renewal-banner-text">
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="tier-upgrade-renewal-banner-title" testID="tier-upgrade-renewal-banner-title">
+          Cuota {subscription.installmentNumber} de {tierName}
+        </Text>
+        <Text className="mt-0.5 text-xs text-slate-500 dark:text-slate-400" nativeID="tier-upgrade-renewal-banner-subtitle" testID="tier-upgrade-renewal-banner-subtitle">
+          {[formatTierPrice(subscription.installmentAmount, true), due ? `vence ${due}` : null].filter(Boolean).join(' · ')}
+        </Text>
+      </View>
+      <Pressable
+        className={`h-9 flex-row items-center justify-center rounded-full bg-primary px-4 hover:opacity-90 active:opacity-80 ${loading ? 'opacity-60' : ''}`}
+        disabled={loading}
+        nativeID="tier-upgrade-renewal-banner-button"
+        onPress={onPay}
+        testID="tier-upgrade-renewal-banner-button"
+      >
+        {loading ? <ActivityIndicator color="#111518" size="small" /> : (
+          <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID="tier-upgrade-renewal-banner-button-label" testID="tier-upgrade-renewal-banner-button-label">
+            Pagar cuota
+          </Text>
+        )}
+      </Pressable>
+    </View>
+  );
+}
+
 function PendingPaymentBanner({ subscription, onResume, onCancel, loading, cancelling }) {
   const tierName = formatTierDisplayName(subscription.tier?.name);
   return (
@@ -160,7 +194,11 @@ export function TierUpgradeScreen() {
   const queryClient = useQueryClient();
   const fetchPermissions = () => queryClient.invalidateQueries({ queryKey: ['permissions', userId] });
 
-  const currentRoleName = activeRole === 'runner' ? 'corredor' : 'entrenador';
+  // `?role=` (botón "Pagar" de una cuota de tier) muestra los tiers de ese rol
+  // aunque no sea el activo: la cuota es de esa suscripción. `?pay=1` abre el
+  // checkout de la cuota pendiente apenas se conoce (ver efecto más abajo).
+  const { role: roleParam, pay } = useLocalSearchParams();
+  const currentRoleName = ROLE_LABEL[roleParam] ? roleParam : (activeRole === 'runner' ? 'corredor' : 'entrenador');
   const currentTierName = roles.find((r) => r.name === currentRoleName)?.tier;
   const currentRoleId = roles.find((r) => r.name === currentRoleName)?.id;
 
@@ -178,12 +216,16 @@ export function TierUpgradeScreen() {
   const [checkoutData, setCheckoutData] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [cancellingConfirm, setCancellingConfirm] = useState(false);
+  const autoStarted = useRef(false);
 
   // Filtrado por rol ahora lo hace el backend (GET /tiers?role_id=), ver
   // services/tiers.js — solo queda ordenar por precio.
   const roleTiers = [...tiers].sort((a, b) => a.tierAmount - b.tierAmount);
 
-  const startCheckout = ({ installmentId, amount, tierId }) => {
+  // `renewal`: cuota siguiente de un tier ya activo. Se confirma por
+  // paid_installments, porque el tier y el estado no cambian al pagarla.
+  const startCheckout = ({ installmentId, amount, tierId, renewal = false, paidBefore = 0 }) => {
+    autoStarted.current = true;
     setProcessingTierId(tierId);
     createPreference(toCreatePreferencePayload({
       concept: 'subscription',
@@ -193,7 +235,7 @@ export function TierUpgradeScreen() {
     }))
       .then((dto) => {
         const preference = toPreferenceResponseModel(dto);
-        setCheckoutData({ preferenceId: preference.preferenceId, publicKey: preference.publicKey, amount, tierId, installmentId });
+        setCheckoutData({ preferenceId: preference.preferenceId, publicKey: preference.publicKey, amount, tierId, installmentId, renewal, paidBefore });
       })
       .catch((error) => {
         Toast.show({ type: 'error', text1: 'No pudimos iniciar el pago', text2: error.message });
@@ -225,6 +267,36 @@ export function TierUpgradeScreen() {
     startCheckout({ installmentId: pendingSubscription.installmentId, amount: pendingSubscription.installmentAmount, tierId: pendingSubscription.tier.id });
   };
 
+  const renewalSubscription = subscription?.subscriptionStatus === 'active' && subscription.tier?.paymentRequired && subscription.installmentId
+    ? subscription
+    : null;
+
+  const handlePayRenewal = () => {
+    if (!renewalSubscription) return;
+    startCheckout({
+      installmentId: renewalSubscription.installmentId,
+      amount: renewalSubscription.installmentAmount,
+      tierId: renewalSubscription.tier.id,
+      renewal: true,
+      paidBefore: renewalSubscription.paidInstallments,
+    });
+  };
+
+  // Una sola vez, y borrando el param para que un F5 o volver atrás no lo
+  // reabra. El pago pendiente del cambio de tier va primero: mientras exista,
+  // no hay renovación que pagar.
+  useEffect(() => {
+    if (pay !== '1' || autoStarted.current) return;
+    if (pendingSubscription) {
+      router.setParams({ pay: undefined });
+      handleResumePending();
+    } else if (renewalSubscription) {
+      router.setParams({ pay: undefined });
+      handlePayRenewal();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pay, pendingSubscription?.installmentId, renewalSubscription?.installmentId]);
+
   const handleCancelPending = async () => {
     if (!pendingSubscription) return;
     try {
@@ -239,7 +311,28 @@ export function TierUpgradeScreen() {
     }
   };
 
+  const handleRenewalApproved = async (paidBefore) => {
+    setCheckoutData(null);
+    setConfirming(true);
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const { data } = await refetchSubscription();
+        if ((data?.paidInstallments ?? 0) > paidBefore) {
+          notifySuccess();
+          Toast.show({ type: 'success', text1: 'Cuota pagada', text2: `Tu tier ${formatTierDisplayName(data.tier?.name)} sigue activo.` });
+          return;
+        }
+      }
+      Toast.show({ type: 'info', text1: 'Tu pago fue recibido', text2: 'Puede tardar unos minutos en reflejarse.' });
+    } finally {
+      setConfirming(false);
+      queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId) });
+    }
+  };
+
   const handleApproved = async () => {
+    if (checkoutData?.renewal) return handleRenewalApproved(checkoutData.paidBefore);
     const expectedTierId = checkoutData?.tierId;
     setCheckoutData(null);
     setConfirming(true);
@@ -264,6 +357,7 @@ export function TierUpgradeScreen() {
       }
     } finally {
       setConfirming(false);
+      queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId) });
     }
   };
 
@@ -319,6 +413,10 @@ export function TierUpgradeScreen() {
           />
         )}
 
+        {renewalSubscription && !showPendingBanner && !confirming && (
+          <RenewalBanner loading={processingTierId !== null} onPay={handlePayRenewal} subscription={renewalSubscription} />
+        )}
+
         {confirming && (
           <View className="mb-4 flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="tier-upgrade-confirming-banner" testID="tier-upgrade-confirming-banner">
             <ActivityIndicator color={colors.primary} />
@@ -328,7 +426,7 @@ export function TierUpgradeScreen() {
           </View>
         )}
 
-        <SectionCard icon="star-four-points" title={`Tiers de ${ROLE_LABEL[activeRole]}`}>
+        <SectionCard icon="star-four-points" title={`Tiers de ${ROLE_LABEL[currentRoleName]}`}>
           {loading ? (
             <View className="items-center py-6" nativeID="tier-upgrade-screen-loading" testID="tier-upgrade-screen-loading">
               <ActivityIndicator color={colors.primary} />

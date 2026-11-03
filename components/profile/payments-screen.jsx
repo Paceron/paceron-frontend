@@ -22,6 +22,7 @@ import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
 import { PaymentsUpcomingCard } from './payments-upcoming-card.jsx';
+import { payRouteFor } from '../../utils/payment-due.js';
 
 // Cuántos meses corre la ventana del gráfico cada flecha: los mismos que muestra.
 const WINDOW_MONTHS = 6;
@@ -162,7 +163,13 @@ function PaymentsScreenContent() {
           </>
         ) : (
           <>
-            <PaymentsUpcomingCard failed={upcoming.failed} items={upcoming.items} loading={upcoming.loading} onRetry={() => upcoming.refetch()} />
+            <PaymentsUpcomingCard
+              failed={upcoming.failed}
+              items={upcoming.items}
+              loading={upcoming.loading}
+              onPay={(item) => { const route = payRouteFor(item); if (route) router.push(route); }}
+              onRetry={() => upcoming.refetch()}
+            />
             <Text className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="payments-screen-history-intro" testID="payments-screen-history-intro">
               Tus pagos de suscripción y lo que les pagaste a tus entrenadores. De los pagos aprobados podés descargar el comprobante en PDF.
             </Text>

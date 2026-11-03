@@ -665,6 +665,9 @@ export function toUpcomingPaymentModel(dto) {
   return {
     key: `${dto.type}-${isTeam ? dto.team?.id : dto.tier?.id}`,
     type: dto.type,
+    // Para el botón "Pagar" (utils/payment-due.js#payRouteFor).
+    teamId: isTeam ? dto.team?.id ?? null : null,
+    tierRoleName: isTeam ? null : dto.tier?.role_name ?? null,
     title: isTeam ? dto.team?.name ?? '' : dto.tier?.name ?? '',
     subtitle: isTeam ? trainerName : dto.tier?.role_name ? `Tier ${dto.tier.role_name}` : 'Tier',
     installmentNumber: dto.installment_number,

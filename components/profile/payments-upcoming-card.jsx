@@ -13,7 +13,11 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // cuota sin pagar de cada equipo que paga el usuario y de cada tier (GET
 // /payments/upcoming, ordenadas por vencimiento). Sin nada que pagar, la
 // tarjeta no se muestra.
-export function PaymentsUpcomingCard({ items, loading, failed, onRetry }) {
+//
+// Con `onPay`, cada fila suma un botón "Pagar" (el Home la reusa con solo las
+// cuotas por vencer o vencidas; ver utils/payment-due.js). `scope` separa los
+// ids cuando la tarjeta vive en otra pantalla.
+export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, title = 'Próximos vencimientos', scope = 'payments-upcoming' }) {
   const colors = useThemeColors();
   if (loading) {
     return <SkeletonBlock className="mb-5" height={120} nativeID="payments-upcoming-skeleton" rounded="rounded-2xl" testID="payments-upcoming-skeleton" />;
@@ -33,11 +37,16 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry }) {
   if (!items?.length) return null;
 
   return (
-    <SectionCard icon="calendar-alert" scope="payments-upcoming-card" title="Próximos vencimientos">
-      <View className="gap-2" nativeID="payments-upcoming-list" testID="payments-upcoming-list">
+    <SectionCard icon="calendar-alert" scope={`${scope}-card`} title={title}>
+      <View className="gap-2" nativeID={`${scope}-list`} testID={`${scope}-list`}>
         {items.map((item) => {
-          const id = `payments-upcoming-${item.key}`;
+          const id = `${scope}-${item.key}`;
           const late = overdueLabel(item);
+          const dueText = (
+            <Text className={`text-xs ${item.overdue ? 'font-semibold text-rose-700 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-due`} numberOfLines={1} testID={`${id}-due`}>
+              {late ? `${late} · ${formatDueDate(item.dueDate)}` : `vence ${formatDueDate(item.dueDate)}`}
+            </Text>
+          );
           return (
             <View
               // El borde cambia de color entre al día y vencida, pero solo con
@@ -53,21 +62,36 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry }) {
                 name={item.type === 'subscription' ? 'star-circle-outline' : 'account-group-outline'}
                 size={22}
               />
-              <View className="flex-1" nativeID={`${id}-main`} testID={`${id}-main`}>
+              <View className="min-w-0 flex-1" nativeID={`${id}-main`} testID={`${id}-main`}>
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={1} testID={`${id}-title`}>
                   {item.type === 'subscription' ? formatTierName(item.title, 'Tier') : item.title || 'Equipo'}
                 </Text>
                 <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
                   {[item.subtitle, `cuota ${item.installmentNumber}`].filter(Boolean).join(' · ')}
                 </Text>
+                {/* Con "Pagar", el vencimiento baja a esta columna: al costado
+                    quedan el monto y el botón, que ocupan poco, y el nombre
+                    no se corta en una pantalla angosta. */}
+                {onPay ? dueText : null}
               </View>
-              <View className="items-end" nativeID={`${id}-side`} testID={`${id}-side`}>
+              <View className={`items-end ${onPay ? 'gap-1.5' : ''}`} nativeID={`${id}-side`} testID={`${id}-side`}>
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>
                   {formatArs(item.amount)}
                 </Text>
-                <Text className={`text-xs ${item.overdue ? 'font-semibold text-rose-700 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-due`} testID={`${id}-due`}>
-                  {late ? `${late} · ${formatDueDate(item.dueDate)}` : `vence ${formatDueDate(item.dueDate)}`}
-                </Text>
+                {onPay ? (
+                  <Pressable
+                    accessibilityLabel={`Pagar la cuota ${item.installmentNumber} de ${item.type === 'subscription' ? formatTierName(item.title, 'tu tier') : item.title || 'tu equipo'}`}
+                    accessibilityRole="button"
+                    className="h-8 flex-row items-center justify-center rounded-full bg-primary px-3.5 hover:opacity-90 active:opacity-80"
+                    nativeID={`${id}-pay`}
+                    onPress={() => onPay(item)}
+                    testID={`${id}-pay`}
+                  >
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${id}-pay-label`} testID={`${id}-pay-label`}>
+                      Pagar
+                    </Text>
+                  </Pressable>
+                ) : dueText}
               </View>
             </View>
           );
