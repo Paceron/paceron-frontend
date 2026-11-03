@@ -96,7 +96,7 @@ export function PaymentsSummaryCard() {
   }
 
   return (
-    <SectionCard headerRight={seeAll} icon="cash-multiple" scope="profile-payments-card" title="Pagos y cobros" variant="amber">
+    <SectionCard headerRight={seeAll} icon="cash-multiple" scope="profile-payments-card" title="Finanzas" variant="amber">
       {body}
     </SectionCard>
   );
