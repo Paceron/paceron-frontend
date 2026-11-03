@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,9 +8,9 @@ import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { useTeamJoinRequests, useJoinRequestMutations } from '../../hooks/use-join-requests.js';
 
-// Tab "Solicitudes" del entrenador dueño — aceptar/rechazar, tap directo
-// sin modal de confirmación (mismo patrón que
-// received-invitations-screen.jsx/notifications-screen.jsx).
+// Solicitudes de ingreso, arriba de la lista de la pestaña Corredores y solo
+// para el entrenador dueño — aceptar/rechazar, tap directo sin modal de
+// confirmación (mismo patrón que received-invitations-screen.jsx/notifications-screen.jsx).
 function JoinRequestRow({ request, onAccept, onReject, responding }) {
   const colors = useThemeColors();
 
@@ -56,8 +56,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding }) {
   );
 }
 
-export function TeamRequestsTab({ teamId }) {
-  const colors = useThemeColors();
+export function TeamJoinRequestsSection({ teamId }) {
   const queryClient = useQueryClient();
   const { requests, loading } = useTeamJoinRequests(teamId);
   const { acceptJoinRequest, rejectJoinRequest, isAccepting, isRejecting } = useJoinRequestMutations();
@@ -90,29 +89,24 @@ export function TeamRequestsTab({ teamId }) {
     setRespondingId(null);
   };
 
+  // Sin solicitudes no se muestra nada: una tarjeta que solo dice "no hay"
+  // ocupa lugar arriba de la lista sin aportar. Mientras carga tampoco, para que
+  // no aparezca y desaparezca un esqueleto en cada visita.
+  if (loading || requests.length === 0) return null;
+
   return (
-    <SectionCard icon="account-question-outline" title="Solicitudes" variant="nested">
-      {loading ? (
-        <View className="items-center py-6" nativeID="team-requests-tab-loading" testID="team-requests-tab-loading">
-          <ActivityIndicator color={colors.primary} />
-        </View>
-      ) : requests.length === 0 ? (
-        <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="team-requests-tab-empty" testID="team-requests-tab-empty">
-          No hay solicitudes de ingreso pendientes.
-        </Text>
-      ) : (
-        <View className="gap-2" nativeID="team-requests-tab-list" testID="team-requests-tab-list">
-          {requests.map((request) => (
-            <JoinRequestRow
-              key={request.id}
-              onAccept={() => handleAccept(request.id)}
-              onReject={() => handleReject(request.id)}
-              request={request}
-              responding={(isAccepting || isRejecting) && respondingId === request.id}
-            />
-          ))}
-        </View>
-      )}
+    <SectionCard icon="account-question-outline" scope="team-requests-section" title={`Solicitudes de ingreso · ${requests.length}`} variant="nested">
+      <View className="gap-2" nativeID="team-requests-tab-list" testID="team-requests-tab-list">
+        {requests.map((request) => (
+          <JoinRequestRow
+            key={request.id}
+            onAccept={() => handleAccept(request.id)}
+            onReject={() => handleReject(request.id)}
+            request={request}
+            responding={(isAccepting || isRejecting) && respondingId === request.id}
+          />
+        ))}
+      </View>
     </SectionCard>
   );
 }

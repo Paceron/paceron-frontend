@@ -36,7 +36,8 @@ import { ExpelRunnerModal } from './expel-runner-modal.jsx';
 import { MoveRunnerModal } from './move-runner-modal.jsx';
 import { LeaveGroupModal } from './leave-group-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
-import { TeamRequestsTab } from './team-requests-tab.jsx';
+import { TeamJoinRequestsSection } from './team-requests-tab.jsx';
+import { useTeamJoinRequests } from '../../hooks/use-join-requests.js';
 import { LeaderboardTab } from './leaderboard-tab.jsx';
 import { CompetitionsTab } from './competitions-tab.jsx';
 import { useCompetitions } from '../../hooks/use-competitions.js';
@@ -68,18 +69,23 @@ const TEAM_STATUS_META = {
 // 4 secciones en una sola pantalla sin navegación por pestañas -- misma
 // pieza de TabBar que ya usaba web, solo se sacó el gate de isWeb).
 //
-// `rendimiento` NO pasa por `visibleTabs`: ese filtro solo saca `grupos` y
-// `solicitudes`, así que la pestaña nueva aparece para los dos roles sola — que es
-// lo que quiere, cada uno con su variante de la pantalla de rendimiento.
+// `rendimiento` NO pasa por `visibleTabs`: ese filtro solo saca `grupos`, así
+// que la pestaña aparece para los dos roles sola — que es lo que quiere, cada
+// uno con su variante de la pantalla de rendimiento.
+//
+// Las solicitudes de ingreso ya no tienen pestaña propia: viven arriba de la
+// lista de Corredores, solo para el dueño. `?tab=solicitudes` (links viejos,
+// notificaciones) cae en Corredores vía TAB_ALIASES.
 const TABS = [
   { id: 'general', label: 'General', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
   { id: 'grupos', label: 'Grupos', icon: 'account-group' },
   { id: 'leaderboard', label: 'Leaderboard', icon: 'podium-gold' },
   { id: 'competencias', label: 'Competencias', icon: 'sword-cross' },
-  { id: 'solicitudes', label: 'Solicitudes', icon: 'account-question-outline' },
   { id: 'rendimiento', label: 'Rendimiento', icon: 'chart-timeline-variant' },
 ];
+
+const TAB_ALIASES = { solicitudes: 'corredores' };
 
 const DASH = '—';
 function display(value) {
@@ -540,6 +546,10 @@ function TeamDetailScreenContent({ teamId }) {
   // realmente es dueño — mostrarlo a cualquier entrenador solo generaría un
   // error del backend para el resto.
   const canDeleteTeam = canManageTeam && team?.ownerId === user?.userId;
+  // Solo el dueño ve (y puede listar) las solicitudes; el badge de la pestaña
+  // Corredores avisa que hay alguna esperando.
+  const { requests: joinRequests } = useTeamJoinRequests(team?.id, { enabled: canDeleteTeam });
+  const hasPendingRequests = canDeleteTeam && joinRequests.length > 0;
   const [iconUploading, setIconUploading] = useState(false);
 
   const handlePickIcon = async () => {
@@ -656,7 +666,8 @@ function TeamDetailScreenContent({ teamId }) {
   useEffect(() => {
     if (appliedTabParamRef.current) return;
     appliedTabParamRef.current = true;
-    if (TABS.some((t) => t.id === params.tab)) setActiveTab(params.tab);
+    const tab = TAB_ALIASES[params.tab] ?? params.tab;
+    if (TABS.some((t) => t.id === tab)) setActiveTab(tab);
   }, [params.tab, setActiveTab]);
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
@@ -884,106 +895,109 @@ function TeamDetailScreenContent({ teamId }) {
   );
 
   const corredoresContent = (
-    <SectionCard
-      variant="nested"
-      headerRight={canManageTeam && (
-        <View className="flex-row items-center gap-1" nativeID="team-detail-invite-actions" testID="team-detail-invite-actions">
-          <IconTooltip idPrefix="team-detail-invite-pending-button-tooltip" label="Ver solicitudes pendientes">
-            <Pressable
-              accessibilityLabel="Ver solicitudes pendientes"
-              className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-              nativeID="team-detail-invite-pending-button"
-              onPress={() => router.push(`/teams/${team.id}/invite`)}
-              testID="team-detail-invite-pending-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="email-check-outline" size={20} />
-            </Pressable>
-          </IconTooltip>
-          <IconTooltip idPrefix="team-detail-invite-button-tooltip" label="Invitar corredor">
-            <Pressable
-              accessibilityLabel="Invitar corredor"
-              className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-              nativeID="team-detail-invite-button"
-              onPress={() => setInviteModalVisible(true)}
-              testID="team-detail-invite-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
-            </Pressable>
-          </IconTooltip>
-        </View>
-      )}
-      icon="account-multiple"
-      title="Corredores"
-    >
-      {/* Sin corredores en el equipo (todavía, no por filtro) no tiene
-          sentido mostrar el buscador — no hay nada para buscar. */}
-      {(loadingRoster || members.length > 0) && (
-        <View className="mb-4 rounded-xl bg-slate-50 p-1 dark:bg-slate-800" nativeID="team-detail-search-row" testID="team-detail-search-row">
-          {/* Buscadores minimalistas (mismo criterio que
-              ExercisesCatalogTab): sin label propio, el texto vive como
-              placeholder adentro del campo — ninguno de los dos necesita
-              ya alinearse contra un label del otro, así que da lo mismo
-              ancho web o mobile angosto. InlinePicker (no
-              ResponsiveSelectField) para "Grupo" porque ya viene sin
-              label ni fila de error, pensado justo para esto. */}
-          <Row narrowClassName="gap-3.5">
-            <Col>
-              <View className="h-12 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-input-wrapper" testID="team-detail-search-input-wrapper">
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
-                <TextInput
-                  className="flex-1 text-sm text-slate-900 outline-none dark:text-white"
-                  nativeID="team-detail-search-input"
-                  onChangeText={setSearch}
-                  placeholder={isTrainerView ? 'Buscar corredor por nombre o mail' : 'Buscar corredor por nombre'}
-                  placeholderTextColor={colors.onSurfaceVariant}
-                  testID="team-detail-search-input"
-                  value={search}
-                />
-              </View>
-            </Col>
-            {canSeeGroups && (
+    <View className="gap-4" nativeID="team-detail-runners-tab" testID="team-detail-runners-tab">
+      {canDeleteTeam && <TeamJoinRequestsSection teamId={team.id} />}
+      <SectionCard
+        variant="nested"
+        headerRight={canManageTeam && (
+          <View className="flex-row items-center gap-1" nativeID="team-detail-invite-actions" testID="team-detail-invite-actions">
+            <IconTooltip idPrefix="team-detail-invite-pending-button-tooltip" label="Ver solicitudes pendientes">
+              <Pressable
+                accessibilityLabel="Ver solicitudes pendientes"
+                className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                nativeID="team-detail-invite-pending-button"
+                onPress={() => router.push(`/teams/${team.id}/invite`)}
+                testID="team-detail-invite-pending-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="email-check-outline" size={20} />
+              </Pressable>
+            </IconTooltip>
+            <IconTooltip idPrefix="team-detail-invite-button-tooltip" label="Invitar corredor">
+              <Pressable
+                accessibilityLabel="Invitar corredor"
+                className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                nativeID="team-detail-invite-button"
+                onPress={() => setInviteModalVisible(true)}
+                testID="team-detail-invite-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+              </Pressable>
+            </IconTooltip>
+          </View>
+        )}
+        icon="account-multiple"
+        title="Corredores"
+      >
+        {/* Sin corredores en el equipo (todavía, no por filtro) no tiene
+            sentido mostrar el buscador — no hay nada para buscar. */}
+        {(loadingRoster || members.length > 0) && (
+          <View className="mb-4 rounded-xl bg-slate-50 p-1 dark:bg-slate-800" nativeID="team-detail-search-row" testID="team-detail-search-row">
+            {/* Buscadores minimalistas (mismo criterio que
+                ExercisesCatalogTab): sin label propio, el texto vive como
+                placeholder adentro del campo — ninguno de los dos necesita
+                ya alinearse contra un label del otro, así que da lo mismo
+                ancho web o mobile angosto. InlinePicker (no
+                ResponsiveSelectField) para "Grupo" porque ya viene sin
+                label ni fila de error, pensado justo para esto. */}
+            <Row narrowClassName="gap-3.5">
               <Col>
-                <InlinePicker onChange={setGroupFilter} options={groupOptions} placeholder="Buscar por grupo" scope="team-detail-group-filter" textClassName="text-sm" value={groupFilter} widthClass="w-full" />
+                <View className="h-12 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" nativeID="team-detail-search-input-wrapper" testID="team-detail-search-input-wrapper">
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
+                  <TextInput
+                    className="flex-1 text-sm text-slate-900 outline-none dark:text-white"
+                    nativeID="team-detail-search-input"
+                    onChangeText={setSearch}
+                    placeholder={isTrainerView ? 'Buscar corredor por nombre o mail' : 'Buscar corredor por nombre'}
+                    placeholderTextColor={colors.onSurfaceVariant}
+                    testID="team-detail-search-input"
+                    value={search}
+                  />
+                </View>
               </Col>
-            )}
-          </Row>
-        </View>
-      )}
+              {canSeeGroups && (
+                <Col>
+                  <InlinePicker onChange={setGroupFilter} options={groupOptions} placeholder="Buscar por grupo" scope="team-detail-group-filter" textClassName="text-sm" value={groupFilter} widthClass="w-full" />
+                </Col>
+              )}
+            </Row>
+          </View>
+        )}
 
-      {loadingRoster ? (
-        <View className="gap-2" nativeID="team-detail-runners-loading" testID="team-detail-runners-loading">
-          {[0, 1, 2].map((i) => (
-            <View className="flex-row items-center gap-3 px-4 py-3" key={i} nativeID={`team-detail-runners-loading-row-${i}`} testID={`team-detail-runners-loading-row-${i}`}>
-              <SkeletonCircle nativeID={`team-detail-runners-loading-row-${i}-avatar`} size={36} testID={`team-detail-runners-loading-row-${i}-avatar`} />
-              <SkeletonBlock height={14} nativeID={`team-detail-runners-loading-row-${i}-name`} testID={`team-detail-runners-loading-row-${i}-name`} width="50%" />
-            </View>
-          ))}
-        </View>
-      ) : members.length === 0 ? (
-        <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
-          ¡Aún no hay corredores!
-        </Text>
-      ) : filteredMembers.length === 0 ? (
-        <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-no-matches" testID="team-detail-runners-no-matches">
-          No hay corredores que coincidan con los filtros.
-        </Text>
-      ) : (
-        <View className="gap-2" nativeID="team-detail-runners-list" testID="team-detail-runners-list">
-          {filteredMembers.map((member) => (
-            <RunnerRow
-              colors={colors}
-              containerRef={runnerMenuContainerRef}
-              groupName={groups.find((g) => g.id === member.groupId)?.name ?? '—'}
-              key={member.id}
-              member={member}
-              onOpenMenu={handleOpenRunnerMenu}
-              restricted={!isTrainerView}
-              showGroupTag={canSeeGroups}
-            />
-          ))}
-        </View>
-      )}
-    </SectionCard>
+        {loadingRoster ? (
+          <View className="gap-2" nativeID="team-detail-runners-loading" testID="team-detail-runners-loading">
+            {[0, 1, 2].map((i) => (
+              <View className="flex-row items-center gap-3 px-4 py-3" key={i} nativeID={`team-detail-runners-loading-row-${i}`} testID={`team-detail-runners-loading-row-${i}`}>
+                <SkeletonCircle nativeID={`team-detail-runners-loading-row-${i}-avatar`} size={36} testID={`team-detail-runners-loading-row-${i}-avatar`} />
+                <SkeletonBlock height={14} nativeID={`team-detail-runners-loading-row-${i}-name`} testID={`team-detail-runners-loading-row-${i}-name`} width="50%" />
+              </View>
+            ))}
+          </View>
+        ) : members.length === 0 ? (
+          <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-empty" testID="team-detail-runners-empty">
+            ¡Aún no hay corredores!
+          </Text>
+        ) : filteredMembers.length === 0 ? (
+          <Text className="py-4 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="team-detail-runners-no-matches" testID="team-detail-runners-no-matches">
+            No hay corredores que coincidan con los filtros.
+          </Text>
+        ) : (
+          <View className="gap-2" nativeID="team-detail-runners-list" testID="team-detail-runners-list">
+            {filteredMembers.map((member) => (
+              <RunnerRow
+                colors={colors}
+                containerRef={runnerMenuContainerRef}
+                groupName={groups.find((g) => g.id === member.groupId)?.name ?? '—'}
+                key={member.id}
+                member={member}
+                onOpenMenu={handleOpenRunnerMenu}
+                restricted={!isTrainerView}
+                showGroupTag={canSeeGroups}
+              />
+            ))}
+          </View>
+        )}
+      </SectionCard>
+    </View>
   );
 
   // La pestaña/sección Grupos entera queda oculta para un corredor común
@@ -1027,8 +1041,7 @@ function TeamDetailScreenContent({ teamId }) {
     </SectionCard>
   );
 
-  const visibleTabs = TABS.filter((tab) => (tab.id !== 'grupos' || isTrainerView) && (tab.id !== 'solicitudes' || canDeleteTeam));
-  const solicitudesContent = canDeleteTeam && <TeamRequestsTab teamId={team.id} />;
+  const visibleTabs = TABS.filter((tab) => tab.id !== 'grupos' || isTrainerView);
   const leaderboardContent = <LeaderboardTab teamId={team.id} />;
   const competitionsContent = (
     <CompetitionsTab currentUserId={String(user?.userId)} groups={groupOptions} isTrainerView={isTrainerView} members={members} teamId={team.id} teamName={team.name} />
@@ -1134,13 +1147,12 @@ function TeamDetailScreenContent({ teamId }) {
           />
         )}
 
-        <TabBar active={activeTab} badges={{ competencias: competitionsHasUnseen }} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
+        <TabBar active={activeTab} badges={{ competencias: competitionsHasUnseen, corredores: hasPendingRequests }} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
         {activeTab === 'general' && generalContent}
         {activeTab === 'corredores' && corredoresContent}
         {activeTab === 'grupos' && gruposContent}
         {activeTab === 'leaderboard' && leaderboardContent}
         {activeTab === 'competencias' && competitionsContent}
-        {activeTab === 'solicitudes' && solicitudesContent}
         {activeTab === 'rendimiento' && <DashboardScreen teamId={team.id} />}
       </ScreenCard>
 

@@ -27,11 +27,12 @@ export function useMyJoinRequests(enabled = true) {
 // "Solicitudes" del entrenador dueño (team-requests-tab.jsx) como,
 // indirectamente, por useTeamsJoinRequestsMap más abajo (misma queryKey,
 // mismo cache).
-export function useTeamJoinRequests(teamId) {
+// `enabled` lo controla el caller: solo el dueño del equipo puede listarlas.
+export function useTeamJoinRequests(teamId, { enabled = true } = {}) {
   const query = useQuery({
     queryKey: ['join-requests-team', teamId],
     queryFn: () => listTeamJoinRequests(teamId).then((dtos) => dtos.map(toJoinRequestModel)),
-    enabled: Boolean(teamId),
+    enabled: Boolean(teamId) && enabled,
   });
   return { requests: query.data ?? [], loading: query.isLoading, error: query.error };
 }
