@@ -384,6 +384,14 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   del resumen miran el último intento de cada cuota, y una cuota rechazada que después
   se pagó no cuenta. Por eso pueden no coincidir con las filas de la lista filtrada, y
   la pantalla lo aclara.
+- **Tiles con monto arriba y cuotas abajo; tooltip por mes en el gráfico (2026-11-03,
+  pedido del tutor).** Los 4 tiles del dashboard de cobros muestran el monto como dato
+  principal (pendientes/rechazadas con `pending_amount`/`rejected_amount` del resumen,
+  "vs <mes>" como diferencia en pesos) y la cantidad de cuotas como aclaración; los textos
+  salen de `utils/payments-summary.js` (`monthTileContent`, `monthOverMonthTileContent`,
+  `statusTileContent`). Pasar el mouse o tocar un mes del gráfico muestra cobrado con sus
+  cuotas, comisión, neto y pendiente (`monthTooltipContent`), con el mismo mecanismo de
+  hotspots `Pressable` que `line-chart-tooltip.jsx` del dashboard de rendimiento.
 - **Reutilizables nuevos:** `components/shared/stat-tile.jsx` (extraído de
   `team-detail-screen.jsx`) y `formatARSCompact` en `utils/currency.js`. El historial
   usa el mismo `formatArs` que el pago de membresía de equipo (con `decimals: 2` para

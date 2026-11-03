@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Svg, { G, Rect, Text as SvgText } from 'react-native-svg';
 import { useThemeColors } from '../../theme/colors.js';
 import { buildMonthlyBars } from '../../utils/payments-chart.js';
 import { formatARSCompact } from '../../utils/currency.js';
-import { formatMonthShort } from '../../utils/payments-summary.js';
+import { formatMonthShort, monthTooltipContent } from '../../utils/payments-summary.js';
+import { isWeb } from '../../utils/platform.js';
 
 const CHART_HEIGHT = 170;
 // Ámbar: lo pendiente se lee como "todavía no entró", distinto del verde de lo
@@ -20,13 +21,25 @@ const PENDING_COLOR = '#f59e0b';
 // react-native-svg (ya instalado): no hay librería de gráficos en el repo. El
 // ancho se mide con onLayout porque SVG necesita números. El Text de svg se
 // importa como SvgText para no confundirlo con el de RN.
-export function PaymentsMonthlyChart({ points, currentMonth }) {
+//
+// Pasar el mouse (web) o tocar (nativo) un mes muestra un tooltip con lo que
+// suma: cobrado y sus cuotas, comisión, neto y pendiente (`monthly`, los meses
+// crudos del resumen). Mismo mecanismo que line-chart-tooltip.jsx del dashboard
+// de rendimiento: react-native-svg no expone hover, así que cada mes lleva un
+// Pressable invisible encima, con onHoverIn solo en web (en nativo el tooltip
+// se quedaría pegado) y tap para abrir y cerrar. El mes activo se guarda por
+// clave y no por índice: al correr la ventana desaparece solo.
+export function PaymentsMonthlyChart({ points, currentMonth, monthly, amountMode = 'gross' }) {
   const colors = useThemeColors();
   const [width, setWidth] = useState(0);
+  const [activeMonth, setActiveMonth] = useState(null);
   const bars = buildMonthlyBars(points, { width, height: CHART_HEIGHT, currentMonth });
   const hasPending = Boolean(points?.some((p) => (p.pending ?? 0) > 0));
   const isEmpty = !points?.some((p) => p.value > 0 || p.missing || (p.pending ?? 0) > 0);
   const plotBottom = CHART_HEIGHT - 18;
+  const activeBar = isEmpty ? null : bars.find((bar) => bar.month === activeMonth) ?? null;
+  const activeEntry = activeBar ? (monthly ?? []).find((m) => m.month === activeBar.month) : null;
+  const slotWidth = (bar) => (bar.centerX - bar.x) * 2;
 
   return (
     <View nativeID="payments-monthly-chart-wrapper" testID="payments-monthly-chart-wrapper">
@@ -38,6 +51,9 @@ export function PaymentsMonthlyChart({ points, currentMonth }) {
       >
         {width > 0 ? (
           <Svg height={CHART_HEIGHT} nativeID="payments-monthly-chart-svg" testID="payments-monthly-chart-svg" width={width}>
+            {activeBar ? (
+              <Rect fill={colors.surfaceContainerHigh} height={plotBottom} rx={6} width={slotWidth(activeBar) + 6} x={activeBar.x - 3} y={0} />
+            ) : null}
             {bars.map((bar) => (
               <G key={bar.month}>
                 {bar.missing ? (
@@ -109,6 +125,22 @@ export function PaymentsMonthlyChart({ points, currentMonth }) {
             ))}
           </Svg>
         ) : null}
+        {width > 0 && !isEmpty
+          ? bars.map((bar) => (
+            <Pressable
+              accessibilityLabel={`Ver el detalle de ${formatMonthShort(bar.month)}`}
+              accessibilityRole="button"
+              key={`hotspot-${bar.month}`}
+              nativeID={`payments-monthly-chart-hotspot-${bar.month}`}
+              onHoverIn={isWeb ? () => setActiveMonth(bar.month) : undefined}
+              onHoverOut={isWeb ? () => setActiveMonth(null) : undefined}
+              onPress={() => setActiveMonth((m) => (m === bar.month ? null : bar.month))}
+              style={{ position: 'absolute', left: bar.x - 5, top: 0, width: slotWidth(bar) + 10, height: CHART_HEIGHT }}
+              testID={`payments-monthly-chart-hotspot-${bar.month}`}
+            />
+          ))
+          : null}
+        {activeBar && activeEntry ? <MonthTooltip bar={activeBar} entry={activeEntry} mode={amountMode} width={width} /> : null}
         {isEmpty ? (
           // Sin cobros ni pendientes el gráfico queda sin barras: se avisa en vez de dejarlo en blanco.
           <View className="absolute inset-x-0 top-0 items-center justify-center" nativeID="payments-monthly-chart-empty" pointerEvents="none" style={{ bottom: 28 }} testID="payments-monthly-chart-empty">
@@ -124,6 +156,38 @@ export function PaymentsMonthlyChart({ points, currentMonth }) {
           <LegendItem color={PENDING_COLOR} id="payments-monthly-chart-legend-pending" label="Pendiente (cuotas sin pagar que vencen en el mes)" />
         </View>
       ) : null}
+    </View>
+  );
+}
+
+// Se ancla arriba, al lado del mes, y se corre contra el borde: pasada la mitad
+// derecha del gráfico se abre hacia la izquierda, para no salirse de la card.
+function MonthTooltip({ bar, entry, mode, width }) {
+  const { title, rows } = monthTooltipContent(entry, mode);
+  const flip = bar.centerX > width / 2;
+  const offset = (bar.centerX - bar.x) + 6;
+  return (
+    <View
+      nativeID="payments-monthly-chart-tooltip"
+      style={{ pointerEvents: 'none', position: 'absolute', top: 0, left: flip ? undefined : bar.centerX + offset, right: flip ? width - bar.centerX + offset : undefined }}
+      testID="payments-monthly-chart-tooltip"
+    >
+      <View className="min-w-[150px] rounded-lg border border-slate-200 bg-white px-2.5 py-2 shadow-sm dark:border-slate-600 dark:bg-surface-2" nativeID="payments-monthly-chart-tooltip-box" testID="payments-monthly-chart-tooltip-box">
+        <Text className="mb-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400" nativeID="payments-monthly-chart-tooltip-title" testID="payments-monthly-chart-tooltip-title">
+          {title}
+        </Text>
+        {rows.map((row) => (
+          <View className="flex-row items-baseline justify-between gap-3" key={row.key} nativeID={`payments-monthly-chart-tooltip-${row.key}`} testID={`payments-monthly-chart-tooltip-${row.key}`}>
+            <Text className="text-xs text-slate-600 dark:text-slate-300" nativeID={`payments-monthly-chart-tooltip-${row.key}-label`} testID={`payments-monthly-chart-tooltip-${row.key}-label`}>
+              {row.label}
+              {row.detail ? <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`payments-monthly-chart-tooltip-${row.key}-detail`} testID={`payments-monthly-chart-tooltip-${row.key}-detail`}>{` · ${row.detail}`}</Text> : null}
+            </Text>
+            <Text className="text-xs font-semibold text-slate-900 dark:text-white" nativeID={`payments-monthly-chart-tooltip-${row.key}-value`} style={{ fontVariant: ['tabular-nums'] }} testID={`payments-monthly-chart-tooltip-${row.key}-value`}>
+              {row.value}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

@@ -4,11 +4,11 @@ import { useThemeColors } from '../../theme/colors.js';
 import { formatArs } from '../../utils/currency.js';
 import {
   amountFor,
-  computeMonthOverMonth,
   formatMonthLong,
-  formatMonthOverMonth,
+  monthOverMonthTileContent,
   monthTileContent,
   selectCurrentAndPrevious,
+  statusTileContent,
   toChartPoints,
   windowRange,
 } from '../../utils/payments-summary.js';
@@ -26,6 +26,7 @@ import { IconTooltip } from '../shared/icon-tooltip.jsx';
 //   cambia "Cobrado en <mes actual>". El gráfico y cobros por equipo usan
 //   `windowSummary`, la ventana elegida con las flechas.
 // - `amountMode` ('gross' | 'net') cambia tiles, gráfico y equipos juntos.
+// - Cada tile muestra el monto y, abajo, cuántas cuotas suma.
 // - Tocar "Cuotas pendientes" o "Cuotas rechazadas" filtra la lista de cobros
 //   (onSelectStatus). Los tiles cuentan cuotas y la lista muestra intentos: por
 //   eso pueden no coincidir, y la pantalla lo aclara sobre la lista.
@@ -76,11 +77,12 @@ export function PaymentsDashboard({
   }
 
   const { current, previous } = selectCurrentAndPrevious(summary.monthly);
-  const mom = computeMonthOverMonth(current, previous, amountMode);
   const monthTile = monthTileContent(current, amountMode);
+  const momTile = monthOverMonthTileContent(current, previous, amountMode);
+  const pendingTile = statusTileContent(summary, 'pending', amountMode);
+  const rejectedTile = statusTileContent(summary, 'rejected', amountMode);
   const toggle = (group) => onSelectStatus(activeStatus === group ? '' : group);
   const kpiBox = isWide ? { flex: 1 } : { width: '47%' };
-  const momHint = mom.reason === 'no-net' ? 'Sin datos de neto' : mom.reason === 'no-previous' ? 'Sin cobros para comparar' : undefined;
   const statusHint = (group) => (activeStatus === group ? 'Filtrando · tocá para quitar' : 'Tocá para filtrar');
 
   const shown = windowSummary ?? summary;
@@ -102,33 +104,35 @@ export function PaymentsDashboard({
         </View>
         <View nativeID="payments-dashboard-kpi-mom" style={kpiBox} testID="payments-dashboard-kpi-mom">
           <StatTile
-            hint={momHint}
-            icon={mom.direction === 'down' ? 'trending-down' : mom.direction === 'up' ? 'trending-up' : 'trending-neutral'}
+            hint={momTile.hint}
+            icon={momTile.direction === 'down' ? 'trending-down' : momTile.direction === 'up' ? 'trending-up' : 'trending-neutral'}
             idPrefix="payments-kpi"
             label={`vs ${formatMonthLong(previous?.month)}`}
-            value={formatMonthOverMonth(mom)}
+            value={momTile.value}
           />
         </View>
         <View nativeID="payments-dashboard-kpi-pending" style={kpiBox} testID="payments-dashboard-kpi-pending">
           <StatTile
             actionHint={statusHint('pending')}
             active={activeStatus === 'pending'}
+            hint={pendingTile.hint}
             icon="clock-outline"
             idPrefix="payments-kpi"
             label="Cuotas pendientes"
             onPress={() => toggle('pending')}
-            value={String(summary.pendingCount)}
+            value={pendingTile.value}
           />
         </View>
         <View nativeID="payments-dashboard-kpi-rejected" style={kpiBox} testID="payments-dashboard-kpi-rejected">
           <StatTile
             actionHint={statusHint('rejected')}
             active={activeStatus === 'rejected'}
+            hint={rejectedTile.hint}
             icon="close-circle-outline"
             idPrefix="payments-kpi"
             label="Cuotas rechazadas"
             onPress={() => toggle('rejected')}
-            value={String(summary.rejectedCount)}
+            value={rejectedTile.value}
           />
         </View>
       </View>
@@ -144,7 +148,7 @@ export function PaymentsDashboard({
             ) : windowFailed ? (
               <WindowError onRetry={onRetryWindow} />
             ) : (
-              <PaymentsMonthlyChart currentMonth={currentMonth} points={points} />
+              <PaymentsMonthlyChart amountMode={amountMode} currentMonth={currentMonth} monthly={shown.monthly} points={points} />
             )}
             {amountMode === 'net' ? (
               <Text className="mt-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-net-note" testID="payments-dashboard-net-note">

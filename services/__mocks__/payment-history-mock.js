@@ -301,14 +301,19 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
 
   let pending = 0;
   let rejected = 0;
+  const amounts = { pending: 0, pendingNet: 0, rejected: 0, rejectedNet: 0 };
   installments.forEach(({ latest, anyApproved }) => {
     if (anyApproved) return;
     const group = statusGroupOf(latest.status);
     if (group === 'pending') {
       pending += 1;
+      amounts.pending += latest.gross_amount;
+      amounts.pendingNet += netOf(latest.gross_amount);
       teams.get(latest.team.id).pending_count += 1;
     } else if (group === 'rejected') {
       rejected += 1;
+      amounts.rejected += latest.gross_amount;
+      amounts.rejectedNet += netOf(latest.gross_amount);
       teams.get(latest.team.id).rejected_count += 1;
     }
   });
@@ -353,6 +358,10 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
       .sort((a, b) => b.gross_amount - a.gross_amount || a.team_name.localeCompare(b.team_name) || a.team_id - b.team_id),
     pending_count: pending,
     rejected_count: rejected,
+    pending_amount: round2(amounts.pending),
+    pending_net_amount: round2(amounts.pendingNet),
+    rejected_amount: round2(amounts.rejected),
+    rejected_net_amount: round2(amounts.rejectedNet),
     earliest_month: earliest ? monthKeyART(earliest) : null,
     due_this_month: { ...due, amount: round2(due.amount), net_amount: round2(due.net_amount) },
     overdue: { ...overdue, amount: round2(overdue.amount), net_amount: round2(overdue.net_amount) },
