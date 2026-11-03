@@ -564,7 +564,7 @@ function PreviewBox({ competition, onPress, wide }) {
   const colors = useThemeColors();
   const idPrefix = `competitions-preview-box-${competition.id}`;
   return (
-    <View className={`rounded-2xl bg-white p-4 dark:border dark:border-surface-2 dark:bg-surface ${wide ? 'flex-1' : ''}`} nativeID={idPrefix} testID={idPrefix}>
+    <View className={`rounded-2xl bg-white p-4 dark:bg-surface ${wide ? 'flex-1' : ''}`} nativeID={idPrefix} testID={idPrefix}>
       <View className="mb-2 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.primary} name={TYPE_ICON[competition.type] ?? 'trophy-variant'} size={18} />
         <Text className="flex-1 font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
@@ -717,7 +717,7 @@ function StatusBadge({ status }) {
 function CompetitionRow({ competition, onPress }) {
   const idPrefix = `my-competitions-tab-row-${competition.id}`;
   return (
-    <View className="mb-2 flex-row items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-surface-2" nativeID={idPrefix} testID={idPrefix}>
+    <View className="mb-2 flex-row items-center gap-3 rounded-xl bg-slate-200/50 p-3 dark:bg-slate-800/60" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-1" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
         <Text className="font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
           {buildCompetitionTitle(competition)}

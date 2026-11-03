@@ -36,7 +36,7 @@ function CompetitionRow({ competition, onPress }) {
         <Text className="font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
           {buildCompetitionTitle(competition)}
         </Text>
-        <View className="flex-row items-center mt-2 gap-4">
+        <View className="flex-row items-center mt-2 gap-4" nativeID={`${idPrefix}-meta`} testID={`${idPrefix}-meta`}>
           <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-team`} numberOfLines={1} testID={`${idPrefix}-team`}>
             {competition.teamName}
           </Text>

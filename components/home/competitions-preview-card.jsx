@@ -30,8 +30,8 @@ function PreviewBox({ competition, onPress, wide }) {
           {buildCompetitionTitle(competition)}
         </Text>
       </View>
-      <View className="flex-row">
-        <View className="flex-1">
+      <View className="flex-row" nativeID={`${idPrefix}-footer`} testID={`${idPrefix}-footer`}>
+        <View className="flex-1" nativeID={`${idPrefix}-footer-text`} testID={`${idPrefix}-footer-text`}>
           <Text className="mb-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-team`} numberOfLines={1} testID={`${idPrefix}-team`}>
             {competition.teamName}
           </Text>
@@ -48,7 +48,7 @@ function PreviewBox({ competition, onPress, wide }) {
           testID={`${idPrefix}-cta`}
         >
           <Text className="text-xs font-bold text-[#111518]" nativeID={`${idPrefix}-cta-label`} testID={`${idPrefix}-cta-label`}>Ver</Text>
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={18} />
+          <MaterialCommunityIcons color="#111518" name="chevron-right" size={18} />
         </Pressable>
       </View>
     </View>
@@ -68,10 +68,10 @@ export function CompetitionsPreviewCard() {
 
   return (
     <View className={`mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface ${wide ? 'gap-3' : 'gap-3'}`} nativeID="competitions-preview-card" testID="competitions-preview-card">
-      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="achievement-highlight-card-kicker" testID="achievement-highlight-card-kicker">
-        Logro más cercano
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="competitions-preview-card-kicker" testID="competitions-preview-card-kicker">
+        Tus competencias
       </Text>
-      <View className={`${wide ? 'flex-row gap-3' : 'gap-3'}`}>
+      <View className={`${wide ? 'flex-row gap-3' : 'gap-3'}`} nativeID="competitions-preview-card-list" testID="competitions-preview-card-list">
         {preview.map((competition) => (
           <PreviewBox
             competition={competition}
