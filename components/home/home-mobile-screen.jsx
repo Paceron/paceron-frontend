@@ -8,12 +8,12 @@ import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './land
 function FeatureItem({ icon, title, description, colors }) {
   return (
     <View
-      className="flex-row gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-surface-2"
+      className="flex-row gap-4 rounded-2xl bg-slate-100 p-5 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950 transition-all"
       nativeID={`home-mobile-feature-card-${icon}`}
       testID={`home-mobile-feature-card-${icon}`}
     >
       <View
-        className="h-10 w-10 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15"
+        className="h-10 w-10 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15 animate-pulse"
         nativeID={`home-mobile-feature-icon-${icon}`}
         testID={`home-mobile-feature-icon-${icon}`}
       >
@@ -56,7 +56,7 @@ export function HomeMobileScreen() {
   // necesite agruparse en una sola superficie uniforme.
   return (
     <ScrollView
-      className="flex-1 bg-paper dark:bg-ink"
+      className="flex-1 bg-paper dark:bg-ink transition-all"
       contentContainerClassName="px-gutter pb-16"
       nativeID="home-mobile-screen"
       testID="home-mobile-screen"
@@ -67,7 +67,7 @@ export function HomeMobileScreen() {
         testID="home-mobile-hero"
       >
         <View
-          className="mb-12 items-center"
+          className="mb-12 items-center p-8 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950"
           nativeID="home-mobile-hero-brand"
           testID="home-mobile-hero-brand"
         >
@@ -116,7 +116,7 @@ export function HomeMobileScreen() {
           </Pressable>
 
           <Pressable
-            className="h-12 flex-row items-center justify-center gap-2 rounded-full border border-slate-300 hover:bg-slate-100 active:opacity-80 dark:border-surface-2 dark:hover:bg-surface-2"
+            className="h-12 flex-row items-center justify-center gap-2 rounded-full shadow-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-100 active:opacity-80 dark:hover:bg-surface-2"
             nativeID="home-mobile-hero-secondary-cta"
             testID="home-mobile-hero-secondary-cta"
             onPress={() => router.push('/login')}
@@ -153,12 +153,12 @@ export function HomeMobileScreen() {
         testID="home-mobile-ai-panel"
       >
         <View
-          className="overflow-hidden rounded-2xl border border-primary/20 bg-white p-8 shadow-lg dark:bg-surface-2"
+          className="overflow-hidden rounded-2xl bg-slate-50 p-8 dark:bg-slate-800/60 hover:bg-green-50 dark:hover:bg-lime-900 transition-all"
           nativeID="home-mobile-ai-panel-card"
           testID="home-mobile-ai-panel-card"
         >
           <View
-            className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5"
+            className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-3 py-1.5 animate-pulse"
             nativeID="home-mobile-ai-panel-badge"
             testID="home-mobile-ai-panel-badge"
           >
@@ -202,18 +202,26 @@ export function HomeMobileScreen() {
         {AUDIENCE_CARDS.map((card) => (
           <View
             key={card.icon}
-            className="flex-1 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-surface-2"
+            className="flex-1 rounded-2xl bg-slate-100 p-6 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950 transition-all"
             nativeID={`home-mobile-audience-card-${card.icon}`}
             testID={`home-mobile-audience-card-${card.icon}`}
           >
-            <MaterialCommunityIcons color={colors.primary} name={card.icon} size={24} style={{ marginBottom: 8 }} />
-            <Text
-              className="mb-1 text-base font-bold text-slate-950 dark:text-white"
-              nativeID={`home-mobile-audience-title-${card.icon}`}
-              testID={`home-mobile-audience-title-${card.icon}`}
-            >
-              {card.title}
-            </Text>
+            <View className="mb-1 flex-row items-start align-center" nativeID={`home-mobile-audience-header-${card.icon}`} testID={`home-mobile-audience-header-${card.icon}`}>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15 animate-pulse"
+                nativeID={`home-mobile-audience-icon-${card.icon}`}
+                testID={`home-mobile-audience-icon-${card.icon}`}
+              >
+                <MaterialCommunityIcons color={colors.primary} name={card.icon} size={20} />
+              </View>
+              <Text
+                className="m-2 ml-3 text-base font-bold text-slate-950 dark:text-white"
+                nativeID={`home-mobile-audience-title-${card.icon}`}
+                testID={`home-mobile-audience-title-${card.icon}`}
+              >
+                {card.title}
+              </Text>
+            </View>
             <Text
               className="text-sm leading-5 text-slate-600 dark:text-slate-300"
               nativeID={`home-mobile-audience-description-${card.icon}`}

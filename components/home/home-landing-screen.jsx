@@ -12,7 +12,7 @@ function FeatureCard({ icon, title, description, colors }) {
       nativeID={`home-landing-screen-feature-card-${icon}`}
       testID={`home-landing-screen-feature-card-${icon}`}
     >
-      <View className="mb-2 flex-row items-start align-center">
+      <View className="mb-2 flex-row items-start align-center" nativeID={`home-landing-screen-feature-header-${icon}`} testID={`home-landing-screen-feature-header-${icon}`}>
         <View
           className="h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15 animate-pulse"
           nativeID={`home-landing-screen-feature-icon-${icon}`}
@@ -73,7 +73,7 @@ export function HomeLandingScreen() {
           testID="home-landing-screen-hero"
         >
           <View
-            className="-mt-6 mb-16 items-center p-10 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 hover:dark:bg-lime-950"
+            className="-mt-6 mb-16 items-center p-10 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950"
             nativeID="home-landing-screen-hero-brand"
             testID="home-landing-screen-hero-brand"
           >
@@ -210,7 +210,7 @@ export function HomeLandingScreen() {
               nativeID={`home-landing-screen-audience-card-${card.icon}`}
               testID={`home-landing-screen-audience-card-${card.icon}`}
             >
-              <View className="mb-2 flex-row items-start align-center">
+              <View className="mb-2 flex-row items-start align-center" nativeID={`home-landing-screen-audience-header-${card.icon}`} testID={`home-landing-screen-audience-header-${card.icon}`}>
                 <View
                   className="h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15 animate-pulse"
                   nativeID={`home-landing-screen-audience-icon-${card.icon}`}

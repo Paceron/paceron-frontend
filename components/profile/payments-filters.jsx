@@ -10,7 +10,7 @@ export function PaymentsFilters({ teams, teamId, status, onChangeTeam, onChangeS
   const teamOptions = teams.map((t) => ({ id: t.teamId, name: t.teamName || 'Equipo eliminado' }));
 
   return (
-    <View className={isWide ? 'flex-row gap-4 bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4' : 'bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4'} nativeID="payments-filters" testID="payments-filters">
+    <View className={isWide ? 'flex-row gap-4 bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4' : 'gap-4 bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4'} nativeID="payments-filters" testID="payments-filters">
       <View nativeID="payments-filters-team" style={isWide ? { flex: 1 } : undefined} testID="payments-filters-team">
         <ResponsiveSelectField dense label="Equipo" onChange={onChangeTeam} options={teamOptions} placeholder="Todos los equipos" value={teamId} />
       </View>
