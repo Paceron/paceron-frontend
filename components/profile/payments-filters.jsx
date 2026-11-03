@@ -10,7 +10,7 @@ export function PaymentsFilters({ teams, teamId, status, onChangeTeam, onChangeS
   const teamOptions = teams.map((t) => ({ id: t.teamId, name: t.teamName || 'Equipo eliminado' }));
 
   return (
-    <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-filters" testID="payments-filters">
+    <View className={isWide ? 'flex-row gap-4 bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4' : 'bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4'} nativeID="payments-filters" testID="payments-filters">
       <View nativeID="payments-filters-team" style={isWide ? { flex: 1 } : undefined} testID="payments-filters-team">
         <ResponsiveSelectField dense label="Equipo" onChange={onChangeTeam} options={teamOptions} placeholder="Todos los equipos" value={teamId} />
       </View>
@@ -24,7 +24,7 @@ export function PaymentsFilters({ teams, teamId, status, onChangeTeam, onChangeS
 // Filtros del historial propio: tipo (suscripción / pago a entrenador) y estado.
 export function PaymentsHistoryFilters({ type, status, onChangeType, onChangeStatus, isWide }) {
   return (
-    <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-history-filters" testID="payments-history-filters">
+    <View className={isWide ? 'flex-row gap-4 bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4' : 'gap-4 bg-slate-200 dark:bg-slate-800 p-5 pb-0 rounded-xl mt-1 mb-4'} nativeID="payments-history-filters" testID="payments-history-filters">
       <View nativeID="payments-history-filters-type" style={isWide ? { flex: 1 } : undefined} testID="payments-history-filters-type">
         <ResponsiveSelectField dense label="Tipo" onChange={onChangeType} options={PAYMENT_TYPE_FILTER_OPTIONS} placeholder="Todos los tipos" value={type} />
       </View>
