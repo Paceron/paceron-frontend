@@ -8,24 +8,26 @@ import { HERO_CONTENT, FEATURES, AI_PANEL_CONTENT, AUDIENCE_CARDS } from './land
 function FeatureCard({ icon, title, description, colors }) {
   return (
     <View
-      className="flex-1 min-w-[280px] rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-surface-2"
+      className="flex-1 min-w-[280px] rounded-2xl bg-slate-100 p-6 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950 transition-all"
       nativeID={`home-landing-screen-feature-card-${icon}`}
       testID={`home-landing-screen-feature-card-${icon}`}
     >
-      <View
-        className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15"
-        nativeID={`home-landing-screen-feature-icon-${icon}`}
-        testID={`home-landing-screen-feature-icon-${icon}`}
-      >
-        <MaterialCommunityIcons color={colors.primary} name={icon} size={24} />
+      <View className="mb-2 flex-row items-start align-center">
+        <View
+          className="h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15 animate-pulse"
+          nativeID={`home-landing-screen-feature-icon-${icon}`}
+          testID={`home-landing-screen-feature-icon-${icon}`}
+        >
+          <MaterialCommunityIcons color={colors.primary} name={icon} size={24} />
+        </View>
+        <Text
+          className="m-3 ml-4 text-lg font-bold text-slate-900 dark:text-white"
+          nativeID={`home-landing-screen-feature-title-${icon}`}
+          testID={`home-landing-screen-feature-title-${icon}`}
+        >
+          {title}
+        </Text>
       </View>
-      <Text
-        className="mb-2 text-lg font-bold text-slate-900 dark:text-white"
-        nativeID={`home-landing-screen-feature-title-${icon}`}
-        testID={`home-landing-screen-feature-title-${icon}`}
-      >
-        {title}
-      </Text>
       <Text
         className="text-sm leading-6 text-slate-500 dark:text-slate-400"
         nativeID={`home-landing-screen-feature-description-${icon}`}
@@ -56,7 +58,7 @@ export function HomeLandingScreen() {
   // pide cambiar (fuera de alcance: "cambios de layout/estructura").
   return (
     <ScrollView
-      className="flex-1 bg-paper dark:bg-ink"
+      className="flex-1 bg-paper dark:bg-ink transition-all"
       nativeID="home-landing-screen-root"
       testID="home-landing-screen-root"
     >
@@ -115,7 +117,7 @@ export function HomeLandingScreen() {
               <MaterialCommunityIcons color={colors.onPrimary} name="arrow-right" size={18} />
             </Pressable>
             <Pressable
-              className="h-12 flex-row items-center gap-2 rounded-full border border-slate-300 px-8 hover:bg-slate-100 active:opacity-80 dark:border-surface-2 dark:hover:bg-surface-2"
+              className="h-12 flex-row items-center gap-2 rounded-full px-8 shadow-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-100 active:opacity-80 dark:hover:bg-surface-2"
               nativeID="home-landing-screen-hero-secondary-cta"
               testID="home-landing-screen-hero-secondary-cta"
               onPress={() => router.push('/login')}
@@ -143,7 +145,7 @@ export function HomeLandingScreen() {
         </View>
 
         <View
-          className="mb-16 overflow-hidden rounded-2xl border border-primary/20 bg-white p-12 shadow-lg dark:bg-surface-2"
+          className="mb-16 overflow-hidden rounded-2xl bg-slate-50 p-12 dark:bg-slate-800/60 hover:bg-green-50 dark:hover:bg-lime-900 transition-all"
           nativeID="home-landing-screen-ai-panel"
           testID="home-landing-screen-ai-panel"
         >
@@ -158,7 +160,7 @@ export function HomeLandingScreen() {
               testID="home-landing-screen-ai-panel-copy"
             >
               <View
-                className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-4 py-2"
+                className="mb-6 flex-row items-center gap-2 self-start rounded-full bg-primary-tint dark:bg-primary/20 px-4 py-2 animate-pulse"
                 nativeID="home-landing-screen-ai-panel-badge"
                 testID="home-landing-screen-ai-panel-badge"
               >
@@ -204,24 +206,26 @@ export function HomeLandingScreen() {
           {AUDIENCE_CARDS.map((card) => (
             <View
               key={card.icon}
-              className="flex-1 rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-surface-2"
+              className="flex-1 rounded-2xl bg-slate-100 p-8 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950 transition-all"
               nativeID={`home-landing-screen-audience-card-${card.icon}`}
               testID={`home-landing-screen-audience-card-${card.icon}`}
             >
-              <View
-                className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15"
-                nativeID={`home-landing-screen-audience-icon-${card.icon}`}
-                testID={`home-landing-screen-audience-icon-${card.icon}`}
-              >
-                <MaterialCommunityIcons color={colors.primary} name={card.icon} size={24} />
+              <View className="mb-2 flex-row items-start align-center">
+                <View
+                  className="h-12 w-12 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15 animate-pulse"
+                  nativeID={`home-landing-screen-audience-icon-${card.icon}`}
+                  testID={`home-landing-screen-audience-icon-${card.icon}`}
+                >
+                  <MaterialCommunityIcons color={colors.primary} name={card.icon} size={24} />
+                </View>
+                <Text
+                  className="m-3 ml-4 text-lg font-bold text-slate-900 dark:text-white"
+                  nativeID={`home-landing-screen-audience-title-${card.icon}`}
+                  testID={`home-landing-screen-audience-title-${card.icon}`}
+                >
+                  {card.title}
+                </Text>
               </View>
-              <Text
-                className="mb-2 text-lg font-bold text-slate-900 dark:text-white"
-                nativeID={`home-landing-screen-audience-title-${card.icon}`}
-                testID={`home-landing-screen-audience-title-${card.icon}`}
-              >
-                {card.title}
-              </Text>
               <Text
                 className="text-sm leading-6 text-slate-500 dark:text-slate-400"
                 nativeID={`home-landing-screen-audience-description-${card.icon}`}
