@@ -15,10 +15,11 @@ const VARIANT = {
     title: 'text-amber-700 dark:text-amber-400',
     icon: '#f59e0b',
   },
-  // Aviso de algo vencido (ej. cuotas vencidas en el Home). Misma estructura
-  // que `amber`, que queda para "por vencer".
+  // Aviso de algo vencido (ej. cuotas vencidas en el Home). El rojo va en el
+  // borde, el título y el ícono; el fondo queda el de una card normal; con
+  // fondo rosado, en oscuro se veía empastado.
   rose: {
-    box: 'border-rose-300 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30',
+    box: 'border-rose-300 bg-white dark:border-rose-500/40 dark:bg-surface',
     title: 'text-rose-700 dark:text-rose-400',
     icon: '#e11d48',
   },
