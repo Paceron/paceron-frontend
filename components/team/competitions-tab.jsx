@@ -349,8 +349,8 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
       )}
 
       {canRunBase && isWeb && (
-        <View className="ml-6 mt-3" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
-          <Text className="self-start rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
+        <View className="mt-3 items-center justify-center" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
+          <Text className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
             {!hasStarted
               ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
               : remainingAttempts > 0
@@ -543,13 +543,13 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
         badges={{ pending: listByTab.pending.length > 0 }}
         filterContent={(
           <>
-            <ResponsiveSelectField dense label="Tipo" onChange={setFilterType} options={[{ id: 'metric', name: 'Por métrica' }, { id: 'route', name: 'Por trayectoria' }]} placeholder="Todos los tipos" value={filterType} />
-            <View className="mt-3 flex-row gap-3" nativeID="competitions-tab-date-range" testID="competitions-tab-date-range">
+            <ResponsiveSelectField dense hideErrorRow label="Tipo" onChange={setFilterType} options={[{ id: 'metric', name: 'Por métrica' }, { id: 'route', name: 'Por trayectoria' }]} placeholder="Todos los tipos" value={filterType} />
+            <View className="mt-2 flex-row gap-3" nativeID="competitions-tab-date-range" testID="competitions-tab-date-range">
               <View className="flex-1" nativeID="competitions-tab-date-from" testID="competitions-tab-date-from">
-                <DateField dense label="Desde" onChange={setFilterFrom} value={filterFrom} />
+                <DateField className="mb-0" dense hideErrorRow label="Desde" onChange={setFilterFrom} value={filterFrom} />
               </View>
               <View className="flex-1" nativeID="competitions-tab-date-to" testID="competitions-tab-date-to">
-                <DateField dense label="Hasta" onChange={setFilterTo} value={filterTo} />
+                <DateField className="mb-0" dense hideErrorRow label="Hasta" onChange={setFilterTo} value={filterTo} />
               </View>
             </View>
           </>

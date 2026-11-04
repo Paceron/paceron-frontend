@@ -15,9 +15,9 @@ export function FilterableSubtabs({ tabs, active, onChange, badges, scope, filte
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <View className="mb-4 rounded-xl border-b-4 border-slate-300 dark:border-slate-700" nativeID={`${scope}-frame`} testID={`${scope}-frame`}>
-      <View className="flex-row items-center gap-2 px-3 py-1.5" nativeID={`${scope}-row`} testID={`${scope}-row`}>
-        <TabBar active={active} badges={badges} onChange={onChange} scope={scope} tabs={tabs} variant="compact" wrapClassName="flex-1 flex-row gap-4 mb-2" />
+    <View className="mb-4" nativeID={`${scope}-frame`} testID={`${scope}-frame`}>
+      <View className="flex-row items-center gap-2" nativeID={`${scope}-row`} testID={`${scope}-row`}>
+        <TabBar active={active} badges={badges} onChange={onChange} scope={scope} tabs={tabs} variant="compact" wrapClassName="flex-1 flex-row gap-4" />
         <Pressable
           accessibilityLabel={expanded ? 'Ocultar filtros' : 'Mostrar filtros'}
           accessibilityRole="button"
@@ -33,7 +33,7 @@ export function FilterableSubtabs({ tabs, active, onChange, badges, scope, filte
         </Pressable>
       </View>
       {expanded && (
-        <View className="px-3 pb-3" nativeID={`${scope}-filter-panel`} testID={`${scope}-filter-panel`}>
+        <View className="mt-3 rounded-xl bg-white p-3 shadow-sm dark:bg-surface" nativeID={`${scope}-filter-panel`} testID={`${scope}-filter-panel`}>
           {filterContent}
         </View>
       )}

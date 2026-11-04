@@ -99,14 +99,14 @@ export function MyCompetitionsTab() {
         active={subTab}
         filterContent={(
           <>
-            <ResponsiveSelectField dense label="Equipo" onChange={setFilterTeamId} options={teamOptions} placeholder="Todos los equipos" value={filterTeamId} />
-            <ResponsiveSelectField dense label="Tipo" onChange={setFilterType} options={[{ id: 'metric', name: 'Por métrica' }, { id: 'route', name: 'Por trayectoria' }]} placeholder="Todos los tipos" value={filterType} />
-            <View className="mt-3 flex-row gap-3" nativeID="my-competitions-tab-date-range" testID="my-competitions-tab-date-range">
+            <ResponsiveSelectField dense hideErrorRow label="Equipo" onChange={setFilterTeamId} options={teamOptions} placeholder="Todos los equipos" value={filterTeamId} />
+            <ResponsiveSelectField dense hideErrorRow label="Tipo" onChange={setFilterType} options={[{ id: 'metric', name: 'Por métrica' }, { id: 'route', name: 'Por trayectoria' }]} placeholder="Todos los tipos" value={filterType} />
+            <View className="mt-2 flex-row gap-3" nativeID="my-competitions-tab-date-range" testID="my-competitions-tab-date-range">
               <View className="flex-1" nativeID="my-competitions-tab-date-from" testID="my-competitions-tab-date-from">
-                <DateField dense label="Desde" onChange={setFilterFrom} value={filterFrom} />
+                <DateField className="mb-0" dense hideErrorRow label="Desde" onChange={setFilterFrom} value={filterFrom} />
               </View>
               <View className="flex-1" nativeID="my-competitions-tab-date-to" testID="my-competitions-tab-date-to">
-                <DateField dense label="Hasta" onChange={setFilterTo} value={filterTo} />
+                <DateField className="mb-0" dense hideErrorRow label="Hasta" onChange={setFilterTo} value={filterTo} />
               </View>
             </View>
           </>
