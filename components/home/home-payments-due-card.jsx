@@ -6,7 +6,8 @@ import { PaymentsUpcomingCard } from '../profile/payments-upcoming-card.jsx';
 // Aviso del Home con las cuotas vencidas o que vencen en los próximos días
 // (utils/payment-due.js#HOME_DUE_WINDOW_DAYS), cada una con su "Pagar", que
 // abre el pago directo. Es la misma tarjeta de "Próximos vencimientos" de
-// Pagos, recortada. Sin nada para avisar no ocupa lugar, y tampoco mientras
+// Pagos, recortada (roja con alguna vencida, ámbar si solo hay por vencer,
+// igual que allá). Sin nada para avisar no ocupa lugar, y tampoco mientras
 // carga o si falla: en el Home un esqueleto o un error de pagos sería ruido.
 export function HomePaymentsDueCard() {
   const router = useRouter();

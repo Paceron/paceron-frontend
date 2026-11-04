@@ -4,10 +4,30 @@ import { useThemeColors } from '../../theme/colors.js';
 import { formatArs } from '../../utils/currency.js';
 import { formatDueDate, overdueLabel } from '../../utils/payments-summary.js';
 import { formatTierName } from '../../utils/tier-name.js';
+import { dueCardVariant, dueTone } from '../../utils/payment-due.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 
 const TABULAR = { fontVariant: ['tabular-nums'] };
+
+// Vencida en rojo, por vencer en ámbar, el resto neutro.
+const ROW_TONE = {
+  overdue: {
+    box: 'border-rose-200 bg-rose-100/60 dark:border-rose-900/60 dark:bg-rose-900/30',
+    due: 'font-semibold text-rose-700 dark:text-rose-300',
+    icon: '#e11d48',
+  },
+  soon: {
+    box: 'border-amber-200 bg-amber-100/60 dark:border-amber-900/60 dark:bg-amber-900/20',
+    due: 'font-semibold text-amber-700 dark:text-amber-400',
+    icon: '#d97706',
+  },
+  normal: {
+    box: 'border-slate-100 dark:border-slate-800',
+    due: 'text-slate-500 dark:text-slate-400',
+    icon: null,
+  },
+};
 
 // "Próximos vencimientos" de la pestaña Pagos, para cualquier rol: la próxima
 // cuota sin pagar de cada equipo que paga el usuario y de cada tier (GET
@@ -17,6 +37,10 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // Con `onPay`, cada fila suma un botón "Pagar" (el Home la reusa con solo las
 // cuotas por vencer o vencidas; ver utils/payment-due.js). `scope` separa los
 // ids cuando la tarjeta vive en otra pantalla.
+//
+// La tarjeta y cada fila se tiñen según el vencimiento (utils/payment-due.js):
+// roja con alguna vencida, ámbar con alguna que vence en los próximos
+// HOME_DUE_WINDOW_DAYS días; las cuotas más lejanas quedan neutras.
 export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, title = 'Próximos vencimientos', scope = 'payments-upcoming' }) {
   const colors = useThemeColors();
   if (loading) {
@@ -35,15 +59,18 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, t
     );
   }
   if (!items?.length) return null;
+  const now = new Date();
+  const cardVariant = dueCardVariant(items, now);
 
   return (
-    <SectionCard icon="calendar-alert" scope={`${scope}-card`} title={title}>
+    <SectionCard icon="calendar-alert" scope={`${scope}-card`} title={title} variant={cardVariant}>
       <View className="gap-2" nativeID={`${scope}-list`} testID={`${scope}-list`}>
         {items.map((item) => {
           const id = `${scope}-${item.key}`;
           const late = overdueLabel(item);
+          const tone = dueTone(item, now);
           const dueText = (
-            <Text className={`text-xs ${item.overdue ? 'font-semibold text-rose-700 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-due`} numberOfLines={1} testID={`${id}-due`}>
+            <Text className={`text-xs ${ROW_TONE[tone].due}`} nativeID={`${id}-due`} numberOfLines={1} testID={`${id}-due`}>
               {late ? `${late} · ${formatDueDate(item.dueDate)}` : `vence ${formatDueDate(item.dueDate)}`}
             </Text>
           );
@@ -52,13 +79,13 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, t
               // El borde cambia de color entre al día y vencida, pero solo con
               // clases de color: nada de sombras ni pseudo-estados condicionales
               // (quirk de NativeWind en CLAUDE.md).
-              className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${item.overdue ? 'border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-900/20' : 'border-slate-100 dark:border-slate-800'}`}
+              className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${ROW_TONE[tone].box}`}
               key={item.key}
               nativeID={id}
               testID={id}
             >
               <MaterialCommunityIcons
-                color={item.overdue ? colors.error : colors.onSurfaceVariant}
+                color={ROW_TONE[tone].icon ?? colors.onSurfaceVariant}
                 name={item.type === 'subscription' ? 'star-circle-outline' : 'account-group-outline'}
                 size={22}
               />

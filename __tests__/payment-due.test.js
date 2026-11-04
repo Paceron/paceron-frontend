@@ -1,4 +1,4 @@
-import { HOME_DUE_WINDOW_DAYS, homeDuePayments, payRouteFor } from '../utils/payment-due.js';
+import { HOME_DUE_WINDOW_DAYS, dueCardVariant, dueTone, homeDuePayments, payRouteFor } from '../utils/payment-due.js';
 
 const NOW = new Date('2026-11-03T15:00:00Z');
 const item = (over) => ({ key: 'k', type: 'trainer_payment', teamId: 7, dueDate: '2026-11-20T00:00:00Z', overdue: false, ...over });
@@ -21,6 +21,26 @@ describe('homeDuePayments', () => {
     const b = item({ key: 'b', overdue: true, dueDate: '2026-10-01T00:00:00Z' });
     expect(homeDuePayments([a, item({ key: 'x', dueDate: null }), b, null], NOW).map((i) => i.key)).toEqual(['a', 'b']);
     expect(homeDuePayments(undefined, NOW)).toEqual([]);
+  });
+});
+
+describe('dueTone y dueCardVariant', () => {
+  const late = item({ key: 'late', dueDate: '2026-10-01T00:00:00Z', overdue: true });
+  const soon = item({ key: 'soon', dueDate: '2026-11-03T20:00:00Z' });
+  const far = item({ key: 'far', dueDate: '2026-12-20T00:00:00Z' });
+
+  test('vencida en rojo, dentro de la ventana en ámbar, el resto neutro', () => {
+    expect(dueTone(late, NOW)).toBe('overdue');
+    expect(dueTone(soon, NOW)).toBe('soon');
+    expect(dueTone(far, NOW)).toBe('normal');
+    expect(dueTone(item({ dueDate: null }), NOW)).toBe('normal');
+  });
+
+  test('la tarjeta toma el tono más urgente de sus filas', () => {
+    expect(dueCardVariant([far, soon, late], NOW)).toBe('rose');
+    expect(dueCardVariant([far, soon], NOW)).toBe('amber');
+    expect(dueCardVariant([far], NOW)).toBe('default');
+    expect(dueCardVariant(undefined, NOW)).toBe('default');
   });
 });
 

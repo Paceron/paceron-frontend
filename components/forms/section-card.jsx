@@ -15,6 +15,13 @@ const VARIANT = {
     title: 'text-amber-700 dark:text-amber-400',
     icon: '#f59e0b',
   },
+  // Aviso de algo vencido (ej. cuotas vencidas en el Home). Misma estructura
+  // que `amber`, que queda para "por vencer".
+  rose: {
+    box: 'border-rose-300 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30',
+    title: 'text-rose-700 dark:text-rose-400',
+    icon: '#e11d48',
+  },
   // Para cuando la card vive DENTRO de otro wrapper ya bordeado (ej.
   // team-detail-screen-container) -- el `border` de `default` ahí dibuja
   // un doble borde contra el padre, del mismo color. Sin borde, mismo

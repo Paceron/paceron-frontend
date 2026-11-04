@@ -404,6 +404,9 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   pendiente de un cambio de tier): ahora muestra "Pagar cuota" y confirma por
   `paid_installments`, porque el tier y el estado no cambian. Después de pagar se invalida
   `PAYMENT_HISTORY_KEYS.upcoming`, si no el aviso del Home sigue hasta 60 s (staleTime).
+  La tarjeta (en el Home y en Pagos) y cada fila se tiñen con `utils/payment-due.js#dueTone`/`dueCardVariant`:
+  roja con alguna vencida, ámbar con alguna que vence dentro de esa misma ventana de 10 días, neutra si
+  falta más (variante `rose` nueva de `SectionCard`).
 - **Reutilizables nuevos:** `components/shared/stat-tile.jsx` (extraído de
   `team-detail-screen.jsx`) y `formatARSCompact` en `utils/currency.js`. El historial
   usa el mismo `formatArs` que el pago de membresía de equipo (con `decimals: 2` para
