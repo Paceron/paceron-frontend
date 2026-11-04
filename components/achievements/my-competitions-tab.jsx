@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useMyCompetitions } from '../../hooks/use-my-competitions.js';
+import { useMyMemberTeams } from '../../hooks/use-teams.js';
 import { sortCompetitionsForList } from '../../utils/competition-sort.js';
+import { filterCompetitionsByFields, splitByLifecycle } from '../../utils/competition-filters.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { DateField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
 
 // Mismo par de tonos fijo por color que el resto de la app (ver
 // docs/superpowers/specs/2026-10-31-visual-design-refresh-design.md,
@@ -33,7 +39,7 @@ function CompetitionRow({ competition, onPress }) {
   return (
     <View className="m-2 flex-row items-center justify-center gap-3 rounded-xl bg-slate-200/50 p-4 dark:bg-slate-800/60" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-1" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
-        <Text className="font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
+        <Text className="font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={3} testID={`${idPrefix}-title`}>
           {buildCompetitionTitle(competition)}
         </Text>
         <View className="flex-row items-center mt-2 gap-4" nativeID={`${idPrefix}-meta`} testID={`${idPrefix}-meta`}>
@@ -58,32 +64,71 @@ function CompetitionRow({ competition, onPress }) {
   );
 }
 
+const SUBTABS = [
+  { id: 'active_tab', icon: 'sword-cross', label: 'Activas' },
+  { id: 'history_tab', icon: 'archive-outline', label: 'Historial' },
+];
+
+const EMPTY_MESSAGE = {
+  active_tab: 'Todavía no participás de ninguna competencia activa.',
+  history_tab: 'Todavía no tenés competencias en tu historial.',
+};
+
 export function MyCompetitionsTab() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
+  const { teams } = useMyMemberTeams(userId);
   const { competitions, loading } = useMyCompetitions(userId);
+  const [subTab, setSubTab] = useState('active_tab');
+  const [filterTeamId, setFilterTeamId] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+  const filterCount = [filterTeamId, filterType, filterFrom, filterTo].filter(Boolean).length;
 
   if (loading) return null;
 
-  if (competitions.length === 0) {
-    return (
-      <Text className="py-6 text-center text-sm text-slate-400 dark:text-slate-500" nativeID="my-competitions-tab-empty" testID="my-competitions-tab-empty">
-        Todavía no participás de ninguna competencia.
-      </Text>
-    );
-  }
-
-  const sorted = sortCompetitionsForList(competitions);
+  const filtered = filterCompetitionsByFields(competitions, { teamId: filterTeamId, type: filterType, from: filterFrom, to: filterTo });
+  const { active, history } = splitByLifecycle(filtered);
+  const visibleList = sortCompetitionsForList(subTab === 'active_tab' ? active : history);
+  const teamOptions = teams.map((t) => ({ id: t.id, name: t.name }));
 
   return (
     <View nativeID="my-competitions-tab-root" testID="my-competitions-tab-root">
-      {sorted.map((competition) => (
-        <CompetitionRow
-          competition={competition}
-          key={competition.id}
-          onPress={() => router.push(`/teams/${competition.teamId}?tab=competencias`)}
-        />
-      ))}
+      <FilterableSubtabs
+        active={subTab}
+        filterContent={(
+          <>
+            <ResponsiveSelectField dense label="Equipo" onChange={setFilterTeamId} options={teamOptions} placeholder="Todos los equipos" value={filterTeamId} />
+            <ResponsiveSelectField dense label="Tipo" onChange={setFilterType} options={[{ id: 'metric', name: 'Por métrica' }, { id: 'route', name: 'Por trayectoria' }]} placeholder="Todos los tipos" value={filterType} />
+            <View className="mt-3 flex-row gap-3" nativeID="my-competitions-tab-date-range" testID="my-competitions-tab-date-range">
+              <View className="flex-1" nativeID="my-competitions-tab-date-from" testID="my-competitions-tab-date-from">
+                <DateField dense label="Desde" onChange={setFilterFrom} value={filterFrom} />
+              </View>
+              <View className="flex-1" nativeID="my-competitions-tab-date-to" testID="my-competitions-tab-date-to">
+                <DateField dense label="Hasta" onChange={setFilterTo} value={filterTo} />
+              </View>
+            </View>
+          </>
+        )}
+        filterCount={filterCount}
+        onChange={setSubTab}
+        scope="my-competitions-tab-subtabs"
+        tabs={SUBTABS}
+      />
+      {visibleList.length === 0 ? (
+        <Text className="py-6 text-center text-sm text-slate-400 dark:text-slate-500" nativeID="my-competitions-tab-empty" testID="my-competitions-tab-empty">
+          {EMPTY_MESSAGE[subTab]}
+        </Text>
+      ) : (
+        visibleList.map((competition) => (
+          <CompetitionRow
+            competition={competition}
+            key={competition.id}
+            onPress={() => router.push(`/teams/${competition.teamId}?tab=competencias`)}
+          />
+        ))
+      )}
     </View>
   );
 }
