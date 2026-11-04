@@ -12,6 +12,9 @@ import { teamSubscriptionBannerContent } from '../../utils/team-subscription-ban
 // salir del equipo), así que bloquear contenido sería enforcement solo de UI.
 // Decisión registrada en la spec de 2026-08-12 para el período de gracia.
 //
+// El botón va siempre en verde, como el "Pagar" del Home y de Pagos: el
+// color del aviso ya dice si está vencida o pendiente.
+//
 // Entre variantes cambian solo clases de color: nada de sombras ni
 // pseudo-estados condicionales (quirk de NativeWind en CLAUDE.md).
 const VARIANTS = {
@@ -22,8 +25,6 @@ const VARIANTS = {
     title: 'text-rose-800 dark:text-rose-300',
     amount: 'text-rose-800 dark:text-rose-200',
     detail: 'text-rose-700 dark:text-rose-400',
-    button: 'bg-rose-600',
-    buttonText: 'text-white',
   },
   pending: {
     box: 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20',
@@ -32,8 +33,6 @@ const VARIANTS = {
     title: 'text-amber-800 dark:text-amber-300',
     amount: 'text-amber-800 dark:text-amber-200',
     detail: 'text-amber-700 dark:text-amber-400',
-    button: 'bg-amber-600',
-    buttonText: 'text-white',
   },
   current: {
     box: 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-surface-2',
@@ -42,8 +41,6 @@ const VARIANTS = {
     title: 'text-slate-900 dark:text-white',
     amount: 'text-slate-700 dark:text-slate-200',
     detail: 'text-slate-500 dark:text-slate-400',
-    button: 'bg-primary',
-    buttonText: 'text-[#111518]',
   },
 };
 
@@ -87,12 +84,12 @@ export function TeamSubscriptionPendingBanner({ hasDebt, isPendingFirstPayment, 
       </View>
       <Pressable
         accessibilityRole="button"
-        className={`h-9 flex-row items-center justify-center rounded-full px-4 ${styles.button}`}
+        className="h-9 flex-row items-center justify-center rounded-full bg-primary px-4"
         nativeID="team-subscription-pending-banner-button"
         onPress={onPay}
         testID="team-subscription-pending-banner-button"
       >
-        <Text className={`text-xs font-semibold uppercase tracking-wide ${styles.buttonText}`} nativeID="team-subscription-pending-banner-button-label" testID="team-subscription-pending-banner-button-label">
+        <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID="team-subscription-pending-banner-button-label" testID="team-subscription-pending-banner-button-label">
           {content.buttonLabel}
         </Text>
       </Pressable>
