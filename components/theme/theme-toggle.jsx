@@ -47,7 +47,7 @@ export function ThemeToggle() {
       accessibilityLabel={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       accessibilityRole="switch"
       accessibilityState={{ checked: isDark }}
-      className="rounded-full bg-slate-200 border border-slate-300 hover:opacity-90 dark:bg-slate-700 dark:border-slate-600"
+      className="rounded-full justify-center bg-slate-200 border border-slate-400/50 hover:opacity-90 dark:bg-slate-700 dark:border-slate-600"
       nativeID="theme-toggle"
       onPress={toggleThemeMode}
       style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT, padding: 2 }}
@@ -69,6 +69,8 @@ export function ThemeToggle() {
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: isDark ? '#020617' : '#ffffff',
+            borderWidth: 1,
+            borderColor: isDark ? 'green' : '#f59e0b',
           },
           THUMB_SHADOW,
           thumbStyle,
