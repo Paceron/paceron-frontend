@@ -33,7 +33,7 @@ export function FilterableSubtabs({ tabs, active, onChange, badges, scope, filte
         </Pressable>
       </View>
       {expanded && (
-        <View className="mt-3 rounded-xl bg-white p-3 shadow-sm dark:bg-surface" nativeID={`${scope}-filter-panel`} testID={`${scope}-filter-panel`}>
+        <View className="mt-3 rounded-xl bg-slate-100 p-3 shadow-sm dark:bg-surface-2" nativeID={`${scope}-filter-panel`} testID={`${scope}-filter-panel`}>
           {filterContent}
         </View>
       )}
