@@ -38,7 +38,7 @@ describe('dueTone y dueCardVariant', () => {
 
   test('la tarjeta toma el tono más urgente de sus filas', () => {
     expect(dueCardVariant([far, soon, late], NOW)).toBe('rose');
-    expect(dueCardVariant([far, soon], NOW)).toBe('amber');
+    expect(dueCardVariant([far, soon], NOW)).toBe('warning');
     expect(dueCardVariant([far], NOW)).toBe('default');
     expect(dueCardVariant(undefined, NOW)).toBe('default');
   });

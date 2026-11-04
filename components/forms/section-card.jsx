@@ -15,9 +15,16 @@ const VARIANT = {
     title: 'text-amber-700 dark:text-amber-400',
     icon: '#f59e0b',
   },
-  // Aviso de algo vencido (ej. cuotas vencidas en el Home). El rojo va en el
-  // borde, el título y el ícono; el fondo queda el de una card normal; con
-  // fondo rosado, en oscuro se veía empastado.
+  // Avisos de cuotas (Home y Pagos): `warning` para por vencer y `rose` para
+  // vencido. El color va en el borde, el título y el ícono, sobre el fondo de
+  // una card normal: con fondo teñido, en oscuro se veía empastado, y el
+  // `amber-950` de `amber` daba un marrón que no pegaba con el ámbar de las
+  // filas (utils/payment-due.js, payments-upcoming-card.jsx).
+  warning: {
+    box: 'border-amber-300 bg-white dark:border-amber-500/40 dark:bg-surface',
+    title: 'text-amber-700 dark:text-amber-400',
+    icon: '#f59e0b',
+  },
   rose: {
     box: 'border-rose-300 bg-white dark:border-rose-500/40 dark:bg-surface',
     title: 'text-rose-700 dark:text-rose-400',

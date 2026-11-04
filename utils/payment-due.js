@@ -17,11 +17,11 @@ export function dueTone(item, now = new Date(), days = HOME_DUE_WINDOW_DAYS) {
 }
 
 // Variante de SectionCard para la tarjeta que lista esas cuotas: roja si hay
-// alguna vencida, ámbar si alguna vence pronto, normal si no.
+// alguna vencida, ámbar (`warning`) si alguna vence pronto, normal si no.
 export function dueCardVariant(items, now = new Date(), days = HOME_DUE_WINDOW_DAYS) {
   const tones = (items ?? []).map((item) => dueTone(item, now, days));
   if (tones.includes('overdue')) return 'rose';
-  if (tones.includes('soon')) return 'amber';
+  if (tones.includes('soon')) return 'warning';
   return 'default';
 }
 
