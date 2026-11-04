@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric, verdictIcon } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
+import { isWeb } from '../../utils/platform.js';
 
 // Tile de un KPI: número grande, delta, veredicto y "—" ante `null`.
 //
@@ -46,7 +47,11 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
 
   return (
     <View
-      className={`h-full rounded-2xl border p-3 ${surfaceClass}`}
+      // `h-full` solo en web, para que las cards de una fila queden parejas.
+      // En nativo, dentro del ScrollView del Home, el 100% se resolvía contra
+      // la altura de la pantalla: cada card medía una pantalla y el Home dejaba
+      // de scrollear.
+      className={`${isWeb ? 'h-full ' : ''}rounded-2xl border p-3 ${surfaceClass}`}
       nativeID={`${id}-root`}
       testID={`${id}-root`}
     >
