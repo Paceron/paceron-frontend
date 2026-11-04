@@ -63,7 +63,7 @@ export function HomeLandingScreen() {
       testID="home-landing-screen-root"
     >
       <View
-        className="mx-auto w-full max-w-5xl px-8 py-20"
+        className="mx-auto w-full max-w-5xl px-8 py-16"
         nativeID="home-landing-screen-content"
         testID="home-landing-screen-content"
       >
@@ -73,11 +73,11 @@ export function HomeLandingScreen() {
           testID="home-landing-screen-hero"
         >
           <View
-            className="-mt-6 mb-16 items-center p-10 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950"
+            className="-mt-6 mb-16 items-center p-14 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950 shadow-md hover:shadow-2xl shadow-slate-600 dark:shadow-slate-500 hover:shadow-lime-600 dark:hover:shadow-lime-500"
             nativeID="home-landing-screen-hero-brand"
             testID="home-landing-screen-hero-brand"
           >
-            <PaceronBrand size={70} />
+            <PaceronBrand size={80} />
           </View>
 
           <Text

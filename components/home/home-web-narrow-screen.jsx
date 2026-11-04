@@ -62,16 +62,16 @@ export function HomeWebNarrowScreen() {
       testID="home-web-narrow-screen"
     >
       <View
-        className="items-center py-16"
+        className="items-center py-8 m-2"
         nativeID="home-web-narrow-screen-hero"
         testID="home-web-narrow-screen-hero"
       >
         <View
-          className="mb-12 items-center p-8 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950"
+          className="mb-12 items-center p-8 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950 shadow-md hover:shadow-2xl shadow-slate-600 dark:shadow-slate-500 hover:shadow-lime-600 dark:hover:shadow-lime-500"
           nativeID="home-web-narrow-screen-hero-brand"
           testID="home-web-narrow-screen-hero-brand"
         >
-          <PaceronBrand size={50} />
+          <PaceronBrand size={45} />
         </View>
 
         <Text
@@ -140,7 +140,7 @@ export function HomeWebNarrowScreen() {
       </View>
 
       <View
-        className="py-12"
+        className="pb-4"
         nativeID="home-web-narrow-screen-ai-panel"
         testID="home-web-narrow-screen-ai-panel"
       >
@@ -183,7 +183,7 @@ export function HomeWebNarrowScreen() {
       </View>
 
       <View
-        className="mt-8 flex-row gap-4"
+        className="flex-row gap-4"
         nativeID="home-web-narrow-screen-audience-cards"
         testID="home-web-narrow-screen-audience-cards"
       >

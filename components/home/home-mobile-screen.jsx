@@ -62,16 +62,16 @@ export function HomeMobileScreen() {
       testID="home-mobile-screen"
     >
       <View
-        className="items-center py-16"
+        className="items-center py-8 m-2"
         nativeID="home-mobile-hero"
         testID="home-mobile-hero"
       >
         <View
-          className="mb-12 items-center p-8 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950"
+          className="mb-12 items-center p-8 rounded-full transition-all duration-500 bg-slate-100 dark:bg-slate-900 hover:bg-lime-100 dark:hover:bg-lime-950 shadow-md hover:shadow-2xl shadow-slate-600 dark:shadow-slate-500 hover:shadow-lime-600 dark:hover:shadow-lime-500"
           nativeID="home-mobile-hero-brand"
           testID="home-mobile-hero-brand"
         >
-          <PaceronBrand size={40} />
+          <PaceronBrand size={42} />
         </View>
 
         <Text
@@ -148,7 +148,7 @@ export function HomeMobileScreen() {
       </View>
 
       <View
-        className="py-12"
+        className="pb-4"
         nativeID="home-mobile-ai-panel"
         testID="home-mobile-ai-panel"
       >
@@ -195,7 +195,7 @@ export function HomeMobileScreen() {
       </View>
 
       <View
-        className="mt-8 flex-row gap-4"
+        className="flex-row gap-4"
         nativeID="home-mobile-audience-cards"
         testID="home-mobile-audience-cards"
       >
