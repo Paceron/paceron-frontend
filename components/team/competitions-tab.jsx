@@ -451,8 +451,6 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando cambia el id de foco, no en cada fetch
   }, [focusCompetitionId, loading]);
 
-  const { registerRow, highlightedId } = useScrollToHighlight(focusCompetitionId, scrollViewRef);
-
   const handleApprove = async (id) => {
     const result = await mutations.approveCompetition(id);
     if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Competencia aprobada' }); }
@@ -507,6 +505,18 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
     history: filteredCompetitions.filter((c) => c.status === 'finished' || c.status === 'rejected'),
   };
   const visibleList = listByTab[subTab];
+  // El hook se gatea con "el target ya está en la lista visible", no solo
+  // con `focusCompetitionId` -- bug real encontrado en preview: al montar,
+  // `competitions` todavía no cargó (o la subtab recién la está moviendo
+  // el efecto de arriba) y la fila de destino no existe todavía, así que
+  // `registerRow` nunca se llamó para ese id. Como el efecto del hook solo
+  // depende de `targetId`, sin este gate dispara una única vez con la fila
+  // ausente y nunca reintenta. Con `visibleList` en la condición, `target
+  // InView` pasa de `false` a `true` justo en el render donde la fila ya
+  // está montada (después de que la subtab cambió), y ESE cambio es lo que
+  // vuelve a disparar el efecto.
+  const targetInView = Boolean(focusCompetitionId) && !loading && visibleList.some((c) => c.id === focusCompetitionId);
+  const { registerRow, highlightedId } = useScrollToHighlight(targetInView ? focusCompetitionId : null, scrollViewRef);
 
   return (
     // SectionCard (components/forms/section-card.jsx, usado por
