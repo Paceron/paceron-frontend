@@ -1,8 +1,8 @@
 import { streakDayVisual } from '../utils/streak-day-status.js';
 
 describe('streakDayVisual', () => {
-  test('completed -> verde', () => {
-    expect(streakDayVisual('completed')).toEqual({ color: '#22c55e', textColor: '#ffffff', label: 'Completado' });
+  test('completed -> verde de marca', () => {
+    expect(streakDayVisual('completed')).toEqual({ color: '#8cc63e', textColor: '#ffffff', label: 'Completado' });
   });
 
   test('pending -> texto oscuro (fondo claro)', () => {
@@ -10,11 +10,11 @@ describe('streakDayVisual', () => {
   });
 
   test('failed -> rojo', () => {
-    expect(streakDayVisual('failed').color).toBe('#ef4444');
+    expect(streakDayVisual('failed').color).toBe('#f43f5e');
   });
 
-  test('skipped -> gris', () => {
-    expect(streakDayVisual('skipped').color).toBe('#94a3b8');
+  test('skipped -> gris oscuro', () => {
+    expect(streakDayVisual('skipped').color).toBe('#64748b');
   });
 
   test('pending -> neutro', () => {
