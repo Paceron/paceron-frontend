@@ -57,7 +57,7 @@ export function HomeMobileScreen() {
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink transition-all"
-      contentContainerClassName="px-gutter pb-16"
+      contentContainerClassName="px-gutter pb-16 m-8"
       nativeID="home-mobile-screen"
       testID="home-mobile-screen"
     >
@@ -71,7 +71,7 @@ export function HomeMobileScreen() {
           nativeID="home-mobile-hero-brand"
           testID="home-mobile-hero-brand"
         >
-          <PaceronBrand size={42} />
+          <PaceronBrand size={40} />
         </View>
 
         <Text
@@ -96,7 +96,7 @@ export function HomeMobileScreen() {
           testID="home-mobile-hero-actions"
         >
           <Pressable
-            className="h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary shadow-md hover:opacity-90 active:opacity-80"
+            className="h-12 mx-4 flex-row items-center justify-center gap-2 rounded-full bg-primary shadow-md hover:opacity-90 active:opacity-80"
             nativeID="home-mobile-hero-primary-cta"
             testID="home-mobile-hero-primary-cta"
             onPress={() => router.push('/register')}
@@ -116,7 +116,7 @@ export function HomeMobileScreen() {
           </Pressable>
 
           <Pressable
-            className="h-12 flex-row items-center justify-center gap-2 rounded-full shadow-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-100 active:opacity-80 dark:hover:bg-surface-2"
+            className="h-12 mx-4 flex-row items-center justify-center gap-2 rounded-full shadow-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-100 active:opacity-80 dark:hover:bg-surface-2"
             nativeID="home-mobile-hero-secondary-cta"
             testID="home-mobile-hero-secondary-cta"
             onPress={() => router.push('/login')}
@@ -138,7 +138,7 @@ export function HomeMobileScreen() {
       </View>
 
       <View
-        className="gap-4 py-4"
+        className="gap-4 py-4 mx-4"
         nativeID="home-mobile-features"
         testID="home-mobile-features"
       >
@@ -148,7 +148,7 @@ export function HomeMobileScreen() {
       </View>
 
       <View
-        className="pb-4"
+        className="pb-4 mx-4"
         nativeID="home-mobile-ai-panel"
         testID="home-mobile-ai-panel"
       >
@@ -195,7 +195,7 @@ export function HomeMobileScreen() {
       </View>
 
       <View
-        className="flex-row gap-4"
+        className="flex-row gap-4 pb-16 mx-4"
         nativeID="home-mobile-audience-cards"
         testID="home-mobile-audience-cards"
       >
