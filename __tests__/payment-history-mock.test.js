@@ -2,6 +2,7 @@ import {
   mockGetReceivedPayments,
   mockGetReceivedPaymentsSummary,
   mockGetPaymentHistory,
+  mockGetUpcomingPayments,
   __setMockPaymentHistoryNow,
   __resetMockPaymentHistory,
 } from '../services/__mocks__/payment-history-mock.js';
@@ -10,6 +11,7 @@ import {
   toHistoryPaymentModel,
   toPaymentsPageModel,
   toReceivedSummaryModel,
+  toUpcomingPaymentModel,
 } from '../services/normalizers.js';
 import { statusGroupOf, paymentStatusMeta } from '../utils/payment-status.js';
 
@@ -59,13 +61,15 @@ describe('payment-history mock — cobros', () => {
     rejected.forEach((p) => expect(['rejected', 'cancelled']).toContain(p.status));
   });
 
-  test('el neto solo existe en pagos aprobados, y no en todos', async () => {
+  // Neto = bruto − comisión de Paceron (change cobros-pendientes-y-vencimientos).
+  test('todo cobro aprobado tiene neto igual al bruto menos la comisión', async () => {
     const all = await allReceived();
-    const approved = all.filter((p) => p.status === 'approved');
-    const withNet = approved.filter((p) => p.net_amount !== null);
-    expect(withNet.length).toBeGreaterThan(0);
-    expect(withNet.length).toBeLessThan(approved.length);
-    all.filter((p) => p.status !== 'approved').forEach((p) => expect(p.net_amount).toBeNull());
+    all.forEach((p) => {
+      expect(p.fee_percent).toBe(5);
+      expect(p.fee_amount).toBe(Math.round(p.gross_amount * 5) / 100);
+      if (p.status === 'approved') expect(p.net_amount).toBe(p.gross_amount - p.fee_amount);
+      else expect(p.net_amount).toBeNull();
+    });
   });
 });
 
@@ -225,5 +229,63 @@ describe('payment-status', () => {
     expect(paymentStatusMeta('in_process').label).toBe('En proceso');
     expect(paymentStatusMeta('algo_nuevo', 'rejected').label).toBe('Rechazado');
     expect(paymentStatusMeta('algo_nuevo', 'x').label).toBe('Otro');
+  });
+});
+
+describe('payment-history mock — pendientes y vencimientos', () => {
+  test('hay pendiente en algún mes de la ventana, con su neto', async () => {
+    const summary = await mockGetReceivedPaymentsSummary({ months: 6 });
+    const withPending = summary.monthly.filter((m) => m.pending_count > 0);
+    expect(withPending.length).toBeGreaterThan(0);
+    withPending.forEach((m) => expect(m.pending_net_amount).toBe(Math.round(m.pending_amount * 95) / 100));
+  });
+
+  test('a vencer es desde hoy hasta fin de mes y vencidos es todo lo anterior a hoy', async () => {
+    const summary = await mockGetReceivedPaymentsSummary({ months: 6 });
+    const today = '2026-09-26';
+    expect(summary.due_this_month.items.length).toBeGreaterThan(0);
+    expect(summary.overdue.items.length).toBeGreaterThan(0);
+    summary.due_this_month.items.forEach((o) => {
+      expect(o.due_date.slice(0, 7)).toBe('2026-09');
+      expect(o.due_date.slice(0, 10) >= today).toBe(true);
+    });
+    summary.overdue.items.forEach((o) => expect(o.due_date.slice(0, 10) < today).toBe(true));
+    expect(summary.due_this_month.count).toBe(summary.due_this_month.items.length);
+  });
+
+  test('próximos vencimientos: equipo y tier, ordenados, con una vencida', async () => {
+    const { items } = await mockGetUpcomingPayments();
+    expect(items.map((i) => i.type)).toEqual(expect.arrayContaining(['trainer_payment', 'subscription']));
+    const dates = items.map((i) => i.due_date);
+    expect([...dates].sort()).toEqual(dates);
+    expect(items.some((i) => i.overdue && i.overdue_count >= 1)).toBe(true);
+  });
+});
+
+describe('normalizers de pendientes y vencimientos', () => {
+  test('toReceivedPaymentModel trae la comisión', () => {
+    const model = toReceivedPaymentModel({ id: 1, gross_amount: 20000, net_amount: 19000, fee_amount: 1000, fee_percent: 5, team: {}, payer: {} });
+    expect(model).toEqual(expect.objectContaining({ feeAmount: 1000, feePercent: 5, netAmount: 19000 }));
+    expect(toReceivedPaymentModel({ id: 2, team: {}, payer: {} }).feeAmount).toBeNull();
+  });
+
+  test('toReceivedSummaryModel trae pendientes y los bloques del mes', async () => {
+    const model = toReceivedSummaryModel(await mockGetReceivedPaymentsSummary({ months: 6 }));
+    expect(model.monthly[0]).toEqual(expect.objectContaining({ pendingAmount: expect.any(Number), pendingNetAmount: expect.any(Number), pendingCount: expect.any(Number) }));
+    const item = model.dueThisMonth.items[0];
+    expect(item).toEqual(expect.objectContaining({ teamName: expect.any(String), payerName: expect.any(String), installmentNumber: expect.any(Number), amount: expect.any(Number), dueDate: expect.any(String) }));
+    expect(model.overdue.count).toBe(model.overdue.items.length);
+    const empty = toReceivedSummaryModel({ monthly: [], by_team: [] });
+    expect(empty.dueThisMonth).toEqual({ count: 0, amount: 0, netAmount: 0, items: [] });
+  });
+
+  test('toUpcomingPaymentModel', () => {
+    const team = toUpcomingPaymentModel({ type: 'trainer_payment', team: { id: 32, name: 'Flash' }, trainer: { id: 33, name: 'Pep', surname: 'Guardiola' }, tier: null,
+      installment_number: 2, amount: 20000, currency_id: 'ARS', due_date: '2026-10-29T22:42:21Z', overdue: true, overdue_count: 1 });
+    expect(team).toEqual({ key: 'trainer_payment-32', type: 'trainer_payment', teamId: 32, tierRoleName: null, title: 'Flash', subtitle: 'Pep Guardiola', installmentNumber: 2, amount: 20000,
+      currencyId: 'ARS', dueDate: '2026-10-29T22:42:21Z', overdue: true, overdueCount: 1 });
+    const tier = toUpcomingPaymentModel({ type: 'subscription', tier: { id: 4, name: 'premium_corredor', role_name: 'corredor' }, team: null, trainer: null, installment_number: 2, amount: 50000, due_date: '2026-11-20T23:10:09Z', overdue: false, overdue_count: 0 });
+    expect(tier).toEqual(expect.objectContaining({ key: 'subscription-4', teamId: null, tierRoleName: 'corredor', title: 'premium_corredor', subtitle: 'Tier corredor' }));
+    expect(toUpcomingPaymentModel(null)).toBeNull();
   });
 });

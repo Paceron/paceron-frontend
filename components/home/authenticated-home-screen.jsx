@@ -9,6 +9,8 @@ import { NextTrainingBanner } from './next-training-banner.jsx';
 import { StreakBanner } from './streak-banner.jsx';
 import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
 import { RunnerKpisCard } from './runner-kpis-card.jsx';
+import { HomePaymentsDueCard } from './home-payments-due-card.jsx';
+import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
@@ -26,6 +28,7 @@ export function AuthenticatedHomeScreen() {
     queryClient.invalidateQueries({ queryKey: ['member-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['administered-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['user', userId] }),
+    queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId) }),
     ...(activeRole === 'runner' ? [
       queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
       queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
@@ -66,6 +69,8 @@ export function AuthenticatedHomeScreen() {
         >
           {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
         </Text>
+        {/* Cuotas por vencer o vencidas, de los dos roles (los dos pagan tier). */}
+        <HomePaymentsDueCard />
         <NextTrainingBanner />
         {/* Gamificación es un módulo pensado para corredores -- oculto
             para entrenador a propósito (pedido real, 2026-10-15),

@@ -47,8 +47,11 @@ function TeamSearchResultCard({ team, membershipFee, onRequest, requesting }) {
   const feeKnown = membershipFee !== undefined;
 
   return (
-    <View className="w-full gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:w-[calc(50%-6px)] xl:w-[calc(33.333%-8px)] dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <View className="flex-row items-center gap-3" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+    // Las cards de una misma fila se estiran al alto de la más alta: con
+    // justify-between el botón queda siempre abajo y alineado entre cards,
+    // y el avatar arriba en vez de centrado contra un texto de alto variable.
+    <View className="w-full justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:w-[calc(50%-6px)] xl:w-[calc(33.333%-8px)] dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <View className="flex-row items-start gap-3" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
         <AvatarPicker idPrefix={`${idPrefix}-avatar`} placeholder="team" size={44} uri={team.iconUrl} />
         <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
           <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>

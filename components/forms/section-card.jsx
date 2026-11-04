@@ -15,6 +15,21 @@ const VARIANT = {
     title: 'text-amber-700 dark:text-amber-400',
     icon: '#f59e0b',
   },
+  // Avisos de cuotas (Home y Pagos): `warning` para por vencer y `rose` para
+  // vencido. El color lo da el FONDO, sólido y apagado, con el texto en blanco:
+  // un fondo translúcido (`rose-950/30`) se veía gelatinoso en oscuro, y el
+  // texto en rojo sobre fondo neutro quedaba chillón. Las filas usan el mismo
+  // tono un punto más claro (payments-upcoming-card.jsx).
+  warning: {
+    box: 'border-amber-200 bg-amber-50 dark:border-[#4a3413] dark:bg-[#221a0e]',
+    title: 'text-amber-900 dark:text-white',
+    icon: '#f59e0b',
+  },
+  rose: {
+    box: 'border-rose-200 bg-rose-50 dark:border-[#4c1d24] dark:bg-[#24111a]',
+    title: 'text-rose-900 dark:text-white',
+    icon: '#f43f5e',
+  },
   // Para cuando la card vive DENTRO de otro wrapper ya bordeado (ej.
   // team-detail-screen-container) -- el `border` de `default` ahí dibuja
   // un doble borde contra el padre, del mismo color. Sin borde, mismo

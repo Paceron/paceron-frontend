@@ -1,6 +1,7 @@
 import { formatArs } from './currency.js';
 import { paymentMethodLabel, paymentTypeLabel } from './payment-method.js';
 import { paymentStatusMeta } from './payment-status.js';
+import { formatTierName } from './tier-name.js';
 
 // HTML del comprobante de un pago del historial. Es lo que se imprime a PDF
 // (services/receipt.js en nativo, receipt.web.js en web). Lógica pura para
@@ -33,15 +34,11 @@ export function formatReceiptDate(iso) {
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-function formatTierName(name) {
-  return (name ?? '').replace(/_(corredor|entrenador)$/i, '') || 'Suscripción';
-}
-
 // Detalle del concepto: qué plan, o a qué equipo y entrenador se le pagó.
 export function receiptConcept(payment) {
   const installment = payment.installmentNumber ? `, cuota #${payment.installmentNumber}` : '';
   if (payment.type === 'subscription') {
-    return `Plan ${formatTierName(payment.tier?.name)}${installment}`;
+    return `Plan ${formatTierName(payment.tier?.name, 'Suscripción')}${installment}`;
   }
   const team = payment.team?.name || 'Equipo';
   const trainer = payment.trainer?.fullName ? ` (entrenador: ${payment.trainer.fullName})` : '';

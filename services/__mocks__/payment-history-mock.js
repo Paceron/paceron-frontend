@@ -2,14 +2,17 @@
 //
 // Los datos se generan relativos a un "hoy" inyectable (__setMockPaymentHistoryNow)
 // para que los meses del dashboard siempre terminen en el mes actual. El resumen
-// aplica las mismas reglas que el backend (change historial-pagos-cobros-entrenador):
-// meses en hora argentina sobre created_at, solo `approved` suma, neto solo si
-// existe, y pendientes/rechazados por cuota según su último intento.
+// aplica las mismas reglas que el backend (changes historial-pagos-cobros-entrenador
+// y cobros-pendientes-y-vencimientos): meses en hora argentina sobre created_at,
+// solo `approved` suma, neto = bruto − comisión (5%), pendientes/rechazados por
+// cuota según su último intento, y cuotas esperadas sin pagar por mes.
 import { STATUS_GROUP_STATUSES, statusGroupOf } from '../../utils/payment-status.js';
 
 const PAGE_SIZE = 20;
 const ART_OFFSET_MS = -3 * 60 * 60 * 1000;
-const NET_RATIO = 0.9401;
+const FEE_PERCENT = 5;
+const feeOf = (amount) => Math.round(amount * FEE_PERCENT) / 100;
+const netOf = (amount) => Math.round((amount - feeOf(amount)) * 100) / 100;
 
 const TEAMS = [
   { id: 12, name: 'Runners del Parque', fee: 15000, runners: ['Lucía Gómez', 'Martín Pérez', 'Sofía Díaz', 'Tomás Romero', 'Valentina Ruiz'] },
@@ -68,7 +71,6 @@ function buildReceived() {
 
   const push = (team, runnerIndex, inst, monthsAgo, status, day, hourOffset = 0, detail = 'accredited') => {
     const runnerId = team.id * 100 + runnerIndex;
-    const withNet = status === 'approved' && (runnerIndex + monthsAgo) % 5 < 3;
     const { name, surname } = splitName(team.runners[runnerIndex]);
     rows.push({
       id: id++,
@@ -77,7 +79,9 @@ function buildReceived() {
       status_group: statusGroupOf(status),
       status_detail: detail,
       gross_amount: team.fee,
-      net_amount: withNet ? Math.round(team.fee * NET_RATIO * 100) / 100 : null,
+      net_amount: status === 'approved' ? team.fee - feeOf(team.fee) : null,
+      fee_amount: feeOf(team.fee),
+      fee_percent: FEE_PERCENT,
       currency_id: 'ARS',
       payment_method_id: runnerIndex % 2 === 0 ? 'visa' : 'master',
       created_at: artNoon(monthsAgo, day, hourOffset),
@@ -188,6 +192,36 @@ function buildHistory() {
   return rows.sort((a, b) => (b.created_at === a.created_at ? b.id - a.id : b.created_at.localeCompare(a.created_at)));
 }
 
+// ISO UTC de un día a las 12:00 de Argentina, `monthsAgo` meses atrás (negativo =
+// meses adelante). A diferencia de artNoon, puede caer en el futuro: un
+// vencimiento todavía no ocurrió.
+function dueAt(monthsAgo, day) {
+  const { year, month } = artParts(now());
+  const target = new Date(Date.UTC(year, month - monthsAgo, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), Math.min(day, lastDay), 15)).toISOString();
+}
+
+// Cuotas esperadas que nadie pagó: las que solo tuvieron intentos rechazados o
+// en proceso, y dos que vencen más adelante en el mes actual.
+function buildObligations() {
+  const team = (id) => TEAMS.find((t) => t.id === id);
+  const obligation = (teamId, runnerIndex, number, monthsAgo, day) => {
+    const t = team(teamId);
+    const { name, surname } = splitName(t.runners[runnerIndex]);
+    return { team: { id: t.id, name: t.name }, payer: { id: t.id * 100 + runnerIndex, name, surname, email: '' },
+      installment_number: number, amount: t.fee, due_date: dueAt(monthsAgo, day) };
+  };
+  return [
+    obligation(12, 4, 4, 2, 11),
+    obligation(18, 2, 5, 1, 7),
+    obligation(18, 0, 6, 0, 3),
+    obligation(21, 1, 6, 0, 5),
+    obligation(21, 0, 7, 0, 28),
+    obligation(18, 1, 7, 0, 30),
+  ];
+}
+
 function paginate(items, page) {
   const pageNumber = page ?? 1;
   const start = (pageNumber - 1) * PAGE_SIZE;
@@ -267,14 +301,19 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
 
   let pending = 0;
   let rejected = 0;
+  const amounts = { pending: 0, pendingNet: 0, rejected: 0, rejectedNet: 0 };
   installments.forEach(({ latest, anyApproved }) => {
     if (anyApproved) return;
     const group = statusGroupOf(latest.status);
     if (group === 'pending') {
       pending += 1;
+      amounts.pending += latest.gross_amount;
+      amounts.pendingNet += netOf(latest.gross_amount);
       teams.get(latest.team.id).pending_count += 1;
     } else if (group === 'rejected') {
       rejected += 1;
+      amounts.rejected += latest.gross_amount;
+      amounts.rejectedNet += netOf(latest.gross_amount);
       teams.get(latest.team.id).rejected_count += 1;
     }
   });
@@ -282,16 +321,66 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
   const round2 = (v) => Math.round(v * 100) / 100;
   const knownNet = (sum, count) => (count === 0 ? null : round2(sum));
 
+  // Cuotas esperadas sin pagar: por mes de vencimiento, y las del mes actual en
+  // "a vencer" (desde hoy hasta fin de mes) o "vencidas" (antes de hoy, de
+  // cualquier mes: una cuota de octubre sin pagar se sigue debiendo en noviembre).
+  monthly.forEach((m) => Object.assign(m, { pending_amount: 0, pending_net_amount: 0, pending_count: 0 }));
+  const todayKey = (() => { const t = artParts(now()); return `${t.year}-${String(t.month + 1).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`; })();
+  const currentKey = todayKey.slice(0, 7);
+  const block = () => ({ count: 0, amount: 0, net_amount: 0, items: [] });
+  const due = block();
+  const overdue = block();
+  buildObligations().forEach((o) => {
+    const key = monthKeyART(o.due_date);
+    if (key in monthIndex) {
+      const m = monthly[monthIndex[key]];
+      m.pending_amount += o.amount;
+      m.pending_net_amount += netOf(o.amount);
+      m.pending_count += 1;
+    }
+    const late = o.due_date.slice(0, 10) < todayKey;
+    if (!late && key !== currentKey) return;
+    const target = late ? overdue : due;
+    target.count += 1;
+    target.amount += o.amount;
+    target.net_amount += netOf(o.amount);
+    target.items.push(o);
+  });
+  [due, overdue].forEach((b) => b.items.sort((a, c) => a.due_date.localeCompare(c.due_date)));
+
   return {
     currency_id: 'ARS',
     months,
-    monthly: monthly.map((m) => ({ ...m, gross_amount: round2(m.gross_amount), net_amount: knownNet(m.net_amount, m.net_known_count) })),
+    monthly: monthly.map((m) => ({ ...m, gross_amount: round2(m.gross_amount), net_amount: knownNet(m.net_amount, m.net_known_count),
+      pending_amount: round2(m.pending_amount), pending_net_amount: round2(m.pending_net_amount) })),
     by_team: [...teams.values()]
       .map((t) => ({ ...t, gross_amount: round2(t.gross_amount), net_amount: knownNet(t.net_amount, t.net_known_count) }))
       .sort((a, b) => b.gross_amount - a.gross_amount || a.team_name.localeCompare(b.team_name) || a.team_id - b.team_id),
     pending_count: pending,
     rejected_count: rejected,
+    pending_amount: round2(amounts.pending),
+    pending_net_amount: round2(amounts.pendingNet),
+    rejected_amount: round2(amounts.rejected),
+    rejected_net_amount: round2(amounts.rejectedNet),
     earliest_month: earliest ? monthKeyART(earliest) : null,
+    due_this_month: { ...due, amount: round2(due.amount), net_amount: round2(due.net_amount) },
+    overdue: { ...overdue, amount: round2(overdue.amount), net_amount: round2(overdue.net_amount) },
     generated_at: now().toISOString(),
   };
+}
+
+// GET /api/v1/payments/upcoming — próxima cuota de cada equipo que paga el
+// usuario y de cada tier: uno al día, uno atrasado y su tier.
+export async function mockGetUpcomingPayments() {
+  const { day } = artParts(now());
+  const items = [
+    { type: 'trainer_payment', team: { id: 33, name: 'Club de Corredores Palermo' }, trainer: { id: 51, name: 'Mariana', surname: 'Ibarra' }, tier: null,
+      installment_number: 5, amount: 18000, currency_id: 'ARS', due_date: dueAt(-1, 10), overdue: false, overdue_count: 0 },
+    // Atrasado: no pagó la cuota del 15 del mes pasado (ni la de este mes, si ya pasó).
+    { type: 'trainer_payment', team: { id: 40, name: 'Fondistas del Sur' }, trainer: { id: 52, name: 'Pablo', surname: 'Ruiz' }, tier: null,
+      installment_number: 3, amount: 12000, currency_id: 'ARS', due_date: dueAt(1, 15), overdue: true, overdue_count: day > 15 ? 2 : 1 },
+    { type: 'subscription', team: null, trainer: null, tier: { id: 4, name: 'Premium_entrenador', role_name: 'entrenador' },
+      installment_number: 6, amount: 9999, currency_id: 'ARS', due_date: dueAt(-1, 5), overdue: false, overdue_count: 0 },
+  ];
+  return { items: items.sort((a, b) => a.due_date.localeCompare(b.due_date)) };
 }

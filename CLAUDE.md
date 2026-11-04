@@ -291,7 +291,7 @@ Change OpenSpec `dashboard-analitico-rendimiento`. Decisiones que no se deducen 
 - Recuperación de contraseña (`forgot-password`/`reset-password`, código OTP de 6 dígitos, vence a los 10 minutos) también pega contra el backend real desde `feature/password-recovery` — ver `services/password.js`, pantallas en `components/auth/forgot-password-screen.jsx`/`reset-password-screen.jsx`.
 - Equipos (`services/teams.js`) pega contra el backend real desde `feature/teams-backend-integration` (Etapa 1 de 3 — ver `docs/superpowers/specs/2026-07-28-teams-backend-integration-design.md`). **Actualización 2026-09-26 (corrige contradicción con la sección Stack):** grupos e invitaciones **ya no son local-only** — están migrados a TanStack Query (`hooks/use-groups.js`/`hooks/use-invitations.js`, ver Stack) y pegan contra el backend real, igual que solicitudes de ingreso (`hooks/use-join-requests.js`), catálogo de ejercicios/sesiones/planes de entrenamiento (`hooks/use-exercises.js`/`use-sessions.js`/`use-training-plans.js`), y calendario de grupo (`services/calendar.js`, `hooks/use-group-calendar.js` — dominio nuevo, reemplaza por completo el modelo viejo de asignación directa a corredor/`Group.trainingPlanId`/"plan actual" descripto en `docs/BACKEND_TRAINING_PLANS_SPEC.md` §3.6-3.7, que nunca llegó a implementarse — ver `docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md` para el modelo vigente). Confirmado releyendo `paceron-backend` en `develop` (README ahí lista ~90 endpoints reales) el 2026-09-26. Huecos de funcionalidad que siguen abiertos están documentados y trackeados en `docs/BACKEND_API_GAPS.md`, que lleva el registro de qué se fue cerrando.
 - Cambio de contraseña autenticado (`PATCH /users/{id}/password`, distinto del flujo OTP de recuperación) es un endpoint nuevo en el backend desde 2026-07-30, sin consumidor en el frontend todavía — no hay pantalla de "cambiar contraseña" dentro de Perfil hoy.
-- **Cuota de equipo / pago de membresía al entrenador (2026-09-26):** el corredor le paga la mensualidad del equipo **al entrenador** (split de Mercado Pago, Paceron retiene comisión), distinto del tier (que se le paga a Paceron). Cableado desde `feature/team-subscription-join-payment` — ver `docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md`. Piezas: `services/team-subscriptions.js`/`hooks/use-team-subscription.js` (`GET /users/{id}/teams/{team_id}/subscription`), `services/team-configuration.js`/`hooks/use-team-configuration.js` (`GET /team-configuration` → `{max_members, minimum_fee}`), `components/team/team-subscription-screen.jsx` (ruta `/teams/{id}/subscription`), y el campo de cuota en crear/editar equipo vía `hooks/use-team-general-info-form.js`. **Un equipo tiene UN precio (`teams.membership_fee`), no un catálogo de planes** — no existen tiers por equipo (verificado contra el schema y OpenSpec el 2026-09-26; los `tiers` cuelgan de un ROL, no de un equipo, y el tier del entrenador solo define `max_members`/`minimum_fee`). **El orden es unirse → pagar, no al revés:** la cuota #1 la crea el backend al crearse la membresía, así que no existe nada que pagar antes de entrar; el corredor queda `first_payment_pending` y pasa a `active` cuando el webhook de MP confirma. Nada se bloquea mientras no paga (el backend tampoco lo hace: lo único que impide con deuda es salir del equipo), solo se muestra un banner.
+- **Cuota de equipo / pago de membresía al entrenador (2026-09-26):** el corredor le paga la mensualidad del equipo **al entrenador** (split de Mercado Pago, Paceron retiene comisión), distinto del tier (que se le paga a Paceron). Cableado desde `feature/team-subscription-join-payment` — ver `docs/superpowers/specs/2026-09-26-team-subscription-join-payment-design.md`. Piezas: `services/team-subscriptions.js`/`hooks/use-team-subscription.js` (`GET /users/{id}/teams/{team_id}/subscription`), `services/team-configuration.js`/`hooks/use-team-configuration.js` (`GET /team-configuration` → `{max_members, minimum_fee}`), `components/team/team-subscription-screen.jsx` (ruta `/teams/{id}/subscription`), y el campo de cuota en crear/editar equipo vía `hooks/use-team-general-info-form.js`. **Un equipo tiene UN precio (`teams.membership_fee`), no un catálogo de planes** — no existen tiers por equipo (verificado contra el schema y OpenSpec el 2026-09-26; los `tiers` cuelgan de un ROL, no de un equipo, y el tier del entrenador solo define `max_members`/`minimum_fee`). **El orden es unirse → pagar, no al revés:** la cuota #1 la crea el backend al crearse la membresía, así que no existe nada que pagar antes de entrar; el corredor queda `first_payment_pending` y pasa a `active` cuando el webhook de MP confirma. Nada se bloquea mientras no paga (el backend tampoco lo hace: lo único que impide con deuda es salir del equipo), solo se muestra un banner. **El banner del detalle del equipo se muestra siempre al corredor de un equipo que cobra (2026-11-03)**, también al día (variante neutra "Membresía al día" con la próxima cuota y "Pagar cuota"): antes solo aparecía con el primer pago pendiente o con deuda, y una vez al día no quedaba ningún camino desde el equipo a `/teams/{id}/subscription` para pagar la cuota siguiente. Textos en `utils/team-subscription-banner.js`; con cuota abierta el botón navega con `?pay=1`, como el Home.
 - **Backend local (2026-09-26):** clonar `Paceron/paceron-backend` (`gh repo clone Paceron/paceron-backend`) al mismo nivel que este repo, rama `develop` (no `master` — ese casi no tiene nada implementado, es el scaffold base). Setup completo en `SETUP.md` de ese repo; resumen: Go 1.26+, Postgres 15+. Para arrancar **sin** depender de ninguna credencial de Supabase/Resend/MercadoPago (todas gracefully-degradan si faltan, ver `cmd/api/app/app.go` — el único requisito real para que algo funcione es la DB):
   ```bash
   docker run -d --name paceron-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=paceron -p 5432:5432 postgres:15
@@ -346,10 +346,25 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
 `/payments/received` y `/payments/received/summary` (change de OpenSpec
 `historial-pagos-cobros-entrenador` del backend).
 
-- **Nunca mostrar comisión ni estimar el neto.** La `marketplace_fee` del backend es
-  ficticia mientras el split no mande `application_fee`. El neto se muestra solo si
-  Mercado Pago lo informó (`net_amount` puede ser `null`); si no, "Neto no disponible"
-  o "Neto parcial … (x de y)" con `utils/payments-summary.js#formatNetLabel`.
+- **Neto = bruto − comisión de Paceron, y lo calcula el backend (2026-11-02).** Reemplaza
+  la regla anterior de "nunca mostrar comisión": cada cobro trae `fee_amount` y
+  `fee_percent` (los pagos viejos sin comisión guardada caen al 5%), y la fila muestra
+  "Neto $X · comisión 5%". El front no recalcula nada, solo muestra lo que llega.
+  `formatNetLabel` y el "s/d" del gráfico quedan por si un neto vuelve a venir `null`.
+- **Las cuotas que todavía no se pagaron no existen como filas.** El backend crea la
+  cuota N+1 recién cuando se paga la N, así que lo pendiente por mes del gráfico (barra
+  ámbar), "Por cobrar este mes" (Vencidos / A vencer, `payments-due-card.jsx`) y
+  "Próximos vencimientos" de la pestaña Pagos (`payments-upcoming-card.jsx`,
+  `GET /payments/upcoming`, para cualquier rol: cuota de cada equipo y tier) se calculan
+  en el backend desde la fecha de alta. Vencido es pasar el vencimiento, sin días de
+  gracia, y "Vencidos" (`overdue`) junta las de cualquier mes: una cuota de octubre
+  sin pagar se sigue debiendo en noviembre. Con ese mismo cálculo el backend no deja
+  que un corredor se vaya del equipo con cuotas que vencen hoy o antes, incluida la
+  #1 (`409`); el entrenador sí lo puede sacar. Las fechas se muestran con `formatDueDate`, que corta el día en hora
+  argentina y no en la del dispositivo. Change de OpenSpec del backend:
+  `cobros-pendientes-y-vencimientos`.
+- **El entrenador no ve cobros de tier**: esos los cobra Paceron. En Cobros solo
+  aparecen cuotas de equipo; los tiers son pagos, de corredores y entrenadores.
 - **Dos consultas del resumen (2026-09-29).** `useReceivedPaymentsSummary()` sin `until`
   es la ventana que termina hoy: la usan los tiles y la tarjeta del perfil. El gráfico y
   "Cobros por equipo" se pueden correr de a 6 meses con ‹ ›, y cuando la ventana no es la
@@ -369,12 +384,40 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   del resumen miran el último intento de cada cuota, y una cuota rechazada que después
   se pagó no cuenta. Por eso pueden no coincidir con las filas de la lista filtrada, y
   la pantalla lo aclara.
+- **Tiles con monto arriba y cuotas abajo; tooltip por mes en el gráfico (2026-11-03,
+  pedido del tutor).** Los 4 tiles del dashboard de cobros muestran el monto como dato
+  principal (pendientes/rechazadas con `pending_amount`/`rejected_amount` del resumen,
+  "vs <mes>" como diferencia en pesos) y la cantidad de cuotas como aclaración; los textos
+  salen de `utils/payments-summary.js` (`monthTileContent`, `monthOverMonthTileContent`,
+  `statusTileContent`). Pasar el mouse o tocar un mes del gráfico muestra cobrado con sus
+  cuotas, comisión, neto y pendiente (`monthTooltipContent`), con el mismo mecanismo de
+  hotspots `Pressable` que `line-chart-tooltip.jsx` del dashboard de rendimiento.
+- **Cuotas por vencer en el Home y "Pagar" directo (2026-11-03).** `HomePaymentsDueCard`
+  (`components/home/`) reusa `PaymentsUpcomingCard` con las cuotas vencidas o que vencen
+  en los próximos `HOME_DUE_WINDOW_DAYS` (10) días, para los dos roles; sin nada que avisar,
+  y mientras carga o si falla, no ocupa lugar. Cada fila (también en Pagos) tiene "Pagar",
+  que navega con `?pay=1` (`utils/payment-due.js#payRouteFor`): la cuota de equipo va a
+  `/teams/{id}/subscription` y la de tier a `/profile/tier-upgrade?role=<rol de esa
+  suscripción>`, porque no tiene por qué ser el rol activo. Con `pay=1` las dos pantallas
+  abren el checkout solas una vez y borran el param (un F5 no lo reabre). La pantalla de
+  tiers no tenía dónde pagar la cuota siguiente de un tier ya activo (solo el pago
+  pendiente de un cambio de tier): ahora muestra "Pagar cuota" y confirma por
+  `paid_installments`, porque el tier y el estado no cambian. Después de pagar se invalida
+  `PAYMENT_HISTORY_KEYS.upcoming`, si no el aviso del Home sigue hasta 60 s (staleTime).
+  La tarjeta (en el Home y en Pagos) y cada fila se tiñen con `utils/payment-due.js#dueTone`/`dueCardVariant`:
+  roja con alguna vencida, ámbar con alguna que vence dentro de esa misma ventana de 10 días, neutra si
+  falta más (variantes `warning`/`rose` de `SectionCard`: el color va en un fondo sólido y apagado con texto
+  blanco; un fondo translúcido se veía gelatinoso en oscuro y el texto rojo sobre fondo neutro, chillón).
 - **Reutilizables nuevos:** `components/shared/stat-tile.jsx` (extraído de
   `team-detail-screen.jsx`) y `formatARSCompact` en `utils/currency.js`. El historial
   usa el mismo `formatArs` que el pago de membresía de equipo (con `decimals: 2` para
   el neto y el comprobante); las dos ramas habían extraído un `currency.js` propio y
   se unificaron en el merge. Para montos en pesos, usar estos en vez de otro
   `Intl.NumberFormat` inline.
+- **Nombre de un tier en pantalla: siempre `utils/tier-name.js#formatTierName`**
+  (`premium_corredor` → "Premium"). El backend manda el identificador con sufijo de
+  rol y guiones bajos; había tres formateadores distintos y una tarjeta que lo
+  mostraba crudo. Para comparar tiers se sigue usando el nombre sin formatear.
 - **Comprobantes en PDF con `expo-print` + `expo-sharing`, dos módulos nativos** sumados
   en esta feature: hay que **regenerar el dev client** (`npm run android:run`), un OTA no
   alcanza. **En web `expo-print` no sirve**: su implementación web es solo `window.print()`
@@ -429,6 +472,7 @@ Además de `docs/superpowers/{specs,plans}/`, hay documentación previa al uso d
 
 ## Quirks conocidos
 
+- **En web, una clase de Tailwind que nadie usaba antes puede no aparecer hasta reiniciar Metro con el caché limpio (2026-11-04).** El CSS de web lo arma un proceso hijo de Tailwind en modo watch (`nativewind/dist/metro/tailwind/v3/child.js`) y Metro lo sirve desde su caché; en una sesión larga dejó de tomar clases nuevas (`text-rose-900`, `dark:bg-[#24111a]`) sin ningún error, mientras nativo sí las tomaba. Síntoma: en web se ve la variante clara o el borde por defecto donde debería ir la clase nueva. Antes de tocar el código, confirmar si la regla está en el `<style>` de la página; si no está, `npx expo start --web -c` (o borrar `%TEMP%metro-cache`) la regenera. El primer arranque sin caché tarda varios minutos.
 - **`components/shared/skeleton.jsx` respeta `prefers-reduced-motion` (2026-10-13), y eso toca las 6 pantallas que lo usan.** Antes el shimmer era un `withRepeat(withTiming(...))` infinito sin ningún guard, y el repo no tenía ni una ocurrencia de la preferencia; el dashboard de rendimiento fue el primer consumidor que lo necesitaba (su esqueleto puede estar en pantalla mientras llega un sondeo de 60-120 s). El guard usa `useReducedMotion()` de reanimated y deja el bloque con opacidad fija: la forma y el color se siguen leyendo como "cargando". Para cualquier animación nueva, el criterio es el mismo — transform/opacity, y apagada con la preferencia.
 - **El checkout nativo carga la web del mismo entorno que el backend (2026-10-10).** En mobile el pago no corre en la app: es una WebView que abre `${WEB_ORIGIN}/checkout`. El default era siempre la web de producción (`paceron-frontend.vercel.app`, release 0.4.0, sin la ruta `/checkout` y apuntada al backend de master) aunque la app usara el backend de develop, así que pagar desde el celular terminaba en "ruta no encontrada". Ahora `config/web-origin.js#resolveWebOrigin` deriva la web de `API_BASE_URL` (develop → preview de develop, master → producción, desconocido → develop). Con backend local hay que setear `EXPO_PUBLIC_WEB_ORIGIN` a una web local: la página del checkout le pega a la API con la que se buildeó, y el token de la app solo vale en el backend que lo emitió.
 - **En nativo, un hijo `flex-1` dentro de un padre que solo tiene `max-h-*` colapsa a altura 0 (2026-10-05).** Sin altura propia en el padre, el `flex-1` (flexBasis 0) no tiene contra qué crecer; en web el CSS sí lo estira, así que solo se ve roto en mobile. Pasó dos veces: el modal del calendario (`day-detail-modal.jsx`) y el de Términos y Condiciones (`terms-modal.jsx`, el texto no aparecía en mobile). Con contenido corto alcanza con sacar el `flex-1`; con contenido largo que scrollea, usar `style={{ flexGrow: 0, flexShrink: 1 }}` en el `ScrollView` para que crezca con el contenido y se achique hasta el máximo de la tarjeta.

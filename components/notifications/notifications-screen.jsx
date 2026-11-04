@@ -175,8 +175,8 @@ function MyJoinRequestsSection() {
 }
 
 // Sección "Solicitudes pendientes" (agregado de equipos administrados) —
-// solo entrenador. Cada ítem linkea a la tab Solicitudes del equipo
-// correspondiente (?tab=solicitudes, ver Task 11). Colapsable, mismo
+// solo entrenador. Cada ítem linkea a la pestaña Corredores del equipo
+// correspondiente, donde están las solicitudes (?tab=corredores). Colapsable, mismo
 // criterio que las demás secciones.
 function TrainerPendingRequestsSection() {
   const router = useRouter();
@@ -206,7 +206,7 @@ function TrainerPendingRequestsSection() {
               className="flex-row items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-slate-100 active:opacity-80 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
               key={request.id}
               nativeID={`trainer-pending-request-${request.id}`}
-              onPress={() => router.push(`/teams/${request.teamId}?tab=solicitudes`)}
+              onPress={() => router.push(`/teams/${request.teamId}?tab=corredores`)}
               testID={`trainer-pending-request-${request.id}`}
             >
               <View className="flex-1" nativeID={`trainer-pending-request-${request.id}-info`} testID={`trainer-pending-request-${request.id}-info`}>

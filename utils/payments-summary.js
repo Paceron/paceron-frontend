@@ -73,20 +73,85 @@ export function amountFor(entry, mode) {
   return { value: entry.netAmount, partial: known < approved, missing: false };
 }
 
-// Puntos del gráfico mensual en el modo elegido.
-export function toChartPoints(monthly, mode) {
-  return (monthly ?? []).map((m) => ({ month: m.month, ...amountFor(m, mode) }));
+// Lo pendiente de un mes (cuotas sin pagar que vencen en él), en bruto o en
+// neto. El backend ya lo trae calculado en los dos modos.
+export function pendingFor(entry, mode) {
+  return (mode === 'net' ? entry?.pendingNetAmount : entry?.pendingAmount) ?? 0;
 }
 
-// Valor y aclaración del tile "Cobrado en <mes>". En bruto la aclaración es el
-// neto (como antes); en neto, el bruto o por qué el neto está incompleto.
+// Puntos del gráfico mensual en el modo elegido: lo cobrado y lo pendiente.
+export function toChartPoints(monthly, mode) {
+  return (monthly ?? []).map((m) => ({ month: m.month, ...amountFor(m, mode), pending: pendingFor(m, mode) }));
+}
+
+// "1 cuota" / "3 cuotas".
+export function formatInstallmentCount(count) {
+  const n = count ?? 0;
+  return `${n} ${n === 1 ? 'cuota' : 'cuotas'}`;
+}
+
+const joinHint = (...parts) => parts.filter(Boolean).join(' · ');
+
+// Los tiles del dashboard muestran el monto como dato principal y la cantidad
+// de cuotas como aclaración (pedido del tutor, 2026-11-03).
+//
+// Tile "Cobrado en <mes>". Después de las cuotas, en bruto va el neto; en neto,
+// el bruto o por qué el neto está incompleto.
 export function monthTileContent(current, mode) {
-  if (mode !== 'net') return { value: formatArs(current?.grossAmount ?? 0), hint: formatNetLabel(current ?? {}) };
+  const count = formatInstallmentCount(current?.approvedCount);
+  if (mode !== 'net') return { value: formatArs(current?.grossAmount ?? 0), hint: joinHint(count, formatNetLabel(current ?? {})) };
   const { value, partial, missing } = amountFor(current, 'net');
-  if (missing) return { value: '—', hint: 'Sin datos de neto' };
-  if (!current?.approvedCount) return { value: formatArs(0), hint: '' };
-  if (partial) return { value: formatArs(value), hint: `Neto parcial (${current.netKnownCount} de ${current.approvedCount})` };
-  return { value: formatArs(value), hint: `Bruto ${formatArs(current.grossAmount)}` };
+  if (missing) return { value: '—', hint: joinHint(count, 'Sin datos de neto') };
+  if (!current?.approvedCount) return { value: formatArs(0), hint: count };
+  if (partial) return { value: formatArs(value), hint: joinHint(count, `Neto parcial (${current.netKnownCount} de ${current.approvedCount})`) };
+  return { value: formatArs(value), hint: joinHint(count, `Bruto ${formatArs(current.grossAmount)}`) };
+}
+
+// Tile "vs <mes anterior>": la diferencia en pesos, y abajo el porcentaje (si
+// el mes anterior tuvo cobros) y las cuotas de cada mes. `direction` elige el
+// ícono.
+export function monthOverMonthTileContent(current, previous, mode = 'gross') {
+  const mom = computeMonthOverMonth(current, previous, mode);
+  if (mom.reason === 'no-net') return { value: '—', hint: 'Sin datos de neto', direction: 'none' };
+  const cur = amountFor(current, mode).value ?? 0;
+  const prev = amountFor(previous, mode).value ?? 0;
+  if (!cur && !prev) return { value: '—', hint: 'Sin cobros para comparar', direction: 'none' };
+  const delta = Math.round((cur - prev) * 100) / 100;
+  const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+  const value = delta === 0 ? 'Igual' : `${delta > 0 ? '+' : '-'}${formatArs(Math.abs(delta))}`;
+  const pct = mom.pct !== null && delta !== 0 ? formatMonthOverMonth(mom) : '';
+  const counts = `${formatInstallmentCount(current?.approvedCount)} vs ${previous?.approvedCount ?? 0}`;
+  return { value, hint: joinHint(pct, counts), direction };
+}
+
+// Tiles "Cuotas pendientes" / "Cuotas rechazadas" (`group` 'pending' |
+// 'rejected'): el monto de esas cuotas en el modo elegido y cuántas son.
+export function statusTileContent(summary, group, mode) {
+  const prefix = group === 'rejected' ? 'rejected' : 'pending';
+  const amount = mode === 'net' ? summary?.[`${prefix}NetAmount`] : summary?.[`${prefix}Amount`];
+  return { value: formatArs(amount ?? 0), hint: formatInstallmentCount(summary?.[`${prefix}Count`]) };
+}
+
+// Detalle de un mes para el tooltip del gráfico: lo cobrado con sus cuotas, la
+// comisión, el neto y lo pendiente. El neto y la comisión solo se muestran si
+// el neto se conoce; nunca se estiman.
+export function monthTooltipContent(entry, mode) {
+  const key = String(entry?.month ?? '');
+  const name = formatMonthLong(key);
+  const title = name ? `${name.charAt(0).toUpperCase()}${name.slice(1)} ${key.slice(0, 4)}` : '';
+  const net = amountFor(entry, 'net');
+  const gross = entry?.grossAmount ?? 0;
+  const rows = [{ key: 'gross', label: 'Cobrado', value: formatArs(gross), detail: formatInstallmentCount(entry?.approvedCount) }];
+  if (net.missing) {
+    rows.push({ key: 'net', label: 'Neto', value: 's/d' });
+  } else if (entry?.approvedCount) {
+    rows.push({ key: 'fee', label: 'Comisión', value: formatArs(Math.round((gross - net.value) * 100) / 100), detail: net.partial ? 'parcial' : '' });
+    rows.push({ key: 'net', label: 'Neto', value: formatArs(net.value), detail: net.partial ? `${entry.netKnownCount} de ${entry.approvedCount}` : '' });
+  }
+  if (entry?.pendingCount) {
+    rows.push({ key: 'pending', label: mode === 'net' ? 'Pendiente (neto)' : 'Pendiente', value: formatArs(pendingFor(entry, mode)), detail: formatInstallmentCount(entry.pendingCount) });
+  }
+  return { title, rows };
 }
 
 // 'YYYY-MM' corrido `delta` meses (negativo = hacia atrás).
@@ -121,4 +186,27 @@ export function isSummaryEmpty(summary) {
   if (!summary) return true;
   const anyGross = (summary.monthly ?? []).some((m) => m.grossAmount > 0);
   return !anyGross && !summary.pendingCount && !summary.rejectedCount && !(summary.byTeam ?? []).length;
+}
+
+// Vencimiento como DD/MM/AAAA en hora argentina: el backend lo manda en UTC y
+// corta los días en Argentina, así que un vencimiento del 6/11 a las 23:37 llega
+// como 7/11 02:37Z. Con la zona del dispositivo se vería el día equivocado.
+export function formatDueDate(iso) {
+  if (!iso) return '';
+  const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+
+// "comisión 5%" (o "comisión 2,5%"). Sin porcentaje no hay texto.
+export function formatFeeLabel(feePercent) {
+  if (feePercent === null || feePercent === undefined) return '';
+  return `comisión ${String(Math.round(feePercent * 100) / 100).replace('.', ',')}%`;
+}
+
+// "vencida" o "3 cuotas vencidas" para la próxima cuota de un equipo o tier.
+export function overdueLabel({ overdue, overdueCount }) {
+  if (!overdue) return '';
+  return overdueCount > 1 ? `${overdueCount} cuotas vencidas` : 'vencida';
 }
