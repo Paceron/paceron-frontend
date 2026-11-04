@@ -81,7 +81,6 @@ dos veces sería la duplicación exacta que el resto del repo evita (ver
 ```jsx
 export function FilterableSubtabs({
   tabs, active, onChange, badges, scope,       // van directo a <TabBar variant="compact">
-  trailingAction = null,                        // ej. el botón "+" de CompetitionsTab; null si no aplica
   filterCount = 0,                               // cuántos filtros están aplicados, para el badge del botón
   filterContent,                                 // los campos del form (JSX), ya armados por el caller
 }) {
@@ -102,7 +101,6 @@ export function FilterableSubtabs({
             <Text className="text-xs font-semibold text-primary" nativeID={`${scope}-filter-count`} testID={`${scope}-filter-count`}>{filterCount}</Text>
           )}
         </Pressable>
-        {trailingAction}
       </View>
       {expanded && (
         <View className="px-3 pb-3" nativeID={`${scope}-filter-panel`} testID={`${scope}-filter-panel`}>
@@ -133,12 +131,17 @@ escribir el archivo, usando `useThemeColors`/`MaterialCommunityIcons`/`Pressable
 
 **Archivo:** `components/team/competitions-tab.jsx`.
 
-- El `<View nativeID="competitions-tab-root" ...>` actual, que hoy wrappea
-  manualmente `border-b-2`/subtabs + botón "+" en una fila, pasa a usar
-  `FilterableSubtabs`: `tabs`/`active`/`onChange`/`badges`/`scope` iguales a los
-  que hoy le pasa a `<TabBar variant="compact">`, `trailingAction` es el botón
-  "Nueva competencia" (el mismo `IconTooltip`+`Pressable` que ya existe, sin
-  cambios, solo movido de posición), `filterContent` son los 2 campos de abajo.
+- `competitions-tab.jsx` ya vive dentro de un `SectionCard` (`scope=
+  "competitions-tab-root"`, `variant="nested"`, el botón "Nueva competencia" en su
+  `headerRight`, junto al título "Competencias" -- cambio de otra rama, 2026-11-01,
+  NO TOCAR esa parte). Lo que cambia es el bloque interno
+  `<View className="mb-4"><TabBar active={subTab} .../></View>` (dentro del
+  `SectionCard`, debajo de ese header) -- pasa a ser
+  `<FilterableSubtabs active={subTab} badges={{ pending: listByTab.pending.length
+  > 0 }} filterContent={...} filterCount={...} onChange={setSubTab} scope=
+  "competitions-tab-subtabs" tabs={SUB_TABS} />` (mismos `tabs`/`active`/`onChange`/
+  `badges`/`scope` que ya le pasaba a `<TabBar variant="compact">`, ahora a través
+  de `FilterableSubtabs`). `filterContent` son los 2 campos de abajo.
 - Estado de filtros, local al componente (`useState`): `{ type: '', from: '', to:
   '' }`. `type`: `ResponsiveSelectField` con opciones `[{id:'metric', name:'Por
   métrica'}, {id:'route', name:'Por trayectoria'}]` + el placeholder "Todos los
@@ -166,9 +169,9 @@ escribir el archivo, usando `useThemeColors`/`MaterialCommunityIcons`/`Pressable
 - Usa el MISMO `FilterableSubtabs` del punto B. `tabs`: `[{id:'active_tab',
   label:'Activas', icon:'sword-cross'}, {id:'history_tab', label:'Historial',
   icon:'archive-outline'}]` (nombres de id con sufijo `_tab` para no chocar con
-  `competition.status === 'active'`, que es otro valor en otro lugar). Sin
-  `trailingAction` (no hay botón de crear acá). `filterContent`: equipo + tipo +
-  fecha (3 campos, a diferencia de C que no tiene equipo).
+  `competition.status === 'active'`, que es otro valor en otro lugar).
+  `filterContent`: equipo + tipo + fecha (3 campos, a diferencia de C que no
+  tiene equipo).
 - **División Activas/Historial, por `status`:**
   - Activas: `status` en `['active', 'pending_approval']` — todavía no cerrada.
   - Historial: `status` en `['finished', 'rejected']` — cerrada, en cualquier
