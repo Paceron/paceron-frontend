@@ -766,12 +766,14 @@ function TeamDetailScreenContent({ teamId }) {
   // equipos gratis (donde el backend devuelve `active` sin cuotas de todas
   // formas, pero sería una request al vacío).
   const teamCharges = (team?.membershipFee ?? 0) > 0;
-  const { isPendingFirstPayment, hasDebt, nextInstallment } = useTeamSubscription(user?.userId, team?.id, {
+  const { subscription, isPendingFirstPayment, hasDebt, nextInstallment } = useTeamSubscription(user?.userId, team?.id, {
     enabled: teamCharges && !isTrainerView && Boolean(myMembership),
   });
   // No bloquea nada, solo avisa — el backend tampoco bloquea por falta de pago
-  // (ver la spec de esta feature).
-  const showSubscriptionBanner = teamCharges && !isTrainerView && (isPendingFirstPayment || hasDebt);
+  // (ver la spec de esta feature). Se muestra también al día: es el único
+  // acceso a la pantalla de la cuota desde el equipo, y la cuota siguiente se
+  // puede pagar antes de que venza.
+  const showSubscriptionBanner = teamCharges && !isTrainerView && Boolean(subscription);
 
   const handleConfirmLeaveGroup = async () => {
     try {
@@ -1140,10 +1142,15 @@ function TeamDetailScreenContent({ teamId }) {
 
         {showSubscriptionBanner && (
           <TeamSubscriptionPendingBanner
-            amount={nextInstallment?.installmentAmount ?? team.membershipFee}
             hasDebt={hasDebt}
-            installmentNumber={nextInstallment?.installmentNumber}
-            onPay={() => router.push(`/teams/${team.id}/subscription`)}
+            isPendingFirstPayment={isPendingFirstPayment}
+            membershipFee={team.membershipFee}
+            nextInstallment={nextInstallment}
+            // Con una cuota abierta, "Pagar" abre el checkout directo, igual que en
+            // el Home y en Pagos (`?pay=1`); sin cuota, solo lleva a la pantalla.
+            onPay={() => router.push(nextInstallment
+              ? { pathname: '/teams/[teamId]/subscription', params: { teamId: String(team.id), pay: '1' } }
+              : `/teams/${team.id}/subscription`)}
           />
         )}
 
