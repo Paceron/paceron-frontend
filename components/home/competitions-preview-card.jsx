@@ -23,8 +23,8 @@ function PreviewBox({ competition, onPress, wide }) {
   const colors = useThemeColors();
   const idPrefix = `competitions-preview-box-${competition.id}`;
   return (
-    <View className={`rounded-2xl border border-slate-200 bg-slate-100 p-4 dark:bg-surface-2 ${wide ? 'flex-1' : ''}`} nativeID={idPrefix} testID={idPrefix}>
-      <View className="mb-2 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+    <View className={`rounded-2xl border border-slate-200 bg-slate-100 p-4 dark:bg-slate-800 dark:border-slate-700 ${wide ? 'flex-1' : ''}`} nativeID={idPrefix} testID={idPrefix}>
+      <View className="mb-4 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.primary} name={TYPE_ICON[competition.type] ?? 'trophy-variant'} size={18} />
         <Text className="flex-1 font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={3} testID={`${idPrefix}-title`}>
           {buildCompetitionTitle(competition)}
