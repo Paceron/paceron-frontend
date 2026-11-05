@@ -678,7 +678,7 @@ function OverviewView({ sets, run, onOpenSet, onCancel }) {
             const hiddenPrefix = `session-overview-exercise-${group.exerciseInstanceId}`;
             return (
               <Pressable
-                className={`rounded-2xl border p-3 ${isNext ? 'border-primary bg-primary/10 active:opacity-80' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'}`}
+                className={`rounded-2xl border p-3 active:opacity-80 ${isNext ? 'border-primary bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'}`}
                 disabled={!isNext}
                 key={group.exerciseInstanceId}
                 nativeID={`${hiddenPrefix}-card`}

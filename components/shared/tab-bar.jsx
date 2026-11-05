@@ -32,23 +32,29 @@ import { isWeb } from '../../utils/platform.js';
 // visual más chico y con subrayado en vez de pill de fondo, para que se lea
 // como navegación anidada/secundaria en vez de repetir el look de las tabs
 // de primer nivel.
+// `hover:` vive en `tabClassName` (aplicada siempre, activa o no) en vez
+// de en `activeClassName`/`inactiveClassName` -- si el pseudo-estado solo
+// aparece en UNA de las dos ramas, NativeWind remonta el Pressable en
+// nativo al cambiar de tab y el remount puede quedar sin estilo (ver
+// CLAUDE.md "Quirks conocidos", mismo bug real encontrado en
+// role-switch-toggle.jsx). Acá entra siempre, nunca se agrega/saca.
 const VARIANT = {
   default: {
     wrapClassName: 'mb-5 flex-row flex-wrap gap-2',
-    tabClassName: 'gap-1.5 rounded-lg px-3.5 py-2.5',
+    tabClassName: 'gap-1.5 rounded-lg px-3.5 py-2.5 hover:bg-slate-200 dark:hover:bg-surface-3',
     iconSize: 16,
     activeClassName: 'bg-primary-tint-subtle dark:bg-primary/10',
-    inactiveClassName: 'bg-slate-100 hover:bg-slate-200 dark:bg-surface-2 dark:hover:bg-surface-3',
+    inactiveClassName: 'bg-slate-100 dark:bg-surface-2',
     labelActiveClassName: 'font-semibold text-primary',
     labelInactiveClassName: 'font-medium text-slate-700 dark:text-slate-200',
     labelClassName: 'text-sm',
   },
   compact: {
     wrapClassName: 'mb-4 flex-row gap-4 rounded-xl border-b-2 border-slate-300 px-3 py-1.5 dark:border-slate-700',
-    tabClassName: 'gap-1 border-b-2 px-0.5 pb-2',
+    tabClassName: 'gap-1 border-b-2 px-0.5 pb-2 hover:border-slate-300 dark:hover:border-slate-600',
     iconSize: 13,
     activeClassName: 'border-primary',
-    inactiveClassName: 'border-transparent hover:border-slate-300 dark:hover:border-slate-600',
+    inactiveClassName: 'border-transparent',
     labelActiveClassName: 'font-semibold text-primary',
     labelInactiveClassName: 'font-medium text-slate-500 dark:text-slate-400',
     labelClassName: 'text-xs',

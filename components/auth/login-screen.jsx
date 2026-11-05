@@ -155,9 +155,9 @@ function LoginForm() {
 
       {/* Submit button */}
       <Pressable
-        className={`mb-4 h-12 items-center justify-center rounded-full ${
-          isFormValid ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'
-        } active:opacity-80`}
+        className={`mb-4 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${
+          isFormValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+        }`}
         disabled={loading}
         onPress={handleSubmit}
         nativeID="login-screen-submit-button"

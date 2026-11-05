@@ -831,8 +831,8 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
                   return (
                     <Pressable
                       key={item.id}
-                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800 active:opacity-70 ${
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'bg-transparent'
                       }`}
                       onPress={() => { onChange(item.id); setVisible(false); }}
                       nativeID={`picker-field-${slug}-modal-option-${itemSlug}`}
@@ -951,8 +951,8 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
                   return (
                     <Pressable
                       key={item.id || 'none'}
-                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800 active:opacity-70 ${
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'bg-transparent'
                       }`}
                       nativeID={`inline-picker-${scope}-modal-option-${itemSlug}`}
                       onPress={() => { onChange(item.id); setVisible(false); }}

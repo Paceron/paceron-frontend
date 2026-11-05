@@ -63,7 +63,7 @@ export function LeaderboardDateRangeModal({ visible, initialFrom, initialTo, onC
               </Text>
             </Pressable>
             <Pressable
-              className={`h-11 flex-1 items-center justify-center rounded-full ${canApply ? 'bg-primary hover:opacity-90 active:opacity-80' : 'bg-slate-300 dark:bg-slate-700'}`}
+              className={`h-11 flex-1 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${canApply ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-700'}`}
               disabled={!canApply}
               nativeID="leaderboard-date-range-modal-apply-button"
               onPress={() => onConfirm(fromDate, toDate)}
