@@ -51,7 +51,7 @@ export function StateAction({ id, label, icon = 'arrow-right', onPress, primary 
   return (
     <Pressable
       accessibilityRole="button"
-      className={`h-11 flex-row items-center gap-1.5 rounded-full px-5 ${primary ? 'bg-primary active:opacity-80' : 'border border-slate-300 dark:border-slate-600'}`}
+      className={`h-11 flex-row items-center gap-1.5 rounded-full px-5 active:opacity-80 ${primary ? 'bg-primary' : 'border border-slate-300 dark:border-slate-600'}`}
       disabled={disabled || loading}
       nativeID={id}
       onPress={onPress}

@@ -86,7 +86,7 @@ export const checkinRoute = {
 // tarjeta de Mi perfil.
 export const paymentsRoute = {
   name: 'payments',
-  label: 'Pagos',
+  label: 'Finanzas',
   href: '/profile/payments',
   icon: 'cash-multiple',
 };

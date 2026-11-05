@@ -87,7 +87,7 @@ export function AthletePickerModal({ visible, onClose, teamId, excludeUserId, ti
                   const selected = member.userId === selectedId;
                   return (
                     <Pressable
-                      className={`flex-row items-center gap-2 rounded-xl border px-3 py-2.5 ${selected ? 'border-primary bg-primary/10' : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'}`}
+                      className={`flex-row items-center gap-2 rounded-xl border px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 ${selected ? 'border-primary bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'}`}
                       key={member.userId}
                       nativeID={`athlete-picker-option-${member.userId}`}
                       onPress={() => handleSelect(member)}

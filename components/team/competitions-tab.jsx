@@ -15,6 +15,11 @@ import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { DateField } from '../forms/fields.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { filterCompetitionsByFields } from '../../utils/competition-filters.js';
+import { useScrollToHighlight } from '../../hooks/use-scroll-to-highlight.js';
+import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
@@ -22,7 +27,6 @@ import { AttemptsListModal } from './attempts-list-modal.jsx';
 import { useCompetitionsUiStore } from '../../store/competitions-ui-store.js';
 import { RouteMapPreview } from './route-map-preview';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
-import { TabBar } from '../shared/tab-bar.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { logDebug } from '../../utils/debug-log.js';
 
@@ -149,7 +153,7 @@ function RouteDetailSection({ idPrefix, competition, members, sortedParticipantI
   );
 }
 
-function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, busy }) {
   const colors = useThemeColors();
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const idPrefix = `competitions-tab-row-${competition.id}`;
@@ -223,7 +227,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   const progressByUserId = new Map((detail?.progress ?? []).map((p) => [p.userId, p.value]));
 
   return (
-    <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+    <View className={`rounded-xl border p-3 transition-colors ${highlighted ? 'border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
       <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={onToggleExpand} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} />
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
@@ -345,8 +349,8 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
       )}
 
       {canRunBase && isWeb && (
-        <View className="ml-6 mt-3" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
-          <Text className="self-start rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
+        <View className="mt-3 items-center justify-center" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
+          <Text className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
             {!hasStarted
               ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
               : remainingAttempts > 0
@@ -359,7 +363,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   );
 }
 
-export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerView, currentUserId }) {
+export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerView, currentUserId, scrollViewRef, focusCompetitionId }) {
   const colors = useThemeColors();
   const router = useRouter();
   const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
@@ -373,6 +377,10 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
   const [attemptsCompetition, setAttemptsCompetition] = useState(null);
   const [reopenAthleteId, setReopenAthleteId] = useState(null);
   const [subTab, setSubTab] = useState('active');
+  const [filterType, setFilterType] = useState('');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+  const filterCount = [filterType, filterFrom, filterTo].filter(Boolean).length;
 
   // Restaura el modal que estaba abierto antes de navegar al detalle de un
   // intento -- pedido real 2026-10-23. `router.back()` remonta este
@@ -434,6 +442,15 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar, mismo criterio que achievements-screen.jsx (Spec 1)
   }, []);
 
+  useEffect(() => {
+    if (!focusCompetitionId || loading) return;
+    const target = competitions.find((c) => String(c.id) === String(focusCompetitionId));
+    if (!target) return;
+    const tabForStatus = target.status === 'pending_approval' ? 'pending' : target.status === 'active' ? 'active' : 'history';
+    setSubTab(tabForStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando cambia el id de foco, no en cada fetch
+  }, [focusCompetitionId, loading]);
+
   const handleApprove = async (id) => {
     const result = await mutations.approveCompetition(id);
     if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Competencia aprobada' }); }
@@ -481,12 +498,25 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
 
   const busy = mutations.isApproving || mutations.isRejecting || mutations.isCancelling || mutations.isClosing;
 
+  const filteredCompetitions = filterCompetitionsByFields(competitions, { type: filterType, from: filterFrom, to: filterTo });
   const listByTab = {
-    active: competitions.filter((c) => c.status === 'active'),
-    pending: competitions.filter((c) => c.status === 'pending_approval'),
-    history: competitions.filter((c) => c.status === 'finished' || c.status === 'rejected'),
+    active: filteredCompetitions.filter((c) => c.status === 'active'),
+    pending: filteredCompetitions.filter((c) => c.status === 'pending_approval'),
+    history: filteredCompetitions.filter((c) => c.status === 'finished' || c.status === 'rejected'),
   };
   const visibleList = listByTab[subTab];
+  // El hook se gatea con "el target ya está en la lista visible", no solo
+  // con `focusCompetitionId` -- bug real encontrado en preview: al montar,
+  // `competitions` todavía no cargó (o la subtab recién la está moviendo
+  // el efecto de arriba) y la fila de destino no existe todavía, así que
+  // `registerRow` nunca se llamó para ese id. Como el efecto del hook solo
+  // depende de `targetId`, sin este gate dispara una única vez con la fila
+  // ausente y nunca reintenta. Con `visibleList` en la condición, `target
+  // InView` pasa de `false` a `true` justo en el render donde la fila ya
+  // está montada (después de que la subtab cambió), y ESE cambio es lo que
+  // vuelve a disparar el efecto.
+  const targetInView = Boolean(focusCompetitionId) && !loading && visibleList.some((c) => c.id === focusCompetitionId);
+  const { registerRow, highlightedId } = useScrollToHighlight(targetInView ? focusCompetitionId : null, scrollViewRef);
 
   return (
     // SectionCard (components/forms/section-card.jsx, usado por
@@ -508,9 +538,27 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
       title="Competencias"
       variant="nested"
     >
-      <View className="mb-4" nativeID="competitions-tab-header" testID="competitions-tab-header">
-        <TabBar active={subTab} badges={{ pending: listByTab.pending.length > 0 }} onChange={setSubTab} scope="competitions-tab-subtabs" tabs={SUB_TABS} variant="compact" />
-      </View>
+      <FilterableSubtabs
+        active={subTab}
+        badges={{ pending: listByTab.pending.length > 0 }}
+        filterContent={(
+          <>
+            <ResponsiveSelectField dense hideErrorRow label="Tipo" onChange={setFilterType} options={[{ id: 'metric', name: 'Por métrica' }, { id: 'route', name: 'Por trayectoria' }]} placeholder="Todos los tipos" value={filterType} />
+            <View className="mt-2 flex-row gap-3" nativeID="competitions-tab-date-range" testID="competitions-tab-date-range">
+              <View className="flex-1" nativeID="competitions-tab-date-from" testID="competitions-tab-date-from">
+                <DateField className="mb-0" dense hideErrorRow label="Desde" onChange={setFilterFrom} value={filterFrom} />
+              </View>
+              <View className="flex-1" nativeID="competitions-tab-date-to" testID="competitions-tab-date-to">
+                <DateField className="mb-0" dense hideErrorRow label="Hasta" onChange={setFilterTo} value={filterTo} />
+              </View>
+            </View>
+          </>
+        )}
+        filterCount={filterCount}
+        onChange={setSubTab}
+        scope="competitions-tab-subtabs"
+        tabs={SUB_TABS}
+      />
 
       {loading && (
         <View className="items-center py-6" nativeID="competitions-tab-loading" testID="competitions-tab-loading">
@@ -533,23 +581,25 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
       {!loading && !error && visibleList.length > 0 && (
         <View className="gap-3" nativeID="competitions-tab-list" testID="competitions-tab-list">
           {visibleList.map((competition) => (
-            <CompetitionRow
-              busy={busy}
-              competition={competition}
-              currentUserId={currentUserId}
-              expanded={!collapsedIds.has(competition.id)}
-              isTrainerView={isTrainerView}
-              key={competition.id}
-              members={members}
-              onApprove={handleApprove}
-              onCancel={handleCancel}
-              onClose={handleClose}
-              onRun={handleRun}
-              onReject={setRejectTargetId}
-              onOpenAttempts={setAttemptsCompetition}
-              onOpenRanking={setRankingCompetition}
-              onToggleExpand={() => toggleExpanded(competition.id)}
-            />
+            <View key={competition.id} nativeID={`competitions-tab-row-${competition.id}-wrap`} ref={registerRow(competition.id)} testID={`competitions-tab-row-${competition.id}-wrap`}>
+              <CompetitionRow
+                busy={busy}
+                competition={competition}
+                currentUserId={currentUserId}
+                expanded={!collapsedIds.has(competition.id)}
+                highlighted={competition.id === highlightedId}
+                isTrainerView={isTrainerView}
+                members={members}
+                onApprove={handleApprove}
+                onCancel={handleCancel}
+                onClose={handleClose}
+                onRun={handleRun}
+                onReject={setRejectTargetId}
+                onOpenAttempts={setAttemptsCompetition}
+                onOpenRanking={setRankingCompetition}
+                onToggleExpand={() => toggleExpanded(competition.id)}
+              />
+            </View>
           ))}
         </View>
       )}

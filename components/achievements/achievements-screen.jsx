@@ -6,6 +6,7 @@ import { ScreenCard } from '../shared/screen-card.jsx';
 import { StreaksTab } from './streaks-tab.jsx';
 import { AchievementsTab } from './achievements-tab.jsx';
 import { TrophyCaseTab } from './trophy-case-tab.jsx';
+import { MyCompetitionsTab } from './my-competitions-tab.jsx';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -19,6 +20,7 @@ import { useThemeColors } from '../../theme/colors.js';
 const TABS = [
   { id: 'streaks', label: 'Rachas', icon: 'fire' },
   { id: 'achievements', label: 'Logros', icon: 'medal-outline' },
+  { id: 'competitions', label: 'Competencias', icon: 'sword-cross' },
   { id: 'trophies', label: 'Vitrina', icon: 'trophy' },
 ];
 
@@ -47,7 +49,7 @@ export function AchievementsScreen() {
   useEffect(() => {
     if (ackedSections.current.has(activeTab)) return;
     ackedSections.current.add(activeTab);
-    const section = activeTab === 'streaks' ? 'streaks' : 'achievements';
+    const section = activeTab === 'streaks' ? 'streaks' : activeTab === 'competitions' ? 'competitions' : 'achievements';
     ackSection(section);
   }, [activeTab]);
 
@@ -66,6 +68,7 @@ export function AchievementsScreen() {
         <TabBar active={activeTab} onChange={setActiveTab} scope="achievements-tab-bar" tabs={TABS} />
         {activeTab === 'streaks' && <StreaksTab />}
         {activeTab === 'achievements' && <AchievementsTab />}
+        {activeTab === 'competitions' && <MyCompetitionsTab />}
         {activeTab === 'trophies' && <TrophyCaseTab />}
       </ScreenCard>
     </ScrollView>

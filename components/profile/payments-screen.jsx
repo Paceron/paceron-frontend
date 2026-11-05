@@ -119,7 +119,7 @@ function PaymentsScreenContent() {
           </Pressable>
           <Text className="text-sm text-slate-400 dark:text-slate-600" nativeID="payments-screen-breadcrumb-separator" testID="payments-screen-breadcrumb-separator">/</Text>
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="payments-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="payments-screen-title">
-            {isTrainer ? 'Pagos y cobros' : 'Historial de pagos'}
+            {isTrainer ? 'Finanzas' : 'Historial de pagos'}
           </Text>
         </View>
 

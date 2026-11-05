@@ -76,7 +76,7 @@ export function ForgotPasswordScreen() {
       />
 
       <Pressable
-        className={`mt-2 h-12 items-center justify-center rounded-full ${canSubmit ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'} active:opacity-80`}
+        className={`mt-2 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${canSubmit ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'}`}
         disabled={loading}
         onPress={handleSubmit}
         nativeID="forgot-password-screen-submit-button"

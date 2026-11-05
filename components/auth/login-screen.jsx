@@ -86,7 +86,7 @@ function LoginForm() {
       </Text>
 
       {/* Email */}
-      <View className="mb-1 p-4 pb-2 rounded-xl bg-slate-100 dark:bg-slate-800/30" nativeID="login-screen-email-group" testID="login-screen-email-group">
+      <View className="mb-1 p-4 pb-2 rounded-xl bg-slate-200/50 dark:bg-slate-800/50" nativeID="login-screen-email-group" testID="login-screen-email-group">
         <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-email-label" testID="login-screen-email-label">Email</Text>
         <View className={`h-12 flex-row items-center rounded-xl border ${
           emailError
@@ -126,7 +126,7 @@ function LoginForm() {
       </View>
 
       {/* Password */}
-      <View className="mb-6 p-4 pb-2 rounded-xl bg-slate-100 dark:bg-slate-800/30" nativeID="login-screen-password-group" testID="login-screen-password-group">
+      <View className="mb-6 p-4 pb-2 rounded-xl bg-slate-200/50 dark:bg-slate-800/50" nativeID="login-screen-password-group" testID="login-screen-password-group">
         <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-password-label" testID="login-screen-password-label">Contraseña</Text>
         <View className="h-12 flex-row items-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900" nativeID="login-screen-password-field-wrapper" testID="login-screen-password-field-wrapper">
           <TextInput
@@ -155,9 +155,9 @@ function LoginForm() {
 
       {/* Submit button */}
       <Pressable
-        className={`mb-4 h-12 items-center justify-center rounded-full ${
-          isFormValid ? 'bg-primary hover:opacity-90' : 'bg-slate-100 dark:bg-slate-800'
-        } active:opacity-80`}
+        className={`mb-4 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${
+          isFormValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+        }`}
         disabled={loading}
         onPress={handleSubmit}
         nativeID="login-screen-submit-button"

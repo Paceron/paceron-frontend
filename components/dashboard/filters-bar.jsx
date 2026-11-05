@@ -329,7 +329,7 @@ export function FiltersBar({
         <Pressable
           accessibilityLabel="Aplicar los filtros"
           accessibilityState={{ disabled: applyDisabled }}
-          className={`h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-4 ${applyDisabled ? 'opacity-50' : 'active:opacity-80'}`}
+          className={`h-9 flex-row items-center gap-1.5 rounded-full bg-primary px-4 active:opacity-80 ${applyDisabled ? 'opacity-50' : ''}`}
           disabled={applyDisabled}
           nativeID={`${id}-apply`}
           onPress={onApply}

@@ -669,6 +669,8 @@ function TeamDetailScreenContent({ teamId }) {
     const tab = TAB_ALIASES[params.tab] ?? params.tab;
     if (TABS.some((t) => t.id === tab)) setActiveTab(tab);
   }, [params.tab, setActiveTab]);
+  const scrollViewRef = useRef(null);
+  const focusCompetitionId = params.focus ?? null;
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
 
@@ -1046,7 +1048,7 @@ function TeamDetailScreenContent({ teamId }) {
   const visibleTabs = TABS.filter((tab) => tab.id !== 'grupos' || isTrainerView);
   const leaderboardContent = <LeaderboardTab teamId={team.id} />;
   const competitionsContent = (
-    <CompetitionsTab currentUserId={String(user?.userId)} groups={groupOptions} isTrainerView={isTrainerView} members={members} teamId={team.id} teamName={team.name} />
+    <CompetitionsTab currentUserId={String(user?.userId)} focusCompetitionId={focusCompetitionId} groups={groupOptions} isTrainerView={isTrainerView} members={members} scrollViewRef={scrollViewRef} teamId={team.id} teamName={team.name} />
   );
 
   return (
@@ -1055,6 +1057,7 @@ function TeamDetailScreenContent({ teamId }) {
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-8"
       nativeID="team-detail-screen-scroll"
+      ref={scrollViewRef}
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="team-detail-screen-scroll"

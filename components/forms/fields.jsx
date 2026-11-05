@@ -24,6 +24,12 @@ export const FIELD_LABEL = 'mb-1.5 text-sm font-semibold text-slate-700 dark:tex
 // respeta. Detectado 2026-09-05 al notar el botón "+" de
 // SelectWithCreateField más alto que el select de al lado.
 export const SELECT_CLASS = 'min-h-12 flex-1 px-4 py-2 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
+// Igual que SELECT_CLASS pero con el mismo alto que DateField/DurationField
+// en modo `dense` (h-8 px-3, ver más abajo) -- antes `dense` en SelectField
+// solo achicaba el margen del wrapper (mb-3 vs mb-5), la caja del <select>
+// quedaba siempre en min-h-12 sin importar el prop, así que un select "dense"
+// al lado de un DateField dense (h-8) no quedaba parejo.
+const SELECT_CLASS_DENSE = 'h-8 flex-1 px-3 py-1 text-sm text-slate-900 dark:text-white rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 outline-none appearance-none';
 // Variante sin caja para selects incrustados en contextos que ya tienen
 // su propio fondo/borde (ej. el header de mes/año del calendario) — solo
 // texto + la flechita propia que se agrega al lado, sin duplicar chrome.
@@ -135,7 +141,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
       >
         <View className={outline || plain ? 'relative' : 'flex-1 relative'} nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
-            className={outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : SELECT_CLASS)}
+            className={outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : (dense ? SELECT_CLASS_DENSE : SELECT_CLASS))}
             style={outline && fixedWidth ? { width: fixedWidth } : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -731,7 +737,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
     ? 'h-8 flex-row items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 dark:border-slate-700 dark:bg-slate-900'
     : plain
     ? 'h-8 flex-row items-center gap-1'
-    : `h-12 flex-row items-center rounded-xl border px-4 hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`;
+    : `${dense ? 'h-8 px-3' : 'h-12 px-4'} flex-row items-center rounded-xl border hover:bg-slate-100 dark:hover:bg-slate-800 ${borderClass}`;
 
   return (
     <View className={className ?? (dense ? 'mb-3' : 'mb-5')} nativeID={`picker-field-${slug}`} testID={`picker-field-${slug}`}>
@@ -825,8 +831,8 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
                   return (
                     <Pressable
                       key={item.id}
-                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800 active:opacity-70 ${
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'bg-transparent'
                       }`}
                       onPress={() => { onChange(item.id); setVisible(false); }}
                       nativeID={`picker-field-${slug}-modal-option-${itemSlug}`}
@@ -945,8 +951,8 @@ export function InlinePicker({ scope, value, onChange, options, placeholder = 'E
                   return (
                     <Pressable
                       key={item.id || 'none'}
-                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 active:opacity-70 dark:border-slate-800 ${
-                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      className={`flex-row items-center gap-3 border-b border-slate-100 px-5 py-3.5 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800 active:opacity-70 ${
+                        isSelected ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'bg-transparent'
                       }`}
                       nativeID={`inline-picker-${scope}-modal-option-${itemSlug}`}
                       onPress={() => { onChange(item.id); setVisible(false); }}

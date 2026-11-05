@@ -87,7 +87,7 @@ function TeamSearchResultCard({ team, membershipFee, onRequest, requesting }) {
         const state = buttonState(team, onRequest.myPendingTeamIds);
         return (
           <Pressable
-            className={`h-10 w-full flex-row items-center justify-center rounded-full px-4 ${state.disabled ? 'bg-slate-200 dark:bg-slate-700' : 'bg-primary hover:opacity-90 active:opacity-80'}`}
+            className={`h-10 w-full flex-row items-center justify-center rounded-full px-4 hover:opacity-90 active:opacity-80 ${state.disabled ? 'bg-slate-200 dark:bg-slate-700' : 'bg-primary'}`}
             disabled={state.disabled || requesting}
             nativeID={`${idPrefix}-request-button`}
             onPress={() => onRequest.handle(team.id)}
@@ -247,7 +247,7 @@ function TeamSearchScreenContent() {
             <IconTooltip idPrefix="team-search-advanced-toggle-tooltip" label={advancedOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}>
               <Pressable
                 accessibilityLabel={advancedOpen ? 'Ocultar filtros avanzados' : 'Mostrar filtros avanzados'}
-                className={`h-11 w-11 items-center justify-center rounded-xl border ${advancedOpen ? 'border-primary bg-primary-tint dark:bg-primary/15' : 'border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'}`}
+                className={`h-11 w-11 items-center justify-center rounded-xl border hover:bg-slate-100 dark:hover:bg-slate-800 ${advancedOpen ? 'border-primary bg-primary-tint dark:bg-primary/15' : 'border-slate-200 bg-transparent dark:border-slate-700'}`}
                 nativeID="team-search-advanced-toggle"
                 onPress={() => setAdvancedOpen((v) => !v)}
                 testID="team-search-advanced-toggle"

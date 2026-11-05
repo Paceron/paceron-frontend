@@ -1,6 +1,7 @@
 // components/payments/checkout-flow.jsx
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -92,7 +93,12 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, m
 
   return (
     <Modal animationType="slide" nativeID="checkout-flow-modal" onRequestClose={handleClose} testID="checkout-flow-modal" visible>
-      <View className="flex-1 bg-paper dark:bg-ink" nativeID="checkout-flow-modal-root" testID="checkout-flow-modal-root">
+      {/* El Modal de RN no respeta la status bar por sí solo -- sin esto el
+          header ("Checkout" + cerrar) queda dibujado detrás de la barra de
+          estado de Android. Mismo patrón que attendance-session-modal.jsx
+          (react-native-safe-area-context, no el SafeAreaView de 'react-native'
+          -- ese es iOS-only/deprecado). */}
+      <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="checkout-flow-modal-root" testID="checkout-flow-modal-root">
         <View className="flex-row items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700" nativeID="checkout-flow-modal-header" testID="checkout-flow-modal-header">
           <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="checkout-flow-modal-title" testID="checkout-flow-modal-title">Checkout</Text>
           <Pressable
@@ -148,7 +154,7 @@ export function CheckoutFlow({ preferenceId, publicKey, amount, installmentId, m
             )}
           </View>
         )}
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

@@ -169,10 +169,10 @@ export function SearchablePickerField({
           accessibilityState={{ busy: loading, disabled: triggerDisabled, expanded: open }}
           aria-controls={`${idPrefix}-modal-list`}
           aria-expanded={open}
-          className={`h-12 flex-row items-center gap-2 rounded-xl border px-4 ${
+          className={`h-12 flex-row items-center gap-2 rounded-xl border px-4 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800 ${
             disabled
               ? 'border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
-              : 'border-slate-200 bg-white hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+              : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
           }`}
           disabled={triggerDisabled}
           nativeID={`${idPrefix}-trigger`}
@@ -398,10 +398,10 @@ export function SearchablePickerField({
                         accessibilityRole="button"
                         accessibilityState={{ selected: !hasValue }}
                         aria-selected={!hasValue}
-                        className={`flex-row items-center gap-2 rounded-xl border px-3 py-2.5 active:opacity-70 ${
+                        className={`flex-row items-center gap-2 rounded-xl border px-3 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800 ${
                           !hasValue
                             ? 'border-primary bg-primary/10'
-                            : 'border-slate-200 bg-white hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+                            : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
                         }`}
                         key={`${idPrefix}-empty-option`}
                         nativeID={`${idPrefix}-modal-empty-option`}
@@ -451,12 +451,12 @@ export function SearchablePickerField({
                           // tiene que ir arriba; sin ella, items-center como en
                           // athlete-picker-modal, que si no deja el check
                           // desalineado del nombre.
-                          className={`flex-row gap-2 rounded-xl border px-3 py-2.5 active:opacity-70 ${
+                          className={`flex-row gap-2 rounded-xl border px-3 py-2.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800 ${
                             meta ? 'items-start' : 'items-center'
                           } ${
                             isSelected
                               ? 'border-primary bg-primary/10'
-                              : 'border-slate-200 bg-white hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+                              : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900'
                           }`}
                           // key por el id de la opción (no por su slug): el slug
                           // no es inyectivo, dos ids distintos podrían

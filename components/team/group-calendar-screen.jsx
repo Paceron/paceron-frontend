@@ -6,6 +6,7 @@ import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import '../../config/calendarLocale.js';
+import { computeTodayIso } from '../../utils/calendar-today.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isMobile } from '../../utils/platform.js';
@@ -30,7 +31,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 
-function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
+function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
@@ -64,15 +65,23 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
     });
   };
 
+  // `hoverFx` fijo en los 5 casos (presente/ausente siempre igual, mismo
+  // orden) y cada rama declara SIEMPRE bg-* (nunca lo omite) -- antes
+  // `selected`/`isOtherMonth` no declaraban ningún `bg-*` mientras las
+  // otras tres sí, y `hover:`/`transition-all` aparecían solo en algunas
+  // ramas. Con ~30-40 celdas montadas a la vez y `selected`/`isMenuOpen`
+  // cambiando en vivo por toque, eso es el mismo bug de remount nativo que
+  // `role-switch-toggle.jsx` (ver CLAUDE.md) pero multiplicado por celda.
+  const hoverFx = 'transition-all hover:animate-pulse hover:border-4 hover:bg-opacity-60';
   const borderClass = isOtherMonth
-    ? 'border-2 border-transparent'
+    ? `${hoverFx} border-2 border-transparent bg-transparent`
     : selected
-      ? 'transition-all border-4 border-primary'
+      ? `${hoverFx} border-4 border-primary bg-transparent`
       : isMenuOpen
-        ? 'transition-all border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500'
-        : state === 'today'
-          ? 'transition-all border-2 hover:animate-pulse hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60'
-          : 'transition-all border-2 hover:animate-pulse hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
+        ? `${hoverFx} border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500`
+        : isToday
+          ? `${hoverFx} border-2 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60`
+          : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
 
   return (
     <Pressable
@@ -84,7 +93,7 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
-        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : state === 'today' ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
         nativeID={`group-calendar-day-${date.dateString}-label`}
         testID={`group-calendar-day-${date.dateString}-label`}
       >
@@ -146,6 +155,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const group = groups.find((g) => g.id === groupId);
 
   const today = new Date();
+  const todayIso = computeTodayIso(today);
   const [visibleYear, setVisibleYear] = useState(today.getFullYear());
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
   const [stampTargetDate, setStampTargetDate] = useState(null);
@@ -380,6 +390,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                   containerRef={screenRootRef}
                   date={date}
                   isMenuOpen={openDayMenu?.date === date.dateString}
+                  isToday={date.dateString === todayIso}
                   marking={markingsByDate[date.dateString]}
                   onOpenMenu={handleOpenDayMenu}
                   onToggleSelect={handleToggleDaySelection}

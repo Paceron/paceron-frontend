@@ -31,9 +31,9 @@ export function MpConnectButtonView({ connected, loading, disabled, onPress }) {
 
   return (
     <Pressable
-      className={`h-12 flex-row items-center justify-center gap-2 rounded-full ${
-        inactive ? 'bg-slate-100 dark:bg-slate-800' : 'bg-[#009ee3] hover:opacity-90'
-      } active:opacity-80`}
+      className={`h-12 flex-row items-center justify-center gap-2 rounded-full hover:opacity-90 active:opacity-80 ${
+        inactive ? 'bg-slate-100 dark:bg-slate-800' : 'bg-[#009ee3]'
+      }`}
       disabled={inactive}
       nativeID="mp-connect-button"
       onPress={onPress}

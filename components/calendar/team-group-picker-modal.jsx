@@ -77,7 +77,7 @@ export function TeamGroupPickerModal({ visible, onClose, teamOptions, userId, on
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="team-group-picker-modal-cancel-label" testID="team-group-picker-modal-cancel-label">Cancelar</Text>
             </Pressable>
             <Pressable
-              className={`h-11 flex-1 items-center justify-center rounded-full ${teamId && groupId ? 'bg-primary hover:opacity-90 active:opacity-80' : 'bg-slate-200 dark:bg-slate-700'}`}
+              className={`h-11 flex-1 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${teamId && groupId ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
               disabled={!teamId || !groupId}
               nativeID="team-group-picker-modal-confirm-button"
               onPress={handleConfirm}

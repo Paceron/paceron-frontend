@@ -13,8 +13,8 @@ describe('isCalendarDayClosed', () => {
     expect(isCalendarDayClosed('2026-10-16', { isPresencial: false }, NOW)).toBe(false);
   });
 
-  test('hoy, no presencial, está cerrado', () => {
-    expect(isCalendarDayClosed('2026-10-15', { isPresencial: false }, NOW)).toBe(true);
+  test('hoy, no presencial, ya NO está cerrado (Gap 39)', () => {
+    expect(isCalendarDayClosed('2026-10-15', { isPresencial: false }, NOW)).toBe(false);
   });
 
   test('hoy, presencial, antes del horario de inicio, no está cerrado', () => {

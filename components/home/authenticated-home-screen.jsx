@@ -11,6 +11,7 @@ import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
 import { RunnerKpisCard } from './runner-kpis-card.jsx';
 import { HomePaymentsDueCard } from './home-payments-due-card.jsx';
 import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
+import { CompetitionsPreviewCard } from './competitions-preview-card.jsx';
 
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
@@ -80,6 +81,7 @@ export function AuthenticatedHomeScreen() {
             <StreakBanner />
             <AchievementHighlightCard />
             <RunnerKpisCard />
+            <CompetitionsPreviewCard />
           </>
         )}
       </View>
