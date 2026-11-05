@@ -65,15 +65,23 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
     });
   };
 
+  // `hoverFx` fijo en los 5 casos (presente/ausente siempre igual, mismo
+  // orden) y cada rama declara SIEMPRE bg-* (nunca lo omite) -- antes
+  // `selected`/`isOtherMonth` no declaraban ningún `bg-*` mientras las
+  // otras tres sí, y `hover:`/`transition-all` aparecían solo en algunas
+  // ramas. Con ~30-40 celdas montadas a la vez y `selected`/`isMenuOpen`
+  // cambiando en vivo por toque, eso es el mismo bug de remount nativo que
+  // `role-switch-toggle.jsx` (ver CLAUDE.md) pero multiplicado por celda.
+  const hoverFx = 'transition-all hover:animate-pulse hover:border-4 hover:bg-opacity-60';
   const borderClass = isOtherMonth
-    ? 'border-2 border-transparent'
+    ? `${hoverFx} border-2 border-transparent bg-transparent`
     : selected
-      ? 'transition-all border-4 border-primary'
+      ? `${hoverFx} border-4 border-primary bg-transparent`
       : isMenuOpen
-        ? 'transition-all border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500'
+        ? `${hoverFx} border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500`
         : isToday
-          ? 'transition-all border-2 hover:animate-pulse hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60'
-          : 'transition-all border-2 hover:animate-pulse hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
+          ? `${hoverFx} border-2 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60`
+          : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
 
   return (
     <Pressable

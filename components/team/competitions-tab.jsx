@@ -227,7 +227,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   const progressByUserId = new Map((detail?.progress ?? []).map((p) => [p.userId, p.value]));
 
   return (
-    <View className={`rounded-xl border p-3 transition-all ${highlighted ? 'border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
+    <View className={`rounded-xl border p-3 transition-colors ${highlighted ? 'border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
       <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={onToggleExpand} testID={`${idPrefix}-header`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} />
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>

@@ -31,15 +31,18 @@ function AggregatedDayCell({ date, state, isToday, assignments, onPress, showCol
   const severity = showCollisions ? collisionSeverity(assignments) : null;
   const visibleDots = assignments.slice(0, MAX_DOTS);
   const overflowCount = assignments.length - MAX_DOTS;
+  // Mismo tratamiento que group-calendar-screen.jsx: hover/transition
+  // fijos en las tres ramas, bg-* siempre declarado (nunca omitido).
+  const hoverFx = 'transition-all hover:animate-pulse hover:border-4 hover:bg-opacity-60';
   const borderClass = isOtherMonth
-    ? 'border-2 border-transparent'
+    ? `${hoverFx} border-2 border-transparent bg-transparent`
     : isToday
-      ? 'transition-all hover:animate-pulse border-2 hover:border-4 hover:bg-opacity-60 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60'
-      : 'transition-all hover:animate-pulse border-2 hover:border-4 hover:bg-opacity-60 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60';
+      ? `${hoverFx} border-2 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60`
+      : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
 
   return (
     <Pressable
-      className={`h-14 w-full items-center p-1 gap-1 rounded-xl justify-startrounded-md ${borderClass}`}
+      className={`h-14 w-full items-center justify-start p-1 gap-1 rounded-xl ${borderClass}`}
       nativeID={`aggregated-calendar-day-${date.dateString}`}
       onPress={() => { if (!isOtherMonth) onPress(date.dateString); }}
       style={{ opacity: closed ? 0.7 : 1 }}
