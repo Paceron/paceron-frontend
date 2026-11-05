@@ -84,8 +84,8 @@ describe('findClosedDraftDates', () => {
     expect(findClosedDraftDates(draft, NOW)).toEqual(['2026-03-15']);
   });
 
-  test('un día de HOY no presencial siempre está cerrado', () => {
+  test('un día de HOY no presencial ya NO está cerrado (Gap 39)', () => {
     const draft = [{ date: '2026-03-15', sequenceNo: 1, kind: 'rest', otherName: null, sessionId: null, isPresencial: false, presencialTimeFrom: null, presencialTimeTo: null, presencialLocation: null, touched: false }];
-    expect(findClosedDraftDates(draft, NOW)).toEqual(['2026-03-15']);
+    expect(findClosedDraftDates(draft, NOW)).toEqual([]);
   });
 });

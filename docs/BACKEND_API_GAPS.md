@@ -1961,7 +1961,31 @@ resuelve ejercicios históricos sin `source_exercise_id` por nombre normalizado 
 Mejor/peor: ritmo continuo por tiempo con distancia lograda; velocidad-distancia por velocidad;
 velocidad-tiempo por distancia. RPE faltante no invalida otras métricas.
 
-## Gap 39 — política de asignación same-day: async-hoy debería quedar a discreción del entrenador
+## Gap 39 — política de asignación same-day: async-hoy debería quedar a discreción del entrenador (RESUELTO 2026-11-05)
+
+**Resuelto del lado backend 2026-11-05.** El día asíncrono de HOY ya no se
+considera cerrado para escritura (`PUT`, `DELETE`, `bulk`, `bulk-clear`,
+`stamp`, `shift`), sin bloqueo duro. Presencial de hoy sin cambios (sigue
+cerrando al pasar `presencial_time_from`), días pasados siguen cerrados,
+futuros abiertos. Sin cambios de contrato/DTOs/endpoints.
+
+**Sí hubo un ajuste de frontend, a diferencia de lo que decía la nota
+original de abajo** ("el frontend no necesita ningún cambio de código"):
+esa afirmación cubría la pantalla de asignación (que efectivamente nunca
+bloqueaba localmente, solo dejaba pasar la request), pero no cubría
+`utils/calendar-day-closed.js` — una réplica frontend del `isCalendarDayClosed`
+VIEJO del backend, usada de forma puramente advisory para atenuar
+(`opacity`) días cerrados en `group-calendar-screen.jsx`/`aggregated-month-view.jsx`,
+ocultar la acción de edición en `day-detail-modal.jsx`, mostrar el banner
+"día cerrado" en `group-calendar-day-screen.jsx`, y excluir fechas de
+`utils/build-stamp-draft.js#findClosedDraftDates` al estampar un plan. Esa
+réplica todavía tenía `if (!isPresencial) return true` (cerrado) para hoy
+— stale contra el nuevo comportamiento del backend, seguía atenuando/
+bloqueando visualmente async-hoy aunque el backend ya lo aceptara. Corregido
+a `return false` (abierto), con sus tests actualizados
+(`__tests__/calendar-day-closed.test.js`, `__tests__/build-stamp-draft.test.js`).
+
+---
 
 **Contexto.** Decidido con el usuario junto con el fix de symptom #4 de
 `route-attempt-orphaned-attempt-bug-2026-10-31` (ver memoria de sesión): el bloqueo
