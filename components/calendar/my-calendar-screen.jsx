@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -44,10 +44,20 @@ function MyCalendarScreenContent() {
   const setActiveTab = useCalendarTabStore((s) => s.setActiveTab);
   const appliedDeepLinkRef = useRef(false);
 
-  const openDayModal = (date) => {
+  // useCallback -- AggregatedMonthView está memoizado (React.memo) para no
+  // re-renderizar el grid de ~35-40 celdas al abrir/cerrar el modal de día,
+  // pero eso no sirve de nada si esta función (pasada como `onDayPress`)
+  // cambia de referencia en cada render: rompe la comparación shallow del
+  // memo igual. Mismo motivo para handleMonthChange más abajo.
+  const openDayModal = useCallback((date) => {
     setOpenDate(date);
     setDayModalVisible(true);
-  };
+  }, []);
+
+  const handleMonthChange = useCallback((year, month) => {
+    setVisibleYear(year);
+    setVisibleMonth(month);
+  }, []);
 
   useEffect(() => {
     if (!deepLinkDate || appliedDeepLinkRef.current) return;
@@ -57,7 +67,7 @@ function MyCalendarScreenContent() {
     setVisibleMonth(month);
     setActiveTab('calendario');
     openDayModal(deepLinkDate);
-  }, [deepLinkDate, setActiveTab]);
+  }, [deepLinkDate, setActiveTab, openDayModal]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading, isFetching } = useMemberCalendar(userId, from, to);
@@ -180,7 +190,7 @@ function MyCalendarScreenContent() {
               loading={loading || isFetching}
               month={visibleMonth}
               onDayPress={openDayModal}
-              onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
+              onMonthChange={handleMonthChange}
               showCollisions={false}
               year={visibleYear}
             />

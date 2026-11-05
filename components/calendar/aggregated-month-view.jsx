@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,7 +19,12 @@ function collisionSeverity(assignments) {
   return null;
 }
 
-function AggregatedDayCell({ date, state, isToday, assignments, onPress, showCollisions }) {
+const EMPTY_ASSIGNMENTS = [];
+
+// Memoizado -- ver AggregatedMonthView más abajo para el motivo real (el
+// grid entero se re-renderizaba en cada toque de un día, no solo esta
+// celda).
+const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday, assignments, onPress, showCollisions }) {
   const colors = useThemeColors();
   const isOtherMonth = state === 'disabled';
   const hasAssignments = assignments.length > 0;
@@ -99,12 +105,37 @@ function AggregatedDayCell({ date, state, isToday, assignments, onPress, showCol
       )}
     </Pressable>
   );
-}
+});
 
-export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, onMonthChange, onDayPress, showCollisions, loading }) {
+// `memo` -- sin esto, abrir/cerrar el modal de detalle de día (estado del
+// padre, `my-calendar-screen.jsx`/`administered-calendar-screen.jsx`) re-
+// renderiza este componente aunque ninguna de SUS props haya cambiado, y
+// con eso el `dayComponent` de abajo se recrea -- `react-native-calendars`
+// trata un `dayComponent` nuevo como motivo para re-renderizar el grid
+// ENTERO (~35-40 celdas) para mostrar un modal que ni siquiera es hijo de
+// este árbol. Esto por sí solo no alcanza si `onDayPress`/`onMonthChange`
+// siguen siendo funciones inline en el caller -- ver el fix en
+// my-calendar-screen.jsx/administered-calendar-screen.jsx (useCallback).
+export const AggregatedMonthView = memo(function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, onMonthChange, onDayPress, showCollisions, loading }) {
   const colors = useThemeColors();
   const { colorScheme } = useThemeMode();
-  const todayIso = computeTodayIso();
+  // Antes se recalculaba en cada render (no memoizado) -- barato en sí,
+  // pero rompía la estabilidad de referencia del `dayComponent` de abajo
+  // junto con todo lo demás.
+  const todayIso = useMemo(() => computeTodayIso(), []);
+
+  const renderDay = useCallback(({ date, state }) => (
+    <AggregatedDayCell
+      assignments={daysByDate[date.dateString] ?? EMPTY_ASSIGNMENTS}
+      date={date}
+      isToday={date.dateString === todayIso}
+      onPress={onDayPress}
+      showCollisions={showCollisions}
+      state={state}
+    />
+  ), [daysByDate, todayIso, onDayPress, showCollisions]);
+
+  const handleMonthChange = useCallback((m) => onMonthChange(m.year, m.month), [onMonthChange]);
 
   return (
     <View
@@ -116,18 +147,9 @@ export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, 
         <Calendar
           current={currentMonthISO}
           customHeaderTitle={<CalendarMonthYearHeader idPrefix="aggregated-calendar" month={month} onChange={onMonthChange} year={year} />}
-          dayComponent={({ date, state }) => (
-            <AggregatedDayCell
-              assignments={daysByDate[date.dateString] ?? []}
-              date={date}
-              isToday={date.dateString === todayIso}
-              onPress={onDayPress}
-              showCollisions={showCollisions}
-              state={state}
-            />
-          )}
+          dayComponent={renderDay}
           firstDay={1}
-          onMonthChange={(m) => onMonthChange(m.year, m.month)}
+          onMonthChange={handleMonthChange}
           theme={{
             backgroundColor: 'transparent',
             calendarBackground: 'transparent',
@@ -151,4 +173,4 @@ export function AggregatedMonthView({ currentMonthISO, year, month, daysByDate, 
       )}
     </View>
   );
-}
+});

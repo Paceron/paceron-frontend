@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -54,10 +54,20 @@ function AdministeredCalendarScreenContent() {
   const setActiveTab = useCalendarTabStore((s) => s.setActiveTab);
   const appliedDeepLinkRef = useRef(false);
 
-  const openDayModal = (date) => {
+  // useCallback -- mismo motivo que my-calendar-screen.jsx: AggregatedMonthView
+  // está memoizado para no re-renderizar el grid entero al abrir/cerrar el
+  // modal de día, pero una referencia nueva en cada render de estos
+  // callbacks (pasados como onDayPress/onMonthChange) rompe esa memoización
+  // igual.
+  const openDayModal = useCallback((date) => {
     setOpenDate(date);
     setDayModalVisible(true);
-  };
+  }, []);
+
+  const handleMonthChange = useCallback((year, month) => {
+    setVisibleYear(year);
+    setVisibleMonth(month);
+  }, []);
 
   useEffect(() => {
     if (!deepLinkDate || appliedDeepLinkRef.current) return;
@@ -67,7 +77,7 @@ function AdministeredCalendarScreenContent() {
     setVisibleMonth(month);
     setActiveTab('calendario');
     openDayModal(deepLinkDate);
-  }, [deepLinkDate, setActiveTab]);
+  }, [deepLinkDate, setActiveTab, openDayModal]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading, isFetching } = useAdministeredCalendar(userId, from, to);
@@ -210,7 +220,7 @@ function AdministeredCalendarScreenContent() {
               loading={loading || isFetching}
               month={visibleMonth}
               onDayPress={openDayModal}
-              onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
+              onMonthChange={handleMonthChange}
               showCollisions
               year={visibleYear}
             />
