@@ -5,6 +5,8 @@
 - [x] 1.3 Crear `TrainerHomeKpisCard` con período, cuatro métricas temporales y estructura actual.
 - [x] 1.4 Montar la tarjeta solo para trainer y sumar su query al pull-to-refresh.
 - [x] 1.5 Reutilizar el GIF con label contextual y estados de primera carga/actualización.
+- [x] 1.6 Mostrar `NextTrainingBanner` antes de la tarjeta de KPIs del entrenador.
+- [x] 1.7 Elevar únicamente la grilla que contiene el tooltip abierto sobre la otra grilla.
 
 ## 2. Rendimiento
 
@@ -19,3 +21,4 @@
 - [x] 3.1 Tests de servicio, normalizer, formato, keys y pull-to-refresh.
 - [x] 3.2 Correr `npm test` y `npx expo lint`.
 - [x] 3.3 Verificar visualmente Home en desktop/mobile y cargas de Métricas, Ranking, Comparación y Períodos en navegador.
+- [x] 3.4 Cubrir por test el orden de stacking de las dos grillas al abrir tooltips.

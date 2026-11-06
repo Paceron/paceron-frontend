@@ -16,7 +16,11 @@ jest.mock('../hooks/use-pull-to-refresh.js', () => ({
   },
 }));
 
-jest.mock('../components/home/next-training-banner.jsx', () => ({ NextTrainingBanner: () => null }));
+jest.mock('../components/home/next-training-banner.jsx', () => {
+  const ReactModule = require('react');
+  const { View: NativeView } = require('react-native');
+  return { NextTrainingBanner: () => ReactModule.createElement(NativeView, { testID: 'home-next-training' }) };
+});
 jest.mock('../components/home/streak-banner.jsx', () => ({ StreakBanner: () => null }));
 jest.mock('../components/home/achievement-highlight-card.jsx', () => ({ AchievementHighlightCard: () => null }));
 jest.mock('../components/home/runner-kpis-card.jsx', () => ({ RunnerKpisCard: () => null }));
@@ -37,8 +41,18 @@ beforeEach(() => {
 });
 
 test('muestra los KPIs del entrenador y los invalida al refrescar solo con ese rol', async () => {
-  const { getByTestId } = render(<AuthenticatedHomeScreen />);
+  const { getByTestId, toJSON } = render(<AuthenticatedHomeScreen />);
   expect(getByTestId('trainer-home-kpis-mounted')).toBeTruthy();
+
+  const testIDs = [];
+  const visit = (node) => {
+    if (!node) return;
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (node.props?.testID) testIDs.push(node.props.testID);
+    visit(node.children);
+  };
+  visit(toJSON());
+  expect(testIDs.indexOf('home-next-training')).toBeLessThan(testIDs.indexOf('trainer-home-kpis-mounted'));
 
   await mockRefreshFn();
 

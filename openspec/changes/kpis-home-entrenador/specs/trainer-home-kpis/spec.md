@@ -32,6 +32,11 @@ normalizar y formatear, sin derivar ni sumar métricas.
 - **THEN** se piden los valores temporales para ese corte y no se mantienen números de otro período
 - **AND** los totales actuales de equipos/corredores permanecen iguales
 
+#### Scenario: Orden de Home del entrenador
+
+- **WHEN** el Home del entrenador muestra el próximo entrenamiento
+- **THEN** la tarjeta de próximo entrenamiento (por ejemplo, “Sesión de volumen”) aparece antes del resumen de KPIs
+
 ### Requirement: Home SHALL explicar los conteos y el neto
 
 El KPI de sesiones SHALL mostrar `programadas / realizadas`; realizadas significa
@@ -49,6 +54,11 @@ SHALL representar obligaciones con vencimiento en el corte.
 
 - **WHEN** no existen valores en el período o estructura
 - **THEN** los contadores aparecen como cero y los importes con moneda, sin inventar datos
+
+#### Scenario: Tooltip de fila temporal
+
+- **WHEN** el entrenador abre un tooltip de la última fila temporal
+- **THEN** el bubble se pinta por encima del bloque “Tu estructura actual” y sus cards
 
 ### Requirement: Home SHALL mostrar el GIF en la carga inicial
 

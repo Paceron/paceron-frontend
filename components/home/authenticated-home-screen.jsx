@@ -77,8 +77,8 @@ export function AuthenticatedHomeScreen() {
         </Text>
         {/* Cuotas por vencer o vencidas, de los dos roles (los dos pagan tier). */}
         <HomePaymentsDueCard />
-        {activeRole === 'trainer' ? <TrainerHomeKpisCard /> : null}
         <NextTrainingBanner />
+        {activeRole === 'trainer' ? <TrainerHomeKpisCard /> : null}
         {/* Gamificación es un módulo pensado para corredores -- oculto
             para entrenador a propósito (pedido real, 2026-10-15),
             reversible: solo este guard de `activeRole`. */}

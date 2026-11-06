@@ -132,7 +132,7 @@ export function TrainerHomeKpisCard() {
           <View
             className="-mx-1 -my-1 mt-2 flex-row flex-wrap"
             nativeID="trainer-home-kpis-period-metrics"
-            style={{ position: 'relative', zIndex: openTooltip ? 1 : 0 }}
+            style={{ position: 'relative', zIndex: openTooltip?.startsWith('period-') ? 2 : 0 }}
             testID="trainer-home-kpis-period-metrics"
           >
             {TRAINER_HOME_PERIOD_METRICS.map((metric) => renderMetric(metric, 'period'))}
@@ -147,7 +147,7 @@ export function TrainerHomeKpisCard() {
           <View
             className="-mx-1 -my-1 flex-row flex-wrap"
             nativeID="trainer-home-kpis-structure-metrics"
-            style={{ position: 'relative', zIndex: openTooltip ? 1 : 0 }}
+            style={{ position: 'relative', zIndex: openTooltip?.startsWith('structure-') ? 2 : 0 }}
             testID="trainer-home-kpis-structure-metrics"
           >
             {TRAINER_HOME_STRUCTURE_METRICS.map((metric) => renderMetric(metric, 'structure'))}

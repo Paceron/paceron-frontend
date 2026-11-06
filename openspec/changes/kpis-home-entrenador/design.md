@@ -3,8 +3,9 @@
 ## Home del entrenador
 
 El nuevo `TrainerHomeKpisCard` aparece en `AuthenticatedHomeScreen` solo con
-`activeRole === 'trainer'`, después del aviso de pagos y antes del próximo
-entrenamiento. La tarjeta usa el ancho y aspecto de `RunnerKpisCard`.
+`activeRole === 'trainer'`, después del aviso de pagos y de `NextTrainingBanner`
+(por ejemplo, “Sesión de volumen”). Así la próxima sesión queda arriba del
+resumen. La tarjeta usa el ancho y aspecto de `RunnerKpisCard`.
 
 El primer bloque, **Este período**, usa tabs `Mes`, `Semana`, `Día` y muestra:
 
@@ -17,6 +18,11 @@ El segundo bloque, **Tu estructura actual**, muestra `Equipos activos` y
 `Corredores activos` (únicos entre equipos). No depende del selector temporal.
 Todos los valores salen de una única respuesta del backend; el front no infiere
 sesiones ni recalcula cobros.
+
+Cuando un tooltip está abierto, su grilla sube por encima del otro bloque de
+KPIs. Cada bloque mantiene stacking order separado: elevar ambos al mismo nivel
+deja la sección de estructura (que se pinta después) encima de los tooltips de la
+última fila temporal.
 
 Cada valor usa `KpiTile` + `KpiTooltip`. Las fórmulas explican el rango, el
 criterio de realizada y que el neto descuenta comisión. `formatRunnerKpiValue` se

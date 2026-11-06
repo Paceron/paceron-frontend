@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 jest.mock('../theme/colors.js', () => ({ useThemeColors: () => ({ warning: '#b45309', onSurfaceVariant: '#666' }) }));
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
@@ -37,4 +37,15 @@ test('reutiliza el overlay animado con un texto de carga contextual', () => {
   const { getByTestId } = render(<TrainerHomeKpisCard />);
   expect(getByTestId('trainer-home-kpis-loading-overlay')).toBeTruthy();
   expect(getByTestId('trainer-home-kpis-loading-label').props.children).toBe('Cargando resumen…');
+});
+
+test('eleva solo la grilla cuyo tooltip está abierto sobre la otra sección', () => {
+  const { getByTestId } = render(<TrainerHomeKpisCard />);
+  fireEvent.press(getByTestId('trainer-home-kpis-period-sessions-trigger'));
+  expect(getByTestId('trainer-home-kpis-period-metrics').props.style.zIndex).toBe(2);
+  expect(getByTestId('trainer-home-kpis-structure-metrics').props.style.zIndex).toBe(0);
+
+  fireEvent.press(getByTestId('trainer-home-kpis-structure-activeTeams-trigger'));
+  expect(getByTestId('trainer-home-kpis-period-metrics').props.style.zIndex).toBe(0);
+  expect(getByTestId('trainer-home-kpis-structure-metrics').props.style.zIndex).toBe(2);
 });
