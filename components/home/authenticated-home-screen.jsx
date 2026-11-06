@@ -12,6 +12,8 @@ import { RunnerKpisCard } from './runner-kpis-card.jsx';
 import { HomePaymentsDueCard } from './home-payments-due-card.jsx';
 import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 import { CompetitionsPreviewCard } from './competitions-preview-card.jsx';
+import { TrainerHomeKpisCard } from './trainer-home-kpis-card.jsx';
+import { trainerHomeKpisPrefix } from '../../utils/trainer-home-kpis.js';
 
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
@@ -34,6 +36,9 @@ export function AuthenticatedHomeScreen() {
       queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
       queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
       queryClient.invalidateQueries({ queryKey: ['runner-kpis'] }),
+    ] : []),
+    ...(activeRole === 'trainer' ? [
+      queryClient.invalidateQueries({ queryKey: trainerHomeKpisPrefix(userId) }),
     ] : []),
   ]));
 
@@ -72,6 +77,7 @@ export function AuthenticatedHomeScreen() {
         </Text>
         {/* Cuotas por vencer o vencidas, de los dos roles (los dos pagan tier). */}
         <HomePaymentsDueCard />
+        {activeRole === 'trainer' ? <TrainerHomeKpisCard /> : null}
         <NextTrainingBanner />
         {/* Gamificación es un módulo pensado para corredores -- oculto
             para entrenador a propósito (pedido real, 2026-10-15),

@@ -76,8 +76,14 @@ export function DashboardScreen({ teamId }) {
   const isTrainer = activeRole === 'trainer';
   const [activeDashboardTab, setActiveDashboardTab] = useState('metrics');
   const [pdfReportMode, setPdfReportMode] = useState(false);
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [periodComparisonLoading, setPeriodComparisonLoading] = useState(false);
   useEffect(() => {
     setActiveDashboardTab('metrics');
+    setRankingLoading(false);
+    setComparisonLoading(false);
+    setPeriodComparisonLoading(false);
   }, [teamId, activeRole]);
   // Región que se rasteriza para el PDF (ver DashboardBody).
   const comparisonCaptureRef = useRef(null);
@@ -643,11 +649,13 @@ export function DashboardScreen({ teamId }) {
                       granularity={granularity}
                       id={isTrainer ? 'dashboard-trainer-metrics-panel' : 'dashboard-runner-metrics-panel'}
                       kind={effectiveKind}
+                      onRankingLoadingChange={setRankingLoading}
                       onGranularityChange={setGranularity}
                       radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
-                      renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null }) => (
+                      renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null, onLoadingChange = null }) => (
                         <TeamRankingSection
                           captureRef={captureRef}
+                          onLoadingChange={onLoadingChange}
                           onReportReady={onReportReady}
                           order={order}
                           reportMode={reportMode}
@@ -673,20 +681,21 @@ export function DashboardScreen({ teamId }) {
                 <DashboardErrorState error={filtersQuery.error} onRetry={filtersQuery.refetch} />
               ) : null}
               {!filtersQuery.loading && !filtersQuery.failed ? (
-                <View collapsable={false} nativeID="dashboard-comparison-capture" ref={comparisonCaptureRef} testID="dashboard-comparison-capture">
-                <SessionExerciseComparison
-                  athletes={filtersData?.athletes ?? []}
-                  availableDateRange={filtersData?.date_range ?? null}
-                  exercises={filtersData?.exercises ?? []}
-                  groups={filtersData?.groups ?? []}
-                  id={isTrainer ? 'dashboard-trainer-session-comparison' : 'dashboard-runner-session-comparison'}
-                  isNarrow={isNarrow}
-                  isTrainer={isTrainer}
-                  periodComparison={canReadPeriodComparison(activeRole) ? (
-                    <PeriodComparisonSection from={applied.from} scope={scope} to={applied.to} />
-                  ) : null}
-                  teamId={teamId}
-                />
+                <View className="relative" collapsable={false} nativeID="dashboard-comparison-capture" ref={comparisonCaptureRef} testID="dashboard-comparison-capture">
+                  <SessionExerciseComparison
+                    athletes={filtersData?.athletes ?? []}
+                    availableDateRange={filtersData?.date_range ?? null}
+                    exercises={filtersData?.exercises ?? []}
+                    groups={filtersData?.groups ?? []}
+                    id={isTrainer ? 'dashboard-trainer-session-comparison' : 'dashboard-runner-session-comparison'}
+                    isNarrow={isNarrow}
+                    isTrainer={isTrainer}
+                    onLoadingChange={setComparisonLoading}
+                    periodComparison={canReadPeriodComparison(activeRole) ? (
+                      <PeriodComparisonSection from={applied.from} onLoadingChange={setPeriodComparisonLoading} scope={scope} to={applied.to} />
+                    ) : null}
+                    teamId={teamId}
+                  />
                 </View>
               ) : null}
             </View>
@@ -730,7 +739,15 @@ export function DashboardScreen({ teamId }) {
           </View>
         ) : null}
       </View>
-      <DashboardLoadingOverlay visible={applying && currentDashboardTab === 'metrics'} />
+      <DashboardLoadingOverlay
+        id="dashboard-screen-loading"
+        label={currentDashboardTab === 'comparison'
+          ? (periodComparisonLoading ? 'Comparando períodos…' : 'Cargando comparación…')
+          : (rankingLoading ? 'Cargando ranking…' : 'Cargando métricas…')}
+        visible={currentDashboardTab === 'metrics'
+          ? applying || filtersQuery.loading || metricsLoading || rankingLoading
+          : filtersQuery.loading || comparisonLoading || periodComparisonLoading}
+      />
     </View>
   );
 }
@@ -789,7 +806,7 @@ function DashboardErrorState({ error, onRetry, onResetFilters }) {
 // Ranking del equipo. En su propio componente para que el hook —y con él el
 // request— exista solo cuando la capacidad lo habilita: no es un `enabled: false`
 // colgado de un hook que se llama igual.
-function TeamRankingSection({ scope, sort, order, toggleSort, summaryUnits, reportMode = false, captureRef = null, onReportReady = null }) {
+function TeamRankingSection({ scope, sort, order, toggleSort, summaryUnits, reportMode = false, captureRef = null, onReportReady = null, onLoadingChange = null }) {
   const leaderboard = useDashboardLeaderboard({ ...scope, sort, order });
   const {
     failed,
@@ -805,6 +822,12 @@ function TeamRankingSection({ scope, sort, order, toggleSort, summaryUnits, repo
   } = leaderboard;
   const units = leaderboardUnits ?? summaryUnits ?? {};
   const selfPosition = items.find((item) => item.is_self)?.position ?? null;
+
+  useEffect(() => {
+    if (reportMode) return undefined;
+    onLoadingChange?.(loading);
+    return () => onLoadingChange?.(false);
+  }, [loading, onLoadingChange, reportMode]);
 
   useEffect(() => {
     if (reportMode && hasMore && !loadingMore && !failed) {
@@ -839,8 +862,13 @@ function TeamRankingSection({ scope, sort, order, toggleSort, summaryUnits, repo
 // restringido a dueños del equipo: ver `MEMBER_PERIOD_COMPARISON_ENABLED` y
 // `docs/BACKEND_API_GAPS.md`. Cuando abra, se prende el flag y esta sección
 // aparece también para el corredor sin tocar nada más.
-function PeriodComparisonSection({ scope, from, to }) {
+function PeriodComparisonSection({ scope, from, to, onLoadingChange }) {
   const periods = useDashboardPeriodComparison({ ...scope, current: { from, to } });
+
+  useEffect(() => {
+    onLoadingChange?.(periods.loading);
+    return () => onLoadingChange?.(false);
+  }, [onLoadingChange, periods.loading]);
 
   return <ComparisonStrip data={periods.data} rangeLabel={rangeCaption(from, to)} />;
 }

@@ -18,6 +18,7 @@ export function DashboardMetricsPanel({
   reportMode = false,
   capturePageRefFor,
   onReportReady,
+  onRankingLoadingChange,
 }) {
   const [active, setActive] = useState('kpis');
   const tabs = [
@@ -107,7 +108,7 @@ export function DashboardMetricsPanel({
           </>
         ) : null}
         {current === 'charts' ? <PaletteSwitch {...paletteProps} section="charts" /> : null}
-        {current === 'ranking' && renderRanking ? renderRanking({ reportMode: false }) : null}
+        {current === 'ranking' && renderRanking ? renderRanking({ reportMode: false, onLoadingChange: onRankingLoadingChange }) : null}
       </View>
     </View>
   );
