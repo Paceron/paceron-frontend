@@ -1960,3 +1960,51 @@ El backend excluye `wip`, `warmup` y `cooldown`, conserva feedback legacy sin `r
 resuelve ejercicios históricos sin `source_exercise_id` por nombre normalizado del mismo owner.
 Mejor/peor: ritmo continuo por tiempo con distancia lograda; velocidad-distancia por velocidad;
 velocidad-tiempo por distancia. RPE faltante no invalida otras métricas.
+
+## Gap 39 — política de asignación same-day: async-hoy debería quedar a discreción del entrenador (RESUELTO 2026-11-05)
+
+**Resuelto del lado backend 2026-11-05.** El día asíncrono de HOY ya no se
+considera cerrado para escritura (`PUT`, `DELETE`, `bulk`, `bulk-clear`,
+`stamp`, `shift`), sin bloqueo duro. Presencial de hoy sin cambios (sigue
+cerrando al pasar `presencial_time_from`), días pasados siguen cerrados,
+futuros abiertos. Sin cambios de contrato/DTOs/endpoints.
+
+**Sí hubo un ajuste de frontend, a diferencia de lo que decía la nota
+original de abajo** ("el frontend no necesita ningún cambio de código"):
+esa afirmación cubría la pantalla de asignación (que efectivamente nunca
+bloqueaba localmente, solo dejaba pasar la request), pero no cubría
+`utils/calendar-day-closed.js` — una réplica frontend del `isCalendarDayClosed`
+VIEJO del backend, usada de forma puramente advisory para atenuar
+(`opacity`) días cerrados en `group-calendar-screen.jsx`/`aggregated-month-view.jsx`,
+ocultar la acción de edición en `day-detail-modal.jsx`, mostrar el banner
+"día cerrado" en `group-calendar-day-screen.jsx`, y excluir fechas de
+`utils/build-stamp-draft.js#findClosedDraftDates` al estampar un plan. Esa
+réplica todavía tenía `if (!isPresencial) return true` (cerrado) para hoy
+— stale contra el nuevo comportamiento del backend, seguía atenuando/
+bloqueando visualmente async-hoy aunque el backend ya lo aceptara. Corregido
+a `return false` (abierto), con sus tests actualizados
+(`__tests__/calendar-day-closed.test.js`, `__tests__/build-stamp-draft.test.js`).
+
+---
+
+**Contexto.** Decidido con el usuario junto con el fix de symptom #4 de
+`route-attempt-orphaned-attempt-bug-2026-10-31` (ver memoria de sesión): el bloqueo
+actual de asignación same-day no distingue presencial de asíncrono, y para
+asíncrono es más estricto de lo que el entrenador necesita.
+
+**Estado actual, confirmado** (`calendar_service.go#isCalendarDayClosed`, otro repo):
+una sesión asíncrona del día de HOY está cerrada para asignar, exactamente igual que
+un día ya pasado -- bloqueo duro, sin excepción. Una sesión presencial de hoy sigue
+abierta hasta que pasa su horario planificado (`presencial_time_from`); ese
+comportamiento ya es el correcto, sin cambios pedidos ahí.
+
+**Pedido:** que async-hoy sea asignable, a discreción del entrenador -- sin un
+bloqueo duro del sistema. "Es muy tarde en el día para asignar esto" no lo decide
+una regla nuestra: el entrenador ve el día de hoy en el calendario y decide si
+igual quiere asignar la sesión o esperar a mañana.
+
+**Alcance:** cambio de backend únicamente, en `isCalendarDayClosed`
+(`calendar_service.go`). Confirmado que el frontend no necesita ningún cambio de
+código una vez que el backend lo habilite -- la pantalla de asignación ya intenta la
+request tal cual hoy, el bloqueo es 100% del lado backend. Sin trabajo de frontend
+pendiente más allá de esta nota.

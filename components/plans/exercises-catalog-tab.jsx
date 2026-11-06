@@ -336,6 +336,7 @@ export function ExercisesCatalogTab() {
         )}
         icon="dumbbell"
         title="Tus ejercicios"
+        variant="nested"
       >
         {loading ? (
           <View className="items-center py-6" nativeID="exercises-catalog-loading" testID="exercises-catalog-loading">

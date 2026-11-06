@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { InputField, DateField } from '../forms/fields.jsx';
@@ -205,6 +205,15 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
               </Text>
             </View>
 
+            {/* El teclado en pantalla (mobile) tapaba los campos del final
+                del form (ej. "Máximo de intentos") mientras se escribía --
+                bug real reportado 2026-10-29. `behavior="height"` en
+                Android achica el alto disponible de este wrapper cuando
+                aparece el teclado, dándole al ScrollView de adentro un
+                `flex-1` más chico (no tapado); en iOS, `"padding"` agrega
+                el padding inferior equivalente. Mismo patrón ya usado en
+                location-picker.jsx. */}
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             {/* `flex-1` -- la card entera tiene `height` FIJO (no solo
                 `maxHeight`, ver el comentario de arriba): sin un `height`
                 explícito, Yoga nativo no le da a este ScrollView ningún
@@ -318,6 +327,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                 )}
               </Pressable>
             </View>
+            </KeyboardAvoidingView>
           </View>
           </View>
         </View>

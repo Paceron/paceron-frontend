@@ -17,7 +17,7 @@ export function RoleBadge({ role, active = true, size = 'sm' }) {
   const { pad, text: textSize } = SIZE[size] ?? SIZE.sm;
 
   return (
-    <View className={`rounded-full ${pad} ${bg}`} nativeID="role-badge" testID="role-badge">
+    <View className={`rounded-full ${pad} ${bg} hover:animate-pulse`} nativeID="role-badge" testID="role-badge">
       <Text className={`${textSize} font-semibold ${text}`} nativeID="role-badge-label" testID="role-badge-label">{config.label}</Text>
     </View>
   );

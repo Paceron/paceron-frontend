@@ -9,6 +9,9 @@ import { NextTrainingBanner } from './next-training-banner.jsx';
 import { StreakBanner } from './streak-banner.jsx';
 import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
 import { RunnerKpisCard } from './runner-kpis-card.jsx';
+import { HomePaymentsDueCard } from './home-payments-due-card.jsx';
+import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
+import { CompetitionsPreviewCard } from './competitions-preview-card.jsx';
 
 export function AuthenticatedHomeScreen() {
   const colors = useThemeColors();
@@ -26,6 +29,7 @@ export function AuthenticatedHomeScreen() {
     queryClient.invalidateQueries({ queryKey: ['member-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['administered-calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['user', userId] }),
+    queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId) }),
     ...(activeRole === 'runner' ? [
       queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
       queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
@@ -41,6 +45,22 @@ export function AuthenticatedHomeScreen() {
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       testID="authenticated-home-screen-root"
     >
+      {/* NO usa `ScreenCard` (ver docs/superpowers/specs/2026-10-31-visual-
+          design-refresh-design.md) a propósito -- evaluado en la Tarea 11 de
+          ese plan. A diferencia de una pantalla con contenido suelto, los
+          4 hijos de acá YA son cada uno su propia card individual, con la
+          MISMA combinación bg-white/dark:bg-surface que ScreenCard
+          introduciría (confirmado en next-training-banner.jsx, que incluso
+          documenta en su propio comentario que ese tono fue elegido a
+          propósito para igualar a Rachas/Logros). Envolver todo en
+          ScreenCard apilaría una card del mismo tono alrededor de otras
+          cards del mismo tono -- el mismo problema de "colisión de tono"
+          que este plan viene resolviendo en otras pantallas con
+          variant="nested"/bg-slate-50, pero sin ningún nivel más adentro
+          al que demotear: estas 4 ya SON el nivel de contenido, no una
+          card anidada dentro de otra. El único elemento realmente suelto
+          (el saludo de arriba) es una sola línea de texto, no contenido
+          de pantalla que amerite su propia card. */}
       <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="authenticated-home-screen-container" testID="authenticated-home-screen-container">
         <Text
           className="mb-4 text-2xl text-slate-900 dark:text-white"
@@ -50,6 +70,8 @@ export function AuthenticatedHomeScreen() {
         >
           {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
         </Text>
+        {/* Cuotas por vencer o vencidas, de los dos roles (los dos pagan tier). */}
+        <HomePaymentsDueCard />
         <NextTrainingBanner />
         {/* Gamificación es un módulo pensado para corredores -- oculto
             para entrenador a propósito (pedido real, 2026-10-15),
@@ -59,6 +81,7 @@ export function AuthenticatedHomeScreen() {
             <StreakBanner />
             <AchievementHighlightCard />
             <RunnerKpisCard />
+            <CompetitionsPreviewCard />
           </>
         )}
       </View>

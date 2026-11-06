@@ -9,7 +9,7 @@ import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions, useUser } from '../../hooks/use-user.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
-import { usePaymentHistory, useReceivedPayments, useReceivedPaymentsSummary } from '../../hooks/use-payment-history.js';
+import { usePaymentHistory, useReceivedPayments, useReceivedPaymentsSummary, useUpcomingPayments } from '../../hooks/use-payment-history.js';
 import { buildReceiptHtml, receiptFileName } from '../../utils/receipt-html.js';
 import { canGoBack, shiftMonth } from '../../utils/payments-summary.js';
 // Sin extensión a propósito: hay split .js / .web.js y Metro solo resuelve por
@@ -17,9 +17,12 @@ import { canGoBack, shiftMonth } from '../../utils/payments-summary.js';
 import { shareReceiptPdf } from '../../services/receipt';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
+import { PaymentsUpcomingCard } from './payments-upcoming-card.jsx';
+import { payRouteFor } from '../../utils/payment-due.js';
 
 // Cuántos meses corre la ventana del gráfico cada flecha: los mismos que muestra.
 const WINDOW_MONTHS = 6;
@@ -65,12 +68,14 @@ function PaymentsScreenContent() {
   const windowSummary = until ? windowQuery.summary : summary.summary;
   const received = useReceivedPayments({ teamId, status: receivedStatus, enabled: isTrainer && activeTab === 'received' });
   const history = usePaymentHistory({ type: historyType, status: historyStatus, enabled: activeTab === 'history' });
+  const upcoming = useUpcomingPayments({ enabled: activeTab === 'history' });
   const activeList = activeTab === 'received' ? received : history;
 
   const { refreshing, onRefresh } = usePullToRefresh(() =>
     Promise.all([
       activeTab === 'received' ? summary.refetch() : null,
       activeTab === 'received' && until ? windowQuery.refetch() : null,
+      activeTab === 'history' ? upcoming.refetch() : null,
       activeList.refetch(),
     ])
   );
@@ -101,7 +106,7 @@ function PaymentsScreenContent() {
       showsVerticalScrollIndicator={false}
       testID="payments-screen-scroll"
     >
-      <View className={`w-full self-center ${isWide ? 'max-w-5xl' : ''}`} nativeID="payments-screen-container" testID="payments-screen-container">
+      <ScreenCard maxWidthClassName="max-w-5xl" nativeID="payments-screen-container" testID="payments-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="payments-screen-header" testID="payments-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -114,7 +119,7 @@ function PaymentsScreenContent() {
           </Pressable>
           <Text className="text-sm text-slate-400 dark:text-slate-600" nativeID="payments-screen-breadcrumb-separator" testID="payments-screen-breadcrumb-separator">/</Text>
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="payments-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="payments-screen-title">
-            {isTrainer ? 'Pagos y cobros' : 'Historial de pagos'}
+            {isTrainer ? 'Finanzas' : 'Historial de pagos'}
           </Text>
         </View>
 
@@ -158,6 +163,13 @@ function PaymentsScreenContent() {
           </>
         ) : (
           <>
+            <PaymentsUpcomingCard
+              failed={upcoming.failed}
+              items={upcoming.items}
+              loading={upcoming.loading}
+              onPay={(item) => { const route = payRouteFor(item); if (route) router.push(route); }}
+              onRetry={() => upcoming.refetch()}
+            />
             <Text className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="payments-screen-history-intro" testID="payments-screen-history-intro">
               Tus pagos de suscripción y lo que les pagaste a tus entrenadores. De los pagos aprobados podés descargar el comprobante en PDF.
             </Text>
@@ -178,7 +190,7 @@ function PaymentsScreenContent() {
           receiptBusyId={receiptBusyId}
           variant={activeTab}
         />
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }

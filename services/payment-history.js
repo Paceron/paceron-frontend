@@ -4,6 +4,7 @@ import {
   mockGetReceivedPayments,
   mockGetReceivedPaymentsSummary,
   mockGetPaymentHistory,
+  mockGetUpcomingPayments,
 } from './__mocks__/payment-history-mock.js';
 
 // Historial de pagos y cobros del entrenador. Contrato del change de OpenSpec
@@ -41,4 +42,12 @@ export async function getReceivedPaymentsSummary({ months = 6, until } = {}) {
 export async function getPaymentHistory({ page = 1, type, status } = {}) {
   if (USE_MOCKS) return await mockGetPaymentHistory({ page, type, status });
   return await api.get(`/payments/history${toQueryString({ page, type, status })}`);
+}
+
+// GET /api/v1/payments/upcoming — payment.UpcomingPaymentsResponse {items}: la
+// próxima cuota sin pagar de cada equipo que paga el usuario y de cada tier,
+// ordenadas por vencimiento (change cobros-pendientes-y-vencimientos).
+export async function getUpcomingPayments() {
+  if (USE_MOCKS) return await mockGetUpcomingPayments();
+  return await api.get('/payments/upcoming');
 }

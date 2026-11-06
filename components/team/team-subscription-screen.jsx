@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
@@ -9,12 +10,14 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useTeamSubscription } from '../../hooks/use-team-subscription.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
+import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 import { createPreference } from '../../services/payments.js';
 import { toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
 import { formatMonthlyFee, formatArs } from '../../utils/currency.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess } from '../../utils/haptics.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por plataforma
 // (.web.jsx antes que .jsx) cuando el specifier no trae extensión — ver quirk
@@ -30,10 +33,10 @@ function formatIsoDate(iso) {
 
 function StatusBadge({ status, hasDebt }) {
   const meta = hasDebt
-    ? { label: 'Cuota vencida', icon: 'alert-circle', className: 'border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-900/20', textClassName: 'text-rose-700 dark:text-rose-300', color: '#e11d48' }
+    ? { label: 'Cuota vencida', icon: 'alert-circle', className: 'border-rose-200 bg-rose-50 dark:border-rose-900/40 dark:bg-rose-900/20', textClassName: 'text-rose-700 dark:text-rose-400', color: '#e11d48' }
     : status === 'active'
-      ? { label: 'Membresía activa', icon: 'check-circle', className: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20', textClassName: 'text-emerald-700 dark:text-emerald-300', color: '#059669' }
-      : { label: 'Pago pendiente', icon: 'clock-outline', className: 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20', textClassName: 'text-amber-700 dark:text-amber-300', color: '#d97706' };
+      ? { label: 'Membresía activa', icon: 'check-circle', className: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20', textClassName: 'text-emerald-700 dark:text-emerald-400', color: '#059669' }
+      : { label: 'Pago pendiente', icon: 'clock-outline', className: 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20', textClassName: 'text-amber-700 dark:text-amber-400', color: '#d97706' };
 
   return (
     <View className={`flex-row items-center gap-2 self-start rounded-full border px-3 py-1.5 ${meta.className}`} nativeID="team-subscription-status-badge" testID="team-subscription-status-badge">
@@ -62,6 +65,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
+  const queryClient = useQueryClient();
 
   const { team } = useTeam(teamId);
   const { subscription, isActive, hasDebt, nextInstallment, loading, refetch } = useTeamSubscription(userId, teamId);
@@ -70,6 +74,11 @@ function TeamSubscriptionScreenContent({ teamId }) {
   const [checkoutData, setCheckoutData] = useState(null);
   const [starting, setStarting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // `?pay=1` (botón "Pagar" del Home y de Pagos): abre el checkout apenas
+  // llega la cuota, una sola vez. El param se borra para que un F5 o volver
+  // atrás no lo reabra.
+  const { pay } = useLocalSearchParams();
+  const autoStarted = useRef(false);
 
   const teamName = subscription?.team?.name ?? team?.name ?? 'el equipo';
   const membershipFee = subscription?.team?.membershipFee ?? team?.membershipFee ?? 0;
@@ -79,6 +88,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
 
   const startCheckout = () => {
     if (!nextInstallment) return;
+    autoStarted.current = true;
     setStarting(true);
     createPreference(toCreatePreferencePayload({
       // `concept: 'team_subscription'` es lo que hace que el backend resuelva el
@@ -119,6 +129,13 @@ function TeamSubscriptionScreenContent({ teamId }) {
       .finally(() => setStarting(false));
   };
 
+  useEffect(() => {
+    if (pay !== '1' || autoStarted.current || loading || !nextInstallment) return;
+    router.setParams({ pay: undefined });
+    startCheckout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pay, loading, nextInstallment]);
+
   // Confirmación post-pago: el webhook de Mercado Pago es asíncrono (y en local
   // sin túnel puede no llegar nunca), así que no se puede esperar sincrónico.
   // Mismo patrón que tier-upgrade-screen.jsx: un check a los 5s y, si no se
@@ -146,6 +163,8 @@ function TeamSubscriptionScreenContent({ teamId }) {
       }
     } finally {
       setConfirming(false);
+      // El aviso del Home y "Próximos vencimientos" de Pagos salen de acá.
+      queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId) });
     }
   };
 
@@ -166,6 +185,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
       testID="team-subscription-screen-scroll"
     >
       <View className={`w-full self-center ${isWeb ? 'max-w-2xl' : ''}`} nativeID="team-subscription-screen-container" testID="team-subscription-screen-container">
+      <ScreenCard nativeID="team-subscription-screen-card" testID="team-subscription-screen-card">
         <View className="mb-8 flex-row items-center gap-2" nativeID="team-subscription-screen-header" testID="team-subscription-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -185,7 +205,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
         </View>
 
         {confirming && (
-          <View className="mb-4 flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="team-subscription-confirming-banner" testID="team-subscription-confirming-banner">
+          <View className="mb-4 flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="team-subscription-confirming-banner" testID="team-subscription-confirming-banner">
             <ActivityIndicator color={colors.primary} />
             <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID="team-subscription-confirming-banner-label" testID="team-subscription-confirming-banner-label">
               Confirmando pago…
@@ -193,7 +213,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
           </View>
         )}
 
-        <SectionCard icon="cash-multiple" title="Membresía">
+        <SectionCard icon="cash-multiple" title="Membresía" variant="nested">
           {loading ? (
             <View className="items-center py-6" nativeID="team-subscription-screen-loading" testID="team-subscription-screen-loading">
               <ActivityIndicator color={colors.primary} />
@@ -272,6 +292,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
             publicKey={checkoutData.publicKey}
           />
         )}
+      </ScreenCard>
       </View>
     </ScrollView>
   );

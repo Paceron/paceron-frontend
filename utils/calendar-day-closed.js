@@ -1,10 +1,12 @@
 // Réplica del lado del frontend de isCalendarDayClosed (backend,
 // cmd/api/services/calendar_service.go) — mismo criterio exacto: una
-// fecha pasada siempre está cerrada; hoy está cerrado salvo que sea
-// presencial y todavía no haya arrancado (antes de presencialTimeFrom);
-// una fecha futura nunca está cerrada. Uso puramente advisory en el
-// frontend (evitar mostrar una acción que el backend va a rechazar con
-// 422) — el backend sigue siendo la fuente de verdad real.
+// fecha pasada siempre está cerrada; hoy async YA NO cierra (Gap 39,
+// resuelto en el backend 2026-11-05 — antes se cerraba igual que un día
+// pasado, sin excepción); hoy presencial sigue cerrado solo si ya pasó
+// `presencialTimeFrom`; una fecha futura nunca está cerrada. Uso
+// puramente advisory en el frontend (evitar mostrar una acción que el
+// backend va a rechazar con 422) — el backend sigue siendo la fuente de
+// verdad real.
 //
 // dateStr: 'YYYY-MM-DD'. presencialTimeFrom: 'HH:mm' o null/undefined.
 // Ambos son wall-clock literal, sin conversión de huso horario (mismo
@@ -17,7 +19,7 @@ export function isCalendarDayClosed(dateStr, { isPresencial, presencialTimeFrom 
 
   if (dayDate < today) return true;
   if (dayDate > today) return false;
-  if (!isPresencial) return true;
+  if (!isPresencial) return false;
   if (!presencialTimeFrom) return false;
 
   const [hh, mm] = presencialTimeFrom.split(':').map(Number);

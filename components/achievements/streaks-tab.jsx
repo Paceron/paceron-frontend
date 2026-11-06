@@ -18,11 +18,21 @@ import { formatDisplayDate, formatShortDate, formatWeekdayLabel } from '../../ut
 // propio para la que está activa.
 function StreakCard({ icon, title, current, best, idPrefix, selected, onPress }) {
   const colors = useThemeColors();
+  // Bug real 2026-10-30, confirmado en preview: con `border-2` por clase
+  // NativeWind (aunque SIEMPRE presente, nunca condicional) y solo el
+  // color por `style` inline, las dos cards intercambiaban color --
+  // `style` venía como array de 2 entradas (`reactProps.style:
+  // [array(2)]`, confirmado con preview_inspect), y el borderColor que
+  // trae empaquetado el `border-2` compilado por className ganaba el
+  // merge sobre mi `style` inline. Solución: SACAR el borde de className
+  // del todo -- ancho y color, los dos por `style`, nada de Tailwind de
+  // por medio para esta propiedad.
   return (
     <Pressable
-      className={`flex-1 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${selected ? 'border-2 border-primary' : ''}`}
+      className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:border-transparent dark:bg-surface-2 dark:hover:bg-surface-3 dark:active:bg-surface-3"
       nativeID={idPrefix}
       onPress={onPress}
+      style={{ borderWidth: 2, borderColor: selected ? colors.primary : 'transparent' }}
       testID={idPrefix}
     >
       <Text className="text-2xl font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-current`} testID={`${idPrefix}-current`}>
@@ -117,7 +127,7 @@ export function StreaksTab() {
           seleccionada arriba (`selectedStreak`), no siempre la estricta.
           Todo dentro de una card (antes flotaba contra el fondo de la
           pantalla, se perdía -- pedido real 2026-10-15). */}
-      <View className="mt-5 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="streaks-tab-week-card" testID="streaks-tab-week-card">
+      <View className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="streaks-tab-week-card" testID="streaks-tab-week-card">
         <Text className="mb-3 text-xs text-slate-400 dark:text-slate-500" nativeID="streaks-tab-grid-subtitle" testID="streaks-tab-grid-subtitle">
           Mostrando: {selectedStreak === 'strict' ? 'Entrenamientos consecutivos' : 'Días entrenando'}
         </Text>

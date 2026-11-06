@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
@@ -12,6 +13,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useCompetitionMutations } from '../../hooks/use-competitions.js';
+import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
 import { useGpsTracker } from '../../hooks/use-gps-tracker.js';
 import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
@@ -21,6 +23,7 @@ import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-d
 import { notifyError } from '../../utils/haptics.js';
 import { RouteMapPreview } from '../team/route-map-preview';
 import { CompetitionRankingModal } from '../team/competition-ranking-modal.jsx';
+import { logDebug } from '../../utils/debug-log.js';
 
 // Pre-start dedicado de un intento de competencia por trayectoria (Spec
 // 4c probó en dispositivo que el pre-start genérico, session-pre-start-
@@ -38,6 +41,32 @@ function RouteAttemptPreStartScreenContent() {
   const routeAttempt = pendingSession?.routeAttempt ?? null;
   const mutations = useCompetitionMutations(pendingSession?.teamId);
   const [starting, setStarting] = useState(false);
+
+  // Bug real reportado 2026-10-31: el POST /competitions/{id}/attempts real
+  // (a diferencia del mock) devuelve el estado del runner_session recién
+  // creado (`id`/`session_instance_id`/`status`/...), NUNCA un objeto
+  // `session_instance` embebido con nombre/ejercicios -- confirmado contra
+  // `runnersession.RunnerSessionResponse` en el backend
+  // (`cmd/api/domains/runnersession/runner_session.go`). `handlePlay` de
+  // abajo asumía ese campo igual, así que `pendingSession.sessionInstance`
+  // quedaba `undefined` en dispositivo real -- route-attempt-live-screen.jsx
+  // nunca llegaba a loguear ni un solo paso de su bootstrap (su guard de
+  // entrada corta ahí mismo), pantalla negra con loading infinito, sin
+  // ningún error. Se pide acá, de entrada (mismo criterio que el permiso de
+  // GPS de abajo), con el mismo hook que ya usa session-pre-start-screen.jsx
+  // para el camino normal -- el intake ya NO necesita devolver nada más que
+  // confirmar que se creó.
+  const { sessionInstance, loading: sessionInstanceLoading } = useSessionInstance(routeAttempt?.sessionInstanceId, Boolean(routeAttempt?.sessionInstanceId));
+
+  // Bug real reportado 2026-10-31: esta pantalla no se desmonta al navegar a
+  // route-attempt-live (sigue en el stack) -- sin este reset, volver atrás
+  // (gesto, botón, o el guard de salida de route-attempt-live-screen.jsx)
+  // dejaba `starting` en `true` para siempre y el botón Play quedaba
+  // atascado en loading pese a estar parado en el punto de inicio. Mismo
+  // patrón ya usado en session-pre-start-screen.jsx para el mismo problema
+  // (ahí con el mismo comentario), nunca replicado acá cuando esta pantalla
+  // se separó de esa (Spec 4c).
+  useFocusEffect(useCallback(() => { setStarting(false); }, []));
 
   const [rankingVisible, setRankingVisible] = useState(false);
   // CompetitionRankingModal pide SU PROPIO detalle (progress) por dentro,
@@ -70,7 +99,18 @@ function RouteAttemptPreStartScreenContent() {
   const [distanceToStart, setDistanceToStart] = useState(null);
   const startPoint = routeAttempt?.route?.coordinates?.[0] ?? null;
 
-  useEffect(() => {
+  // `useFocusEffect`, no `useEffect` -- bug real reportado 2026-10-31
+  // (encontrado leyendo el log de device, no por síntoma visible): esta
+  // pantalla no se desmonta al pasar a route-attempt-live (sigue en el
+  // stack, mismo motivo que el reset de `starting` de arriba), así que un
+  // `useEffect` con cleanup-en-unmount dejaba el GPS corriendo en segundo
+  // plano para siempre después de un Play exitoso -- confirmado en el log:
+  // decenas de líneas `route-attempt-pre-start playState=loading` seguían
+  // apareciendo (cada fix GPS de esta pantalla, todavía activa de fondo)
+  // mucho después de `route-attempt-live bootstrap ok`. `useFocusEffect`
+  // corre el mismo start/stop en cada foco/desenfoque: para el watcher al
+  // navegar afuera, lo reinicia si el corredor vuelve (ej. tras cancelar).
+  useFocusEffect(useCallback(() => {
     if (gpsPermissionGranted !== true || !startPoint) return undefined;
     tracker.start({
       onPoint: (point) => {
@@ -83,7 +123,7 @@ function RouteAttemptPreStartScreenContent() {
     });
     return () => { tracker.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gpsPermissionGranted, startPoint]);
+  }, [gpsPermissionGranted, startPoint]));
 
   // withinRange/canPlay/playState/playReady calculados ANTES del guard de
   // abajo (en vez de al lado de acceptanceRadiusMeters/gpsHint, puramente
@@ -93,7 +133,7 @@ function RouteAttemptPreStartScreenContent() {
   // `routeAttempt` puede ser null en el primer render (antes del guard),
   // de ahí el `?.` acá.
   const withinRange = distanceToStart != null && routeAttempt && distanceToStart <= routeAttempt.acceptanceRadiusMeters;
-  const canPlay = gpsPermissionGranted === true && withinRange;
+  const canPlay = gpsPermissionGranted === true && withinRange && Boolean(sessionInstance);
   const waitingForFix = gpsPermissionGranted === true && distanceToStart == null;
   // 3 estados visuales del botón Play -- pedido real 2026-10-19 ("un
   // estilo mas adecuado al play deshabilitado"): antes era un solo círculo
@@ -105,7 +145,7 @@ function RouteAttemptPreStartScreenContent() {
   //   permiso vs. lejos) -- ícono que comunica el motivo, fondo neutro.
   // - ready: se puede jugar -- ícono de play, fondo primary, con el pulso
   //   de abajo invitando a tocar.
-  const playState = gpsPermissionGranted == null || starting || waitingForFix
+  const playState = gpsPermissionGranted == null || starting || waitingForFix || sessionInstanceLoading
     ? 'loading'
     : canPlay ? 'ready' : 'blocked';
   const playReady = playState === 'ready';
@@ -123,6 +163,15 @@ function RouteAttemptPreStartScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playReady]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
+  // Diagnóstico sin comportamiento (2026-10-31), mismo motivo que el de
+  // competitions-tab.jsx -- este Play solo depende de permiso GPS +
+  // cercanía al punto de inicio, nada de intentos/cupo, así que si vuelve
+  // a reportarse "bloqueado" acá el log dice de entrada cuál de las dos
+  // cosas es.
+  useEffect(() => {
+    logDebug(`route-attempt-pre-start playState=${playState} gpsPermissionGranted=${gpsPermissionGranted} distanceToStart=${distanceToStart} sessionInstanceLoading=${sessionInstanceLoading} sessionInstance=${sessionInstance ? sessionInstance.id : 'ninguna'}`);
+  }, [playState, gpsPermissionGranted, distanceToStart, sessionInstanceLoading, sessionInstance]);
 
   if (!pendingSession || !routeAttempt) return <Redirect href="/" />;
 
@@ -174,7 +223,7 @@ function RouteAttemptPreStartScreenContent() {
       Toast.show({ type: 'error', text1: 'No pudimos arrancar el intento', text2: result.error });
       return;
     }
-    setPendingSession({ ...pendingSession, sessionInstance: result.data.session_instance });
+    setPendingSession({ ...pendingSession, sessionInstance });
     setGpsEnabled(true);
     router.push('/route-attempt-live');
   };
@@ -226,7 +275,7 @@ function RouteAttemptPreStartScreenContent() {
         <RouteMapPreview coordinates={routeAttempt.route?.coordinates ?? []} interactive nativeID="route-attempt-pre-start-screen-map" testID="route-attempt-pre-start-screen-map" />
       </View>
 
-      <View className="items-center gap-2 px-4 pb-4 pt-3 dark:border-slate-800" nativeID="route-attempt-pre-start-screen-footer" testID="route-attempt-pre-start-screen-footer">
+      <View className="border-t border-slate-100 bg-white items-center gap-2 px-4 pb-4 pt-3 dark:border-slate-800 dark:bg-surface" nativeID="route-attempt-pre-start-screen-footer" testID="route-attempt-pre-start-screen-footer">
         {isFarFromStart ? (
           <View className="flex-row items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 dark:bg-amber-900/20" nativeID="route-attempt-pre-start-screen-gps-hint-badge" testID="route-attempt-pre-start-screen-gps-hint-badge">
             <MaterialCommunityIcons color="#d97706" name="alert-circle-outline" size={14} />

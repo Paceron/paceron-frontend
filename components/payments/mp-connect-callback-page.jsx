@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { resolveMpConnectMessage } from '../../utils/mp-connect-messages.js';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 // Página de retorno del OAuth de Mercado Pago. El backend redirige acá (302)
 // después de procesar el callback, con ?status=success | ?status=error&reason=<slug>.
@@ -58,39 +59,43 @@ export function MpConnectCallbackPage() {
       nativeID="mp-connect-callback-page"
       testID="mp-connect-callback-page"
     >
-      <MaterialCommunityIcons
-        color={result.ok ? '#10b981' : '#ef4444'}
-        name={result.ok ? 'check-circle' : 'alert-circle'}
-        size={40}
-      />
-      <Text
-        className="text-center text-lg font-semibold text-slate-900 dark:text-white"
-        nativeID="mp-connect-callback-page-title"
-        testID="mp-connect-callback-page-title"
-      >
-        {result.title}
-      </Text>
-      <Text
-        className="text-center text-sm leading-5 text-slate-600 dark:text-slate-300"
-        nativeID="mp-connect-callback-page-detail"
-        testID="mp-connect-callback-page-detail"
-      >
-        {result.detail}
-      </Text>
-      <Pressable
-        className="mt-2 h-11 flex-row items-center justify-center rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
-        nativeID="mp-connect-callback-page-back-button"
-        onPress={() => router.replace('/profile/activate-trainer')}
-        testID="mp-connect-callback-page-back-button"
-      >
-        <Text
-          className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
-          nativeID="mp-connect-callback-page-back-label"
-          testID="mp-connect-callback-page-back-label"
-        >
-          Volver a Paceron
-        </Text>
-      </Pressable>
+      <ScreenCard nativeID="mp-connect-callback-page-container" testID="mp-connect-callback-page-container">
+        <View className="items-center gap-3" nativeID="mp-connect-callback-page-content" testID="mp-connect-callback-page-content">
+          <MaterialCommunityIcons
+            color={result.ok ? '#10b981' : '#ef4444'}
+            name={result.ok ? 'check-circle' : 'alert-circle'}
+            size={40}
+          />
+          <Text
+            className="text-center text-lg font-semibold text-slate-900 dark:text-white"
+            nativeID="mp-connect-callback-page-title"
+            testID="mp-connect-callback-page-title"
+          >
+            {result.title}
+          </Text>
+          <Text
+            className="text-center text-sm leading-5 text-slate-600 dark:text-slate-300"
+            nativeID="mp-connect-callback-page-detail"
+            testID="mp-connect-callback-page-detail"
+          >
+            {result.detail}
+          </Text>
+          <Pressable
+            className="mt-2 h-11 flex-row items-center justify-center rounded-full bg-primary px-6 hover:opacity-90 active:opacity-80"
+            nativeID="mp-connect-callback-page-back-button"
+            onPress={() => router.replace('/profile/activate-trainer')}
+            testID="mp-connect-callback-page-back-button"
+          >
+            <Text
+              className="text-sm font-semibold uppercase tracking-wide text-[#111518]"
+              nativeID="mp-connect-callback-page-back-label"
+              testID="mp-connect-callback-page-back-label"
+            >
+              Volver a Paceron
+            </Text>
+          </Pressable>
+        </View>
+      </ScreenCard>
     </View>
   );
 }

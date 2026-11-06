@@ -9,9 +9,9 @@ import { useUser } from '../../hooks/use-user.js';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { formatMeters } from '../../utils/distance.js';
 import { formatStopwatch } from '../../utils/time.js';
-import { isWeb } from '../../utils/platform.js';
 import { LiveTrajectoryMap } from './live-trajectory-map';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 // % de cumplimiento (tiempo dentro del radio de aceptación) desde el que se
@@ -47,7 +47,7 @@ function formatAttemptDate(iso) {
 function StatBox({ idPrefix, icon, label, value }) {
   const colors = useThemeColors();
   return (
-    <View className="flex-1 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID={idPrefix} testID={idPrefix}>
+    <View className="flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-transparent dark:bg-surface-2" nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-label-row`} testID={`${idPrefix}-label-row`}>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name={icon} size={14} />
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>{label}</Text>
@@ -159,7 +159,8 @@ function RouteAttemptDetailScreenContent() {
   };
 
   return (
-    <View className={`flex-1 w-full self-center bg-paper p-4 pb-6 dark:bg-ink ${isWeb ? 'max-w-3xl' : ''}`} nativeID="route-attempt-detail-screen-root" testID="route-attempt-detail-screen-root">
+    <View className="flex-1 bg-paper dark:bg-ink" nativeID="route-attempt-detail-screen-root" testID="route-attempt-detail-screen-root">
+      <ScreenCard nativeID="route-attempt-detail-screen-container" style={{ flex: 1 }} testID="route-attempt-detail-screen-container">
       {justFinished ? (
         <View className="mb-3 flex-row items-center gap-2 rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/40" nativeID="route-attempt-detail-screen-banner" testID="route-attempt-detail-screen-banner">
           <MaterialCommunityIcons color={colors.primary} name="flag-checkered" size={20} />
@@ -201,7 +202,7 @@ function RouteAttemptDetailScreenContent() {
 
       {(detail.status === 'local' || detail.status === 'synced') && (
         <View className="flex-1 gap-3" nativeID="route-attempt-detail-screen-content" testID="route-attempt-detail-screen-content">
-          <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-surface" nativeID="route-attempt-detail-screen-athlete-row" testID="route-attempt-detail-screen-athlete-row">
+          <View className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-transparent dark:bg-surface-2" nativeID="route-attempt-detail-screen-athlete-row" testID="route-attempt-detail-screen-athlete-row">
             <AvatarPicker accessibilityLabel={athleteName ?? 'Corredor'} fallbackIcon="account" idPrefix="route-attempt-detail-screen-athlete-avatar" initials={getUserInitials(athlete)} size={40} uri={athlete?.photoUrl} />
             <View className="flex-1 gap-0.5" nativeID="route-attempt-detail-screen-athlete-info" testID="route-attempt-detail-screen-athlete-info">
               <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID="route-attempt-detail-screen-athlete-name" numberOfLines={1} testID="route-attempt-detail-screen-athlete-name">
@@ -249,6 +250,7 @@ function RouteAttemptDetailScreenContent() {
           <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="route-attempt-detail-screen-close-label" testID="route-attempt-detail-screen-close-label">Listo</Text>
         </Pressable>
       )}
+      </ScreenCard>
     </View>
   );
 }

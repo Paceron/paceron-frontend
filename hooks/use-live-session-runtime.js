@@ -22,7 +22,7 @@ import {
 } from '../services/session-db.js';
 import { syncRun } from '../services/session-sync.js';
 import { send as sendRaw } from '../services/realtime-client.js';
-import { acceptGpsLeg } from '../utils/distance.js';
+import { acceptGpsLeg, smoothGpsPoint } from '../utils/distance.js';
 import { applyPeerPresence } from '../utils/connected-peers.js';
 import { toIsoUtc } from '../utils/time.js';
 import { useSessionGpsTracker } from './use-session-gps-tracker.js';
@@ -53,6 +53,7 @@ export function useLiveSessionRuntime() {
   const [run, setRun] = useState(null);
   const [sets, setSets] = useState([]);
   const [distanceBySetId, setDistanceBySetId] = useState(new Map());
+  const [tracePoints, setTracePoints] = useState([]);
   const [pendingControl, setPendingControl] = useState(null);
   // Roster liviano de "quién está conectado" para el selector de
   // destinatario de mensajería (Gap 27) -- nunca incluye mi propio userId
@@ -75,6 +76,7 @@ export function useLiveSessionRuntime() {
   // renderizar -- la cuenta real vive acá. activeSetIdRef/activePhaseRef
   // siguen el mismo criterio y por la misma razón (los lee handleGpsPoint).
   const distanceRef = useRef(new Map());
+  const lastSmoothedPointRef = useRef(null);
 
   const setActiveSet = (setId) => {
     activeSetIdRef.current = setId;
@@ -195,6 +197,10 @@ export function useLiveSessionRuntime() {
   }, [pendingSession]);
 
   const handleGpsPoint = async (point) => {
+    const smoothed = smoothGpsPoint(lastSmoothedPointRef.current, point);
+    lastSmoothedPointRef.current = smoothed;
+    setTracePoints((prev) => [...prev, smoothed]);
+
     // Movimiento en vivo: SIEMPRE, haya o no serie activa -- efímero, nunca
     // se persiste. Ver spec 2026-09-28, sección "GPS continuo".
     send('presence', undefined, { event: 'position', payload: { latitude: point.latitude, longitude: point.longitude } });
@@ -383,6 +389,7 @@ export function useLiveSessionRuntime() {
     pendingControl,
     clearPendingControl: () => setPendingControl(null),
     distanceBySetId,
+    tracePoints,
     activeSetId,
     activePhase,
     stopwatchWallMs: stopwatch.wallMs,

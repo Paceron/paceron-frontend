@@ -131,7 +131,7 @@ export function RunnerKpisCard() {
   // `rounded-2xl` (ver `DashboardLoadingOverlay`).
   return (
     <View
-      className="relative mt-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface"
+      className="relative mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface"
       nativeID="runner-kpis-card"
       testID="runner-kpis-card"
     >

@@ -6,9 +6,10 @@ import { Calendar } from 'react-native-calendars';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import '../../config/calendarLocale.js';
+import { computeTodayIso } from '../../utils/calendar-today.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { usePermissions } from '../../hooks/use-user.js';
@@ -28,8 +29,9 @@ import { CalendarFadeIn } from '../calendar/calendar-fade-in.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 
-function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
+function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
@@ -63,27 +65,35 @@ function CalendarDayCell({ date, state, marking, containerRef, onOpenMenu, isMen
     });
   };
 
+  // `hoverFx` fijo en los 5 casos (presente/ausente siempre igual, mismo
+  // orden) y cada rama declara SIEMPRE bg-* (nunca lo omite) -- antes
+  // `selected`/`isOtherMonth` no declaraban ningún `bg-*` mientras las
+  // otras tres sí, y `hover:`/`transition-all` aparecían solo en algunas
+  // ramas. Con ~30-40 celdas montadas a la vez y `selected`/`isMenuOpen`
+  // cambiando en vivo por toque, eso es el mismo bug de remount nativo que
+  // `role-switch-toggle.jsx` (ver CLAUDE.md) pero multiplicado por celda.
+  const hoverFx = 'transition-all hover:animate-pulse hover:border-4 hover:bg-opacity-60';
   const borderClass = isOtherMonth
-    ? 'border border-transparent'
+    ? `${hoverFx} border-2 border-transparent bg-transparent`
     : selected
-      ? 'border-2 border-primary'
+      ? `${hoverFx} border-4 border-primary bg-transparent`
       : isMenuOpen
-        ? 'border border-primary'
-        : state === 'today'
-          ? 'border-2 border-dashed border-primary'
-          : 'border border-slate-200 dark:border-slate-700/40';
+        ? `${hoverFx} border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500`
+        : isToday
+          ? `${hoverFx} border-2 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60`
+          : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
 
   return (
     <Pressable
       ref={cellRef}
-      className={`h-14 w-full items-center justify-start gap-1 rounded-md pt-1 ${borderClass}`}
+      className={`h-14 w-full items-center justify-start p-1 gap-1 rounded-xl ${borderClass}`}
       nativeID={`group-calendar-day-${date.dateString}`}
       onPress={handlePress}
-      style={{ backgroundColor: tintColor, opacity: selectionActive && !canSelect ? 0.35 : 1 }}
+      style={{ opacity: selectionActive && !canSelect ? 0.35 : 1 }}
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
-        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : state === 'today' ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
         nativeID={`group-calendar-day-${date.dateString}-label`}
         testID={`group-calendar-day-${date.dateString}-label`}
       >
@@ -145,6 +155,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const group = groups.find((g) => g.id === groupId);
 
   const today = new Date();
+  const todayIso = computeTodayIso(today);
   const [visibleYear, setVisibleYear] = useState(today.getFullYear());
   const [visibleMonth, setVisibleMonth] = useState(today.getMonth() + 1);
   const [stampTargetDate, setStampTargetDate] = useState(null);
@@ -297,7 +308,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         showsVerticalScrollIndicator={false}
         testID="group-calendar-screen-scroll"
       >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="group-calendar-screen-container" testID="group-calendar-screen-container">
+      <ScreenCard nativeID="group-calendar-screen-container" testID="group-calendar-screen-container">
         <View className="mb-6 flex-row flex-wrap items-center gap-2" nativeID="group-calendar-screen-header" testID="group-calendar-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -358,7 +369,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         </View>
 
         <View
-          className="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-surface"
+          className="rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
           nativeID="group-calendar-month-view"
           testID="group-calendar-month-view"
         >
@@ -379,6 +390,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                   containerRef={screenRootRef}
                   date={date}
                   isMenuOpen={openDayMenu?.date === date.dateString}
+                  isToday={date.dateString === todayIso}
                   marking={markingsByDate[date.dateString]}
                   onOpenMenu={handleOpenDayMenu}
                   onToggleSelect={handleToggleDaySelection}
@@ -403,7 +415,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
             />
           </CalendarFadeIn>
         </View>
-      </View>
+      </ScreenCard>
       </ScrollView>
 
       <AnimatedDropdown

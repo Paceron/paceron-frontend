@@ -12,6 +12,14 @@ import {
   amountFor,
   toChartPoints,
   monthTileContent,
+  monthOverMonthTileContent,
+  statusTileContent,
+  monthTooltipContent,
+  formatInstallmentCount,
+  pendingFor,
+  formatDueDate,
+  formatFeeLabel,
+  overdueLabel,
 } from '../utils/payments-summary.js';
 
 const plain = (s) => s.replace(/ /g, ' ');
@@ -136,21 +144,108 @@ describe('bruto o neto', () => {
   test('toChartPoints arma los puntos del gráfico en el modo elegido', () => {
     const points = toChartPoints([month(), month({ month: '2026-10', netAmount: null, netKnownCount: 0 })], 'net');
     expect(points).toEqual([
-      { month: '2026-09', value: 11000, partial: false, missing: false },
-      { month: '2026-10', value: null, partial: false, missing: true },
+      { month: '2026-09', value: 11000, partial: false, missing: false, pending: 0 },
+      { month: '2026-10', value: null, partial: false, missing: true, pending: 0 },
     ]);
     expect(toChartPoints(null, 'gross')).toEqual([]);
   });
 
-  test('monthTileContent: valor y aclaración del tile del mes', () => {
+  test('monthTileContent: monto del mes y, abajo, las cuotas', () => {
     const g = monthTileContent(month({ netKnownCount: 1 }), 'gross');
     expect(plain(g.value)).toBe('$ 12.000');
-    expect(plain(g.hint)).toBe('Neto parcial $ 11.000 (1 de 2)');
+    expect(plain(g.hint)).toBe('2 cuotas · Neto parcial $ 11.000 (1 de 2)');
     const n = monthTileContent(month({ netKnownCount: 1 }), 'net');
     expect(plain(n.value)).toBe('$ 11.000');
-    expect(n.hint).toBe('Neto parcial (1 de 2)');
-    expect(plain(monthTileContent(month(), 'net').hint)).toBe('Bruto $ 12.000');
-    expect(monthTileContent(month({ netAmount: null, netKnownCount: 0 }), 'net')).toEqual({ value: '—', hint: 'Sin datos de neto' });
+    expect(n.hint).toBe('2 cuotas · Neto parcial (1 de 2)');
+    expect(plain(monthTileContent(month(), 'net').hint)).toBe('2 cuotas · Bruto $ 12.000');
+    expect(monthTileContent(month({ netAmount: null, netKnownCount: 0 }), 'net')).toEqual({ value: '—', hint: '2 cuotas · Sin datos de neto' });
     expect(plain(monthTileContent(null, 'net').value)).toBe('$ 0');
+    expect(monthTileContent(null, 'gross').hint).toBe('0 cuotas');
+  });
+
+  test('formatInstallmentCount', () => {
+    expect(formatInstallmentCount(1)).toBe('1 cuota');
+    expect(formatInstallmentCount(3)).toBe('3 cuotas');
+    expect(formatInstallmentCount(undefined)).toBe('0 cuotas');
+  });
+
+  test('monthOverMonthTileContent: diferencia en pesos, porcentaje y cuotas', () => {
+    const up = monthOverMonthTileContent(month({ grossAmount: 15000, approvedCount: 3 }), month({ grossAmount: 12000 }));
+    expect(plain(up.value)).toBe('+$ 3.000');
+    expect(up.hint).toBe('+25% · 3 cuotas vs 2');
+    expect(up.direction).toBe('up');
+    const down = monthOverMonthTileContent(month({ grossAmount: 9000, approvedCount: 1 }), month());
+    expect(plain(down.value)).toBe('-$ 3.000');
+    expect(down.hint).toBe('-25% · 1 cuota vs 2');
+    const flat = monthOverMonthTileContent(month(), month());
+    expect(flat).toEqual({ value: 'Igual', hint: '2 cuotas vs 2', direction: 'flat' });
+    // Sin cobros el mes anterior: hay diferencia pero no porcentaje.
+    const fromZero = monthOverMonthTileContent(month(), month({ grossAmount: 0, approvedCount: 0 }));
+    expect(plain(fromZero.value)).toBe('+$ 12.000');
+    expect(fromZero.hint).toBe('2 cuotas vs 0');
+    expect(monthOverMonthTileContent(null, null)).toEqual({ value: '—', hint: 'Sin cobros para comparar', direction: 'none' });
+    expect(monthOverMonthTileContent(month({ netAmount: null, netKnownCount: 0 }), month(), 'net').hint).toBe('Sin datos de neto');
+  });
+
+  test('statusTileContent: monto de las cuotas pendientes o rechazadas', () => {
+    const summary = { pendingCount: 1, pendingAmount: 15000, pendingNetAmount: 14250, rejectedCount: 2, rejectedAmount: 30000, rejectedNetAmount: 28500 };
+    expect(plain(statusTileContent(summary, 'pending', 'gross').value)).toBe('$ 15.000');
+    expect(statusTileContent(summary, 'pending', 'gross').hint).toBe('1 cuota');
+    expect(plain(statusTileContent(summary, 'rejected', 'net').value)).toBe('$ 28.500');
+    expect(statusTileContent(summary, 'rejected', 'net').hint).toBe('2 cuotas');
+    expect(plain(statusTileContent({}, 'pending', 'gross').value)).toBe('$ 0');
+  });
+
+  test('monthTooltipContent: lo cobrado, la comisión, el neto y lo pendiente', () => {
+    const t = monthTooltipContent(month({ month: '2026-10', pendingAmount: 24000, pendingNetAmount: 22800, pendingCount: 2 }), 'gross');
+    expect(t.title).toBe('Octubre 2026');
+    expect(t.rows.map((r) => [r.label, plain(r.value), r.detail])).toEqual([
+      ['Cobrado', '$ 12.000', '2 cuotas'],
+      ['Comisión', '$ 1.000', ''],
+      ['Neto', '$ 11.000', ''],
+      ['Pendiente', '$ 24.000', '2 cuotas'],
+    ]);
+    expect(plain(monthTooltipContent(month({ pendingAmount: 24000, pendingNetAmount: 22800, pendingCount: 2 }), 'net').rows[3].value)).toBe('$ 22.800');
+    // Sin cobros: solo el cobrado en 0, sin comisión ni neto.
+    expect(monthTooltipContent(month({ grossAmount: 0, netAmount: null, approvedCount: 0, netKnownCount: 0 }), 'gross').rows.map((r) => r.key)).toEqual(['gross']);
+    expect(monthTooltipContent(month({ netAmount: null, netKnownCount: 0 }), 'gross').rows[1]).toEqual({ key: 'net', label: 'Neto', value: 's/d' });
+    expect(monthTooltipContent(month({ netKnownCount: 1 }), 'gross').rows[2].detail).toBe('1 de 2');
+  });
+});
+
+describe('pendiente por mes', () => {
+  const month = { month: '2026-10', pendingAmount: 20000, pendingNetAmount: 19000, pendingCount: 2 };
+
+  test('pendingFor elige bruto o neto según el modo', () => {
+    expect(pendingFor(month, 'gross')).toBe(20000);
+    expect(pendingFor(month, 'net')).toBe(19000);
+    expect(pendingFor({}, 'net')).toBe(0);
+    expect(pendingFor(null, 'gross')).toBe(0);
+  });
+
+  test('toChartPoints suma el pendiente a cada punto', () => {
+    expect(toChartPoints([{ month: '2026-10', grossAmount: 5000, netAmount: 4750, approvedCount: 1, netKnownCount: 1, ...month }], 'net')[0])
+      .toEqual(expect.objectContaining({ value: 4750, pending: 19000 }));
+  });
+});
+
+describe('vencimientos y comisión', () => {
+  test('formatDueDate corta el día en hora argentina', () => {
+    expect(formatDueDate('2026-11-07T02:37:47Z')).toBe('06/11/2026');
+    expect(formatDueDate('2026-11-06T15:00:00Z')).toBe('06/11/2026');
+    expect(formatDueDate(null)).toBe('');
+    expect(formatDueDate('no-es-fecha')).toBe('');
+  });
+
+  test('formatFeeLabel', () => {
+    expect(formatFeeLabel(5)).toBe('comisión 5%');
+    expect(formatFeeLabel(2.5)).toBe('comisión 2,5%');
+    expect(formatFeeLabel(null)).toBe('');
+  });
+
+  test('overdueLabel', () => {
+    expect(overdueLabel({ overdue: false, overdueCount: 0 })).toBe('');
+    expect(overdueLabel({ overdue: true, overdueCount: 1 })).toBe('vencida');
+    expect(overdueLabel({ overdue: true, overdueCount: 3 })).toBe('3 cuotas vencidas');
   });
 });

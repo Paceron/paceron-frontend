@@ -66,7 +66,7 @@ function KindIconPicker({ idPrefix, value, onChange }) {
             // para que los 5 entren en los 400px útiles del modal: con los
             // inactivos a w-11 el caso más largo —"Velocidad en distancia"—
             // se pasaba 30px y la fila se partía en dos.
-            className={`flex-row items-center justify-center gap-1.5 rounded-full ${active ? `h-10 px-3 ${meta.bg}` : 'h-9 w-9 bg-slate-100 hover:bg-slate-200/60 dark:bg-slate-800 dark:hover:bg-slate-700/60'}`}
+            className={`flex-row items-center justify-center gap-1.5 rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 ${active ? `h-10 px-3 ${meta.bg}` : 'h-9 w-9 bg-slate-100 dark:bg-slate-800'}`}
             key={kind}
             nativeID={segId}
             onPress={() => onChange(kind)}

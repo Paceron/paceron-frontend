@@ -23,6 +23,7 @@ import {
 import { buildSessionComparisonCsv, sessionComparisonFileName } from '../../utils/comparison-csv.js';
 import { buildSessionComparisonHtml } from '../../utils/comparison-pdf-html.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { ComplianceBadge } from './compliance-badge.jsx';
 import { ComparisonExportButtons } from './comparison-export-buttons.jsx';
 
@@ -72,7 +73,7 @@ function ExerciseCard({ exercise, isWide, index }) {
   const plannedSet = exercise.hasTarget ? plannedExerciseLabel(exercise.planned).replace(/^\d+ × /, '') : NO_TARGET_LABEL;
   const extras = [kindLabel(exercise.kind), exercise.planned.paceSecPerKm ? `ritmo ${formatPace(exercise.planned.paceSecPerKm)}` : null, exercise.intensity ? `intensidad ${exercise.intensity}` : null].filter(Boolean);
   return (
-    <View className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID={id} testID={id}>
+    <View className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID={id} testID={id}>
       <View className="mb-1 flex-row items-start justify-between gap-3" nativeID={`${id}-header`} testID={`${id}-header`}>
         <View className="min-w-0 flex-1" nativeID={`${id}-title`} testID={`${id}-title`}>
           <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${id}-role`} testID={`${id}-role`}>
@@ -116,7 +117,7 @@ function SessionComparisonContent() {
       showsVerticalScrollIndicator={false}
       testID="session-comparison-scroll"
     >
-      <View className={`w-full self-center ${isWide ? 'max-w-4xl' : ''}`} nativeID="session-comparison-container" testID="session-comparison-container">
+      <ScreenCard maxWidthClassName="max-w-4xl" nativeID="session-comparison-container" testID="session-comparison-container">
         <View className="mb-6 flex-row items-center gap-2" nativeID="session-comparison-header" testID="session-comparison-header">
           <Pressable className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70" nativeID="session-comparison-back-button" onPress={goBack} testID="session-comparison-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
@@ -149,7 +150,7 @@ function SessionComparisonContent() {
           </View>
         ) : comparison ? (
           <View className="gap-4" nativeID="session-comparison-content" testID="session-comparison-content">
-            <View className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="session-comparison-summary" testID="session-comparison-summary">
+            <View className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="session-comparison-summary" testID="session-comparison-summary">
               <View className={isWide ? 'flex-row items-center justify-between gap-4' : 'gap-3'} nativeID="session-comparison-summary-row" testID="session-comparison-summary-row">
                 <View className="min-w-0 flex-1" nativeID="session-comparison-summary-info" testID="session-comparison-summary-info">
                   <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="session-comparison-date" testID="session-comparison-date">
@@ -191,7 +192,7 @@ function SessionComparisonContent() {
             ))}
           </View>
         ) : null}
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }

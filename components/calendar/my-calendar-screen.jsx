@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb, isMobile } from '../../utils/platform.js';
+import { isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useCalendarTabStore } from '../../store/calendar-tab-store.js';
 import { useMemberCalendar, usePrefetchAdjacentCalendars } from '../../hooks/use-aggregated-calendar.js';
@@ -15,6 +15,7 @@ import { FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionTabBar } from '../shared/section-tab-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
 import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
@@ -43,10 +44,20 @@ function MyCalendarScreenContent() {
   const setActiveTab = useCalendarTabStore((s) => s.setActiveTab);
   const appliedDeepLinkRef = useRef(false);
 
-  const openDayModal = (date) => {
+  // useCallback -- AggregatedMonthView está memoizado (React.memo) para no
+  // re-renderizar el grid de ~35-40 celdas al abrir/cerrar el modal de día,
+  // pero eso no sirve de nada si esta función (pasada como `onDayPress`)
+  // cambia de referencia en cada render: rompe la comparación shallow del
+  // memo igual. Mismo motivo para handleMonthChange más abajo.
+  const openDayModal = useCallback((date) => {
     setOpenDate(date);
     setDayModalVisible(true);
-  };
+  }, []);
+
+  const handleMonthChange = useCallback((year, month) => {
+    setVisibleYear(year);
+    setVisibleMonth(month);
+  }, []);
 
   useEffect(() => {
     if (!deepLinkDate || appliedDeepLinkRef.current) return;
@@ -56,7 +67,7 @@ function MyCalendarScreenContent() {
     setVisibleMonth(month);
     setActiveTab('calendario');
     openDayModal(deepLinkDate);
-  }, [deepLinkDate, setActiveTab]);
+  }, [deepLinkDate, setActiveTab, openDayModal]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
   const { days, loading, isFetching } = useMemberCalendar(userId, from, to);
@@ -115,7 +126,7 @@ function MyCalendarScreenContent() {
         showsVerticalScrollIndicator={false}
         testID="my-calendar-screen-scroll"
       >
-      <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="my-calendar-screen-container" testID="my-calendar-screen-container">
+      <ScreenCard nativeID="my-calendar-screen-container" testID="my-calendar-screen-container">
         <View className="mb-6 flex-row flex-wrap items-center gap-2" nativeID="my-calendar-screen-header" testID="my-calendar-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -179,7 +190,7 @@ function MyCalendarScreenContent() {
               loading={loading || isFetching}
               month={visibleMonth}
               onDayPress={openDayModal}
-              onMonthChange={(year, month) => { setVisibleYear(year); setVisibleMonth(month); }}
+              onMonthChange={handleMonthChange}
               showCollisions={false}
               year={visibleYear}
             />
@@ -189,7 +200,7 @@ function MyCalendarScreenContent() {
         )}
 
         {activeTab === 'historial' && <TrainingsHistoryTab role="runner" />}
-      </View>
+      </ScreenCard>
       </ScrollView>
 
       <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="member" visible={dayModalVisible} />

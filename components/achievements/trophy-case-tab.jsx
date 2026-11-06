@@ -14,14 +14,18 @@ function StampGrid({ items, idPrefix, columnClass, large = false }) {
       {items.map((stamp) => {
         const itemPrefix = `${idPrefix}-item-${stamp.id}`;
         return (
-          <View className={`${columnClass} relative items-center rounded-2xl bg-white p-3 shadow-sm dark:bg-surface ${large ? 'py-5' : ''}`} key={stamp.id} nativeID={itemPrefix} testID={itemPrefix}>
+          <View className={`${columnClass} relative items-center rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-transparent dark:bg-surface-2 ${large ? 'py-5' : ''}`} key={stamp.id} nativeID={itemPrefix} testID={itemPrefix}>
             {/* Burbuja de contador en la esquina -- antes era un texto suelto
                 debajo del nombre, se confundía con el resto de la estampa
                 (pedido real, 2026-10-14: "no es tan claro que es un contador
                 de repeticiones"). Mismo patrón de badge que
-                components/shared/avatar-picker.jsx. */}
+                components/shared/avatar-picker.jsx. El borde del "cutout"
+                sigue el mismo tono que el fondo de esta card (bg-slate-50/
+                dark:bg-surface-2) para que la burbuja se lea recortada sobre
+                la superficie, no sobre un blanco/surface que ya no es el
+                fondo real. */}
             {stamp.count > 1 && (
-              <View className="absolute -right-1.5 -top-1.5 h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-primary px-1 dark:border-surface" nativeID={`${itemPrefix}-count`} testID={`${itemPrefix}-count`}>
+              <View className="absolute -right-1.5 -top-1.5 h-6 min-w-6 items-center justify-center rounded-full border-2 border-slate-50 bg-primary px-1 dark:border-surface-2" nativeID={`${itemPrefix}-count`} testID={`${itemPrefix}-count`}>
                 <Text className="text-xs font-bold text-[#111518]" nativeID={`${itemPrefix}-count-label`} testID={`${itemPrefix}-count-label`}>
                   x{stamp.count}
                 </Text>

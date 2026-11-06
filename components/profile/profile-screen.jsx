@@ -18,6 +18,7 @@ import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 import { mpConnectionState } from '../../utils/mp-connect-status.js';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
 import { RoleSwitchToggle } from './role-switch-toggle.jsx';
@@ -110,7 +111,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
   // solo no alcanza porque es true para cualquier ancho en RN Web.
   if (isWeb && !isNarrowWeb) {
     return (
-      <View className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
+      <View className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
         <View className="flex-row items-center gap-4" nativeID="profile-screen-header-panel-top-row" testID="profile-screen-header-panel-top-row">
           <AvatarPicker
             accessibilityLabel="Foto de perfil"
@@ -141,7 +142,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
 
   // Mobile: panel centrado, botón editar full-width, switch en fila debajo.
   return (
-    <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
+    <View className="mb-5 items-center rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-header-panel" testID="profile-screen-header-panel">
       <View className="mb-3" nativeID="profile-screen-avatar-wrapper" testID="profile-screen-avatar-wrapper">
         <AvatarPicker
           accessibilityLabel="Foto de perfil"
@@ -366,7 +367,7 @@ export function ProfileScreen() {
 
   return (
     <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="profile-screen">
-      <View className={`w-full ${isWeb ? 'max-w-3xl mx-auto' : ''}`} nativeID="profile-screen-content" testID="profile-screen-content">
+      <ScreenCard nativeID="profile-screen-content" testID="profile-screen-content">
         <Text
           style={{ fontFamily: 'Orbitron_700Bold' }}
           className="mb-6 text-2xl text-slate-900 dark:text-white"
@@ -431,7 +432,7 @@ export function ProfileScreen() {
           onConfirm={handleConfirmDeactivateTrainer}
           visible={confirmTrainerOpen}
         />
-      </View>
+      </ScreenCard>
     </ScrollView>
   );
 }

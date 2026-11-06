@@ -12,6 +12,7 @@ import {
   __resetMockCompetitions,
 } from '../services/__mocks__/competitions-mock.js';
 import { __seedRunnerSession, __resetRunnerSessionMock } from '../services/__mocks__/runner-session-mock.js';
+import { toCreateCompetitionPayload, toCompetitionModel } from '../services/normalizers.js';
 
 describe('competitions-mock', () => {
   beforeEach(() => {
@@ -34,14 +35,14 @@ describe('competitions-mock', () => {
   });
 
   test('crear como entrenador -> queda active de una', async () => {
-    const competition = await mockCreateCompetition(1, { name: 'Nueva', type: 'metric', metric: 'distance', start_at: '2026-11-01', end_at: '2026-11-07', participant_user_ids: [2, 3] }, { isTrainerCreator: true });
+    const competition = await mockCreateCompetition(1, { name: 'Nueva', type: 'metric', metric: 'distance', start_at: '2026-11-01', end_at: '2026-11-07', participants: [2, 3] }, { isTrainerCreator: true });
     expect(competition.status).toBe('active');
     const { data } = await mockListCompetitions(1);
     expect(data).toHaveLength(4);
   });
 
   test('crear como corredor -> queda pending_approval', async () => {
-    const competition = await mockCreateCompetition(1, { name: 'Propuesta', type: 'metric', metric: 'distance', start_at: '2026-11-01', end_at: '2026-11-07', participant_user_ids: [2, 3] }, { isTrainerCreator: false });
+    const competition = await mockCreateCompetition(1, { name: 'Propuesta', type: 'metric', metric: 'distance', start_at: '2026-11-01', end_at: '2026-11-07', participants: [2, 3] }, { isTrainerCreator: false });
     expect(competition.status).toBe('pending_approval');
   });
 
@@ -78,8 +79,8 @@ describe('mockCreateCompetitionAttempt', () => {
 
   test('crear type=route y correr un intento devuelve la instancia sintética', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, participants: [2, 3],
     }, { isTrainerCreator: true });
     const attempt = await mockCreateCompetitionAttempt(competition.id, 2);
     expect(attempt.session_instance_id).toBe(competition.session_instance_id);
@@ -88,8 +89,8 @@ describe('mockCreateCompetitionAttempt', () => {
 
   test('segundo intento del mismo atleta sin max_attempts (sin límite) -> éxito', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, participants: [2, 3],
     }, { isTrainerCreator: true });
     const first = await mockCreateCompetitionAttempt(competition.id, 2);
     const second = await mockCreateCompetitionAttempt(competition.id, 2);
@@ -98,16 +99,16 @@ describe('mockCreateCompetitionAttempt', () => {
 
   test('atleta no participante -> error', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, participants: [2, 3],
     }, { isTrainerCreator: true });
     await expect(mockCreateCompetitionAttempt(competition.id, 9)).rejects.toThrow('No participás');
   });
 
   test('competencia pending_approval -> error', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, participants: [2, 3],
     }, { isTrainerCreator: false });
     await expect(mockCreateCompetitionAttempt(competition.id, 2)).rejects.toThrow('no está activa');
   });
@@ -120,7 +121,7 @@ describe('mockGetCompetition', () => {
 
   test('devuelve progress con un valor por participante', async () => {
     const { data } = await mockGetCompetition(1);
-    expect(data.progress).toHaveLength(data.participant_user_ids.length);
+    expect(data.progress).toHaveLength(data.participants.length);
     expect(data.progress[0]).toHaveProperty('user_id');
     expect(data.progress[0]).toHaveProperty('value');
   });
@@ -132,7 +133,7 @@ describe('mockGetCompetition', () => {
     metricSeeds.forEach((c) => {
       expect(c.status).toBe('active');
       expect(c.metric).toBe('sessions_count');
-      expect(c.participant_user_ids).toContain(1);
+      expect(c.participants).toContain(1);
     });
   });
 
@@ -141,8 +142,8 @@ describe('mockGetCompetition', () => {
     const competition = data.find((c) => c.id === 7);
     expect(competition.type).toBe('route');
     expect(competition.status).toBe('active');
-    expect(competition.participant_user_ids).toContain(1);
-    expect(competition.route.coordinates.length).toBeGreaterThanOrEqual(2);
+    expect(competition.participants).toContain(1);
+    expect(JSON.parse(competition.route).coordinates.length).toBeGreaterThanOrEqual(2);
     expect(competition.acceptance_radius_meters).toBeGreaterThanOrEqual(5);
     expect(competition.acceptance_radius_meters).toBeLessThanOrEqual(500);
     expect(competition.session_instance_id).toEqual(expect.any(Number));
@@ -155,8 +156,8 @@ describe('mockGetCompetition', () => {
 
     // Una competencia nueva creada en runtime no debe reusar el 9000 de la seed.
     const created = await mockCreateCompetition(5, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.3, -34.6], [-58.31, -34.61]] },
-      acceptance_radius_meters: 50, participant_user_ids: [1, 101],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.3, -34.6], [-58.31, -34.61]] }),
+      acceptance_radius_meters: 50, participants: [1, 101],
     }, { isTrainerCreator: true });
     expect(created.session_instance_id).not.toBe(9000);
   });
@@ -166,23 +167,25 @@ describe('mockGetCompetition', () => {
     const before = data.find((c) => c.id === 8);
     expect(before.type).toBe('route');
     expect(before.status).toBe('active');
-    expect(before.participant_user_ids).toContain(1);
+    expect(before.participants).toContain(1);
+    const beforeRoute = JSON.parse(before.route);
 
     const changed = mockSeedDynamicRouteCompetitionStart(-10, -70);
     expect(changed).toBe(true);
     const { data: afterList } = await mockListCompetitions(5);
     const after = afterList.find((c) => c.id === 8);
-    expect(after.route.coordinates[0]).toEqual([-70, -10]);
+    const afterRoute = JSON.parse(after.route);
+    expect(afterRoute.coordinates[0]).toEqual([-70, -10]);
     // El resto del trazado se traslada por el mismo delta -- no colapsa a
     // un solo punto ni cambia de forma/largo.
-    expect(after.route.coordinates.length).toBe(before.route.coordinates.length);
-    expect(after.route.coordinates[0]).not.toEqual(after.route.coordinates[1]);
+    expect(afterRoute.coordinates.length).toBe(beforeRoute.coordinates.length);
+    expect(afterRoute.coordinates[0]).not.toEqual(afterRoute.coordinates[1]);
 
     // Segunda llamada -- no reubica de nuevo (ya se fijó una vez).
     const changedAgain = mockSeedDynamicRouteCompetitionStart(40, 40);
     expect(changedAgain).toBe(false);
     const { data: stillList } = await mockListCompetitions(5);
-    expect(stillList.find((c) => c.id === 8).route.coordinates[0]).toEqual([-70, -10]);
+    expect(JSON.parse(stillList.find((c) => c.id === 8).route).coordinates[0]).toEqual([-70, -10]);
   });
 
   test('seed 6 tiene ventana enteramente futura, no cubre hoy', async () => {
@@ -213,8 +216,8 @@ describe('mockCreateCompetitionAttempt -- max_attempts', () => {
 
   test('con max_attempts=2, el primer intento reusa la instancia de la competencia', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, max_attempts: 2, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, max_attempts: 2, participants: [2, 3],
     }, { isTrainerCreator: true });
     const attempt = await mockCreateCompetitionAttempt(competition.id, 2);
     expect(attempt.session_instance_id).toBe(competition.session_instance_id);
@@ -222,8 +225,8 @@ describe('mockCreateCompetitionAttempt -- max_attempts', () => {
 
   test('con max_attempts=2, el segundo intento del mismo atleta mintea una instancia nueva', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, max_attempts: 2, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, max_attempts: 2, participants: [2, 3],
     }, { isTrainerCreator: true });
     const first = await mockCreateCompetitionAttempt(competition.id, 2);
     const second = await mockCreateCompetitionAttempt(competition.id, 2);
@@ -232,8 +235,8 @@ describe('mockCreateCompetitionAttempt -- max_attempts', () => {
 
   test('con max_attempts=2, el tercer intento del mismo atleta -> error', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, max_attempts: 2, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, max_attempts: 2, participants: [2, 3],
     }, { isTrainerCreator: true });
     await mockCreateCompetitionAttempt(competition.id, 2);
     await mockCreateCompetitionAttempt(competition.id, 2);
@@ -242,8 +245,8 @@ describe('mockCreateCompetitionAttempt -- max_attempts', () => {
 
   test('sin max_attempts en el payload -> null (sin límite), confirmado por backend 2026-10-23', async () => {
     const competition = await mockCreateCompetition(1, {
-      type: 'route', route: { type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] },
-      acceptance_radius_meters: 50, participant_user_ids: [2, 3],
+      type: 'route', route_geojson: JSON.stringify({ type: 'LineString', coordinates: [[-58.4, -34.6], [-58.41, -34.61]] }),
+      acceptance_radius_meters: 50, participants: [2, 3],
     }, { isTrainerCreator: true });
     expect(competition.max_attempts).toBeNull();
   });
@@ -316,5 +319,56 @@ describe('mockGetCompetition -- progress de type=route (Gap 36)', () => {
     const own = data.progress.find((p) => p.user_id === 1);
     expect(own.compliance_ratio).toBeNull();
     expect(own.has_attempt).toBe(true);
+  });
+});
+
+describe('pipeline completo: form -> toCreateCompetitionPayload -> mockCreateCompetition -> toCompetitionModel', () => {
+  // Reproduce el camino real de create-competition-modal.jsx de punta a
+  // punta -- es exactamente la cadena donde el bug real de
+  // 'ParticipantIDs'/route se escondía: cada pieza (normalizer de ida,
+  // mock, normalizer de vuelta) tenía su propio test aislado y pasaba, pero
+  // ningún test encadenaba las tres contra el shape que el backend real
+  // exige. Reemplaza la verificación manual en preview (bloqueada por
+  // flakiness del click simulado en el picker de mapa).
+  beforeEach(() => {
+    __resetMockCompetitions();
+  });
+
+  test('crear una competencia de ruta con el form completo persiste route y participantes correctamente', async () => {
+    const route = { type: 'LineString', coordinates: [[-58.365, -34.66], [-58.364, -34.661], [-58.3635, -34.6605]] };
+    const payload = toCreateCompetitionPayload({
+      type: 'route',
+      startAt: '2026-10-29',
+      route,
+      acceptanceRadiusMeters: '50',
+      maxAttempts: '3',
+      participantUserIds: ['101', '102'],
+    });
+
+    const created = await mockCreateCompetition(5, payload, { isTrainerCreator: true });
+    const model = toCompetitionModel(created);
+
+    expect(model.route).toEqual(route);
+    expect(model.participantUserIds).toEqual(['101', '102']);
+    expect(model.maxAttempts).toBe(3);
+    expect(model.status).toBe('active');
+
+    // Y que sobreviva un roundtrip completo por el listado también (mismo
+    // camino que competitions-tab.jsx).
+    const { data: list } = await mockListCompetitions(5);
+    const fromList = toCompetitionModel(list.find((c) => c.id === created.id));
+    expect(fromList.route).toEqual(route);
+    expect(fromList.participantUserIds).toEqual(['101', '102']);
+  });
+
+  test('crear una competencia metric con el form completo persiste participantes correctamente', async () => {
+    const payload = toCreateCompetitionPayload({
+      type: 'metric', startAt: '2026-10-29', metric: 'distance', endAt: '2026-11-05',
+      participantUserIds: ['2', '3'],
+    });
+    const created = await mockCreateCompetition(1, payload, { isTrainerCreator: true });
+    const model = toCompetitionModel(created);
+    expect(model.participantUserIds).toEqual(['2', '3']);
+    expect(model.route).toBeNull();
   });
 });

@@ -152,10 +152,8 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
               return (
                 <Pressable
                   key={route.name}
-                  className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 ${
-                    isActive
-                      ? 'bg-primary-tint-subtle dark:bg-primary/10'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
+                  className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800 ${
+                    isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'bg-transparent'
                   }`}
                   nativeID={`web-shell-nav-tab-${route.name}`}
                   onPress={() => onTabPress?.(route.href)}
@@ -239,8 +237,8 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
               </IconTooltip>
             )}
             <Pressable
-              className={`ml-1 flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 ${
-                dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
+              className={`ml-1 flex-row items-center gap-2 rounded-lg p-1.5 transition-colors duration-150 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-800 ${
+                dropdownOpen ? 'bg-slate-100 dark:bg-slate-800' : 'bg-transparent'
               }`}
               nativeID="web-shell-topbar-user-pill"
               onPress={handleUserPress}

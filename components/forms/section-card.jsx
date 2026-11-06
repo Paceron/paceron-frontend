@@ -15,6 +15,32 @@ const VARIANT = {
     title: 'text-amber-700 dark:text-amber-400',
     icon: '#f59e0b',
   },
+  // Avisos de cuotas (Home y Pagos): `warning` para por vencer y `rose` para
+  // vencido. El color lo da el FONDO, sólido y apagado, con el texto en blanco:
+  // un fondo translúcido (`rose-950/30`) se veía gelatinoso en oscuro, y el
+  // texto en rojo sobre fondo neutro quedaba chillón. Las filas usan el mismo
+  // tono un punto más claro (payments-upcoming-card.jsx).
+  warning: {
+    box: 'border-amber-200 bg-amber-50 dark:border-[#4a3413] dark:bg-[#221a0e]',
+    title: 'text-amber-900 dark:text-white',
+    icon: '#f59e0b',
+  },
+  rose: {
+    box: 'border-rose-200 bg-rose-50 dark:border-[#4c1d24] dark:bg-[#24111a]',
+    title: 'text-rose-900 dark:text-white',
+    icon: '#f43f5e',
+  },
+  // Para cuando la card vive DENTRO de otro wrapper ya bordeado (ej.
+  // team-detail-screen-container) -- el `border` de `default` ahí dibuja
+  // un doble borde contra el padre, del mismo color. Sin borde, mismo
+  // fondo "tenue" que ya usan las sub-cards internas de esta pantalla
+  // (`bg-slate-50`/`dark:bg-surface-2`) para separarse sin duplicar el
+  // límite.
+  nested: {
+    box: 'border-transparent bg-slate-200/50 dark:border-transparent dark:bg-slate-800/60',
+    title: 'text-slate-900 dark:text-white',
+    icon: null,
+  },
 };
 
 // Card de sección compartida por ProfileScreen, EditProfileScreen y
@@ -41,7 +67,7 @@ export function SectionCard({ title, icon, children, collapsible = false, collap
   const Header = collapsible ? Pressable : View;
 
   return (
-    <View className={`mb-5 rounded-2xl border p-6 shadow-sm ${style.box}`} nativeID={scope} testID={scope}>
+    <View className={`mb-5 rounded-2xl border p-6 ${style.box}`} nativeID={scope} testID={scope}>
       <View className={`flex-row items-center gap-2 ${!collapsed || !collapsible ? 'mb-4' : ''}`} nativeID={`${scope}-header-row`} testID={`${scope}-header-row`}>
         <Header
           className={`flex-1 flex-row items-center gap-2 ${collapsible ? 'hover:opacity-70 active:opacity-70' : ''}`}

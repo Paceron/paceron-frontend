@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
+import { SectionCard } from '../forms/section-card.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { useDashboardPeriodComparison } from '../../hooks/use-dashboard-comparisons.js';
 import { useDashboardFilters } from '../../hooks/use-dashboard-filters.js';
@@ -540,48 +540,43 @@ export function DashboardScreen({ teamId }) {
     />
   );
 
+  // Exportar vive en el header del SectionCard (headerRight) y no en el panel
+  // de filtros: son acciones sobre TODO lo que se ve, no un filtro más.
+  // Aparecen recién con datos cargados (un botón que exporta un esqueleto no
+  // existe).
+  const exportActions = (summary || currentDashboardTab === 'comparison') ? (
+    <ExportActions
+      exerciseName={selectedExercise?.name ?? ''}
+      from={applied.from}
+      id="dashboard-export"
+      onCapture={captureDashboardReport}
+      pdfModel={currentDashboardTab === 'comparison' ? {
+        title: 'Comparación de rendimiento',
+        subtitle: 'Comparación de sesiones o períodos',
+        meta: [
+          { label: 'Grupo', value: applied.groupId ? filtersData?.groups?.find((item) => String(item.id) === String(applied.groupId))?.name : (isTrainer ? 'Todo el equipo' : 'Tus series') },
+          { label: 'Rango principal', value: applied.from && applied.to ? `${applied.from} → ${applied.to}` : '' },
+        ],
+        kpis: [],
+        series: [],
+        units: {},
+      } : pdfModel}
+      preparing={seriesQuery.loading || loadingMoreSeries || hasMoreSeries}
+      series={series}
+      seriesFailed={seriesFailed}
+      showCsv={currentDashboardTab === 'metrics'}
+      units={seriesQuery.units ?? summary?.units}
+      to={applied.to}
+    />
+  ) : null;
+
   return (
     // Sin `flex-1`: la pantalla se monta dentro del ScrollView del detalle de
     // equipo, y un hijo con flex-grow dentro del contentContainer de un
     // ScrollView queda con alto cero en nativo.
     <View nativeID="dashboard-screen" testID="dashboard-screen">
-      <View className={`w-full self-center px-4 py-6 ${isNarrow ? '' : 'max-w-3xl'}`} nativeID="dashboard-screen-container" testID="dashboard-screen-container">
-        <View className="mb-4 flex-row items-center gap-2" nativeID="dashboard-screen-header" testID="dashboard-screen-header">
-          <MaterialCommunityIcons color="#8cc63e" name="chart-timeline-variant" size={20} />
-          <Text className="flex-1 text-lg font-bold text-slate-900 dark:text-white" nativeID="dashboard-screen-title" testID="dashboard-screen-title">
-            Rendimiento
-          </Text>
-          {/* Exportar vive en el header y no en el panel de filtros: son
-              acciones sobre TODO lo que se ve, no un filtro más. Aparecen
-              recién con datos cargados (un botón que exporta un esqueleto no
-              existe). */}
-          {(summary || currentDashboardTab === 'comparison') ? (
-            <ExportActions
-              exerciseName={selectedExercise?.name ?? ''}
-              from={applied.from}
-              id="dashboard-export"
-              onCapture={captureDashboardReport}
-              pdfModel={currentDashboardTab === 'comparison' ? {
-                title: 'Comparación de rendimiento',
-                subtitle: 'Comparación de sesiones o períodos',
-                meta: [
-                  { label: 'Grupo', value: applied.groupId ? filtersData?.groups?.find((item) => String(item.id) === String(applied.groupId))?.name : (isTrainer ? 'Todo el equipo' : 'Tus series') },
-                  { label: 'Rango principal', value: applied.from && applied.to ? `${applied.from} → ${applied.to}` : '' },
-                ],
-                kpis: [],
-                series: [],
-                units: {},
-              } : pdfModel}
-              preparing={seriesQuery.loading || loadingMoreSeries || hasMoreSeries}
-              series={series}
-              seriesFailed={seriesFailed}
-              showCsv={currentDashboardTab === 'metrics'}
-              units={seriesQuery.units ?? summary?.units}
-              to={applied.to}
-            />
-          ) : null}
-        </View>
-
+      <View className={`w-full self-center ${isNarrow ? '' : 'max-w-3xl'}`} nativeID="dashboard-screen-container" testID="dashboard-screen-container">
+        <SectionCard headerRight={exportActions} icon="chart-timeline-variant" scope="dashboard-screen-card" title="Rendimiento" variant="nested">
         <TabBar
           active={currentDashboardTab}
           onChange={(nextTab) => {
@@ -697,6 +692,7 @@ export function DashboardScreen({ teamId }) {
             </View>
           )}
         </View>
+        </SectionCard>
         {summary && pdfReportMode ? (
           <View
             collapsable={false}

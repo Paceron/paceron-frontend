@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
+import { formatTierName } from '../../utils/tier-name.js';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
@@ -14,9 +15,7 @@ const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
 // matcheaba, así que siempre daba "BASE" aunque se hubiera pagado.
 // null cuando no hay dato = no dibuja la línea de tier en el segmento.
 function tierLabel(tierName) {
-  if (!tierName) return null;
-  const base = String(tierName).split('_')[0];
-  return base ? base.charAt(0).toUpperCase() + base.slice(1) : null;
+  return formatTierName(tierName) || null;
 }
 
 // El texto ya no indica el rol — la pantalla de destino muestra los
@@ -40,12 +39,32 @@ function TierUpgradeLink({ onPress, className }) {
 // en una segunda línea debajo del ícono+label; en modo wide (Profile, con
 // todo el ancho disponible) va inline en la misma línea, separado por "·".
 function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass, icon, label, tier, onPress, accessibilityLabel }) {
+  // `hover:`/`active:`/`focus:` y `shadow-*` tienen que estar SIEMPRE
+  // presentes o SIEMPRE ausentes entre los dos estados de un mismo
+  // componente, nunca aparecer solo en uno -- ver CLAUDE.md "Quirks
+  // conocidos" y el mismo patrón ya resuelto en payments-amount-mode.jsx.
+  // El hover queda fijo en las dos ramas acá abajo.
+  //
+  // Esto NO alcanzó solo: el bug seguía pasando al cambiar de rol (no en
+  // la primera carga). Causa real: `transition-all` ya estaba sin
+  // condición, pero la rama inactiva no declaraba NINGÚN color de fondo
+  // (ninguna clase `bg-*`) -- al pasar a activa, la transición nativa de
+  // `backgroundColor` tiene que interpolar desde "sin declarar" hasta el
+  // color real, y en nativo (CSS transitions vía New Architecture) esa
+  // interpolación queda pegada en el extremo vacío (transparente, sin
+  // fondo ni borde) en vez de terminar en el color -- coincide con que la
+  // PRIMERA carga nunca se rompe (ahí no hay transición, el estilo final
+  // se aplica directo al montar). Fix: declarar fondo explícito en las dos
+  // ramas (`bg-transparent` en la inactiva) para que siempre haya un
+  // color de origen y de destino, y sacar `transition-all` -- no vale la
+  // pena mantener una transición nativa todavía inestable para esto.
+  const colorClasses = active ? `${activeBg} border-transparent` : 'bg-transparent border-slate-300 dark:border-slate-600';
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`items-center rounded-full px-3 py-1.5 ${wide ? 'flex-1' : ''} ${active ? activeBg : 'hover:bg-slate-200/60 dark:hover:bg-slate-700/60'}`}
+      className={`items-center rounded-full border px-3 hover:bg-slate-300 dark:hover:bg-slate-600 hover:animate-pulse ${wide ? 'flex-1 py-4' : 'py-1.5'} ${colorClasses}`}
       nativeID={id}
       onPress={onPress}
       testID={id}
@@ -104,7 +123,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   if (!hasTrainerRole) {
     return (
       <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-        <View className={`flex-row items-center rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+        <View className={`flex-row items-center rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
           <Segment
             accessibilityLabel="Corredor"
             active
@@ -149,7 +168,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   return (
     <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-      <View className={`flex-row rounded-full bg-slate-100 p-1 dark:bg-slate-800 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+      <View className={`flex-row rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
         <Segment
           accessibilityLabel="Corredor"
           active={runnerActive}

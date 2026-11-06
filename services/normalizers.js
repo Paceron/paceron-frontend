@@ -532,9 +532,9 @@ export function toPaymentModel(dto) {
   };
 }
 
-// Historial de pagos del entrenador (GET /payments/received y /payments/mine,
-// ver services/payment-history.js). `netAmount` queda null cuando Mercado Pago
-// no informó el neto: nunca se calcula en el cliente.
+// Historial de pagos del entrenador (GET /payments/received, ver
+// services/payment-history.js). `netAmount` es el bruto menos la comisión de
+// Paceron y lo calcula el backend; es null si el cobro no está aprobado.
 export function toReceivedPaymentModel(dto) {
   if (!dto) return null;
   const payerName = [dto.payer?.name, dto.payer?.surname].filter(Boolean).join(' ');
@@ -546,6 +546,8 @@ export function toReceivedPaymentModel(dto) {
     statusDetail: dto.status_detail,
     grossAmount: dto.gross_amount,
     netAmount: dto.net_amount ?? null,
+    feeAmount: dto.fee_amount ?? null,
+    feePercent: dto.fee_percent ?? null,
     currencyId: dto.currency_id,
     paymentMethodId: dto.payment_method_id,
     createdAt: dto.created_at,
@@ -598,14 +600,41 @@ function toAmountBucket(dto) {
   };
 }
 
+// Bloque de cuotas esperadas sin pagar del mes actual (a vencer o vencidas).
+function toObligationsBlock(dto) {
+  return {
+    count: dto?.count ?? 0,
+    amount: dto?.amount ?? 0,
+    netAmount: dto?.net_amount ?? 0,
+    items: (dto?.items ?? []).map((o) => ({
+      key: `${o.team?.id}-${o.payer?.id}-${o.installment_number}`,
+      teamId: String(o.team?.id ?? ''),
+      teamName: o.team?.name ?? '',
+      payerId: String(o.payer?.id ?? ''),
+      payerName: [o.payer?.name, o.payer?.surname].filter(Boolean).join(' '),
+      installmentNumber: o.installment_number,
+      amount: o.amount,
+      dueDate: o.due_date,
+    })),
+  };
+}
+
 // GET /payments/received/summary. `monthly` viene en orden y el último es el
-// mes actual.
+// mes actual. `pending*` son las cuotas esperadas sin pagar que vencen en cada
+// mes, y los dos bloques son lo que vence y lo que venció en el mes actual
+// (change cobros-pendientes-y-vencimientos del backend).
 export function toReceivedSummaryModel(dto) {
   if (!dto) return null;
   return {
     currencyId: dto.currency_id,
     months: dto.months,
-    monthly: (dto.monthly ?? []).map((m) => ({ month: m.month, ...toAmountBucket(m) })),
+    monthly: (dto.monthly ?? []).map((m) => ({
+      month: m.month,
+      ...toAmountBucket(m),
+      pendingAmount: m.pending_amount ?? 0,
+      pendingNetAmount: m.pending_net_amount ?? 0,
+      pendingCount: m.pending_count ?? 0,
+    })),
     byTeam: (dto.by_team ?? []).map((t) => ({
       teamId: String(t.team_id),
       teamName: t.team_name,
@@ -615,8 +644,38 @@ export function toReceivedSummaryModel(dto) {
     })),
     pendingCount: dto.pending_count ?? 0,
     rejectedCount: dto.rejected_count ?? 0,
+    pendingAmount: dto.pending_amount ?? 0,
+    pendingNetAmount: dto.pending_net_amount ?? 0,
+    rejectedAmount: dto.rejected_amount ?? 0,
+    rejectedNetAmount: dto.rejected_net_amount ?? 0,
     earliestMonth: dto.earliest_month ?? null,
+    dueThisMonth: toObligationsBlock(dto.due_this_month),
+    overdue: toObligationsBlock(dto.overdue),
     generatedAt: dto.generated_at,
+  };
+}
+
+// Próxima cuota sin pagar de una membresía de equipo o de una suscripción de
+// tier (GET /payments/upcoming). `title`/`subtitle` ya vienen resueltos para la
+// tarjeta: equipo y entrenador, o tier y rol.
+export function toUpcomingPaymentModel(dto) {
+  if (!dto) return null;
+  const isTeam = dto.type === 'trainer_payment';
+  const trainerName = [dto.trainer?.name, dto.trainer?.surname].filter(Boolean).join(' ');
+  return {
+    key: `${dto.type}-${isTeam ? dto.team?.id : dto.tier?.id}`,
+    type: dto.type,
+    // Para el botón "Pagar" (utils/payment-due.js#payRouteFor).
+    teamId: isTeam ? dto.team?.id ?? null : null,
+    tierRoleName: isTeam ? null : dto.tier?.role_name ?? null,
+    title: isTeam ? dto.team?.name ?? '' : dto.tier?.name ?? '',
+    subtitle: isTeam ? trainerName : dto.tier?.role_name ? `Tier ${dto.tier.role_name}` : 'Tier',
+    installmentNumber: dto.installment_number,
+    amount: dto.amount,
+    currencyId: dto.currency_id ?? 'ARS',
+    dueDate: dto.due_date,
+    overdue: Boolean(dto.overdue),
+    overdueCount: dto.overdue_count ?? 0,
   };
 }
 
@@ -1225,7 +1284,11 @@ export function toCompetitionModel(dto) {
     metric: dto.metric ?? null,
     startAt: dto.start_at,
     endAt: dto.end_at ?? null,
-    route: dto.route ?? null,
+    // Bug real confirmado contra el backend 2026-10-29: `route` viaja como
+    // STRING (GeoJSON serializado, `json:"route,omitempty"` en el Go DTO),
+    // no como objeto -- el mock SÍ guardaba/devolvía el objeto directo, así
+    // que esto nunca se notó contra mocks.
+    route: dto.route ? JSON.parse(dto.route) : null,
     // Gap 35 -- instancia sintética de una competencia de ruta, null para
     // type='metric'. Sin esto no hay forma de pedir el detalle de un
     // intento viejo por API (ver route-attempt-detail-screen.jsx).
@@ -1236,7 +1299,11 @@ export function toCompetitionModel(dto) {
     // ausente -- este normalizer no inventa un default propio, solo
     // refleja lo que llegó.
     maxAttempts: dto.max_attempts ?? null,
-    participantUserIds: (dto.participant_user_ids ?? []).map((id) => String(id)),
+    // Bug real confirmado contra el backend 2026-10-29: el campo real es
+    // `participants`, no `participant_user_ids` -- con el nombre viejo esto
+    // leía siempre `[]` contra el backend real (el mock SÍ usaba
+    // `participant_user_ids`, por eso nunca se notó).
+    participantUserIds: (dto.participants ?? []).map((id) => String(id)),
     createdByUserId: String(dto.created_by_user_id),
     createdByRole: dto.created_by_role,
     status: dto.status,
@@ -1283,11 +1350,16 @@ export function toCompetitionDetailModel(dto) {
 // cupo restante del usuario actual.
 export function toCompetitionAttemptModel(dto) {
   return {
-    runnerSessionId: String(dto.runner_session_id),
+    // Bug real confirmado contra el backend 2026-10-29:
+    // `CompetitionAttemptItem` manda `id`/`ended_at`, no
+    // `runner_session_id`/`finished_at` (nombres que sólo existían en el
+    // mock) -- con los nombres viejos esto leía siempre undefined contra el
+    // backend real.
+    runnerSessionId: String(dto.id),
     sessionInstanceId: String(dto.session_instance_id),
     status: dto.status,
     startedAt: dto.started_at,
-    finishedAt: dto.finished_at ?? null,
+    finishedAt: dto.ended_at ?? null,
     distanceMeters: dto.distance_meters ?? null,
     durationMs: dto.duration_ms ?? null,
     complianceRatio: dto.compliance_ratio ?? null,
@@ -1307,11 +1379,29 @@ export function toCompetitionAttemptListModel(list) {
 export function toCreateCompetitionPayload(form) {
   const payload = {
     type: form.type,
-    start_at: form.startAt,
-    participant_user_ids: (form.participantUserIds ?? []).map((id) => Number(id)),
+    // `form.startAt`/`form.endAt` llegan 'YYYY-MM-DD' (toISODate, sin hora)
+    // -- el backend tipa start_at/end_at como time.Time Go
+    // (`binding:"required"`), cuyo unmarshal de JSON exige RFC3339
+    // completo. Un string date-only ("2026-10-29") no matchea ese formato
+    // y Go lo rechaza con 400 al parsear el body -- bug real confirmado
+    // contra el backend local 2026-10-29 (este flujo nunca se había
+    // probado contra el backend real, solo contra mocks, que no validan
+    // formato). `new Date(iso)` interpreta un string date-only como
+    // medianoche UTC por spec de JS -- `.toISOString()` da RFC3339 válido.
+    start_at: new Date(form.startAt).toISOString(),
+    // Bug real confirmado contra el backend 2026-10-29: el campo real es
+    // `participants` (`CreateCompetitionRequest.ParticipantIDs
+    // json:"participants" binding:"required,min=2"`), no
+    // `participant_user_ids` -- con el nombre viejo el backend rechazaba la
+    // creación con "Field validation for 'ParticipantIDs' failed on the
+    // 'required' tag" aunque el form sí tuviera participantes cargados (el
+    // mock aceptaba cualquier nombre de campo, por eso nunca se notó).
+    participants: (form.participantUserIds ?? []).map((id) => Number(id)),
   };
   if (form.type === 'route') {
-    payload.route = form.route;
+    // Mismo motivo que arriba -- el campo real es `route_geojson`, un
+    // STRING (GeoJSON serializado), no `route` como objeto anidado.
+    payload.route_geojson = JSON.stringify(form.route);
     payload.acceptance_radius_meters = Number(form.acceptanceRadiusMeters);
     // Gap 36 -- tope de intentos, solo para competencias de ruta. Opcional,
     // dato extra -- confirmado por backend 2026-10-23: ausente/null = sin
@@ -1319,7 +1409,7 @@ export function toCreateCompetitionPayload(form) {
     payload.max_attempts = form.maxAttempts ? Number(form.maxAttempts) : null;
   } else {
     payload.metric = form.metric;
-    payload.end_at = form.endAt;
+    payload.end_at = new Date(form.endAt).toISOString();
   }
   if (form.groupId) payload.group_id = Number(form.groupId);
   return payload;

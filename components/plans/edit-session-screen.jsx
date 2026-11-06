@@ -17,6 +17,7 @@ import { isMobile } from '../../utils/platform.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { SessionDragProvider, DragGhost } from './session-drag-and-drop.jsx';
 import { SessionFormBody } from './session-form-body.jsx';
 
@@ -96,58 +97,60 @@ function EditSessionForm({ session }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SessionDragProvider>
-        <View className="flex-1 bg-paper px-4 pt-8 dark:bg-ink" nativeID="edit-session-screen-container" testID="edit-session-screen-container">
-          <View className="mb-4 flex-row items-center gap-2" nativeID="edit-session-screen-header" testID="edit-session-screen-header">
+        <View className="flex-1 bg-paper px-4 pt-8 dark:bg-ink" nativeID="edit-session-screen-root" testID="edit-session-screen-root">
+          <ScreenCard nativeID="edit-session-screen-container" style={{ flex: 1 }} testID="edit-session-screen-container">
+            <View className="mb-4 flex-row items-center gap-2" nativeID="edit-session-screen-header" testID="edit-session-screen-header">
+              <Pressable
+                className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
+                nativeID="edit-session-screen-back-button"
+                onPress={() => guardedClose(() => router.back())}
+                testID="edit-session-screen-back-button"
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+              </Pressable>
+              <Text className="text-xl text-slate-900 dark:text-white" nativeID="edit-session-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="edit-session-screen-title">
+                Editar sesión
+              </Text>
+            </View>
+
+            <SessionFormBody
+              catalogExercises={catalogExercises}
+              description={form.description}
+              error={form.error}
+              exercises={form.exercises}
+              exercisesError={form.exercisesError}
+              name={form.name}
+              nameError={form.nameError}
+              onChangeExercise={form.onChangeExercise}
+              onChangeRole={form.onChangeRole}
+              onExerciseDropped={form.onExerciseDropped}
+              onRemove={form.onRemove}
+              onReorder={form.onReorder}
+              onSetDescription={form.setDescription}
+              onSetName={form.setName}
+              refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
+              visible={false}
+            />
+
             <Pressable
-              className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
-              nativeID="edit-session-screen-back-button"
-              onPress={() => guardedClose(() => router.back())}
-              testID="edit-session-screen-back-button"
+              className={`mb-4 mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
+              disabled={submitting}
+              nativeID="edit-session-screen-save-button"
+              onPress={handleSubmit}
+              testID="edit-session-screen-save-button"
             >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
+              {submitting ? (
+                <ActivityIndicator color={colors.onPrimary} />
+              ) : (
+                <>
+                  <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
+                  <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-session-screen-save-button-label" testID="edit-session-screen-save-button-label">
+                    Guardar cambios
+                  </Text>
+                </>
+              )}
             </Pressable>
-            <Text className="text-xl text-slate-900 dark:text-white" nativeID="edit-session-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="edit-session-screen-title">
-              Editar sesión
-            </Text>
-          </View>
-
-          <SessionFormBody
-            catalogExercises={catalogExercises}
-            description={form.description}
-            error={form.error}
-            exercises={form.exercises}
-            exercisesError={form.exercisesError}
-            name={form.name}
-            nameError={form.nameError}
-            onChangeExercise={form.onChangeExercise}
-            onChangeRole={form.onChangeRole}
-            onExerciseDropped={form.onExerciseDropped}
-            onRemove={form.onRemove}
-            onReorder={form.onReorder}
-            onSetDescription={form.setDescription}
-            onSetName={form.setName}
-            refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
-            visible={false}
-          />
-
-          <Pressable
-            className={`mb-4 mt-2 h-12 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
-            disabled={submitting}
-            nativeID="edit-session-screen-save-button"
-            onPress={handleSubmit}
-            testID="edit-session-screen-save-button"
-          >
-            {submitting ? (
-              <ActivityIndicator color={colors.onPrimary} />
-            ) : (
-              <>
-                <MaterialCommunityIcons color={colors.onPrimary} name="check" size={18} />
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="edit-session-screen-save-button-label" testID="edit-session-screen-save-button-label">
-                  Guardar cambios
-                </Text>
-              </>
-            )}
-          </Pressable>
+          </ScreenCard>
         </View>
         <DragGhost />
       </SessionDragProvider>

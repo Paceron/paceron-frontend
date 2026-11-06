@@ -135,11 +135,27 @@ function resetSeed() {
 }
 resetSeed();
 
+// Wire shape real del backend (`CompetitionResponse`, confirmado leyendo
+// paceron-backend 2026-10-29) vs. el shape interno que el mock usa para
+// TODA su lógica (filtros, geometría de ruta, cupo de intentos). Los dos
+// difieren en 2 campos -- `route` viaja como STRING GeoJSON
+// (`json:"route,omitempty"`), no como objeto anidado, y el campo de
+// participantes se llama `participants`, no `participant_user_ids` -- así
+// que el mock sigue guardando/operando internamente con el objeto y el
+// nombre viejo (lo necesita `computeRouteComplianceRatio`,
+// `mockSeedDynamicRouteCompetitionStart`, los filtros de abajo, etc.) y
+// solo convierte al shape real en el borde de salida, para que el
+// normalizer (`toCompetitionModel`) funcione igual contra mock y backend
+// real.
+function toWireCompetition(c) {
+  return { ...c, route: c.route ? JSON.stringify(c.route) : null, participants: c.participant_user_ids };
+}
+
 export async function mockListCompetitions(teamId, { status, groupId } = {}) {
   let rows = mockCompetitions.filter((c) => c.team_id === Number(teamId));
   if (status) rows = rows.filter((c) => c.status === status);
   if (groupId) rows = rows.filter((c) => c.group_id === Number(groupId));
-  return { data: rows, has_unseen: rows.some((c) => c.status === 'pending_approval') };
+  return { data: rows.map(toWireCompetition), has_unseen: rows.some((c) => c.status === 'pending_approval') };
 }
 
 export async function mockCreateCompetition(teamId, payload, { isTrainerCreator = true } = {}) {
@@ -151,9 +167,11 @@ export async function mockCreateCompetition(teamId, payload, { isTrainerCreator 
     metric: payload.metric ?? null,
     start_at: payload.start_at,
     end_at: payload.end_at ?? null,
-    route: payload.route ?? null,
+    // `route_geojson`/`participants` -- ver toWireCompetition arriba, mismo
+    // motivo. El payload que llega acá ya es el shape real (toCreateCompetitionPayload).
+    route: payload.route_geojson ? JSON.parse(payload.route_geojson) : null,
     acceptance_radius_meters: payload.acceptance_radius_meters ?? null,
-    participant_user_ids: payload.participant_user_ids ?? [],
+    participant_user_ids: payload.participants ?? [],
     created_by_user_id: 1,
     created_by_role: isTrainerCreator ? 'trainer' : 'runner',
     status: isTrainerCreator ? 'active' : 'pending_approval',
@@ -171,14 +189,14 @@ export async function mockCreateCompetition(teamId, payload, { isTrainerCreator 
     max_attempts: payload.type === 'route' ? (payload.max_attempts ?? null) : null,
   };
   mockCompetitions.push(competition);
-  return competition;
+  return toWireCompetition(competition);
 }
 
 export async function mockApproveCompetition(id) {
   const competition = mockCompetitions.find((c) => c.id === Number(id));
   if (!competition) throw new Error('Competencia no encontrada');
   competition.status = 'active';
-  return competition;
+  return toWireCompetition(competition);
 }
 
 export async function mockRejectCompetition(id, reason) {
@@ -186,7 +204,7 @@ export async function mockRejectCompetition(id, reason) {
   if (!competition) throw new Error('Competencia no encontrada');
   competition.status = 'rejected';
   competition.rejection_reason = reason ?? null;
-  return competition;
+  return toWireCompetition(competition);
 }
 
 export async function mockCancelCompetition(id) {
@@ -200,7 +218,7 @@ export async function mockCloseCompetition(id) {
   competition.status = 'finished';
   competition.finished_at = new Date().toISOString();
   competition.winner_user_ids = competition.participant_user_ids.length ? [competition.participant_user_ids[0]] : [];
-  return competition;
+  return toWireCompetition(competition);
 }
 
 export function __resetMockCompetitions() {
@@ -298,11 +316,14 @@ function buildAttemptSummaries(competition, athleteUserId) {
       ? computeRouteComplianceRatio(traveledPoints, competition.route.coordinates, competition.acceptance_radius_meters)
       : null;
     return {
-      runner_session_id: row.id,
+      // `id`/`ended_at` -- `CompetitionAttemptItem` real, confirmado
+      // 2026-10-29 (no `runner_session_id`/`finished_at`, nombres que solo
+      // existían acá).
+      id: row.id,
       session_instance_id: row.session_instance_id,
       status: row.status,
       started_at: row.start_date,
-      finished_at: row.end_date,
+      ended_at: row.end_date,
       distance_meters: feedback?.distance_meters ?? null,
       duration_ms: feedback?.duration_ms ?? null,
       compliance_ratio: complianceRatio,
@@ -356,5 +377,5 @@ export async function mockGetCompetition(id) {
     }
     return { user_id: userId, value: computeProgressValue(competition, userId) };
   });
-  return { data: { ...competition, progress } };
+  return { data: { ...toWireCompetition(competition), progress } };
 }

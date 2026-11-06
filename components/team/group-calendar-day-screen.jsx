@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { isWeb } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useGroups } from '../../hooks/use-groups.js';
 import { useSessions } from '../../hooks/use-sessions.js';
@@ -15,6 +14,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InputField } from '../forms/fields.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { ScreenCard } from '../shared/screen-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { RequireRole } from '../guards/require-role.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
@@ -203,7 +203,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
         showsVerticalScrollIndicator={false}
         testID="group-calendar-day-screen-scroll"
       >
-        <View className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="group-calendar-day-screen-container" testID="group-calendar-day-screen-container">
+        <ScreenCard nativeID="group-calendar-day-screen-container" testID="group-calendar-day-screen-container">
           <View className="mb-8 flex-row items-center gap-2" nativeID="group-calendar-day-screen-header" testID="group-calendar-day-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
@@ -220,7 +220,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
 
           {existingDay && <StartSessionButton assignment={existingDay} role="trainer" teamId={teamId} />}
 
-          <SectionCard icon="calendar-blank-outline" title={`Día de ${group.name}`}>
+          <SectionCard icon="calendar-blank-outline" title={`Día de ${group.name}`} variant="nested">
             {closed && (
               <View
                 className="mb-4 flex-row items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
@@ -318,7 +318,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
               </Pressable>
             )}
           </SectionCard>
-        </View>
+        </ScreenCard>
       </ScrollView>
 
       <Modal

@@ -66,3 +66,30 @@ test('con currentMonth solo se resalta ese mes, y ninguno si la ventana es vieja
   expect(buildMonthlyBars(pts, { width: 200, height: 100, currentMonth: '2026-04' }).map((b) => b.isCurrent)).toEqual([false, true]);
   expect(buildMonthlyBars(pts, { width: 200, height: 100, currentMonth: '2026-09' }).map((b) => b.isCurrent)).toEqual([false, false]);
 });
+
+describe('buildMonthlyBars con pendiente', () => {
+  const withPending = [
+    { month: '2026-09', value: 100, pending: 0 },
+    { month: '2026-10', value: 50, pending: 100 },
+  ];
+
+  test('sin pendiente en la ventana, una sola barra por mes como antes', () => {
+    const bars = buildMonthlyBars([{ month: 'a', value: 10, pending: 0 }], { width: 100, height: 160 });
+    expect(bars[0].pending).toBeNull();
+    expect(bars[0].width).toBe(100);
+    expect(bars[0].centerX).toBe(50);
+  });
+
+  test('con pendiente, cada mes lleva dos barras lado a lado con la misma escala', () => {
+    const bars = buildMonthlyBars(withPending, { width: 210, height: 160, gap: 10, labelHeight: 18, valueHeight: 16 });
+    const plot = 160 - 18 - 16;
+    // Cada mes ocupa 100 de ancho: dos barras de 48 con 4 en el medio.
+    expect(bars[1].width).toBe(48);
+    expect(bars[1].pending.x).toBe(bars[1].x + 48 + 4);
+    expect(bars[1].pending.width).toBe(48);
+    expect(bars[1].pending.height).toBe(plot);
+    expect(bars[1].height).toBe(plot / 2);
+    expect(bars[1].centerX).toBe(110 + 50);
+    expect(bars[0].pending.height).toBe(0);
+  });
+});
