@@ -43,6 +43,23 @@ separado.
   `teamName`, `isPresencial`, `status` (`finished | wip | interrupted | none`),
   `compliancePct`, y `totals.actualDurationMs` / `totals.actualDistanceM`. Sin
   trabajo de backend nuevo.
+  - **Llamada exacta:** `useComparisonList({ dateFrom: hace90Días, dateTo: hoy })`
+    — sin `teamId` ni `kind` (cross-equipo, todos los tipos), son opcionales
+    en el hook. El widget NO lee `trainings-history-filters-store.js` ni
+    ningún otro estado de filtro de otra pantalla — es una consulta propia,
+    fija, independiente de cualquier filtro que el usuario haya dejado
+    aplicado en `/training-comparison` o en el historial. `dateFrom`/`dateTo`
+    en formato `'YYYY-MM-DD'`, mismo criterio que el resto de los call sites
+    de este hook.
+  - **Orden:** no asumir que `list.sessions` ya viene ordenado por fecha
+    (el endpoint lo ordena por lo que pida la query, no necesariamente
+    descendente) — `selectRecentFinishedTrainings` siempre ordena de nuevo
+    del lado del cliente antes de cortar a 3, sin confiar en el orden de
+    entrada.
+  - **Loading/error:** igual que `CompetitionsPreviewCard` — mientras
+    `loading` es true, o si la lista final queda vacía, el componente
+    devuelve `null` (sin skeleton, sin mensaje de error propio). Mismo
+    criterio ya establecido para los widgets del Home.
 - **Formato de los números:** reusar `utils/comparison-format.js` tal cual —
   `formatCompliance`, `complianceTone`, `formatComparisonDate`, y
   `formatClock`/`formatMeters` (`utils/time.js` / `utils/distance.js`) para
