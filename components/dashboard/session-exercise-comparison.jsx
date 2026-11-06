@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useDashboardSeries } from '../../hooks/use-dashboard-series.js';
@@ -38,6 +38,7 @@ export function SessionExerciseComparison({
   isTrainer,
   isNarrow,
   periodComparison = null,
+  onLoadingChange = null,
 }) {
   const userId = useAuthStore((state) => state.userId);
   const metricExercises = useMemo(() => dashboardSessionExercises(exercises), [exercises]);
@@ -47,6 +48,7 @@ export function SessionExerciseComparison({
   const [sameAthleteId, setSameAthleteId] = useState('');
   const [sideA, setSideA] = useState(EMPTY_SIDE);
   const [sideB, setSideB] = useState(EMPTY_SIDE);
+  const [sessionOptionsLoading, setSessionOptionsLoading] = useState({ a: false, b: false });
   const [compareFrom, setCompareFrom] = useState('');
   const [compareTo, setCompareTo] = useState('');
   const seededTeamRef = useRef(null);
@@ -102,6 +104,9 @@ export function SessionExerciseComparison({
 
   const rosterA = useDashboardGroupAthletes({ teamId, groupId: sideA.groupId, enabled: isTrainer });
   const rosterB = useDashboardGroupAthletes({ teamId, groupId: sideB.groupId, enabled: isTrainer });
+  const notifySessionOptionsLoading = useCallback((side, loading) => {
+    setSessionOptionsLoading((current) => current[side] === loading ? current : { ...current, [side]: loading });
+  }, []);
   const groupAthletesA = useMemo(
     () => athletesForGroup(athletes, rosterA.athleteIds),
     [athletes, rosterA.athleteIds],
@@ -206,9 +211,18 @@ export function SessionExerciseComparison({
     ...(periodComparison ? [{ id: 'periods', label: 'Períodos', icon: 'calendar-range' }] : []),
   ];
   const currentComparisonMode = comparisonTabs.some((tab) => tab.id === comparisonMode) ? comparisonMode : 'sessions';
+  const comparisonDataLoading = currentComparisonMode === 'sessions' && (
+    rosterA.loading || rosterB.loading || sessionOptionsLoading.a || sessionOptionsLoading.b
+    || (comparisonRequested && requestComplete && comparison.loading)
+  );
+
+  useEffect(() => {
+    onLoadingChange?.(comparisonDataLoading);
+    return () => onLoadingChange?.(false);
+  }, [comparisonDataLoading, onLoadingChange]);
 
   return (
-    <View nativeID={id} testID={id}>
+    <View className="relative" nativeID={id} testID={id}>
       {periodComparison ? (
         <TabBar
           active={currentComparisonMode}
@@ -312,6 +326,7 @@ export function SessionExerciseComparison({
               onChangeExercise={(value) => setSideValue('a', 'exerciseId', value)}
               onChangeGroup={(value) => setSideValue('a', 'groupId', value)}
               onChangeSession={(value) => setSideValue('a', 'sessionInstanceId', value)}
+              onOptionsLoadingChange={notifySessionOptionsLoading}
               selected={sideA}
               side="a"
               showAthlete={isTrainer && athleteMode === 'different'}
@@ -339,6 +354,7 @@ export function SessionExerciseComparison({
               onChangeExercise={(value) => setSideValue('b', 'exerciseId', value)}
               onChangeGroup={(value) => setSideValue('b', 'groupId', value)}
               onChangeSession={(value) => setSideValue('b', 'sessionInstanceId', value)}
+              onOptionsLoadingChange={notifySessionOptionsLoading}
               selected={sideB}
               side="b"
               showAthlete={isTrainer && athleteMode === 'different'}
@@ -366,7 +382,6 @@ export function SessionExerciseComparison({
           {requestComplete && !comparisonRequested ? (
             <InlineNotice id={`${id}-apply-hint`} message="Completá A y B y presioná “Comparar sesiones” para ver los resultados." />
           ) : null}
-          {comparisonRequested && requestComplete && comparison.loading ? <ComparisonLoading id={`${id}-loading`} /> : null}
           {comparisonRequested && comparison.failed ? (
             <InlineError
               id={`${id}-comparison-error`}
@@ -390,7 +405,7 @@ export function SessionExerciseComparison({
 function SessionSideSelector({
   id, side, selected, athleteId, showAthlete, isTrainer, athleteOptions = [], groupOptions = [], exercises = [],
   groupRoster, canQuery, datesValid, teamId, from, to, isNarrow,
-  onChangeGroup, onChangeAthlete, onChangeExercise, onChangeSession,
+  onChangeGroup, onChangeAthlete, onChangeExercise, onChangeSession, onOptionsLoadingChange,
 }) {
   const seriesQuery = useDashboardSeries({
     teamId,
@@ -407,6 +422,10 @@ function SessionSideSelector({
   const sessionOptions = useMemo(() => buildDashboardSessionOptions(seriesQuery.series), [seriesQuery.series]);
   const { error, failed, hasMore, loadMore, loading, loadingMore, refetch, refreshing } = seriesQuery;
   const optionsLoading = loading || refreshing || loadingMore || hasMore;
+
+  useEffect(() => {
+    onOptionsLoadingChange?.(side, optionsLoading);
+  }, [side, optionsLoading, onOptionsLoadingChange]);
 
   useEffect(() => {
     if (!hasMore || loadingMore || failed || !canQuery || !datesValid) return;
@@ -612,15 +631,6 @@ function DeltaHero({ id, data, units }) {
       <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-percent`} testID={`${id}-percent`}>
         {formatDelta(deltaPct, '%')}
       </Text>
-    </View>
-  );
-}
-
-function ComparisonLoading({ id }) {
-  return (
-    <View accessibilityLiveRegion="polite" className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-slate-50 p-4 dark:bg-slate-900" nativeID={id} testID={id}>
-      <ActivityIndicator color="#8cc63e" size="small" />
-      <Text className="text-xs text-slate-600 dark:text-slate-300" nativeID={`${id}-label`} testID={`${id}-label`}>Comparando sesiones…</Text>
     </View>
   );
 }
