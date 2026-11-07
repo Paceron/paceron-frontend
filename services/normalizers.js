@@ -1029,6 +1029,10 @@ export function toWorkoutFeedbackHistoryItemModel(dto) {
     distanceMeters: dto.distance_meters,
     startedAt: dto.started_at,
     endedAt: dto.ended_at,
+    // Gap 40, resuelto 2026-11-06: huérfanos (sin día/equipo/grupo) vienen
+    // `false` del backend -- se ven como async. `?? false` cubre además un
+    // backend viejo sin el campo todavía.
+    isPresencial: dto.is_presencial ?? false,
   };
 }
 

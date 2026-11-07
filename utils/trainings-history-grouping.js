@@ -23,6 +23,9 @@ export function groupHistoryItemsBySession(items) {
         teamName: item.teamName,
         groupId: item.groupId,
         groupName: item.groupName,
+        // Gap 40: mismo valor para todas las series de una sesión, el del
+        // primer item alcanza.
+        isPresencial: item.isPresencial,
         itemIds: [],
         completedCount: 0,
         skippedCount: 0,

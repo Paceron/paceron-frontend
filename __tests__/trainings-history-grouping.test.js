@@ -16,6 +16,7 @@ function makeItem(overrides = {}) {
     exerciseName: 'Sentadillas',
     setNumber: 1,
     completionStatus: 'completed',
+    isPresencial: true,
     ...overrides,
   };
 }
@@ -90,5 +91,13 @@ describe('groupHistoryItemsBySession', () => {
     const items = [makeItem({ id: '1', durationMs: null, distanceMeters: null })];
     const groups = groupHistoryItemsBySession(items);
     expect(groups[0]).toMatchObject({ totalDurationMs: 0, totalDistanceMeters: 0 });
+  });
+
+  it('carries isPresencial from the first item of the session (same value for every item of a session)', () => {
+    const presencial = groupHistoryItemsBySession([makeItem({ id: '1', isPresencial: true })]);
+    expect(presencial[0].isPresencial).toBe(true);
+
+    const async = groupHistoryItemsBySession([makeItem({ id: '1', sessionInstanceId: '200', isPresencial: false })]);
+    expect(async[0].isPresencial).toBe(false);
   });
 });

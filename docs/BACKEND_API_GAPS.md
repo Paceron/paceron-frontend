@@ -2009,7 +2009,7 @@ código una vez que el backend lo habilite -- la pantalla de asignación ya inte
 request tal cual hoy, el bloqueo es 100% del lado backend. Sin trabajo de frontend
 pendiente más allá de esta nota.
 
-## Gap 40 — `workout-feedback-history` no trae `is_presencial` por item
+## Gap 40 — `workout-feedback-history` no trae `is_presencial` por item (RESUELTO 2026-11-06)
 
 **Contexto.** El widget de entrenamientos recientes del Home
 (`components/home/recent-trainings-card.jsx`) y el historial de entrenamientos
@@ -2038,3 +2038,15 @@ entrenamientos se queda con distancia/duración nomás (ya sumadas por sesión
 en `utils/trainings-history-grouping.js`, sin depender de este gap) -- el
 badge y el % de cumplimiento quedan reservados al widget del Home, que sí
 tiene la fuente completa.
+
+**Resuelto.** Los dos endpoints ya devuelven `is_presencial` (boolean) por
+item, mismo valor para todas las series de una sesión; un huérfano (sin
+día/equipo/grupo) viene `false`, se ve como async. Mapeado en
+`toWorkoutFeedbackHistoryItemModel` (`isPresencial`, `?? false` cubre además
+un backend viejo sin el campo) y propagado por
+`groupHistoryItemsBySession` (toma el valor del primer item del grupo, ya
+que es constante por sesión). El historial de entrenamientos muestra el
+mismo ícono presencial/async que el resto de la app
+(`trainings-history-row.jsx`). El % de cumplimiento ahí sigue sin estar --
+ese necesita cruzar con lo planificado, que `/activities/comparison` ya
+hace pero este endpoint no, y queda fuera de este gap.
