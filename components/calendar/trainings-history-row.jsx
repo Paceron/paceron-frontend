@@ -4,6 +4,8 @@ import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
+import { formatClock } from '../../utils/time.js';
+import { formatMeters } from '../../utils/distance.js';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // `group` llega de utils/trainings-history-grouping.js -- una sesión
@@ -126,6 +128,16 @@ export function TrainingsHistoryRow({ group, role, selectionMode, selected, onTo
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-multiple-outline" size={13} />
             <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-group-label`} numberOfLines={1} testID={`${idPrefix}-group-label`}>
               {group.groupName}
+            </Text>
+          </View>
+        )}
+        {(group.totalDurationMs > 0 || group.totalDistanceMeters > 0) && (
+          <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-metrics`} testID={`${idPrefix}-metrics`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="timer-outline" size={13} />
+            <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-metrics-label`} testID={`${idPrefix}-metrics-label`}>
+              {[group.totalDurationMs > 0 ? formatClock(group.totalDurationMs) : null, group.totalDistanceMeters > 0 ? formatMeters(group.totalDistanceMeters) : null]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
           </View>
         )}

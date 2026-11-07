@@ -27,6 +27,8 @@ export function groupHistoryItemsBySession(items) {
         completedCount: 0,
         skippedCount: 0,
         totalCount: 0,
+        totalDurationMs: 0,
+        totalDistanceMeters: 0,
       };
       map.set(key, group);
       order.push(key);
@@ -35,6 +37,8 @@ export function groupHistoryItemsBySession(items) {
     group.totalCount += 1;
     if (item.completionStatus === 'completed') group.completedCount += 1;
     else if (item.completionStatus === 'skipped') group.skippedCount += 1;
+    group.totalDurationMs += item.durationMs ?? 0;
+    group.totalDistanceMeters += item.distanceMeters ?? 0;
   }
 
   return order.map((key) => map.get(key));

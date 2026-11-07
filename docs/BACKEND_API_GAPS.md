@@ -2008,3 +2008,33 @@ igual quiere asignar la sesión o esperar a mañana.
 código una vez que el backend lo habilite -- la pantalla de asignación ya intenta la
 request tal cual hoy, el bloqueo es 100% del lado backend. Sin trabajo de frontend
 pendiente más allá de esta nota.
+
+## Gap 40 — `workout-feedback-history` no trae `is_presencial` por item
+
+**Contexto.** El widget de entrenamientos recientes del Home
+(`components/home/recent-trainings-card.jsx`) y el historial de entrenamientos
+(`Entrenamientos > Historial`, `components/calendar/trainings-history-row.jsx`)
+muestran datos parecidos -- fecha, sesión, equipo -- pero el primero sale de
+`/activities/comparison` (Gap 35, ya resuelto) y el segundo de
+`GET /users/{id}/workout-feedback-history` /
+`GET /users/{id}/administered-workout-feedback-history`
+(`services/trainingsHistory.js`). El primero trae `is_presencial` por sesión;
+el segundo no lo trae en absoluto (`toWorkoutFeedbackHistoryItemModel`,
+`services/normalizers.js`).
+
+**Pedido:** sumar `is_presencial` a la respuesta de esos dos endpoints, por
+item (o por sesión agrupada, cualquiera de los dos formatos sirve del lado
+frontend).
+
+**Por qué importa.** Sin el campo, el historial de entrenamientos no puede
+mostrar el mismo badge presencial/async que ya muestra el widget del Home ni
+el resto de la app (`next-training-banner.jsx`, el calendario), y tampoco se
+puede cruzar con lo planificado para traer `compliance_pct` ahí sin pegarle a
+un segundo endpoint (`/activities/comparison`, que ya tiene ese cruce hecho
+server-side).
+
+**Alcance:** cambio de backend únicamente. Mientras no esté, el historial de
+entrenamientos se queda con distancia/duración nomás (ya sumadas por sesión
+en `utils/trainings-history-grouping.js`, sin depender de este gap) -- el
+badge y el % de cumplimiento quedan reservados al widget del Home, que sí
+tiene la fuente completa.
