@@ -39,7 +39,7 @@ export function PaletteWithoutTarget({
   const [openTooltip, setOpenTooltip] = useState(null);
 
   return (
-    <View nativeID={`${id}-root`} testID={`${id}-root`}>
+    <View nativeID={`${id}-root`} style={{ position: 'relative', zIndex: openTooltip ? 10 : 0 }} testID={`${id}-root`}>
       {section !== 'charts' ? (
         <>
       {/* Las SEIS cifras, mismo tamaño, dos filas de tres — igual que la paleta
