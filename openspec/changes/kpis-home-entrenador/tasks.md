@@ -7,6 +7,7 @@
 - [x] 1.5 Reutilizar el GIF con label contextual y estados de primera carga/actualización.
 - [x] 1.6 Mostrar `NextTrainingBanner` antes de la tarjeta de KPIs del entrenador.
 - [x] 1.7 Elevar únicamente la grilla que contiene el tooltip abierto sobre la otra grilla.
+- [x] 1.8 Elevar la tarjeta completa y la celda activa para que el bubble salga sobre otros stacking contexts.
 
 ## 2. Rendimiento
 

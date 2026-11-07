@@ -17,6 +17,9 @@ import {
 } from '../../utils/trainer-home-kpis.js';
 
 const PERIOD_ICONS = { month: 'calendar-month', week: 'calendar-week', day: 'calendar-today' };
+const OPEN_TOOLTIP_CELL_Z_INDEX = 10;
+const OPEN_TOOLTIP_SECTION_Z_INDEX = 100;
+const OPEN_TOOLTIP_CARD_Z_INDEX = 1000;
 
 function todayISODate() {
   const now = new Date();
@@ -49,7 +52,7 @@ export function TrainerHomeKpisCard() {
         className="w-1/2 p-1"
         key={field}
         nativeID={`${cardId}-cell`}
-        style={{ zIndex: openTooltip === field ? 1 : 0 }}
+        style={{ zIndex: openTooltip === field ? OPEN_TOOLTIP_CELL_Z_INDEX : 0 }}
         testID={`${cardId}-cell`}
       >
         <KpiTooltip
@@ -82,7 +85,7 @@ export function TrainerHomeKpisCard() {
     <View
       className="relative mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface"
       nativeID="trainer-home-kpis-card"
-      style={{ zIndex: openTooltip ? 1 : 0 }}
+      style={{ position: 'relative', zIndex: openTooltip ? OPEN_TOOLTIP_CARD_Z_INDEX : 0 }}
       testID="trainer-home-kpis-card"
     >
       <View className="mb-2 flex-row items-center gap-2" nativeID="trainer-home-kpis-header" testID="trainer-home-kpis-header">
@@ -132,7 +135,10 @@ export function TrainerHomeKpisCard() {
           <View
             className="-mx-1 -my-1 mt-2 flex-row flex-wrap"
             nativeID="trainer-home-kpis-period-metrics"
-            style={{ position: 'relative', zIndex: openTooltip?.startsWith('period-') ? 2 : 0 }}
+            style={{
+              position: 'relative',
+              zIndex: openTooltip?.startsWith('period-') ? OPEN_TOOLTIP_SECTION_Z_INDEX : 0,
+            }}
             testID="trainer-home-kpis-period-metrics"
           >
             {TRAINER_HOME_PERIOD_METRICS.map((metric) => renderMetric(metric, 'period'))}
@@ -147,7 +153,10 @@ export function TrainerHomeKpisCard() {
           <View
             className="-mx-1 -my-1 flex-row flex-wrap"
             nativeID="trainer-home-kpis-structure-metrics"
-            style={{ position: 'relative', zIndex: openTooltip?.startsWith('structure-') ? 2 : 0 }}
+            style={{
+              position: 'relative',
+              zIndex: openTooltip?.startsWith('structure-') ? OPEN_TOOLTIP_SECTION_Z_INDEX : 0,
+            }}
             testID="trainer-home-kpis-structure-metrics"
           >
             {TRAINER_HOME_STRUCTURE_METRICS.map((metric) => renderMetric(metric, 'structure'))}
