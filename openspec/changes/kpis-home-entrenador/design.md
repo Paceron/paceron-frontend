@@ -22,7 +22,10 @@ sesiones ni recalcula cobros.
 Cuando un tooltip está abierto, su grilla sube por encima del otro bloque de
 KPIs. Cada bloque mantiene stacking order separado: elevar ambos al mismo nivel
 deja la sección de estructura (que se pinta después) encima de los tooltips de la
-última fila temporal.
+última fila temporal. Además, la tarjeta completa usa una capa superior mientras
+hay un tooltip abierto, y cada nivel de la jerarquía tiene `position: relative`
+explícito y z-index ascendente (celda, grilla y tarjeta) para superar los
+stacking contexts que React Native Web crea en cada `View` y en cards vecinas.
 
 Cada valor usa `KpiTile` + `KpiTooltip`. Las fórmulas explican el rango, el
 criterio de realizada y que el neto descuenta comisión. `formatRunnerKpiValue` se

@@ -26,7 +26,7 @@ export function PaymentsHistoryCard() {
   );
 
   return (
-    <SectionCard headerRight={seeAll} icon="receipt-text-outline" scope="profile-payments-history-card" title="Historial de pagos">
+    <SectionCard headerRight={seeAll} icon="receipt-text-outline" scope="profile-payments-history-card" title="Historial de pagos" variant="nested">
       <Text className="text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="profile-payments-history-card-text" testID="profile-payments-history-card-text">
         Tus pagos de suscripción y a entrenadores, con su estado y el comprobante en PDF.
       </Text>

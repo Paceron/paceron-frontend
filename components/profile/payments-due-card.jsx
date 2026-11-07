@@ -15,7 +15,7 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 export function PaymentsDueCard({ dueThisMonth, overdue, amountMode = 'gross', isWide }) {
   if (!dueThisMonth?.count && !overdue?.count) return null;
   return (
-    <SectionCard icon="calendar-clock" scope="payments-due-card" title="Por cobrar este mes">
+    <SectionCard icon="calendar-clock" scope="payments-due-card" title="Por cobrar este mes" variant="nested">
       <View className={isWide ? 'flex-row gap-6' : 'gap-5'} nativeID="payments-due-card-columns" testID="payments-due-card-columns">
         <DueColumn amountMode={amountMode} block={overdue} empty="No hay cuotas vencidas." id="payments-due-card-overdue" title="Vencidos" tone="overdue" />
         <DueColumn amountMode={amountMode} block={dueThisMonth} empty="No hay cuotas por vencer este mes." id="payments-due-card-upcoming" title="A vencer" tone="upcoming" />

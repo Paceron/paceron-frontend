@@ -42,10 +42,13 @@ test('reutiliza el overlay animado con un texto de carga contextual', () => {
 test('eleva solo la grilla cuyo tooltip está abierto sobre la otra sección', () => {
   const { getByTestId } = render(<TrainerHomeKpisCard />);
   fireEvent.press(getByTestId('trainer-home-kpis-period-sessions-trigger'));
-  expect(getByTestId('trainer-home-kpis-period-metrics').props.style.zIndex).toBe(2);
+  expect(getByTestId('trainer-home-kpis-period-sessions-bubble')).toBeTruthy();
+  expect(getByTestId('trainer-home-kpis-card').props.style.zIndex).toBe(1000);
+  expect(getByTestId('trainer-home-kpis-period-sessions-cell').props.style.zIndex).toBe(10);
+  expect(getByTestId('trainer-home-kpis-period-metrics').props.style.zIndex).toBe(100);
   expect(getByTestId('trainer-home-kpis-structure-metrics').props.style.zIndex).toBe(0);
 
   fireEvent.press(getByTestId('trainer-home-kpis-structure-activeTeams-trigger'));
   expect(getByTestId('trainer-home-kpis-period-metrics').props.style.zIndex).toBe(0);
-  expect(getByTestId('trainer-home-kpis-structure-metrics').props.style.zIndex).toBe(2);
+  expect(getByTestId('trainer-home-kpis-structure-metrics').props.style.zIndex).toBe(100);
 });
