@@ -36,7 +36,7 @@ import { ComparisonExportButtons } from './comparison-export-buttons.jsx';
 const STATUS_ICON = { completed: 'check-circle', skipped: 'skip-next-circle-outline', unregistered: 'circle-outline' };
 const STATUS_COLOR = { completed: '#8cc63e', skipped: '#f59e0b', unregistered: '#94a3b8' };
 
-function SetRow({ set, planned, isWide, idPrefix }) {
+function SetRow({ set, planned, isWide, idPrefix, hideCompliance }) {
   const id = `${idPrefix}-set-${set.setNumber}`;
   const deviation = setDeviationLabel(set);
   const pace = formatPace(set.paceSecPerKm);
@@ -63,7 +63,13 @@ function SetRow({ set, planned, isWide, idPrefix }) {
           </Text>
         ) : null}
       </View>
-      {set.extra ? null : <ComplianceBadge idPrefix={id} pct={set.compliancePct} />}
+      {/* `hideCompliance` -- el único caso nuevo es el de un ejercicio con
+          una sola serie real: el % de esa serie y el % del ejercicio (badge
+          del header de ExerciseCard) son el mismo número, mostrado dos
+          veces. `set.extra` ya ocultaba el propio por otro motivo (una
+          serie fuera del plan no tiene cumplimiento que mostrar) -- acá se
+          suma la segunda condición, sin tocar la primera. */}
+      {set.extra || hideCompliance ? null : <ComplianceBadge idPrefix={id} pct={set.compliancePct} />}
     </View>
   );
 }
@@ -72,6 +78,9 @@ function ExerciseCard({ exercise, isWide, index }) {
   const id = `session-comparison-exercise-${index}`;
   const plannedSet = exercise.hasTarget ? plannedExerciseLabel(exercise.planned).replace(/^\d+ × /, '') : NO_TARGET_LABEL;
   const extras = [kindLabel(exercise.kind), exercise.planned.paceSecPerKm ? `ritmo ${formatPace(exercise.planned.paceSecPerKm)}` : null, exercise.intensity ? `intensidad ${exercise.intensity}` : null].filter(Boolean);
+  // Con una sola serie real, su % y el del ejercicio (badge de arriba) son
+  // el mismo número -- se oculta el de la fila para no repetirlo.
+  const hasSingleRealSet = exercise.sets.filter((s) => !s.extra).length === 1;
   return (
     <View className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID={id} testID={id}>
       <View className="mb-1 flex-row items-start justify-between gap-3" nativeID={`${id}-header`} testID={`${id}-header`}>
@@ -89,7 +98,7 @@ function ExerciseCard({ exercise, isWide, index }) {
         <ComplianceBadge idPrefix={id} pct={exercise.compliancePct} />
       </View>
       {exercise.sets.map((set) => (
-        <SetRow idPrefix={id} isWide={isWide} key={`${set.setNumber}-${set.extra}`} planned={plannedSet} set={set} />
+        <SetRow hideCompliance={hasSingleRealSet} idPrefix={id} isWide={isWide} key={`${set.setNumber}-${set.extra}`} planned={plannedSet} set={set} />
       ))}
     </View>
   );
