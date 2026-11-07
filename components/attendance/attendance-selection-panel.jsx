@@ -65,7 +65,7 @@ export function AttendanceSelectionPanel({
   });
 
   return (
-    <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="amber">
+    <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested">
       <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-panel-subtitle`} testID={`${idPrefix}-panel-subtitle`}>
         Elegí el equipo, el grupo y la sesión presencial a la que le querés cargar la asistencia.
       </Text>
