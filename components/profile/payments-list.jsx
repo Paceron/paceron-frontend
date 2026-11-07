@@ -49,7 +49,7 @@ export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadi
 
   return (
     <View nativeID={scope} testID={scope}>
-      <View className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-surface" nativeID={`${scope}-card`} testID={`${scope}-card`}>
+      <View className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-surface-2" nativeID={`${scope}-card`} testID={`${scope}-card`}>
         {isWide ? (
           <View className="flex-row gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900/40" nativeID={`${scope}-header`} testID={`${scope}-header`}>
             {columns.map((column) => (
