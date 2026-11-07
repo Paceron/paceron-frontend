@@ -1,7 +1,6 @@
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { EMPTY_METRIC, formatDelta, formatMetric, hasMetric, verdictIcon } from '../../utils/dashboard-format.js';
-import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 
 // Tile de un KPI: número grande, delta, veredicto y "—" ante `null`.
@@ -22,12 +21,11 @@ import { isWeb } from '../../utils/platform.js';
 // color, para que el tono no sea el único portador del significado.
 const VERDICT_STYLES = {
   improving: { text: 'text-[#3c6b12] dark:text-primary', icon: '#8cc63e' },
-  stable: { text: 'text-amber-800 dark:text-amber-300', icon: null },
+  stable: { text: 'text-slate-800 dark:text-slate-300', icon: null },
   regressing: { text: 'text-red-600 dark:text-red-400', icon: '#ba1a1a' },
 };
 
 export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false, labelNumberOfLines = 1 }) {
-  const colors = useThemeColors();
   const verdictStyle = VERDICT_STYLES[verdict] ?? null;
 
   // Las seis cifras vuelven a ser cards del MISMO tamaño que las de gráficos.
@@ -40,10 +38,10 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
   // El hover en ambar marca el área sensible sin obligar a acertar el punto
   // para abrir el tooltip. Mismo amber que el banner de calidad.
   const surfaceClass = hovered
-    ? 'border-amber-500 bg-amber-100 dark:border-amber-400 dark:bg-amber-900/50'
+    ? 'border-green-700 bg-green-100 dark:border-green-500 dark:bg-green-900/50'
     : emphasis
-      ? 'border-amber-600 bg-amber-200 dark:border-amber-500 dark:bg-amber-900/60'
-      : 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/25';
+      ? 'border-green-800 bg-green-200 dark:border-green-600 dark:bg-green-900/60'
+      : 'border-green-600 bg-green-50 dark:border-green-700 dark:bg-green-950/25';
 
   return (
     <View
@@ -56,8 +54,8 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
       testID={`${id}-root`}
     >
       <View className="flex-row items-center gap-1" nativeID={`${id}-header`} testID={`${id}-header`}>
-        {icon ? <MaterialCommunityIcons color={colors.warning ?? '#b45309'} name={icon} size={13} /> : null}
-        <Text className="flex-1 text-[11px] leading-4 text-amber-800 dark:text-amber-200" nativeID={`${id}-label`} numberOfLines={labelNumberOfLines} testID={`${id}-label`}>
+        {icon ? <MaterialCommunityIcons color="#166534" name={icon} size={13} /> : null}
+        <Text className="flex-1 text-[11px] leading-4 text-slate-800 dark:text-slate-200" nativeID={`${id}-label`} numberOfLines={labelNumberOfLines} testID={`${id}-label`}>
           {label}
         </Text>
       </View>
@@ -72,7 +70,7 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
         testID={`${id}-value-row`}
       >
         <Text
-          className={`shrink font-bold text-amber-950 dark:text-amber-50 ${emphasis ? 'text-2xl' : 'text-lg'}`}
+          className={`shrink font-bold text-slate-950 dark:text-slate-50 ${emphasis ? 'text-2xl' : 'text-lg'}`}
           nativeID={`${id}-value`}
           numberOfLines={1}
           testID={`${id}-value`}
@@ -81,7 +79,7 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
         </Text>
         {delta !== undefined ? (
           <Text
-            className="shrink text-xs font-semibold text-amber-900 dark:text-amber-100"
+            className="shrink text-xs font-semibold text-slate-900 dark:text-slate-100"
             nativeID={`${id}-delta`}
             numberOfLines={1}
             testID={`${id}-delta`}
