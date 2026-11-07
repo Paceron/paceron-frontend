@@ -206,9 +206,14 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   }, [canRunBase, canPlayNow, hasStarted, myAttempts.length, maxAttempts, competition.id]);
   const canApproveReject = isTrainerView && competition.status === 'pending_approval';
   // Ranking: visible para CUALQUIERA que pueda ver la competencia mientras
-  // esté activa -- a diferencia del resto de las acciones de acá, no
-  // depende de rol ni de participación (pedido real, 2026-10-16).
-  const canViewRanking = competition.status === 'active';
+  // esté activa O ya terminada -- a diferencia del resto de las acciones de
+  // acá, no depende de rol ni de participación (pedido real, 2026-10-16;
+  // ampliado a finalizadas 2026-11-07). `CompetitionRankingModal` y
+  // `AttemptsListModal` no tienen lógica propia de status -- son puro
+  // data-display sobre lo que reciben, así que esto es el único gate real.
+  // Pendientes de aprobación y rechazadas quedan afuera: nunca corrieron,
+  // no hay nada que rankear.
+  const canViewRanking = competition.status === 'active' || competition.status === 'finished';
   // El botón de Play (canRunBase) solo entra en el grupo de acciones ícono
   // en nativo -- en web `canRunBase` sigue true pero no hay botón, solo un
   // aviso informativo (más abajo), así que no cuenta para decidir si el
