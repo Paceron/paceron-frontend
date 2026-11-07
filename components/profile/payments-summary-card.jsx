@@ -29,12 +29,12 @@ export function PaymentsSummaryCard() {
 
   const seeAll = (
     <Pressable
-      className="flex-row items-center gap-1 rounded-full px-2 py-1 hover:bg-amber-100 active:opacity-70 dark:hover:bg-amber-900/30"
+      className="flex-row items-center gap-1 rounded-full px-2 py-1 hover:bg-green-100 active:opacity-70 dark:hover:bg-green-900/30"
       nativeID="profile-payments-card-see-all"
       onPress={() => router.push('/profile/payments')}
       testID="profile-payments-card-see-all"
     >
-      <Text className="text-sm font-semibold text-amber-700 dark:text-amber-400" nativeID="profile-payments-card-see-all-label" testID="profile-payments-card-see-all-label">
+      <Text className="text-sm font-semibold text-green-700 dark:text-green-400" nativeID="profile-payments-card-see-all-label" testID="profile-payments-card-see-all-label">
         Ver todo
       </Text>
       <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={18} />
