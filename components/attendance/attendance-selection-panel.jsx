@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Col, Row } from '../forms/fields.jsx';
@@ -50,6 +51,7 @@ export function AttendanceSelectionPanel({
   pendingSelectionCount,
 }) {
   const colors = useThemeColors();
+  const [tooltipOpen, setTooltipOpen] = useState(false);
   const renderSessionMeta = buildSessionMeta(idPrefix);
   const hint = resolveHint({
     loadingTeams,
@@ -67,8 +69,9 @@ export function AttendanceSelectionPanel({
   });
 
   return (
-    <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested" headerRight={
-      <KpiTooltip bubbleClassName="min-w-[220px]" id={`${idPrefix}-panel-tooltip`} formula="Elegí equipo, grupo y sesión para cargar asistencia" openOnHover>
+    <View style={{ zIndex: tooltipOpen ? 10 : 0 }}>
+      <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested" headerRight={
+        <KpiTooltip bubbleClassName="min-w-[220px]" id={`${idPrefix}-panel-tooltip`} formula="Elegí equipo, grupo y sesión para cargar asistencia" onOpenChange={setTooltipOpen} openOnHover>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} />
       </KpiTooltip>
     }>
@@ -177,6 +180,7 @@ export function AttendanceSelectionPanel({
         </View>
       ) : null}
     </SectionCard>
+    </View>
   );
 }
 
