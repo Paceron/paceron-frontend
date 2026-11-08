@@ -3,9 +3,9 @@ import { totalRouteMeters } from '../utils/route-geometry.js';
 import { formatMeters } from '../utils/distance.js';
 
 describe('buildCompetitionTitle', () => {
-  test('type=metric arma "métrica (desde → hasta)"', () => {
-    const title = buildCompetitionTitle({ type: 'metric', metric: 'distance', startAt: '2026-10-01', endAt: '2026-10-07' });
-    expect(title).toBe('Distancia (2026-10-01 → 2026-10-07)');
+  test('type=metric arma "métrica (desde → hasta)" en DD-MM-YYYY, sin la hora del ISO', () => {
+    const title = buildCompetitionTitle({ type: 'metric', metric: 'distance', startAt: '2026-10-01T00:00:00Z', endAt: '2026-10-07T00:00:00Z' });
+    expect(title).toBe('Distancia (01-10-2026 → 07-10-2026)');
   });
 
   test('type=route arma "Por trayectoria · distancia · N puntos", sin usar metric/endAt (ambos null)', () => {

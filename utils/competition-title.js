@@ -2,6 +2,19 @@ import { METRIC_OPTIONS } from './gamification-metric-options.js';
 import { totalRouteMeters } from './route-geometry.js';
 import { formatMeters } from './distance.js';
 
+// No se reusa formatDisplayDate (utils/format-date-display.js): ese módulo
+// importa react-native-calendars a nivel de archivo (lo necesitan sus otras
+// funciones, formatWeekdayLabel/formatShortDate) -- fuera del allowlist de
+// transform de Jest, rompía este test con "Unexpected token 'export'" (mismo
+// tipo de problema que expo-router -> @react-navigation/native, ver
+// authenticated-home-screen.test.js). Esta función es pura y no necesita esa
+// dependencia -- mismo formato DD-MM-YYYY, sin el acoplamiento.
+function formatISODateAsDDMMYYYY(isoDateOnly) {
+  if (!isoDateOnly) return '';
+  const [year, month, day] = isoDateOnly.split('-');
+  return `${day}-${month}-${year}`;
+}
+
 // El backend todavía no tiene columna de nombre para una competencia
 // (confirmado 2026-10-14, decisión D8 del lado backend -- ver Gap 33,
 // no entra por POST ni se persiste). Mientras no exista, el frontend
@@ -22,5 +35,12 @@ export function buildCompetitionTitle(competition) {
     return `Por trayectoria · ${formatMeters(meters)} · ${pointCount} punto${pointCount === 1 ? '' : 's'}`;
   }
   const metricName = METRIC_OPTIONS.find((m) => m.id === competition.metric)?.name ?? competition.metric;
-  return `${metricName} (${competition.startAt} → ${competition.endAt})`;
+  // `startAt`/`endAt` llegan ISO con hora (ej. "2026-11-06T00:00:00Z") --
+  // una competencia por métrica no tiene horario, solo ventana de días, así
+  // que mostrar la hora (siempre medianoche UTC, nunca informativa) era un
+  // bug real reportado 2026-11-08. Se recorta a la fecha y se formatea con
+  // el mismo DD-MM-YYYY que el resto de la app (formatDisplayDate).
+  const start = formatISODateAsDDMMYYYY(competition.startAt?.slice(0, 10));
+  const end = formatISODateAsDDMMYYYY(competition.endAt?.slice(0, 10));
+  return `${metricName} (${start} → ${end})`;
 }
