@@ -61,9 +61,18 @@ const RUNNER_MENU_WIDTH = 208;
 // el fallback de member.subscriptionStatus a `activo` en el uso de este mapa
 // sigue siendo el default histórico, no una lectura real.
 const SUBSCRIPTION_META = {
-  activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
-  vencido: { label: 'Vencido', bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400' },
-  en_prueba: { label: 'En prueba', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400' },
+  activo: {
+    label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary',
+    icon: 'check-circle-outline', iconColor: '#3c6b12',
+  },
+  vencido: {
+    label: 'Vencido', bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400',
+    icon: 'alert-circle-outline', iconColor: '#b91c1c',
+  },
+  en_prueba: {
+    label: 'En prueba', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400',
+    icon: 'clock-outline', iconColor: '#b45309',
+  },
 };
 
 // El `status` de GET /teams/{id}/subscriptions ya viene "listo para el
@@ -101,9 +110,10 @@ const TABS = [
 
 const TAB_ALIASES = { solicitudes: 'corredores' };
 
-function Tag({ label, bg, text, nativeID, testID }) {
+function Tag({ label, bg, text, icon, iconColor, nativeID, testID }) {
   return (
-    <View className={`rounded-full px-2.5 py-1 ${bg}`} nativeID={nativeID} testID={testID}>
+    <View className={`flex-row items-center gap-1 rounded-full px-2.5 py-1 ${bg}`} nativeID={nativeID} testID={testID}>
+      {icon && <MaterialCommunityIcons className={text} color={iconColor} name={icon} size={12} />}
       <Text className={`text-xs font-semibold ${text}`} nativeID={`${nativeID}-label`} testID={`${testID}-label`}>{label}</Text>
     </View>
   );
@@ -287,6 +297,8 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
   const groupTag = (
     <Tag
       bg="bg-slate-200 dark:bg-slate-800"
+      icon="account-group-outline"
+      iconColor="#334155"
       label={groupName}
       nativeID={`team-detail-runner-${member.id}-group-tag`}
       testID={`team-detail-runner-${member.id}-group-tag`}
@@ -296,6 +308,8 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
   const subscriptionTag = (
     <Tag
       bg={subMeta.bg}
+      icon={subMeta.icon}
+      iconColor={subMeta.iconColor}
       label={subMeta.label}
       nativeID={`team-detail-runner-${member.id}-subscription-tag`}
       testID={`team-detail-runner-${member.id}-subscription-tag`}
@@ -395,7 +409,7 @@ function GroupMemberRow({ member, colors }) {
           {member.name}
         </Text>
       </View>
-      <Tag bg={subMeta.bg} label={subMeta.label} nativeID={`team-detail-group-member-${member.id}-subscription-tag`} testID={`team-detail-group-member-${member.id}-subscription-tag`} text={subMeta.text} />
+      <Tag bg={subMeta.bg} icon={subMeta.icon} iconColor={subMeta.iconColor} label={subMeta.label} nativeID={`team-detail-group-member-${member.id}-subscription-tag`} testID={`team-detail-group-member-${member.id}-subscription-tag`} text={subMeta.text} />
     </View>
   );
 }

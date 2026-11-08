@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isMobile } from '../../utils/platform.js';
@@ -102,7 +102,13 @@ function PlansTab() {
 function TrainingPlansScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
-  const [activeTab, setActiveTab] = useState('planes');
+  // `?tab=` para deep-linkear a una pestaña puntual (ej. desde el
+  // calendario de un grupo) -- solo al montar, lazy initializer de
+  // useState alcanza (a diferencia de team-detail-screen.jsx, el estado
+  // es local, no Zustand, así que no hay riesgo de que un re-render
+  // futuro lo pise).
+  const params = useLocalSearchParams();
+  const [activeTab, setActiveTab] = useState(() => (TABS.some((t) => t.id === params.tab) ? params.tab : 'planes'));
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const queryClient = useQueryClient();
