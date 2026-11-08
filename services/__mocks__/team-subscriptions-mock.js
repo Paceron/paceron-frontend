@@ -1,4 +1,4 @@
-import { __getMockTeamName, __getMockTeamMembershipFee } from './teams-mock.js';
+import { __getMockTeamName, __getMockTeamMembershipFee, mockGetTeamUsers } from './teams-mock.js';
 
 // Simula GET /users/{id}/teams/{team_id}/subscription para
 // EXPO_PUBLIC_USE_MOCKS=true.
@@ -102,4 +102,49 @@ export function __mockActivateTeamSubscription(userId, teamId) {
 export function __resetMockTeamSubscriptions() {
   mockTeamSubscriptions = {};
   nextInstallmentId = 1;
+}
+
+// Simula GET /teams/{id}/subscriptions (Gap 41) -- estado de cuota de todos
+// los corredores activos del equipo, de una. Equipo gratis: todos `active`,
+// igual que el early return del backend. Equipo pago: reusa el historial que
+// ya haya generado el flujo self-only (mockGetTeamSubscription) para ese
+// usuario si existe; si no, variedad determinística por posición (índice 1
+// vencido, índice 2 pendiente de primer pago, el resto al día) para poder ver
+// los 3 estados del badge sin tener que pasar cada corredor por el flujo de
+// pago uno por uno.
+export async function mockGetTeamSubscriptions(teamId) {
+  const fee = __getMockTeamMembershipFee(teamId);
+  const teamUsers = await mockGetTeamUsers(teamId);
+  const activeRunners = teamUsers.filter((u) => u.role_in_team === 'corredor' && u.status === 'active');
+
+  const members = activeRunners.map((u, i) => {
+    if (!fee) {
+      return { user_id: u.user_id, status: 'active', subscription_status: 'active', has_debt: false, init_amount: 0, paid_installments: 0 };
+    }
+
+    const existing = mockTeamSubscriptions[key(u.user_id, teamId)];
+    if (existing) {
+      const hasDebt = Boolean(existing.blocked_date) && new Date(existing.blocked_date) < new Date();
+      return {
+        user_id: u.user_id,
+        status: existing.subscription_status === 'first_payment_pending' ? 'first_payment_pending' : (hasDebt ? 'overdue' : 'active'),
+        subscription_status: existing.subscription_status,
+        has_debt: hasDebt,
+        init_amount: existing.init_amount,
+        paid_installments: existing.paid_installments,
+      };
+    }
+
+    const demoStatus = i === 1 ? 'overdue' : i === 2 ? 'first_payment_pending' : 'active';
+    return {
+      user_id: u.user_id,
+      status: demoStatus,
+      subscription_status: demoStatus === 'overdue' ? 'active' : demoStatus,
+      has_debt: demoStatus === 'overdue',
+      init_amount: fee,
+      paid_installments: demoStatus === 'first_payment_pending' ? 0 : (demoStatus === 'overdue' ? 1 : 2),
+    };
+  });
+
+  return { team_id: Number(teamId), membership_fee: fee, members };
 }

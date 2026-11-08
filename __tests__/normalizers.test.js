@@ -8,7 +8,7 @@ import {
   toTrainingPlanModel, toCreateTrainingPlanPayload, toStampPayload, toBulkAssignPayload,
   toRunnerSessionModel, toSessionFeedbackModel, toSessionFeedbackListModel, buildSessionReviewModel,
   toRunnerSessionStartPayload, toFeedbackEditPayload,
-  toTeamSubscriptionModel, toTeamConfigurationModel,
+  toTeamSubscriptionModel, toTeamSubscriptionsListModel, toTeamConfigurationModel,
   toSessionMessageModel, toSessionMessagePayload,
   toExerciseModel, toCreateExercisePayload,
   toCompetitionModel, toCompetitionDetailModel, toCompetitionAttemptListModel, toCreateCompetitionPayload,
@@ -608,6 +608,36 @@ describe('toTeamSubscriptionModel', () => {
 
   test('devuelve null para dto falsy', () => {
     expect(toTeamSubscriptionModel(null)).toBeNull();
+  });
+});
+
+describe('toTeamSubscriptionsListModel', () => {
+  test('mapea team_id/membership_fee y cada miembro a camelCase, userId como string', () => {
+    const dto = {
+      team_id: 3,
+      membership_fee: 1500,
+      members: [
+        { user_id: 12, status: 'active', subscription_status: 'active', has_debt: false, init_amount: 1500, paid_installments: 2 },
+        { user_id: 15, status: 'overdue', subscription_status: 'active', has_debt: true, init_amount: 1500, paid_installments: 1 },
+      ],
+    };
+    expect(toTeamSubscriptionsListModel(dto)).toEqual({
+      teamId: '3',
+      membershipFee: 1500,
+      members: [
+        { userId: '12', status: 'active', subscriptionStatus: 'active', hasDebt: false, initAmount: 1500, paidInstallments: 2 },
+        { userId: '15', status: 'overdue', subscriptionStatus: 'active', hasDebt: true, initAmount: 1500, paidInstallments: 1 },
+      ],
+    });
+  });
+
+  test('members vacío o ausente no rompe', () => {
+    expect(toTeamSubscriptionsListModel({ team_id: 3, membership_fee: 0, members: [] }).members).toEqual([]);
+    expect(toTeamSubscriptionsListModel({ team_id: 3, membership_fee: 0 }).members).toEqual([]);
+  });
+
+  test('dto falsy devuelve forma vacía, no null', () => {
+    expect(toTeamSubscriptionsListModel(null)).toEqual({ teamId: null, membershipFee: 0, members: [] });
   });
 });
 

@@ -13,6 +13,7 @@ import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
 import { useGroups, useGroupMutations } from '../../hooks/use-groups.js';
 import { useInvitationMutations } from '../../hooks/use-invitations.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
+import { useTeamSubscriptions } from '../../hooks/use-team-subscriptions.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { removeTeamUser } from '../../services/teams.js';
 import { removeGroupUser, addGroupUser } from '../../services/groups.js';
@@ -53,12 +54,25 @@ import { RunnerDetailModal } from './runner-detail-modal.jsx';
 const RUNNER_MENU_WIDTH = 208;
 
 // Mismos 3 estados que ya prevé "Sistema de suscripciones y cobros" en
-// FUNCTIONAL_PROPOSE.md — dominio todavía no implementado, colores igual
-// que STATUS_META en profile-screen.jsx para no inventar una paleta nueva.
+// FUNCTIONAL_PROPOSE.md, colores igual que STATUS_META en profile-screen.jsx
+// para no inventar una paleta nueva. Conectado a datos reales desde el Gap 41
+// (GET /teams/{id}/subscriptions) vía SUBSCRIPTION_STATUS_FROM_BACKEND más
+// abajo — sin esos datos (loading, 403, equipo que todavía no se consultó),
+// el fallback de member.subscriptionStatus a `activo` en el uso de este mapa
+// sigue siendo el default histórico, no una lectura real.
 const SUBSCRIPTION_META = {
   activo: { label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary' },
   vencido: { label: 'Vencido', bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400' },
   en_prueba: { label: 'En prueba', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400' },
+};
+
+// El `status` de GET /teams/{id}/subscriptions ya viene "listo para el
+// badge" según el backend (active/overdue/first_payment_pending) -- esto
+// solo traduce esos valores a las keys en español de SUBSCRIPTION_META.
+const SUBSCRIPTION_STATUS_FROM_BACKEND = {
+  active: 'activo',
+  overdue: 'vencido',
+  first_payment_pending: 'en_prueba',
 };
 
 const TEAM_STATUS_META = {
@@ -596,10 +610,27 @@ function TeamDetailScreenContent({ teamId }) {
   // El dueño del equipo aparece en team_users junto con los corredores
   // reales — se filtra acá (no en el hook, que es agnóstico de "quién es
   // dueño") para que no se cuente ni se liste como corredor.
-  const members = useMemo(
+  const rosterMembers = useMemo(
     () => allMembers.filter((m) => m.userId !== String(team?.ownerId)),
     [allMembers, team?.ownerId],
   );
+  // Gap 41: GET /teams/{id}/subscriptions es entrenador/owner-only (403 para
+  // el resto) -- mismo gate laxo (`activeRole`, no ownership real de ESTE
+  // equipo) que ya usa canManageTeam más abajo, el backend es quien enforcea
+  // de verdad.
+  const { subscriptionsByUserId } = useTeamSubscriptions(team?.id, { enabled: activeRole === 'trainer' });
+  // Se pisa `member.subscriptionStatus` (hardcodeado a null en
+  // use-team-roster.js) solo si llegó un dato real -- sin eso (vista de
+  // corredor, 403, o toda vía sin respuesta) el fallback a `activo` de
+  // SUBSCRIPTION_META sigue siendo el default histórico, no una lectura real.
+  const members = useMemo(() => {
+    if (subscriptionsByUserId.size === 0) return rosterMembers;
+    return rosterMembers.map((m) => {
+      const sub = subscriptionsByUserId.get(m.userId);
+      if (!sub) return m;
+      return { ...m, subscriptionStatus: SUBSCRIPTION_STATUS_FROM_BACKEND[sub.status] ?? m.subscriptionStatus };
+    });
+  }, [rosterMembers, subscriptionsByUserId]);
   // Bug real encontrado 2026-10-11: esto era antes su propia useQuery con
   // queryFn: () => getUser({id}) (dto crudo, sin pasar por toUserModel) --
   // misma queryKey ['user', id] que usa useUser abajo, así que cuando el

@@ -2051,7 +2051,7 @@ mismo ícono presencial/async que el resto de la app
 ese necesita cruzar con lo planificado, que `/activities/comparison` ya
 hace pero este endpoint no, y queda fuera de este gap.
 
-## Gap 41 — sin endpoint batch/para-entrenador de estado de cuota por corredor
+## Gap 41 — sin endpoint batch/para-entrenador de estado de cuota por corredor [RESUELTO 2026-11-08]
 
 **Contexto.** La pestaña Corredores de un equipo (`team-detail-screen.jsx`) quiere
 mostrar el estado de la cuota de membresía (al día / vencida / pendiente de primer
@@ -2075,3 +2075,15 @@ el roster en N requests.
 `subscriptionStatus` en el modelo de roster (`hooks/use-team-roster.js`), hoy
 hardcodeado a `null` — conectarlo de verdad es trabajo frontend directo una vez
 que el endpoint exista, no cubierto en esta rama.
+
+**Resuelto 2026-11-08.** Backend entregó `GET /teams/{id}/subscriptions`
+(batch, owner/entrenador-only, 403 para el resto) — contrato exacto en el
+pedido del backend, pegado tal cual arriba al cerrar este gap. Frontend
+cableado en la misma rama: `services/team-subscriptions.js#getTeamSubscriptions`,
+`toTeamSubscriptionsListModel` (`services/normalizers.js`),
+`hooks/use-team-subscriptions.js#useTeamSubscriptions` (TanStack Query, gateado
+por `activeRole === 'trainer'` — mismo criterio laxo que `canManageTeam` en
+`team-detail-screen.jsx`, el 403 real lo hace cumplir el backend). El `status`
+de cada miembro llega listo para el badge; `team-detail-screen.jsx` solo lo
+traduce a las keys en español de `SUBSCRIPTION_META` (`SUBSCRIPTION_STATUS_FROM_BACKEND`)
+y pisa `member.subscriptionStatus` del roster cuando hay dato real.

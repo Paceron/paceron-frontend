@@ -1,6 +1,6 @@
-import { mockGetTeamSubscription, __mockActivateTeamSubscription, __resetMockTeamSubscriptions } from '../services/__mocks__/team-subscriptions-mock.js';
-import { __resetMockTeams } from '../services/__mocks__/teams-mock.js';
-import { toTeamSubscriptionModel } from '../services/normalizers.js';
+import { mockGetTeamSubscription, mockGetTeamSubscriptions, __mockActivateTeamSubscription, __resetMockTeamSubscriptions } from '../services/__mocks__/team-subscriptions-mock.js';
+import { __resetMockTeams, mockAddTeamUser } from '../services/__mocks__/teams-mock.js';
+import { toTeamSubscriptionModel, toTeamSubscriptionsListModel } from '../services/normalizers.js';
 
 // Equipos del seed de teams-mock.js: el 1 es gratis, el 2 cobra 25000.
 const FREE_TEAM_ID = 1;
@@ -76,5 +76,63 @@ describe('team-subscriptions-mock', () => {
     expect(model.nextInstallment.installmentAmount).toBe(25000);
     expect(model.mercadopago.marketplace).toBe(true);
     expect(model.mercadopago.concept).toBe('team_subscription');
+  });
+});
+
+describe('mockGetTeamSubscriptions (Gap 41)', () => {
+  beforeEach(() => {
+    __resetMockTeams();
+    __resetMockTeamSubscriptions();
+  });
+
+  test('equipo gratis sin corredores: members vacío', async () => {
+    const dto = await mockGetTeamSubscriptions(FREE_TEAM_ID);
+    expect(dto.membership_fee).toBeFalsy();
+    expect(dto.members).toEqual([]);
+  });
+
+  test('equipo gratis con corredores: todos active, sin deuda', async () => {
+    await mockAddTeamUser(FREE_TEAM_ID, 201, 'corredor');
+    await mockAddTeamUser(FREE_TEAM_ID, 202, 'corredor');
+    const dto = await mockGetTeamSubscriptions(FREE_TEAM_ID);
+    expect(dto.members).toHaveLength(2);
+    expect(dto.members.every((m) => m.status === 'active' && m.has_debt === false)).toBe(true);
+  });
+
+  test('equipo pago sin historial propio: variedad determinística por posición', async () => {
+    await mockAddTeamUser(PAID_TEAM_ID, 301, 'corredor');
+    await mockAddTeamUser(PAID_TEAM_ID, 302, 'corredor');
+    await mockAddTeamUser(PAID_TEAM_ID, 303, 'corredor');
+    const dto = await mockGetTeamSubscriptions(PAID_TEAM_ID);
+
+    expect(dto.members[0]).toMatchObject({ user_id: 301, status: 'active', has_debt: false });
+    expect(dto.members[1]).toMatchObject({ user_id: 302, status: 'overdue', has_debt: true, subscription_status: 'active' });
+    expect(dto.members[2]).toMatchObject({ user_id: 303, status: 'first_payment_pending', has_debt: false, paid_installments: 0 });
+  });
+
+  test('respeta el historial real si el corredor ya pasó por el flujo self-only', async () => {
+    await mockAddTeamUser(PAID_TEAM_ID, USER_ID, 'corredor');
+    await mockGetTeamSubscription(USER_ID, PAID_TEAM_ID);
+    __mockActivateTeamSubscription(USER_ID, PAID_TEAM_ID);
+
+    const dto = await mockGetTeamSubscriptions(PAID_TEAM_ID);
+    expect(dto.members[0]).toMatchObject({ user_id: USER_ID, status: 'active', has_debt: false, paid_installments: 1 });
+  });
+
+  test('no incluye corredores inactivos ni al entrenador', async () => {
+    await mockAddTeamUser(PAID_TEAM_ID, 401, 'entrenador');
+    await mockAddTeamUser(PAID_TEAM_ID, 402, 'corredor');
+    const dto = await mockGetTeamSubscriptions(PAID_TEAM_ID);
+    expect(dto.members.map((m) => m.user_id)).toEqual([402]);
+  });
+
+  test('toTeamSubscriptionsListModel normaliza ids a string y no pierde campos', async () => {
+    await mockAddTeamUser(PAID_TEAM_ID, 501, 'corredor');
+    const model = toTeamSubscriptionsListModel(await mockGetTeamSubscriptions(PAID_TEAM_ID));
+    expect(model.teamId).toBe(String(PAID_TEAM_ID));
+    expect(model.membershipFee).toBe(25000);
+    expect(model.members[0]).toEqual({
+      userId: '501', status: 'active', subscriptionStatus: 'active', hasDebt: false, initAmount: 25000, paidInstallments: 2,
+    });
   });
 });
