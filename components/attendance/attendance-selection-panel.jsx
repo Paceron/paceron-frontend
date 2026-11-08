@@ -68,7 +68,7 @@ export function AttendanceSelectionPanel({
 
   return (
     <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested" headerRight={
-      <KpiTooltip id={`${idPrefix}-panel-tooltip`} formula="Elegí equipo, grupo y sesión para cargar asistencia" openOnHover>
+      <KpiTooltip bubbleClassName="min-w-[220px]" id={`${idPrefix}-panel-tooltip`} formula="Elegí equipo, grupo y sesión para cargar asistencia" openOnHover>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} />
       </KpiTooltip>
     }>
