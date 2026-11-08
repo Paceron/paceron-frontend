@@ -21,6 +21,7 @@ import { notifyError, notifySuccess, notifyWarning } from '../../utils/haptics.j
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { AttendanceGrid } from './attendance-grid.jsx';
 import { AttendanceQrModal } from './attendance-qr-modal.jsx';
@@ -640,7 +641,7 @@ function AttendanceCascade() {
                     único elemento que destaca del botón y marca dónde está la
                     acción. */}
 
-                <IconTooltip idPrefix={`${ID_PREFIX}-qr-tooltip`} label="Código QR para registrar asistencia de la sesión" wrap>
+                <KpiTooltip id={`${ID_PREFIX}-qr-tooltip`} formula="Código QR para registrar asistencia de la sesión" openOnHover>
                   <Pressable
                     accessibilityLabel={`Generar el código QR de la sesión ${selectedSession.name}`}
                     className="h-10 flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-4 active:opacity-80"
@@ -653,7 +654,7 @@ function AttendanceCascade() {
                     Código QR
                   </Text>
                 </Pressable>
-                </IconTooltip>
+                </KpiTooltip>
               </View>
             </View>
           ) : (

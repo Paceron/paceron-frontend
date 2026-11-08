@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Col, Row } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
 import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
@@ -67,9 +68,9 @@ export function AttendanceSelectionPanel({
 
   return (
     <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested" headerRight={
-      <IconTooltip idPrefix={`${idPrefix}-panel-tooltip`} label="Elegí equipo, grupo y sesión para cargar asistencia" wrap>
+      <KpiTooltip id={`${idPrefix}-panel-tooltip`} formula="Elegí equipo, grupo y sesión para cargar asistencia" openOnHover>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} />
-      </IconTooltip>
+      </KpiTooltip>
     }>
       <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-panel-subtitle`} testID={`${idPrefix}-panel-subtitle`}>
         Elegí el equipo, el grupo y la sesión presencial a la que le querés cargar la asistencia.
