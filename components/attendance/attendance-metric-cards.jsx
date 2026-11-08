@@ -102,7 +102,7 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
 
   return (
     <View className="flex-row gap-2" nativeID={`${idPrefix}-row`} testID={`${idPrefix}-row`}>
-      <IconTooltip idPrefix={`${idPrefix}-attended-tooltip`} label="Cantidad de corredores que asistieron" wrap>
+      <IconTooltip idPrefix={`${idPrefix}-attended-tooltip`} label="Cantidad de corredores que asistieron" wrapperClassName="flex-1" wrap>
         <Pressable style={{ flex: 1 }}>
           <StatTile
             colors={colors}
@@ -114,7 +114,7 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
           />
         </Pressable>
       </IconTooltip>
-      <IconTooltip idPrefix={`${idPrefix}-not-confirmed-tooltip`} label="Corredores sin confirmar asistencia" wrap>
+      <IconTooltip idPrefix={`${idPrefix}-not-confirmed-tooltip`} label="Corredores sin confirmar asistencia" wrapperClassName="flex-1" wrap>
         <Pressable style={{ flex: 1 }}>
           <StatTile
             colors={colors}
@@ -127,7 +127,7 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
         </Pressable>
       </IconTooltip>
 
-      <IconTooltip idPrefix={`${idPrefix}-rate-tooltip`} label="Porcentaje de asistencias confirmadas" wrap>
+      <IconTooltip idPrefix={`${idPrefix}-rate-tooltip`} label="Porcentaje de asistencias confirmadas" wrapperClassName="flex-1" wrap>
         <Pressable style={{ flex: 1 }}>
           <View className={CARD_SHELL} nativeID={`${idPrefix}-rate-card`} testID={`${idPrefix}-rate-card`}>
         <LinearGradient
