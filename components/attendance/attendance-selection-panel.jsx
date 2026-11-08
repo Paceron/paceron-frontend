@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Col, Row } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -72,7 +72,7 @@ export function AttendanceSelectionPanel({
     <View style={{ zIndex: tooltipOpen ? 10 : 0 }}>
       <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested" headerRight={
         <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${idPrefix}-panel-tooltip`} label="Elegí equipo, grupo y sesión para cargar asistencia" wrap>
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} />
+        <Pressable><MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} /></Pressable>
       </IconTooltip>
     }>
       <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-panel-subtitle`} testID={`${idPrefix}-panel-subtitle`}>
