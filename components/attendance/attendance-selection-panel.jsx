@@ -155,16 +155,16 @@ export function AttendanceSelectionPanel({
         la vez, así que hay un solo nativeID y el DOM no ensucia ids. */}
       {hint ? (
         <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-hint`} testID={`${idPrefix}-hint`}>
-          <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${idPrefix}-hint-tooltip`} label={hint.text} wrap>
-            <Pressable><MaterialCommunityIcons color={hint.tone === 'error' ? colors.error : colors.onSurfaceVariant} name={hint.tone === 'error' ? 'alert-outline' : 'information-outline'} size={16} /></Pressable>
-          </IconTooltip>
-          <Text
+            <Text
             className={`flex-1 text-sm ${hint.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}
             nativeID={`${idPrefix}-hint-text`}
             testID={`${idPrefix}-hint-text`}
           >
             {hint.text}
           </Text>
+          <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${idPrefix}-hint-tooltip`} label={hint.text} wrap>
+            <Pressable><MaterialCommunityIcons color={hint.tone === 'error' ? colors.error : colors.onSurfaceVariant} name={hint.tone === 'error' ? 'alert-outline' : 'information-outline'} size={16} /></Pressable>
+          </IconTooltip>
         </View>
       ) : null}
 
