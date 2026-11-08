@@ -699,7 +699,16 @@ entrenador activo sin MP, así que el caso es real, no teórico.
 **Pedido:** un flag de "puede recibir pagos" en el payload del equipo (o en el de búsqueda), para
 poder avisar antes de que el corredor se una a un equipo que no va a poder cobrarle.
 
-## Gap 18 — gateway WebSocket genérico + broadcast de eventos de sesión
+## Gap 18 — gateway WebSocket genérico + broadcast de eventos de sesión [RESUELTO]
+
+**Resuelto (confirmado 2026-11-08 releyendo el código, no solo memoria).** `services/realtime-client.js`
+es el cliente real (singleton, JWT en `?token=`, heartbeat, backoff de reconexión, ACK de
+`subscribe`) contra `/ws` derivado de `API_BASE_URL` (`utils/realtime-message.js#buildWsUrl`) —
+sin rama de mocks, siempre real. `update:set_event` se consume en
+`hooks/use-trainer-session-runtime.js`; `presence:position` y `control:session_paused`/
+`control:session_finished` en `hooks/use-live-session-runtime.js`/`use-trainer-session-runtime.js`.
+El `impacto en frontend` de abajo queda resuelto: posición en vivo y feed casi-en-vivo del
+entrenador ya andan.
 
 Pedido de infraestructura de tiempo real, mismo patrón que Gap 13/14 (contrato deseado, backend
 confirma o ajusta) — ver
@@ -724,7 +733,15 @@ posición en vivo y el feed casi-en-vivo de registros de la spec 2 (pantalla del
 cliente corredor de esta spec (piezas transporte + corredor) funciona igual sin este gap resuelto,
 salvo que sus mensajes `presence`/`control` no llegan a ningún destinatario real todavía.
 
-## Gap 19 — `runner_session` necesita un tercer estado `interrupted` (cancelar ≠ nunca empezó)
+## Gap 19 — `runner_session` necesita un tercer estado `interrupted` (cancelar ≠ nunca empezó) [RESUELTO]
+
+**Resuelto (confirmado 2026-11-08 releyendo el código, no solo memoria).** `services/runnerSession.js#interruptRunnerSession`
+hace el `PATCH /session-instances/:id/runner {status: 'interrupted'}` real (idempotente,
+`finished`→`interrupted` inválido, 400 del backend) — ya no hay rama solo-local. `cancelSession()`
+y el `handleCancelConfirmed` de la asíncrona llaman a este estado; el pre-start
+(`session-pre-start-screen.jsx`) y `start-session-button.jsx` lo tratan igual que `finished` para
+el gate Play/Registro, y `utils/trainer-participant-state.js` lo expone como estado propio
+(`PARTICIPANT_STATUS.INTERRUPTED`) en el feed del entrenador.
 
 Detectado probando cancelación en la sesión presencial en vivo (2026-09-30), pero el problema es
 preexistente y compartido con la sesión asíncrona — `cancelRun` (`services/session-db.js`) ya
@@ -1204,13 +1221,17 @@ deliberado) porque `toUpdatePayload` manda el set completo y sin eso un simple c
 hubiera borrado la dirección existente; `toAddressPayload` (equipos) ya omite campos vacíos por su
 cuenta, así que ese caso no necesitó el mismo tracking.
 
-## Gap 30 — módulo de gamificación: rachas del corredor (cálculo server-side, dos métricas independientes)
+## Gap 30 — módulo de gamificación: rachas del corredor (cálculo server-side, dos métricas independientes) [RESUELTO]
 
 **Contexto.** Primer bloque del módulo de gamificación (rachas, logros/trofeos, leaderboards,
 competencias — doc fuente: prompt maestro de gamificación compartido por el usuario, 2026-10-12).
 Dos rachas por usuario (no por equipo), suman entrenamientos en **todos** sus equipos, calculadas
 sobre `runner_session`/calendario ya existentes. El frontend nunca recalcula ni lleva contador
 local — solo consulta y muestra.
+
+**Resuelto 2026-11-08 (confirmado releyendo el código, no solo memoria).** `services/streaks.js`
+pega contra `GET /users/{id}/streaks?days=` real (`USE_MOCKS=false`) — mismo contrato acordado
+abajo. Consumido por `hooks/use-streaks.js` y la card de rachas del Home.
 
 - **Racha A (constancia estricta):** días de calendario consecutivos donde **todas** las sesiones
   asignadas (`GroupCalendarDay.kind='training'`) de ese día terminaron con `runner_session.status
@@ -1253,7 +1274,7 @@ local — solo consulta y muestra.
    construcción) y evita el riesgo de deriva entre una tabla cacheada y la realidad — se retira el
    punto 2 original de este gap ("recalculado en cada mutación") como requisito; no lo era.
 
-## Gap 31 — módulo de gamificación: logros con niveles, logros únicos, logros contador y vitrina de estampas/trofeos
+## Gap 31 — módulo de gamificación: logros con niveles, logros únicos, logros contador y vitrina de estampas/trofeos [RESUELTO]
 
 **Contexto.** Catálogo 100% server-side — el frontend no hardcodea logros ni progreso. Tres
 familias excluyentes: **únicos** (se desbloquean una vez, sin nivel), **con niveles** (5 niveles
@@ -1263,6 +1284,11 @@ el contador sigue creciendo y cada N ocurrencias extra por encima del umbral má
 **trofeo acumulable**. Los umbrales de cada nivel ya están confirmados por el usuario (tabla
 completa en el doc fuente — ej. "Entrenamientos Consecutivos": 5/10/20/40/100) pero tienen que
 vivir como config/seed en backend, no en el cliente.
+
+**Resuelto 2026-11-08 (confirmado releyendo el código).** `services/achievements.js` pega contra
+los 3 endpoints reales (`GET /achievements/catalog`, `GET /users/{id}/achievements`,
+`GET /users/{id}/stamps`) con `USE_MOCKS=false` — contrato final según el "pedido concreto" de
+abajo, con `icon_key` ya incorporado.
 
 **Pedido concreto** (shapes en snake_case):
 
@@ -1313,11 +1339,15 @@ vivir como config/seed en backend, no en el cliente.
    listas, usar un placeholder (`/achievements`, sin query) — es un string libre, de bajo costo
    ajustar después.
 
-## Gap 32 — módulo de gamificación: leaderboards por equipo (métricas, períodos, récords históricos)
+## Gap 32 — módulo de gamificación: leaderboards por equipo (métricas, períodos, récords históricos) [RESUELTO]
 
 **Contexto.** Ranking por equipo (alcanza a corredores de cualquier grupo + entrenador viendo sin
 fila propia), server-side, recalculado bajo demanda (no tiempo real). Sin esto no es viable
 agregar client-side el historial completo de un equipo por período.
+
+**Resuelto 2026-11-08 (confirmado releyendo el código).** `services/leaderboard.js` pega contra
+`GET /teams/{id}/leaderboard?...` real (`USE_MOCKS=false`), mismo contrato que abajo (incluido el
+encoding numérico plano de `value` de la corrección del punto 10).
 
 **Pedido concreto** (shapes en snake_case):
 
@@ -1386,7 +1416,7 @@ agregar client-side el historial completo de un equipo por período.
     formatea cada unidad a texto legible (`mm:ss/km` para `pace`, etc.) — el backend nunca manda
     el string ya formateado.
 
-## Gap 33 — módulo de gamificación: competencias entre corredores (CRUD, aprobación, cierre automático, trayectoria en mapa)
+## Gap 33 — módulo de gamificación: competencias entre corredores (CRUD, aprobación, cierre automático, trayectoria en mapa) [RESUELTO]
 
 **Contexto.** Desafíos dentro de un equipo (todos-contra-todos por defecto, 1v1 o N,
 cross-grupo o acotado a un grupo). El entrenador crea directo; el corredor propone y queda
@@ -1394,6 +1424,11 @@ pendiente de aprobación del entrenador. El entrenador nunca participa. Dos tipo
 en una ventana de tiempo, o **por trayectoria** dibujada en el mapa (el que la corre pasa por
 pre-start → en vivo → resultado, igual que un entrenamiento). Gana quien maximice la métrica o
 complete mejor la trayectoria; el ganador se calcula automático y recibe un trofeo (Gap 31).
+
+**Resuelto 2026-11-08 (confirmado releyendo el código).** `services/competitions.js` pega contra
+los endpoints reales de CRUD/aprobación/cierre/intentos (`USE_MOCKS=false`) — incluye además las
+rondas posteriores de este mismo gap (Gap 36 session_instance_id sintético, Gap 37 intentos
+múltiples), ya mergeadas a `develop`.
 
 **Pedido concreto** (shapes en snake_case):
 
@@ -1672,13 +1707,18 @@ en paralelo contra mocks mientras tanto — no bloquea:**
     (Spec 4c) muestra solo la trayectoria propia superpuesta a la ruta marcada, no la de otros
     participantes corriendo en simultáneo. Queda anotado como mejora futura, no se construye ahora.
 
-## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo)
+## Gap 34 — módulo de gamificación: mecanismo transversal de "novedad por ver" (punto rojo) [RESUELTO]
 
 **Contexto.** Rachas, logros/trofeos y competencias necesitan un **mismo** mecanismo de "hay algo
 nuevo" para alimentar el punto rojo del header/sidebar/home — no 3 implementaciones ad hoc por
 sección. No existe hoy un precedente genérico: el único mecanismo de "novedad" parecido en el repo
 es `usePendingRequestsCount`/`useTeamsJoinRequestsMap` (`hooks/use-join-requests.js`), que es
 específico de solicitudes de ingreso, no transversal.
+
+**Resuelto 2026-11-08 (confirmado releyendo el código).** El `has_unseen` embebido (sin endpoint
+umbrella, como se pidió abajo) ya llega en los 3 recursos reales y el frontend lo consume —
+`team-detail-screen.jsx` usa `useCompetitions(team?.id).hasUnseen` para el punto rojo de la
+pestaña Competencias, mismo patrón para rachas/logros.
 
 **Pedido concreto — preferir embeber el flag en los 3 endpoints existentes antes que sumar un
 endpoint umbrella nuevo** (menos superficie nueva, mismo espíritu que el precedente de arriba: el
