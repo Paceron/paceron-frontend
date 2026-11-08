@@ -641,7 +641,7 @@ function AttendanceCascade() {
                     único elemento que destaca del botón y marca dónde está la
                     acción. */}
 
-                <KpiTooltip bubbleClassName="min-w-[220px]" id={`${ID_PREFIX}-qr-tooltip`} formula="Código QR para registrar asistencia de la sesión" openOnHover>
+                <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${ID_PREFIX}-qr-tooltip`} label="Código QR para registrar asistencia de la sesión" wrap>
                   <Pressable
                     accessibilityLabel={`Generar el código QR de la sesión ${selectedSession.name}`}
                     className="h-10 flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-4 active:opacity-80"
@@ -654,7 +654,7 @@ function AttendanceCascade() {
                     Código QR
                   </Text>
                 </Pressable>
-                </KpiTooltip>
+                </IconTooltip>
               </View>
             </View>
           ) : (

@@ -71,9 +71,9 @@ export function AttendanceSelectionPanel({
   return (
     <View style={{ zIndex: tooltipOpen ? 10 : 0 }}>
       <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested" headerRight={
-        <KpiTooltip bubbleClassName="min-w-[220px]" id={`${idPrefix}-panel-tooltip`} formula="Elegí equipo, grupo y sesión para cargar asistencia" onOpenChange={setTooltipOpen} openOnHover>
+        <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${idPrefix}-panel-tooltip`} label="Elegí equipo, grupo y sesión para cargar asistencia" wrap>
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} />
-      </KpiTooltip>
+      </IconTooltip>
     }>
       <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-panel-subtitle`} testID={`${idPrefix}-panel-subtitle`}>
         Elegí el equipo, el grupo y la sesión presencial a la que le querés cargar la asistencia.
