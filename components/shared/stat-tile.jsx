@@ -17,7 +17,7 @@ import { useThemeColors } from '../../theme/colors.js';
 // ve exactamente igual que antes: attendance-metric-cards.jsx alinea sus
 // tarjetas contra esa altura. `colors` es opcional (algunos consumidores lo
 // pasan); si no viene, sale del tema.
-export function StatTile({ icon, label, value, hint, actionHint, onPress, active = false, idPrefix = 'stat-tile', colors: colorsProp }) {
+export function StatTile({ icon, label, value, hint, actionHint, onPress, active = false, idPrefix = 'stat-tile', colors: colorsProp, surface = 'bg-white dark:bg-surface' }) {
   const themeColors = useThemeColors();
   const colors = colorsProp ?? themeColors;
   const id = `${idPrefix}-${label}`;
@@ -26,7 +26,7 @@ export function StatTile({ icon, label, value, hint, actionHint, onPress, active
 
   return (
     <Container
-      className={`flex-1 items-center rounded-2xl border bg-white px-1.5 py-4 dark:bg-surface ${border} ${onPress ? 'hover:opacity-90 active:opacity-80' : ''}`}
+      className={`flex-1 items-center rounded-2xl border ${surface} px-1.5 py-4 ${border} ${onPress ? 'hover:opacity-90 active:opacity-80' : ''}`}
       nativeID={id}
       onPress={onPress}
       testID={id}

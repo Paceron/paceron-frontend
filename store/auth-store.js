@@ -7,6 +7,7 @@ import { seedDefaultTheme } from '../providers/theme-provider.jsx';
 import { queryClient } from '../lib/query-client.js';
 
 const STORAGE_KEY = 'paceron.auth';
+const ACTIVE_ROLE_KEY = 'paceron.activeRole';
 
 // Solo sesión persiste — el perfil (user/roles) se re-pide del backend en
 // cada arranque vía hooks/use-user.js, nunca se escribe acá (ver
@@ -45,7 +46,7 @@ export const useAuthStore = create((set, get) => ({
           token: data.token ?? null,
           refreshToken: data.refreshToken ?? null,
           expiresAt: data.expiresAt ?? null,
-          activeRole: data.activeRole ?? 'runner',
+          activeRole: data.activeRole ?? (await getItem(ACTIVE_ROLE_KEY)) ?? 'runner',
           // Fallback a data.user?.userId: sesiones persistidas por el
           // store pre-migración (todo usuario ya logueado hoy en
           // producción) tienen el user_id anidado en `user`, no en la
@@ -53,6 +54,9 @@ export const useAuthStore = create((set, get) => ({
           // el primer hydrate() tras el deploy de esta rama.
           userId: data.userId ?? data.user?.userId ?? null,
         });
+      } else {
+        const savedRole = await getItem(ACTIVE_ROLE_KEY);
+        if (savedRole) set({ activeRole: savedRole });
       }
     } catch {
       // sesión corrupta — se ignora y se arranca sin sesión
@@ -67,8 +71,10 @@ export const useAuthStore = create((set, get) => ({
       const user = toUserModel(result?.user);
       if (token && user) {
         const expiresAt = result.expires_in ? Date.now() + result.expires_in * 1000 : null;
+        const savedRole = await getItem(ACTIVE_ROLE_KEY);
         const { activeRole } = get();
-        const session = { token, refreshToken: result.refresh_token ?? null, expiresAt, userId: user.userId, activeRole };
+        const resolvedRole = savedRole ?? activeRole ?? 'runner';
+        const session = { token, refreshToken: result.refresh_token ?? null, expiresAt, userId: user.userId, activeRole: resolvedRole };
         set(session);
         seedDefaultTheme(user.defaultTheme);
         // Siembra el cache de perfil con el user que ya vino en la
@@ -76,6 +82,7 @@ export const useAuthStore = create((set, get) => ({
         // apenas loguea (hooks/use-user.js#useUser lee de acá).
         queryClient.setQueryData(['user', user.userId], user);
         await persist(session);
+        await setItem(ACTIVE_ROLE_KEY, resolvedRole);
         return { success: true };
       }
       return { success: false, error: 'Credenciales incorrectas.' };
@@ -112,6 +119,7 @@ export const useAuthStore = create((set, get) => ({
     const nextRole = activeRole === 'runner' ? 'trainer' : 'runner';
     set({ activeRole: nextRole, roleSwitchAnimating: { from: activeRole, to: nextRole } });
     await persist({ token, refreshToken, expiresAt, userId, activeRole: nextRole });
+    await setItem(ACTIVE_ROLE_KEY, nextRole);
   },
 
   clearRoleSwitchAnimation: () => set({ roleSwitchAnimating: null }),
@@ -120,10 +128,14 @@ export const useAuthStore = create((set, get) => ({
   // cuando activeRole quedó en 'trainer' pero los roles reales no incluyen
   // 'entrenador' — reemplaza la corrección que antes vivía inline en
   // fetchPermissions().
-  resetActiveRoleIfInvalid: () => {
+  resetActiveRoleIfInvalid: async () => {
     const { token, refreshToken, expiresAt, userId } = get();
+    // Si ya no hay sesión (logout en curso), no tocar el rol persistido:
+    // el último rol seleccionado debe sobrevivir para el próximo login.
+    if (!token) return;
     set({ activeRole: 'runner' });
     persist({ token, refreshToken, expiresAt, userId, activeRole: 'runner' });
+    await setItem(ACTIVE_ROLE_KEY, 'runner');
   },
 
   logout: async () => {
@@ -134,11 +146,12 @@ export const useAuthStore = create((set, get) => ({
       // best-effort — igual que persist(), el logout local sigue aunque
       // esto falle (sin red, refresh token ya vencido, etc.)
     }
+    const { activeRole } = get();
+    await setItem(ACTIVE_ROLE_KEY, activeRole);
     set({
       token: null,
       refreshToken: null,
       expiresAt: null,
-      activeRole: 'runner',
       userId: null,
     });
     await removeItem(STORAGE_KEY);

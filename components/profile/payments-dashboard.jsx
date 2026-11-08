@@ -100,40 +100,59 @@ export function PaymentsDashboard({
 
       <View className="mb-5 flex-row flex-wrap gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
         <View nativeID="payments-dashboard-kpi-month" style={kpiBox} testID="payments-dashboard-kpi-month">
-          <StatTile hint={monthTile.hint} icon="cash-plus" idPrefix="payments-kpi" label={`Cobrado en ${formatMonthLong(current?.month)}`} value={monthTile.value} />
+          <IconTooltip idPrefix="payments-kpi-month-tooltip" label="Monto cobrado en el mes actual" wrap>
+            <Pressable nativeID="payments-kpi-month-trigger" style={{ flex: 1 }} testID="payments-kpi-month-trigger">
+              <StatTile hint={monthTile.hint} icon="cash-plus" idPrefix="payments-kpi" label={`Cobrado en ${formatMonthLong(current?.month)}`} surface="bg-slate-50 dark:bg-surface-2" value={monthTile.value} />
+            </Pressable>
+          </IconTooltip>
         </View>
         <View nativeID="payments-dashboard-kpi-mom" style={kpiBox} testID="payments-dashboard-kpi-mom">
-          <StatTile
-            hint={momTile.hint}
-            icon={momTile.direction === 'down' ? 'trending-down' : momTile.direction === 'up' ? 'trending-up' : 'trending-neutral'}
-            idPrefix="payments-kpi"
-            label={`vs ${formatMonthLong(previous?.month)}`}
-            value={momTile.value}
-          />
+          <IconTooltip idPrefix="payments-kpi-mom-tooltip" label="Variación respecto al mes anterior" wrap>
+            <Pressable nativeID="payments-kpi-mom-trigger" style={{ flex: 1 }} testID="payments-kpi-mom-trigger">
+              <StatTile
+                hint={momTile.hint}
+                icon={momTile.direction === 'down' ? 'trending-down' : momTile.direction === 'up' ? 'trending-up' : 'trending-neutral'}
+                idPrefix="payments-kpi"
+                label={`vs ${formatMonthLong(previous?.month)}`}
+                surface="bg-slate-50 dark:bg-surface-2"
+                value={momTile.value}
+              />
+            </Pressable>
+          </IconTooltip>
         </View>
         <View nativeID="payments-dashboard-kpi-pending" style={kpiBox} testID="payments-dashboard-kpi-pending">
-          <StatTile
-            actionHint={statusHint('pending')}
-            active={activeStatus === 'pending'}
-            hint={pendingTile.hint}
-            icon="clock-outline"
-            idPrefix="payments-kpi"
-            label="Cuotas pendientes"
-            onPress={() => toggle('pending')}
-            value={pendingTile.value}
-          />
+          <IconTooltip idPrefix="payments-kpi-pending-tooltip" label="Cuotas pendientes de cobro" wrap>
+            <Pressable nativeID="payments-kpi-pending-trigger" style={{ flex: 1 }} testID="payments-kpi-pending-trigger">
+              <StatTile
+                actionHint={statusHint('pending')}
+                active={activeStatus === 'pending'}
+                hint={pendingTile.hint}
+                icon="clock-outline"
+                idPrefix="payments-kpi"
+                label="Cuotas pendientes"
+                onPress={() => toggle('pending')}
+                surface="bg-slate-50 dark:bg-surface-2"
+                value={pendingTile.value}
+              />
+            </Pressable>
+          </IconTooltip>
         </View>
         <View nativeID="payments-dashboard-kpi-rejected" style={kpiBox} testID="payments-dashboard-kpi-rejected">
-          <StatTile
-            actionHint={statusHint('rejected')}
-            active={activeStatus === 'rejected'}
-            hint={rejectedTile.hint}
-            icon="close-circle-outline"
-            idPrefix="payments-kpi"
-            label="Cuotas rechazadas"
-            onPress={() => toggle('rejected')}
-            value={rejectedTile.value}
-          />
+          <IconTooltip idPrefix="payments-kpi-rejected-tooltip" label="Cuotas rechazadas" wrap>
+            <Pressable nativeID="payments-kpi-rejected-trigger" style={{ flex: 1 }} testID="payments-kpi-rejected-trigger">
+              <StatTile
+                actionHint={statusHint('rejected')}
+                active={activeStatus === 'rejected'}
+                hint={rejectedTile.hint}
+                icon="close-circle-outline"
+                idPrefix="payments-kpi"
+                label="Cuotas rechazadas"
+                onPress={() => toggle('rejected')}
+                surface="bg-slate-50 dark:bg-surface-2"
+                value={rejectedTile.value}
+              />
+            </Pressable>
+          </IconTooltip>
         </View>
       </View>
 
@@ -141,7 +160,7 @@ export function PaymentsDashboard({
 
       <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-dashboard-panels" testID="payments-dashboard-panels">
         <View nativeID="payments-dashboard-chart-panel" style={isWide ? { flex: 3 } : undefined} testID="payments-dashboard-chart-panel">
-          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title={amountMode === 'net' ? 'Neto por mes' : 'Cobrado por mes'}>
+          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title={amountMode === 'net' ? 'Neto por mes' : 'Cobrado por mes'} variant="nested">
             <WindowNav canNext={canNext} canPrev={canPrev} label={range} onNext={onNext} onPrev={onPrev} />
             {windowLoading ? (
               <SkeletonBlock height={170} nativeID="payments-dashboard-window-skeleton" rounded="rounded-xl" testID="payments-dashboard-window-skeleton" />
@@ -159,7 +178,7 @@ export function PaymentsDashboard({
         </View>
 
         <View nativeID="payments-dashboard-teams-panel" style={isWide ? { flex: 2 } : undefined} testID="payments-dashboard-teams-panel">
-          <SectionCard icon="account-group" scope="payments-dashboard-teams-card" title="Cobros por equipo">
+          <SectionCard icon="account-group" scope="payments-dashboard-teams-card" title="Cobros por equipo" variant="nested">
             <Text className="-mt-2 mb-3 text-xs text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-teams-range" testID="payments-dashboard-teams-range">
               {range}
             </Text>

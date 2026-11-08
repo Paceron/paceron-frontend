@@ -1,7 +1,9 @@
-import { Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Col, Row } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { SearchablePickerField } from '../forms/searchable-picker-field.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
@@ -48,6 +50,7 @@ export function AttendanceSelectionPanel({
   pendingSelectionCount,
 }) {
   const colors = useThemeColors();
+  const tooltipOpen = false;
   const renderSessionMeta = buildSessionMeta(idPrefix);
   const hint = resolveHint({
     loadingTeams,
@@ -65,7 +68,12 @@ export function AttendanceSelectionPanel({
   });
 
   return (
-    <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección">
+    <View nativeID={`${idPrefix}-panel-wrapper`} style={{ zIndex: tooltipOpen ? 10 : 0 }} testID={`${idPrefix}-panel-wrapper`}>
+      <SectionCard icon="filter-variant" scope={`${idPrefix}-panel`} title="Selección" variant="nested" headerRight={
+        <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${idPrefix}-panel-tooltip`} label="Elegí equipo, grupo y sesión para cargar asistencia" wrap>
+        <Pressable nativeID={`${idPrefix}-info-icon`} testID={`${idPrefix}-info-icon`}><MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} /></Pressable>
+      </IconTooltip>
+    }>
       <Text className="mb-4 text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-panel-subtitle`} testID={`${idPrefix}-panel-subtitle`}>
         Elegí el equipo, el grupo y la sesión presencial a la que le querés cargar la asistencia.
       </Text>
@@ -146,14 +154,16 @@ export function AttendanceSelectionPanel({
         la vez, así que hay un solo nativeID y el DOM no ensucia ids. */}
       {hint ? (
         <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-hint`} testID={`${idPrefix}-hint`}>
-          <MaterialCommunityIcons color={hint.tone === 'error' ? colors.error : colors.onSurfaceVariant} name={hint.tone === 'error' ? 'alert-outline' : 'information-outline'} size={16} />
-          <Text
-            className={`flex-1 text-sm ${hint.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}
+            <Text
+            className={`text-sm ${hint.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}
             nativeID={`${idPrefix}-hint-text`}
             testID={`${idPrefix}-hint-text`}
           >
             {hint.text}
           </Text>
+          <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${idPrefix}-hint-tooltip`} label={hint.text} wrap>
+            <Pressable nativeID={`${idPrefix}-hint-icon`} testID={`${idPrefix}-hint-icon`}><MaterialCommunityIcons color={hint.tone === 'error' ? colors.error : colors.onSurfaceVariant} name={hint.tone === 'error' ? 'alert-outline' : 'information-outline'} size={16} /></Pressable>
+          </IconTooltip>
         </View>
       ) : null}
 
@@ -171,6 +181,7 @@ export function AttendanceSelectionPanel({
         </View>
       ) : null}
     </SectionCard>
+    </View>
   );
 }
 
@@ -215,7 +226,7 @@ function buildSessionMeta(idPrefix) {
 // en dos archivos es una forma de que se desincronicen.
 export function formatSessionDate(isoDate) {
   if (!isoDate) return '';
-  return formatDisplayDate(String(isoDate).slice(0, 10));
+  return formatDisplayDate(String(isoDate).slice(0, 10)).replace(/-/g, '/');
 }
 
 // El `renderOptionMeta` se ejecuta en el caller (acá), no adentro del

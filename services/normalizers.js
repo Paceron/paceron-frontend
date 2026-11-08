@@ -679,6 +679,48 @@ export function toUpcomingPaymentModel(dto) {
   };
 }
 
+// GET /dashboard/trainer-home-kpis. Los KPIs no se calculan acá: se normalizan
+// los agregados del backend a números seguros para que la vista solo formatee.
+function toHomeCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) ? count : 0;
+}
+
+function toHomeAmount(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+export function toTrainerHomeKpisModel(dto) {
+  if (!dto) return null;
+  const sessions = dto.sessions ?? {};
+  const structure = dto.structure ?? {};
+  const collections = dto.collections ?? {};
+  return {
+    period: dto.period ?? 'month',
+    referenceDate: dto.reference_date ?? '',
+    from: dto.from ?? '',
+    to: dto.to ?? '',
+    daysConsidered: toHomeCount(dto.days_considered),
+    sessions: {
+      scheduled: toHomeCount(sessions.scheduled),
+      realized: toHomeCount(sessions.realized),
+      presencialScheduled: toHomeCount(sessions.presencial_scheduled),
+      presencialRealized: toHomeCount(sessions.presencial_realized),
+    },
+    structure: {
+      activeTeams: toHomeCount(structure.active_teams),
+      activeRunners: toHomeCount(structure.active_runners),
+    },
+    collections: {
+      currencyId: collections.currency_id ?? 'ARS',
+      netCollected: toHomeAmount(collections.net_collected),
+      pendingAmount: toHomeAmount(collections.pending_amount),
+      pendingCount: toHomeCount(collections.pending_count),
+    },
+  };
+}
+
 // Fase 1 de pagos — GET /users/{id}/subscriptions/current y la
 // respuesta de PUT /users/{id}/roles/{role_id}/tier comparten
 // exactamente el mismo shape (ChangeTierResponse ===

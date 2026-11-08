@@ -115,14 +115,14 @@ export function KpiTooltip({
           // El fondo va TAMBIEN inline y opaco: `bg-slate-800` solo dejo pasar
           // el fondo en oscuro en su momento, y este color no depende del tema,
           // asi que fijarlo en `style` no tiene contraindicaciones.
-          className={`absolute left-0 right-0 top-full mt-1.5 rounded-lg border-2 border-blue-500 bg-slate-800 p-3 shadow-2xl ${bubbleClassName}`}
+          className={`absolute left-0 right-0 top-full mt-1.5 rounded-lg border-2 border-green-500 bg-green-800 p-3 shadow-2xl ${bubbleClassName}`}
           // `zIndex` aca solo ordena el bubble dentro de su celda. En web NO
           // alcanza para salir de ella: react-native-web le pone `position:
           // relative; z-index: 0` a TODO `View`, asi que cada una es su propio
           // stacking context y un z-index maximo queda encerrado. Quien tiene
           // que subir es la celda (y su fila) — ver `openCell`/`openRow` en las
           // paletas.
-          style={{ backgroundColor: '#1e293b', zIndex: 2147483647 }}
+          style={{ backgroundColor: "#166534", zIndex: 2147483647 }}
           nativeID={`${id}-bubble`}
           testID={`${id}-bubble`}
         >
@@ -147,7 +147,7 @@ export function KpiTooltip({
             <View className="mt-1" nativeID={`${id}-bubble-meta`} testID={`${id}-bubble-meta`}>
               {meta.map((line, index) => (
                 <Text
-                  className="text-[11px] leading-4 text-slate-300"
+                  className="text-[11px] leading-4 text-slate-100"
                   key={`${line}-${index}`}
                   nativeID={`${id}-bubble-meta-${index}`}
                   testID={`${id}-bubble-meta-${index}`}

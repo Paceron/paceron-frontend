@@ -22,9 +22,15 @@ const ChartGridContext = createContext(null);
 export function ChartGrid({ id, ids = [], initialExpandedId = null, forceExpanded = false, children }) {
   const colors = useThemeColors();
   const narrow = useIsNarrowWeb();
-  const [expanded, setExpanded] = useState(() => (
-    narrow && initialExpandedId && ids.includes(initialExpandedId) ? new Set([initialExpandedId]) : new Set()
-  ));
+  const [expanded, setExpanded] = useState(() => {
+    // Los gráficos arrancan EXPANDIDOS (pedido del usuario): así se ven completos
+    // al entrar a la pestaña, sin tener que maximizarlos uno por uno. En ancho
+    // angosto se mantiene un solo expandido para no generar un scroll enorme.
+    if (narrow) {
+      return initialExpandedId && ids.includes(initialExpandedId) ? new Set([initialExpandedId]) : new Set();
+    }
+    return new Set(ids);
+  });
   const anyExpanded = ids.some((itemId) => expanded.has(itemId));
   const allExpanded = ids.length > 0 && !ids.some((itemId) => !expanded.has(itemId));
   const visibleChildren = useMemo(() => {

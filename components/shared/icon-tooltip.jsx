@@ -30,7 +30,7 @@ import { isWeb } from '../../utils/platform.js';
 // una línea sola (`numberOfLines={1}`, el default de los labels de ícono) crece
 // hacia los costados sin techo y con 80 caracteres se sale de la pantalla. Con
 // `wrap` la burbuja se acota a `maxWidth: 260` y el texto baja en varias líneas.
-export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center', wrapperClassName = '', wrap = false }) {
+export function IconTooltip({ label, children, idPrefix, position = 'bottom', align = 'center', wrapperClassName = '', wrap = false, bubbleClassName = '' }) {
   const [hovered, setHovered] = useState(false);
   const [coords, setCoords] = useState(null);
   const wrapperRef = useRef(null);
@@ -91,7 +91,7 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom', al
           // Montada directo en document.body: no hay stacking context de
           // ningún ancestro real de por medio (el único padre es body), así
           // que esto es sobre todo defensivo contra otro `fixed` de z propio.
-          className="z-tooltip rounded-md bg-slate-800 px-2 py-1 shadow-lg dark:bg-slate-700"
+          className={`z-tooltip rounded-md bg-green-800 px-2 py-1 shadow-lg ${bubbleClassName}`}
           nativeID={`${idPrefix}-bubble`}
           pointerEvents="none"
           style={wrap ? { ...bubbleStyle, maxWidth: 260 } : bubbleStyle}

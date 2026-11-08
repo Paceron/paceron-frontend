@@ -11,9 +11,9 @@ const VARIANT = {
     icon: null, // usa colors.primary
   },
   amber: {
-    box: 'border-amber-300 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20',
-    title: 'text-amber-700 dark:text-amber-400',
-    icon: '#f59e0b',
+    box: 'border-green-300 bg-green-50 dark:border-green-900/50 dark:bg-green-950/20',
+    title: 'text-green-700 dark:text-green-400',
+    icon: '#22c55e',
   },
   // Avisos de cuotas (Home y Pagos): `warning` para por vencer y `rose` para
   // vencido. El color lo da el FONDO, sólido y apagado, con el texto en blanco:
@@ -82,8 +82,8 @@ export function SectionCard({ title, icon, children, collapsible = false, collap
           )}
           <MaterialCommunityIcons color={style.icon ?? colors.primary} name={icon} size={18} />
           <Text className={`text-base font-bold ${style.title}`} nativeID={`${scope}-title`} testID={`${scope}-title`}>{title}</Text>
+          {headerRight}
         </Header>
-        {headerRight}
       </View>
       {(!collapsible || !collapsed) && children}
     </View>

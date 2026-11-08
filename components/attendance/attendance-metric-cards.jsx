@@ -1,4 +1,4 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../theme/colors.js';
@@ -6,6 +6,7 @@ import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { toAttendanceRate } from '../../utils/attendance-payload.js';
 import { toRingGeometry } from '../../utils/attendance-ring.js';
 import { StatTile } from '../shared/stat-tile.jsx';
+import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // 56 con 6 de trazo deja un hueco interior de 44 px: entra el número con un
 // decimal y el "%" chico adentro sin que el texto toque el trazo. El tamaño
@@ -101,22 +102,34 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
 
   return (
     <View className="flex-row gap-2" nativeID={`${idPrefix}-row`} testID={`${idPrefix}-row`}>
-      <StatTile
-        colors={colors}
-        icon="account-check-outline"
-        idPrefix={`${idPrefix}-attended`}
-        label="Asistentes"
-        value={showCount(attended)}
-      />
-      <StatTile
-        colors={colors}
-        icon="account-clock-outline"
-        idPrefix={`${idPrefix}-not-confirmed`}
-        label="Sin confirmar"
-        value={showCount(notConfirmed)}
-      />
+      <IconTooltip idPrefix={`${idPrefix}-attended-tooltip`} label="Cantidad de corredores que asistieron" wrapperClassName="flex-1" wrap>
+        <Pressable nativeID={`${idPrefix}-tile`} style={{ flex: 1 }} testID={`${idPrefix}-tile`}>
+          <StatTile
+            colors={colors}
+            icon="account-check-outline"
+            idPrefix={`${idPrefix}-attended`}
+            label="Asistentes"
+            surface="bg-slate-100 dark:bg-surface-2"
+            value={showCount(attended)}
+          />
+        </Pressable>
+      </IconTooltip>
+      <IconTooltip idPrefix={`${idPrefix}-not-confirmed-tooltip`} label="Corredores sin confirmar asistencia" wrapperClassName="flex-1" wrap>
+        <Pressable nativeID={`${idPrefix}-tile`} style={{ flex: 1 }} testID={`${idPrefix}-tile`}>
+          <StatTile
+            colors={colors}
+            icon="account-clock-outline"
+            idPrefix={`${idPrefix}-not-confirmed`}
+            label="Sin confirmar"
+            surface="bg-slate-100 dark:bg-surface-2"
+            value={showCount(notConfirmed)}
+          />
+        </Pressable>
+      </IconTooltip>
 
-      <View className={CARD_SHELL} nativeID={`${idPrefix}-rate-card`} testID={`${idPrefix}-rate-card`}>
+      <IconTooltip idPrefix={`${idPrefix}-rate-tooltip`} label="Porcentaje de asistencias confirmadas" wrapperClassName="flex-1" wrap>
+        <Pressable nativeID={`${idPrefix}-tile`} style={{ flex: 1 }} testID={`${idPrefix}-tile`}>
+          <View className={CARD_SHELL} nativeID={`${idPrefix}-rate-card`} testID={`${idPrefix}-rate-card`}>
         <LinearGradient
           colors={gradient}
           end={{ x: 1, y: 1 }}
@@ -230,6 +243,8 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
           </Text>
         ) : null}
       </View>
+        </Pressable>
+      </IconTooltip>
     </View>
   );
 }

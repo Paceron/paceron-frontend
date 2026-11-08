@@ -71,7 +71,7 @@ export function PaletteWithTarget({
     : 'Ritmo logrado período a período, agrupado según la granularidad elegida (sesión, semana, mes o trimestre). Este ejercicio no tiene velocidad esperada cargada, así que la línea va sin referencia contra la que compararse.';
 
   return (
-    <View nativeID={`${id}-root`} testID={`${id}-root`}>
+    <View nativeID={`${id}-root`} style={{ position: 'relative', zIndex: openTooltip ? 10 : 0 }} testID={`${id}-root`}>
       {section !== 'charts' ? (
         <>
       {/* Las SEIS cifras de la pantalla, del mismo tamaño y en dos filas de tres.
@@ -183,11 +183,6 @@ export function PaletteWithTarget({
         ))}
       </View>
 
-      <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
-        {hasMetric(totals.delta_pct)
-          ? `Delta ${formatDelta(totals.delta_pct, units.delta)} contra el objetivo (positivo es mejora).`
-          : 'Sin objetivo cargado en el período: el delta no se calcula.'}
-      </Text>
       {!hasTarget(summary) ? (
         <View className="mt-1 flex-row items-center gap-1" nativeID={`${id}-no-target-note`} testID={`${id}-no-target-note`}>
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={13} />
