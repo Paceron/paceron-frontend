@@ -106,6 +106,7 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
         icon="account-check-outline"
         idPrefix={`${idPrefix}-attended`}
         label="Asistentes"
+        surface="bg-slate-100 dark:bg-surface-2"
         value={showCount(attended)}
       />
       <StatTile
@@ -113,6 +114,7 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
         icon="account-clock-outline"
         idPrefix={`${idPrefix}-not-confirmed`}
         label="Sin confirmar"
+        surface="bg-slate-100 dark:bg-surface-2"
         value={showCount(notConfirmed)}
       />
 
