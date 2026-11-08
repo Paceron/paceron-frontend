@@ -389,7 +389,7 @@ export function ProfileScreen() {
           onRemovePhoto={handleRemovePhoto}
         />
 
-        {hasTrainerRole && <TrainerDataSection />}
+        {hasTrainerRole && activeRole === 'trainer' && <TrainerDataSection />}
 
         {showPayments ? <PaymentsSummaryCard /> : <PaymentsHistoryCard />}
 
