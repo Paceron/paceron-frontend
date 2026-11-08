@@ -17,7 +17,10 @@ import { LiveTrajectoryMap } from './live-trajectory-map';
 // mostrar acá, solo lo que pasó. Inicio Y fin SIEMPRE presentes (a
 // diferencia del mapa en vivo de las pantallas de sesión, acá la serie ya
 // terminó, nunca hay un "todavía no se sabe el fin"). Sin `currentPosition`
-// -- no hay avatar de posición en vivo, es historial.
+// -- no hay avatar de posición en vivo, es historial. `interactive={false}`
+// (pedido real 2026-11-08) -- vista de solo lectura con el encuadre fijo
+// sobre la trayectoria, sin poder arrastrarla/pellizcarla (competía con el
+// scroll de la pantalla de revisión que la contiene).
 export function SeriesTrajectoryMap({ feedbackId, pointsCount, onMapTouchStart, onMapTouchEnd }) {
   const colors = useThemeColors();
   const [state, setState] = useState({ loading: false, points: null, error: null });
@@ -80,7 +83,7 @@ export function SeriesTrajectoryMap({ feedbackId, pointsCount, onMapTouchStart, 
 
   return (
     <View className="mt-3 h-60" nativeID="session-review-trajectory" testID="session-review-trajectory">
-      <LiveTrajectoryMap hideReferenceLine onMapTouchEnd={onMapTouchEnd} onMapTouchStart={onMapTouchStart} referenceRoute={referenceRoute} traveledPoints={state.points} />
+      <LiveTrajectoryMap hideReferenceLine interactive={false} onMapTouchEnd={onMapTouchEnd} onMapTouchStart={onMapTouchStart} referenceRoute={referenceRoute} traveledPoints={state.points} />
     </View>
   );
 }

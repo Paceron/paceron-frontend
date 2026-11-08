@@ -125,7 +125,7 @@ function buildCurrentPositionMarker(photoUrl, initials) {
   return circle;
 }
 
-export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal }) {
+export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal, interactive = true }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const currentPositionMarkerRef = useRef(null);
@@ -138,7 +138,13 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
     // recorrida -- el maxBounds de abajo (mismo expandBounds que ya usa la
     // Camera nativa) acota el panning a una zona razonable en vez de dejarlo
     // infinito.
-    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 14 });
+    //
+    // Reincorporado 2026-11-08, pero como prop del caller (no hardcodeado
+    // de nuevo): SeriesTrajectoryMap (trayectoria de una serie ya cerrada)
+    // SÍ es exactamente el caso de lectura bloqueada de arriba -- default
+    // `true` deja a todos los demás callers (sesión/intento en vivo) tal
+    // cual estaban.
+    const map = new maplibregl.Map({ attributionControl: false, container: containerRef.current, style: OPENFREEMAP_MINIMAL_STYLE_URL, center: initialCenter, zoom: 14, interactive });
     const markerCleanups = [];
     map.on('load', () => {
       map.addSource('live-trajectory-map-traveled', { type: 'geojson', data: EMPTY_LINE });

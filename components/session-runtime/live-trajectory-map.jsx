@@ -93,7 +93,7 @@ function CurrentPositionMarker({ point, photoUrl, initials }) {
 // (ver utils/distance.js#smoothGpsPoint) por el caller -- este
 // componente no sabe ni le importa de dónde salió el punto, solo lo
 // dibuja.
-export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal, onMapTouchStart, onMapTouchEnd }) {
+export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosition, currentUserPhotoUrl, currentUserInitials, hideReferenceLine = false, recenterSignal, onMapTouchStart, onMapTouchEnd, interactive = true }) {
   const cameraRef = useRef(null);
   const [activeMarker, setActiveMarker] = useState(null);
   // Mismo guard que RouteMapPreview -- Marker.onPress no consume el tap
@@ -197,6 +197,18 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
     >
       <Map
         attribution={false}
+        // `interactive` (pedido real 2026-11-08, mismo prop y mismo
+        // mecanismo que ya usa RouteMapPreview): el mapa de la trayectoria
+        // de una serie ya cerrada (SeriesTrajectoryMap) es una vista de
+        // solo lectura con el encuadre fijo (fitBounds de abajo) -- no
+        // tiene sentido poder arrastrarlo/pellizcarlo, y arrastrarlo
+        // corría contra el scroll de la pantalla de revisión que lo
+        // contiene. Default `true` preserva el comportamiento de los
+        // demás callers (sesión/intento en vivo), que sí necesitan
+        // explorar la trayectoria mientras corren.
+        doubleTapHoldZoom={interactive}
+        doubleTapZoom={interactive}
+        dragPan={interactive}
         logo={false}
         mapStyle={OPENFREEMAP_MINIMAL_STYLE_URL}
         nativeID="live-trajectory-map"
@@ -223,6 +235,9 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
         }}
         style={{ flex: 1 }}
         testID="live-trajectory-map"
+        touchPitch={interactive}
+        touchRotate={interactive}
+        touchZoom={interactive}
       >
         {/* minZoom explícito de nuevo -- pedido real 2026-10-21 (3ra vuelta):
             con el pan ya acotado por maxBounds, el zoom-out seguía sin
