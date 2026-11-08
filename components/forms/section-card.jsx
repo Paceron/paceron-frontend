@@ -82,8 +82,8 @@ export function SectionCard({ title, icon, children, collapsible = false, collap
           )}
           <MaterialCommunityIcons color={style.icon ?? colors.primary} name={icon} size={18} />
           <Text className={`text-base font-bold ${style.title}`} nativeID={`${scope}-title`} testID={`${scope}-title`}>{title}</Text>
+          {headerRight}
         </Header>
-        {headerRight}
       </View>
       {(!collapsible || !collapsed) && children}
     </View>

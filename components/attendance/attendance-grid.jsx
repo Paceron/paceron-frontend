@@ -185,10 +185,11 @@ export function AttendanceGrid({
             MaterialCommunityIcons de la versión instalada: `sort-alpha-*` NO
             existe (renderiza el glyph de fallback, un "?"), y el nombre correcto
             es `sort-alphabetical-*`. */}
-        <Pressable
-          accessibilityLabel={sortOrder === 'asc'
-            ? 'Orden actual: de la A a la Z. Tocar para ordenar de la Z a la A'
-            : 'Orden actual: de la Z a la A. Tocar para ordenar de la A a la Z'}
+        <IconTooltip idPrefix={`${idPrefix}-sort-toggle-tooltip`} label="Ordenar la lista alfabéticamente" wrap>
+          <Pressable
+            accessibilityLabel={sortOrder === 'asc'
+              ? 'Orden actual: de la A a la Z. Tocar para ordenar de la Z a la A'
+              : 'Orden actual: de la Z a la A. Tocar para ordenar de la A a la Z'}
           // Verde `primary` (#8cc63e), el mismo del botón de Código QR: los tres
           // botones de la pantalla comparten color y forma, y el buscador queda
           // como el único control de superficie blanca — que es lo que hace
@@ -208,6 +209,7 @@ export function AttendanceGrid({
             {sortOrder === 'asc' ? 'A–Z' : 'Z–A'}
           </Text>
         </Pressable>
+        </IconTooltip>
 
         {/* Refrescar va acá, al lado del buscador y del orden, y no en la card de
             la sesión: los tres son controles de la MISMA lista —filtrar, ordenar,

@@ -62,7 +62,7 @@ function formatAttendanceDate(isoDate) {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
   if (!match) return null;
   const [, year, month, day] = match;
-  return `${day}-${month}-${year}`;
+  return `${day}/${month}/${year}`;
 }
 
 // Horario presencial. `presencial_time_from`/`presencial_time_to` son NULLABLES

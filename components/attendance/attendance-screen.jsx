@@ -640,18 +640,20 @@ function AttendanceCascade() {
                     único elemento que destaca del botón y marca dónde está la
                     acción. */}
 
-                <Pressable
-                  accessibilityLabel={`Generar el código QR de la sesión ${selectedSession.name}`}
-                  className="h-10 flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-4 active:opacity-80"
-                  nativeID={`${ID_PREFIX}-qr-button`}
-                  onPress={() => setQrModalVisible(true)}
-                  testID={`${ID_PREFIX}-qr-button`}
-                >
+                <IconTooltip bubbleClassName="min-w-[220px]" idPrefix={`${ID_PREFIX}-qr-tooltip`} label="Código QR para registrar asistencia de la sesión" wrap>
+                  <Pressable
+                    accessibilityLabel={`Generar el código QR de la sesión ${selectedSession.name}`}
+                    className="h-10 flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-4 active:opacity-80"
+                    nativeID={`${ID_PREFIX}-qr-button`}
+                    onPress={() => setQrModalVisible(true)}
+                    testID={`${ID_PREFIX}-qr-button`}
+                  >
                   <MaterialCommunityIcons color="#ffffff" name="qrcode" size={16} />
                   <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${ID_PREFIX}-qr-button-label`} testID={`${ID_PREFIX}-qr-button-label`}>
                     Código QR
                   </Text>
                 </Pressable>
+                </IconTooltip>
               </View>
             </View>
           ) : (

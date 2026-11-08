@@ -45,7 +45,7 @@ describe('buildAttendanceQrHtml', () => {
     expect(html).toContain('@page { size: A4; margin: 0; }');
     expect(html).toContain('Runners Mendoza');
     // DD-MM-AAAA, el mismo formato que muestra la pantalla (formatSessionDate).
-    expect(html).toContain('27-09-2026');
+    expect(html).toContain('27/09/2026');
     expect(html).toContain(QR_DATA_URI);
   });
 
@@ -202,8 +202,8 @@ describe('buildAttendanceQrHtml', () => {
     // FULL_SESSION tiene date 2026-09-27. Se asserta sobre el ELEMENTO, no sobre
     // la cadena "Sesión del": esa frase estaba también en un comentario del CSS
     // y hacía que un test de "no debe aparecer" pasara en falso.
-    expect(html).toContain('27-09-2026');
-    expect(html).toMatch(/<p class="session-date">Sesión del 27-09-2026<\/p>/);
+    expect(html).toContain('27/09/2026');
+    expect(html).toMatch(/<p class="session-date">Sesión del 27\/09\/2026<\/p>/);
   });
 
   test('sin fecha no se imprime el renglón, y no queda un "del" colgado', () => {
@@ -229,6 +229,6 @@ describe('buildAttendanceQrHtml', () => {
     });
 
     expect(html).not.toMatch(/<p class="session-date">/);
-    expect(html).not.toContain('27-09-2026');
+    expect(html).not.toContain('27/09/2026');
   });
 });
