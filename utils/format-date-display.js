@@ -1,4 +1,5 @@
 import { LocaleConfig } from 'react-native-calendars';
+import '../config/calendarLocale.js';
 
 // Convierte YYYY-MM-DD (formato interno que usa toda la lógica de
 // calendario) a DD-MM-YYYY para mostrar en UI.
