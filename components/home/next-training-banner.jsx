@@ -178,7 +178,7 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
               </View>
             )}
 
-            <View className="mt-3 flex-row items-center gap-1.5 self-start rounded-full bg-[#111518]/10 px-3 py-1.5" nativeID="next-training-banner-hero-cta" testID="next-training-banner-hero-cta">
+            <View className="mt-3 flex-row items-center gap-1.5 self-start rounded-full bg-green-500 dark:bg-green-800 px-3 py-1.5" nativeID="next-training-banner-hero-cta" testID="next-training-banner-hero-cta">
               <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={eligible && !isWeb ? 'play' : 'calendar-month-outline'} size={14} />
               <Text className="text-xs font-semibold uppercase tracking-wide text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-cta-label" testID="next-training-banner-hero-cta-label">
                 {eligible && !isWeb ? 'Iniciar entrenamiento' : 'Ver en el calendario'}
