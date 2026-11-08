@@ -156,7 +156,7 @@ export function AttendanceSelectionPanel({
       {hint ? (
         <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-hint`} testID={`${idPrefix}-hint`}>
             <Text
-            className={`flex-1 text-sm ${hint.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}
+            className={`text-sm ${hint.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}
             nativeID={`${idPrefix}-hint-text`}
             testID={`${idPrefix}-hint-text`}
           >
