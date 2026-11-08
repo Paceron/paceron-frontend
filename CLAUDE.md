@@ -348,9 +348,20 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
 
 - **Neto = bruto − comisión de Paceron, y lo calcula el backend (2026-11-02).** Reemplaza
   la regla anterior de "nunca mostrar comisión": cada cobro trae `fee_amount` y
-  `fee_percent` (los pagos viejos sin comisión guardada caen al 5%), y la fila muestra
-  "Neto $X · comisión 5%". El front no recalcula nada, solo muestra lo que llega.
+  `fee_percent` (los pagos viejos sin comisión guardada caen al 5%). El front no
+  recalcula nada, solo muestra lo que llega. **Las filas de Cobros muestran solo
+  "Monto" (el bruto), igual que Pagos (2026-11-08)**: tenían columnas Bruto y Neto
+  y la lista se leía distinta a la de Pagos. El neto y la comisión quedan en el
+  dashboard (switch Bruto/Neto y tooltip por mes).
   `formatNetLabel` y el "s/d" del gráfico quedan por si un neto vuelve a venir `null`.
+- **El checkout ofrece solo tarjeta de crédito y débito (2026-11-08).** El Brick
+  (`checkout-brick.web.jsx`, `customization.paymentMethods`) habilitaba todo, pero
+  efectivo (Pago Fácil/Rapipago) no genera token y `POST /payments` lo exige
+  (`installments >= 1` también), y la billetera de Mercado Pago / Mercado Crédito
+  llega al `onSubmit` sin `formData` y confirma por redirect + webhook, que no está
+  cableado: las tres opciones terminaban en error. Sumarlas implica cambios de back
+  (pago sin token, estado pendiente con cupón) y de flujo (redirect fuera del
+  WebView en nativo, como mp-connect).
 - **Las cuotas que todavía no se pagaron no existen como filas.** El backend crea la
   cuota N+1 recién cuando se paga la N, así que lo pendiente por mes del gráfico (barra
   ámbar), "Por cobrar este mes" (Vencidos / A vencer, `payments-due-card.jsx`) y

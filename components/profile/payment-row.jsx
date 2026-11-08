@@ -6,7 +6,6 @@ import { formatDMY } from '../../utils/datetime-parts.js';
 import { paymentStatusMeta } from '../../utils/payment-status.js';
 import { paymentMethodLabel, paymentTypeLabel } from '../../utils/payment-method.js';
 import { canHaveReceipt, receiptConcept } from '../../utils/receipt-html.js';
-import { formatFeeLabel } from '../../utils/payments-summary.js';
 
 const TONE_CLASSES = {
   success: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
@@ -50,13 +49,14 @@ function ReceiptButton({ payment, id, onReceipt, busy, compact = false }) {
 }
 
 // Columnas de la tabla en web ancha. Las usa también el encabezado de la lista.
+// Cobros muestra solo el monto, igual que Pagos: el neto y la comisión viven en
+// el dashboard (switch Bruto/Neto), no en cada fila.
 export const RECEIVED_COLUMNS = [
   { key: 'date', label: 'Fecha', flex: 1.1 },
   { key: 'payer', label: 'Corredor', flex: 2 },
   { key: 'team', label: 'Equipo', flex: 1.8 },
   { key: 'status', label: 'Estado', flex: 1.3 },
-  { key: 'gross', label: 'Bruto', flex: 1.2, align: 'right' },
-  { key: 'net', label: 'Neto', flex: 1.2, align: 'right' },
+  { key: 'amount', label: 'Monto', flex: 1.2, align: 'right' },
 ];
 
 export const HISTORY_COLUMNS = [
@@ -106,10 +106,7 @@ function ReceivedRow({ payment, isWide, id, date }) {
           payer: <CellText id={`${id}-payer-text`} strong>{payment.payer?.fullName || 'Corredor'}</CellText>,
           team: <CellText id={`${id}-team-text`}>{payment.team?.name || 'Equipo eliminado'}</CellText>,
           status: <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />,
-          gross: <CellText id={`${id}-gross-text`} strong>{formatArs(payment.grossAmount)}</CellText>,
-          net: payment.netAmount === null
-            ? <CellText id={`${id}-net-text`} muted>—</CellText>
-            : <CellText id={`${id}-net-text`}>{`${formatArs(payment.netAmount, { decimals: 2 })}${payment.feePercent !== null ? ` · ${payment.feePercent}%` : ''}`}</CellText>,
+          amount: <CellText id={`${id}-amount-text`} strong>{formatArs(payment.grossAmount)}</CellText>,
         }}
         id={id}
       />
@@ -125,11 +122,6 @@ function ReceivedRow({ payment, isWide, id, date }) {
         <Text className="flex-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>{`${payment.team?.name || 'Equipo eliminado'} · ${date}`}</Text>
         <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />
       </View>
-      {payment.netAmount !== null ? (
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-net`} style={TABULAR} testID={`${id}-net`}>
-          {[`Neto ${formatArs(payment.netAmount, { decimals: 2 })}`, formatFeeLabel(payment.feePercent)].filter(Boolean).join(' · ')}
-        </Text>
-      ) : null}
     </View>
   );
 }

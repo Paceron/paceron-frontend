@@ -66,9 +66,12 @@ export function CheckoutBrick({ preferenceId, publicKey, amount, installmentId, 
         // type.d.ts) — sin él el Brick rechaza la inicialización contra la API real
         // de MP con "No payment type was selected" (400), recién detectable contra
         // credenciales reales — nunca se notó con mocks porque el Brick ni siquiera
-        // llega a llamar a MP con la public key falsa. Habilita todos los métodos,
-        // sin restricción propia del negocio hoy.
-        customization={{ paymentMethods: { bankTransfer: 'all', creditCard: 'all', debitCard: 'all', mercadoPago: 'all', ticket: 'all' } }}
+        // llega a llamar a MP con la public key falsa. Solo tarjetas: efectivo
+        // (ticket) no genera token y el backend lo exige, y la billetera de
+        // Mercado Pago / Mercado Crédito no manda formData (handleSubmit lee
+        // formData.token) y además confirma por redirect + webhook, que no está
+        // cableado. Mostrarlos solo llevaba a un error.
+        customization={{ paymentMethods: { creditCard: 'all', debitCard: 'all' } }}
         initialization={{ amount, preferenceId, ...(marketplace ? { marketplace: true } : {}) }}
         onError={handleError}
         onSubmit={handleSubmit}
