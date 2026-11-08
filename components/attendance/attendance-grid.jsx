@@ -42,7 +42,7 @@ export function AttendanceGrid({
   // explicación (tarea 5.7: "isLoading → spinner, no empty state").
   if (isLoading) {
     return (
-      <View className="rounded-2xl border border-slate-200 bg-white px-4 py-10 dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-loading`} testID={`${idPrefix}-loading`}>
+      <View className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-loading`} testID={`${idPrefix}-loading`}>
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -80,7 +80,7 @@ export function AttendanceGrid({
   // explicación parece un bug.
   if (rows.length === 0) {
     return (
-      <View className="rounded-2xl border border-slate-200 bg-white px-4 py-10 dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
+      <View className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>
         <Text className="text-center text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty-text`} testID={`${idPrefix}-empty-text`}>
           Este grupo no tenía corredores en la fecha de la sesión.
         </Text>
@@ -99,7 +99,7 @@ export function AttendanceGrid({
           por un refetch en curso, para no dejar un botón deshabilitado ocupando
           lugar (tarea 5.4). */}
       {markedCount > 0 ? (
-        <View className="mt-3 flex-row items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-surface" nativeID={`${idPrefix}-save-bar`} testID={`${idPrefix}-save-bar`}>
+        <View className="mt-3 flex-row items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-save-bar`} testID={`${idPrefix}-save-bar`}>
           <View className="flex-1" nativeID={`${idPrefix}-save-bar-text-wrapper`} testID={`${idPrefix}-save-bar-text-wrapper`}>
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-save-bar-count`} testID={`${idPrefix}-save-bar-count`}>
               Confirmar Asistencia de {markedCount} {markedCount === 1 ? 'corredor' : 'corredores'}
@@ -146,7 +146,7 @@ export function AttendanceGrid({
           buscador (flex-1) es el único que cede terreno y el orden es lo último
           que se cae del lado visible. */}
       <View className="mt-3 flex-row items-center gap-2" nativeID={`${idPrefix}-controls`} testID={`${idPrefix}-controls`}>
-        <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900" nativeID={`${idPrefix}-search-box`} testID={`${idPrefix}-search-box`}>
+        <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-800" nativeID={`${idPrefix}-search-box`} testID={`${idPrefix}-search-box`}>
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={18} />
           <TextInput
             accessibilityLabel={`Filtrar corredores por nombre. Se muestran ${visibleRows.length} de ${rows.length}`}
