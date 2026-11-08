@@ -227,7 +227,7 @@ function buildSessionMeta(idPrefix) {
 // en dos archivos es una forma de que se desincronicen.
 export function formatSessionDate(isoDate) {
   if (!isoDate) return '';
-  return formatDisplayDate(String(isoDate).slice(0, 10));
+  return formatDisplayDate(String(isoDate).slice(0, 10)).replace(/-/g, '/');
 }
 
 // El `renderOptionMeta` se ejecuta en el caller (acá), no adentro del
