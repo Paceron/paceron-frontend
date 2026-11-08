@@ -2050,3 +2050,28 @@ mismo ícono presencial/async que el resto de la app
 (`trainings-history-row.jsx`). El % de cumplimiento ahí sigue sin estar --
 ese necesita cruzar con lo planificado, que `/activities/comparison` ya
 hace pero este endpoint no, y queda fuera de este gap.
+
+## Gap 41 — sin endpoint batch/para-entrenador de estado de cuota por corredor
+
+**Contexto.** La pestaña Corredores de un equipo (`team-detail-screen.jsx`) quiere
+mostrar el estado de la cuota de membresía (al día / vencida / pendiente de primer
+pago) de cada corredor en su propia fila, visible para el entrenador que gestiona
+el equipo.
+
+**Estado actual, confirmado.** `GET /users/{id}/teams/{team_id}/subscription`
+(`services/team-subscriptions.js`) es **self-only por construcción** — el backend
+ignora el `:id` del path y siempre usa el del JWT del llamador. Un entrenador no
+puede pedir la suscripción de OTRO corredor con este endpoint, ni hay ningún otro
+endpoint que devuelva el estado de cuota de varios miembros de un equipo a la vez.
+
+**Pedido:** un endpoint (nuevo, o una variante del existente habilitada para el
+entrenador dueño del equipo) que devuelva, en una sola consulta por equipo, el
+estado de cuota de cada corredor — mismo criterio de estados que ya usa
+`team-subscription-screen.jsx` (al día / vencida / pendiente de primer pago).
+Tiene que ser **batch** (uno por equipo, no uno por corredor) para no convertir
+el roster en N requests.
+
+**Alcance:** cambio de backend únicamente. El frontend ya tiene el campo
+`subscriptionStatus` en el modelo de roster (`hooks/use-team-roster.js`), hoy
+hardcodeado a `null` — conectarlo de verdad es trabajo frontend directo una vez
+que el endpoint exista, no cubierto en esta rama.

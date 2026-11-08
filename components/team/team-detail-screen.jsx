@@ -24,7 +24,6 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
-import { StatTile } from '../shared/stat-tile.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { useTeamDetailTabStore } from '../../store/team-detail-tab-store.js';
@@ -44,6 +43,8 @@ import { useCompetitions } from '../../hooks/use-competitions.js';
 import { TeamSubscriptionPendingBanner } from './team-subscription-pending-banner.jsx';
 import { DashboardScreen } from '../dashboard/dashboard-screen.jsx';
 import { useTeamSubscription } from '../../hooks/use-team-subscription.js';
+import { TeamInfoModal } from './team-info-modal.jsx';
+import { RunnerDetailModal } from './runner-detail-modal.jsx';
 
 // Ancho fijo del panel del menú de corredor (w-52 = 208px) — se usa para
 // alinear el borde derecho del panel con el del botón de 3 puntitos que lo
@@ -77,7 +78,6 @@ const TEAM_STATUS_META = {
 // lista de Corredores, solo para el dueño. `?tab=solicitudes` (links viejos,
 // notificaciones) cae en Corredores vía TAB_ALIASES.
 const TABS = [
-  { id: 'general', label: 'General', icon: 'information-outline' },
   { id: 'corredores', label: 'Corredores', icon: 'account-multiple' },
   { id: 'grupos', label: 'Grupos', icon: 'account-group' },
   { id: 'leaderboard', label: 'Leaderboard', icon: 'podium-gold' },
@@ -87,28 +87,10 @@ const TABS = [
 
 const TAB_ALIASES = { solicitudes: 'corredores' };
 
-const DASH = '—';
-function display(value) {
-  return value && String(value).trim() ? String(value) : DASH;
-}
-
 function Tag({ label, bg, text, nativeID, testID }) {
   return (
     <View className={`rounded-full px-2.5 py-1 ${bg}`} nativeID={nativeID} testID={testID}>
       <Text className={`text-xs font-semibold ${text}`} nativeID={`${nativeID}-label`} testID={`${testID}-label`}>{label}</Text>
-    </View>
-  );
-}
-
-function Field({ label, value }) {
-  return (
-    <View className="mb-4" nativeID={`team-detail-field-${label}`} testID={`team-detail-field-${label}`}>
-      <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`team-detail-field-${label}-label`} testID={`team-detail-field-${label}-label`}>
-        {label}
-      </Text>
-      <Text className="text-sm leading-5 text-slate-700 dark:text-slate-200" nativeID={`team-detail-field-${label}-value`} testID={`team-detail-field-${label}-value`}>
-        {value}
-      </Text>
     </View>
   );
 }
@@ -191,11 +173,22 @@ function RunnerMenu({ member, colors, onOpenMenu, containerRef }) {
 // Contenido del panel compartido — member/onExpel/onMove vienen del padre
 // (TeamDetailScreenContent), que trackea qué corredor abrió el menú (ver
 // RunnerMenu#handlePress, que ahora pasa `member` a onOpenMenu).
-function RunnerActionsMenu({ member, onExpel, onMove }) {
+function RunnerActionsMenu({ member, onExpel, onMove, onDetail }) {
   const colors = useThemeColors();
 
   return (
     <View className="w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID="team-detail-runner-menu-panel" testID="team-detail-runner-menu-panel">
+      <Pressable
+        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        nativeID="team-detail-runner-menu-detail"
+        onPress={() => onDetail(member)}
+        testID="team-detail-runner-menu-detail"
+      >
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={16} />
+        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="team-detail-runner-menu-detail-label" testID="team-detail-runner-menu-detail-label">
+          Ver detalle
+        </Text>
+      </Pressable>
       <Pressable
         className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
         nativeID="team-detail-runner-menu-move"
@@ -222,7 +215,7 @@ function RunnerActionsMenu({ member, onExpel, onMove }) {
   );
 }
 
-function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu, containerRef }) {
+function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu, onOpenDetail, containerRef }) {
   const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
   const [expanded, setExpanded] = useState(false);
 
@@ -243,11 +236,22 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
       />
     );
 
+    // Tappable para abrir el detalle solo si el toggle "Mostrar los grupos
+    // a los corredores" está prendido (`showGroupTag` ya ES ese flag acá --
+    // en esta rama `restricted` siempre corre con !isTrainerView, así que
+    // `canSeeGroups` se reduce exactamente a `team.showGroupsToRunners`).
+    // Sin eso prendido, la fila queda igual que antes: un View sin gesto.
+    const RowContainer = showGroupTag ? Pressable : View;
+    const rowProps = showGroupTag
+      ? { accessibilityLabel: `Ver detalle de ${member.name}`, accessibilityRole: 'button', onPress: () => onOpenDetail(member) }
+      : {};
+
     return (
-      <View
-        className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
+      <RowContainer
+        className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 active:opacity-80 dark:border-slate-700 dark:bg-slate-900"
         nativeID={`team-detail-runner-${member.id}`}
         testID={`team-detail-runner-${member.id}`}
+        {...rowProps}
       >
         {avatar}
         <View className="flex-1" nativeID={`team-detail-runner-${member.id}-identity`} testID={`team-detail-runner-${member.id}-identity`}>
@@ -262,7 +266,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
           <SeniorityLine colors={colors} idPrefix={`team-detail-runner-${member.id}`} member={member} />
         </View>
         {groupTag}
-      </View>
+      </RowContainer>
     );
   }
 
@@ -685,6 +689,10 @@ function TeamDetailScreenContent({ teamId }) {
   const [expelModalVisible, setExpelModalVisible] = useState(false);
   const [moveModalVisible, setMoveModalVisible] = useState(false);
   const [leaveGroupModalVisible, setLeaveGroupModalVisible] = useState(false);
+  // "Sobre el equipo" (antes la pestaña General) y el detalle de un
+  // corredor puntual -- ver TeamInfoModal/RunnerDetailModal más abajo.
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [runnerDetailMember, setRunnerDetailMember] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -697,6 +705,11 @@ function TeamDetailScreenContent({ teamId }) {
     setRunnerMenuOpen(true);
   };
   const handleCloseRunnerMenu = () => setRunnerMenuOpen(false);
+
+  const handleOpenRunnerDetail = (member) => {
+    setRunnerMenuOpen(false);
+    setRunnerDetailMember(member);
+  };
 
   const invalidateRoster = () => {
     queryClient.invalidateQueries({ queryKey: ['team-users', team.id] });
@@ -855,49 +868,6 @@ function TeamDetailScreenContent({ teamId }) {
     team.country ? getCountryName(team.country) : null,
   ].filter(Boolean).join(', ');
 
-  const generalContent = (
-    <>
-      <SectionCard icon="information-outline" title="Sobre el equipo" variant="nested">
-        <Field label="Entrenador a cargo" value={display(ownerName)} />
-        <Field label="Descripción" value={display(team.description)} />
-        <Field label="Requisitos de pertenencia" value={display(team.requirements)} />
-      </SectionCard>
-
-      <SectionCard icon="chart-line" title="Estadísticas del equipo" variant="nested">
-        {/* Los dos tiles de adentro eran `MOCK_TEAM_METRICS` —210 entrenamientos y
-            96 objetivos, números escritos a mano que no venían de ningún lado. Se
-            fueron con el dashboard de rendimiento: los conteos de verdad salen de
-            `/dashboard/metrics/summary` (series válidas, cumplimiento, tendencia)
-            y ese es el lugar donde ahora se muestran, con el detalle y los filtros
-            que les corresponden. Acá queda el único número que esta pantalla ya
-            tenía real —el roster— y una entrada a la pestaña que sí trae las
-            estadísticas. */}
-        <View className="flex-row gap-2" nativeID="team-detail-stats-row" testID="team-detail-stats-row">
-          <StatTile colors={colors} icon="account-group" idPrefix="team-detail-stat" label="Corredores" value={filteredMembers.length} />
-          <Pressable
-            accessibilityLabel="Ver analítica de rendimiento"
-            accessibilityRole="button"
-            className="flex-1 items-center rounded-2xl border border-slate-200 px-2 py-4 hover:bg-slate-50 active:opacity-80 dark:border-slate-700 dark:hover:bg-slate-800"
-            nativeID="team-detail-open-dashboard"
-            onPress={() => setActiveTab('rendimiento')}
-            testID="team-detail-open-dashboard"
-          >
-            <MaterialCommunityIcons color={colors.primary} name="chart-timeline-variant" size={22} />
-            <Text className="mt-1.5 text-center text-sm font-bold text-slate-900 dark:text-white" nativeID="team-detail-open-dashboard-title" testID="team-detail-open-dashboard-title">
-              Rendimiento
-            </Text>
-            <View className="mt-1 flex-row items-center" nativeID="team-detail-open-dashboard-hint" testID="team-detail-open-dashboard-hint">
-              <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID="team-detail-open-dashboard-hint-label" testID="team-detail-open-dashboard-hint-label">
-                Ver detalle
-              </Text>
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={14} />
-            </View>
-          </Pressable>
-        </View>
-      </SectionCard>
-    </>
-  );
-
   const corredoresContent = (
     <View className="gap-4" nativeID="team-detail-runners-tab" testID="team-detail-runners-tab">
       {canDeleteTeam && <TeamJoinRequestsSection teamId={team.id} />}
@@ -993,6 +963,7 @@ function TeamDetailScreenContent({ teamId }) {
                 groupName={groups.find((g) => g.id === member.groupId)?.name ?? '—'}
                 key={member.id}
                 member={member}
+                onOpenDetail={handleOpenRunnerDetail}
                 onOpenMenu={handleOpenRunnerMenu}
                 restricted={!isTrainerView}
                 showGroupTag={canSeeGroups}
@@ -1102,6 +1073,20 @@ function TeamDetailScreenContent({ teamId }) {
               </View>
             ) : null}
           </View>
+          {/* "Sobre el equipo" -- antes la pestaña General, ahora un modal.
+              Visible para cualquiera (no gateado por canManageTeam): la
+              info del equipo no es solo para quien lo gestiona. */}
+          <IconTooltip idPrefix="team-detail-info-button-tooltip" label="Sobre el equipo">
+            <Pressable
+              accessibilityLabel="Sobre el equipo"
+              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+              nativeID="team-detail-info-button"
+              onPress={() => setInfoModalVisible(true)}
+              testID="team-detail-info-button"
+            >
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={20} />
+            </Pressable>
+          </IconTooltip>
           {canManageTeam && (
             <IconTooltip idPrefix="team-detail-edit-button-tooltip" label="Editar equipo">
               <Pressable
@@ -1158,13 +1143,28 @@ function TeamDetailScreenContent({ teamId }) {
         )}
 
         <TabBar active={activeTab} badges={{ competencias: competitionsHasUnseen, corredores: hasPendingRequests }} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
-        {activeTab === 'general' && generalContent}
         {activeTab === 'corredores' && corredoresContent}
         {activeTab === 'grupos' && gruposContent}
         {activeTab === 'leaderboard' && leaderboardContent}
         {activeTab === 'competencias' && competitionsContent}
         {activeTab === 'rendimiento' && <DashboardScreen teamId={team.id} />}
       </ScreenCard>
+
+      <TeamInfoModal
+        description={team.description}
+        onClose={() => setInfoModalVisible(false)}
+        ownerName={ownerName}
+        requirements={team.requirements}
+        visible={infoModalVisible}
+      />
+
+      <RunnerDetailModal
+        groupName={groups.find((g) => g.id === runnerDetailMember?.groupId)?.name ?? '—'}
+        joinedAt={runnerDetailMember?.joinedAt}
+        onClose={() => setRunnerDetailMember(null)}
+        userId={runnerDetailMember?.userId}
+        visible={Boolean(runnerDetailMember)}
+      />
 
       {canDeleteTeam && (
         <DeleteTeamModal
@@ -1247,7 +1247,7 @@ function TeamDetailScreenContent({ teamId }) {
       onClose={handleCloseRunnerMenu}
       open={runnerMenuOpen}
     >
-      <RunnerActionsMenu member={runnerMenuMember} onExpel={handleRequestExpel} onMove={handleRequestMove} />
+      <RunnerActionsMenu member={runnerMenuMember} onDetail={handleOpenRunnerDetail} onExpel={handleRequestExpel} onMove={handleRequestMove} />
     </AnimatedDropdown>
     </View>
   );
