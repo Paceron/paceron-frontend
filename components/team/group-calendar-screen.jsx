@@ -18,7 +18,9 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
+import { summarizeMonthDays } from '../../utils/calendar-month-summary.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
+import { CalendarKindLegend } from '../calendar/calendar-kind-legend.jsx';
 import { StampPlanModal } from './stamp-plan-modal.jsx';
 import { ShiftDayModal } from './shift-day-modal.jsx';
 import { CalendarDayMenu } from './calendar-day-menu.jsx';
@@ -30,6 +32,14 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+
+// Mismos ids/iconos que TABS en training-plans-screen.jsx -- ahí es donde
+// `?tab=` termina resolviendo.
+const CATALOG_QUICK_LINKS = [
+  { id: 'planes', label: 'Planes', icon: 'clipboard-text-outline' },
+  { id: 'sesiones', label: 'Sesiones', icon: 'clipboard-plus-outline' },
+  { id: 'ejercicios', label: 'Ejercicios', icon: 'dumbbell' },
+];
 
 function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
@@ -176,6 +186,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial, presencialTimeFrom: d.presencialTimeFrom }])),
     [days],
   );
+  const monthCounts = useMemo(() => summarizeMonthDays(days), [days]);
 
   const handleOpenDayMenu = (dateString, anchor) => {
     setOpenDayMenu({ date: dateString, anchor });
@@ -368,8 +379,36 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
           ) : null}
         </View>
 
+        {/* Accesos directos al catálogo -- la pantalla solo tenía el
+            calendario y sus operaciones, sin salida hacia dónde se define
+            lo que un día termina mostrando (planes/sesiones/ejercicios).
+            Solo para quien administra: un corredor no tiene la ruta
+            /training-plans en su navegación (routes/catalog.js, role:
+            'trainer'). `?tab=` deep-linkea directo a la pestaña, en vez de
+            abrir siempre en "Planes" y obligar a un segundo click. */}
+        {canManage && (
+          <View className="mb-4 flex-row flex-wrap gap-2" nativeID="group-calendar-catalog-links" testID="group-calendar-catalog-links">
+            {CATALOG_QUICK_LINKS.map((link) => (
+              <Pressable
+                className="flex-row items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50 active:opacity-70 dark:border-slate-700 dark:bg-surface dark:hover:bg-slate-800"
+                key={link.id}
+                nativeID={`group-calendar-catalog-link-${link.id}`}
+                onPress={() => router.push(`/training-plans?tab=${link.id}`)}
+                testID={`group-calendar-catalog-link-${link.id}`}
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name={link.icon} size={14} />
+                <Text className="text-xs font-medium text-slate-600 dark:text-slate-300" nativeID={`group-calendar-catalog-link-${link.id}-label`} testID={`group-calendar-catalog-link-${link.id}-label`}>
+                  {link.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        <CalendarKindLegend counts={monthCounts} idPrefix="group-calendar-kind-legend" />
+
         <View
-          className="rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
+          className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
           nativeID="group-calendar-month-view"
           testID="group-calendar-month-view"
         >

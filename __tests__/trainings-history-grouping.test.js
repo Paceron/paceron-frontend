@@ -16,6 +16,7 @@ function makeItem(overrides = {}) {
     exerciseName: 'Sentadillas',
     setNumber: 1,
     completionStatus: 'completed',
+    isPresencial: true,
     ...overrides,
   };
 }
@@ -66,5 +67,37 @@ describe('groupHistoryItemsBySession', () => {
     const items = [makeItem({ id: '1', completionStatus: 'unregistered' })];
     const groups = groupHistoryItemsBySession(items);
     expect(groups[0]).toMatchObject({ totalCount: 1, completedCount: 0, skippedCount: 0 });
+  });
+
+  it('sums durationMs and distanceMeters across the items of a session', () => {
+    const items = [
+      makeItem({ id: '1', durationMs: 60000, distanceMeters: 200 }),
+      makeItem({ id: '2', durationMs: 30000, distanceMeters: 100 }),
+    ];
+    const groups = groupHistoryItemsBySession(items);
+    expect(groups[0]).toMatchObject({ totalDurationMs: 90000, totalDistanceMeters: 300 });
+  });
+
+  it('treats null durationMs/distanceMeters on some items as zero, without poisoning the sum', () => {
+    const items = [
+      makeItem({ id: '1', durationMs: 60000, distanceMeters: 200 }),
+      makeItem({ id: '2', durationMs: null, distanceMeters: null }),
+    ];
+    const groups = groupHistoryItemsBySession(items);
+    expect(groups[0]).toMatchObject({ totalDurationMs: 60000, totalDistanceMeters: 200 });
+  });
+
+  it('sums to zero, not NaN, when every item has null durationMs/distanceMeters', () => {
+    const items = [makeItem({ id: '1', durationMs: null, distanceMeters: null })];
+    const groups = groupHistoryItemsBySession(items);
+    expect(groups[0]).toMatchObject({ totalDurationMs: 0, totalDistanceMeters: 0 });
+  });
+
+  it('carries isPresencial from the first item of the session (same value for every item of a session)', () => {
+    const presencial = groupHistoryItemsBySession([makeItem({ id: '1', isPresencial: true })]);
+    expect(presencial[0].isPresencial).toBe(true);
+
+    const async = groupHistoryItemsBySession([makeItem({ id: '1', sessionInstanceId: '200', isPresencial: false })]);
+    expect(async[0].isPresencial).toBe(false);
   });
 });

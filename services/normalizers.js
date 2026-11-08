@@ -793,6 +793,29 @@ export function toTeamSubscriptionModel(dto) {
   };
 }
 
+// GET /teams/{id}/subscriptions (Gap 41) -- estado de cuota de todos los
+// corredores activos de un equipo, para el entrenador. `userId` como string
+// (mismo criterio que toda la app: un id que termina en una query key/body de
+// request necesita un solo tipo en todos los call sites, ver CLAUDE.md). El
+// `status` de cada miembro ya viene listo para el badge (active/overdue/
+// first_payment_pending) -- la traducción a los labels en español vive en
+// team-detail-screen.jsx, junto a SUBSCRIPTION_META.
+export function toTeamSubscriptionsListModel(dto) {
+  if (!dto) return { teamId: null, membershipFee: 0, members: [] };
+  return {
+    teamId: dto.team_id != null ? String(dto.team_id) : null,
+    membershipFee: dto.membership_fee ?? 0,
+    members: (dto.members ?? []).map((m) => ({
+      userId: String(m.user_id),
+      status: m.status ?? null,
+      subscriptionStatus: m.subscription_status ?? null,
+      hasDebt: Boolean(m.has_debt),
+      initAmount: m.init_amount ?? 0,
+      paidInstallments: m.paid_installments ?? 0,
+    })),
+  };
+}
+
 // GET /api/v1/team-configuration — topes de creación/edición de equipo
 // derivados del tier del ENTRENADOR autenticado (no del equipo).
 export function toTeamConfigurationModel(dto) {
@@ -1071,6 +1094,10 @@ export function toWorkoutFeedbackHistoryItemModel(dto) {
     distanceMeters: dto.distance_meters,
     startedAt: dto.started_at,
     endedAt: dto.ended_at,
+    // Gap 40, resuelto 2026-11-06: huérfanos (sin día/equipo/grupo) vienen
+    // `false` del backend -- se ven como async. `?? false` cubre además un
+    // backend viejo sin el campo todavía.
+    isPresencial: dto.is_presencial ?? false,
   };
 }
 

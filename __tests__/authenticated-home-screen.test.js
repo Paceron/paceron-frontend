@@ -31,6 +31,7 @@ jest.mock('../components/home/trainer-home-kpis-card.jsx', () => {
 });
 jest.mock('../components/home/home-payments-due-card.jsx', () => ({ HomePaymentsDueCard: () => null }));
 jest.mock('../components/home/competitions-preview-card.jsx', () => ({ CompetitionsPreviewCard: () => null }));
+jest.mock('../components/home/recent-trainings-card.jsx', () => ({ RecentTrainingsCard: () => null }));
 
 import { PAYMENT_HISTORY_KEYS } from '../hooks/use-payment-history.js';
 import { AuthenticatedHomeScreen } from '../components/home/authenticated-home-screen.jsx';

@@ -12,6 +12,7 @@ import { RunnerKpisCard } from './runner-kpis-card.jsx';
 import { HomePaymentsDueCard } from './home-payments-due-card.jsx';
 import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 import { CompetitionsPreviewCard } from './competitions-preview-card.jsx';
+import { RecentTrainingsCard } from './recent-trainings-card.jsx';
 import { TrainerHomeKpisCard } from './trainer-home-kpis-card.jsx';
 import { trainerHomeKpisPrefix } from '../../utils/trainer-home-kpis.js';
 
@@ -88,6 +89,7 @@ export function AuthenticatedHomeScreen() {
             <AchievementHighlightCard />
             <RunnerKpisCard />
             <CompetitionsPreviewCard />
+            <RecentTrainingsCard />
           </>
         )}
       </View>

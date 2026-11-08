@@ -161,7 +161,7 @@ export function AttendanceQrModal({ visible, onClose, teamName, session, teamId,
         testID="attendance-qr-modal-backdrop"
       >
         <Pressable
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-surface"
+          className="w-full max-w-md rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-xl dark:border-slate-700 dark:bg-surface-2"
           nativeID="attendance-qr-modal-card"
           onPress={() => {}}
           testID="attendance-qr-modal-card"

@@ -176,12 +176,29 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
           (`max-w-3xl`) -- pedido real 2026-10-30. */}
       <ScrollView className="flex-1" contentContainerClassName={`px-4 py-6 ${isWeb ? 'items-center' : ''}`} nativeID="session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="session-review-screen-scroll">
       <ScreenCard nativeID="session-review-screen-content" testID="session-review-screen-content">
-        <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
-          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-back-label" testID="session-review-screen-back-label">
-            Volver
-          </Text>
-        </Pressable>
+        <View className="flex-row items-center justify-between" nativeID="session-review-screen-top-row" testID="session-review-screen-top-row">
+          <Pressable accessibilityLabel="Volver" className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pr-2 active:opacity-70" nativeID="session-review-screen-back-button" onPress={() => router.back()} testID="session-review-screen-back-button">
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={20} />
+            <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="session-review-screen-back-label" testID="session-review-screen-back-label">
+              Volver
+            </Text>
+          </Pressable>
+          {/* Siempre visible, sin importar el estado de la sesión (manual/
+              review/completada) -- /training-comparison/session ya maneja
+              cualquier status con gracia, no hay razón para esconderlo acá. */}
+          <Pressable
+            accessibilityLabel="Ver comparación con lo planificado"
+            className="h-9 flex-row items-center gap-1.5 self-start rounded-full py-1 pl-2 active:opacity-70"
+            nativeID="session-review-screen-comparison-button"
+            onPress={() => router.push(`/training-comparison/session?sessionInstanceId=${slot.sessionInstanceId ?? slot.sessionInstance?.id}`)}
+            testID="session-review-screen-comparison-button"
+          >
+            <Text className="text-sm font-semibold text-primary" nativeID="session-review-screen-comparison-label" testID="session-review-screen-comparison-label">
+              Ver comparación
+            </Text>
+            <MaterialCommunityIcons color={colors.primary} name="chart-line" size={18} />
+          </Pressable>
+        </View>
 
         <View className="mb-5 mt-4" nativeID="session-review-screen-header" testID="session-review-screen-header">
           <Text className="text-base text-slate-500 dark:text-slate-400" nativeID="session-review-screen-date" testID="session-review-screen-date">

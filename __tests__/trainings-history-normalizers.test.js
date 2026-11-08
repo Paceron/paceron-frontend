@@ -7,6 +7,7 @@ const rawItem = {
   exercise_id: 44, exercise_name: 'Series 400m', catalog_exercise_id: 9, set_number: 2,
   completion_status: 'completed', duration_ms: 95000, active_duration_ms: 90000,
   distance_meters: 412.5, started_at: '2026-09-25T08:15:00Z', ended_at: '2026-09-25T08:16:35Z',
+  is_presencial: true,
 };
 
 describe('toWorkoutFeedbackHistoryItemModel', () => {
@@ -18,6 +19,7 @@ describe('toWorkoutFeedbackHistoryItemModel', () => {
       exerciseId: '44', exerciseName: 'Series 400m', catalogExerciseId: '9', setNumber: 2,
       completionStatus: 'completed', durationMs: 95000, activeDurationMs: 90000,
       distanceMeters: 412.5, startedAt: '2026-09-25T08:15:00Z', endedAt: '2026-09-25T08:16:35Z',
+      isPresencial: true,
     });
   });
 
@@ -29,6 +31,11 @@ describe('toWorkoutFeedbackHistoryItemModel', () => {
     expect(result.catalogExerciseId).toBeNull();
     expect(result.sessionName).toBeNull();
     expect(result.exerciseName).toBeNull();
+  });
+
+  test('is_presencial ausente (backend viejo) se mapea como false, no undefined', () => {
+    const { is_presencial, ...withoutField } = rawItem;
+    expect(toWorkoutFeedbackHistoryItemModel(withoutField).isPresencial).toBe(false);
   });
 });
 
