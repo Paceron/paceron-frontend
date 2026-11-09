@@ -133,7 +133,7 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
       ))}
 
       <Pressable
-        className="relative overflow-hidden rounded-2xl bg-green-500 dark:bg-green-800 shadow-sm p-5 hover:opacity-90 active:opacity-90"
+        className="relative overflow-hidden rounded-2xl bg-green-200 dark:bg-green-800 shadow-sm hover:opacity-90 active:opacity-90"
         nativeID="next-training-banner-hero"
         onPress={onHeroPress}
         testID="next-training-banner-hero"
@@ -142,55 +142,50 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
           <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
         </View>
 
-        <View className="flex-row items-center p-4 rounded-2xl bg-green-400 dark:bg-green-700" nativeID="next-training-banner-hero-content" testID="next-training-banner-hero-content">
-          <View className="flex-1 pr-3" nativeID="next-training-banner-hero-text" testID="next-training-banner-hero-text">
-            <View className="flex-row items-center" nativeID="next-training-banner-hero-date-name" testID="next-training-banner-hero-date-name">
-              <Text className="px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-title" testID="next-training-banner-hero-title">
-                {nextTraining.sessionInstance?.name ?? 'Entrenamiento'}
-              </Text> 
-              <Text className="text-xs px-2 font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID="next-training-banner-hero-date" testID="next-training-banner-hero-date">
-                {formatWeekdayLabel(nextTraining.date, { short: true })}, {formatDisplayDate(nextTraining.date)}
-              </Text>
-            </View>
-
-            <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID="next-training-banner-hero-scope" testID="next-training-banner-hero-scope">
-              <View className="flex-row items-center gap-1" nativeID="next-training-banner-hero-team" testID="next-training-banner-hero-team">
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
-                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-team-label" testID="next-training-banner-hero-team-label">
-                  {nextTraining.teamName}
+        <View className="p-4">
+          <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID="recent-trainings-card-kicker" testID="recent-trainings-card-kicker">
+            Siguiente entrenamiento
+          </Text>
+          <View className="flex-row items-center" nativeID="next-training-banner-hero-content" testID="next-training-banner-hero-content">
+            <View className="flex-1 p-4 mr-1 rounded-2xl bg-green-50/70 dark:bg-green-700/70" nativeID="next-training-banner-hero-text" testID="next-training-banner-hero-text">
+              <View className="flex-row items-center" nativeID="next-training-banner-hero-date-name" testID="next-training-banner-hero-date-name">
+                <Text className="px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-title" testID="next-training-banner-hero-title">
+                  {nextTraining.sessionInstance?.name ?? 'Entrenamiento'}
+                </Text> 
+                <Text className="text-sm text-green-950 dark:text-green-50" nativeID="training-comparison-breadcrumb-separator" testID="training-comparison-breadcrumb-separator">/</Text>
+                <Text className="text-xs px-2 font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID="next-training-banner-hero-date" testID="next-training-banner-hero-date">
+                  {formatWeekdayLabel(nextTraining.date, { short: true })}, {formatDisplayDate(nextTraining.date)}
                 </Text>
               </View>
-              <View className="flex-row items-center gap-1" nativeID="next-training-banner-hero-group" testID="next-training-banner-hero-group">
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
-                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-group-label" testID="next-training-banner-hero-group-label">
-                  {nextTraining.groupName}
-                </Text>
-              </View>
-            </View>
 
-            {nextTraining.isPresencial && (
-              <View className="mt-2 flex-row items-center gap-1.5" nativeID="next-training-banner-hero-presencial" testID="next-training-banner-hero-presencial">
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
-                <Text className="text-xs text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-presencial-label" testID="next-training-banner-hero-presencial-label">
-                  {nextTraining.presencialTimeFrom}–{nextTraining.presencialTimeTo}
-                  {nextTraining.presencialLocation?.label ? ` · ${nextTraining.presencialLocation.label}` : ''}
-                </Text>
+              <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID="next-training-banner-hero-scope" testID="next-training-banner-hero-scope">
+                <View className="flex-row items-center gap-1" nativeID="next-training-banner-hero-team" testID="next-training-banner-hero-team">
+                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
+                  <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-team-label" testID="next-training-banner-hero-team-label">
+                    {nextTraining.teamName}
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-1" nativeID="next-training-banner-hero-group" testID="next-training-banner-hero-group">
+                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
+                  <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-group-label" testID="next-training-banner-hero-group-label">
+                    {nextTraining.groupName}
+                  </Text>
+                </View>
               </View>
-            )}
 
-            <View className="mt-3 flex-row items-center gap-1.5 self-start rounded-full bg-green-500 dark:bg-green-800 px-3 py-1.5" nativeID="next-training-banner-hero-cta" testID="next-training-banner-hero-cta">
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={eligible && !isWeb ? 'play' : 'calendar-month-outline'} size={14} />
-              <Text className="text-xs font-semibold uppercase tracking-wide text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-cta-label" testID="next-training-banner-hero-cta-label">
-                {eligible && !isWeb ? 'Iniciar entrenamiento' : 'Ver en el calendario'}
-              </Text>
+              {nextTraining.isPresencial && (
+                <View className="mt-2 flex-row items-center gap-1.5" nativeID="next-training-banner-hero-presencial" testID="next-training-banner-hero-presencial">
+                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
+                  <Text className="text-xs text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-presencial-label" testID="next-training-banner-hero-presencial-label">
+                    {nextTraining.presencialTimeFrom}–{nextTraining.presencialTimeTo}
+                    {nextTraining.presencialLocation?.label ? ` · ${nextTraining.presencialLocation.label}` : ''}
+                  </Text>
+                </View>
+              )}
+
             </View>
           </View>
 
-          <View className="w-16 items-center justify-center" nativeID="next-training-banner-hero-icon-rail" testID="next-training-banner-hero-icon-rail">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-[#111518]/10" nativeID="next-training-banner-hero-icon-badge" testID="next-training-banner-hero-icon-badge">
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={28} />
-            </View>
-          </View>
         </View>
 
         {isFetching && (
