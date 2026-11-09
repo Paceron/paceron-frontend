@@ -142,7 +142,7 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
           <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
         </View>
 
-        <View className="p-4">
+        <View className="p-4" nativeID="next-training-banner-hero-body" testID="next-training-banner-hero-body">
           <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID="recent-trainings-card-kicker" testID="recent-trainings-card-kicker">
             Siguiente entrenamiento
           </Text>
