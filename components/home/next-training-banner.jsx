@@ -89,13 +89,17 @@ export function NextTrainingBanner() {
         </View>
       )}
 
-      {!loading && !nextTraining && (
+      {/* 
+        Por ahora se desabilita el banner de "no hay nada programado" para dejar el home limpio.
+        En un futuro se podra ver un componente para redirigir a la busqueda de equipos o a la asignacion de entrenamientos segun el rol.
+      */}
+      {/* {!loading && !nextTraining && (
         <View className="items-center justify-center rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="next-training-banner-empty" testID="next-training-banner-empty">
           <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="next-training-banner-empty-label" testID="next-training-banner-empty-label">
             No tenés entrenamientos programados.
           </Text>
         </View>
-      )}
+      )} */}
 
       {!loading && nextTraining && (
         <NextTrainingCardGroup
