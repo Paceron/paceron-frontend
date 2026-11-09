@@ -18,6 +18,7 @@ export function HomePaymentsDueCard() {
 
   return (
     <PaymentsUpcomingCard
+      compact
       items={due}
       onPay={(item) => {
         const route = payRouteFor(item);

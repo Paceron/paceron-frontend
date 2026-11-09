@@ -29,6 +29,16 @@ const ROW_TONE = {
   },
 };
 
+// Fondo y color de texto del header en modo compacto (Home) -- mismo tono
+// que SectionCard ofrece en `rose`/`warning`, pero sin borde y con el p-4/
+// mb-3 que usan las demás cards del Home (bg-white/p-4/shadow-sm, ver
+// recent-trainings-card.jsx) en vez del p-6/mb-5/border de SectionCard.
+const COMPACT_TONE = {
+  rose: { box: 'bg-rose-50 dark:bg-[#24111a]', title: 'text-rose-900 dark:text-white', icon: '#f43f5e' },
+  warning: { box: 'bg-amber-50 dark:bg-[#221a0e]', title: 'text-amber-900 dark:text-white', icon: '#f59e0b' },
+  default: { box: 'bg-white dark:bg-surface', title: 'text-slate-900 dark:text-white', icon: null },
+};
+
 // "Próximos vencimientos" de la pestaña Pagos, para cualquier rol: la próxima
 // cuota sin pagar de cada equipo que paga el usuario y de cada tier (GET
 // /payments/upcoming, ordenadas por vencimiento). Sin nada que pagar, la
@@ -41,7 +51,14 @@ const ROW_TONE = {
 // La tarjeta y cada fila se tiñen según el vencimiento (utils/payment-due.js):
 // roja con alguna vencida, ámbar con alguna que vence en los próximos
 // HOME_DUE_WINDOW_DAYS días; las cuotas más lejanas quedan neutras.
-export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, title = 'Próximos vencimientos', scope = 'payments-upcoming' }) {
+//
+// `compact` (Home, 2026-11-09): con SectionCard de por medio (p-6/mb-5/
+// border, título text-base) la card desentonaba con el resto del Home,
+// todas p-4/mb-3/sin borde, título chico uppercase (kicker). En `compact` se
+// salta SectionCard y se arma un wrapper propio con esa misma geometría,
+// conservando el tinte de urgencia (rose/warning) como color de fondo en vez
+// de perderlo -- la pestaña Pagos sigue con SectionCard sin cambios.
+export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, title = 'Próximos vencimientos', scope = 'payments-upcoming', compact = false }) {
   const colors = useThemeColors();
   if (loading) {
     return <SkeletonBlock className="mb-5" height={120} nativeID="payments-upcoming-skeleton" rounded="rounded-2xl" testID="payments-upcoming-skeleton" />;
@@ -62,10 +79,9 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, t
   const now = new Date();
   const cardVariant = dueCardVariant(items, now);
 
-  return (
-    <SectionCard icon="calendar-alert" scope={`${scope}-card`} title={title} variant={cardVariant}>
-      <View className="gap-2" nativeID={`${scope}-list`} testID={`${scope}-list`}>
-        {items.map((item) => {
+  const list = (
+    <View className="gap-2" nativeID={`${scope}-list`} testID={`${scope}-list`}>
+      {items.map((item) => {
           const id = `${scope}-${item.key}`;
           const late = overdueLabel(item);
           const tone = dueTone(item, now);
@@ -123,7 +139,25 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, t
             </View>
           );
         })}
+    </View>
+  );
+
+  if (compact) {
+    const tone = COMPACT_TONE[cardVariant] ?? COMPACT_TONE.default;
+    return (
+      <View className={`mb-3 rounded-2xl p-4 shadow-sm ${tone.box}`} nativeID={`${scope}-card`} testID={`${scope}-card`}>
+        <View className="mb-2 flex-row items-center gap-1.5" nativeID={`${scope}-header`} testID={`${scope}-header`}>
+          <MaterialCommunityIcons color={tone.icon ?? colors.primary} name="calendar-alert" size={16} />
+          <Text className={`text-sm font-semibold ${tone.title}`} nativeID={`${scope}-title`} testID={`${scope}-title`}>{title}</Text>
+        </View>
+        {list}
       </View>
+    );
+  }
+
+  return (
+    <SectionCard icon="calendar-alert" scope={`${scope}-card`} title={title} variant={cardVariant}>
+      {list}
     </SectionCard>
   );
 }

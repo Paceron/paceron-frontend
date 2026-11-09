@@ -58,12 +58,19 @@ export function StreakBanner() {
 
   return (
     <Pressable className="mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3" nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
-      <View className="flex-row items-center gap-3" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
+      {/* Kicker con el nombre de la racha -- antes la card solo mostraba
+          "X días" sin aclarar cuál de las dos rachas es (estricta/flexible,
+          ver streaks-tab.jsx), mismo patrón de kicker que el resto de las
+          cards del Home (recent-trainings-card.jsx, next-training-banner.jsx). */}
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="streak-banner-kicker" testID="streak-banner-kicker">
+        Entrenamientos consecutivos
+      </Text>
+      <View className="flex-row items-center gap-2" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
         <Animated.View nativeID="streak-banner-fire-icon" style={pulseStyle} testID="streak-banner-fire-icon">
-          <MaterialCommunityIcons color={colors.primary} name="fire" size={28} />
+          <MaterialCommunityIcons color={colors.primary} name="fire" size={20} />
         </Animated.View>
         <View nativeID="streak-banner-current-text" testID="streak-banner-current-text">
-          <Text className="text-3xl font-bold text-slate-900 dark:text-white" nativeID="streak-banner-current-value" testID="streak-banner-current-value">
+          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="streak-banner-current-value" testID="streak-banner-current-value">
             {streaks.strict.current} días
           </Text>
           <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="streak-banner-best-value" testID="streak-banner-best-value">

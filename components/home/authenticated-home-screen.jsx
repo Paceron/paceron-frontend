@@ -93,8 +93,17 @@ export function AuthenticatedHomeScreen() {
             reversible: solo este guard de `activeRole`. */}
         {activeRole === 'runner' && (
           <>
-            <StreakBanner />
-            <AchievementHighlightCard />
+            {/* Rachas 2/3 del ancho, Logros el tercio restante -- pedido real
+                2026-11-09. Cada hijo mantiene su propio `mb-3` (no se
+                duplica acá arriba). */}
+            <View className="flex-row gap-3" nativeID="authenticated-home-screen-gamification-row" testID="authenticated-home-screen-gamification-row">
+              <View className="flex-[2]" nativeID="authenticated-home-screen-streak-slot" testID="authenticated-home-screen-streak-slot">
+                <StreakBanner />
+              </View>
+              <View className="flex-1" nativeID="authenticated-home-screen-achievement-slot" testID="authenticated-home-screen-achievement-slot">
+                <AchievementHighlightCard />
+              </View>
+            </View>
             <RunnerKpisCard />
             <CompetitionsPreviewCard />
             <RecentTrainingsCard />
