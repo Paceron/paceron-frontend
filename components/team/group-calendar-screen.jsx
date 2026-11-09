@@ -41,6 +41,18 @@ const CATALOG_QUICK_LINKS = [
   { id: 'ejercicios', label: 'Ejercicios', icon: 'dumbbell' },
 ];
 
+// Celda rellena (hay `marking`, día ni hoy ni seleccionado ni con el menú
+// abierto -- esos tres ya tienen su propio tratamiento, sin tocar) --
+// color sólido alusivo al kind, borde más claro que el relleno para
+// marcar que está ocupada (pedido real 2026-11-09). Vacía sigue igual que
+// siempre (border-slate-200/bg-slate-100, en el branch default de abajo).
+const KIND_FILLED_CLASS = {
+  training: 'border-green-200 bg-green-400 dark:border-green-400 dark:bg-green-600',
+  rest: 'border-slate-300 bg-slate-400 dark:border-slate-400 dark:bg-slate-500',
+  other: 'border-amber-200 bg-amber-400 dark:border-amber-400 dark:bg-amber-600',
+  cancelled: 'border-red-200 bg-red-400 dark:border-red-400 dark:bg-red-600',
+};
+
 function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
   const cellRef = useRef(null);
@@ -53,12 +65,10 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
   // los fines de no mezclarlo con una selección de días futuros.
   const closedForSelection = isCalendarDayClosed(date.dateString, marking ?? {});
   const canSelect = !selectionActive || selected || canAddToSelection(selectionClosedClass, closedForSelection);
-  // Tinte leve de fondo por kind — ayuda a ubicar de un vistazo qué tipo
-  // de día es sin tener que fijarse en el puntito. Alpha en hex (últimos
-  // 2 dígitos) en vez de un color plano — funciona igual en claro/oscuro
-  // sin necesitar una paleta de tinte aparte por tema.
-  const tintAlpha = closed ? '14' : '26';
-  const tintColor = marking ? `${KIND_DOT_COLORS[marking.kind]}${tintAlpha}` : 'transparent';
+  // Mismo tratamiento que el resto de los estados especiales (today/
+  // selected/menú abierto): ninguno de esos se toca, solo el día "plano"
+  // (sin ningún estado especial) se parte en vacío/relleno.
+  const isPlainFilledDay = Boolean(marking) && !isOtherMonth && !selected && !isMenuOpen && !isToday;
 
   const handlePress = () => {
     if (!canManage || isOtherMonth) return;
@@ -91,7 +101,9 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
         ? `${hoverFx} border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500`
         : isToday
           ? `${hoverFx} border-2 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60`
-          : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
+          : isPlainFilledDay
+            ? `${hoverFx} border-2 ${KIND_FILLED_CLASS[marking.kind] ?? KIND_FILLED_CLASS.other} dark:hover:bg-opacity-60`
+            : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
 
   return (
     <Pressable
@@ -117,11 +129,16 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
           testID={`group-calendar-day-${date.dateString}-marks`}
         >
           {marking.isPresencial ? (
-            <MaterialCommunityIcons color={colors.primary} name="map-marker" size={10} />
+            // Blanco en el día relleno: el fondo ya quedó sólido del
+            // color del kind (KIND_FILLED_CLASS más arriba) -- colors.primary
+            // encima de eso (ej. un cancelled en rojo) perdía contraste o
+            // desentonaba. En los demás estados (hoy/seleccionado/menú) el
+            // fondo sigue siendo claro, así que el verde de marca sigue andando.
+            <MaterialCommunityIcons color={isPlainFilledDay ? '#ffffff' : colors.primary} name="map-marker" size={10} />
           ) : (
             <View
               nativeID={`group-calendar-day-${date.dateString}-dot`}
-              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KIND_DOT_COLORS[marking.kind] }}
+              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isPlainFilledDay ? '#ffffff' : KIND_DOT_COLORS[marking.kind] }}
               testID={`group-calendar-day-${date.dateString}-dot`}
             />
           )}
