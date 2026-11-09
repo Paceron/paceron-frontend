@@ -1,4 +1,3 @@
-import { useThemeColors } from '../../theme/colors';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { DASHBOARD_GRANULARITIES } from '../../services/dashboard.js';
 import { GRANULARITY_LABELS } from '../../utils/dashboard-format.js';
@@ -12,8 +11,6 @@ import { GRANULARITY_LABELS } from '../../utils/dashboard-format.js';
 // `hideLabel` porque el ícono + el valor alcanzado se entienden solos; el
 // accessibilityLabel del select sigue nombrándolo para lector de pantalla.
 export function GranularitySelect({ id, value, onChange, enabled = true }) {
-  const colors = useThemeColors();
-
   return (
     <ResponsiveSelectField
       dense

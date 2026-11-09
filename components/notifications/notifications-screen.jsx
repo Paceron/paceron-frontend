@@ -29,7 +29,7 @@ import { formatMonthlyFee } from '../../utils/currency.js';
 // no trae la cuota) y puede estar undefined mientras carga: en ese caso no se
 // muestra precio, porque mostrar "Gratis" sin saberlo sería mostrar un precio
 // equivocado justo donde el corredor decide aceptar.
-function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, responding }) {
+function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, responding, respondingAction }) {
   const colors = useThemeColors();
   const slug = invite.id;
   const isPaid = membershipFee > 0;
@@ -67,10 +67,14 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
           onPress={onAccept}
           testID={`received-invitation-${slug}-accept-button`}
         >
-          <MaterialCommunityIcons color={colors.onPrimary} name="check" size={16} />
-          <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`received-invitation-${slug}-accept-button-label`} testID={`received-invitation-${slug}-accept-button-label`}>
-            Aceptar
-          </Text>
+          {respondingAction === 'accept' ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
+            <>
+              <MaterialCommunityIcons color={colors.onPrimary} name="check" size={16} />
+              <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`received-invitation-${slug}-accept-button-label`} testID={`received-invitation-${slug}-accept-button-label`}>
+                Aceptar
+              </Text>
+            </>
+          )}
         </Pressable>
         <Pressable
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-80 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
@@ -79,10 +83,14 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
           onPress={onReject}
           testID={`received-invitation-${slug}-reject-button`}
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={16} />
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`received-invitation-${slug}-reject-button-label`} testID={`received-invitation-${slug}-reject-button-label`}>
-            Rechazar
-          </Text>
+          {respondingAction === 'reject' ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : (
+            <>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={16} />
+              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`received-invitation-${slug}-reject-button-label`} testID={`received-invitation-${slug}-reject-button-label`}>
+                Rechazar
+              </Text>
+            </>
+          )}
         </Pressable>
       </View>
     </View>
@@ -236,6 +244,11 @@ function NotificationsScreenContent() {
   const { acceptInvitation, rejectInvitation } = useInvitationMutations();
 
   const [respondingId, setRespondingId] = useState(null);
+  // Qué botón del par aceptar/rechazar está en vuelo -- sin esto, `responding`
+  // (solo deshabilita, nunca cambia visualmente) hacía que aceptar una
+  // invitación pareciera no responder (bug real, 2026-11-08). Mismo patrón que
+  // `cancelling` en SentJoinRequestRow más arriba en este archivo.
+  const [respondingAction, setRespondingAction] = useState(null);
   const [invitationsCollapsed, setInvitationsCollapsed] = useState(false);
 
   // La cuota del equipo no viene en InvitationResponse — se resuelve por equipo,
@@ -245,11 +258,13 @@ function NotificationsScreenContent() {
   const handleAccept = async (invitationId) => {
     const invitation = myInvitations.find((i) => i.id === invitationId);
     setRespondingId(invitationId);
+    setRespondingAction('accept');
     // El roster (['team-users', teamId]) y ['group-users'] ya se invalidan
     // solos dentro de useInvitationMutations#acceptInvitation — no hace
     // falta repetirlo acá.
     const result = await acceptInvitation({ invitationId, userId: user.userId, teamId: invitation?.teamId });
     setRespondingId(null);
+    setRespondingAction(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos aceptar la invitación', text2: result.error });
       return;
@@ -270,8 +285,10 @@ function NotificationsScreenContent() {
 
   const handleReject = async (invitationId) => {
     setRespondingId(invitationId);
+    setRespondingAction('reject');
     const result = await rejectInvitation({ invitationId, userId: user.userId });
     setRespondingId(null);
+    setRespondingAction(null);
     if (!result.success) {
       Toast.show({ type: 'error', text1: 'No pudimos rechazar la invitación', text2: result.error });
       return;
@@ -329,6 +346,7 @@ function NotificationsScreenContent() {
                   onAccept={() => handleAccept(invite.id)}
                   onReject={() => handleReject(invite.id)}
                   responding={respondingId === invite.id}
+                  respondingAction={respondingId === invite.id ? respondingAction : null}
                 />
               ))}
             </View>

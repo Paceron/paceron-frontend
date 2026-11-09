@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { isWeb } from '../../../utils/platform.js';
 import { formatMetric } from '../../../utils/dashboard-format.js';
@@ -16,7 +15,6 @@ import { useThemeColors } from '../../../theme/colors.js';
 // en nativo. Escribirlo sin el gate haría que en nativo el tooltip se quedara
 // pegado después del primer tap.
 export function LineChartTooltip({ id, point, unit, formatX, secondary }) {
-  const colors = useThemeColors();
   if (!point) return null;
 
   // Se ancla arriba del punto y se desplaza contra los bordes: cerca del eje X
@@ -70,14 +68,11 @@ export const HOTSPOT_R = 14;
 
 export function LineChartHotspots({ id, points, width, plotHeight, onActive, onDeactivate, activeIndex }) {
   const colors = useThemeColors();
-  const [hovered, setHovered] = useState(null);
 
   const activate = (index) => {
-    setHovered(index);
     onActive?.(index);
   };
   const deactivate = () => {
-    setHovered(null);
     onDeactivate?.();
   };
 

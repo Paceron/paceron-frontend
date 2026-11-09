@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
-import { formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
+import { formatMetric, hasMetric } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
