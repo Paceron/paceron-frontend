@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
 import { formatTierName } from '../../utils/tier-name.js';
+import { useThemeColors } from '../../theme/colors.js';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
@@ -21,15 +22,22 @@ function tierLabel(tierName) {
 // El texto ya no indica el rol — la pantalla de destino muestra los
 // tiers del rol activo, no hace falta anticiparlo en el link (antes
 // "Mejorar tier de {roleLabel}", una entrada de menú por rol).
+//
+// Pill con ícono en vez de texto plano (pedido real 2026-11-09, mismo
+// patrón ya usado en los accesos del catálogo de group-calendar-screen.jsx)
+// -- un link de puro texto bajo el switch se perdía, sin ninguna affordance
+// de que fuera accionable.
 function TierUpgradeLink({ onPress, className }) {
+  const colors = useThemeColors();
   return (
     <Pressable
       accessibilityRole="button"
-      className={`hover:opacity-70 active:opacity-70 ${className ?? ''}`}
+      className={`flex-row items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1.5 hover:bg-primary-tint dark:hover:bg-primary/15 active:opacity-70 ${className ?? ''}`}
       nativeID="role-switch-toggle-tier-upgrade-link"
       onPress={onPress}
       testID="role-switch-toggle-tier-upgrade-link"
     >
+      <MaterialCommunityIcons color={colors.primary} name="arrow-up-circle-outline" size={14} />
       <Text className="text-[11px] font-semibold text-primary" nativeID="role-switch-toggle-tier-upgrade-link-text" testID="role-switch-toggle-tier-upgrade-link-text">Mejorar tier</Text>
     </Pressable>
   );
@@ -110,10 +118,6 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   const { roles } = usePermissions(userId);
   const switchRole = useAuthStore((s) => s.switchRole);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
-  // Se calcula acá arriba (no solo en la rama con entrenador) porque el
-  // segmento de Corredor lo necesita en los dos casos — sin esto, el tier
-  // no se mostraba nunca hasta que se activaba el perfil de entrenador.
-  const runnerTier = roles.find((r) => r.name === 'corredor')?.tier;
 
   const handleActivate = () => {
     onClose?.();
@@ -134,7 +138,6 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             id="role-switch-toggle-runner-badge"
             label="Corredor"
             onPress={() => {}}
-            tier={tierLabel(runnerTier)}
             wide={wide}
           />
           <Segment
@@ -147,7 +150,6 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             wide={wide}
           />
         </View>
-        {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
       </View>
     );
   }
@@ -179,7 +181,6 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           id="role-switch-toggle-runner-segment"
           label="Corredor"
           onPress={handlePressRunner}
-          tier={tierLabel(runnerTier)}
           wide={wide}
         />
         <Segment
@@ -196,7 +197,9 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           wide={wide}
         />
       </View>
-      {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
+      {/* Gap 42: tiers reservados a entrenador -- el link solo se ofrece
+          viendo el rol entrenador activo, nunca para corredor. */}
+      {showTierLink && trainerActive && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
     </View>
   );
 }

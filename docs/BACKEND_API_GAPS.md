@@ -2127,3 +2127,41 @@ por `activeRole === 'trainer'` — mismo criterio laxo que `canManageTeam` en
 de cada miembro llega listo para el badge; `team-detail-screen.jsx` solo lo
 traduce a las keys en español de `SUBSCRIPTION_META` (`SUBSCRIPTION_STATUS_FROM_BACKEND`)
 y pisa `member.subscriptionStatus` del roster cuando hay dato real.
+
+## Gap 42 — tiers reservados a entrenador, sin tiers de corredor
+
+**Contexto.** Decisión de producto 2026-11-09: el catálogo de tiers
+(`GET /tiers?role_id=`, `services/tiers.js`) deja de tener sentido para el
+rol corredor — queda exclusivo del entrenador. Hoy existen 2 tiers por rol
+(uno gratis, uno pago) con `role_id` 1=corredor / 2=entrenador (ver
+`services/__mocks__/tiers-mock.js`), y el flujo completo de catálogo +
+suscripción + cambio de tier (`services/tier-subscriptions.js`:
+`PUT /users/{id}/roles/{role_id}/tier`, `GET .../subscriptions/current`,
+`GET .../subscriptions/next`) ya pega contra el backend real para los dos
+roles por igual.
+
+**Confirmado con el usuario (no es producción todavía):**
+- No hay plan de migración de suscripciones existentes — cualquier fila de
+  tier/suscripción de corredor en la base se purga directo, sin usuarios
+  reales que proteger.
+- El corredor deja de mostrar cualquier indicador de tier (hoy "Corredor ·
+  BASE" en el switch de rol) — sin sufijo, sin badge, nada que lo reemplace.
+
+**Pedido concreto al backend:**
+1. Purgar (o dar de baja) las filas de `tiers` con `role_id` de corredor y
+   cualquier suscripción de corredor a esos tiers.
+2. Confirmar que `GET /tiers?role_id=<corredor>` sigue devolviendo `[]`
+   (lista vacía), no un error — mismo contrato que ya usa el filtro
+   `role_id` hoy, sin código nuevo esperado salvo que la tabla quede vacía
+   para ese `role_id`.
+3. **Pregunta abierta para backend:** ¿algún flujo (asignación de rol,
+   onboarding, lo que sea) asume que todo rol tiene al menos un tier por
+   defecto al crearse/activarse? Si corredor queda sin ninguna fila de
+   tier, confirmar que eso no rompe nada río abajo (ej. un join que espere
+   encontrar siempre un tier asociado).
+
+**Alcance frontend** (aparte, no bloqueado por lo de arriba — el catálogo
+ya devuelve `[]` para un `role_id` sin filas hoy, así que el frontend se
+puede adelantar con mocks): sacar el acceso a "Mejorar tier" y el badge de
+tier del lado corredor en `role-switch-toggle.jsx`. `tier-upgrade-screen.jsx`
+no se toca — no hay ruta vieja real que proteger todavía.
