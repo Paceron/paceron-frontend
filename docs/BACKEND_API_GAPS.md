@@ -2160,6 +2160,32 @@ roles por igual.
    tier, confirmar que eso no rompe nada río abajo (ej. un join que espere
    encontrar siempre un tier asociado).
 
+**Respondido por backend 2026-11-09 — SÍ, hay dependencia estructural, la
+purga literal rompe cosas:**
+- `AssignRole` (`user_role_service.go:58-229`) usa `FindLowestByRole`
+  cuando no viene `TierID` explícito — sin tier base para corredor, falla
+  con *"el tier por defecto 'base' no existe para este rol"*. El registro
+  no asigna roles directo; el corredor se asigna por el endpoint genérico,
+  que pasa por acá.
+- `GET /auth/permissions` (`permissions_query_service.go:90-187`) resuelve
+  el tier efectivo por rol — sin tier base, devuelve *"tier base no
+  configurado"* en vez de datos.
+- `UserRole.TierID` y `UserRoleTierSubscription.TierID` son `NOT NULL` en
+  el schema.
+
+**Decisión tomada con backend — Opción A (tier base interno oculto, bajo
+riesgo):**
+- Se conserva un tier base de corredor, pero solo para que `AssignRole` y
+  `/auth/permissions` sigan resolviendo sin romper — nunca se expone.
+- Se purgan los tiers PAGOS de corredor y sus suscripciones (eso sí, sin
+  restricción — no hay usuarios reales que proteger, confirmado arriba).
+- `GET /tiers?role_id=<corredor>` filtra ese tier base en el catálogo
+  público → sigue devolviendo `[]`, contrato sin cambios para el frontend.
+- Contra, documentado a propósito para no redescubrirlo: internamente
+  sigue existiendo un tier de corredor — no es "cero tiers" literal a
+  nivel de datos, es "cero tiers visibles". El frontend no necesita saber
+  nada de esto; el contrato que ya consume (`[]`) no cambia.
+
 **Alcance frontend** (aparte, no bloqueado por lo de arriba — el catálogo
 ya devuelve `[]` para un `role_id` sin filas hoy, así que el frontend se
 puede adelantar con mocks): sacar el acceso a "Mejorar tier" y el badge de

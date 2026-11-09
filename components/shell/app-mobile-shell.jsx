@@ -170,7 +170,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
 
               {user && hasTrainerRole && (
                 <View className="items-center border-b border-slate-200 px-5 py-2 dark:border-slate-800" nativeID="mobile-drawer-role-switch-row" testID="mobile-drawer-role-switch-row">
-                  <RoleSwitchToggle onClose={onClose} showTierLink={false} wide />
+                  <RoleSwitchToggle idPrefix="mobile-drawer-role-switch-toggle" onClose={onClose} showTierLink={false} wide />
                 </View>
               )}
 

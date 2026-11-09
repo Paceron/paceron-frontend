@@ -27,18 +27,18 @@ function tierLabel(tierName) {
 // patrón ya usado en los accesos del catálogo de group-calendar-screen.jsx)
 // -- un link de puro texto bajo el switch se perdía, sin ninguna affordance
 // de que fuera accionable.
-function TierUpgradeLink({ onPress, className }) {
+function TierUpgradeLink({ onPress, className, idPrefix }) {
   const colors = useThemeColors();
   return (
     <Pressable
       accessibilityRole="button"
       className={`flex-row items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1.5 hover:bg-primary-tint dark:hover:bg-primary/15 active:opacity-70 ${className ?? ''}`}
-      nativeID="role-switch-toggle-tier-upgrade-link"
+      nativeID={`${idPrefix}-tier-upgrade-link`}
       onPress={onPress}
-      testID="role-switch-toggle-tier-upgrade-link"
+      testID={`${idPrefix}-tier-upgrade-link`}
     >
       <MaterialCommunityIcons color={colors.primary} name="arrow-up-circle-outline" size={14} />
-      <Text className="text-[11px] font-semibold text-primary" nativeID="role-switch-toggle-tier-upgrade-link-text" testID="role-switch-toggle-tier-upgrade-link-text">Mejorar tier</Text>
+      <Text className="text-[11px] font-semibold text-primary" nativeID={`${idPrefix}-tier-upgrade-link-text`} testID={`${idPrefix}-tier-upgrade-link-text`}>Mejorar tier</Text>
     </Pressable>
   );
 }
@@ -111,7 +111,16 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
 // Dropdown/sidebar solo montan este componente cuando el entrenador YA
 // está activado (mismo gate que el pill viejo), para no reintroducir la
 // activación fuera de Profile.
-export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTierLink = wide }) {
+//
+// `idPrefix` (default el de siempre, `role-switch-toggle`) -- el drawer
+// mobile/narrow web queda montado fuera de pantalla para la animación de
+// apertura incluso con el menú cerrado, así que su instancia convive en el
+// DOM con la de la página (ej. /profile) al mismo tiempo. Sin prefijo
+// propio por caller, las dos compartían nativeID/testID -- bug real
+// reportado 2026-11-09 (`role-switch-toggle-runner-segment` duplicado,
+// confirmado con `document.querySelectorAll`). Cada shell que lo monta en
+// un drawer pasa el suyo; Profile usa el default.
+export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTierLink = wide, idPrefix = 'role-switch-toggle' }) {
   const router = useRouter();
   const activeRole = useAuthStore((s) => s.activeRole);
   const userId = useAuthStore((s) => s.userId);
@@ -126,8 +135,8 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   if (!hasTrainerRole) {
     return (
-      <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-        <View className={`flex-row items-center rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+      <View className={wide ? 'w-full items-center' : ''} nativeID={idPrefix} testID={idPrefix}>
+        <View className={`flex-row items-center rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID={`${idPrefix}-segments`} testID={`${idPrefix}-segments`}>
           <Segment
             accessibilityLabel="Corredor"
             active
@@ -135,7 +144,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             activeIconColor="#8cc63e"
             activeTextClass="text-on-primary-tint dark:text-primary"
             icon="run-fast"
-            id="role-switch-toggle-runner-badge"
+            id={`${idPrefix}-runner-badge`}
             label="Corredor"
             onPress={() => {}}
             wide={wide}
@@ -144,7 +153,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             accessibilityLabel="Volverse Entrenador"
             active={false}
             icon="whistle"
-            id="role-switch-toggle-activate-trainer-button"
+            id={`${idPrefix}-activate-trainer-button`}
             label="Volverse Entrenador"
             onPress={handleActivate}
             wide={wide}
@@ -169,8 +178,8 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   };
 
   return (
-    <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-      <View className={`flex-row rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+    <View className={wide ? 'w-full items-center' : ''} nativeID={idPrefix} testID={idPrefix}>
+      <View className={`flex-row rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID={`${idPrefix}-segments`} testID={`${idPrefix}-segments`}>
         <Segment
           accessibilityLabel="Corredor"
           active={runnerActive}
@@ -178,7 +187,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           activeIconColor="#8cc63e"
           activeTextClass="text-on-primary-tint dark:text-primary"
           icon="run-fast"
-          id="role-switch-toggle-runner-segment"
+          id={`${idPrefix}-runner-segment`}
           label="Corredor"
           onPress={handlePressRunner}
           wide={wide}
@@ -190,7 +199,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           activeIconColor="#f59e0b"
           activeTextClass="text-amber-600 dark:text-amber-400"
           icon="whistle"
-          id="role-switch-toggle-trainer-segment"
+          id={`${idPrefix}-trainer-segment`}
           label="Entrenador"
           onPress={handlePressTrainer}
           tier={tierLabel(trainerTier)}
@@ -199,7 +208,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
       </View>
       {/* Gap 42: tiers reservados a entrenador -- el link solo se ofrece
           viendo el rol entrenador activo, nunca para corredor. */}
-      {showTierLink && trainerActive && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
+      {showTierLink && trainerActive && <TierUpgradeLink className="mt-2" idPrefix={idPrefix} onPress={onUpgradeTier} />}
     </View>
   );
 }
