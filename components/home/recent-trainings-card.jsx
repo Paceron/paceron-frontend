@@ -90,7 +90,7 @@ export function RecentTrainingsCard() {
   return (
     <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="recent-trainings-card" testID="recent-trainings-card">
       <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="recent-trainings-card-kicker" testID="recent-trainings-card-kicker">
-        Tus entrenamientos
+        Tus entrenamientos recientes
       </Text>
       <View className="gap-2" nativeID="recent-trainings-card-list" testID="recent-trainings-card-list">
         {trainings.map((training) => (
@@ -104,7 +104,7 @@ export function RecentTrainingsCard() {
       <Pressable
         accessibilityLabel="Ver historial de entrenamientos"
         accessibilityRole="button"
-        className="mt-2 flex-row items-center justify-center gap-1 rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        className="mt-2 flex-row items-center justify-center border border-slate-400 dark:border-slate-700 gap-1 rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
         nativeID="recent-trainings-card-view-history"
         onPress={goToHistory}
         testID="recent-trainings-card-view-history"
