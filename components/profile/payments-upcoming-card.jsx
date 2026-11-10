@@ -13,13 +13,13 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // Vencida en rojo, por vencer en ámbar, el resto neutro.
 const ROW_TONE = {
   overdue: {
-    box: 'border-rose-200 bg-white dark:border-transparent dark:bg-[#341720]',
-    due: 'font-semibold text-rose-800 dark:text-rose-200',
+    box: 'border-rose-400 bg-rose-100/70 dark:border-rose-500 dark:bg-rose-600/50',
+    due: 'font-semibold text-rose-800 dark:text-rose-100',
     icon: '#fb7185',
   },
   soon: {
-    box: 'border-amber-200 bg-white dark:border-transparent dark:bg-[#2f2412]',
-    due: 'font-semibold text-amber-800 dark:text-amber-200',
+    box: 'border-amber-400 bg-amber-100/70 dark:border-amber-500 dark:bg-amber-600/50',
+    due: 'font-semibold text-amber-800 dark:text-amber-100',
     icon: '#f59e0b',
   },
   normal: {
@@ -34,8 +34,8 @@ const ROW_TONE = {
 // mb-3 que usan las demás cards del Home (bg-white/p-4/shadow-sm, ver
 // recent-trainings-card.jsx) en vez del p-6/mb-5/border de SectionCard.
 const COMPACT_TONE = {
-  rose: { box: 'bg-rose-50 dark:bg-[#24111a]', title: 'text-rose-900 dark:text-white', icon: '#f43f5e' },
-  warning: { box: 'bg-amber-50 dark:bg-[#221a0e]', title: 'text-amber-900 dark:text-white', icon: '#f59e0b' },
+  rose: { box: 'bg-rose-300 dark:bg-rose-900', title: 'text-rose-900 dark:text-rose-100', icon: '#f43f5e' },
+  warning: { box: 'bg-amber-300 dark:bg-amber-900', title: 'text-amber-900 dark:text-amber-100', icon: '#f59e0b' },
   default: { box: 'bg-white dark:bg-surface', title: 'text-slate-900 dark:text-white', icon: null },
 };
 
@@ -109,7 +109,7 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, t
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={1} testID={`${id}-title`}>
                   {item.type === 'subscription' ? formatTierName(item.title, 'Tier') : item.title || 'Equipo'}
                 </Text>
-                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
+                <Text className="text-xs text-slate-700 dark:text-slate-200" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
                   {[item.subtitle, `cuota ${item.installmentNumber}`].filter(Boolean).join(' · ')}
                 </Text>
                 {/* Con "Pagar", el vencimiento baja a esta columna: al costado

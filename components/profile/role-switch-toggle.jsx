@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -27,18 +29,68 @@ function tierLabel(tierName) {
 // patrón ya usado en los accesos del catálogo de group-calendar-screen.jsx)
 // -- un link de puro texto bajo el switch se perdía, sin ninguna affordance
 // de que fuera accionable.
+//
+// Animaciones (pedido real 2026-11-09): un pulso de escala + un fondo que
+// respira al mismo ritmo, y el ícono saltando hacia arriba -- todo para que
+// el link llame la atención como un CTA real. Reanimated, no `animate-*`
+// de NativeWind (mismo motivo que `useFirePulse` en streak-banner.jsx: hay
+// que animar también en nativo). `Animated.View` no aplica NINGÚN
+// `className` (quirk documentado en CLAUDE.md) -- por eso las dos capas
+// animadas de acá abajo van con `style` puro, y el `Pressable` de afuera
+// (con `className` normal) sigue siendo el único responsable de la forma
+// de la píldora (borde, padding, radio) y del hover/active reales.
+function useTierLinkPulse() {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withRepeat(withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [progress]);
+
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.04]) }] }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [0.12, 0.3]) }));
+  return { scaleStyle, glowStyle };
+}
+
+function useArrowBounce() {
+  const bounce = useSharedValue(0);
+
+  useEffect(() => {
+    bounce.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 450, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 450, easing: Easing.in(Easing.quad) }),
+      ),
+      -1,
+    );
+  }, [bounce]);
+
+  return useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(bounce.value, [0, 1], [0, -3]) }] }));
+}
+
 function TierUpgradeLink({ onPress, className, idPrefix }) {
   const colors = useThemeColors();
+  const { scaleStyle, glowStyle } = useTierLinkPulse();
+  const bounceStyle = useArrowBounce();
   return (
     <Pressable
       accessibilityRole="button"
-      className={`flex-row items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1.5 hover:bg-primary-tint dark:hover:bg-primary/15 active:opacity-70 ${className ?? ''}`}
+      className={`overflow-hidden rounded-full border border-primary/40 px-3 py-1.5 hover:bg-primary-tint dark:hover:bg-primary/15 active:opacity-70 ${className ?? ''}`}
       nativeID={`${idPrefix}-tier-upgrade-link`}
       onPress={onPress}
       testID={`${idPrefix}-tier-upgrade-link`}
     >
-      <MaterialCommunityIcons color={colors.primary} name="arrow-up-circle-outline" size={14} />
-      <Text className="text-[11px] font-semibold text-primary" nativeID={`${idPrefix}-tier-upgrade-link-text`} testID={`${idPrefix}-tier-upgrade-link-text`}>Mejorar tier</Text>
+      <Animated.View
+        nativeID={`${idPrefix}-tier-upgrade-link-glow`}
+        pointerEvents="none"
+        style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.primary }, glowStyle]}
+        testID={`${idPrefix}-tier-upgrade-link-glow`}
+      />
+      <Animated.View nativeID={`${idPrefix}-tier-upgrade-link-content`} style={[{ flexDirection: 'row', alignItems: 'center' }, scaleStyle]} testID={`${idPrefix}-tier-upgrade-link-content`}>
+        <Animated.View nativeID={`${idPrefix}-tier-upgrade-link-icon`} style={bounceStyle} testID={`${idPrefix}-tier-upgrade-link-icon`}>
+          <MaterialCommunityIcons color={colors.primary} name="arrow-up-circle-outline" size={14} />
+        </Animated.View>
+        <Text className="ml-1.5 text-[11px] font-semibold text-primary" nativeID={`${idPrefix}-tier-upgrade-link-text`} testID={`${idPrefix}-tier-upgrade-link-text`}>Mejorar tier</Text>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -66,13 +118,24 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
   // ramas (`bg-transparent` en la inactiva) para que siempre haya un
   // color de origen y de destino, y sacar `transition-all` -- no vale la
   // pena mantener una transición nativa todavía inestable para esto.
+  //
+  // `hover:animate-pulse` sacado (2026-11-09, bug real reportado): en
+  // touch -- incluido el toggle de device de Chrome DevTools, que es como
+  // se reprodujo -- un tap deja el `:hover` de CSS pegado (no hay
+  // `mouseleave` en touch), así que el segmento recién tocado queda
+  // pulsando para siempre con el fondo YA correcto por debajo. Pasaba
+  // solo en el switch de Profile porque ahí el botón sigue en pantalla
+  // después del click; en la sidebar/dropdown el `onClose?.()` del
+  // `onPress` cierra el panel al toque, así que el `:hover` pegado queda
+  // oculto. `hover:bg-slate-300`/`dark:hover:bg-slate-600` se mantienen --
+  // un fondo que queda pegado no se nota tanto como una animación en loop.
   const colorClasses = active ? `${activeBg} border-transparent` : 'bg-transparent border-slate-300 dark:border-slate-600';
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`items-center rounded-full border px-3 hover:bg-slate-300 dark:hover:bg-slate-600 hover:animate-pulse ${wide ? 'flex-1 py-4' : 'py-1.5'} ${colorClasses}`}
+      className={`items-center rounded-full border px-3 hover:bg-slate-300 dark:hover:bg-slate-600 ${wide ? 'flex-1 py-4' : 'py-1.5'} ${colorClasses}`}
       nativeID={id}
       onPress={onPress}
       testID={id}
