@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
+import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
 import { formatTierName } from '../../utils/tier-name.js';
 import { useThemeColors } from '../../theme/colors.js';
 
@@ -49,22 +50,6 @@ function useTierLinkPulse() {
   const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.04]) }] }));
   const glowStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [0.12, 0.3]) }));
   return { scaleStyle, glowStyle };
-}
-
-function useArrowBounce() {
-  const bounce = useSharedValue(0);
-
-  useEffect(() => {
-    bounce.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 450, easing: Easing.out(Easing.quad) }),
-        withTiming(0, { duration: 450, easing: Easing.in(Easing.quad) }),
-      ),
-      -1,
-    );
-  }, [bounce]);
-
-  return useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(bounce.value, [0, 1], [0, -3]) }] }));
 }
 
 function TierUpgradeLink({ onPress, className, idPrefix }) {
