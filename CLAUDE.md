@@ -385,6 +385,11 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   #1 (`409`); el entrenador sí lo puede sacar. Las fechas se muestran con `formatDueDate`, que corta el día en hora
   argentina y no en la del dispositivo. Change de OpenSpec del backend:
   `cobros-pendientes-y-vencimientos`.
+- **Las cuotas de tier del corredor no se muestran ni se ofrecen para pagar (2026-11-10).** Con
+  el Gap 42 el corredor ya no tiene tiers, pero `GET /payments/upcoming` sigue devolviendo las
+  suscripciones de tier que quedaron en la base (la purga del backend es un script manual).
+  `useUpcomingPayments` las filtra con `utils/payment-due.js#isPayableUpcoming`, así no llegan
+  ni al aviso del Home ni a "Próximos vencimientos".
 - **El entrenador no ve cobros de tier**: esos los cobra Paceron. En Cobros solo
   aparecen cuotas de equipo; los tiers son pagos, de corredores y entrenadores.
 - **Dos consultas del resumen (2026-09-29).** `useReceivedPaymentsSummary()` sin `until`
