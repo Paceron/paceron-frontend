@@ -112,7 +112,7 @@ export function RecentTrainingsCard() {
         <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="recent-trainings-card-view-history-label" testID="recent-trainings-card-view-history-label">
           Ver historial
         </Text>
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-right" size={14} />
+        <MaterialCommunityIcons className="animate-pulse" color={colors.onSurfaceVariant} name="chevron-right" size={14} />
       </Pressable>
     </View>
   );

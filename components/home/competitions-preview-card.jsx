@@ -64,7 +64,7 @@ function ViewAllTile({ wide, onPress }) {
       onPress={onPress}
       testID="competitions-preview-card-view-all"
     >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-horizontal-circle-outline" size={14} />
+      <MaterialCommunityIcons className="animate-pulse" color={colors.onSurfaceVariant} name="dots-horizontal-circle-outline" size={14} />
       <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="competitions-preview-card-view-all-label" testID="competitions-preview-card-view-all-label">
         Ver más
       </Text>
