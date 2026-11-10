@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { InfoHint } from '../dashboard/info-hint.jsx';
+import { InlinePicker } from '../forms/fields.jsx';
 import { DashboardLoadingOverlay } from '../dashboard/dashboard-loading-overlay.jsx';
 import { KpiTile } from '../dashboard/kpi-tile.jsx';
 import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
@@ -153,41 +152,38 @@ export function RunnerKpisCard() {
           ) : null}
         </View>
 
-        <View className="flex-row items-center gap-1" nativeID="runner-kpis-period-selector" testID="runner-kpis-period-selector">
-          <InfoHint
-            accessibilityLabel="Información sobre el período"
-            description="Período"
-            id="runner-kpis-period-info"
-            title="Filtro de período"
-          />
-          <ResponsiveSelectField
-            className="mb-0"
-            hideLabel
-            label="Periodo"
-            onChange={handlePeriodChange}
-            options={periodOptions}
-            plain
-            value={period}
-          />
+        <View className="mb-2 flex-row flex-wrap items-center gap-2" nativeID="runner-kpis-selectors" testID="runner-kpis-selectors">
+          <View nativeID="runner-kpis-period-selector" testID="runner-kpis-period-selector">
+            <InlinePicker
+              compact
+              onChange={handlePeriodChange}
+              options={periodOptions}
+              scope="runner-kpis-period"
+              textClassName="text-xs font-semibold"
+              tooltipLabel="Período"
+              chevronColor="#29470b"
+              triggerClassName="border-[#99c83d] bg-[#b8e65b] hover:bg-[#a9db48] dark:border-[#99c83d] dark:bg-[#b8e65b] dark:hover:bg-[#a9db48]"
+              value={period}
+              valueClassName="text-[#29470b]"
+              widthClass="w-[96px]"
+            />
+          </View>
+          <View nativeID="runner-kpis-type-selector" testID="runner-kpis-type-selector">
+            <InlinePicker
+              compact
+              onChange={handleTabChange}
+              options={metricOptions}
+              scope="runner-kpis-type"
+              textClassName="text-xs font-semibold"
+              tooltipLabel="Tipo de ejercicio"
+              chevronColor="#29470b"
+              triggerClassName="border-[#99c83d] bg-[#b8e65b] hover:bg-[#a9db48] dark:border-[#99c83d] dark:bg-[#b8e65b] dark:hover:bg-[#a9db48]"
+              value={tab}
+              valueClassName="text-[#29470b]"
+              widthClass="w-[184px]"
+            />
+          </View>
         </View>
-      </View>
-
-      <View className="mb-2 flex-row items-center gap-1 self-start" nativeID="runner-kpis-type-selector" testID="runner-kpis-type-selector">
-        <InfoHint
-          accessibilityLabel="Información sobre el tipo de ejercicio"
-          description="Tipo de ejercicio"
-          id="runner-kpis-type-info"
-          title="Filtro de ejercicio"
-        />
-        <ResponsiveSelectField
-          className="mb-0"
-          hideLabel
-          label="Tipo de ejercicio"
-          onChange={handleTabChange}
-          options={metricOptions}
-          plain
-          value={tab}
-        />
       </View>
 
       <View

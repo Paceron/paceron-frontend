@@ -5,21 +5,19 @@ jest.mock('../theme/colors.js', () => ({
   useThemeColors: () => ({ onSurfaceVariant: '#666', warning: '#b45309' }),
 }));
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
-jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
-jest.mock('../components/forms/responsive-select-field.jsx', () => {
+jest.mock('../components/forms/fields.jsx', () => {
   const ReactModule = require('react');
   const { Pressable: NativePressable, Text: NativeText, View: NativeView } = require('react-native');
   return {
-    ResponsiveSelectField: ({ label, value, options, onChange }) => {
-      const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    InlinePicker: ({ scope, value, options, onChange }) => {
       const selected = options.find((option) => option.id === value);
       return ReactModule.createElement(
         NativeView,
         null,
-        ReactModule.createElement(NativeText, { testID: `mock-select-${slug}-value` }, selected?.name),
+        ReactModule.createElement(NativeText, { testID: `mock-inline-picker-${scope}-value` }, selected?.name),
         ...options.map((option) => ReactModule.createElement(
           NativePressable,
-          { key: option.id, onPress: () => onChange(option.id), testID: `mock-select-${slug}-${option.id}` },
+          { key: option.id, onPress: () => onChange(option.id), testID: `mock-inline-picker-${scope}-option-${option.id}` },
           ReactModule.createElement(NativeText, null, option.name),
         )),
       );
@@ -91,15 +89,16 @@ describe('RunnerKpisCard — cards de métricas', () => {
     expect(getByTestId('runner-kpis-average_speed_kph-tile-value').props.children).toBe('10,8 km/h');
   });
 
-  test('inicia en Mes y Números generales, con ambos selectores desplegables', () => {
+  test('inicia en Mes y Números generales, con ambos selectores', () => {
     mockKpis();
     const { getByTestId } = render(<RunnerKpisCard />);
 
     expect(useRunnerKpis).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'month', tab: 'general' }));
-    expect(getByTestId('mock-select-periodo-value').props.children).toBe('Mes');
-    expect(getByTestId('mock-select-tipo-de-ejercicio-value').props.children).toBe('Números generales');
-    expect(getByTestId('runner-kpis-period-info-trigger')).toBeTruthy();
-    expect(getByTestId('runner-kpis-type-info-trigger')).toBeTruthy();
+    expect(getByTestId('mock-inline-picker-runner-kpis-period-value').props.children).toBe('Mes');
+    expect(getByTestId('mock-inline-picker-runner-kpis-type-value').props.children).toBe('Números generales');
+
+    fireEvent.press(getByTestId('mock-inline-picker-runner-kpis-period-option-week'));
+    expect(useRunnerKpis).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'week', tab: 'general' }));
   });
 
   test('el encabezado abre el tooltip informativo y su link navega a equipos', () => {
@@ -134,7 +133,7 @@ describe('RunnerKpisCard — cards de métricas', () => {
     expect(getByTestId('runner-kpis-total_distance_m-cell').props.className).toBe('w-1/2 p-1');
     expect(getByTestId('runner-kpis-average_speed_kph-cell').props.className).toBe('w-1/2 p-1');
 
-    fireEvent.press(getByTestId('mock-select-tipo-de-ejercicio-velocidad_tiempo'));
+    fireEvent.press(getByTestId('mock-inline-picker-runner-kpis-type-option-velocidad_tiempo'));
 
     // velocidad_tiempo tiene 3: las tres en la misma línea en desktop.
     expect(getByTestId('runner-kpis-best_time_ms-cell').props.className).toBe('w-1/2 p-1 lg:w-1/3');
