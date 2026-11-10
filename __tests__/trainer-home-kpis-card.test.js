@@ -3,9 +3,31 @@ import { fireEvent, render } from '@testing-library/react-native';
 
 jest.mock('../theme/colors.js', () => ({ useThemeColors: () => ({ warning: '#b45309', onSurfaceVariant: '#666' }) }));
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
+jest.mock('../providers/theme-provider.jsx', () => ({ useThemeMode: () => ({ colorScheme: 'light' }) }));
+jest.mock('../components/forms/fields.jsx', () => {
+  const ReactModule = require('react');
+  const { Pressable: NativePressable, Text: NativeText, View: NativeView } = require('react-native');
+  return {
+    InlinePicker: ({ scope, value, options, onChange }) => {
+      const selected = options.find((option) => option.id === value);
+      return ReactModule.createElement(
+        NativeView,
+        null,
+        ReactModule.createElement(NativeText, { testID: `mock-inline-picker-${scope}-value` }, selected?.name),
+        ...options.map((option) => ReactModule.createElement(
+          NativePressable,
+          { key: option.id, onPress: () => onChange(option.id), testID: `mock-inline-picker-${scope}-option-${option.id}` },
+          ReactModule.createElement(NativeText, null, option.name),
+        )),
+      );
+    },
+  };
+});
 jest.mock('../hooks/use-trainer-home-kpis.js', () => ({ useTrainerHomeKpis: jest.fn() }));
 
+// eslint-disable-next-line import/first -- los mocks deben registrarse antes del componente.
 import { useTrainerHomeKpis } from '../hooks/use-trainer-home-kpis.js';
+// eslint-disable-next-line import/first -- los mocks deben registrarse antes del componente.
 import { TrainerHomeKpisCard } from '../components/home/trainer-home-kpis-card.jsx';
 
 beforeEach(() => {
@@ -28,6 +50,15 @@ test('muestra los cuatro KPIs temporales y los dos totales actuales', () => {
   expect(getByTestId('trainer-home-kpis-structure-activeTeams-tile-value').props.children).toBe('2');
   expect(getByTestId('trainer-home-kpis-structure-activeRunners-tile-value').props.children).toBe('17');
   expect(getByText('Tu estructura actual')).toBeTruthy();
+});
+
+test('inicia en Mes y permite cambiar el período desde el desplegable', () => {
+  const { getByTestId } = render(<TrainerHomeKpisCard />);
+  expect(useTrainerHomeKpis).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'month' }));
+  expect(getByTestId('mock-inline-picker-trainer-home-kpis-period-value').props.children).toBe('Mes');
+
+  fireEvent.press(getByTestId('mock-inline-picker-trainer-home-kpis-period-option-week'));
+  expect(useTrainerHomeKpis).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'week' }));
 });
 
 test('reutiliza el overlay animado con un texto de carga contextual', () => {

@@ -5,6 +5,7 @@ jest.mock('../theme/colors.js', () => ({
   useThemeColors: () => ({ onSurfaceVariant: '#666', warning: '#b45309' }),
 }));
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
+jest.mock('../providers/theme-provider.jsx', () => ({ useThemeMode: () => ({ colorScheme: 'light' }) }));
 jest.mock('../components/forms/fields.jsx', () => {
   const ReactModule = require('react');
   const { Pressable: NativePressable, Text: NativeText, View: NativeView } = require('react-native');

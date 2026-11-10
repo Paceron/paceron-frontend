@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { TabBar } from '../shared/tab-bar.jsx';
+import { InlinePicker } from '../forms/fields.jsx';
+import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { DashboardLoadingOverlay } from '../dashboard/dashboard-loading-overlay.jsx';
 import { KpiTile } from '../dashboard/kpi-tile.jsx';
 import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
@@ -16,7 +17,6 @@ import {
   trainerHomePeriodTitle,
 } from '../../utils/trainer-home-kpis.js';
 
-const PERIOD_ICONS = { month: 'calendar-month', week: 'calendar-week', day: 'calendar-today' };
 const OPEN_TOOLTIP_CELL_Z_INDEX = 10;
 const OPEN_TOOLTIP_SECTION_Z_INDEX = 100;
 const OPEN_TOOLTIP_CARD_Z_INDEX = 1000;
@@ -27,16 +27,16 @@ function todayISODate() {
 }
 
 export function TrainerHomeKpisCard() {
+  const { colorScheme } = useThemeMode();
   const [referenceDate] = useState(todayISODate);
   const [period, setPeriod] = useState('month');
   const [openTooltip, setOpenTooltip] = useState(null);
   const { data, loading, refreshing, failed, error, refetch } = useTrainerHomeKpis({ period, referenceDate });
   const resolvedError = failed ? resolveDashboardError(error) : null;
   const title = data ? trainerHomePeriodTitle(data) : 'Resumen del período';
-  const tabs = TRAINER_HOME_PERIOD_OPTIONS.map((option) => ({
+  const periodOptions = TRAINER_HOME_PERIOD_OPTIONS.map((option) => ({
     id: option.period,
-    label: option.label,
-    icon: PERIOD_ICONS[option.period],
+    name: option.label,
   }));
 
   const renderMetric = (metric, section) => {
@@ -103,16 +103,23 @@ export function TrainerHomeKpisCard() {
       <Text className="mb-2 text-sm font-semibold text-slate-900 dark:text-white" nativeID="trainer-home-kpis-period-title" testID="trainer-home-kpis-period-title">
         {title}
       </Text>
-      <View nativeID="trainer-home-kpis-period-selector" testID="trainer-home-kpis-period-selector">
-        <TabBar
-          active={period}
+      <View className="mb-2 self-start" nativeID="trainer-home-kpis-period-selector" testID="trainer-home-kpis-period-selector">
+        <InlinePicker
+          compact
           onChange={(nextPeriod) => {
             if (nextPeriod === period) refetch();
             else setPeriod(nextPeriod);
           }}
+          options={periodOptions}
+          showPlaceholderOption={false}
           scope="trainer-home-kpis-period"
-          tabs={tabs}
-          wrapClassName="flex-row flex-wrap gap-1"
+          textClassName="text-xs font-semibold"
+          tooltipLabel="Período"
+          chevronColor={colorScheme === 'dark' ? '#f0fdf4' : '#052e16'}
+          triggerClassName="border-green-300 bg-green-200 hover:bg-green-300 dark:border-green-700 dark:bg-green-800 dark:hover:bg-green-700"
+          value={period}
+          valueClassName="text-green-950 dark:text-green-50"
+          widthClass="w-[108px]"
         />
       </View>
 
