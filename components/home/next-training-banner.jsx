@@ -131,7 +131,9 @@ export function NextTrainingBanner() {
 function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFetching, onHeroPress, onCancelledPress }) {
   const heroIcon = nextTraining.isPresencial ? 'map-marker-radius' : 'run-fast';
   const { colorScheme } = useThemeMode();
-  const bounceStyle = useArrowBounce();
+  // 4 vueltas (~3.6s) y se queda quieto -- no infinito, ver el comentario
+  // de useArrowBounce sobre el lag real reportado en el Home de corredor.
+  const bounceStyle = useArrowBounce(4);
 
   return (
     <View className="gap-2" nativeID="next-training-banner-list" testID="next-training-banner-list">
