@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ import { useTeamJoinRequests, useJoinRequestMutations } from '../../hooks/use-jo
 // Solicitudes de ingreso, arriba de la lista de la pestaña Corredores y solo
 // para el entrenador dueño — aceptar/rechazar, tap directo sin modal de
 // confirmación (mismo patrón que received-invitations-screen.jsx/notifications-screen.jsx).
-function JoinRequestRow({ request, onAccept, onReject, responding }) {
+function JoinRequestRow({ request, onAccept, onReject, responding, respondingAction }) {
   const colors = useThemeColors();
 
   return (
@@ -34,10 +34,14 @@ function JoinRequestRow({ request, onAccept, onReject, responding }) {
           onPress={onAccept}
           testID={`team-request-${request.id}-accept-button`}
         >
-          <MaterialCommunityIcons color={colors.onPrimary} name="check" size={16} />
-          <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`team-request-${request.id}-accept-button-label`} testID={`team-request-${request.id}-accept-button-label`}>
-            Aceptar
-          </Text>
+          {respondingAction === 'accept' ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
+            <>
+              <MaterialCommunityIcons color={colors.onPrimary} name="check" size={16} />
+              <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`team-request-${request.id}-accept-button-label`} testID={`team-request-${request.id}-accept-button-label`}>
+                Aceptar
+              </Text>
+            </>
+          )}
         </Pressable>
         <Pressable
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-80 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
@@ -46,10 +50,14 @@ function JoinRequestRow({ request, onAccept, onReject, responding }) {
           onPress={onReject}
           testID={`team-request-${request.id}-reject-button`}
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={16} />
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`team-request-${request.id}-reject-button-label`} testID={`team-request-${request.id}-reject-button-label`}>
-            Rechazar
-          </Text>
+          {respondingAction === 'reject' ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : (
+            <>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={16} />
+              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`team-request-${request.id}-reject-button-label`} testID={`team-request-${request.id}-reject-button-label`}>
+                Rechazar
+              </Text>
+            </>
+          )}
         </Pressable>
       </View>
     </View>
@@ -61,9 +69,15 @@ export function TeamJoinRequestsSection({ teamId }) {
   const { requests, loading } = useTeamJoinRequests(teamId);
   const { acceptJoinRequest, rejectJoinRequest, isAccepting, isRejecting } = useJoinRequestMutations();
   const [respondingId, setRespondingId] = useState(null);
+  // Qué botón del par aceptar/rechazar está en vuelo -- `responding` solo
+  // deshabilita, nunca cambia visualmente, así que aceptar una solicitud
+  // parecía no responder (mismo bug y mismo fix que ReceivedInvitationRow
+  // en notifications-screen.jsx, 2026-11-08).
+  const [respondingAction, setRespondingAction] = useState(null);
 
   const handleAccept = async (requestId) => {
     setRespondingId(requestId);
+    setRespondingAction('accept');
     try {
       await acceptJoinRequest(requestId);
       // El roster (useTeamRoster, TanStack Query) no se entera solo — sin
@@ -76,10 +90,12 @@ export function TeamJoinRequestsSection({ teamId }) {
       Toast.show({ type: 'error', text1: 'No pudimos aceptar la solicitud', text2: error.message });
     }
     setRespondingId(null);
+    setRespondingAction(null);
   };
 
   const handleReject = async (requestId) => {
     setRespondingId(requestId);
+    setRespondingAction('reject');
     try {
       await rejectJoinRequest(requestId);
       Toast.show({ type: 'success', text1: 'Solicitud rechazada' });
@@ -87,6 +103,7 @@ export function TeamJoinRequestsSection({ teamId }) {
       Toast.show({ type: 'error', text1: 'No pudimos rechazar la solicitud', text2: error.message });
     }
     setRespondingId(null);
+    setRespondingAction(null);
   };
 
   // Sin solicitudes no se muestra nada: una tarjeta que solo dice "no hay"
@@ -104,6 +121,7 @@ export function TeamJoinRequestsSection({ teamId }) {
             onReject={() => handleReject(request.id)}
             request={request}
             responding={(isAccepting || isRejecting) && respondingId === request.id}
+            respondingAction={respondingId === request.id ? respondingAction : null}
           />
         ))}
       </View>

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Col, Row } from '../forms/fields.jsx';

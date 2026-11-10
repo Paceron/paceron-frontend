@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { InputField, DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
-import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
+import { COMPETITION_METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
 import { RouteDrawPicker } from './route-draw-picker';
 import { toISODate } from '../../utils/date-field-format.js';
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
@@ -234,7 +234,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
 
                 {type === 'metric' ? (
                   <>
-                    <ResponsiveSelectField dense hideErrorRow label="Métrica" onChange={setMetric} options={METRIC_OPTIONS} required value={metric} />
+                    <ResponsiveSelectField dense hideErrorRow label="Métrica" onChange={setMetric} options={COMPETITION_METRIC_OPTIONS} required value={metric} />
                     {/* Fila SIEMPRE (no solo web, a diferencia de Row/Col) --
                         pedido real: ahorrar espacio también en mobile para
                         este par puntual. `dense` achica cada DateField para

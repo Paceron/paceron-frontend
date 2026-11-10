@@ -11,6 +11,7 @@ import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
 import { RunnerKpisCard } from './runner-kpis-card.jsx';
 import { HomePaymentsDueCard } from './home-payments-due-card.jsx';
 import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
+import { ACTIVITY_COMPARISON_KEYS } from '../../hooks/use-activity-comparison.js';
 import { CompetitionsPreviewCard } from './competitions-preview-card.jsx';
 import { RecentTrainingsCard } from './recent-trainings-card.jsx';
 import { TrainerHomeKpisCard } from './trainer-home-kpis-card.jsx';
@@ -37,6 +38,13 @@ export function AuthenticatedHomeScreen() {
       queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
       queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
       queryClient.invalidateQueries({ queryKey: ['runner-kpis'] }),
+      // Bug real reportado 2026-11-08: CompetitionsPreviewCard/RecentTrainingsCard
+      // (los dos últimos widgets agregados a este Home) nunca se habían
+      // sumado acá -- pull-to-refresh los dejaba con datos viejos (ej. una
+      // competencia nueva donde recién lo agregaron no aparecía hasta
+      // recargar la app entera).
+      queryClient.invalidateQueries({ queryKey: ['competitions'] }),
+      queryClient.invalidateQueries({ queryKey: ACTIVITY_COMPARISON_KEYS.list(userId) }),
     ] : []),
     ...(activeRole === 'trainer' ? [
       queryClient.invalidateQueries({ queryKey: trainerHomeKpisPrefix(userId) }),

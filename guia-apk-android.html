@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guía: Generar APK de Android - Paceron</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #f59e0b;
+      --accent2: #3b82f6;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code: #0b1220;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
+    header {
+      text-align: center;
+      padding: 32px 20px;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { margin: 0; font-size: 2rem; color: var(--accent); }
+    header p { color: var(--muted); margin-top: 8px; }
+    h2 {
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 6px;
+      margin-top: 40px;
+    }
+    h3 { color: var(--accent2); margin-top: 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    .step {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin: 16px 0;
+    }
+    .step-num {
+      flex: 0 0 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-body { flex: 1; }
+    code, pre {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    code { padding: 2px 6px; font-size: 0.9em; }
+    pre {
+      padding: 14px;
+      overflow-x: auto;
+      font-size: 0.9em;
+      white-space: pre;
+    }
+    .note {
+      background: #1e3a5f;
+      border-left: 4px solid var(--accent2);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 12px 0;
+      color: #dbeafe;
+    }
+    .warn {
+      background: #422006;
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 12px 0;
+      color: #fef3c7;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
+    th { background: var(--card); color: var(--accent); }
+    ul { padding-left: 20px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75em; font-weight: 700; }
+    .tag-dev { background: #f59e0b; color: #000; }
+    .tag-prod { background: #22c55e; color: #000; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📱 Guía: Generar APK de Android</h1>
+    <p>App Paceron (Expo) — paso a paso para principiantes</p>
+  </header>
+
+  <div class="container">
+
+    <h2>¿Qué vamos a hacer?</h2>
+    <p>
+      Vamos a <strong>compilar tu app de Expo en un archivo APK</strong> (el formato de instalación de Android)
+      y luego pasarlo a tu teléfono para instalarlo. Todo se hace desde tu Mac.
+    </p>
+    <div class="note">
+      💡 No necesitas publicar nada en Google Play. El APK se instala directamente en tu teléfono.
+    </div>
+
+    <h2>Parte 1 — Preparar la Mac (solo la primera vez)</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Exportar la ubicación del Android SDK</h3>
+        <p>Tu Mac ya tiene el Android SDK instalado, pero la terminal no sabe dónde está. Abre una terminal y ejecuta:</p>
+        <pre>export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"</pre>
+        <p>Para no tener que hacerlo cada vez, guárdalo en tu configuración:</p>
+        <pre>echo 'export ANDROID_HOME="$HOME/Library/Android/sdk"' >> ~/.zshrc
+echo 'export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"' >> ~/.zshrc
+source ~/.zshrc</pre>
+        <p>Comprueba que funcionó:</p>
+        <pre>echo $ANDROID_HOME && adb version</pre>
+        <div class="note">Si ves una ruta y la versión de adb, todo está bien.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Iniciar sesión en Expo</h3>
+        <p>El programa que compila (EAS CLI) necesita una cuenta gratuita de Expo:</p>
+        <pre>npx eas-cli login</pre>
+        <p>Te pedirá email y contraseña. Si no tienes cuenta, créala en <strong>https://expo.dev/signup</strong> (es gratis).</p>
+      </div>
+    </div>
+
+    <h2>Parte 2 — Generar el APK</h2>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Elegir qué APK quieres</h3>
+        <p>Hay dos comandos disponibles. Elige uno según lo que necesites:</p>
+        <table>
+          <tr>
+            <th>Quiero…</th>
+            <th>Comando</th>
+            <th>Resultado</th>
+          </tr>
+          <tr>
+            <td>Probar la app (desarrollo)</td>
+            <td><code>npm run eas:build:android:preview:local</code></td>
+            <td>APK "Paceron Dev" (ícono ámbar)</td>
+          </tr>
+          <tr>
+            <td>Versión final (producción)</td>
+            <td><code>npm run eas:build:android:production:local</code></td>
+            <td>APK "Paceron" (ícono blanco)</td>
+          </tr>
+        </table>
+        <p>Ejecuta el que elijas desde la carpeta del proyecto:</p>
+        <pre>npm run eas:build:android:preview:local</pre>
+        <div class="warn">
+          ⏳ La primera vez puede tardar varios minutos porque descarga dependencias de Gradle. Es normal.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Localizar el APK generado</h3>
+        <p>Al terminar, se crea una carpeta <code>builds/</code> con el archivo:</p>
+        <pre>builds/paceron-preview-v0.33.0.apk
+builds/paceron-production-v0.33.0.apk</pre>
+        <p>¡Ese es el archivo que vas a instalar en tu teléfono!</p>
+      </div>
+    </div>
+
+    <h2>Parte 3 — Pasar el APK al teléfono</h2>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Elige una forma de transferirlo</h3>
+        <h3>Opción A — Cable USB (la más directa)</h3>
+        <p>Conecta el teléfono por USB, activa "Depuración USB" en las opciones de desarrollador del teléfono, y ejecuta:</p>
+        <pre>adb install builds/paceron-preview-v0.33.0.apk</pre>
+        <p>El APK se instala automáticamente.</p>
+
+        <h3>Opción B — Enviar el archivo</h3>
+        <ul>
+          <li><strong>Google Drive / Dropbox:</strong> sube el APK y descárgalo desde el navegador del teléfono.</li>
+          <li><strong>WhatsApp / Telegram:</strong> envíate el archivo a ti mismo.</li>
+          <li><strong>Email:</strong> adjunta el APK y ábrelo desde el correo en el teléfono.</li>
+        </ul>
+
+        <h3>Opción C — Descarga por WiFi (sin cables)</h3>
+        <p>Sirve la carpeta desde tu Mac y descarga desde el navegador del teléfono (ambos deben estar en la misma red WiFi):</p>
+        <pre>cd builds && python3 -m http.server 8080</pre>
+        <p>Luego en el teléfono abre <code>http://IP-DE-TU-MAC:8080</code> y toca el APK.</p>
+        <div class="note">Para saber la IP de tu Mac ejecuta: <code>ipconfig getifaddr en0</code></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <h3>Instalar en el teléfono</h3>
+        <p>Al abrir el APK por primera vez, Android pedirá permiso para "instalar apps de origen desconocido" para la app que usaste (navegador, Drive, etc.).</p>
+        <ol>
+          <li>Activa ese permiso cuando te lo pida.</li>
+          <li>Vuelve a abrir el APK.</li>
+          <li>Toca "Instalar".</li>
+        </ol>
+        <div class="note">✅ Listo. Ya tienes la app instalada en tu teléfono.</div>
+      </div>
+    </div>
+
+    <h2>Parte 4 — Diferencia entre APK de desarrollo y de producción</h2>
+
+    <div class="card">
+      <h3><span class="tag tag-dev">DESARROLLO</span> APK de desarrollo (preview)</h3>
+      <ul>
+        <li><strong>Nombre visible:</strong> "Paceron Dev".</li>
+        <li><strong>Ícono:</strong> ámbar (para distinguirlo a simple vista).</li>
+        <li><strong>Package:</strong> <code>com.paceron.app.dev</code> — distinto al de producción.</li>
+        <li><strong>APP_VARIANT:</strong> <code>development</code>.</li>
+        <li><strong>Para qué sirve:</strong> probar cambios, depurar, compartir con testers.</li>
+        <li><strong>Ventaja clave:</strong> se puede instalar <em>junto</em> a la versión de producción en el mismo teléfono (no se sobrescriben) porque tienen package distinto.</li>
+        <li><strong>Limitación:</strong> incluye herramientas de depuración; no es la versión que publicarías.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3><span class="tag tag-prod">PRODUCCIÓN</span> APK de producción</h3>
+      <ul>
+        <li><strong>Nombre visible:</strong> "Paceron".</li>
+        <li><strong>Ícono:</strong> blanco (el oficial).</li>
+        <li><strong>Package:</strong> <code>com.paceron.app</code>.</li>
+        <li><strong>APP_VARIANT:</strong> <code>production</code>.</li>
+        <li><strong>Para qué sirve:</strong> la versión final que usarás tú o tus usuarios.</li>
+        <li><strong>Ventaja clave:</strong> optimizada, sin herramientas de depuración, lista para distribuir.</li>
+        <li><strong>Requisito:</strong> necesita un keystore de firma configurado en EAS (la primera vez te preguntará si quieres generar uno nuevo — responde "Yes").</li>
+      </ul>
+    </div>
+
+    <div class="note">
+      <strong>Resumen en una frase:</strong> el APK de desarrollo es para <em>probar</em> (se instala junto al oficial y tiene ícono ámbar), y el de producción es la <em>versión final</em> (ícono blanco, optimizada, la que compartirías con usuarios).
+    </div>
+
+    <h2>Consejo rápido</h2>
+    <p>Si solo quieres probar rápido sin generar un APK, conecta el teléfono por USB y ejecuta:</p>
+    <pre>npm run android</pre>
+    <p>Esto compila e instala directamente en el dispositivo conectado (sin generar archivo compartible).</p>
+
+    <div class="warn">
+      ⚠️ El perfil de producción requiere que las credenciales de firma (keystore) estén configuradas en EAS. Si es la primera vez, EAS te preguntará si quieres generar un keystore nuevo — responde "Yes".
+    </div>
+
+    <h2>Parte 5 — Alternativa: Build local sin EAS (sin cuenta Expo)</h2>
+    <div class="note">
+      Úsalo si EAS te da error de permisos ("Entity Not Authorized"). Compila el APK en tu Mac con Gradle, sin nube ni cuenta Expo.
+    </div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Preparar el proyecto (prebuild)</h3>
+        <p>Genera la carpeta android/ con la configuración actual:</p>
+        <pre>npx expo prebuild --platform android</pre>
+        <div class="warn">Si ya existe la carpeta android/, este paso puede pedir confirmación para sobrescribir. Responde "Yes" solo si no tienes cambios manuales en android/.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Compilar el APK con Gradle</h3>
+        <p>Entra a la carpeta android y ejecuta:</p>
+        <pre>cd android
+./gradlew assembleRelease</pre>
+        <p>Para un APK de debug (más rápido, sin firma):</p>
+        <pre>./gradlew assembleDebug</pre>
+        <div class="warn">⏳ La primera vez descarga dependencias de Gradle y puede tardar varios minutos.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Localizar el APK</h3>
+        <p>El archivo queda en:</p>
+        <pre>android/app/build/outputs/apk/release/app-release.apk
+android/app/build/outputs/apk/debug/app-debug.apk</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Instalar en el teléfono</h3>
+        <p>Conecta el teléfono por USB con depuración USB activa y ejecuta:</p>
+        <pre>adb install android/app/build/outputs/apk/release/app-release.apk</pre>
+        <p>O transfiere el archivo por Drive/WhatsApp/cable y ábrelo en el teléfono (activa "instalar apps de origen desconocido").</p>
+      </div>
+    </div>
+
+    <div class="note">
+      💡 El build local no necesita cuenta Expo ni EAS. Solo requiere tener instalado el Android SDK y JDK. La URL del backend ya quedó configurada en <code>.env</code> y <code>eas.json</code>.
+    </div>
+
+  </div>
+</body>
+</html>

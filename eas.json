@@ -11,7 +11,8 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "development"
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_API_URL": "https://paceron-backend-as9c.onrender.com/api/v1"
       }
     },
     "preview": {
@@ -21,7 +22,8 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "development"
+        "APP_VARIANT": "development",
+        "EXPO_PUBLIC_API_URL": "https://paceron-backend-as9c.onrender.com/api/v1"
       }
     },
     "production": {
@@ -31,7 +33,8 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "production"
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_API_URL": "https://paceron-backend-as9c.onrender.com/api/v1"
       },
       "autoIncrement": true
     }

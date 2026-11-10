@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
+import { AuthField } from './auth-field.jsx';
 
 // --- Login form ---
 
@@ -86,63 +88,43 @@ function LoginForm() {
       </Text>
 
       {/* Email */}
-      <View className="mb-1 p-4 pb-2 rounded-xl bg-slate-200/50 dark:bg-slate-800/50" nativeID="login-screen-email-group" testID="login-screen-email-group">
-        <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-email-label" testID="login-screen-email-label">Email</Text>
-        <View className={`h-12 flex-row items-center rounded-xl border ${
-          emailError
-            ? 'border-red-400 bg-red-50 dark:border-red-800 dark:bg-slate-900'
-            : emailOk
-            ? 'border-primary bg-white dark:bg-slate-900'
-            : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
-        }`} nativeID="login-screen-email-field-wrapper" testID="login-screen-email-field-wrapper">
-          <TextInput
-            autoCapitalize="none"
-            autoComplete="email"
-            className="flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none"
-            keyboardType="email-address"
-            onBlur={handleEmailBlur}
-            onChangeText={handleEmailChange}
-            onSubmitEditing={() => {}}
-            placeholder="tu@email.com"
-            placeholderTextColor={colors.onSurfaceVariant}
-            returnKeyType="next"
-            textContentType="emailAddress"
-            value={email}
-            nativeID="login-screen-email-input"
-            testID="login-screen-email-input"
-          />
-          {emailTouched && (
-            <View className="px-3" nativeID="login-screen-email-status-icon-wrapper" testID="login-screen-email-status-icon-wrapper">
-              {emailError
-                ? <MaterialCommunityIcons color="#ef4444" name="alert-circle-outline" size={18} />
-                : <MaterialCommunityIcons color="#8cc63e" name="check-circle-outline" size={18} />
-              }
-            </View>
-          )}
-        </View>
-      </View>
-      <View className="h-5 mb-3" nativeID="login-screen-email-error-slot" testID="login-screen-email-error-slot">
-        {emailError && <Text className="text-xs text-red-500 dark:text-red-400" nativeID="login-screen-email-error" testID="login-screen-email-error">{emailError}</Text>}
-      </View>
+      <AuthField
+        autoCapitalize="none"
+        autoComplete="email"
+        error={emailError}
+        idPrefix="login-screen-email"
+        keyboardType="email-address"
+        label="Email"
+        onBlur={handleEmailBlur}
+        onChangeText={handleEmailChange}
+        onSubmitEditing={() => {}}
+        returnKeyType="next"
+        success={emailOk}
+        textContentType="emailAddress"
+        value={email}
+        trailing={emailTouched && (
+          <View className="px-3" nativeID="login-screen-email-status-icon-wrapper" testID="login-screen-email-status-icon-wrapper">
+            {emailError
+              ? <MaterialCommunityIcons color="#ef4444" name="alert-circle-outline" size={18} />
+              : <MaterialCommunityIcons color="#8cc63e" name="check-circle-outline" size={18} />
+            }
+          </View>
+        )}
+      />
 
       {/* Password */}
-      <View className="mb-6 p-4 pb-2 rounded-xl bg-slate-200/50 dark:bg-slate-800/50" nativeID="login-screen-password-group" testID="login-screen-password-group">
-        <Text className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="login-screen-password-label" testID="login-screen-password-label">Contraseña</Text>
-        <View className="h-12 flex-row items-center rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900" nativeID="login-screen-password-field-wrapper" testID="login-screen-password-field-wrapper">
-          <TextInput
-            autoComplete="password"
-            className="flex-1 px-4 text-sm text-slate-900 dark:text-white outline-none"
-            onChangeText={handlePasswordChange}
-            onSubmitEditing={handleSubmit}
-            placeholder="Tu contraseña"
-            placeholderTextColor={colors.onSurfaceVariant}
-            returnKeyType="done"
-            secureTextEntry={!showPassword}
-            textContentType="password"
-            value={password}
-            nativeID="login-screen-password-input"
-            testID="login-screen-password-input"
-          />
+      <AuthField
+        autoComplete="password"
+        idPrefix="login-screen-password"
+        label="Contraseña"
+        onChangeText={handlePasswordChange}
+        onSubmitEditing={handleSubmit}
+        returnKeyType="done"
+        secureTextEntry={!showPassword}
+        textContentType="password"
+        value={password}
+        className="mb-6"
+        trailing={
           <Pressable className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800" onPress={() => setShowPassword((v) => !v)} nativeID="login-screen-password-toggle-button" testID="login-screen-password-toggle-button">
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
@@ -150,44 +132,49 @@ function LoginForm() {
               size={20}
             />
           </Pressable>
-        </View>
-      </View>
+        }
+      />
 
-      {/* Submit button */}
-      <Pressable
-        className={`mb-4 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${
-          isFormValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
-        }`}
-        disabled={loading}
-        onPress={handleSubmit}
-        nativeID="login-screen-submit-button"
-        testID="login-screen-submit-button"
-      >
-        {loading ? (
-          <ActivityIndicator color={isFormValid ? '#111518' : colors.onSurfaceVariant} size="small" />
-        ) : (
-          <Text className={`text-sm font-semibold uppercase tracking-wide ${
-            isFormValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
-          }`} nativeID="login-screen-submit-button-label" testID="login-screen-submit-button-label">
-            Ingresar
+      {/* Lo que sigue se desliza solo cuando un campo de arriba crece por un
+          error (AuthField ya anima su propio layout) — este wrapper hace que
+          el conjunto de abajo también se reacomode animado, en vez de saltar. */}
+      <Animated.View layout={LinearTransition.duration(200)} nativeID="login-screen-actions" testID="login-screen-actions">
+        {/* Submit button */}
+        <Pressable
+          className={`mb-4 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${
+            isFormValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
+          }`}
+          disabled={loading}
+          onPress={handleSubmit}
+          nativeID="login-screen-submit-button"
+          testID="login-screen-submit-button"
+        >
+          {loading ? (
+            <ActivityIndicator color={isFormValid ? '#111518' : colors.onSurfaceVariant} size="small" />
+          ) : (
+            <Text className={`text-sm font-semibold uppercase tracking-wide ${
+              isFormValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
+            }`} nativeID="login-screen-submit-button-label" testID="login-screen-submit-button-label">
+              Ingresar
+            </Text>
+          )}
+        </Pressable>
+
+        {/* Forgot password */}
+        <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/forgot-password')} nativeID="login-screen-forgot-password-button" testID="login-screen-forgot-password-button">
+          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-forgot-password-label" testID="login-screen-forgot-password-label">
+            ¿Olvidaste tu contraseña?
           </Text>
-        )}
-      </Pressable>
+        </Pressable>
 
-      {/* Forgot password */}
-      <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/forgot-password')} nativeID="login-screen-forgot-password-button" testID="login-screen-forgot-password-button">
-        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-forgot-password-label" testID="login-screen-forgot-password-label">
-          ¿Olvidaste tu contraseña?
-        </Text>
-      </Pressable>
-
-      {/* Register link */}
-      <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/register')} nativeID="login-screen-register-link-button" testID="login-screen-register-link-button">
-        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-register-link-label" testID="login-screen-register-link-label">
-          ¿No tenés cuenta?{' '}
-          <Text className="font-semibold text-primary" nativeID="login-screen-register-link-emphasis" testID="login-screen-register-link-emphasis">Registrate</Text>
-        </Text>
-      </Pressable>
+        {/* Register link */}
+        <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/register')} nativeID="login-screen-register-link-button" testID="login-screen-register-link-button">
+          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-register-link-label" testID="login-screen-register-link-label">
+            ¿No tenés cuenta?{' '}
+            <Text className="font-semibold text-primary" nativeID="login-screen-register-link-emphasis" testID="login-screen-register-link-emphasis">Registrate</Text>
+          </Text>
+        </Pressable>
+      </Animated.View>
     </>
   );
 }
