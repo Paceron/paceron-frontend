@@ -34,8 +34,8 @@ const ROW_TONE = {
 // mb-3 que usan las demás cards del Home (bg-white/p-4/shadow-sm, ver
 // recent-trainings-card.jsx) en vez del p-6/mb-5/border de SectionCard.
 const COMPACT_TONE = {
-  rose: { box: 'bg-rose-300 dark:bg-rose-900', title: 'text-rose-900 dark:text-rose-100', icon: '#f43f5e' },
-  warning: { box: 'bg-amber-300 dark:bg-amber-900', title: 'text-amber-900 dark:text-amber-100', icon: '#f59e0b' },
+  rose: { box: 'bg-rose-300 dark:bg-rose-950', title: 'text-rose-900 dark:text-rose-100', icon: '#f43f5e' },
+  warning: { box: 'bg-amber-300 dark:bg-amber-950', title: 'text-amber-900 dark:text-amber-100', icon: '#f59e0b' },
   default: { box: 'bg-white dark:bg-surface', title: 'text-slate-900 dark:text-white', icon: null },
 };
 
