@@ -24,7 +24,15 @@ function useFirePulse() {
   return useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 }
 
-export function StreakBanner() {
+// `daysCount` (Home, 2026-11-09): 7 cuando se empareja con el logro
+// destacado (fila 50/50, menos ancho por card), 14 cuando Rachas queda
+// sola y usa el ancho completo (ver authenticated-home-screen.jsx, que
+// decide cuál de los dos casos aplica ANTES de montar esta card, con
+// `pickAchievementHighlight`). `paired` agrega `flex-1` para igualar la
+// altura visible con AchievementHighlightCard -- mismo criterio de
+// seguridad que esa card (ver su comentario): solo se aplica cuando hay un
+// hermano en la misma fila que fija la altura del slot.
+export function StreakBanner({ daysCount = 7, paired = false }) {
   const router = useRouter();
   const colors = useThemeColors();
   const { streaks, loading, error } = useStreaks();
@@ -40,7 +48,7 @@ export function StreakBanner() {
 
   if (loading) {
     return (
-      <View className="mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface" nativeID="streak-banner-loading" testID="streak-banner-loading">
+      <View className={`mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
         <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-loading-label" testID="streak-banner-loading-label">Cargando racha…</Text>
       </View>
     );
@@ -48,16 +56,16 @@ export function StreakBanner() {
 
   if (error || !streaks) {
     return (
-      <View className="mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface" nativeID="streak-banner-error" testID="streak-banner-error">
+      <View className={`mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
         <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
       </View>
     );
   }
 
-  const lastDays = streaks.days.slice(-14);
+  const lastDays = streaks.days.slice(-daysCount);
 
   return (
-    <Pressable className="mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3" nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
+    <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
       {/* Kicker con el nombre de la racha -- antes la card solo mostraba
           "X días" sin aclarar cuál de las dos rachas es (estricta/flexible,
           ver streaks-tab.jsx), mismo patrón de kicker que el resto de las

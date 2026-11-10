@@ -8,6 +8,7 @@ let mockRefreshFn;
 jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => mockQueryClient }));
 jest.mock('../store/auth-store.js', () => ({ useAuthStore: (selector) => selector(mockAuthState) }));
 jest.mock('../hooks/use-user.js', () => ({ useUser: () => ({ user: { name: 'Alex' } }) }));
+jest.mock('../hooks/use-achievements.js', () => ({ useAchievements: () => ({ achievements: [], loading: false, error: null }) }));
 jest.mock('../theme/colors.js', () => ({ useThemeColors: () => ({ primary: '#8cc63e' }) }));
 jest.mock('../hooks/use-pull-to-refresh.js', () => ({
   usePullToRefresh: (refreshFn) => {
