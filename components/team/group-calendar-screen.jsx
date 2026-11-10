@@ -92,7 +92,12 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
   // ramas. Con ~30-40 celdas montadas a la vez y `selected`/`isMenuOpen`
   // cambiando en vivo por toque, eso es el mismo bug de remount nativo que
   // `role-switch-toggle.jsx` (ver CLAUDE.md) pero multiplicado por celda.
-  const hoverFx = 'transition-all hover:animate-pulse hover:border-4 hover:bg-opacity-60';
+  // `hover:animate-pulse` sacado (2026-11-10): mismo bug que
+  // role-switch-toggle.jsx#Segment -- en touch el `:hover` queda pegado sin
+  // `mouseleave`, y con ~30-40 celdas montadas la celda recién tocada
+  // quedaba pulsando para siempre. `hover:bg-opacity-60`/`border-4` se
+  // mantienen (un estado pegado sin loop no se nota tanto).
+  const hoverFx = 'transition-all hover:border-4 hover:bg-opacity-60';
   const borderClass = isOtherMonth
     ? `${hoverFx} border-2 border-transparent bg-transparent`
     : selected

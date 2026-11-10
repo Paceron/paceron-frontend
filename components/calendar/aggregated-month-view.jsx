@@ -39,7 +39,9 @@ const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday
   const overflowCount = assignments.length - MAX_DOTS;
   // Mismo tratamiento que group-calendar-screen.jsx: hover/transition
   // fijos en las tres ramas, bg-* siempre declarado (nunca omitido).
-  const hoverFx = 'transition-all hover:animate-pulse hover:border-4 hover:bg-opacity-60';
+  // `hover:animate-pulse` sacado (2026-11-10, mismo motivo que ahí): queda
+  // pegado en touch sin `mouseleave`.
+  const hoverFx = 'transition-all hover:border-4 hover:bg-opacity-60';
   const borderClass = isOtherMonth
     ? `${hoverFx} border-2 border-transparent bg-transparent`
     : isToday
