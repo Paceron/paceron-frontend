@@ -49,14 +49,34 @@ function ReceiptButton({ payment, id, onReceipt, busy, compact = false }) {
 }
 
 // Columnas de la tabla en web ancha. Las usa también el encabezado de la lista.
-// Cobros muestra solo el monto, igual que Pagos: el neto y la comisión viven en
-// el dashboard (switch Bruto/Neto), no en cada fila.
+// Cobros es una tabla en todos los anchos: en angosto (web de celular y nativo)
+// el equipo baja como segunda línea del corredor para que entren las columnas
+// sin scroll horizontal, y el estado mantiene su columna (se filtra por él).
+// "Monto" es el NETO, lo que le queda al entrenador; el header lleva un "i" que
+// explica la cuenta (`hint`).
+const RECEIVED_AMOUNT_COLUMN = {
+  key: 'amount',
+  label: 'Monto',
+  align: 'right',
+  hint: {
+    title: 'Monto neto',
+    description: 'Es lo que te queda de cada cuota: lo que pagó el corredor (monto bruto) menos la comisión de Paceron, que es un porcentaje del bruto.\n\nMonto neto = monto bruto − comisión de Paceron.',
+  },
+};
+
 export const RECEIVED_COLUMNS = [
   { key: 'date', label: 'Fecha', flex: 1.1 },
   { key: 'payer', label: 'Corredor', flex: 2 },
   { key: 'team', label: 'Equipo', flex: 1.8 },
   { key: 'status', label: 'Estado', flex: 1.3 },
-  { key: 'amount', label: 'Monto', flex: 1.2, align: 'right' },
+  { ...RECEIVED_AMOUNT_COLUMN, flex: 1.3 },
+];
+
+export const RECEIVED_COLUMNS_NARROW = [
+  { key: 'date', label: 'Fecha', flex: 1.15 },
+  { key: 'payer', label: 'Corredor', flex: 1.7 },
+  { key: 'status', label: 'Estado', flex: 1.35 },
+  { ...RECEIVED_AMOUNT_COLUMN, flex: 1.4 },
 ];
 
 export const HISTORY_COLUMNS = [
@@ -77,18 +97,18 @@ function Cell({ column, id, children }) {
   );
 }
 
-function CellText({ id, children, strong = false, muted = false }) {
+function CellText({ id, children, strong = false, muted = false, compact = false }) {
   const tone = muted ? 'text-slate-400 dark:text-slate-500' : strong ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200';
   return (
-    <Text className={`text-sm ${tone}`} nativeID={id} numberOfLines={1} style={TABULAR} testID={id}>
+    <Text className={`${compact ? 'text-xs' : 'text-sm'} ${tone}`} nativeID={id} numberOfLines={1} style={TABULAR} testID={id}>
       {children}
     </Text>
   );
 }
 
-function WideRow({ id, columns, content }) {
+function WideRow({ id, columns, content, compact = false }) {
   return (
-    <View className="flex-row items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800" nativeID={id} testID={id}>
+    <View className={`flex-row items-center border-b border-slate-100 dark:border-slate-800 ${compact ? 'gap-2 px-3 py-2.5' : 'gap-3 px-4 py-3'}`} nativeID={id} testID={id}>
       {columns.map((column) => (
         <Cell key={column.key} column={column} id={id}>{content[column.key]}</Cell>
       ))}
@@ -96,33 +116,48 @@ function WideRow({ id, columns, content }) {
   );
 }
 
+// El neto lo calcula el backend; si no vino, "—" y no un monto inventado.
+function NetAmount({ payment, id, compact = false }) {
+  if (payment.netAmount === null) return <CellText compact={compact} id={`${id}-amount-text`} muted>—</CellText>;
+  return <CellText compact={compact} id={`${id}-amount-text`} strong>{formatArs(payment.netAmount, { decimals: 2 })}</CellText>;
+}
+
 function ReceivedRow({ payment, isWide, id, date }) {
+  const payer = payment.payer?.fullName || 'Corredor';
+  const team = payment.team?.name || 'Equipo eliminado';
+  const status = <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />;
   if (isWide) {
     return (
       <WideRow
         columns={RECEIVED_COLUMNS}
         content={{
           date: <CellText id={`${id}-date-text`}>{date}</CellText>,
-          payer: <CellText id={`${id}-payer-text`} strong>{payment.payer?.fullName || 'Corredor'}</CellText>,
-          team: <CellText id={`${id}-team-text`}>{payment.team?.name || 'Equipo eliminado'}</CellText>,
-          status: <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />,
-          amount: <CellText id={`${id}-amount-text`} strong>{formatArs(payment.grossAmount)}</CellText>,
+          payer: <CellText id={`${id}-payer-text`} strong>{payer}</CellText>,
+          team: <CellText id={`${id}-team-text`}>{team}</CellText>,
+          status,
+          amount: <NetAmount id={id} payment={payment} />,
         }}
         id={id}
       />
     );
   }
   return (
-    <View className="gap-1.5 border-b border-slate-100 px-4 py-3 dark:border-slate-800" nativeID={id} testID={id}>
-      <View className="flex-row items-baseline justify-between gap-3" nativeID={`${id}-top`} testID={`${id}-top`}>
-        <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={1} testID={`${id}-title`}>{payment.payer?.fullName || 'Corredor'}</Text>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>{formatArs(payment.grossAmount)}</Text>
-      </View>
-      <View className="flex-row items-center justify-between gap-3" nativeID={`${id}-bottom`} testID={`${id}-bottom`}>
-        <Text className="flex-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>{`${payment.team?.name || 'Equipo eliminado'} · ${date}`}</Text>
-        <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />
-      </View>
-    </View>
+    <WideRow
+      columns={RECEIVED_COLUMNS_NARROW}
+      compact
+      content={{
+        date: <CellText compact id={`${id}-date-text`}>{date}</CellText>,
+        payer: (
+          <View className="w-full" nativeID={`${id}-payer`} testID={`${id}-payer`}>
+            <CellText compact id={`${id}-payer-text`} strong>{payer}</CellText>
+            <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-team-text`} numberOfLines={1} testID={`${id}-team-text`}>{team}</Text>
+          </View>
+        ),
+        status,
+        amount: <NetAmount compact id={id} payment={payment} />,
+      }}
+      id={id}
+    />
   );
 }
 

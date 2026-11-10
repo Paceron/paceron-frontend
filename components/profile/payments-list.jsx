@@ -1,15 +1,17 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../../theme/colors.js';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
-import { HISTORY_COLUMNS, PaymentRow, RECEIVED_COLUMNS } from './payment-row.jsx';
+import { InfoHint } from '../dashboard/info-hint.jsx';
+import { HISTORY_COLUMNS, PaymentRow, RECEIVED_COLUMNS, RECEIVED_COLUMNS_NARROW } from './payment-row.jsx';
 
 const EMPTY_TEXT = {
   received: 'No hay cobros para mostrar con estos filtros.',
   history: 'Todavía no hay pagos para mostrar.',
 };
 
-// Lista paginada de pagos. En web ancha es una tabla con encabezado; en web
-// angosta y nativo, una fila de dos líneas por pago.
+// Lista paginada de pagos. En web ancha es una tabla con encabezado. En web
+// angosta y nativo, Pagos usa una fila de dos líneas por pago y Cobros sigue
+// siendo tabla, con menos columnas (ver RECEIVED_COLUMNS_NARROW).
 export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadingMore, failed, onRetry, isWide, onReceipt, receiptBusyId }) {
   const colors = useThemeColors();
   const scope = `payments-list-${variant}`;
@@ -45,18 +47,24 @@ export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadi
     );
   }
 
-  const columns = variant === 'received' ? RECEIVED_COLUMNS : HISTORY_COLUMNS;
+  const received = variant === 'received';
+  const columns = received ? (isWide ? RECEIVED_COLUMNS : RECEIVED_COLUMNS_NARROW) : HISTORY_COLUMNS;
+  const showHeader = isWide || received;
+  const compact = !isWide;
 
   return (
     <View nativeID={scope} testID={scope}>
       <View className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-surface-2" nativeID={`${scope}-card`} testID={`${scope}-card`}>
-        {isWide ? (
-          <View className="flex-row gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900/40" nativeID={`${scope}-header`} testID={`${scope}-header`}>
+        {showHeader ? (
+          <View className={`flex-row border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 ${compact ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2.5'}`} nativeID={`${scope}-header`} testID={`${scope}-header`}>
             {columns.map((column) => (
-              <View key={column.key} nativeID={`${scope}-header-${column.key}`} style={{ flex: column.flex, alignItems: column.align === 'right' ? 'flex-end' : 'flex-start' }} testID={`${scope}-header-${column.key}`}>
-                <Text className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${scope}-header-${column.key}-label`} testID={`${scope}-header-${column.key}-label`}>
+              <View key={column.key} className={`flex-row items-center gap-1 ${column.align === 'right' ? 'justify-end' : 'justify-start'}`} nativeID={`${scope}-header-${column.key}`} style={{ flex: column.flex }} testID={`${scope}-header-${column.key}`}>
+                <Text className={`font-semibold uppercase text-slate-500 dark:text-slate-400 ${compact ? 'text-[10px]' : 'text-[11px] tracking-wide'}`} nativeID={`${scope}-header-${column.key}-label`} testID={`${scope}-header-${column.key}-label`}>
                   {column.label}
                 </Text>
+                {column.hint ? (
+                  <InfoHint description={column.hint.description} id={`${scope}-header-${column.key}-hint`} openOnPress title={column.hint.title} />
+                ) : null}
               </View>
             ))}
           </View>

@@ -351,10 +351,13 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
 - **Neto = bruto − comisión de Paceron, y lo calcula el backend (2026-11-02).** Reemplaza
   la regla anterior de "nunca mostrar comisión": cada cobro trae `fee_amount` y
   `fee_percent` (los pagos viejos sin comisión guardada caen al 5%). El front no
-  recalcula nada, solo muestra lo que llega. **Las filas de Cobros muestran solo
-  "Monto" (el bruto), igual que Pagos (2026-11-08)**: tenían columnas Bruto y Neto
-  y la lista se leía distinta a la de Pagos. El neto y la comisión quedan en el
-  dashboard (switch Bruto/Neto y tooltip por mes).
+  recalcula nada, solo muestra lo que llega. **La lista de Cobros es una tabla en
+  todos los anchos y su columna "Monto" es el NETO (2026-11-10, pedido del usuario)**:
+  el header lleva un "i" (`InfoHint` con `openOnPress`, para que también se abra
+  con click/toque en web de celular, sin hover) que explica neto = bruto − comisión
+  de Paceron. En angosto (`RECEIVED_COLUMNS_NARROW`) el equipo baja como segunda
+  línea del corredor y el estado conserva su columna, porque se filtra por él. La
+  lista de Pagos no cambia: tabla en ancho, filas de dos líneas en angosto.
   `formatNetLabel` y el "s/d" del gráfico quedan por si un neto vuelve a venir `null`.
 - **El checkout ofrece solo tarjeta de crédito y débito (2026-11-08).** El Brick
   (`checkout-brick.web.jsx`, `customization.paymentMethods`) habilitaba todo, pero
