@@ -1,13 +1,9 @@
-import { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/auth-store.js';
 import { usePermissions } from '../../hooks/use-user.js';
-import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
 import { formatTierName } from '../../utils/tier-name.js';
-import { useThemeColors } from '../../theme/colors.js';
 
 const MUTED_ICON = '#94a3b8';
 const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
@@ -20,64 +16,6 @@ const MUTED_TEXT = 'text-slate-500 dark:text-slate-400';
 // null cuando no hay dato = no dibuja la línea de tier en el segmento.
 function tierLabel(tierName) {
   return formatTierName(tierName) || null;
-}
-
-// El texto ya no indica el rol — la pantalla de destino muestra los
-// tiers del rol activo, no hace falta anticiparlo en el link (antes
-// "Mejorar tier de {roleLabel}", una entrada de menú por rol).
-//
-// Pill con ícono en vez de texto plano (pedido real 2026-11-09, mismo
-// patrón ya usado en los accesos del catálogo de group-calendar-screen.jsx)
-// -- un link de puro texto bajo el switch se perdía, sin ninguna affordance
-// de que fuera accionable.
-//
-// Animaciones (pedido real 2026-11-09): un pulso de escala + un fondo que
-// respira al mismo ritmo, y el ícono saltando hacia arriba -- todo para que
-// el link llame la atención como un CTA real. Reanimated, no `animate-*`
-// de NativeWind (mismo motivo que `useFirePulse` en streak-banner.jsx: hay
-// que animar también en nativo). `Animated.View` no aplica NINGÚN
-// `className` (quirk documentado en CLAUDE.md) -- por eso las dos capas
-// animadas de acá abajo van con `style` puro, y el `Pressable` de afuera
-// (con `className` normal) sigue siendo el único responsable de la forma
-// de la píldora (borde, padding, radio) y del hover/active reales.
-function useTierLinkPulse() {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = withRepeat(withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [progress]);
-
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.04]) }] }));
-  const glowStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [0.12, 0.3]) }));
-  return { scaleStyle, glowStyle };
-}
-
-function TierUpgradeLink({ onPress, className, idPrefix }) {
-  const colors = useThemeColors();
-  const { scaleStyle, glowStyle } = useTierLinkPulse();
-  const bounceStyle = useArrowBounce();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className={`overflow-hidden rounded-full border border-primary/40 px-3 py-1.5 hover:bg-primary-tint dark:hover:bg-primary/15 active:opacity-70 ${className ?? ''}`}
-      nativeID={`${idPrefix}-tier-upgrade-link`}
-      onPress={onPress}
-      testID={`${idPrefix}-tier-upgrade-link`}
-    >
-      <Animated.View
-        nativeID={`${idPrefix}-tier-upgrade-link-glow`}
-        pointerEvents="none"
-        style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.primary }, glowStyle]}
-        testID={`${idPrefix}-tier-upgrade-link-glow`}
-      />
-      <Animated.View nativeID={`${idPrefix}-tier-upgrade-link-content`} style={[{ flexDirection: 'row', alignItems: 'center' }, scaleStyle]} testID={`${idPrefix}-tier-upgrade-link-content`}>
-        <Animated.View nativeID={`${idPrefix}-tier-upgrade-link-icon`} style={bounceStyle} testID={`${idPrefix}-tier-upgrade-link-icon`}>
-          <MaterialCommunityIcons color={colors.primary} name="arrow-up-circle-outline" size={14} />
-        </Animated.View>
-        <Text className="ml-1.5 text-[11px] font-semibold text-primary" nativeID={`${idPrefix}-tier-upgrade-link-text`} testID={`${idPrefix}-tier-upgrade-link-text`}>Mejorar tier</Text>
-      </Animated.View>
-    </Pressable>
-  );
 }
 
 // Un segmento del switch. En modo compacto (dropdown/sidebar) el tier va
@@ -168,7 +106,12 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
 // reportado 2026-11-09 (`role-switch-toggle-runner-segment` duplicado,
 // confirmado con `document.querySelectorAll`). Cada shell que lo monta en
 // un drawer pasa el suyo; Profile usa el default.
-export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTierLink = wide, idPrefix = 'role-switch-toggle' }) {
+//
+// Ya NO ofrece acceso a "Mejorar tier" (sacado 2026-11-10): quedaba
+// duplicado contra el botón de la misma función en TrainerDataSection
+// (profile-screen.jsx, dentro de "Configuración de Membresía"), que es el
+// único lugar que lo muestra ahora.
+export function RoleSwitchToggle({ onClose, wide = false, idPrefix = 'role-switch-toggle' }) {
   const router = useRouter();
   const activeRole = useAuthStore((s) => s.activeRole);
   const userId = useAuthStore((s) => s.userId);
@@ -254,9 +197,6 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           wide={wide}
         />
       </View>
-      {/* Gap 42: tiers reservados a entrenador -- el link solo se ofrece
-          viendo el rol entrenador activo, nunca para corredor. */}
-      {showTierLink && trainerActive && <TierUpgradeLink className="mt-2" idPrefix={idPrefix} onPress={onUpgradeTier} />}
     </View>
   );
 }
