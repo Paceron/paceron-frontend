@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
@@ -7,6 +7,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions, useUserMutations } from '../../hooks/use-user.js';
+import { useTierSubscription } from '../../hooks/use-tier-subscription.js';
+import { formatArs } from '../../utils/currency.js';
+import { createPreference } from '../../services/payments.js';
+import { toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
+import { CheckoutFlow } from '../payments/checkout-flow';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { getUserInitials } from '../../utils/user-initials.js';
@@ -16,7 +21,7 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { useMpConnectStatus } from '../../hooks/use-mp-connect.js';
 import { PAYMENT_HISTORY_KEYS } from '../../hooks/use-payment-history.js';
 import { mpConnectionState } from '../../utils/mp-connect-status.js';
-import { SkeletonBlock } from '../shared/skeleton.jsx';
+import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
@@ -52,13 +57,13 @@ function FieldGrid({ children }) {
 }
 
 // Etiqueta + contenido de un campo, con el mismo ancho que el resto de la grilla.
-function FieldShell({ label, slug, children, fullWidth = false }) {
+function FieldShell({ label, slug, children, fullWidth = false, labelClassName }) {
   const isNarrowWeb = useIsNarrowWeb();
   const isDesktopWeb = isWeb && !isNarrowWeb;
   return (
     <View className={isDesktopWeb && !fullWidth ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
       <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
-        <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
+        <Text className={labelClassName ?? 'mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'} nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
         {children}
       </View>
     </View>
@@ -134,7 +139,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
           <EditButton onEdit={onEdit} colors={colors} />
         </View>
         <View className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800" nativeID="profile-screen-role-switch-row" testID="profile-screen-role-switch-row">
-          <RoleSwitchToggle onUpgradeTier={onUpgradeTier} wide />
+          <RoleSwitchToggle onUpgradeTier={onUpgradeTier} showTierLink={false} wide />
         </View>
       </View>
     );
@@ -179,6 +184,8 @@ const MP_STATE_TONE = {
 // conectada y hasta cuándo (el token dura 180 días y no se renueva solo).
 function MpConnectionField({ fullWidth = false }) {
   const colors = useThemeColors();
+  const isNarrowWeb = useIsNarrowWeb();
+  const isDesktopWeb = isWeb && !isNarrowWeb;
   const status = useMpConnectStatus();
   const slug = 'profile-screen-field-mercado-pago';
   const mp = mpConnectionState(status);
@@ -195,31 +202,112 @@ function MpConnectionField({ fullWidth = false }) {
     );
   } else {
     body = (
-      <View className="gap-1" nativeID={`${slug}-status`} testID={`${slug}-status`}>
-        <View className={`flex-row items-center gap-1 self-start rounded-full px-2 py-0.5 ${tone.badge}`} nativeID={`${slug}-badge`} testID={`${slug}-badge`}>
-          <MaterialCommunityIcons color={mp.state === 'connected' ? colors.primary : colors.onSurfaceVariant} name={tone.icon} size={14} />
-          <Text className={`text-xs font-semibold ${tone.text}`} nativeID={`${slug}-badge-label`} testID={`${slug}-badge-label`}>{mp.label}</Text>
+      <View className="flex-row items-center gap-2" nativeID={`${slug}-status`} testID={`${slug}-status`}>
+        <View className={`flex-row items-center gap-1 self-start rounded-full px-3 py-1 ${tone.badge}`} nativeID={`${slug}-badge`} testID={`${slug}-badge`}>
+          <MaterialCommunityIcons color={mp.state === 'connected' ? colors.primary : colors.onSurfaceVariant} name={tone.icon} size={16} />
+          <Text className={`text-sm font-semibold ${tone.text}`} nativeID={`${slug}-badge-label`} testID={`${slug}-badge-label`}>{mp.label}</Text>
         </View>
         {mp.detail ? (
-          <Text className="text-sm text-slate-900 dark:text-white" nativeID={`${slug}-detail`} testID={`${slug}-detail`}>{mp.detail}</Text>
+          <Text className="text-sm italic text-slate-600 dark:text-slate-300" nativeID={`${slug}-detail`} testID={`${slug}-detail`}>{mp.detail}</Text>
         ) : null}
       </View>
     );
   }
 
   return (
-    <FieldShell fullWidth={fullWidth} label="Cuenta de Mercado Pago" slug={slug}>
-      {body}
-    </FieldShell>
+    <View className={isDesktopWeb && !fullWidth ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
+      <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
+        <View className="rounded-xl border border-primary bg-primary/20 p-3 dark:border-primary/30 dark:bg-primary/15" nativeID={`${slug}-status-card`} testID={`${slug}-status-card`}>
+          <Text className="mb-2 text-base font-semibold text-green-700 dark:text-green-400" nativeID={`${slug}-label`} testID={`${slug}-label`}>Cuenta de Mercado Pago:</Text>
+          <View nativeID={`${slug}-status-inline`} testID={`${slug}-status-inline`}>{body}</View>
+        </View>
+      </View>
+    </View>
   );
 }
 
-function TrainerDataSection() {
+function TrainerDataSection({ onUpgradeTier, trainerTier, subscription, onPay, paying, confirming, loading }) {
+  const renewal = subscription?.subscriptionStatus === 'active' && subscription?.tier?.paymentRequired && subscription?.installmentId ? subscription : null;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Una sola ruedita para todo el panel (permisos + suscripción + Mercado
+  // Pago) en vez de placeholders apareciendo escalonados. Mismo spinner que
+  // "Rendimiento" (components/dashboard/dashboard-loading-overlay.jsx).
+  const mpStatus = useMpConnectStatus();
+  const panelLoading = loading || mpStatus.loading;
   return (
-    <SectionCard icon="whistle" title="Datos de entrenador" variant="amber">
-      <FieldGrid>
-        <MpConnectionField fullWidth />
-      </FieldGrid>
+    <SectionCard icon="whistle" title="Configuración de Membresía" variant="nested">
+      {panelLoading ? (
+        <View className="items-center justify-center py-10" nativeID="profile-screen-membership-loading" testID="profile-screen-membership-loading">
+          <ActivityIndicator color="#8cc63e" nativeID="profile-screen-membership-loading-spinner" size="large" testID="profile-screen-membership-loading-spinner" />
+        </View>
+      ) : (
+        <>
+          <FieldGrid>
+            <MpConnectionField fullWidth />
+          </FieldGrid>
+          <View className="mt-3" nativeID="profile-screen-membership-details" testID="profile-screen-membership-details">
+            <View className="mb-2 flex-row items-center gap-4 rounded-xl border border-primary bg-primary/20 p-3 dark:border-primary/30 dark:bg-primary/15" nativeID="profile-screen-current-tier" testID="profile-screen-current-tier">
+              <Text className="text-base font-semibold text-green-700 dark:text-green-400" nativeID="profile-screen-current-tier-label" testID="profile-screen-current-tier-label">Tier Actual:</Text>
+              <Text className="text-base font-bold italic text-slate-500 dark:text-slate-400" nativeID="profile-screen-current-tier-value" testID="profile-screen-current-tier-value">{trainerTier ?? '—'}</Text>
+              <Pressable
+                accessibilityRole="button"
+                className="ml-auto h-9 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 transition-opacity hover:opacity-90 active:opacity-80"
+                nativeID="profile-screen-upgrade-tier-button"
+                onPress={() => {
+                  const isPremium = String(trainerTier ?? '').toLowerCase().includes('premium');
+                  if (isPremium) setConfirmOpen(true);
+                  else onUpgradeTier?.();
+                }}
+                testID="profile-screen-upgrade-tier-button"
+              >
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="profile-screen-upgrade-tier-button-label" testID="profile-screen-upgrade-tier-button-label">{String(trainerTier ?? '').toLowerCase().includes('premium') ? 'cambiar tier' : 'MEJORAR TIER!'}</Text>
+              </Pressable>
+            </View>
+            {renewal && (
+              <View className="mt-3 flex-row items-center justify-between rounded-xl border border-primary bg-primary/30 p-3 dark:border-primary/30 dark:bg-primary/20" nativeID="profile-screen-renewal" testID="profile-screen-renewal">
+                <Text className="text-base text-slate-600 dark:text-slate-300" nativeID="profile-screen-renewal-summary" testID="profile-screen-renewal-summary">
+                  <Text className="font-bold text-green-700 dark:text-green-400" nativeID="profile-screen-renewal-label" testID="profile-screen-renewal-label">Próxima Cuota (Nro {renewal.installmentNumber}):</Text> <Text className="font-bold italic text-slate-500 dark:text-slate-400" nativeID="profile-screen-renewal-detail" testID="profile-screen-renewal-detail">{formatArs(renewal.installmentAmount)} - vence {new Date(renewal.nextDueDate).toLocaleDateString('es-AR')}</Text>
+                </Text>
+                {confirming ? (
+                  <View className="h-9 flex-row items-center gap-2 rounded-full bg-primary/20 px-3" nativeID="profile-screen-renewal-confirming" testID="profile-screen-renewal-confirming">
+                  <ActivityIndicator color="#8cc63e" nativeID="profile-screen-renewal-confirming-spinner" size="small" testID="profile-screen-renewal-confirming-spinner" />
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300" nativeID="profile-screen-renewal-confirming-label" testID="profile-screen-renewal-confirming-label">Confirmando pago…</Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    className={`h-9 flex-row items-center justify-center gap-2 rounded-full bg-primary px-4 hover:opacity-90 active:opacity-80 ${paying ? 'opacity-60' : ''}`}
+                    disabled={paying}
+                    nativeID="profile-screen-pay-renewal-button"
+                    onPress={() => onPay?.(renewal)}
+                    testID="profile-screen-pay-renewal-button"
+                  >
+                    {paying ? <ActivityIndicator color="#111518" nativeID="profile-screen-pay-renewal-spinner" size="small" testID="profile-screen-pay-renewal-spinner" /> : (
+                      <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID="profile-screen-pay-renewal-label" testID="profile-screen-pay-renewal-label">Pagar cuota</Text>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </View>
+        </>
+      )}
+      <Modal animationType="fade" nativeID="profile-screen-tier-confirm-modal" testID="profile-screen-tier-confirm-modal" transparent visible={confirmOpen}>
+        <View className="flex-1 items-center justify-center px-6" nativeID="profile-screen-tier-confirm-container" testID="profile-screen-tier-confirm-container">
+          <Pressable className="absolute inset-0 bg-black/40" nativeID="profile-screen-tier-confirm-backdrop" onPress={() => setConfirmOpen(false)} testID="profile-screen-tier-confirm-backdrop" />
+          <View className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-slate-900" nativeID="profile-screen-tier-confirm-card" testID="profile-screen-tier-confirm-card">
+            <Text className="mb-2 text-base font-bold text-slate-900 dark:text-white" nativeID="profile-screen-tier-confirm-title" testID="profile-screen-tier-confirm-title">Confirmar</Text>
+            <Text className="mb-5 text-sm text-slate-600 dark:text-slate-300" nativeID="profile-screen-tier-confirm-description" testID="profile-screen-tier-confirm-description">Cambiar el tier reduce tus funcionalidades, ¿estás seguro de querer continuar?</Text>
+            <View className="flex-row justify-end gap-2" nativeID="profile-screen-tier-confirm-actions" testID="profile-screen-tier-confirm-actions">
+              <Pressable className="rounded-full px-4 py-2" nativeID="profile-screen-tier-confirm-cancel" onPress={() => setConfirmOpen(false)} testID="profile-screen-tier-confirm-cancel">
+                <Text className="text-sm font-medium text-slate-500 dark:text-slate-400" nativeID="profile-screen-tier-confirm-cancel-label" testID="profile-screen-tier-confirm-cancel-label">Cancelar</Text>
+              </Pressable>
+              <Pressable className="rounded-full bg-primary px-4 py-2" nativeID="profile-screen-tier-confirm-continue" onPress={() => { setConfirmOpen(false); onUpgradeTier?.(); }} testID="profile-screen-tier-confirm-continue">
+                <Text className="text-sm font-semibold text-on-primary" nativeID="profile-screen-tier-confirm-continue-label" testID="profile-screen-tier-confirm-continue-label">Continuar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SectionCard>
   );
 }
@@ -265,6 +353,36 @@ function DangerZone({ onDelete, hasTrainerRole, onDeactivateTrainer }) {
   );
 }
 
+// Esqueleto de la pantalla completa mientras llega el perfil. Mantiene el
+// mismo contenedor y la misma silueta (título, panel de cabecera y dos cards)
+// para que el swap a contenido real no mueva el layout.
+function ProfileSkeleton() {
+  return (
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen-skeleton" testID="profile-screen-skeleton">
+      <ScreenCard nativeID="profile-screen-skeleton-content" testID="profile-screen-skeleton-content">
+        <SkeletonBlock height={28} nativeID="profile-screen-skeleton-title" rounded="rounded-lg" testID="profile-screen-skeleton-title" width={140} />
+        <View className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-skeleton-header" testID="profile-screen-skeleton-header">
+          <View className="flex-row items-center gap-4" nativeID="profile-screen-skeleton-header-row" testID="profile-screen-skeleton-header-row">
+            <SkeletonCircle nativeID="profile-screen-skeleton-avatar" size={64} testID="profile-screen-skeleton-avatar" />
+            <View className="flex-1 gap-2" nativeID="profile-screen-skeleton-identity" testID="profile-screen-skeleton-identity">
+              <SkeletonBlock height={16} nativeID="profile-screen-skeleton-name" rounded="rounded-full" testID="profile-screen-skeleton-name" width={160} />
+              <SkeletonBlock height={12} nativeID="profile-screen-skeleton-email" rounded="rounded-full" testID="profile-screen-skeleton-email" width={200} />
+              <SkeletonBlock height={20} nativeID="profile-screen-skeleton-status" rounded="rounded-full" testID="profile-screen-skeleton-status" width={80} />
+            </View>
+          </View>
+        </View>
+        {[0, 1].map((row) => (
+          <View className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-surface" key={row} nativeID={`profile-screen-skeleton-card-${row}`} testID={`profile-screen-skeleton-card-${row}`}>
+            <SkeletonBlock height={16} nativeID={`profile-screen-skeleton-card-${row}-title`} rounded="rounded-full" testID={`profile-screen-skeleton-card-${row}-title`} width={130} />
+            <SkeletonBlock className="mt-4" height={12} nativeID={`profile-screen-skeleton-card-${row}-line-1`} rounded="rounded-full" testID={`profile-screen-skeleton-card-${row}-line-1`} width="70%" />
+            <SkeletonBlock className="mt-3" height={12} nativeID={`profile-screen-skeleton-card-${row}-line-2`} rounded="rounded-full" testID={`profile-screen-skeleton-card-${row}-line-2`} width="50%" />
+          </View>
+        ))}
+      </ScreenCard>
+    </ScrollView>
+  );
+}
+
 export function ProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -279,14 +397,98 @@ export function ProfileScreen() {
       queryClient.invalidateQueries({ queryKey: ['mp-connect-status', userId] }),
     ]);
   const { deactivateAccount, deactivateTrainerRole, uploadPhoto, deletePhoto } = useUserMutations();
-  const { roles } = usePermissions(userId);
+  const { roles, loading: rolesLoading } = usePermissions(userId);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
+  const trainerRoleId = roles.find((r) => r.name === 'entrenador')?.id;
+  // `includeNext: false`: el perfil solo usa la sub activa, no el pendiente de
+  // cambio de tier — evita una request extra en la carga de la pantalla.
+  const { subscription, refetchSubscription, isLoading: subscriptionLoading } = useTierSubscription(userId, trainerRoleId, { includeNext: false });
+  // Mientras permisos o la suscripción resuelven, el panel de membresía se
+  // dibuja igual con esqueletos (no aparece de golpe al final).
+  const membershipLoading = rolesLoading || subscriptionLoading;
+
   // El resumen de cobros depende del rol ACTIVO, no solo de tenerlo: como
   // corredor se ve la tarjeta del historial de pagos, igual que cualquier usuario.
   const showPayments = hasTrainerRole && activeRole === 'trainer';
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTrainerOpen, setConfirmTrainerOpen] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  // Checkout de renovación: `checkoutData` es la preferencia ya creada (el
+  // brick solo se monta si tiene preferenceId + publicKey), `processingPayment`
+  // es la espera del POST /payments/preference y `confirming` la ventana
+  // post-aprobación mientras el backend refleja la cuota paga.
+  const [checkoutData, setCheckoutData] = useState(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const startCheckout = (renewal) => {
+    if (!renewal || processingPayment) return;
+    setProcessingPayment(true);
+    createPreference(toCreatePreferencePayload({
+      concept: 'subscription',
+      description: 'Cuota de suscripción de tier',
+      items: [{ title: 'Cuota mensual de tier', quantity: 1, unitPrice: renewal.installmentAmount }],
+      installmentId: renewal.installmentId,
+    }))
+      .then((dto) => {
+        const preference = toPreferenceResponseModel(dto);
+        if (!preference?.preferenceId || !preference?.publicKey) {
+          throw new Error('La preferencia de pago vino incompleta.');
+        }
+        setCheckoutData({
+          amount: renewal.installmentAmount,
+          installmentId: renewal.installmentId,
+          paidBefore: renewal.paidInstallments ?? 0,
+          preferenceId: preference.preferenceId,
+          publicKey: preference.publicKey,
+        });
+      })
+      // Sin `console.error`: en web dispara el LogBox de Expo, que en este
+      // proyecto rompe con "Cannot read properties of undefined (reading
+      // 'map')" en LogContext. El error se informa con Toast, igual que
+      // tier-upgrade-screen.
+      .catch((error) => {
+        Toast.show({ type: 'error', text1: 'No pudimos iniciar el pago', text2: error?.message });
+      })
+      .finally(() => setProcessingPayment(false));
+  };
+
+  // La cuota de renovación no cambia el tier ni el estado de la suscripción:
+  // se confirma recién cuando sube paidInstallments. Mismo criterio que
+  // handleRenewalApproved en tier-upgrade-screen.jsx.
+  const handleApproved = async () => {
+    const paidBefore = checkoutData?.paidBefore ?? 0;
+    setCheckoutData(null);
+    setConfirming(true);
+    try {
+      let reflected = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const { data } = await refetchSubscription();
+        if ((data?.paidInstallments ?? 0) > paidBefore) {
+          reflected = data;
+          break;
+        }
+      }
+      if (reflected) {
+        Toast.show({ type: 'success', text1: 'Cuota pagada', text2: 'Tu suscripción sigue activa.' });
+      } else {
+        Toast.show({ type: 'info', text1: 'Tu pago fue recibido', text2: 'Puede tardar unos minutos en reflejarse.' });
+      }
+    } finally {
+      setConfirming(false);
+      queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId) });
+      queryClient.invalidateQueries({ queryKey: PAYMENT_HISTORY_KEYS.history(userId) });
+      refreshUser();
+    }
+  };
+
+  const handleCheckoutError = (error) => {
+    setCheckoutData(null);
+    Toast.show({ type: 'error', text1: 'Error en el checkout', text2: error?.message });
+  };
+
+  const handleCheckoutCancel = () => setCheckoutData(null);
 
   // userId (sesión), no user (perfil, todavía cargando en el momento del
   // mount) — con user habría un redirect espurio a /login mientras
@@ -298,7 +500,10 @@ export function ProfileScreen() {
 
   const { refreshing, onRefresh } = usePullToRefresh(refreshUser);
 
-  if (!user) return null;
+  // La pantalla se dibuja de inmediato con esqueletos en vez de quedar en
+  // blanco mientras llega GET /users/{id} (con Render free el cold start
+  // puede tardar 20-25 s — ver use-mp-connect.js).
+  if (!user) return <ProfileSkeleton />;
 
   const status = STATUS_META[user.status] ?? {
     label: display(user.status),
@@ -389,7 +594,30 @@ export function ProfileScreen() {
           onRemovePhoto={handleRemovePhoto}
         />
 
-        {hasTrainerRole && activeRole === 'trainer' && <TrainerDataSection />}
+        {(rolesLoading || hasTrainerRole) && activeRole === 'trainer' && (
+          <TrainerDataSection
+            confirming={confirming}
+            loading={membershipLoading}
+            onPay={startCheckout}
+            onUpgradeTier={() => router.push('/profile/tier-upgrade')}
+            paying={processingPayment}
+            subscription={subscription}
+            trainerTier={roles.find((r) => r.name === 'entrenador')?.tier}
+          />
+        )}
+
+        {checkoutData && (
+          <CheckoutFlow
+            amount={checkoutData.amount}
+            installmentId={checkoutData.installmentId}
+            key={checkoutData.preferenceId}
+            onApproved={handleApproved}
+            onCancel={handleCheckoutCancel}
+            onError={handleCheckoutError}
+            preferenceId={checkoutData.preferenceId}
+            publicKey={checkoutData.publicKey}
+          />
+        )}
 
         {showPayments ? <PaymentsSummaryCard /> : <PaymentsHistoryCard />}
 

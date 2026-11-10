@@ -45,7 +45,7 @@ const VARIANT = {
     iconSize: 16,
     activeClassName: 'bg-primary-tint-subtle dark:bg-primary/10',
     inactiveClassName: 'bg-slate-100 dark:bg-surface-2',
-    labelActiveClassName: 'font-semibold text-primary',
+    labelActiveClassName: 'font-semibold text-on-primary-tint dark:text-primary',
     labelInactiveClassName: 'font-medium text-slate-700 dark:text-slate-200',
     labelClassName: 'text-sm',
   },

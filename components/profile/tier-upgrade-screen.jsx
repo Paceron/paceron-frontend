@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -42,10 +42,13 @@ function formatTierPrice(tierAmount, paymentRequired) {
 // flujo real (ver handleUpgrade en TierUpgradeScreen). Tiers gratis
 // que no son el actual (no debería pasar hoy, 1 solo tier gratis por
 // rol) no muestran ninguna acción.
-function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade }) {
+function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade, currentTierName }) {
+  const isCurrentPremium = String(currentTierName ?? '').toLowerCase().includes('premium');
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const colors = useThemeColors();
   const idPrefix = `tier-card-${tier.id}`;
   return (
+    <>
     <View
       className={`rounded-2xl border p-5 ${isCurrent ? 'border-primary bg-primary-tint dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'} ${isDesktopWeb ? 'w-[31%]' : 'w-full'}`}
       nativeID={idPrefix}
@@ -77,22 +80,44 @@ function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade }) {
             Tier actual
           </Text>
         </View>
-      ) : tier.paymentRequired ? (
+      ) : (
         <Pressable
           className={`mt-4 h-10 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${loading ? 'opacity-60' : ''}`}
           disabled={loading}
           nativeID={`${idPrefix}-upgrade-button`}
-          onPress={() => onUpgrade(tier)}
+          onPress={() => {
+            const downgrade = isCurrentPremium && !String(tier.name ?? '').toLowerCase().includes('premium');
+            if (downgrade) setConfirmOpen(true);
+            else onUpgrade(tier);
+          }}
           testID={`${idPrefix}-upgrade-button`}
         >
           {loading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
             <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-upgrade-button-label`} testID={`${idPrefix}-upgrade-button-label`}>
-              Mejorar
+              {isCurrentPremium ? 'Seleccionar' : (tier.paymentRequired ? 'Mejorar' : 'Seleccionar')}
             </Text>
           )}
         </Pressable>
-      ) : null}
+      )}
+      <Modal animationType="fade" nativeID={`${idPrefix}-confirm-modal`} testID={`${idPrefix}-confirm-modal`} transparent visible={confirmOpen}>
+        <View className="flex-1 items-center justify-center px-6" nativeID={`${idPrefix}-confirm-container`} testID={`${idPrefix}-confirm-container`}>
+          <Pressable className="absolute inset-0 bg-black/40" nativeID={`${idPrefix}-confirm-backdrop`} onPress={() => setConfirmOpen(false)} testID={`${idPrefix}-confirm-backdrop`} />
+          <View className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-slate-900" nativeID={`${idPrefix}-confirm-card`} testID={`${idPrefix}-confirm-card`}>
+            <Text className="mb-2 text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-confirm-title`} testID={`${idPrefix}-confirm-title`}>Confirmar</Text>
+            <Text className="mb-5 text-sm text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-confirm-description`} testID={`${idPrefix}-confirm-description`}>Cambiar el tier reduce tus funcionalidades, ¿estás seguro de querer continuar?</Text>
+            <View className="flex-row justify-end gap-2" nativeID={`${idPrefix}-confirm-actions`} testID={`${idPrefix}-confirm-actions`}>
+              <Pressable className="rounded-full px-4 py-2" nativeID={`${idPrefix}-confirm-cancel`} onPress={() => setConfirmOpen(false)} testID={`${idPrefix}-confirm-cancel`}>
+                <Text className="text-sm font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-confirm-cancel-label`} testID={`${idPrefix}-confirm-cancel-label`}>Cancelar</Text>
+              </Pressable>
+              <Pressable className="rounded-full bg-primary px-4 py-2" nativeID={`${idPrefix}-confirm-continue`} onPress={() => { setConfirmOpen(false); onUpgrade(tier); }} testID={`${idPrefix}-confirm-continue`}>
+                <Text className="text-sm font-semibold text-on-primary" nativeID={`${idPrefix}-confirm-continue-label`} testID={`${idPrefix}-confirm-continue-label`}>Continuar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
+    </>
   );
 }
 
@@ -439,6 +464,7 @@ export function TierUpgradeScreen() {
             <View className={isDesktopWeb ? 'flex-row flex-wrap justify-center gap-4' : 'gap-3'} nativeID="tier-upgrade-screen-cards" testID="tier-upgrade-screen-cards">
               {roleTiers.map((tier) => (
                 <TierCard
+                  currentTierName={currentTierName}
                   isCurrent={tier.name === currentTierName}
                   isDesktopWeb={isDesktopWeb}
                   key={tier.id}

@@ -1,15 +1,9 @@
-import { Image, Text, View } from 'react-native';
-
-// Mismo asset y mismo criterio que `CheckinWaitingOverlay`: el GIF es
-// bicromático sobre un gris `#979597` exacto, y la tarjeta usa ese mismo gris
-// como fondo para que el rectángulo del asset empalme sin costura. No
-// transparentarlo ni cambiarle el fondo.
-const CARD_BG = '#979597';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 // Capa absoluta, no `Modal`: se monta dentro del dashboard para bloquear solo su
 // contenido y no abrir una superficie nativa aparte. `pointerEvents` en el
 // `style` es lo que impide tocar los filtros mientras la request está en vuelo.
-export function DashboardLoadingOverlay({ visible, id = 'dashboard-loading', label = 'Cargando métricas…' }) {
+export function DashboardLoadingOverlay({ visible, id = 'dashboard-loading', label }) {
   if (!visible) return null;
 
   return (
@@ -20,23 +14,8 @@ export function DashboardLoadingOverlay({ visible, id = 'dashboard-loading', lab
       style={{ backgroundColor: 'rgba(15, 23, 42, 0.35)', pointerEvents: 'auto', zIndex: 50 }}
       testID={`${id}-overlay`}
     >
-      <View
-        className="items-center rounded-2xl px-8 py-6"
-        nativeID={`${id}-card`}
-        style={{ backgroundColor: CARD_BG }}
-        testID={`${id}-card`}
-      >
-        <Image
-          accessibilityIgnoresInvertColors
-          accessibilityLabel="Animación de un corredor corriendo"
-          contentFit="contain"
-          nativeID={`${id}-animation`}
-          resizeMode="contain"
-          source={require('../../assets/paceron-runner-waiting.gif')}
-          style={{ width: 200, height: 112 }}
-          testID={`${id}-animation`}
-        />
-
+      <ActivityIndicator color="#8cc63e" size="large" />
+      {label ? (
         <Text
           accessibilityLiveRegion="polite"
           className="mt-4 text-center text-base font-semibold text-white"
@@ -45,7 +24,7 @@ export function DashboardLoadingOverlay({ visible, id = 'dashboard-loading', lab
         >
           {label}
         </Text>
-      </View>
+      ) : null}
     </View>
   );
 }

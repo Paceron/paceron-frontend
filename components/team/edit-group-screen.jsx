@@ -64,7 +64,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
   if (loadingTeam || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-group-loading" testID="edit-group-loading">
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color="#8cc63e" />
       </View>
     );
   }

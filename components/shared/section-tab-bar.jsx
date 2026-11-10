@@ -21,7 +21,7 @@ export function SectionTabBar({ tabs, active, onChange, idPrefix }) {
           >
             <MaterialCommunityIcons color={isActive ? colors.primary : colors.onSurfaceVariant} name={tab.icon} size={16} />
             <Text
-              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
+              className={`text-sm ${isActive ? 'font-semibold text-on-primary-tint dark:text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
               nativeID={`${idPrefix}-tab-${tab.id}-label`}
               testID={`${idPrefix}-tab-${tab.id}-label`}
             >
