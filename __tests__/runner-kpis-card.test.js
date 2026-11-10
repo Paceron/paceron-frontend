@@ -5,26 +5,32 @@ jest.mock('../theme/colors.js', () => ({
   useThemeColors: () => ({ onSurfaceVariant: '#666', warning: '#b45309' }),
 }));
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
+jest.mock('../components/forms/responsive-select-field.jsx', () => {
+  const ReactModule = require('react');
+  const { Pressable: NativePressable, Text: NativeText, View: NativeView } = require('react-native');
+  return {
+    ResponsiveSelectField: ({ label, value, options, onChange }) => {
+      const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const selected = options.find((option) => option.id === value);
+      return ReactModule.createElement(
+        NativeView,
+        null,
+        ReactModule.createElement(NativeText, { testID: `mock-select-${slug}-value` }, selected?.name),
+        ...options.map((option) => ReactModule.createElement(
+          NativePressable,
+          { key: option.id, onPress: () => onChange(option.id), testID: `mock-select-${slug}-${option.id}` },
+          ReactModule.createElement(NativeText, null, option.name),
+        )),
+      );
+    },
+  };
+});
 jest.mock('expo-router', () => {
   const push = jest.fn();
   return { __mockPush: push, useRouter: () => ({ push }) };
 });
 jest.mock('../hooks/use-runner-kpis.js', () => ({ useRunnerKpis: jest.fn() }));
-jest.mock('../components/shared/tab-bar.jsx', () => {
-  const ReactModule = require('react');
-  const { Pressable: NativePressable, Text: NativeText, View: NativeView } = require('react-native');
-  return {
-    TabBar: ({ active, onChange, scope, tabs }) => ReactModule.createElement(
-      NativeView,
-      null,
-      ...tabs.map((tab) => ReactModule.createElement(
-        NativePressable,
-        { key: tab.id, onPress: () => onChange(tab.id), testID: `${scope}-${tab.id}` },
-        ReactModule.createElement(NativeText, null, tab.label),
-      )),
-    ),
-  };
-});
 
 // eslint-disable-next-line import/first -- los mocks de arriba tienen que registrarse antes del componente.
 import { useRunnerKpis } from '../hooks/use-runner-kpis.js';
@@ -85,6 +91,17 @@ describe('RunnerKpisCard — cards de métricas', () => {
     expect(getByTestId('runner-kpis-average_speed_kph-tile-value').props.children).toBe('10,8 km/h');
   });
 
+  test('inicia en Mes y Números generales, con ambos selectores desplegables', () => {
+    mockKpis();
+    const { getByTestId } = render(<RunnerKpisCard />);
+
+    expect(useRunnerKpis).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'month', tab: 'general' }));
+    expect(getByTestId('mock-select-periodo-value').props.children).toBe('Mes');
+    expect(getByTestId('mock-select-tipo-de-ejercicio-value').props.children).toBe('Números generales');
+    expect(getByTestId('runner-kpis-period-info-trigger')).toBeTruthy();
+    expect(getByTestId('runner-kpis-type-info-trigger')).toBeTruthy();
+  });
+
   test('el encabezado abre el tooltip informativo y su link navega a equipos', () => {
     mockKpis();
     const { getByTestId, getByText, queryByTestId } = render(<RunnerKpisCard />);
@@ -117,7 +134,7 @@ describe('RunnerKpisCard — cards de métricas', () => {
     expect(getByTestId('runner-kpis-total_distance_m-cell').props.className).toBe('w-1/2 p-1');
     expect(getByTestId('runner-kpis-average_speed_kph-cell').props.className).toBe('w-1/2 p-1');
 
-    fireEvent.press(getByTestId('runner-kpis-tabs-velocidad_tiempo'));
+    fireEvent.press(getByTestId('mock-select-tipo-de-ejercicio-velocidad_tiempo'));
 
     // velocidad_tiempo tiene 3: las tres en la misma línea en desktop.
     expect(getByTestId('runner-kpis-best_time_ms-cell').props.className).toBe('w-1/2 p-1 lg:w-1/3');

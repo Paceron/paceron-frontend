@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { TabBar } from '../shared/tab-bar.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
+import { InfoHint } from '../dashboard/info-hint.jsx';
 import { DashboardLoadingOverlay } from '../dashboard/dashboard-loading-overlay.jsx';
 import { KpiTile } from '../dashboard/kpi-tile.jsx';
 import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
@@ -16,19 +17,6 @@ import {
   buildPeriodTitle,
   formatRunnerKpiValue,
 } from '../../utils/runner-kpis.js';
-
-const PERIOD_ICONS = {
-  month: 'calendar-month',
-  week: 'calendar-week',
-  day: 'calendar-today',
-};
-
-const TAB_ICONS = {
-  general: 'format-list-bulleted',
-  ritmo_continuo: 'run-fast',
-  velocidad_tiempo: 'timer-outline',
-  velocidad_distancia: 'speedometer',
-};
 
 // Fecha local del dispositivo en ISO. Se calcula una sola vez al montar: si el
 // Home cruza la medianoche, el período cambia recién en el próximo montaje o
@@ -70,15 +58,13 @@ export function RunnerKpisCard() {
     })
     : periodLabel;
 
-  const periodTabs = PERIOD_OPTIONS.map((option) => ({
+  const periodOptions = PERIOD_OPTIONS.map((option) => ({
     id: option.period,
-    label: option.label,
-    icon: PERIOD_ICONS[option.period],
+    name: option.label,
   }));
-  const metricTabs = RUNNER_KPI_TABS.map((option) => ({
+  const metricOptions = RUNNER_KPI_TABS.map((option) => ({
     id: option.tab,
-    label: option.label,
-    icon: TAB_ICONS[option.tab],
+    name: option.label,
   }));
 
   // Cada selección ejecuta su consulta: si la pestaña ya era la activa, no hay
@@ -167,24 +153,42 @@ export function RunnerKpisCard() {
           ) : null}
         </View>
 
-        <View nativeID="runner-kpis-period-selector" testID="runner-kpis-period-selector">
-          <TabBar
-            active={period}
+        <View className="flex-row items-center gap-1" nativeID="runner-kpis-period-selector" testID="runner-kpis-period-selector">
+          <InfoHint
+            accessibilityLabel="Información sobre el período"
+            description="Período"
+            id="runner-kpis-period-info"
+            title="Filtro de período"
+          />
+          <ResponsiveSelectField
+            className="mb-0"
+            hideLabel
+            label="Periodo"
             onChange={handlePeriodChange}
-            scope="runner-kpis-period"
-            tabs={periodTabs}
-            wrapClassName="flex-row flex-wrap gap-1"
+            options={periodOptions}
+            plain
+            value={period}
           />
         </View>
       </View>
 
-      <TabBar
-        active={tab}
-        onChange={handleTabChange}
-        scope="runner-kpis-tabs"
-        tabs={metricTabs}
-        wrapClassName="mt-1 flex-row flex-wrap gap-1.5"
-      />
+      <View className="mb-2 flex-row items-center gap-1 self-start" nativeID="runner-kpis-type-selector" testID="runner-kpis-type-selector">
+        <InfoHint
+          accessibilityLabel="Información sobre el tipo de ejercicio"
+          description="Tipo de ejercicio"
+          id="runner-kpis-type-info"
+          title="Filtro de ejercicio"
+        />
+        <ResponsiveSelectField
+          className="mb-0"
+          hideLabel
+          label="Tipo de ejercicio"
+          onChange={handleTabChange}
+          options={metricOptions}
+          plain
+          value={tab}
+        />
+      </View>
 
       <View
         nativeID="runner-kpis-content"
