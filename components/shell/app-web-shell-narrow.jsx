@@ -151,7 +151,7 @@ function NavigationDrawerNarrow({ open, pathname, onClose }) {
 
             {user && hasTrainerRole && (
               <View className="items-center border-b border-slate-200 px-5 py-2 dark:border-slate-800" nativeID="web-narrow-drawer-role-switch-row" testID="web-narrow-drawer-role-switch-row">
-                <RoleSwitchToggle onClose={onClose} showTierLink={false} wide />
+                <RoleSwitchToggle idPrefix="web-narrow-drawer-role-switch-toggle" onClose={onClose} wide />
               </View>
             )}
 

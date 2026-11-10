@@ -49,7 +49,7 @@ function DropdownMenu({ onClose }) {
         {hasTrainerRole && (
           <>
             <View className="items-center px-3 py-3" nativeID="web-shell-dropdown-role-switch-row" testID="web-shell-dropdown-role-switch-row">
-              <RoleSwitchToggle onClose={onClose} />
+              <RoleSwitchToggle idPrefix="web-shell-dropdown-role-switch-toggle" onClose={onClose} />
             </View>
             <View className="mx-4 border-t border-slate-100 dark:border-slate-800" nativeID="web-shell-dropdown-divider-role" testID="web-shell-dropdown-divider-role" />
           </>

@@ -59,14 +59,14 @@ function ViewAllTile({ wide, onPress }) {
     <Pressable
       accessibilityLabel="Ver todas las competencias"
       accessibilityRole="button"
-      className={`items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 hover:opacity-90 active:opacity-90 dark:bg-slate-800 dark:border-slate-700 ${wide ? 'w-20' : 'flex-row gap-2 p-3'}`}
+      className={`items-center justify-center gap-2 border border-slate-400 rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800 dark:border-slate-700 ${wide ? 'w-13' : 'flex-row gap-2'}`}
       nativeID="competitions-preview-card-view-all"
       onPress={onPress}
       testID="competitions-preview-card-view-all"
     >
-      <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-horizontal-circle-outline" size={wide ? 22 : 18} />
+      <MaterialCommunityIcons className="animate-pulse" color={colors.onSurfaceVariant} name="dots-horizontal-circle-outline" size={14} />
       <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="competitions-preview-card-view-all-label" testID="competitions-preview-card-view-all-label">
-        Ver todas
+        Ver más
       </Text>
     </Pressable>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
@@ -8,7 +9,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions, useUserMutations } from '../../hooks/use-user.js';
 import { useTierSubscription } from '../../hooks/use-tier-subscription.js';
+import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
 import { formatArs } from '../../utils/currency.js';
+import { formatTierName } from '../../utils/tier-name.js';
 import { createPreference } from '../../services/payments.js';
 import { toCreatePreferencePayload, toPreferenceResponseModel } from '../../services/normalizers.js';
 import { CheckoutFlow } from '../payments/checkout-flow';
@@ -101,7 +104,7 @@ function EditButton({ onEdit, colors, full }) {
   );
 }
 
-function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, photoUploading, onPickPhoto, onRemovePhoto }) {
+function HeaderPanel({ user, status, fullName, onEdit, colors, photoUploading, onPickPhoto, onRemovePhoto }) {
   // Iniciales de nombre + apellido — fallback de AvatarPicker cuando no
   // hay foto, en vez del ícono genérico. Solo tiene sentido acá (un
   // equipo no tiene "nombre y apellido" — team-detail-screen.jsx no pasa
@@ -139,7 +142,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
           <EditButton onEdit={onEdit} colors={colors} />
         </View>
         <View className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800" nativeID="profile-screen-role-switch-row" testID="profile-screen-role-switch-row">
-          <RoleSwitchToggle onUpgradeTier={onUpgradeTier} showTierLink={false} wide />
+          <RoleSwitchToggle wide />
         </View>
       </View>
     );
@@ -168,7 +171,7 @@ function HeaderPanel({ user, status, fullName, onEdit, colors, onUpgradeTier, ph
       </View>
       <EditButton onEdit={onEdit} colors={colors} full />
       <View className="mt-4 w-full items-center border-t border-slate-100 pt-4 dark:border-slate-800" nativeID="profile-screen-role-switch-row" testID="profile-screen-role-switch-row">
-        <RoleSwitchToggle onUpgradeTier={onUpgradeTier} wide />
+        <RoleSwitchToggle wide />
       </View>
     </View>
   );
@@ -202,7 +205,11 @@ function MpConnectionField({ fullWidth = false }) {
     );
   } else {
     body = (
-      <View className="flex-row items-center gap-2" nativeID={`${slug}-status`} testID={`${slug}-status`}>
+      // Fila en web ancha (badge + detalle lado a lado); apilado en mobile
+      // y web angosta -- el texto de detalle al lado del badge en un
+      // ancho chico quedaba aplastado contra él, en vez de leerse como
+      // una aclaración debajo (pedido real 2026-11-10, ver captura).
+      <View className={isDesktopWeb ? 'flex-row items-center gap-2' : 'gap-1.5'} nativeID={`${slug}-status`} testID={`${slug}-status`}>
         <View className={`flex-row items-center gap-1 self-start rounded-full px-3 py-1 ${tone.badge}`} nativeID={`${slug}-badge`} testID={`${slug}-badge`}>
           <MaterialCommunityIcons color={mp.state === 'connected' ? colors.primary : colors.onSurfaceVariant} name={tone.icon} size={16} />
           <Text className={`text-sm font-semibold ${tone.text}`} nativeID={`${slug}-badge-label`} testID={`${slug}-badge-label`}>{mp.label}</Text>
@@ -216,9 +223,9 @@ function MpConnectionField({ fullWidth = false }) {
 
   return (
     <View className={isDesktopWeb && !fullWidth ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
-      <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
+      <View nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
         <View className="rounded-xl border border-primary bg-primary/20 p-3 dark:border-primary/30 dark:bg-primary/15" nativeID={`${slug}-status-card`} testID={`${slug}-status-card`}>
-          <Text className="mb-2 text-base font-semibold text-green-700 dark:text-green-400" nativeID={`${slug}-label`} testID={`${slug}-label`}>Cuenta de Mercado Pago:</Text>
+          <Text className="text-sm font-semibold text-green-700 dark:text-green-400" nativeID={`${slug}-label`} testID={`${slug}-label`}>Cuenta de Mercado Pago:</Text>
           <View nativeID={`${slug}-status-inline`} testID={`${slug}-status-inline`}>{body}</View>
         </View>
       </View>
@@ -227,6 +234,8 @@ function MpConnectionField({ fullWidth = false }) {
 }
 
 function TrainerDataSection({ onUpgradeTier, trainerTier, subscription, onPay, paying, confirming, loading }) {
+  const isNarrowWeb = useIsNarrowWeb();
+  const isDesktopWeb = isWeb && !isNarrowWeb;
   const renewal = subscription?.subscriptionStatus === 'active' && subscription?.tier?.paymentRequired && subscription?.installmentId ? subscription : null;
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Una sola ruedita para todo el panel (permisos + suscripción + Mercado
@@ -234,6 +243,8 @@ function TrainerDataSection({ onUpgradeTier, trainerTier, subscription, onPay, p
   // "Rendimiento" (components/dashboard/dashboard-loading-overlay.jsx).
   const mpStatus = useMpConnectStatus();
   const panelLoading = loading || mpStatus.loading;
+  const bounceStyle = useArrowBounce();
+  const isPremium = String(trainerTier ?? '').toLowerCase().includes('premium');
   return (
     <SectionCard icon="whistle" title="Configuración de Membresía" variant="nested">
       {panelLoading ? (
@@ -246,26 +257,46 @@ function TrainerDataSection({ onUpgradeTier, trainerTier, subscription, onPay, p
             <MpConnectionField fullWidth />
           </FieldGrid>
           <View className="mt-3" nativeID="profile-screen-membership-details" testID="profile-screen-membership-details">
-            <View className="mb-2 flex-row items-center gap-4 rounded-xl border border-primary bg-primary/20 p-3 dark:border-primary/30 dark:bg-primary/15" nativeID="profile-screen-current-tier" testID="profile-screen-current-tier">
-              <Text className="text-base font-semibold text-green-700 dark:text-green-400" nativeID="profile-screen-current-tier-label" testID="profile-screen-current-tier-label">Tier Actual:</Text>
-              <Text className="text-base font-bold italic text-slate-500 dark:text-slate-400" nativeID="profile-screen-current-tier-value" testID="profile-screen-current-tier-value">{trainerTier ?? '—'}</Text>
+            {/* Apilado en mobile/web angosta: label+badge en una fila y el
+                botón debajo, a todo el ancho (`self-stretch`, vía el
+                `alignItems: stretch` default de un contenedor en columna)
+                -- en una fila sola con el botón "MEJORAR TIER" quedaba
+                todo muy junto (pedido real 2026-11-10, ver captura). */}
+            <View className={`mb-2 rounded-xl border border-primary bg-primary/20 p-3 dark:border-primary/30 dark:bg-primary/15 ${isDesktopWeb ? 'flex-row items-center gap-4' : 'gap-3'}`} nativeID="profile-screen-current-tier" testID="profile-screen-current-tier">
+              <View className="flex-row items-center gap-2" nativeID="profile-screen-current-tier-info" testID="profile-screen-current-tier-info">
+                <Text className="text-sm font-semibold text-green-700 dark:text-green-400" nativeID="profile-screen-current-tier-label" testID="profile-screen-current-tier-label">Tier Actual:</Text>
+                {/* Badge mayúscula/negrita en vez de texto italic/minúscula
+                    (pedido real 2026-11-10) -- mismos tokens que el segmento
+                    activo de role-switch-toggle.jsx (bg-primary-tint/
+                    text-on-primary-tint), no un color nuevo. `formatTierName`
+                    porque `trainerTier` llega crudo del backend
+                    (`base_entrenador`, `premium_entrenador`) -- se mostraba
+                    sin formatear, único lugar de la app que no lo hacía. */}
+                <View className="self-start rounded-full bg-primary-tint px-3 py-1 dark:bg-primary/15" nativeID="profile-screen-current-tier-badge" testID="profile-screen-current-tier-badge">
+                  <Text className="text-xs font-bold uppercase tracking-wide text-on-primary-tint dark:text-primary" nativeID="profile-screen-current-tier-value" testID="profile-screen-current-tier-value">
+                    {formatTierName(trainerTier, '—')}
+                  </Text>
+                </View>
+              </View>
               <Pressable
                 accessibilityRole="button"
-                className="ml-auto h-9 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 transition-opacity hover:opacity-90 active:opacity-80"
+                className={`h-9 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 transition-opacity hover:opacity-90 active:opacity-80 ${isDesktopWeb ? 'ml-auto self-start' : 'self-stretch'}`}
                 nativeID="profile-screen-upgrade-tier-button"
                 onPress={() => {
-                  const isPremium = String(trainerTier ?? '').toLowerCase().includes('premium');
                   if (isPremium) setConfirmOpen(true);
                   else onUpgradeTier?.();
                 }}
                 testID="profile-screen-upgrade-tier-button"
               >
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="profile-screen-upgrade-tier-button-label" testID="profile-screen-upgrade-tier-button-label">{String(trainerTier ?? '').toLowerCase().includes('premium') ? 'cambiar tier' : 'MEJORAR TIER!'}</Text>
+                <Animated.View nativeID="profile-screen-upgrade-tier-button-icon" style={bounceStyle} testID="profile-screen-upgrade-tier-button-icon">
+                  <MaterialCommunityIcons color="#111518" name="arrow-up-circle-outline" size={16} />
+                </Animated.View>
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="profile-screen-upgrade-tier-button-label" testID="profile-screen-upgrade-tier-button-label">{isPremium ? 'cambiar tier' : 'MEJORAR TIER'}</Text>
               </Pressable>
             </View>
             {renewal && (
-              <View className="mt-3 flex-row items-center justify-between rounded-xl border border-primary bg-primary/30 p-3 dark:border-primary/30 dark:bg-primary/20" nativeID="profile-screen-renewal" testID="profile-screen-renewal">
-                <Text className="text-base text-slate-600 dark:text-slate-300" nativeID="profile-screen-renewal-summary" testID="profile-screen-renewal-summary">
+              <View className={`mt-3 rounded-xl border border-primary bg-primary/30 p-3 dark:border-primary/30 dark:bg-primary/20 ${isDesktopWeb ? 'flex-row items-center justify-between' : 'gap-2'}`} nativeID="profile-screen-renewal" testID="profile-screen-renewal">
+                <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID="profile-screen-renewal-summary" testID="profile-screen-renewal-summary">
                   <Text className="font-bold text-green-700 dark:text-green-400" nativeID="profile-screen-renewal-label" testID="profile-screen-renewal-label">Próxima Cuota (Nro {renewal.installmentNumber}):</Text> <Text className="font-bold italic text-slate-500 dark:text-slate-400" nativeID="profile-screen-renewal-detail" testID="profile-screen-renewal-detail">{formatArs(renewal.installmentAmount)} - vence {new Date(renewal.nextDueDate).toLocaleDateString('es-AR')}</Text>
                 </Text>
                 {confirming ? (
@@ -275,7 +306,7 @@ function TrainerDataSection({ onUpgradeTier, trainerTier, subscription, onPay, p
                   </View>
                 ) : (
                   <Pressable
-                    className={`h-9 flex-row items-center justify-center gap-2 rounded-full bg-primary px-4 hover:opacity-90 active:opacity-80 ${paying ? 'opacity-60' : ''}`}
+                    className={`h-9 flex-row items-center justify-center gap-2 rounded-full bg-primary px-4 hover:opacity-90 active:opacity-80 ${paying ? 'opacity-60' : ''} ${isDesktopWeb ? '' : 'self-stretch'}`}
                     disabled={paying}
                     nativeID="profile-screen-pay-renewal-button"
                     onPress={() => onPay?.(renewal)}
@@ -588,7 +619,6 @@ export function ProfileScreen() {
           fullName={fullName}
           onEdit={handleEdit}
           colors={colors}
-          onUpgradeTier={() => router.push('/profile/tier-upgrade')}
           photoUploading={photoUploading}
           onPickPhoto={handlePickPhoto}
           onRemovePhoto={handleRemovePhoto}

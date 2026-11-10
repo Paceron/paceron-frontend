@@ -370,12 +370,17 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
 }
 
 // GET /api/v1/payments/upcoming — próxima cuota de cada equipo que paga el
-// usuario y de cada tier: uno al día, uno atrasado y su tier.
+// usuario y de cada tier: una por vencer pronto (dentro de
+// HOME_DUE_WINDOW_DAYS, tono `soon`/ámbar), una atrasada (`overdue`/rojo) y
+// el tier, lejos (`normal`). Las 3 son las únicas que
+// homeDuePayments/dueTone distinguen -- antes las 3 quedaban `normal` salvo
+// la atrasada, así que el tono ámbar nunca se pudo ver ni probar con mocks
+// (bug real reportado 2026-11-09, al ajustar los colores de esta tarjeta).
 export async function mockGetUpcomingPayments() {
   const { day } = artParts(now());
   const items = [
     { type: 'trainer_payment', team: { id: 33, name: 'Club de Corredores Palermo' }, trainer: { id: 51, name: 'Mariana', surname: 'Ibarra' }, tier: null,
-      installment_number: 5, amount: 18000, currency_id: 'ARS', due_date: dueAt(-1, 10), overdue: false, overdue_count: 0 },
+      installment_number: 5, amount: 18000, currency_id: 'ARS', due_date: dueAt(0, day + 5), overdue: false, overdue_count: 0 },
     // Atrasado: no pagó la cuota del 15 del mes pasado (ni la de este mes, si ya pasó).
     { type: 'trainer_payment', team: { id: 40, name: 'Fondistas del Sur' }, trainer: { id: 52, name: 'Pablo', surname: 'Ruiz' }, tier: null,
       installment_number: 3, amount: 12000, currency_id: 'ARS', due_date: dueAt(1, 15), overdue: true, overdue_count: day > 15 ? 2 : 1 },

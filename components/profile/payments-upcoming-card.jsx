@@ -13,13 +13,13 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // Vencida en rojo, por vencer en ámbar, el resto neutro.
 const ROW_TONE = {
   overdue: {
-    box: 'border-rose-200 bg-white dark:border-transparent dark:bg-[#341720]',
-    due: 'font-semibold text-rose-800 dark:text-rose-200',
+    box: 'border-rose-400 bg-rose-100/70 dark:border-rose-500 dark:bg-rose-600/50',
+    due: 'font-semibold text-rose-800 dark:text-rose-100',
     icon: '#fb7185',
   },
   soon: {
-    box: 'border-amber-200 bg-white dark:border-transparent dark:bg-[#2f2412]',
-    due: 'font-semibold text-amber-800 dark:text-amber-200',
+    box: 'border-amber-400 bg-amber-100/70 dark:border-amber-500 dark:bg-amber-600/50',
+    due: 'font-semibold text-amber-800 dark:text-amber-100',
     icon: '#f59e0b',
   },
   normal: {
@@ -27,6 +27,16 @@ const ROW_TONE = {
     due: 'text-slate-500 dark:text-slate-400',
     icon: null,
   },
+};
+
+// Fondo y color de texto del header en modo compacto (Home) -- mismo tono
+// que SectionCard ofrece en `rose`/`warning`, pero sin borde y con el p-4/
+// mb-3 que usan las demás cards del Home (bg-white/p-4/shadow-sm, ver
+// recent-trainings-card.jsx) en vez del p-6/mb-5/border de SectionCard.
+const COMPACT_TONE = {
+  rose: { box: 'bg-rose-300 dark:bg-rose-950', title: 'text-rose-900 dark:text-rose-100', icon: '#f43f5e' },
+  warning: { box: 'bg-amber-300 dark:bg-amber-950', title: 'text-amber-900 dark:text-amber-100', icon: '#f59e0b' },
+  default: { box: 'bg-white dark:bg-surface', title: 'text-slate-900 dark:text-white', icon: null },
 };
 
 // "Próximos vencimientos" de la pestaña Pagos, para cualquier rol: la próxima
@@ -41,7 +51,14 @@ const ROW_TONE = {
 // La tarjeta y cada fila se tiñen según el vencimiento (utils/payment-due.js):
 // roja con alguna vencida, ámbar con alguna que vence en los próximos
 // HOME_DUE_WINDOW_DAYS días; las cuotas más lejanas quedan neutras.
-export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, payingKey, confirmingKey, title = 'Próximos vencimientos', scope = 'payments-upcoming' }) {
+//
+// `compact` (Home, 2026-11-09): con SectionCard de por medio (p-6/mb-5/
+// border, título text-base) la card desentonaba con el resto del Home,
+// todas p-4/mb-3/sin borde, título chico uppercase (kicker). En `compact` se
+// salta SectionCard y se arma un wrapper propio con esa misma geometría,
+// conservando el tinte de urgencia (rose/warning) como color de fondo en vez
+// de perderlo -- la pestaña Pagos sigue con SectionCard sin cambios.
+export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, payingKey, confirmingKey, title = 'Próximos vencimientos', scope = 'payments-upcoming', compact = false }) {
   const colors = useThemeColors();
   if (loading) {
     return <SkeletonBlock className="mb-5" height={120} nativeID="payments-upcoming-skeleton" rounded="rounded-2xl" testID="payments-upcoming-skeleton" />;
@@ -62,10 +79,9 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, p
   const now = new Date();
   const cardVariant = dueCardVariant(items, now);
 
-  return (
-    <SectionCard icon="calendar-alert" scope={`${scope}-card`} title={title} variant={cardVariant}>
-      <View className="gap-2" nativeID={`${scope}-list`} testID={`${scope}-list`}>
-        {items.map((item) => {
+  const list = (
+    <View className="gap-2" nativeID={`${scope}-list`} testID={`${scope}-list`}>
+      {items.map((item) => {
           const id = `${scope}-${item.key}`;
           const late = overdueLabel(item);
           const tone = dueTone(item, now);
@@ -93,7 +109,7 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, p
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={1} testID={`${id}-title`}>
                   {item.type === 'subscription' ? formatTierName(item.title, 'Tier') : item.title || 'Equipo'}
                 </Text>
-                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
+                <Text className="text-xs text-slate-700 dark:text-slate-200" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
                   {[item.subtitle, `cuota ${item.installmentNumber}`].filter(Boolean).join(' · ')}
                 </Text>
                 {/* Con "Pagar", el vencimiento baja a esta columna: al costado
@@ -135,7 +151,25 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, p
             </View>
           );
         })}
+    </View>
+  );
+
+  if (compact) {
+    const tone = COMPACT_TONE[cardVariant] ?? COMPACT_TONE.default;
+    return (
+      <View className={`mb-3 rounded-2xl p-4 shadow-sm ${tone.box}`} nativeID={`${scope}-card`} testID={`${scope}-card`}>
+        <View className="mb-2 flex-row items-center gap-1.5" nativeID={`${scope}-header`} testID={`${scope}-header`}>
+          <MaterialCommunityIcons color={tone.icon ?? colors.primary} name="calendar-alert" size={16} />
+          <Text className={`text-sm font-semibold ${tone.title}`} nativeID={`${scope}-title`} testID={`${scope}-title`}>{title}</Text>
+        </View>
+        {list}
       </View>
+    );
+  }
+
+  return (
+    <SectionCard icon="calendar-alert" scope={`${scope}-card`} title={title} variant={cardVariant}>
+      {list}
     </SectionCard>
   );
 }

@@ -18,23 +18,6 @@ function tierLabel(tierName) {
   return formatTierName(tierName) || null;
 }
 
-// El texto ya no indica el rol — la pantalla de destino muestra los
-// tiers del rol activo, no hace falta anticiparlo en el link (antes
-// "Mejorar tier de {roleLabel}", una entrada de menú por rol).
-function TierUpgradeLink({ onPress, className }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className={`hover:opacity-70 active:opacity-70 ${className ?? ''}`}
-      nativeID="role-switch-toggle-tier-upgrade-link"
-      onPress={onPress}
-      testID="role-switch-toggle-tier-upgrade-link"
-    >
-      <Text className="text-[11px] font-semibold text-primary" nativeID="role-switch-toggle-tier-upgrade-link-text" testID="role-switch-toggle-tier-upgrade-link-text">Mejorar tier</Text>
-    </Pressable>
-  );
-}
-
 // Un segmento del switch. En modo compacto (dropdown/sidebar) el tier va
 // en una segunda línea debajo del ícono+label; en modo wide (Profile, con
 // todo el ancho disponible) va inline en la misma línea, separado por "·".
@@ -58,13 +41,24 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
   // ramas (`bg-transparent` en la inactiva) para que siempre haya un
   // color de origen y de destino, y sacar `transition-all` -- no vale la
   // pena mantener una transición nativa todavía inestable para esto.
+  //
+  // `hover:animate-pulse` sacado (2026-11-09, bug real reportado): en
+  // touch -- incluido el toggle de device de Chrome DevTools, que es como
+  // se reprodujo -- un tap deja el `:hover` de CSS pegado (no hay
+  // `mouseleave` en touch), así que el segmento recién tocado queda
+  // pulsando para siempre con el fondo YA correcto por debajo. Pasaba
+  // solo en el switch de Profile porque ahí el botón sigue en pantalla
+  // después del click; en la sidebar/dropdown el `onClose?.()` del
+  // `onPress` cierra el panel al toque, así que el `:hover` pegado queda
+  // oculto. `hover:bg-slate-300`/`dark:hover:bg-slate-600` se mantienen --
+  // un fondo que queda pegado no se nota tanto como una animación en loop.
   const colorClasses = active ? `${activeBg} border-transparent` : 'bg-transparent border-slate-300 dark:border-slate-600';
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`items-center rounded-full border px-3 hover:bg-slate-300 dark:hover:bg-slate-600 hover:animate-pulse ${wide ? 'flex-1 py-4' : 'py-1.5'} ${colorClasses}`}
+      className={`items-center rounded-full border px-3 hover:bg-slate-300 dark:hover:bg-slate-600 ${wide ? 'flex-1 py-4' : 'py-1.5'} ${colorClasses}`}
       nativeID={id}
       onPress={onPress}
       testID={id}
@@ -103,17 +97,27 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
 // Dropdown/sidebar solo montan este componente cuando el entrenador YA
 // está activado (mismo gate que el pill viejo), para no reintroducir la
 // activación fuera de Profile.
-export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTierLink = wide }) {
+//
+// `idPrefix` (default el de siempre, `role-switch-toggle`) -- el drawer
+// mobile/narrow web queda montado fuera de pantalla para la animación de
+// apertura incluso con el menú cerrado, así que su instancia convive en el
+// DOM con la de la página (ej. /profile) al mismo tiempo. Sin prefijo
+// propio por caller, las dos compartían nativeID/testID -- bug real
+// reportado 2026-11-09 (`role-switch-toggle-runner-segment` duplicado,
+// confirmado con `document.querySelectorAll`). Cada shell que lo monta en
+// un drawer pasa el suyo; Profile usa el default.
+//
+// Ya NO ofrece acceso a "Mejorar tier" (sacado 2026-11-10): quedaba
+// duplicado contra el botón de la misma función en TrainerDataSection
+// (profile-screen.jsx, dentro de "Configuración de Membresía"), que es el
+// único lugar que lo muestra ahora.
+export function RoleSwitchToggle({ onClose, wide = false, idPrefix = 'role-switch-toggle' }) {
   const router = useRouter();
   const activeRole = useAuthStore((s) => s.activeRole);
   const userId = useAuthStore((s) => s.userId);
   const { roles } = usePermissions(userId);
   const switchRole = useAuthStore((s) => s.switchRole);
   const hasTrainerRole = roles.some((r) => r.name === 'entrenador');
-  // Se calcula acá arriba (no solo en la rama con entrenador) porque el
-  // segmento de Corredor lo necesita en los dos casos — sin esto, el tier
-  // no se mostraba nunca hasta que se activaba el perfil de entrenador.
-  const runnerTier = roles.find((r) => r.name === 'corredor')?.tier;
 
   const handleActivate = () => {
     onClose?.();
@@ -122,8 +126,8 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
 
   if (!hasTrainerRole) {
     return (
-      <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-        <View className={`flex-row items-center rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+      <View className={wide ? 'w-full items-center' : ''} nativeID={idPrefix} testID={idPrefix}>
+        <View className={`flex-row items-center rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID={`${idPrefix}-segments`} testID={`${idPrefix}-segments`}>
           <Segment
             accessibilityLabel="Corredor"
             active
@@ -131,23 +135,21 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             activeIconColor="#8cc63e"
             activeTextClass="text-on-primary-tint dark:text-primary"
             icon="run-fast"
-            id="role-switch-toggle-runner-badge"
+            id={`${idPrefix}-runner-badge`}
             label="Corredor"
             onPress={() => {}}
-            tier={tierLabel(runnerTier)}
             wide={wide}
           />
           <Segment
             accessibilityLabel="Volverse Entrenador"
             active={false}
             icon="whistle"
-            id="role-switch-toggle-activate-trainer-button"
+            id={`${idPrefix}-activate-trainer-button`}
             label="Volverse Entrenador"
             onPress={handleActivate}
             wide={wide}
           />
         </View>
-        {showTierLink && activeRole === 'trainer' && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
       </View>
     );
   }
@@ -167,8 +169,8 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
   };
 
   return (
-    <View className={wide ? 'w-full items-center' : ''} nativeID="role-switch-toggle" testID="role-switch-toggle">
-      <View className={`flex-row rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID="role-switch-toggle-segments" testID="role-switch-toggle-segments">
+    <View className={wide ? 'w-full items-center' : ''} nativeID={idPrefix} testID={idPrefix}>
+      <View className={`flex-row rounded-full bg-slate-200/60 p-1 dark:bg-slate-700/50 ${wide ? 'w-full' : ''}`} nativeID={`${idPrefix}-segments`} testID={`${idPrefix}-segments`}>
         <Segment
           accessibilityLabel="Corredor"
           active={runnerActive}
@@ -176,10 +178,9 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           activeIconColor="#8cc63e"
           activeTextClass="text-on-primary-tint dark:text-primary"
           icon="run-fast"
-          id="role-switch-toggle-runner-segment"
+          id={`${idPrefix}-runner-segment`}
           label="Corredor"
           onPress={handlePressRunner}
-          tier={tierLabel(runnerTier)}
           wide={wide}
         />
         <Segment
@@ -189,14 +190,13 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           activeIconColor="#f59e0b"
           activeTextClass="text-amber-600 dark:text-amber-400"
           icon="whistle"
-          id="role-switch-toggle-trainer-segment"
+          id={`${idPrefix}-trainer-segment`}
           label="Entrenador"
           onPress={handlePressTrainer}
           tier={tierLabel(trainerTier)}
           wide={wide}
         />
       </View>
-      {showTierLink && activeRole === 'trainer' && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
     </View>
   );
 }

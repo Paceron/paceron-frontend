@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -9,6 +10,7 @@ import { canStartSession } from '../../utils/session-start-window.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
+import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
 
 function CancelledCard({ session, onPress }) {
   const idPrefix = `next-training-banner-cancelled-${session.id}`;
@@ -89,13 +91,17 @@ export function NextTrainingBanner() {
         </View>
       )}
 
-      {!loading && !nextTraining && (
+      {/* 
+        Por ahora se desabilita el banner de "no hay nada programado" para dejar el home limpio.
+        En un futuro se podra ver un componente para redirigir a la busqueda de equipos o a la asignacion de entrenamientos segun el rol.
+      */}
+      {/* {!loading && !nextTraining && (
         <View className="items-center justify-center rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="next-training-banner-empty" testID="next-training-banner-empty">
           <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="next-training-banner-empty-label" testID="next-training-banner-empty-label">
             No tenés entrenamientos programados.
           </Text>
         </View>
-      )}
+      )} */}
 
       {!loading && nextTraining && (
         <NextTrainingCardGroup
@@ -125,6 +131,9 @@ export function NextTrainingBanner() {
 function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFetching, onHeroPress, onCancelledPress }) {
   const heroIcon = nextTraining.isPresencial ? 'map-marker-radius' : 'run-fast';
   const { colorScheme } = useThemeMode();
+  // 4 vueltas (~3.6s) y se queda quieto -- no infinito, ver el comentario
+  // de useArrowBounce sobre el lag real reportado en el Home de corredor.
+  const bounceStyle = useArrowBounce(4);
 
   return (
     <View className="gap-2" nativeID="next-training-banner-list" testID="next-training-banner-list">
@@ -148,12 +157,23 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
           </Text>
           <View className="flex-row items-center" nativeID="next-training-banner-hero-content" testID="next-training-banner-hero-content">
             <View className="flex-1 p-4 mr-1 rounded-2xl bg-green-50/70 dark:bg-green-700/70" nativeID="next-training-banner-hero-text" testID="next-training-banner-hero-text">
-              <View className="flex-row items-center" nativeID="next-training-banner-hero-date-name" testID="next-training-banner-hero-date-name">
-                <Text className="px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-title" testID="next-training-banner-hero-title">
+              <View className="min-w-0 flex-row items-center" nativeID="next-training-banner-hero-date-name" testID="next-training-banner-hero-date-name">
+                <Animated.View nativeID="next-training-banner-hero-icon" style={[{ marginRight: 6 }, bounceStyle]} testID="next-training-banner-hero-icon">
+                  <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID="next-training-banner-hero-icon-badge" testID="next-training-banner-hero-icon-badge">
+                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="play" size={14} />
+                  </View>
+                </Animated.View>
+                {/* `shrink` + `numberOfLines` en el título -- un nombre de
+                    sesión largo empujaba la fecha fuera de la tarjeta (sin
+                    esto, un Text dentro de flex-row no se achica, crece a su
+                    ancho de contenido). Ahora el título trunca con "…" y la
+                    fecha queda siempre visible, mismo criterio que el grupo
+                    título+"i" de info-hint.jsx (flex-1 min-w-0 + Text shrink). */}
+                <Text className="shrink px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-title" numberOfLines={1} testID="next-training-banner-hero-title">
                   {nextTraining.sessionInstance?.name ?? 'Entrenamiento'}
-                </Text> 
-                <Text className="text-sm text-green-950 dark:text-green-50" nativeID="training-comparison-breadcrumb-separator" testID="training-comparison-breadcrumb-separator">/</Text>
-                <Text className="text-xs px-2 font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID="next-training-banner-hero-date" testID="next-training-banner-hero-date">
+                </Text>
+                <Text className="shrink-0 text-sm text-green-950 dark:text-green-50" nativeID="training-comparison-breadcrumb-separator" testID="training-comparison-breadcrumb-separator">/</Text>
+                <Text className="shrink-0 text-xs px-2 font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID="next-training-banner-hero-date" testID="next-training-banner-hero-date">
                   {formatWeekdayLabel(nextTraining.date, { short: true })}, {formatDisplayDate(nextTraining.date)}
                 </Text>
               </View>

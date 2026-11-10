@@ -2127,3 +2127,90 @@ por `activeRole === 'trainer'` — mismo criterio laxo que `canManageTeam` en
 de cada miembro llega listo para el badge; `team-detail-screen.jsx` solo lo
 traduce a las keys en español de `SUBSCRIPTION_META` (`SUBSCRIPTION_STATUS_FROM_BACKEND`)
 y pisa `member.subscriptionStatus` del roster cuando hay dato real.
+
+## Gap 42 — tiers reservados a entrenador, sin tiers de corredor
+
+**Contexto.** Decisión de producto 2026-11-09: el catálogo de tiers
+(`GET /tiers?role_id=`, `services/tiers.js`) deja de tener sentido para el
+rol corredor — queda exclusivo del entrenador. Hoy existen 2 tiers por rol
+(uno gratis, uno pago) con `role_id` 1=corredor / 2=entrenador (ver
+`services/__mocks__/tiers-mock.js`), y el flujo completo de catálogo +
+suscripción + cambio de tier (`services/tier-subscriptions.js`:
+`PUT /users/{id}/roles/{role_id}/tier`, `GET .../subscriptions/current`,
+`GET .../subscriptions/next`) ya pega contra el backend real para los dos
+roles por igual.
+
+**Confirmado con el usuario (no es producción todavía):**
+- No hay plan de migración de suscripciones existentes — cualquier fila de
+  tier/suscripción de corredor en la base se purga directo, sin usuarios
+  reales que proteger.
+- El corredor deja de mostrar cualquier indicador de tier (hoy "Corredor ·
+  BASE" en el switch de rol) — sin sufijo, sin badge, nada que lo reemplace.
+
+**Pedido concreto al backend:**
+1. Purgar (o dar de baja) las filas de `tiers` con `role_id` de corredor y
+   cualquier suscripción de corredor a esos tiers.
+2. Confirmar que `GET /tiers?role_id=<corredor>` sigue devolviendo `[]`
+   (lista vacía), no un error — mismo contrato que ya usa el filtro
+   `role_id` hoy, sin código nuevo esperado salvo que la tabla quede vacía
+   para ese `role_id`.
+3. **Pregunta abierta para backend:** ¿algún flujo (asignación de rol,
+   onboarding, lo que sea) asume que todo rol tiene al menos un tier por
+   defecto al crearse/activarse? Si corredor queda sin ninguna fila de
+   tier, confirmar que eso no rompe nada río abajo (ej. un join que espere
+   encontrar siempre un tier asociado).
+
+**Respondido por backend 2026-11-09 — SÍ, hay dependencia estructural, la
+purga literal rompe cosas:**
+- `AssignRole` (`user_role_service.go:58-229`) usa `FindLowestByRole`
+  cuando no viene `TierID` explícito — sin tier base para corredor, falla
+  con *"el tier por defecto 'base' no existe para este rol"*. El registro
+  no asigna roles directo; el corredor se asigna por el endpoint genérico,
+  que pasa por acá.
+- `GET /auth/permissions` (`permissions_query_service.go:90-187`) resuelve
+  el tier efectivo por rol — sin tier base, devuelve *"tier base no
+  configurado"* en vez de datos.
+- `UserRole.TierID` y `UserRoleTierSubscription.TierID` son `NOT NULL` en
+  el schema.
+
+**Decisión tomada con backend — Opción A (tier base interno oculto, bajo
+riesgo):**
+- Se conserva un tier base de corredor, pero solo para que `AssignRole` y
+  `/auth/permissions` sigan resolviendo sin romper — nunca se expone.
+- Se purgan los tiers PAGOS de corredor y sus suscripciones (eso sí, sin
+  restricción — no hay usuarios reales que proteger, confirmado arriba).
+- `GET /tiers?role_id=<corredor>` filtra ese tier base en el catálogo
+  público → sigue devolviendo `[]`, contrato sin cambios para el frontend.
+- Contra, documentado a propósito para no redescubrirlo: internamente
+  sigue existiendo un tier de corredor — no es "cero tiers" literal a
+  nivel de datos, es "cero tiers visibles". El frontend no necesita saber
+  nada de esto; el contrato que ya consume (`[]`) no cambia.
+
+**Alcance frontend** (aparte, no bloqueado por lo de arriba — el catálogo
+ya devuelve `[]` para un `role_id` sin filas hoy, así que el frontend se
+puede adelantar con mocks): sacar el acceso a "Mejorar tier" y el badge de
+tier del lado corredor en `role-switch-toggle.jsx`. `tier-upgrade-screen.jsx`
+no se toca — no hay ruta vieja real que proteger todavía.
+
+**Cerrado por backend 2026-11-09 — contrato final, confirmado en producción:**
+- `GET /tiers?role_id=<corredor>` responde `200 []` (no error). `GET /tiers`
+  sin filtro ya no incluye tiers de corredor. `GET /tiers/{id}` y
+  `/tiers/by-name` siguen vivos por compatibilidad pero no van en la UI de
+  corredor.
+- Crear/editar/borrar un tier de corredor, asignar el rol con `tier_id`
+  explícito, o `PUT /users/{id}/roles/{role_id}/tier` para corredor →
+  `400` (`"el rol corredor no admite tiers"` / `"...no admite cambios de
+  tier"`). Asignar el rol SIN `tier_id` sigue funcionando (resuelve el tier
+  base oculto de la Opción A) — `assignRole` (`services/roles.js:32`) ya
+  nunca manda `tier_id`, confirmado sin cambios necesarios ahí.
+- Pagos/membresía de equipo sin cambios — esto es solo tiers.
+
+**Resuelto en el frontend el mismo día, un paso más que lo ya hecho
+arriba:** `tier-upgrade-screen.jsx` SÍ se tocó al final — con corredor
+activo (o `?role=corredor` de un link viejo) ahora redirige a `/profile`
+en vez de mostrar una grilla vacía (guard al final del componente, después
+de todos los hooks, para no romper las Rules of Hooks si el rol cambia
+con la pantalla ya montada). `/profile/tier-upgrade` salió de
+`SHARED_ROLE_SCREENS` (`role-switch-overlay.jsx`) por el mismo motivo: dejó
+de "adaptarse" al rol activo, ahora es contenido exclusivo de entrenador.
+Gap cerrado — sin acción pendiente de ningún lado.

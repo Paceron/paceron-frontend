@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -401,6 +401,17 @@ export function TierUpgradeScreen() {
   // terminar la espera, así que si el pago no quedó `active` el banner se
   // redibuja solo con el pendiente real (si sigue existiendo).
   const showPendingBanner = Boolean(pendingSubscription) && !confirming;
+
+  // Gap 42 (2026-11-09): el backend confirmó que corredor no admite
+  // tiers -- GET /tiers?role_id=<corredor> ya responde [], así que sin este
+  // guard la pantalla mostraría una grilla vacía en vez de ocultarse. Va
+  // DESPUÉS de todos los hooks (nunca antes) para no romper las Rules of
+  // Hooks si el usuario cambia de rol mientras la pantalla sigue montada
+  // (compartía mount con entrenador vía SHARED_ROLE_SCREENS hasta este
+  // mismo cambio, ver role-switch-overlay.jsx).
+  if (currentRoleName === 'corredor') {
+    return <Redirect href="/profile" />;
+  }
 
   return (
     <ScrollView

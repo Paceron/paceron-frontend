@@ -2,6 +2,8 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
+import { useAchievements } from '../../hooks/use-achievements.js';
+import { pickAchievementHighlight } from '../../utils/achievement-highlight.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
@@ -23,6 +25,14 @@ export function AuthenticatedHomeScreen() {
   const activeRole = useAuthStore((s) => s.activeRole);
   const { user } = useUser(userId);
   const firstName = user?.name || '';
+
+  // Decidido ACÁ (no dentro de AchievementHighlightCard) para saber, antes
+  // de montarla, si va a haber algo que mostrar -- de eso depende si
+  // Rachas se empareja 50/50 con Logros (7 días) o toma el ancho completo
+  // (14 días). Mismo query cache que usa esa card (useAchievements), sin
+  // fetch duplicado.
+  const { achievements, loading: achievementsLoading, error: achievementsError } = useAchievements();
+  const hasAchievementHighlight = !achievementsLoading && !achievementsError && Boolean(pickAchievementHighlight(achievements));
 
   const queryClient = useQueryClient();
   // Invalida calendario/user siempre; streaks/achievements solo tienen
@@ -93,8 +103,24 @@ export function AuthenticatedHomeScreen() {
             reversible: solo este guard de `activeRole`. */}
         {activeRole === 'runner' && (
           <>
-            <StreakBanner />
-            <AchievementHighlightCard />
+            {/* Rachas y Logros 50/50 -- pedido real 2026-11-09. Sin logro
+                destacado para mostrar, Rachas ocupa el ancho completo y
+                pasa a la variante de 14 días (ver `hasAchievementHighlight`
+                arriba). Cada hijo mantiene su propio `mb-3` (no se duplica
+                acá arriba); `paired` iguala la altura visible entre las dos
+                cards (el slot ya queda fijado por el hermano más alto). */}
+            {hasAchievementHighlight ? (
+              <View className="flex-row gap-3" nativeID="authenticated-home-screen-gamification-row" testID="authenticated-home-screen-gamification-row">
+                <View className="flex-1" nativeID="authenticated-home-screen-streak-slot" testID="authenticated-home-screen-streak-slot">
+                  <StreakBanner daysCount={7} paired />
+                </View>
+                <View className="flex-1" nativeID="authenticated-home-screen-achievement-slot" testID="authenticated-home-screen-achievement-slot">
+                  <AchievementHighlightCard paired />
+                </View>
+              </View>
+            ) : (
+              <StreakBanner daysCount={14} />
+            )}
             <RunnerKpisCard />
             <CompetitionsPreviewCard />
             <RecentTrainingsCard />

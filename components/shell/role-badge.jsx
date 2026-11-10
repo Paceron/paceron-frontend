@@ -16,8 +16,13 @@ export function RoleBadge({ role, active = true, size = 'sm' }) {
   const text = active ? config.text : 'text-slate-500 dark:text-slate-400';
   const { pad, text: textSize } = SIZE[size] ?? SIZE.sm;
 
+  // Sin `hover:animate-pulse`: queda pegado en touch sin `mouseleave`
+  // (mismo bug ya encontrado y sacado en role-switch-toggle.jsx#Segment y
+  // en las celdas de calendario, 2026-11-10) -- acá además sin ningún
+  // `onPress` propio, así que un tap en la fila que lo contiene (ej.
+  // web-narrow-drawer-profile-row) lo dejaba pulsando solo.
   return (
-    <View className={`rounded-full ${pad} ${bg} hover:animate-pulse`} nativeID="role-badge" testID="role-badge">
+    <View className={`rounded-full ${pad} ${bg}`} nativeID="role-badge" testID="role-badge">
       <Text className={`${textSize} font-semibold ${text}`} nativeID="role-badge-label" testID="role-badge-label">{config.label}</Text>
     </View>
   );

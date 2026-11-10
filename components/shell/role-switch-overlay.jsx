@@ -11,7 +11,15 @@ const ICON_BY_ROLE = { runner: 'run-fast', trainer: 'whistle' };
 // quedarse ahí al cambiar de rol en vez de mandar a home. El resto
 // (equipos, planes de entrenamiento) tiene acciones/contenido exclusivos
 // de un rol, así que sigue redirigiendo.
-const SHARED_ROLE_SCREENS = ['/', '/notifications', '/profile', '/profile/edit', '/profile/tier-upgrade', '/settings'];
+//
+// `/profile/tier-upgrade` salió de esta lista (Gap 42, 2026-11-09): dejó de
+// "adaptarse" al rol activo -- con corredor activo ya no hay tiers que
+// mostrar (el backend purgó los suyos), así que esa pantalla ahora es
+// contenido exclusivo de entrenador, igual que equipos/planes. La propia
+// pantalla redirige a /profile si se la alcanza con corredor activo (ver
+// tier-upgrade-screen.jsx) -- defensa real por si llega por URL directa en
+// vez de este switch, mismo criterio que RequireRole.
+const SHARED_ROLE_SCREENS = ['/', '/notifications', '/profile', '/profile/edit', '/settings'];
 
 const FADE_MS = 150;
 const TOTAL_MS = 1000;

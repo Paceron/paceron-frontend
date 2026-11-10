@@ -1,4 +1,4 @@
-import { Pressable, View, Text } from 'react-native';
+import { ActivityIndicator, Pressable, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
@@ -24,7 +24,15 @@ function useFirePulse() {
   return useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 }
 
-export function StreakBanner() {
+// `daysCount` (Home, 2026-11-09): 7 cuando se empareja con el logro
+// destacado (fila 50/50, menos ancho por card), 14 cuando Rachas queda
+// sola y usa el ancho completo (ver authenticated-home-screen.jsx, que
+// decide cuál de los dos casos aplica ANTES de montar esta card, con
+// `pickAchievementHighlight`). `paired` agrega `flex-1` para igualar la
+// altura visible con AchievementHighlightCard -- mismo criterio de
+// seguridad que esa card (ver su comentario): solo se aplica cuando hay un
+// hermano en la misma fila que fija la altura del slot.
+export function StreakBanner({ daysCount = 7, paired = false }) {
   const router = useRouter();
   const colors = useThemeColors();
   const { streaks, loading, error } = useStreaks();
@@ -40,40 +48,55 @@ export function StreakBanner() {
 
   if (loading) {
     return (
-      <View className="mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface" nativeID="streak-banner-loading" testID="streak-banner-loading">
-        <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-loading-label" testID="streak-banner-loading-label">Cargando racha…</Text>
+      <View className={`mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
+        <ActivityIndicator color={colors.primary} nativeID="streak-banner-loading-indicator" testID="streak-banner-loading-indicator" />
       </View>
     );
   }
 
   if (error || !streaks) {
     return (
-      <View className="mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface" nativeID="streak-banner-error" testID="streak-banner-error">
+      <View className={`mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
         <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
       </View>
     );
   }
 
-  const lastDays = streaks.days.slice(-14);
+  const lastDays = streaks.days.slice(-daysCount);
 
   return (
-    <Pressable className="mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3" nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
-      <View className="flex-row items-center gap-3" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
+    <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
+      {/* Kicker con el nombre de la racha -- antes la card solo mostraba
+          "X días" sin aclarar cuál de las dos rachas es (estricta/flexible,
+          ver streaks-tab.jsx), mismo patrón de kicker que el resto de las
+          cards del Home (recent-trainings-card.jsx, next-training-banner.jsx).
+          Principal pasó de `strict` a `flexible` (pedido real 2026-11-10):
+          "días consecutivos entrenando" importa más como primer vistazo que
+          la racha que corta si un día programado se saltea -- esa sigue
+          disponible en la pestaña Rachas (streaks-tab.jsx, con las dos
+          tarjetas). El label es el mismo que usa esa pestaña para `flexible`
+          ("Días entrenando"), no uno inventado nuevo. Los puntos del día
+          abajo pasan a `flexibleStatus` para no mezclar: mostrar el número
+          de una racha y los puntos de la otra confundía más que ayudaba. */}
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="streak-banner-kicker" testID="streak-banner-kicker">
+        Estado de racha
+      </Text>
+      <View className="flex-row items-center gap-2" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
         <Animated.View nativeID="streak-banner-fire-icon" style={pulseStyle} testID="streak-banner-fire-icon">
-          <MaterialCommunityIcons color={colors.primary} name="fire" size={28} />
+          <MaterialCommunityIcons color={colors.primary} name="fire" size={20} />
         </Animated.View>
         <View nativeID="streak-banner-current-text" testID="streak-banner-current-text">
-          <Text className="text-3xl font-bold text-slate-900 dark:text-white" nativeID="streak-banner-current-value" testID="streak-banner-current-value">
-            {streaks.strict.current} días
+          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="streak-banner-current-value" testID="streak-banner-current-value">
+            {streaks.flexible.current} días consecutivos entrenando
           </Text>
           <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="streak-banner-best-value" testID="streak-banner-best-value">
-            Mejor racha: {streaks.strict.best} días
+            Mejor racha: {streaks.flexible.best} días
           </Text>
         </View>
       </View>
       <View className="mt-3 flex-row gap-1" nativeID="streak-banner-days-row" testID="streak-banner-days-row">
         {lastDays.map((day) => {
-          const visual = streakDayVisual(day.strictStatus);
+          const visual = streakDayVisual(day.flexibleStatus);
           return (
             <View
               accessibilityLabel={visual.label}

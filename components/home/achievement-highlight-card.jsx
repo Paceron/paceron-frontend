@@ -3,30 +3,27 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
+import { pickAchievementHighlight } from '../../utils/achievement-highlight.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 
-// El logro con más progreso pendiente (más cerca de subir de nivel), o si
-// ninguno tiene progreso fraccional, el desbloqueado más recientemente.
-function pickHighlight(achievements) {
-  const withProgress = achievements.filter((a) => a.progressPercent != null && a.progressPercent < 100);
-  if (withProgress.length) {
-    return withProgress.reduce((best, a) => (a.progressPercent > best.progressPercent ? a : best));
-  }
-
-  const unlocked = achievements.filter((a) => a.unlockedAt);
-  if (!unlocked.length) return null;
-  return unlocked.reduce((latest, a) => ((a.lastUnlockedAt ?? '') > (latest.lastUnlockedAt ?? '') ? a : latest));
-}
-
-export function AchievementHighlightCard() {
+// `paired` (Home, 2026-11-09): true cuando el caller ya decidió emparejar
+// esta card con StreakBanner en una fila 50/50 (ver
+// authenticated-home-screen.jsx, que usa el mismo `pickAchievementHighlight`
+// para decidirlo ANTES de montar esta card). `flex-1` ahí estira la card a
+// la altura de la fila (el slot ya quedó fijado por el hermano más alto via
+// el `alignItems: stretch` default del row) -- sin pareja, la card vive
+// suelta en el flujo de la ScrollView (altura auto, sin hermano con quien
+// igualar), y `flex-1` ahí colapsaría a 0 (mismo quirk de CLAUDE.md sobre
+// flex-1 dentro de un padre sin altura propia).
+export function AchievementHighlightCard({ paired = false }) {
   const router = useRouter();
   const { achievements, loading, error } = useAchievements();
   const setActiveTab = useAchievementsTabStore((s) => s.setActiveTab);
 
   if (loading || error || !achievements.length) return null;
 
-  const highlight = pickHighlight(achievements);
+  const highlight = pickAchievementHighlight(achievements);
   if (!highlight) return null;
 
   const meta = levelMeta(highlight.currentLevel || 1);
@@ -41,7 +38,7 @@ export function AchievementHighlightCard() {
   };
 
   return (
-    <Pressable className="mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3" nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
+    <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
         {/* Kicker "Logro" -- sin esto se confundía con la card de Racha
             justo arriba (mismo estilo blanco/ícono+texto+barra), pedido
             real 2026-10-14. */}
