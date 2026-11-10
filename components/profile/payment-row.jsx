@@ -60,7 +60,7 @@ const RECEIVED_AMOUNT_COLUMN = {
   align: 'right',
   hint: {
     title: 'Monto neto',
-    description: 'Es lo que te queda de cada cuota: lo que pagó el corredor (monto bruto) menos la comisión de Paceron, que es un porcentaje del bruto.\n\nMonto neto = monto bruto − comisión de Paceron.',
+    description: 'Es lo que te queda de cada cuota: lo que pagó el corredor (monto bruto) menos la comisión de Paceron, que es un porcentaje del bruto.\n\nMonto neto = monto bruto − comisión de Paceron.\n\nEs posible que después se apliquen otros impuestos o retenciones que no figuran acá.',
   },
 };
 
