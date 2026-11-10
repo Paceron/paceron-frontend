@@ -21,10 +21,15 @@ import { IconTooltip } from '../shared/icon-tooltip.jsx';
 // tooltip que solo existe con hover es invisible para quien navega con Tab, y en
 // nativo el lector de pantalla tiene que anunciarlo sin que el usuario descubra
 // que el popup existe.
-export function InfoHint({ id, description, title, accessibilityLabel }) {
+//
+// `openOnPress` usa el Modal también en web: hace falta donde el "i" se toca con
+// el dedo en un navegador de celular (sin hover), como el header "Monto" de la
+// tabla de cobros.
+export function InfoHint({ id, description, title, accessibilityLabel, openOnPress = false }) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const label = accessibilityLabel ?? (title ? `Más información sobre ${title}` : 'Más información');
+  const hoverOnly = isWeb && !openOnPress;
 
   const trigger = (
     <Pressable
@@ -32,15 +37,16 @@ export function InfoHint({ id, description, title, accessibilityLabel }) {
       accessibilityLabel={label}
       accessibilityRole="button"
       className="h-4 w-4 items-center justify-center"
+      hitSlop={10}
       nativeID={`${id}-trigger`}
-      onPress={isWeb ? undefined : () => setOpen(true)}
+      onPress={hoverOnly ? undefined : () => setOpen(true)}
       testID={`${id}-trigger`}
     >
       <MaterialCommunityIcons color={colors.onSurfaceVariant} name="information-outline" size={13} />
     </Pressable>
   );
 
-  if (isWeb) {
+  if (hoverOnly) {
     return (
       <IconTooltip align="start" idPrefix={id} label={description} wrap>
         {trigger}

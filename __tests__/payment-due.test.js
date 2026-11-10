@@ -1,4 +1,4 @@
-import { HOME_DUE_WINDOW_DAYS, dueCardVariant, dueTone, homeDuePayments, payRouteFor } from '../utils/payment-due.js';
+import { HOME_DUE_WINDOW_DAYS, dueCardVariant, dueTone, homeDuePayments, isPayableUpcoming, payRouteFor } from '../utils/payment-due.js';
 
 const NOW = new Date('2026-11-03T15:00:00Z');
 const item = (over) => ({ key: 'k', type: 'trainer_payment', teamId: 7, dueDate: '2026-11-20T00:00:00Z', overdue: false, ...over });
@@ -57,5 +57,20 @@ describe('payRouteFor', () => {
   test('sin equipo ni tier no hay ruta', () => {
     expect(payRouteFor(item({ teamId: null }))).toBeNull();
     expect(payRouteFor(null)).toBeNull();
+  });
+});
+
+describe('isPayableUpcoming', () => {
+  test('descarta las cuotas de tier del corredor', () => {
+    expect(isPayableUpcoming(item({ type: 'subscription', teamId: null, tierRoleName: 'corredor' }))).toBe(false);
+  });
+
+  test('mantiene las de tier del entrenador y las de equipo', () => {
+    expect(isPayableUpcoming(item({ type: 'subscription', teamId: null, tierRoleName: 'entrenador' }))).toBe(true);
+    expect(isPayableUpcoming(item())).toBe(true);
+  });
+
+  test('descarta un item vacío', () => {
+    expect(isPayableUpcoming(null)).toBe(false);
   });
 });
