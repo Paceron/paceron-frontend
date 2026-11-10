@@ -216,9 +216,9 @@ function MpConnectionField({ fullWidth = false }) {
 
   return (
     <View className={isDesktopWeb && !fullWidth ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
-      <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
+      <View nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
         <View className="rounded-xl border border-primary bg-primary/20 p-3 dark:border-primary/30 dark:bg-primary/15" nativeID={`${slug}-status-card`} testID={`${slug}-status-card`}>
-          <Text className="mb-2 text-base font-semibold text-green-700 dark:text-green-400" nativeID={`${slug}-label`} testID={`${slug}-label`}>Cuenta de Mercado Pago:</Text>
+          <Text className="text-sm font-semibold text-green-700 dark:text-green-400" nativeID={`${slug}-label`} testID={`${slug}-label`}>Cuenta de Mercado Pago:</Text>
           <View nativeID={`${slug}-status-inline`} testID={`${slug}-status-inline`}>{body}</View>
         </View>
       </View>
@@ -247,8 +247,8 @@ function TrainerDataSection({ onUpgradeTier, trainerTier, subscription, onPay, p
           </FieldGrid>
           <View className="mt-3" nativeID="profile-screen-membership-details" testID="profile-screen-membership-details">
             <View className="mb-2 flex-row items-center gap-4 rounded-xl border border-primary bg-primary/20 p-3 dark:border-primary/30 dark:bg-primary/15" nativeID="profile-screen-current-tier" testID="profile-screen-current-tier">
-              <Text className="text-base font-semibold text-green-700 dark:text-green-400" nativeID="profile-screen-current-tier-label" testID="profile-screen-current-tier-label">Tier Actual:</Text>
-              <Text className="text-base font-bold italic text-slate-500 dark:text-slate-400" nativeID="profile-screen-current-tier-value" testID="profile-screen-current-tier-value">{trainerTier ?? '—'}</Text>
+              <Text className="text-sm font-semibold text-green-700 dark:text-green-400" nativeID="profile-screen-current-tier-label" testID="profile-screen-current-tier-label">Tier Actual:</Text>
+              <Text className="text-sm font-bold italic text-slate-500 dark:text-slate-400" nativeID="profile-screen-current-tier-value" testID="profile-screen-current-tier-value">{trainerTier ?? '—'}</Text>
               <Pressable
                 accessibilityRole="button"
                 className="ml-auto h-9 flex-row items-center justify-center gap-2 self-start rounded-full bg-primary px-6 transition-opacity hover:opacity-90 active:opacity-80"
@@ -260,7 +260,7 @@ function TrainerDataSection({ onUpgradeTier, trainerTier, subscription, onPay, p
                 }}
                 testID="profile-screen-upgrade-tier-button"
               >
-                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="profile-screen-upgrade-tier-button-label" testID="profile-screen-upgrade-tier-button-label">{String(trainerTier ?? '').toLowerCase().includes('premium') ? 'cambiar tier' : 'MEJORAR TIER!'}</Text>
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="profile-screen-upgrade-tier-button-label" testID="profile-screen-upgrade-tier-button-label">{String(trainerTier ?? '').toLowerCase().includes('premium') ? 'cambiar tier' : 'MEJORAR TIER'}</Text>
               </Pressable>
             </View>
             {renewal && (
