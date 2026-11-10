@@ -8,6 +8,7 @@ import {
   toHistoryPaymentModel,
   toUpcomingPaymentModel,
 } from '../services/normalizers.js';
+import { isPayableUpcoming } from '../utils/payment-due.js';
 
 // Estado de servidor del historial de pagos (de cualquier usuario) y de los
 // cobros del entrenador. Ver
@@ -31,7 +32,7 @@ export function useUpcomingPayments({ enabled = true } = {}) {
   const userId = useAuthStore((s) => s.userId);
   const query = useQuery({
     queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId),
-    queryFn: () => getUpcomingPayments().then((dto) => (dto?.items ?? []).map(toUpcomingPaymentModel)),
+    queryFn: () => getUpcomingPayments().then((dto) => (dto?.items ?? []).map(toUpcomingPaymentModel).filter(isPayableUpcoming)),
     enabled: enabled && Boolean(userId),
   });
   return {

@@ -282,7 +282,7 @@ Change OpenSpec `dashboard-analitico-rendimiento`. Decisiones que no se deducen 
 - **El form de filtros es un BORRADOR: las queries salen al presionar "Filtrar", no en cada tecla (2026-10-19).** `dashboard-screen.jsx` separa el estado del form (draft) del estado **aplicado** (`applied`) — el scope de las cinco consultas de métricas, el leaderboard, la comparación por período, el badge, el header/PDF y el export salen de `applied`. Cambiar un campo o escribir un rango no dispara ninguna request; "Limpiar" sí aplica en el mismo click (borra el borrador y vuelve al `date_range` real). `granularity`, `sort` y `order` no son filtros y se aplican al toque. Las cinco consultas siguen con `placeholderData: keepPreviousData` (`DASHBOARD_METRIC_QUERY_OPTIONS` en `hooks/use-dashboard-query.js`) — no sacarlo, parece cosmético y no lo es (2026-10-17): al aplicar, la query key cambia y sin el placeholder `dashboard-content` se **desmonta** (el `{summary ? ...}` queda sin data), vuelve el skeleton y con él desaparece y reaparece todo el panel de filtros. Con el placeholder la consulta hereda el resultado anterior mientras llega el nuevo: `isLoading` en false (nada de skeleton) e `isFetching` en true (que los hooks exponen como `refreshing`). El placeholder se descarta solo cuando la consulta falla (`queryObserver.js` lo aplica únicamente con `status === 'pending'`), así que los estados de error siguen siendo exclusivos del contenido.
 - **`hooks/use-dashboard-series.js` ya tiene consumidor (2026-10-19): `dashboard-screen.jsx` prefetchea las series al elegir un ejercicio** y de ahí salen el box plot (`seriesSamples`, solo velocidades) y el dot plot (`seriesPoints`, tiempo/velocidad) — antes ninguno de los dos se montaba porque nadie pasaba las muestras. **El detalle de cada página viaja bajo `items`, no `series`** (DTO `SeriesDetailResponse` del backend, mismo nombre que el leaderboard): el hook leía `series` y devolvía siempre `[]` sin error, así que el gráfico y el CSV habrían quedado vacíos para siempre. Tampoco exige `groupId`: el endpoint solo valida el grupo si viene. `useDashboardComparisons` (`POST /dashboard/comparisons`, el de "entre corredores") sigue sin consumidor a propósito: la pantalla lo llamaba **sin usar el resultado** y se sacó el 2026-10-18 junto con la unificación del cuerpo (era un request por carga de pantalla para tirarlo).
 - **Exportación del dashboard (CSV/PDF, 2026-10-19).** Los dos botones viven en el header de la pantalla (`components/dashboard/export-actions.jsx`), no en el panel de filtros: exportan lo que se ve. **El CSV se arma con las series YA cargadas y la descarga web se dispara sin ningún `await` en el medio** — un `<a download>` clickeado después de un `await` puede quedar bloqueado por el navegador. Por eso las series se prefetchean (todas las páginas, `page_size` máximo) en cuanto hay un ejercicio elegido, no al presionar; sin ejercicio el CSV avisa por Toast y no exporta un archivo con solo el encabezado. El PDF no depende de las series: es el resumen del período (contexto + KPIs formateados + la MISMA tabla de series que el CSV si están cargadas, sin dibujar los gráficos) y sale de `utils/dashboard-pdf.js`, puro y testeado. Entrega con split de plataforma, **import SIN extensión**: `services/dashboard-csv.js` (nativo: `new File(Paths.cache, …).write(texto)` + `expo-sharing`; `expo-file-system@19` no expone `writeAsStringAsync` en la raíz) y `.web.js` (`Blob` + `<a download>`); `services/dashboard-pdf.js` (`expo-print` + `expo-sharing`) y `.web.js` (reusa `openBrowserPrintDialog` de `utils/attendance-qr-file.js`, porque `expo-print` web imprime la app entera).
-- **El PDF del dashboard embebe una captura de la pantalla (2026-10-20).** Como el documento no puede dibujar los SVG, `ExportActions` rasteriza la región `DashboardBody` (KPIs, grilla de gráficos como esté en pantalla —arranca colapsada, así que por defecto se capturan las previews— y el panel de insights en la pestaña activa, radar por defecto; **no** el panel de filtros/calidad) con `react-native-view-shot` (`services/dashboard-capture.js`; en web `services/dashboard-capture.web.js` con `html2canvas`, porque el `captureRef` de la librería resuelve el nodo con `findNodeHandle` y en react-native-web ese helper tira. El import va **sin extensión** para que Metro aplique el split). Captura y logo (`resolveLogoDataUri` de `utils/attendance-qr-file.js`) se resuelven al presionar y son **best-effort**: si fallan, el PDF sale igual, sin figura y con el wordmark de texto. La View capturada necesita `collapsable={false}` (requisito de la librería en Android). **`react-native-view-shot` es un módulo nativo: sin `npm run android:run` el PDF anda igual pero sin captura** — no bloquea el resto de la exportación.
+- **El PDF del dashboard embebe una captura de la pantalla (2026-10-20).** Como el documento no puede dibujar los SVG, `ExportActions` rasteriza la región `DashboardBody` (KPIs, grilla de gráficos como esté en pantalla —arranca colapsada, así que por defecto se capturan las previews— y el panel de insights en la pestaña activa, radar por defecto; **no** el panel de filtros/calidad) con `react-native-view-shot` (`services/dashboard-capture.js`; en web `services/dashboard-capture.web.js` con `html2canvas`, porque el `captureRef` de la librería resuelve el nodo con `findNodeHandle` y en react-native-web ese helper tira. El import va **sin extensión** para que Metro aplique el split). Captura y logo (`resolveLogoDataUri` de `utils/attendance-qr-file.js`) se resuelven al presionar y son **best-effort**: si fallan, el PDF sale igual, sin figura y con el wordmark de texto. La View capturada necesita `collapsable={false}` (requisito de la librería en Android). **`react-native-view-shot` es un módulo nativo: sin `npm run android:run` el PDF anda igual pero sin captura** — no bloquea el resto de la exportación. Eso vale solo porque `services/dashboard-capture.js` la carga con un `require` **diferido** adentro de la función: la librería llama a `TurboModuleRegistry.getEnforcing('RNViewShot')` apenas se evalúa, y con el `import` arriba un dev client viejo tiraba "RNViewShot could not be found" al arrancar y tumbaba la app entera (2026-11-10). Mismo criterio para cualquier módulo nativo opcional nuevo.
 
 ## Backend
 
@@ -350,9 +350,33 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
 
 - **Neto = bruto − comisión de Paceron, y lo calcula el backend (2026-11-02).** Reemplaza
   la regla anterior de "nunca mostrar comisión": cada cobro trae `fee_amount` y
-  `fee_percent` (los pagos viejos sin comisión guardada caen al 5%), y la fila muestra
-  "Neto $X · comisión 5%". El front no recalcula nada, solo muestra lo que llega.
+  `fee_percent` (los pagos viejos sin comisión guardada caen al 5%). El front no
+  recalcula nada, solo muestra lo que llega. **La lista de Cobros es una tabla en
+  todos los anchos y su columna "Monto" es el NETO (2026-11-10, pedido del usuario)**:
+  el header lleva un "i" (`InfoHint` con `openOnPress`, para que también se abra
+  con click/toque en web de celular, sin hover) que explica neto = bruto − comisión
+  de Paceron. En angosto (`RECEIVED_COLUMNS_NARROW`) el equipo baja como segunda
+  línea del corredor y el estado conserva su columna, porque se filtra por él. La
+  lista de Pagos también es tabla en angosto (`HISTORY_COLUMNS_NARROW`): tipo y
+  método bajan debajo del detalle y el botón del comprobante va debajo del monto.
   `formatNetLabel` y el "s/d" del gráfico quedan por si un neto vuelve a venir `null`.
+- **El checkout ofrece solo tarjeta de crédito y débito (2026-11-08).** El Brick
+  (`checkout-brick.web.jsx`, `customization.paymentMethods`) habilitaba todo, pero
+  efectivo (Pago Fácil/Rapipago) no genera token y `POST /payments` lo exige
+  (`installments >= 1` también), y la billetera de Mercado Pago / Mercado Crédito
+  llega al `onSubmit` sin `formData` y confirma por redirect + webhook, que no está
+  cableado: las tres opciones terminaban en error. Sumarlas implica cambios de back
+  (pago sin token, estado pendiente con cupón) y de flujo (redirect fuera del
+  WebView en nativo, como mp-connect).
+- **Las props del `<Payment>` del Brick tienen que ser referencias estables (2026-11-10).**
+  El wrapper de `@mercadopago/sdk-react` desmonta y recrea el brick cada vez que cambia
+  la referencia de `initialization`, `customization`, `onSubmit` u `onError` (son deps de
+  su `useEffect`). Con objetos/funciones inline, cualquier re-render lo reiniciaba: en
+  Chrome de Android, abrir el teclado achica la ventana, el shell re-renderiza por
+  `useWindowDimensions` y el formulario se recargaba perdiendo lo tipeado. Por eso
+  `checkout-brick.web.jsx` usa una constante de módulo, `useMemo` por valores y
+  callbacks estables que leen las props actuales desde un ref. Mismo criterio para
+  cualquier otro brick del SDK que se sume.
 - **Las cuotas que todavía no se pagaron no existen como filas.** El backend crea la
   cuota N+1 recién cuando se paga la N, así que lo pendiente por mes del gráfico (barra
   ámbar), "Por cobrar este mes" (Vencidos / A vencer, `payments-due-card.jsx`) y
@@ -365,6 +389,11 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   #1 (`409`); el entrenador sí lo puede sacar. Las fechas se muestran con `formatDueDate`, que corta el día en hora
   argentina y no en la del dispositivo. Change de OpenSpec del backend:
   `cobros-pendientes-y-vencimientos`.
+- **Las cuotas de tier del corredor no se muestran ni se ofrecen para pagar (2026-11-10).** Con
+  el Gap 42 el corredor ya no tiene tiers, pero `GET /payments/upcoming` sigue devolviendo las
+  suscripciones de tier que quedaron en la base (la purga del backend es un script manual).
+  `useUpcomingPayments` las filtra con `utils/payment-due.js#isPayableUpcoming`, así no llegan
+  ni al aviso del Home ni a "Próximos vencimientos".
 - **El entrenador no ve cobros de tier**: esos los cobra Paceron. En Cobros solo
   aparecen cuotas de equipo; los tiers son pagos, de corredores y entrenadores.
 - **Dos consultas del resumen (2026-09-29).** `useReceivedPaymentsSummary()` sin `until`

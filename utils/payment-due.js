@@ -4,6 +4,14 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// El corredor ya no tiene tiers (Gap 42 del backend: su monetización es por
+// equipos), pero GET /payments/upcoming sigue devolviendo las suscripciones de
+// tier que quedaron en la base, porque la purga es un script manual. Esas
+// cuotas no se muestran ni se ofrecen para pagar.
+export function isPayableUpcoming(item) {
+  return Boolean(item) && !(item.type === 'subscription' && item.tierRoleName === 'corredor');
+}
+
 // Cuántos días antes del vencimiento una cuota pasa a mostrarse en el Home.
 export const HOME_DUE_WINDOW_DAYS = 10;
 
