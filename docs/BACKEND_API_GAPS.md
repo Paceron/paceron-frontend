@@ -2191,3 +2191,26 @@ ya devuelve `[]` para un `role_id` sin filas hoy, así que el frontend se
 puede adelantar con mocks): sacar el acceso a "Mejorar tier" y el badge de
 tier del lado corredor en `role-switch-toggle.jsx`. `tier-upgrade-screen.jsx`
 no se toca — no hay ruta vieja real que proteger todavía.
+
+**Cerrado por backend 2026-11-09 — contrato final, confirmado en producción:**
+- `GET /tiers?role_id=<corredor>` responde `200 []` (no error). `GET /tiers`
+  sin filtro ya no incluye tiers de corredor. `GET /tiers/{id}` y
+  `/tiers/by-name` siguen vivos por compatibilidad pero no van en la UI de
+  corredor.
+- Crear/editar/borrar un tier de corredor, asignar el rol con `tier_id`
+  explícito, o `PUT /users/{id}/roles/{role_id}/tier` para corredor →
+  `400` (`"el rol corredor no admite tiers"` / `"...no admite cambios de
+  tier"`). Asignar el rol SIN `tier_id` sigue funcionando (resuelve el tier
+  base oculto de la Opción A) — `assignRole` (`services/roles.js:32`) ya
+  nunca manda `tier_id`, confirmado sin cambios necesarios ahí.
+- Pagos/membresía de equipo sin cambios — esto es solo tiers.
+
+**Resuelto en el frontend el mismo día, un paso más que lo ya hecho
+arriba:** `tier-upgrade-screen.jsx` SÍ se tocó al final — con corredor
+activo (o `?role=corredor` de un link viejo) ahora redirige a `/profile`
+en vez de mostrar una grilla vacía (guard al final del componente, después
+de todos los hooks, para no romper las Rules of Hooks si el rol cambia
+con la pantalla ya montada). `/profile/tier-upgrade` salió de
+`SHARED_ROLE_SCREENS` (`role-switch-overlay.jsx`) por el mismo motivo: dejó
+de "adaptarse" al rol activo, ahora es contenido exclusivo de entrenador.
+Gap cerrado — sin acción pendiente de ningún lado.
