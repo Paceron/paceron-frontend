@@ -1,6 +1,6 @@
 {
   "name": "paceron-frontend",
-  "version": "0.33.1",
+  "version": "0.34.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",

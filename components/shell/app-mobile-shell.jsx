@@ -245,7 +245,7 @@ function NavigationDrawer({ open, pathname, onClose }) {
                         />
                         <Text
                           className={`text-sm font-semibold ${
-                            isActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300'
+                            isActive ? 'text-on-primary-tint dark:text-primary' : 'text-slate-600 dark:text-slate-300'
                           }`}
                           nativeID={`mobile-drawer-route-label-${route.name}`}
                           testID={`mobile-drawer-route-label-${route.name}`}

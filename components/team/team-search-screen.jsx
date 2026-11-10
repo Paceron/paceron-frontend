@@ -68,7 +68,7 @@ function TeamSearchResultCard({ team, membershipFee, onRequest, requesting }) {
           {feeKnown && (
             <View className="mt-1 flex-row items-baseline gap-1" nativeID={`${idPrefix}-fee-row`} testID={`${idPrefix}-fee-row`}>
               <Text
-                className={`text-xs font-bold ${membershipFee > 0 ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}
+                className={`text-xs font-bold ${membershipFee > 0 ? 'text-on-primary-tint dark:text-primary' : 'text-slate-500 dark:text-slate-400'}`}
                 nativeID={`${idPrefix}-fee`}
                 testID={`${idPrefix}-fee`}
               >

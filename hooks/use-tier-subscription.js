@@ -8,7 +8,7 @@ import { toSubscriptionModel } from '../services/normalizers.js';
 // useMutation real del repo: al cambiar de tier, el resultado ya trae
 // la suscripción actualizada — se escribe directo en el cache con
 // setQueryData en vez de invalidar + esperar un refetch de red.
-export function useTierSubscription(userId, roleId) {
+export function useTierSubscription(userId, roleId, { includeNext = true } = {}) {
   const queryClient = useQueryClient();
   const currentKey = ['subscription-current', userId, roleId];
   const nextKey = ['subscription-next', userId, roleId];
@@ -23,10 +23,12 @@ export function useTierSubscription(userId, roleId) {
   // un tier pago que nunca se pagó). Es lo que dibuja el banner
   // "Completar pago" — especialmente tras re-login, donde current (solo
   // `active`) no muestra nada pero el pendiente sigue bloqueando changeTier.
+  // `includeNext: false` lo saltea para pantallas que solo necesitan la
+  // sub activa (perfil): una request menos en la carga inicial.
   const nextSubscriptionQuery = useQuery({
     queryKey: nextKey,
     queryFn: () => getNextSubscription(userId, roleId).then(toSubscriptionModel),
-    enabled: Boolean(userId) && Boolean(roleId),
+    enabled: includeNext && Boolean(userId) && Boolean(roleId),
   });
 
   const changeTierMutation = useMutation({

@@ -42,7 +42,7 @@ function RequirementRow({ id, met, label }) {
         name={met ? 'check-circle' : 'circle-outline'}
         size={14}
       />
-      <Text className={`text-xs ${met ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`password-strength-requirement-${id}-label`} testID={`password-strength-requirement-${id}-label`}>
+      <Text className={`text-xs ${met ? 'text-on-primary-tint dark:text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`password-strength-requirement-${id}-label`} testID={`password-strength-requirement-${id}-label`}>
         {label}
       </Text>
     </View>

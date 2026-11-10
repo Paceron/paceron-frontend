@@ -567,7 +567,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
 
       {loading && (
         <View className="items-center py-6" nativeID="competitions-tab-loading" testID="competitions-tab-loading">
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color="#8cc63e" />
         </View>
       )}
 

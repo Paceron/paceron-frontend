@@ -90,12 +90,13 @@ function TeamsListScreenContent() {
             <IconTooltip idPrefix="teams-list-search-button-tooltip" label="Buscar equipos">
               <Pressable
                 accessibilityLabel="Buscar equipos"
-                className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                className="rounded-full p-2 active:opacity-70"
                 nativeID="teams-list-search-button"
                 onPress={() => router.push('/teams/search')}
+                style={{ backgroundColor: colors.primary }}
                 testID="teams-list-search-button"
               >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={22} />
+                <MaterialCommunityIcons color="#ffffff" name="magnify" size={22} />
               </Pressable>
             </IconTooltip>
           )}

@@ -5,6 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { DASHBOARD_KEYS } from '../../hooks/use-dashboard-query.js';
+import { getDashboardSummary } from '../../services/dashboard.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -741,6 +743,14 @@ function TeamDetailScreenContent({ teamId }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (!team?.id) return;
+    queryClient.prefetchQuery({
+      queryKey: DASHBOARD_KEYS.summary({ teamId: team.id }),
+      queryFn: () => getDashboardSummary({ teamId: team.id }),
+    });
+  }, [team?.id, queryClient]);
+
+  useEffect(() => {
     setRunnerMenuOpen(false);
   }, [activeTab]);
 
@@ -881,7 +891,7 @@ function TeamDetailScreenContent({ teamId }) {
   if (loadingTeam || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="team-detail-loading" testID="team-detail-loading">
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color="#8cc63e" />
       </View>
     );
   }
@@ -934,12 +944,12 @@ function TeamDetailScreenContent({ teamId }) {
             <IconTooltip idPrefix="team-detail-invite-button-tooltip" label="Invitar corredor">
               <Pressable
                 accessibilityLabel="Invitar corredor"
-                className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+                className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-80"
                 nativeID="team-detail-invite-button"
                 onPress={() => setInviteModalVisible(true)}
                 testID="team-detail-invite-button"
               >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+                <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
               </Pressable>
             </IconTooltip>
           </View>
@@ -1030,12 +1040,12 @@ function TeamDetailScreenContent({ teamId }) {
         <IconTooltip idPrefix="team-detail-add-group-button-tooltip" label="Agregar grupo">
         <Pressable
           accessibilityLabel="Agregar grupo"
-          className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
+          className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-80"
           nativeID="team-detail-add-group-button"
           onPress={() => setCreateGroupModalVisible(true)}
           testID="team-detail-add-group-button"
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
+          <MaterialCommunityIcons color={colors.onPrimary} name="plus" size={20} />
         </Pressable>
         </IconTooltip>
       )}
@@ -1136,12 +1146,12 @@ function TeamDetailScreenContent({ teamId }) {
             <IconTooltip idPrefix="team-detail-edit-button-tooltip" label="Editar equipo">
               <Pressable
                 accessibilityLabel="Editar equipo"
-                className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                className="h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-80"
                 nativeID="team-detail-edit-button"
                 onPress={() => router.push(`/teams/${team.id}/edit`)}
                 testID="team-detail-edit-button"
               >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={20} />
+                <MaterialCommunityIcons color={colors.onPrimary} name="pencil-outline" size={20} />
               </Pressable>
             </IconTooltip>
           )}

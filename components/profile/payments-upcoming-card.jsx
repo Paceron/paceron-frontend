@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { formatArs } from '../../utils/currency.js';
@@ -58,7 +58,7 @@ const COMPACT_TONE = {
 // salta SectionCard y se arma un wrapper propio con esa misma geometría,
 // conservando el tinte de urgencia (rose/warning) como color de fondo en vez
 // de perderlo -- la pestaña Pagos sigue con SectionCard sin cambios.
-export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, title = 'Próximos vencimientos', scope = 'payments-upcoming', compact = false }) {
+export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, payingKey, confirmingKey, title = 'Próximos vencimientos', scope = 'payments-upcoming', compact = false }) {
   const colors = useThemeColors();
   if (loading) {
     return <SkeletonBlock className="mb-5" height={120} nativeID="payments-upcoming-skeleton" rounded="rounded-2xl" testID="payments-upcoming-skeleton" />;
@@ -122,18 +122,30 @@ export function PaymentsUpcomingCard({ items, loading, failed, onRetry, onPay, t
                   {formatArs(item.amount)}
                 </Text>
                 {onPay ? (
-                  <Pressable
-                    accessibilityLabel={`Pagar la cuota ${item.installmentNumber} de ${item.type === 'subscription' ? formatTierName(item.title, 'tu tier') : item.title || 'tu equipo'}`}
-                    accessibilityRole="button"
-                    className="h-8 flex-row items-center justify-center rounded-full bg-primary px-3.5 hover:opacity-90 active:opacity-80"
-                    nativeID={`${id}-pay`}
-                    onPress={() => onPay(item)}
-                    testID={`${id}-pay`}
-                  >
-                    <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${id}-pay-label`} testID={`${id}-pay-label`}>
-                      Pagar
-                    </Text>
-                  </Pressable>
+                  confirmingKey === item.key ? (
+                    <View className="h-8 flex-row items-center gap-1.5 rounded-full bg-primary/20 px-2.5" nativeID={`${id}-pay-confirming`} testID={`${id}-pay-confirming`}>
+                      <ActivityIndicator color="#8cc63e" size="small" />
+                      <Text className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300" nativeID={`${id}-pay-confirming-label`} testID={`${id}-pay-confirming-label`}>
+                        Confirmando…
+                      </Text>
+                    </View>
+                  ) : (
+                    <Pressable
+                      accessibilityLabel={`Pagar la cuota ${item.installmentNumber} de ${item.type === 'subscription' ? formatTierName(item.title, 'tu tier') : item.title || 'tu equipo'}`}
+                      accessibilityRole="button"
+                      className={`h-8 flex-row items-center justify-center rounded-full bg-primary px-3.5 hover:opacity-90 active:opacity-80 ${payingKey === item.key ? 'opacity-60' : ''}`}
+                      disabled={payingKey === item.key}
+                      nativeID={`${id}-pay`}
+                      onPress={() => onPay(item)}
+                      testID={`${id}-pay`}
+                    >
+                      {payingKey === item.key ? <ActivityIndicator color="#111518" size="small" /> : (
+                        <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${id}-pay-label`} testID={`${id}-pay-label`}>
+                          Pagar
+                        </Text>
+                      )}
+                    </Pressable>
+                  )
                 ) : dueText}
               </View>
             </View>

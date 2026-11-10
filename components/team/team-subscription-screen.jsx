@@ -206,7 +206,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
 
         {confirming && (
           <View className="mb-4 flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="team-subscription-confirming-banner" testID="team-subscription-confirming-banner">
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color="#8cc63e" />
             <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID="team-subscription-confirming-banner-label" testID="team-subscription-confirming-banner-label">
               Confirmando pago…
             </Text>
@@ -216,7 +216,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
         <SectionCard icon="cash-multiple" title="Membresía" variant="nested">
           {loading ? (
             <View className="items-center py-6" nativeID="team-subscription-screen-loading" testID="team-subscription-screen-loading">
-              <ActivityIndicator color={colors.primary} />
+              <ActivityIndicator color="#8cc63e" />
             </View>
           ) : isFree ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="team-subscription-screen-free" testID="team-subscription-screen-free">

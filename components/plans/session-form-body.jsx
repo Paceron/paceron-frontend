@@ -96,7 +96,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
           testID={`${idPrefix}-series-toggle`}
         >
           <MaterialCommunityIcons color={isSeries ? '#8cc63e' : '#94a3b8'} name="repeat-variant" size={16} />
-          <Text className={`text-xs font-semibold ${isSeries ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-series-toggle-label`} testID={`${idPrefix}-series-toggle-label`}>
+          <Text className={`text-xs font-semibold ${isSeries ? 'text-on-primary-tint dark:text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-series-toggle-label`} testID={`${idPrefix}-series-toggle-label`}>
             Serie repetida
           </Text>
         </Pressable>

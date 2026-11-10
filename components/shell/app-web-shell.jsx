@@ -167,7 +167,7 @@ function TopBar({ isGuest, userName, userPhotoUrl, userInitials, activeRole, dro
                   <Text
                     className={`text-sm whitespace-nowrap ${
                       isActive
-                        ? 'font-semibold text-primary'
+                        ? 'font-semibold text-on-primary-tint dark:text-primary'
                         : 'font-medium text-slate-700 dark:text-slate-200'
                     }`}
                     nativeID={`web-shell-nav-tab-label-${route.name}`}
