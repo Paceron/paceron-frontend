@@ -71,7 +71,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
           ver streaks-tab.jsx), mismo patrón de kicker que el resto de las
           cards del Home (recent-trainings-card.jsx, next-training-banner.jsx). */}
       <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="streak-banner-kicker" testID="streak-banner-kicker">
-        Entrenamientos consecutivos
+        Estado de racha
       </Text>
       <View className="flex-row items-center gap-2" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
         <Animated.View nativeID="streak-banner-fire-icon" style={pulseStyle} testID="streak-banner-fire-icon">
@@ -79,7 +79,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
         </Animated.View>
         <View nativeID="streak-banner-current-text" testID="streak-banner-current-text">
           <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="streak-banner-current-value" testID="streak-banner-current-value">
-            {streaks.strict.current} días
+            {streaks.strict.current} días de  Entrenamientos Consecutivos
           </Text>
           <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="streak-banner-best-value" testID="streak-banner-best-value">
             Mejor racha: {streaks.strict.best} días
