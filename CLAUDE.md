@@ -364,6 +364,15 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   cableado: las tres opciones terminaban en error. Sumarlas implica cambios de back
   (pago sin token, estado pendiente con cupón) y de flujo (redirect fuera del
   WebView en nativo, como mp-connect).
+- **Las props del `<Payment>` del Brick tienen que ser referencias estables (2026-11-10).**
+  El wrapper de `@mercadopago/sdk-react` desmonta y recrea el brick cada vez que cambia
+  la referencia de `initialization`, `customization`, `onSubmit` u `onError` (son deps de
+  su `useEffect`). Con objetos/funciones inline, cualquier re-render lo reiniciaba: en
+  Chrome de Android, abrir el teclado achica la ventana, el shell re-renderiza por
+  `useWindowDimensions` y el formulario se recargaba perdiendo lo tipeado. Por eso
+  `checkout-brick.web.jsx` usa una constante de módulo, `useMemo` por valores y
+  callbacks estables que leen las props actuales desde un ref. Mismo criterio para
+  cualquier otro brick del SDK que se sume.
 - **Las cuotas que todavía no se pagaron no existen como filas.** El backend crea la
   cuota N+1 recién cuando se paga la N, así que lo pendiente por mes del gráfico (barra
   ámbar), "Por cobrar este mes" (Vencidos / A vencer, `payments-due-card.jsx`) y
