@@ -357,7 +357,8 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   con click/toque en web de celular, sin hover) que explica neto = bruto − comisión
   de Paceron. En angosto (`RECEIVED_COLUMNS_NARROW`) el equipo baja como segunda
   línea del corredor y el estado conserva su columna, porque se filtra por él. La
-  lista de Pagos no cambia: tabla en ancho, filas de dos líneas en angosto.
+  lista de Pagos también es tabla en angosto (`HISTORY_COLUMNS_NARROW`): tipo y
+  método bajan debajo del detalle y el botón del comprobante va debajo del monto.
   `formatNetLabel` y el "s/d" del gráfico quedan por si un neto vuelve a venir `null`.
 - **El checkout ofrece solo tarjeta de crédito y débito (2026-11-08).** El Brick
   (`checkout-brick.web.jsx`, `customization.paymentMethods`) habilitaba todo, pero

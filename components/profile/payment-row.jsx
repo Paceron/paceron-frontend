@@ -60,7 +60,7 @@ const RECEIVED_AMOUNT_COLUMN = {
   align: 'right',
   hint: {
     title: 'Monto neto',
-    description: 'Es lo que te queda de cada cuota: lo que pagó el corredor (monto bruto) menos la comisión de Paceron, que es un porcentaje del bruto.\n\nMonto neto = monto bruto − comisión de Paceron.\n\nEs posible que después se apliquen otros impuestos o retenciones que no figuran acá.',
+    description: 'Corresponde a lo que recibís por cada cuota: el importe abonado por el corredor (monto bruto) menos la comisión de Paceron, calculada como un porcentaje del monto bruto.\n\nMonto neto = monto bruto − comisión de Paceron.\n\nEste monto no contempla impuestos, retenciones ni comisiones de procesamiento de pagos que puedan aplicarse posteriormente.',
   },
 };
 
@@ -89,6 +89,15 @@ export const HISTORY_COLUMNS = [
   { key: 'receipt', label: '', flex: 1.3, align: 'right' },
 ];
 
+// Pagos en angosto: también tabla. Tipo y método bajan como segunda línea del
+// detalle, y el botón del comprobante va debajo del monto.
+export const HISTORY_COLUMNS_NARROW = [
+  { key: 'date', label: 'Fecha', flex: 1.15 },
+  { key: 'detail', label: 'Detalle', flex: 1.9 },
+  { key: 'status', label: 'Estado', flex: 1.3 },
+  { key: 'amount', label: 'Monto', flex: 1.3, align: 'right' },
+];
+
 function Cell({ column, id, children }) {
   return (
     <View nativeID={`${id}-${column.key}`} style={{ flex: column.flex, alignItems: column.align === 'right' ? 'flex-end' : 'flex-start' }} testID={`${id}-${column.key}`}>
@@ -97,10 +106,10 @@ function Cell({ column, id, children }) {
   );
 }
 
-function CellText({ id, children, strong = false, muted = false, compact = false }) {
+function CellText({ id, children, strong = false, muted = false, compact = false, lines = 1 }) {
   const tone = muted ? 'text-slate-400 dark:text-slate-500' : strong ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200';
   return (
-    <Text className={`${compact ? 'text-xs' : 'text-sm'} ${tone}`} nativeID={id} numberOfLines={1} style={TABULAR} testID={id}>
+    <Text className={`${compact ? 'text-xs' : 'text-sm'} ${tone}`} nativeID={id} numberOfLines={lines} style={TABULAR} testID={id}>
       {children}
     </Text>
   );
@@ -171,7 +180,7 @@ function HistoryRow({ payment, isWide, id, date, onReceipt, busy }) {
         content={{
           date: <CellText id={`${id}-date-text`}>{date}</CellText>,
           type: <CellText id={`${id}-type-text`}>{paymentTypeLabel(payment.type)}</CellText>,
-          detail: <CellText id={`${id}-detail-text`} strong>{detail}</CellText>,
+          detail: <CellText id={`${id}-detail-text`} lines={2} strong>{detail}</CellText>,
           method: <CellText id={`${id}-method-text`}>{method}</CellText>,
           status: <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />,
           amount: <CellText id={`${id}-amount-text`} strong>{formatArs(payment.amount)}</CellText>,
@@ -182,19 +191,29 @@ function HistoryRow({ payment, isWide, id, date, onReceipt, busy }) {
     );
   }
   return (
-    <View className="gap-1.5 border-b border-slate-100 px-4 py-3 dark:border-slate-800" nativeID={id} testID={id}>
-      <View className="flex-row items-baseline justify-between gap-3" nativeID={`${id}-top`} testID={`${id}-top`}>
-        <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-title`} numberOfLines={2} testID={`${id}-title`}>{detail}</Text>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-amount`} style={TABULAR} testID={`${id}-amount`}>{formatArs(payment.amount)}</Text>
-      </View>
-      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={1} testID={`${id}-subtitle`}>
-        {`${paymentTypeLabel(payment.type)} · ${method} · ${date}`}
-      </Text>
-      <View className="flex-row items-center justify-between gap-3" nativeID={`${id}-bottom`} testID={`${id}-bottom`}>
-        <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />
-        <ReceiptButton busy={busy} compact id={id} onReceipt={onReceipt} payment={payment} />
-      </View>
-    </View>
+    <WideRow
+      columns={HISTORY_COLUMNS_NARROW}
+      compact
+      content={{
+        date: <CellText compact id={`${id}-date-text`}>{date}</CellText>,
+        detail: (
+          <View className="w-full" nativeID={`${id}-detail`} testID={`${id}-detail`}>
+            <CellText compact id={`${id}-detail-text`} lines={4} strong>{detail}</CellText>
+            <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-subtitle`} numberOfLines={2} testID={`${id}-subtitle`}>
+              {`${paymentTypeLabel(payment.type)} · ${method}`}
+            </Text>
+          </View>
+        ),
+        status: <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />,
+        amount: (
+          <View className="items-end gap-1.5" nativeID={`${id}-amount`} testID={`${id}-amount`}>
+            <CellText compact id={`${id}-amount-text`} strong>{formatArs(payment.amount)}</CellText>
+            <ReceiptButton busy={busy} compact id={id} onReceipt={onReceipt} payment={payment} />
+          </View>
+        ),
+      }}
+      id={id}
+    />
   );
 }
 
