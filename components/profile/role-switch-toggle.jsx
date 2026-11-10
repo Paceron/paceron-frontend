@@ -147,7 +147,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
             wide={wide}
           />
         </View>
-        {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
+        {showTierLink && activeRole === 'trainer' && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
       </View>
     );
   }
@@ -196,7 +196,7 @@ export function RoleSwitchToggle({ onClose, onUpgradeTier, wide = false, showTie
           wide={wide}
         />
       </View>
-      {showTierLink && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
+      {showTierLink && activeRole === 'trainer' && <TierUpgradeLink className="mt-2" onPress={onUpgradeTier} />}
     </View>
   );
 }

@@ -167,7 +167,7 @@ export function NumberFieldWithSuggestions({
               >
                 {isSelected ? <MaterialCommunityIcons color={colors.primary} name="check" size={14} /> : null}
                 <Text
-                  className={`text-xs font-semibold ${isSelected ? 'text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+                  className={`text-xs font-semibold ${isSelected ? 'text-on-primary-tint dark:text-primary' : 'text-slate-700 dark:text-slate-200'}`}
                   nativeID={`${chipIds}-label`}
                   testID={`${chipIds}-label`}
                 >

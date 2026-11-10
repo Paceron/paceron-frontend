@@ -208,7 +208,7 @@ export function SessionExerciseComparison({
 
   const comparisonTabs = [
     { id: 'sessions', label: 'Sesiones A/B', icon: 'compare-horizontal' },
-    ...(periodComparison ? [{ id: 'periods', label: 'Períodos', icon: 'calendar-range' }] : []),
+    ...(false ? [{ id: 'periods', label: 'Períodos', icon: 'calendar-range' }] : []),
   ];
   const currentComparisonMode = comparisonTabs.some((tab) => tab.id === comparisonMode) ? comparisonMode : 'sessions';
   const comparisonDataLoading = currentComparisonMode === 'sessions' && (

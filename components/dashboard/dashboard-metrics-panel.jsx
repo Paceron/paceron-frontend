@@ -93,7 +93,7 @@ export function DashboardMetricsPanel({
         onChange={setActive}
         scope={`${id}-tabs`}
         tabs={tabs}
-        variant="compact"
+        variant="default"
       />
       <View
         aria-labelledby={`${id}-tabs-${current}`}

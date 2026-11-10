@@ -76,7 +76,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
   if (loadingTeam || loadingInvitations || loadingGroups) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color="#8cc63e" />
       </View>
     );
   }

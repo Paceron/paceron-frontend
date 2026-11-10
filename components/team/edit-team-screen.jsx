@@ -36,13 +36,12 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 // valor inicial una vez).
 function EditTeamScreenContent({ teamId }) {
   const router = useRouter();
-  const colors = useThemeColors();
   const { team, loading } = useTeam(teamId);
 
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-team-loading" testID="edit-team-loading">
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color="#8cc63e" />
       </View>
     );
   }

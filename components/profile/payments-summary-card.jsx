@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -15,7 +15,6 @@ import {
   selectCurrentAndPrevious,
 } from '../../utils/payments-summary.js';
 import { SectionCard } from '../forms/section-card.jsx';
-import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 
 // Resumen de cobros en Mi perfil, solo con el rol entrenador activo (el gate
@@ -31,7 +30,7 @@ export function PaymentsSummaryCard() {
     <Pressable
       className="flex-row items-center gap-1 rounded-full px-2 py-1 hover:bg-green-100 active:opacity-70 dark:hover:bg-green-900/30"
       nativeID="profile-payments-card-see-all"
-      onPress={() => router.push('/profile/payments')}
+      onPress={() => router.push('/profile/payments?from=profile')}
       testID="profile-payments-card-see-all"
     >
       <Text className="text-sm font-semibold text-green-700 dark:text-green-400" nativeID="profile-payments-card-see-all-label" testID="profile-payments-card-see-all-label">
@@ -43,11 +42,11 @@ export function PaymentsSummaryCard() {
 
   let body;
   if (loading) {
+    // Misma ruedita que "Rendimiento" y "Configuración de Membresía": un solo
+    // spinner centrado en vez de tres esqueletos de tiles.
     body = (
-      <View className={isWide ? 'flex-row gap-3' : 'gap-3'} nativeID="profile-payments-card-loading" testID="profile-payments-card-loading">
-        {[0, 1, 2].map((i) => (
-          <SkeletonBlock key={i} className="flex-1" height={96} nativeID={`profile-payments-card-skeleton-${i}`} rounded="rounded-2xl" testID={`profile-payments-card-skeleton-${i}`} />
-        ))}
+      <View className="items-center justify-center py-10" nativeID="profile-payments-card-loading" testID="profile-payments-card-loading">
+        <ActivityIndicator color="#8cc63e" nativeID="profile-payments-card-loading-spinner" size="large" testID="profile-payments-card-loading-spinner" />
       </View>
     );
   } else if (failed) {
@@ -96,7 +95,7 @@ export function PaymentsSummaryCard() {
   }
 
   return (
-    <SectionCard headerRight={seeAll} icon="cash-multiple" scope="profile-payments-card" title="Finanzas" variant="amber">
+    <SectionCard headerRight={seeAll} icon="cash-multiple" scope="profile-payments-card" title="Finanzas" variant="nested">
       {body}
     </SectionCard>
   );

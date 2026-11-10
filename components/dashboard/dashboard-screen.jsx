@@ -652,7 +652,7 @@ export function DashboardScreen({ teamId }) {
                       onRankingLoadingChange={setRankingLoading}
                       onGranularityChange={setGranularity}
                       radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
-                      renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null, onLoadingChange = null }) => (
+                      renderRanking={false ? ({ reportMode = false, captureRef = null, onReportReady = null, onLoadingChange = null }) => (
                         <TeamRankingSection
                           captureRef={captureRef}
                           onLoadingChange={onLoadingChange}
@@ -717,7 +717,7 @@ export function DashboardScreen({ teamId }) {
               kind={effectiveKind}
               onGranularityChange={setGranularity}
               radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
-              renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null }) => (
+              renderRanking={false ? ({ reportMode = false, captureRef = null, onReportReady = null }) => (
                 <TeamRankingSection
                   captureRef={captureRef}
                   onReportReady={onReportReady}

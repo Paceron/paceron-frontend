@@ -15,7 +15,7 @@ export function PaymentsHistoryCard() {
     <Pressable
       className="flex-row items-center gap-1 rounded-full px-2 py-1 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
       nativeID="profile-payments-history-card-see-all"
-      onPress={() => router.push('/profile/payments')}
+      onPress={() => router.push('/profile/payments?from=profile')}
       testID="profile-payments-history-card-see-all"
     >
       <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="profile-payments-history-card-see-all-label" testID="profile-payments-history-card-see-all-label">
