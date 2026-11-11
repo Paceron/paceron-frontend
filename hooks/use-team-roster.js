@@ -57,7 +57,12 @@ export function useTeamRoster(teamId, groupIds = []) {
       return {
         id: String(teamUserDto.user_id),
         userId: String(teamUserDto.user_id),
-        name: `${user.name ?? ''} ${user.surname ?? ''}`.trim() || user.email,
+        // Si el backend no trae name/surname/email para este usuario (visto
+        // 2026-11-11 con corredores demo), nunca dejar la fila con la
+        // identidad en blanco -- un placeholder visible es preferible a que
+        // la fila parezca rota, aunque el dato real sea un problema de
+        // datos del backend, no de este mapeo.
+        name: `${user.name ?? ''} ${user.surname ?? ''}`.trim() || user.email || 'Corredor sin datos',
         email: user.email,
         photoUrl: user.photo_url ?? null,
         groupId: groupIdByUserId.get(teamUserDto.user_id) ?? null,
