@@ -25,6 +25,7 @@ import { CalendarKindLegend } from '../calendar/calendar-kind-legend.jsx';
 import { StampPlanModal } from './stamp-plan-modal.jsx';
 import { ShiftDayModal } from './shift-day-modal.jsx';
 import { CalendarDayMenu } from './calendar-day-menu.jsx';
+import { GroupDayContentModal } from './group-day-content-modal.jsx';
 import { BulkEditDaysModal } from './bulk-edit-days-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { CalendarMonthYearHeader } from '../calendar/calendar-month-year-header.jsx';
@@ -54,7 +55,7 @@ const KIND_FILLED_CLASS = {
   cancelled: 'border-red-200 bg-red-400 dark:border-red-400 dark:bg-red-600',
 };
 
-function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMenu, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
+function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMenu, onOpenContent, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
@@ -81,6 +82,10 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
     if (selectionActive) {
       if (!canSelect) return;
       onToggleSelect(date.dateString);
+      return;
+    }
+    if (marking && marking.kind !== 'rest') {
+      onOpenContent(date.dateString);
       return;
     }
     if (!containerRef.current || !cellRef.current) return;
@@ -213,6 +218,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
   const screenRootRef = useRef(null);
   const [openDayMenu, setOpenDayMenu] = useState(null);
+  const [openDayContent, setOpenDayContent] = useState(null);
   const [selectedDates, setSelectedDates] = useState(new Set());
   const [selectionClosedClass, setSelectionClosedClass] = useState(null);
   const [bulkEditModalVisible, setBulkEditModalVisible] = useState(false);
@@ -222,6 +228,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial, presencialTimeFrom: d.presencialTimeFrom, presencialTimeTo: d.presencialTimeTo }])),
     [days],
   );
+  const daysByDate = useMemo(() => Object.fromEntries(days.map((d) => [d.date, d])), [days]);
   const monthCounts = useMemo(() => summarizeMonthDays(days), [days]);
 
   const handleOpenDayMenu = (dateString, anchor) => {
@@ -230,15 +237,19 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
 
   const handleCloseDayMenu = () => setOpenDayMenu(null);
 
-  const handleAssignOrEdit = () => {
-    const date = openDayMenu.date;
-    handleCloseDayMenu();
+  const handleOpenDayContent = (dateString) => setOpenDayContent(dateString);
+  const handleCloseDayContent = () => setOpenDayContent(null);
+
+  // Parametrizados por `date` (en vez de leer openDayMenu.date del
+  // closure) para que los use tanto el dropdown anclado (CalendarDayMenu,
+  // días vacíos/descanso) como el modal centrado (GroupDayContentModal,
+  // días con contenido) -- cada caller decide cuándo cerrar su propia UI
+  // antes de invocar la acción (ver los dos call sites más abajo).
+  const handleAssignOrEdit = (date) => {
     router.push(`/teams/${teamId}/groups/${groupId}/calendar/${date}`);
   };
 
-  const handleClearDay = async () => {
-    const date = openDayMenu.date;
-    handleCloseDayMenu();
+  const handleClearDay = async (date) => {
     const result = await deleteDay({ date });
     if (!result.success) {
       notifyError();
@@ -249,29 +260,21 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     Toast.show({ type: 'success', text1: 'Día vaciado' });
   };
 
-  const handleCancelSession = () => {
-    const date = openDayMenu.date;
-    handleCloseDayMenu();
+  const handleCancelSession = (date) => {
     router.push(`/teams/${teamId}/groups/${groupId}/calendar/${date}?action=cancel`);
   };
 
-  const handleSelectDay = () => {
-    const date = openDayMenu.date;
+  const handleSelectDay = (date) => {
     const marking = markingsByDate[date];
-    handleCloseDayMenu();
     setSelectedDates(new Set([date]));
     setSelectionClosedClass(isCalendarDayClosed(date, marking ?? {}));
   };
 
-  const handleStampFromDay = () => {
-    const date = openDayMenu.date;
-    handleCloseDayMenu();
+  const handleStampFromDay = (date) => {
     setStampTargetDate(date);
   };
 
-  const handleShiftFromDay = () => {
-    const date = openDayMenu.date;
-    handleCloseDayMenu();
+  const handleShiftFromDay = (date) => {
     setShiftTargetDate(date);
   };
 
@@ -315,6 +318,9 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
 
   const openMarking = openDayMenu ? markingsByDate[openDayMenu.date] : null;
   const openClosed = openDayMenu && openMarking ? isCalendarDayClosed(openDayMenu.date, openMarking) : false;
+
+  const openContentDay = openDayContent ? daysByDate[openDayContent] : null;
+  const openContentClosed = openContentDay ? isCalendarDayClosed(openDayContent, openContentDay) : false;
 
   const { refreshing, onRefresh } = usePullToRefresh(() => (
     queryClient.invalidateQueries({ queryKey: ['group-calendar', groupId] })
@@ -467,6 +473,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                   isMenuOpen={openDayMenu?.date === date.dateString}
                   isToday={date.dateString === todayIso}
                   marking={markingsByDate[date.dateString]}
+                  onOpenContent={handleOpenDayContent}
                   onOpenMenu={handleOpenDayMenu}
                   onToggleSelect={handleToggleDaySelection}
                   selected={selectedDates.has(date.dateString)}
@@ -503,15 +510,29 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
             closed={openClosed}
             hasContent={Boolean(openMarking)}
             isTraining={openMarking?.kind === 'training'}
-            onAssignOrEdit={handleAssignOrEdit}
-            onCancel={handleCancelSession}
-            onClear={handleClearDay}
-            onSelect={handleSelectDay}
-            onShift={handleShiftFromDay}
-            onStamp={handleStampFromDay}
+            onAssignOrEdit={() => { handleCloseDayMenu(); handleAssignOrEdit(openDayMenu.date); }}
+            onCancel={() => { handleCloseDayMenu(); handleCancelSession(openDayMenu.date); }}
+            onClear={() => { handleCloseDayMenu(); handleClearDay(openDayMenu.date); }}
+            onSelect={() => { handleCloseDayMenu(); handleSelectDay(openDayMenu.date); }}
+            onShift={() => { handleCloseDayMenu(); handleShiftFromDay(openDayMenu.date); }}
+            onStamp={() => { handleCloseDayMenu(); handleStampFromDay(openDayMenu.date); }}
           />
         )}
       </AnimatedDropdown>
+
+      <GroupDayContentModal
+        closed={openContentClosed}
+        day={openContentDay}
+        groupId={groupId}
+        onCancel={handleCancelSession}
+        onClear={handleClearDay}
+        onClose={handleCloseDayContent}
+        onSelect={handleSelectDay}
+        onShift={handleShiftFromDay}
+        onStamp={handleStampFromDay}
+        teamId={teamId}
+        visible={Boolean(openDayContent)}
+      />
 
       <StampPlanModal
         groupId={groupId}
