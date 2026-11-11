@@ -218,7 +218,11 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
             </Text>
           </View>
 
-          {existingDay && <StartSessionButton assignment={existingDay} role="trainer" teamId={teamId} />}
+          {existingDay && (
+            <View className="mb-4" nativeID="group-calendar-day-screen-start-session-button" testID="group-calendar-day-screen-start-session-button">
+              <StartSessionButton assignment={existingDay} role="trainer" teamId={teamId} />
+            </View>
+          )}
 
           <SectionCard icon="calendar-blank-outline" title={`Día de ${group.name}`} variant="nested">
             {closed && (
