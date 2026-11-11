@@ -1,24 +1,38 @@
 import { Pressable, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+const MENU_CLASS = 'flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800';
+// Pill: mismo lenguaje visual que Editar/Estampar en GroupDayContentModal
+// (icono+texto centrado, borde redondeado) -- a diferencia de MENU_CLASS
+// (fila de dropdown, texto a la izquierda). `w-[48%]` fijo acá porque el
+// caller (GroupDayContentModal) las monta todas sueltas dentro de un
+// `flex-row flex-wrap` de 2 columnas, sin wrapper propio por ítem.
+const PILL_CLASS = 'w-[48%] h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 px-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800';
+const PILL_TEXT_CLASS = 'text-xs font-semibold uppercase tracking-wide';
+
 // Las 4 acciones menos frecuentes de un día del calendario de grupo --
 // compartidas entre CalendarDayMenu (día vacío/descanso, dropdown anclado
-// a la celda) y el overflow "..." de GroupDayContentModal (día con
-// contenido, modal centrado). Nunca se montan los dos a la vez, así que
-// comparten esta lista sin pisarse ids -- cada caller pasa su propio
-// `idPrefix`.
-export function CalendarDayOverflowActions({ hasContent, closed, isTraining, onClear, onCancel, onSelect, onShift, idPrefix }) {
+// a la celda, variant 'menu') y GroupDayContentModal (día con contenido,
+// modal centrado, variant 'pill' -- 2026-11-11, reemplaza el overflow
+// "..." que antes las escondía: ahora se muestran todas siempre). Nunca
+// se montan los dos variants a la vez, así que comparten ids sin
+// pisarse -- cada caller pasa su propio `idPrefix`.
+export function CalendarDayOverflowActions({ hasContent, closed, isTraining, onClear, onCancel, onSelect, onShift, idPrefix, variant = 'menu' }) {
+  const isPill = variant === 'pill';
+  const rowClass = isPill ? PILL_CLASS : MENU_CLASS;
+  const textClass = isPill ? PILL_TEXT_CLASS : 'text-sm';
+
   return (
     <>
       {hasContent && !closed && (
         <Pressable
-          className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+          className={rowClass}
           nativeID={`${idPrefix}-clear`}
           onPress={onClear}
           testID={`${idPrefix}-clear`}
         >
           <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={16} />
-          <Text className="text-sm text-red-600 dark:text-red-400" nativeID={`${idPrefix}-clear-label`} testID={`${idPrefix}-clear-label`}>
+          <Text className={`${textClass} text-red-600 dark:text-red-400`} nativeID={`${idPrefix}-clear-label`} numberOfLines={isPill ? 1 : undefined} testID={`${idPrefix}-clear-label`}>
             Vaciar día
           </Text>
         </Pressable>
@@ -26,38 +40,38 @@ export function CalendarDayOverflowActions({ hasContent, closed, isTraining, onC
 
       {isTraining && (
         <Pressable
-          className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+          className={rowClass}
           nativeID={`${idPrefix}-cancel`}
           onPress={onCancel}
           testID={`${idPrefix}-cancel`}
         >
           <MaterialCommunityIcons color="#d97706" name="calendar-remove-outline" size={16} />
-          <Text className="text-sm text-amber-700 dark:text-amber-400" nativeID={`${idPrefix}-cancel-label`} testID={`${idPrefix}-cancel-label`}>
+          <Text className={`${textClass} text-amber-700 dark:text-amber-400`} nativeID={`${idPrefix}-cancel-label`} numberOfLines={isPill ? 1 : undefined} testID={`${idPrefix}-cancel-label`}>
             Cancelar sesión
           </Text>
         </Pressable>
       )}
 
       <Pressable
-        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        className={rowClass}
         nativeID={`${idPrefix}-select`}
         onPress={onSelect}
         testID={`${idPrefix}-select`}
       >
         <MaterialCommunityIcons color="#64748b" name="checkbox-marked-outline" size={16} />
-        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-select-label`} testID={`${idPrefix}-select-label`}>
+        <Text className={`${textClass} text-slate-700 dark:text-slate-200`} nativeID={`${idPrefix}-select-label`} numberOfLines={isPill ? 1 : undefined} testID={`${idPrefix}-select-label`}>
           Seleccionar
         </Text>
       </Pressable>
 
       <Pressable
-        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+        className={rowClass}
         nativeID={`${idPrefix}-shift`}
         onPress={onShift}
         testID={`${idPrefix}-shift`}
       >
         <MaterialCommunityIcons color="#64748b" name="arrow-right-bold-outline" size={16} />
-        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-shift-label`} testID={`${idPrefix}-shift-label`}>
+        <Text className={`${textClass} text-slate-700 dark:text-slate-200`} nativeID={`${idPrefix}-shift-label`} numberOfLines={isPill ? 1 : undefined} testID={`${idPrefix}-shift-label`}>
           Desplazar desde acá
         </Text>
       </Pressable>

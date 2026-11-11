@@ -110,11 +110,15 @@ function DayDetailRowMenu({ assignment, idPrefix, onClose, onRequestClear }) {
 }
 
 // Tarjeta inspirada en el hero de next-training-banner.jsx (Home): arranca
-// con fecha (kicker) + nombre de sesión (título grande), en vez de abrir
-// con equipo/grupo como antes -- eso queda como línea secundaria debajo.
-// "Ir a este día" se eliminó (2026-11-11): para variant 'administered' hace
-// exactamente lo mismo que "Editar" en DayDetailRowMenu (mismo router.push),
-// un botón duplicado que no aportaba nada.
+// con el nombre de la sesión (título grande) en vez de equipo/grupo como
+// antes -- eso queda como línea secundaria debajo. Sin fecha propia por
+// fila (2026-11-11, sacada tras feedback): el modal ya la muestra una
+// sola vez en su título (`day-detail-modal-title` más abajo), repetirla
+// en cada card solo dejaba un hueco vacío entre fecha y título sin aportar
+// nada. "Ir a este día" se eliminó (2026-11-11): para variant
+// 'administered' hace exactamente lo mismo que "Editar" en
+// DayDetailRowMenu (mismo router.push), un botón duplicado que no
+// aportaba nada.
 function AssignmentRow({ assignment, variant, cardRef, onOpenMenu }) {
   const colors = useThemeColors();
   const idPrefix = `day-detail-assignment-${assignment.id}`;
@@ -129,16 +133,13 @@ function AssignmentRow({ assignment, variant, cardRef, onOpenMenu }) {
       testID={idPrefix}
     >
       <View className="mb-1 flex-row items-start justify-between" nativeID={`${idPrefix}-top`} testID={`${idPrefix}-top`}>
-        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
-          {formatWeekdayLabel(assignment.date, { short: true })}, {formatDisplayDate(assignment.date)}
+        <Text className="flex-1 pr-2 text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
+          {title}
         </Text>
         {variant === 'administered' && (
           <MenuToggle assignment={assignment} cardRef={cardRef} idPrefix={`${idPrefix}-menu-toggle`} onOpenMenu={onOpenMenu} />
         )}
       </View>
-      <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
-        {title}
-      </Text>
       {!isCancelled && exerciseCount > 0 && (
         <Text className="mt-0.5 text-xs text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-session-count`} testID={`${idPrefix}-session-count`}>
           {exerciseCount} ejercicio{exerciseCount === 1 ? '' : 's'}
@@ -168,7 +169,7 @@ function AssignmentRow({ assignment, variant, cardRef, onOpenMenu }) {
         </View>
       )}
       {variant === 'member' && (
-        <View className="mt-2" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+        <View className="mt-2 w-full" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
           <StartSessionButton assignment={assignment} role="runner" />
         </View>
       )}
@@ -188,7 +189,7 @@ function AssignmentRow({ assignment, variant, cardRef, onOpenMenu }) {
         </View>
       )}
       {variant === 'administered' && (
-        <View className="mt-2" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+        <View className="mt-2 w-full" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
           <StartSessionButton assignment={assignment} fill role="trainer" />
         </View>
       )}

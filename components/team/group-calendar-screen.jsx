@@ -55,7 +55,7 @@ const KIND_FILLED_CLASS = {
   cancelled: 'border-red-200 bg-red-400 dark:border-red-400 dark:bg-red-600',
 };
 
-function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMenu, onOpenContent, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
+function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, onOpenMenu, onOpenContent, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
@@ -76,6 +76,15 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
   // amber de "otra actividad" en vez de en el estilo vacío (2026-11-10).
   const isPlainFilledDay = Boolean(marking) && marking.kind !== 'rest' && !isOtherMonth && !selected && !isMenuOpen && !isToday;
   const tooltipLabel = buildCalendarDayTooltipLabel(marking);
+  // Difuminado de días pasados (2026-11-11) -- para que los días futuros
+  // "brillen" más por contraste. Solo en el día "plano" (mismo criterio
+  // que isPlainFilledDay más arriba): today/selected/menú abierto ya
+  // tienen su propio tratamiento visual y no se les toca nada acá.
+  const cellOpacity = selectionActive && !canSelect
+    ? 0.35
+    : isPast && !isOtherMonth && !selected && !isMenuOpen && !isToday
+      ? 0.55
+      : 1;
 
   const handlePress = () => {
     if (!canManage || isOtherMonth) return;
@@ -127,7 +136,7 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
       className={`h-14 w-full items-center justify-start p-1 gap-1 rounded-xl ${borderClass}`}
       nativeID={`group-calendar-day-${date.dateString}`}
       onPress={handlePress}
-      style={{ opacity: selectionActive && !canSelect ? 0.35 : 1 }}
+      style={{ opacity: cellOpacity }}
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
@@ -472,6 +481,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                   date={date}
                   isMenuOpen={openDayMenu?.date === date.dateString}
                   isToday={date.dateString === todayIso}
+                  isPast={date.dateString < todayIso}
                   marking={markingsByDate[date.dateString]}
                   onOpenContent={handleOpenDayContent}
                   onOpenMenu={handleOpenDayMenu}

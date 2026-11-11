@@ -1,4 +1,3 @@
-import { useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,26 +7,27 @@ import { isWeb } from '../../utils/platform.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { KIND_LABELS, KIND_CARD_CLASS } from '../../utils/calendar-kind-colors.js';
 import { StartSessionButton } from '../calendar/start-session-button.jsx';
-import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { CalendarDayOverflowActions } from './calendar-day-overflow-actions.jsx';
 
 const idPrefix = 'group-day-content-modal';
+// Mismo lenguaje de pill que CalendarDayOverflowActions en variant='pill'
+// (ancho fijo 48% -- las dos filas comparten un único `flex-row flex-wrap`
+// de 2 columnas, 2026-11-11: reemplaza el overflow "..." que escondía
+// Vaciar/Cancelar/Seleccionar/Desplazar -- ahora se muestran todas).
+const PILL_CLASS = 'w-[48%] h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 px-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800';
+const PILL_TEXT_CLASS = 'text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200';
 
 // Modal centrado con contenido asignado + acciones -- reemplaza a
 // CalendarDayMenu solo para días con marking y kind !== 'rest' (ver
-// group-calendar-screen.jsx). Editar/Estampar se promueven a pills
-// propios; las 4 acciones menos frecuentes (Vaciar/Cancelar/Seleccionar/
-// Desplazar) quedan en un overflow "..." vía CalendarDayOverflowActions,
-// el mismo componente que usa CalendarDayMenu.
+// group-calendar-screen.jsx). Todas las acciones (StartSessionButton,
+// Editar, Estampar, Vaciar/Cancelar/Seleccionar/Desplazar) se muestran
+// siempre, en una grilla de 2 columnas -- en ambos layouts (ancho/angosto)
+// entran perfecto y la columna queda mucho más baja que una lista vertical.
 export function GroupDayContentModal({ visible, day, teamId, groupId, closed, onClose, onClear, onCancel, onSelect, onShift, onStamp }) {
   const router = useRouter();
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const isWideLayout = isWeb && !isNarrowWeb;
-  const [overflowOpen, setOverflowOpen] = useState(false);
-  const [overflowAnchor, setOverflowAnchor] = useState(null);
-  const cardRef = useRef(null);
-  const overflowButtonRef = useRef(null);
 
   if (!day) return null;
 
@@ -35,16 +35,6 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
   const isTraining = day.kind === 'training';
   const kindLabel = day.kind === 'other' ? (day.otherName || KIND_LABELS.other) : (KIND_LABELS[day.kind] ?? KIND_LABELS.other);
   const exerciseCount = day.sessionInstance?.exercises?.length ?? 0;
-
-  const handleOpenOverflow = () => {
-    if (!cardRef.current || !overflowButtonRef.current) return;
-    cardRef.current.measureInWindow((containerX, containerY) => {
-      overflowButtonRef.current?.measureInWindow((x, y, width, height) => {
-        setOverflowAnchor({ x: x - containerX, y: y - containerY + height + 4 });
-      });
-    });
-    setOverflowOpen(true);
-  };
 
   const handleEdit = () => {
     onClose();
@@ -56,8 +46,7 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
     onStamp(day.date);
   };
 
-  const handleOverflowAction = (action) => {
-    setOverflowOpen(false);
+  const handleSecondaryAction = (action) => {
     onClose();
     action(day.date);
   };
@@ -66,10 +55,9 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
     <Modal animationType="fade" nativeID={idPrefix} onRequestClose={onClose} testID={idPrefix} transparent visible={visible}>
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
         <Pressable
-          className={`relative w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface ${isWideLayout ? 'max-w-2xl flex-row gap-4' : 'max-w-md gap-4'}`}
+          className={`relative w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface ${isWideLayout ? 'max-w-3xl flex-row gap-4' : 'max-w-md gap-4'}`}
           nativeID={`${idPrefix}-card`}
           onPress={() => {}}
-          ref={cardRef}
           testID={`${idPrefix}-card`}
         >
           <View className={`rounded-xl border p-3 ${isWideLayout ? 'flex-1' : ''} ${KIND_CARD_CLASS[day.kind] ?? KIND_CARD_CLASS.other}`} nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
@@ -96,58 +84,48 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
             )}
           </View>
 
-          <View className={isWideLayout ? 'w-40 gap-2' : 'gap-2'} nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
-            <StartSessionButton assignment={day} role="trainer" teamId={teamId} />
-            <Pressable
-              className="h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
-              nativeID={`${idPrefix}-edit`}
-              onPress={handleEdit}
-              testID={`${idPrefix}-edit`}
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={14} />
-              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-edit-label`} testID={`${idPrefix}-edit-label`}>
-                Editar
-              </Text>
-            </Pressable>
-            {!closed && (
+          <View className={isWideLayout ? 'w-72' : 'w-full'} nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+            <View className="w-full" nativeID={`${idPrefix}-start-session-slot`} testID={`${idPrefix}-start-session-slot`}>
+              <StartSessionButton assignment={day} role="trainer" teamId={teamId} />
+            </View>
+            <View className="mt-2 flex-row flex-wrap gap-2" nativeID={`${idPrefix}-actions-grid`} testID={`${idPrefix}-actions-grid`}>
               <Pressable
-                className="h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
-                nativeID={`${idPrefix}-stamp`}
-                onPress={handleStamp}
-                testID={`${idPrefix}-stamp`}
+                className={PILL_CLASS}
+                nativeID={`${idPrefix}-edit`}
+                onPress={handleEdit}
+                testID={`${idPrefix}-edit`}
               >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="stamper" size={14} />
-                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-stamp-label`} testID={`${idPrefix}-stamp-label`}>
-                  Estampar plan
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={14} />
+                <Text className={PILL_TEXT_CLASS} nativeID={`${idPrefix}-edit-label`} numberOfLines={1} testID={`${idPrefix}-edit-label`}>
+                  Editar
                 </Text>
               </Pressable>
-            )}
-            <Pressable
-              accessibilityLabel="Más acciones"
-              className="h-9 w-9 items-center justify-center self-end rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID={`${idPrefix}-overflow-trigger`}
-              onPress={handleOpenOverflow}
-              ref={overflowButtonRef}
-              testID={`${idPrefix}-overflow-trigger`}
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-horizontal" size={18} />
-            </Pressable>
-          </View>
-
-          <AnimatedDropdown anchorStyle={overflowAnchor ? { right: 8, top: overflowAnchor.y } : {}} onClose={() => setOverflowOpen(false)} open={overflowOpen}>
-            <View className="w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-overflow-panel`} testID={`${idPrefix}-overflow-panel`}>
+              {!closed && (
+                <Pressable
+                  className={PILL_CLASS}
+                  nativeID={`${idPrefix}-stamp`}
+                  onPress={handleStamp}
+                  testID={`${idPrefix}-stamp`}
+                >
+                  <MaterialCommunityIcons color={colors.onSurfaceVariant} name="stamper" size={14} />
+                  <Text className={PILL_TEXT_CLASS} nativeID={`${idPrefix}-stamp-label`} numberOfLines={1} testID={`${idPrefix}-stamp-label`}>
+                    Estampar plan
+                  </Text>
+                </Pressable>
+              )}
               <CalendarDayOverflowActions
                 closed={closed}
                 hasContent
-                idPrefix={`${idPrefix}-overflow`}
+                idPrefix={`${idPrefix}-action`}
                 isTraining={isTraining}
-                onCancel={() => handleOverflowAction(onCancel)}
-                onClear={() => handleOverflowAction(onClear)}
-                onSelect={() => handleOverflowAction(onSelect)}
-                onShift={() => handleOverflowAction(onShift)}
+                onCancel={() => handleSecondaryAction(onCancel)}
+                onClear={() => handleSecondaryAction(onClear)}
+                onSelect={() => handleSecondaryAction(onSelect)}
+                onShift={() => handleSecondaryAction(onShift)}
+                variant="pill"
               />
             </View>
-          </AnimatedDropdown>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
