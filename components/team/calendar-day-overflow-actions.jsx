@@ -4,10 +4,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 const MENU_CLASS = 'flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800';
 // Pill: mismo lenguaje visual que Editar/Estampar en GroupDayContentModal
 // (icono+texto centrado, borde redondeado) -- a diferencia de MENU_CLASS
-// (fila de dropdown, texto a la izquierda). `w-[48%]` fijo acá porque el
-// caller (GroupDayContentModal) las monta todas sueltas dentro de un
-// `flex-row flex-wrap` de 2 columnas, sin wrapper propio por ítem.
-const PILL_CLASS = 'w-[48%] h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 px-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800';
+// (fila de dropdown, texto a la izquierda). Sin ancho propio -- el caller
+// decide 2 columnas (desktop, `w-[48%]`) o 1 sola apilada (mobile/web
+// angosta, `w-full`, texto largo como "Desplazar desde acá" no entraba en
+// 48% de un modal angosto, 2026-11-11) vía `pillWidthClass`.
+const PILL_BASE_CLASS = 'h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 px-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800';
 const PILL_TEXT_CLASS = 'text-xs font-semibold uppercase tracking-wide';
 
 // Las 4 acciones menos frecuentes de un día del calendario de grupo --
@@ -17,9 +18,9 @@ const PILL_TEXT_CLASS = 'text-xs font-semibold uppercase tracking-wide';
 // "..." que antes las escondía: ahora se muestran todas siempre). Nunca
 // se montan los dos variants a la vez, así que comparten ids sin
 // pisarse -- cada caller pasa su propio `idPrefix`.
-export function CalendarDayOverflowActions({ hasContent, closed, isTraining, onClear, onCancel, onSelect, onShift, idPrefix, variant = 'menu' }) {
+export function CalendarDayOverflowActions({ hasContent, closed, isTraining, onClear, onCancel, onSelect, onShift, idPrefix, variant = 'menu', pillWidthClass = 'w-[48%]' }) {
   const isPill = variant === 'pill';
-  const rowClass = isPill ? PILL_CLASS : MENU_CLASS;
+  const rowClass = isPill ? `${pillWidthClass} ${PILL_BASE_CLASS}` : MENU_CLASS;
   const textClass = isPill ? PILL_TEXT_CLASS : 'text-sm';
 
   return (

@@ -10,24 +10,25 @@ import { StartSessionButton } from '../calendar/start-session-button.jsx';
 import { CalendarDayOverflowActions } from './calendar-day-overflow-actions.jsx';
 
 const idPrefix = 'group-day-content-modal';
-// Mismo lenguaje de pill que CalendarDayOverflowActions en variant='pill'
-// (ancho fijo 48% -- las dos filas comparten un único `flex-row flex-wrap`
-// de 2 columnas, 2026-11-11: reemplaza el overflow "..." que escondía
-// Vaciar/Cancelar/Seleccionar/Desplazar -- ahora se muestran todas).
-const PILL_CLASS = 'w-[48%] h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 px-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800';
 const PILL_TEXT_CLASS = 'text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200';
 
 // Modal centrado con contenido asignado + acciones -- reemplaza a
 // CalendarDayMenu solo para días con marking y kind !== 'rest' (ver
-// group-calendar-screen.jsx). Todas las acciones (StartSessionButton,
-// Editar, Estampar, Vaciar/Cancelar/Seleccionar/Desplazar) se muestran
-// siempre, en una grilla de 2 columnas -- en ambos layouts (ancho/angosto)
-// entran perfecto y la columna queda mucho más baja que una lista vertical.
+// group-calendar-screen.jsx). Tarjeta de contenido arriba, acciones
+// debajo, en los dos layouts (2026-11-11, antes era 2 columnas lado a
+// lado en ancho -- con la tarjeta mucho más alta que los pills, dejaba
+// poco ancho real para el texto de los botones). Las acciones van en
+// grilla de 2 columnas en web ancha (entra el texto completo con más
+// ancho disponible) y apiladas en 1 columna en mobile/web angosta (2
+// columnas angostas no alcanzaban para textos largos como "Desplazar
+// desde acá", quedaban cortados).
 export function GroupDayContentModal({ visible, day, teamId, groupId, closed, onClose, onClear, onCancel, onSelect, onShift, onStamp }) {
   const router = useRouter();
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const isWideLayout = isWeb && !isNarrowWeb;
+  const pillWidthClass = isWideLayout ? 'w-[48%]' : 'w-full';
+  const pillClass = `${pillWidthClass} h-9 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 px-2 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800`;
 
   if (!day) return null;
 
@@ -55,12 +56,12 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
     <Modal animationType="fade" nativeID={idPrefix} onRequestClose={onClose} testID={idPrefix} transparent visible={visible}>
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID={`${idPrefix}-backdrop`} onPress={onClose} testID={`${idPrefix}-backdrop`}>
         <Pressable
-          className={`relative w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface ${isWideLayout ? 'max-w-3xl flex-row gap-4' : 'max-w-md gap-4'}`}
+          className={`relative w-full gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface ${isWideLayout ? 'max-w-xl' : 'max-w-md'}`}
           nativeID={`${idPrefix}-card`}
           onPress={() => {}}
           testID={`${idPrefix}-card`}
         >
-          <View className={`rounded-xl border p-3 ${isWideLayout ? 'flex-1' : ''} ${KIND_CARD_CLASS[day.kind] ?? KIND_CARD_CLASS.other}`} nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
+          <View className={`rounded-xl border p-3 ${KIND_CARD_CLASS[day.kind] ?? KIND_CARD_CLASS.other}`} nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
             <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
               {formatWeekdayLabel(day.date, { short: true })}, {formatDisplayDate(day.date)}
             </Text>
@@ -84,13 +85,13 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
             )}
           </View>
 
-          <View className={isWideLayout ? 'w-72' : 'w-full'} nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+          <View nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
             <View className="w-full" nativeID={`${idPrefix}-start-session-slot`} testID={`${idPrefix}-start-session-slot`}>
               <StartSessionButton assignment={day} role="trainer" teamId={teamId} />
             </View>
-            <View className="mt-2 flex-row flex-wrap gap-2" nativeID={`${idPrefix}-actions-grid`} testID={`${idPrefix}-actions-grid`}>
+            <View className={`mt-2 gap-2 ${isWideLayout ? 'flex-row flex-wrap' : ''}`} nativeID={`${idPrefix}-actions-grid`} testID={`${idPrefix}-actions-grid`}>
               <Pressable
-                className={PILL_CLASS}
+                className={pillClass}
                 nativeID={`${idPrefix}-edit`}
                 onPress={handleEdit}
                 testID={`${idPrefix}-edit`}
@@ -102,7 +103,7 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
               </Pressable>
               {!closed && (
                 <Pressable
-                  className={PILL_CLASS}
+                  className={pillClass}
                   nativeID={`${idPrefix}-stamp`}
                   onPress={handleStamp}
                   testID={`${idPrefix}-stamp`}
@@ -122,6 +123,7 @@ export function GroupDayContentModal({ visible, day, teamId, groupId, closed, on
                 onClear={() => handleSecondaryAction(onClear)}
                 onSelect={() => handleSecondaryAction(onSelect)}
                 onShift={() => handleSecondaryAction(onShift)}
+                pillWidthClass={pillWidthClass}
                 variant="pill"
               />
             </View>
