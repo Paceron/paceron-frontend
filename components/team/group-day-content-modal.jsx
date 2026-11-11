@@ -6,19 +6,10 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
-import { KIND_LABELS } from '../../utils/calendar-kind-colors.js';
+import { KIND_LABELS, KIND_CARD_CLASS } from '../../utils/calendar-kind-colors.js';
 import { StartSessionButton } from '../calendar/start-session-button.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { CalendarDayOverflowActions } from './calendar-day-overflow-actions.jsx';
-
-// Fondos de tarjeta por kind -- paleta suave (a diferencia de
-// KIND_FILLED_CLASS de group-calendar-screen.jsx, que es sólida/alto
-// contraste para una celda de 56px): acá hay texto largo encima.
-const KIND_CARD_CLASS = {
-  training: 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30',
-  other: 'border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30',
-  cancelled: 'border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/30',
-};
 
 const idPrefix = 'group-day-content-modal';
 
