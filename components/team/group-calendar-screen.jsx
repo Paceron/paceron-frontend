@@ -18,6 +18,7 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
+import { buildCalendarDayTooltipLabel } from '../../utils/calendar-day-tooltip.js';
 import { summarizeMonthDays } from '../../utils/calendar-month-summary.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
 import { CalendarKindLegend } from '../calendar/calendar-kind-legend.jsx';
@@ -67,8 +68,13 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
   const canSelect = !selectionActive || selected || canAddToSelection(selectionClosedClass, closedForSelection);
   // Mismo tratamiento que el resto de los estados especiales (today/
   // selected/menú abierto): ninguno de esos se toca, solo el día "plano"
-  // (sin ningún estado especial) se parte en vacío/relleno.
-  const isPlainFilledDay = Boolean(marking) && !isOtherMonth && !selected && !isMenuOpen && !isToday;
+  // (sin ningún estado especial) se parte en vacío/relleno. `kind !==
+  // 'rest'` tratado acá (no solo sacando la entrada de KIND_FILLED_CLASS)
+  // porque ese dict tiene un fallback `?? KIND_FILLED_CLASS.other` -- sin
+  // excluir 'rest' en esta condición, un día de descanso caería en el
+  // amber de "otra actividad" en vez de en el estilo vacío (2026-11-10).
+  const isPlainFilledDay = Boolean(marking) && marking.kind !== 'rest' && !isOtherMonth && !selected && !isMenuOpen && !isToday;
+  const tooltipLabel = buildCalendarDayTooltipLabel(marking);
 
   const handlePress = () => {
     if (!canManage || isOtherMonth) return;
@@ -110,7 +116,7 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
             ? `${hoverFx} border-2 ${KIND_FILLED_CLASS[marking.kind] ?? KIND_FILLED_CLASS.other} dark:hover:bg-opacity-60`
             : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
 
-  return (
+  const cell = (
     <Pressable
       ref={cellRef}
       className={`h-14 w-full items-center justify-start p-1 gap-1 rounded-xl ${borderClass}`}
@@ -126,7 +132,7 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
       >
         {date.day}
       </Text>
-      {marking && (
+      {marking && marking.kind !== 'rest' && (
         <View
           className="flex-row items-center gap-0.5"
           nativeID={`group-calendar-day-${date.dateString}-marks`}
@@ -160,6 +166,14 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
         </View>
       )}
     </Pressable>
+  );
+
+  if (!tooltipLabel) return cell;
+
+  return (
+    <IconTooltip idPrefix={`group-calendar-day-${date.dateString}-tooltip`} label={tooltipLabel}>
+      {cell}
+    </IconTooltip>
   );
 }
 
@@ -205,7 +219,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const selectionActive = selectedDates.size > 0;
 
   const markingsByDate = useMemo(
-    () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial, presencialTimeFrom: d.presencialTimeFrom }])),
+    () => Object.fromEntries(days.map((d) => [d.date, { kind: d.kind, isPresencial: d.isPresencial, presencialTimeFrom: d.presencialTimeFrom, presencialTimeTo: d.presencialTimeTo }])),
     [days],
   );
   const monthCounts = useMemo(() => summarizeMonthDays(days), [days]);
