@@ -9,6 +9,7 @@ import { DASHBOARD_KEYS } from '../../hooks/use-dashboard-query.js';
 import { getDashboardSummary } from '../../services/dashboard.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
@@ -244,6 +245,15 @@ function RunnerActionsMenu({ member, onExpel, onMove, onDetail }) {
 function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu, onOpenDetail, containerRef }) {
   const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
   const [expanded, setExpanded] = useState(false);
+  // `isWeb` solo distingue nativo de web -- no alcanza acá (2026-11-11,
+  // bug real reportado): en web angosta esto seguía cayendo en el layout
+  // de fila ancha (identidad + tags + menú todo en una sola `flex-row`),
+  // que se aprieta mal con poco espacio. La fila expandible de abajo
+  // (pensada para nativo) es la que realmente funciona angosta, así que
+  // pasa a servir nativo Y web angosta por igual -- mismo criterio
+  // isDesktopWeb que el resto del repo (ver CLAUDE.md "Responsive web").
+  const isNarrowWeb = useIsNarrowWeb();
+  const isDesktopWeb = isWeb && !isNarrowWeb;
 
   const avatar = (
     <View className="h-10 w-10 m-1 ml-2 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`team-detail-runner-${member.id}-avatar`} testID={`team-detail-runner-${member.id}-avatar`}>
@@ -340,7 +350,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
     </View>
   );
 
-  if (isWeb) {
+  if (isDesktopWeb) {
     return (
       <View
         className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900"
