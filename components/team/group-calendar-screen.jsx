@@ -176,7 +176,7 @@ function CalendarDayCell({ date, state, isToday, marking, containerRef, onOpenMe
   if (!tooltipLabel) return cell;
 
   return (
-    <IconTooltip idPrefix={`group-calendar-day-${date.dateString}-tooltip`} label={tooltipLabel}>
+    <IconTooltip idPrefix={`group-calendar-day-${date.dateString}-tooltip`} label={tooltipLabel} wrapperClassName="h-14 w-full">
       {cell}
     </IconTooltip>
   );
