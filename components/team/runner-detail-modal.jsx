@@ -36,7 +36,7 @@ function DetailField({ label, value, idPrefix }) {
 // en la app (ver su propio comentario en hooks/use-user.js) -- nunca una
 // query propia contra el mismo endpoint. Fetch on-demand, gateado por
 // `visible`: no se pide nada hasta que el modal efectivamente se abre.
-export function RunnerDetailModal({ visible, onClose, userId, joinedAt, groupName }) {
+export function RunnerDetailModal({ visible, onClose, userId, joinedAt, groupName, subscriptionLabel }) {
   const colors = useThemeColors();
   const { user, loading } = useUser(visible ? userId : null);
   const fullName = user ? `${user.name ?? ''} ${user.surname ?? ''}`.trim() : null;
@@ -74,6 +74,7 @@ export function RunnerDetailModal({ visible, onClose, userId, joinedAt, groupNam
                 </View>
               </View>
 
+              <DetailField idPrefix="runner-detail-modal-status" label="Estado" value={display(subscriptionLabel)} />
               <DetailField idPrefix="runner-detail-modal-group" label="Grupo" value={display(groupName)} />
               <DetailField idPrefix="runner-detail-modal-seniority" label="Antigüedad en el equipo" value={joinedAt ? `${formatRelativeTime(joinedAt)} en el equipo` : DASH} />
               <DetailField idPrefix="runner-detail-modal-birthdate" label="Fecha de nacimiento" value={user.birthDate ? `${display(user.birthDate)}${age != null ? ` (${age} años)` : ''}` : DASH} />

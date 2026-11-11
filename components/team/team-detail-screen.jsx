@@ -1234,6 +1234,7 @@ function TeamDetailScreenContent({ teamId }) {
         groupName={groups.find((g) => g.id === runnerDetailMember?.groupId)?.name ?? '—'}
         joinedAt={runnerDetailMember?.joinedAt}
         onClose={() => setRunnerDetailMember(null)}
+        subscriptionLabel={(SUBSCRIPTION_META[runnerDetailMember?.subscriptionStatus] ?? SUBSCRIPTION_META.activo).label}
         userId={runnerDetailMember?.userId}
         visible={Boolean(runnerDetailMember)}
       />
