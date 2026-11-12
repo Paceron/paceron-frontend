@@ -65,6 +65,19 @@ const UNIT_FORMATTERS = {
   pp: (n) => `${decimal(n, 1)} pp`,
 };
 
+// `best_time_ms` en 0 (o negativo) no es un tiempo real -- nadie corre una
+// serie en 0ms. Mismo espíritu que D5 (null es "—", nunca 0) pero acá el
+// cero puede llegar como NÚMERO válido desde el backend en vez de null, así
+// que `formatMetric` por sí solo no lo atrapa (0 pasa `Number.isFinite`).
+// Aplicar esto ANTES de formatMetric en los 3 lugares que muestran el KPI
+// "Mejor tiempo" (las dos paletas + el modelo del PDF) evita el "00:00"
+// fantasma reportado 2026-11-11.
+export function normalizeBestTimeMs(ms) {
+  const n = toNumber(ms);
+  if (n === null || n <= 0) return null;
+  return n;
+}
+
 // Magnitud con su unidad. `null`/undefined/''/NaN → "—", sin importar la
 // unidad. Una unidad que el backend agregue después del contrato cae en el
 // default (número + sufijo crudo): muestra algo honesto en vez de tirar.

@@ -119,6 +119,27 @@ describe('api client 401 refresh interceptor', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
+  test('does NOT log out when the refresh fails with a transient server error (500/429), only propagates the original 401', async () => {
+    // Error CON `.status` pero no 401 -- el refresh pegó al backend y
+    // volvió, pero con un fallo transitorio (500 de DB, 429 del rate
+    // limiter) que no dice nada sobre si el refresh token es válido.
+    // Antes cualquier `.status` presente cerraba sesión por igual
+    // (auditoría de backend, 2026-11-12): un 500/429 pasajero revocaba
+    // el refresh token local sin motivo real.
+    for (const status of [500, 429]) {
+      const logout = jest.fn().mockResolvedValue();
+      const rejectedError = new Error('fallo transitorio');
+      rejectedError.status = status;
+      const refreshSession = jest.fn().mockRejectedValue(rejectedError);
+      mockGetState.mockReturnValue({ token: 'old-token', refreshToken: 'old-refresh', refreshSession, logout });
+
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ message: 'Token expirado.' }) });
+
+      await expect(api.get('/teams')).rejects.toMatchObject({ status: 401 });
+      expect(logout).not.toHaveBeenCalled();
+    }
+  });
+
   test('does NOT log out when the refresh fails due to a network error, only propagates the original 401', async () => {
     const logout = jest.fn().mockResolvedValue();
     // Error SIN `.status` -- la forma que toma mapNetworkError (timeout,

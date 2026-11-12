@@ -152,6 +152,28 @@ function complianceOf(rows, tolerance) {
   return (met / targeted.length) * 100;
 }
 
+// Gap 43: el menor tiempo entre las series VÁLIDAS que además cumplieron el
+// objetivo (distinto de best_time_ms, que no exige cumplimiento).
+function bestTimeMetOf(rows, tolerance) {
+  const times = rows
+    .filter(isValid)
+    .filter((row) => hasTargetOf(row) && isCompliant(row, tolerance))
+    .map(achievedTime)
+    .filter((time) => time > 0);
+  return times.length ? Math.min(...times) : null;
+}
+
+// Gap 44: par objetivo/logrado de distancia sobre las series con objetivo de
+// distancia, CON Y SIN medición válida (una serie saltada aporta su objetivo
+// igual, logrado 0) — decisión confirmada con el frontend al cerrar el gap.
+function targetDistancePairOf(rows) {
+  const withDistanceTarget = rows.filter((row) => row.target_distance_m > 0);
+  if (!withDistanceTarget.length) return { target: null, achieved: null };
+  const target = withDistanceTarget.reduce((sum, row) => sum + row.target_distance_m, 0);
+  const achieved = withDistanceTarget.reduce((sum, row) => sum + (hasDistance(row) ? row.distance_meters : 0), 0);
+  return { target, achieved };
+}
+
 const summary = (extra = {}) => mockGetDashboardSummary({
   teamId: TEAM_WITH_DATA, callerUserId: TRAINER, tolerance: 0.05, ...RANGE, ...extra,
 });
@@ -272,6 +294,39 @@ describe('dashboard mock — los números de la respuesta se reconstruyen desde 
     const data = await summary();
     const times = scopeRows(RANGE).filter(isValid).map(achievedTime).filter((time) => time > 0);
     expect(data.totals.best_time_ms).toBe(Math.min(...times));
+  });
+
+  test('best_time_met_ms (gap 43) es el mínimo entre las series que CUMPLIERON el objetivo, más alto o igual que best_time_ms', async () => {
+    const data = await summary();
+    const rows = scopeRows(RANGE);
+    const expected = bestTimeMetOf(rows, 0.05);
+    expect(expected).not.toBeNull();
+    expect(data.totals.best_time_met_ms).toBe(expected);
+    // El subconjunto "cumplió" es más chico (o igual) que "toda serie válida" —
+    // su mínimo nunca puede ser MÁS BAJO que el mínimo general.
+    expect(data.totals.best_time_met_ms).toBeGreaterThanOrEqual(data.totals.best_time_ms);
+  });
+
+  test('target_distance_m/achieved_target_distance_m (gap 44) cubren el mismo conjunto de series, series saltadas incluidas', async () => {
+    const data = await summary();
+    const rows = scopeRows(RANGE);
+    const expected = targetDistancePairOf(rows);
+    expect(expected.target).not.toBeNull();
+    expect(data.totals.target_distance_m).toBe(expected.target);
+    expect(data.totals.achieved_target_distance_m).toBe(expected.achieved);
+    // Logrado nunca supera lo pedido más que la realidad del scope: no hay
+    // relación fija, pero sí tiene que haber AL MENOS una serie sin medición
+    // válida en ese conjunto para que el caso "aporta el objetivo igual" se
+    // vea de verdad en este período (si no, el test no prueba nada nuevo).
+    const withDistanceTarget = rows.filter((row) => row.target_distance_m > 0);
+    const skippedWithTarget = withDistanceTarget.filter((row) => !hasDistance(row));
+    expect(skippedWithTarget.length).toBeGreaterThan(0);
+  });
+
+  test('sin ninguna serie con objetivo de distancia en el scope, los dos campos del gap 44 son null', async () => {
+    const data = await summary({ exerciseId: ELONGACION });
+    expect(data.totals.target_distance_m).toBeNull();
+    expect(data.totals.achieved_target_distance_m).toBeNull();
   });
 
   test('achieved_speed_kph es la media ponderada por distancia', async () => {

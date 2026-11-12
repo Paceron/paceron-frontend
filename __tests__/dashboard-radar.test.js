@@ -1,6 +1,5 @@
 import {
   RADAR_AXES,
-  RADAR_VOLUME_MAX_KM,
   normalizeRadarAxes,
   radarPolygon,
 } from '../utils/dashboard-chart.js';
@@ -9,7 +8,8 @@ const summary = (overrides = {}) => ({
   totals: {
     achieved_speed_kph: 15,
     target_speed_kph: 16,
-    distance_m: 12_000,
+    target_distance_m: 20_000,
+    achieved_target_distance_m: 15_000,
     compliance_rate: 75,
     ...overrides.totals,
   },
@@ -27,13 +27,14 @@ describe('normalizeRadarAxes', () => {
     expect(axes.map((axis) => axis.unitKey)).toEqual(['speed', 'distance', null, 'compliance', 'delta']);
   });
 
-  test('cada eje trae su bajada, y la de volumen cita el mismo tope que la fórmula', () => {
+  test('cada eje trae su bajada, y la de volumen habla de logrado contra objetivo', () => {
     const axes = normalizeRadarAxes(summary());
     // El "i" de cada barrita muestra `hint` tal cual: un eje sin bajada queda con
-    // un tooltip vacío, y la de volumen tiene que hablar del tope real (100 km),
-    // no de otro número — si el tope cambia, la frase se relee desde acá.
+    // un tooltip vacío. Volumen (gap 44, 2026-11-12) dejó de hablar de un tope
+    // fijo en km -- ahora es logrado/objetivo, así que el hint tiene que hablar
+    // de "objetivo", no de un número de km hardcodeado.
     expect(axes.every((axis) => typeof axis.hint === 'string' && axis.hint.trim().length > 0)).toBe(true);
-    expect(axisById(axes, 'volume').hint).toContain(`${RADAR_VOLUME_MAX_KM} km`);
+    expect(axisById(axes, 'volume').hint).toMatch(/objetivo/i);
   });
 
   test('lee los tres contenedores reales, no un objeto plano', () => {
@@ -92,16 +93,28 @@ describe('normalizeRadarAxes', () => {
     expect(axisById(axes, 'compliance').available).toBe(true);
   });
 
-  test('el volumen se normaliza contra un máximo FIJO de 100 km, no contra el scope', () => {
-    expect(RADAR_VOLUME_MAX_KM).toBe(100);
-    const half = normalizeRadarAxes(summary({ totals: { distance_m: 50_000 } }));
-    const full = normalizeRadarAxes(summary({ totals: { distance_m: 100_000 } }));
+  test('el volumen se normaliza contra el objetivo de distancia (gap 44), no contra un tope fijo', () => {
+    const half = normalizeRadarAxes(summary({ totals: { target_distance_m: 20_000, achieved_target_distance_m: 10_000 } }));
     expect(axisById(half, 'volume').value).toBe(50);
+    const full = normalizeRadarAxes(summary({ totals: { target_distance_m: 20_000, achieved_target_distance_m: 20_000 } }));
     expect(axisById(full, 'volume').value).toBe(100);
-    // Muy por encima del tope también se recorta: el eje no tiene más de 100.
-    const huge = normalizeRadarAxes(summary({ totals: { distance_m: 900_000 } }));
-    expect(axisById(huge, 'volume').value).toBe(100);
-    expect(axisById(huge, 'volume').raw).toBe(900_000);
+    // Corrí más de lo pedido: se recorta en 100, el eje no pasa el máximo.
+    const over = normalizeRadarAxes(summary({ totals: { target_distance_m: 20_000, achieved_target_distance_m: 30_000 } }));
+    expect(axisById(over, 'volume').value).toBe(100);
+  });
+
+  test('target_distance_m null o no positivo deja el eje sin dato, no en 0', () => {
+    const noTarget = normalizeRadarAxes(summary({ totals: { target_distance_m: null, achieved_target_distance_m: null } }));
+    expect(axisById(noTarget, 'volume')).toMatchObject({ value: null, available: false });
+    const zeroTarget = normalizeRadarAxes(summary({ totals: { target_distance_m: 0, achieved_target_distance_m: 0 } }));
+    expect(axisById(zeroTarget, 'volume')).toMatchObject({ value: null, available: false });
+    const negativeTarget = normalizeRadarAxes(summary({ totals: { target_distance_m: -500 } }));
+    expect(axisById(negativeTarget, 'volume')).toMatchObject({ value: null, available: false });
+  });
+
+  test('con objetivo positivo y nada logrado, el eje queda en 0 -- disponible, no "sin dato"', () => {
+    const axes = normalizeRadarAxes(summary({ totals: { target_distance_m: 20_000, achieved_target_distance_m: 0 } }));
+    expect(axisById(axes, 'volume')).toMatchObject({ value: 0, available: true });
   });
 
   test('el eje de ritmo necesita ambos valores: sin objetivo no se inventa un 0', () => {
@@ -117,7 +130,10 @@ describe('normalizeRadarAxes', () => {
   test('el resumen trae el valor real de cada eje, no solo el normalizado', () => {
     const axes = normalizeRadarAxes(summary());
     expect(axisById(axes, 'speed')).toMatchObject({ raw: 15, reference: 16 });
-    expect(axisById(axes, 'volume').raw).toBe(12_000);
+    // `raw` es lo LOGRADO (mismo criterio que speed: raw = achieved, reference
+    // = target) -- no el total de distancia del período, que mezclaría series
+    // con y sin objetivo de distancia (gap 44).
+    expect(axisById(axes, 'volume')).toMatchObject({ raw: 15_000, reference: 20_000 });
     expect(axisById(axes, 'trend').raw).toBe(4);
   });
 

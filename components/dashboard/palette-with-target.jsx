@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
-import { formatMetric, hasMetric } from '../../utils/dashboard-format.js';
+import { formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
@@ -112,9 +112,11 @@ export function PaletteWithTarget({
             icon: 'target',
             // Sin objetivo no hay contra qué comparar: se muestra "—" con su
             // etiqueta en vez de esconder la tarjeta, para que se entienda que
-            // el número existe pero no está cargado.
+            // el número existe pero no está cargado. No tiene entrada en
+            // FORMULAS (no es un agregado de tus series, no hay fórmula que
+            // mostrar) -- el hint es la única explicación, y aclara eso mismo.
             hint: hasMetric(totals.target_speed_kph)
-              ? 'Velocidad esperada del objetivo congelado de este ejercicio.'
+              ? 'No se calcula a partir de tus resultados: es la velocidad objetivo cargada en el plan para este ejercicio, congelada al momento de asignarse (si el plan cambia después, esto no se actualiza).'
               : 'Este ejercicio no tiene velocidad esperada cargada.',
           },
           {
@@ -141,8 +143,13 @@ export function PaletteWithTarget({
           },
           {
             key: 'best_time',
-            label: 'Mejor tiempo',
-            value: totals.best_time_ms,
+            // "cumplido" en el label (gap 43, 2026-11-12): esta paleta SÍ
+            // tiene objetivo, así que lo que importa no es cualquier mejor
+            // marca sino la mejor marca entre las series que lo cumplieron
+            // -- `best_time_ms` (cualquier serie válida, objetivo aparte)
+            // sigue existiendo y es lo que muestra la paleta SIN objetivo.
+            label: 'Mejor tiempo cumplido',
+            value: normalizeBestTimeMs(totals.best_time_met_ms),
             unit: units.best_time,
             icon: 'timer-outline',
           },
@@ -155,7 +162,7 @@ export function PaletteWithTarget({
             testID={`${id}-kpi-cell-${kpi.key}`}
           >
           <KpiTooltip
-            formula={FORMULAS[kpi.key === 'consistency' ? 'cv' : kpi.key]}
+            formula={FORMULAS[KPI_FORMULA_KEYS[kpi.key] ?? kpi.key]}
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
             onOpenChange={(open) =>
@@ -333,10 +340,29 @@ const FORMULAS = {
   achieved_speed_kph: 'Velocidad ponderada por distancia: suma(distancia × velocidad) ÷ suma(distancia), sobre las series válidas del período.',
   distance_m: 'Suma de la distancia de las series válidas del período.',
   time_ms: 'Suma del tiempo alcanzado de las series válidas del período.',
-  best_time_ms: 'El menor tiempo alcanzado entre las series válidas del período.',
+  best_time_met_ms: 'El menor tiempo entre las series que cumplieron el objetivo (met_target=true), con la tolerancia aplicada en la consulta.',
   delta: 'Diferencia contra el objetivo en porcentaje. Positivo es mejora: en el eje temporal el signo viene invertido.',
   compliance_rate: 'Series válidas que cumplen el objetivo según la tolerancia aplicada, sobre las series válidas que tienen objetivo cargado.',
   cv: 'Coeficiente de variación de la velocidad (σ ÷ μ) de las series válidas del período. Sin dato con menos de 2 series.',
+};
+
+// `kpi.key` (el id corto que usan nativeID/el estado de tooltip abierto) NO
+// coincide con las keys de FORMULAS (los nombres de campo del backend) --
+// bug real, 2026-11-11: `FORMULAS[kpi.key]` fallaba en silencio para pace/
+// target_speed/compliance/best_time (solo 'delta' y 'cv' coincidían de
+// casualidad), así que esos 4 tooltips nunca mostraban su fórmula, aunque
+// el texto ya estuviera escrito arriba. `target_speed` queda sin mapear a
+// propósito: no tiene fórmula (ver su `hint` más abajo, es un valor
+// congelado, no un agregado). `best_time` apunta a `best_time_met_ms`
+// (gap 43, 2026-11-12) -- esta paleta tiene objetivo, así que su "Mejor
+// tiempo" es el cumplido, no cualquier serie válida como en la paleta sin
+// objetivo (que sigue usando `best_time_ms` sin tocar).
+const KPI_FORMULA_KEYS = {
+  pace: 'achieved_speed_kph',
+  compliance: 'compliance_rate',
+  best_time: 'best_time_met_ms',
+  delta: 'delta',
+  consistency: 'cv',
 };
 
 // Los ids de las tarjetas que participan del "maximizar todas". El box plot

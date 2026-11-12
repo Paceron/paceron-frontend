@@ -486,14 +486,6 @@ export function lineSeries(values, { width, height, domain, minimumRange = 1, in
 
 // ---------- radar ----------
 
-// Máximo FIJO del eje Volumen: 100 km por período. No sale de la respuesta
-// porque ningún endpoint del contrato expone el volumen máximo del scope, y
-// pedirlo agregaría un campo al contrato solo para pintar un radar. El eje se
-// rotula con su valor absoluto al lado justamente por eso: el 0,7 del polígono no
-// es comparable entre corredores (ver spec, "Radar").
-export const RADAR_VOLUME_MAX_KM = 100;
-const RADAR_VOLUME_MAX_M = RADAR_VOLUME_MAX_KM * 1000;
-
 // Los cinco ejes, en el orden en que se dibujan. `unitKey` es la clave del
 // bloque `units` de la respuesta de la que sale la unidad que se rotula — el
 // front no inventa ni convierte unidades (D4). Consistencia no tiene `unitKey`:
@@ -516,7 +508,7 @@ export const RADAR_AXES = [
     id: 'volume',
     label: 'Volumen',
     unitKey: 'distance',
-    hint: `Distancia acumulada del período sobre un tope fijo de ${RADAR_VOLUME_MAX_KM} km: 100 es ${RADAR_VOLUME_MAX_KM} km o más.`,
+    hint: 'Distancia lograda contra la distancia objetivo, en ejercicios donde la distancia forma parte del objetivo: 100 es cumplir (o superar) el total pedido.',
   },
   {
     id: 'consistency',
@@ -559,14 +551,21 @@ export function normalizeRadarAxes({ totals, trend, consistency } = {}) {
 
   const achieved = finite(t.achieved_speed_kph);
   const target = finite(t.target_speed_kph);
-  const distanceM = finite(t.distance_m);
+  const targetDistanceM = finite(t.target_distance_m);
+  const achievedTargetDistanceM = finite(t.achieved_target_distance_m);
   const cv = finite(cs.cv);
   const compliance = finite(t.compliance_rate);
   const trendPct = finite(tr.trend_pct);
 
   const values = {
     speed: achieved !== null && target !== null && target > 0 ? clip100((achieved / target) * 100) : null,
-    volume: distanceM !== null ? clip100((distanceM / RADAR_VOLUME_MAX_M) * 100) : null,
+    // Logrado contra el objetivo de distancia (gap 44, 2026-11-12) -- antes
+    // era la distancia total del período contra un tope fijo de 100 km, que
+    // mezclaba series con y sin objetivo de distancia. `target_distance_m`
+    // null/0/negativo (sin objetivos de distancia en el scope) deja el eje
+    // sin dato; con objetivo positivo y nada logrado, el eje es 0 — no
+    // "sin dato" (es una respuesta real: 0 de lo pedido).
+    volume: targetDistanceM !== null && targetDistanceM > 0 ? clip100(((achievedTargetDistanceM ?? 0) / targetDistanceM) * 100) : null,
     // Invertido: menos dispersión es mejor. cv = 0 → 100.
     consistency: cv !== null ? clip100(100 - (cv * 100)) : null,
     compliance: compliance !== null ? clip100(compliance) : null,
@@ -574,8 +573,8 @@ export function normalizeRadarAxes({ totals, trend, consistency } = {}) {
     trend: trendPct !== null ? clip100(50 + (trendPct * 5)) : null,
   };
 
-  const raws = { speed: achieved, volume: distanceM, consistency: cv, compliance: compliance, trend: trendPct };
-  const references = { speed: target };
+  const raws = { speed: achieved, volume: achievedTargetDistanceM, consistency: cv, compliance: compliance, trend: trendPct };
+  const references = { speed: target, volume: targetDistanceM };
 
   return RADAR_AXES.map((axis) => ({
     ...axis,

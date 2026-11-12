@@ -1,3 +1,5 @@
+import { computeTodayIso } from './calendar-today.js';
+
 // Hasta 2026-10-04, DateField (components/forms/fields.jsx) devolvía un
 // formato de fecha distinto según plataforma: 'YYYY-MM-DD' en web (era un
 // <input type="date"> nativo del navegador, que exige ISO en su `value`),
@@ -122,9 +124,19 @@ export function resolveDashboardDateRange({ from, to, requireTo = false, maxDays
 
 // Usa el rango real disponible cuando cabe en el límite del dashboard. Si el
 // histórico es más largo, arranca en la ventana más reciente que acepta la API.
-export function defaultDashboardDateRange(dateRange, maxDays = 731) {
+//
+// `max` sale de `/dashboard/filters` tal cual lo manda el backend -- si
+// llega a futuro (visto 2026-11-11, probable desfasaje UTC-vs-huso-local en
+// el cálculo del backend), el "hasta" por defecto no puede quedar más
+// adelante que el "hoy" de QUIEN USA la app: nadie corrió todavía una
+// sesión de mañana. El clamp es puramente defensivo del lado del front —
+// no corrige la causa real si es del backend, pero evita que el filtro
+// arranque roto sea cual sea esa causa.
+export function defaultDashboardDateRange(dateRange, maxDays = 731, today = new Date()) {
   const minISO = toISODate(dateRange?.min);
-  const maxISO = toISODate(dateRange?.max);
+  const rawMaxISO = toISODate(dateRange?.max);
+  const todayISO = computeTodayIso(today);
+  const maxISO = rawMaxISO && rawMaxISO > todayISO ? todayISO : rawMaxISO;
   const minDate = parseCalendarDate(minISO);
   const maxDate = parseCalendarDate(maxISO);
   if (!minDate || !maxDate) return { from: '', to: '' };
