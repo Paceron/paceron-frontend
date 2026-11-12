@@ -44,7 +44,17 @@ export async function refresh(refreshToken) {
 // POST /api/v1/auth/logout — auth.LogoutRequest {refresh_token}. Revoca el
 // refresh token; el access token sigue válido hasta su expiración natural
 // (según el swagger), no hay forma de invalidarlo antes desde el cliente.
+// skipAuthRefresh por el mismo motivo que /auth/refresh de arriba, un paso
+// más indirecto (auditoría de backend, 2026-11-12): el caller de esto
+// (auth-store.js#logout) todavía tiene el refreshToken en el store cuando
+// llama -- si ese token ya estaba vencido/revocado, /auth/logout también
+// vuelve 401, y sin skipAuthRefresh ESE 401 reentra al interceptor de
+// services/api.js, que dispara OTRO refresh (con el mismo token ya
+// inválido) y, al fallar con 401, llama a logout() de nuevo -- logout
+// disparando un segundo logout en medio del primero, sin ganar nada:
+// local logout ya sigue de largo pase lo que pase (try/catch best-effort
+// en auth-store.js).
 export async function logout(refreshToken) {
   if (USE_MOCKS) return await mockLogout(refreshToken);
-  return await api.post('/auth/logout', { refresh_token: refreshToken });
+  return await api.post('/auth/logout', { refresh_token: refreshToken }, { skipAuthRefresh: true });
 }

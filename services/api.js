@@ -72,15 +72,20 @@ async function request(path, { _isRetry, skipAuthRefresh, exposeStatus, timeout,
       await refreshPromise;
       return await request(path, { ...fetchOptions, _isRetry: true, exposeStatus, timeout });
     } catch (refreshErr) {
-      // Solo cerrar sesión si el refresh FALLÓ CON UNA RESPUESTA (status
-      // presente -- el backend de verdad rechazó el refresh token, ej.
-      // vencido/revocado). Un error de red (mapNetworkError, sin
-      // `.status`: timeout, backend reiniciando, microcorte de conexión)
-      // no significa que la sesión sea inválida -- antes cualquiera de
-      // los dos disparaba logout por igual, causando el "me desloguea de
-      // la nada" reportado (coincidía justo con reiniciar el backend o
-      // cortes breves de red, 2026-10-08).
-      if (refreshErr?.status) {
+      // Solo cerrar sesión si el refresh devolvió 401 -- el backend de
+      // verdad rechazó el refresh token (vencido/revocado). Un error de
+      // red (mapNetworkError, sin `.status`: timeout, backend
+      // reiniciando, microcorte de conexión) no significa que la sesión
+      // sea inválida -- antes cualquiera de los dos disparaba logout por
+      // igual, causando el "me desloguea de la nada" reportado (coincidía
+      // justo con reiniciar el backend o cortes breves de red,
+      // 2026-10-08). Tampoco alcanza con "tiene .status": un 500 (fallo
+      // transitorio de DB) o un 429 (rate limit) del propio endpoint de
+      // refresh no dicen nada sobre si el token es válido -- auditoría de
+      // backend, 2026-11-12, mismo síntoma (logout espurio) con causa
+      // más fina: CUALQUIER status, no solo errores de red, cerraba
+      // sesión.
+      if (refreshErr?.status === 401) {
         await useAuthStore.getState().logout();
       }
       // sigue abajo y deja que la response 401 original se maneje como
