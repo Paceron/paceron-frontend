@@ -114,6 +114,16 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
   const rangeEnd = plan && startDate ? addDaysISO(startDate, plan.days.length - 1) : null;
   const { days: existingDays } = useGroupCalendar(groupId, startDate || null, rangeEnd);
   const existingByDate = useMemo(() => Object.fromEntries(existingDays.map((d) => [d.date, d])), [existingDays]);
+  // `existingByDate` es una query en vivo -- el stampPlan de handleSave
+  // invalida ['group-calendar', groupId] en su onSuccess, y ESE refetch
+  // trae de vuelta los días que esta misma operación recién escribió,
+  // mostrando "Se pisa" contra su propia escritura a mitad de guardado
+  // (2026-11-10). Se congela la foto al arrancar el guardado y se usa esa
+  // foto SOLO mientras `saving` es true -- antes de apretar Guardar, el
+  // preview sigue viva (cambiar de plan o alternar "Se pisa"/"Se conserva"
+  // tiene que seguir reflejando datos reales).
+  const frozenExistingByDateRef = useRef(null);
+  const effectiveExistingByDate = saving ? (frozenExistingByDateRef.current ?? existingByDate) : existingByDate;
 
   const isDirty = useFormDirty({ planId, draftDays }, visible);
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard, bypassGuard } = useUnsavedChangesGuard(isDirty);
@@ -126,6 +136,7 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
     setDraftDays([]);
     setExpandedSeq(null);
     setError(null);
+    frozenExistingByDateRef.current = null;
   }
 
   const prevPlanIdRef = useRef(planId);
@@ -152,6 +163,7 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
   };
 
   const handleSave = async () => {
+    frozenExistingByDateRef.current = existingByDate;
     setSaving(true);
     const excludeDates = draftDays.filter((d) => d.excluded).map((d) => d.date);
     const hasConflicts = draftDays.some((d) => !d.excluded && Boolean(existingByDate[d.date]));
@@ -225,7 +237,7 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
                     {draftDays.map((day) => (
                       <StampPreviewRow
                         day={day}
-                        existingDay={existingByDate[day.date] ?? null}
+                        existingDay={effectiveExistingByDate[day.date] ?? null}
                         expanded={expandedSeq === day.sequenceNo}
                         key={day.sequenceNo}
                         onChangeDay={(updates) => handleChangeDraftDay(day.sequenceNo, updates)}

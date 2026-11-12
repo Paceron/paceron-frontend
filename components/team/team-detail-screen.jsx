@@ -9,6 +9,7 @@ import { DASHBOARD_KEYS } from '../../hooks/use-dashboard-query.js';
 import { getDashboardSummary } from '../../services/dashboard.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
+import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser, usePermissions } from '../../hooks/use-user.js';
 import { useTeam, useTeamMutations } from '../../hooks/use-teams.js';
@@ -243,7 +244,15 @@ function RunnerActionsMenu({ member, onExpel, onMove, onDetail }) {
 
 function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu, onOpenDetail, containerRef }) {
   const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
-  const [expanded, setExpanded] = useState(false);
+  // `isWeb` solo distingue nativo de web -- no alcanza acá (2026-11-11,
+  // bug real reportado): en web angosta esto seguía cayendo en el layout
+  // de fila ancha (identidad + tags + menú todo en una sola `flex-row`),
+  // que se aprieta mal con poco espacio. La fila expandible de abajo
+  // (pensada para nativo) es la que realmente funciona angosta, así que
+  // pasa a servir nativo Y web angosta por igual -- mismo criterio
+  // isDesktopWeb que el resto del repo (ver CLAUDE.md "Responsive web").
+  const isNarrowWeb = useIsNarrowWeb();
+  const isDesktopWeb = isWeb && !isNarrowWeb;
 
   const avatar = (
     <View className="h-10 w-10 m-1 ml-2 items-center justify-center rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`team-detail-runner-${member.id}-avatar`} testID={`team-detail-runner-${member.id}-avatar`}>
@@ -340,7 +349,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
     </View>
   );
 
-  if (isWeb) {
+  if (isDesktopWeb) {
     return (
       <View
         className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900"
@@ -358,36 +367,44 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
     );
   }
 
+  // Angosto (nativo o web angosta): prioriza nombre, con grupo+estado como
+  // badges debajo -- a diferencia del desktop (email/antigüedad visibles
+  // inline), acá eso queda para RunnerDetailModal (2026-11-11, pedido tras
+  // el fix de arriba: con poco ancho, email+antigüedad+2 tags+menú todo
+  // junto no entraba bien). Tocar la fila abre ese modal directo, ya no
+  // hay expand/collapse propio -- el modal ya trae email, antigüedad,
+  // fecha de nacimiento, ubicación y teléfono.
   return (
     <View
-      className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
+      className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900"
       nativeID={`team-detail-runner-${member.id}`}
       testID={`team-detail-runner-${member.id}`}
     >
-      <View className="flex-row items-center pr-2" nativeID={`team-detail-runner-${member.id}-header`} testID={`team-detail-runner-${member.id}-header`}>
-        <Pressable
-          accessibilityLabel={expanded ? 'Ocultar detalle del corredor' : 'Ver detalle del corredor'}
-          className="flex-1 flex-row items-center gap-3 px-4 py-3 active:opacity-80"
-          nativeID={`team-detail-runner-${member.id}-toggle`}
-          onPress={() => setExpanded((v) => !v)}
-          testID={`team-detail-runner-${member.id}-toggle`}
-        >
-          {avatar}
-          {identity}
-          {subscriptionTag}
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-up' : 'chevron-down'} size={20} />
-        </Pressable>
-        <RunnerMenu colors={colors} containerRef={containerRef} member={member} onOpenMenu={onOpenMenu} />
-      </View>
-      {expanded && (
-        <View
-          className="flex-row flex-wrap items-center gap-1.5 border-t border-slate-200 px-4 py-2.5 dark:border-slate-700"
-          nativeID={`team-detail-runner-${member.id}-expanded-tags`}
-          testID={`team-detail-runner-${member.id}-expanded-tags`}
-        >
-          {groupTag}
+      <Pressable
+        accessibilityLabel={`Ver detalle de ${member.name}`}
+        accessibilityRole="button"
+        className="flex-1 flex-row items-center gap-3 px-2 py-1 active:opacity-80"
+        nativeID={`team-detail-runner-${member.id}-toggle`}
+        onPress={() => onOpenDetail(member)}
+        testID={`team-detail-runner-${member.id}-toggle`}
+      >
+        {avatar}
+        <View className="flex-1" nativeID={`team-detail-runner-${member.id}-identity`} testID={`team-detail-runner-${member.id}-identity`}>
+          <Text
+            className="text-sm font-semibold text-slate-900 dark:text-white"
+            nativeID={`team-detail-runner-${member.id}-name`}
+            numberOfLines={1}
+            testID={`team-detail-runner-${member.id}-name`}
+          >
+            {member.name}
+          </Text>
+          <View className="mt-1 flex-row flex-wrap items-center gap-1.5" nativeID={`team-detail-runner-${member.id}-tags`} testID={`team-detail-runner-${member.id}-tags`}>
+            {groupTag}
+            {subscriptionTag}
+          </View>
         </View>
-      )}
+      </Pressable>
+      <RunnerMenu colors={colors} containerRef={containerRef} member={member} onOpenMenu={onOpenMenu} />
     </View>
   );
 }
@@ -1217,6 +1234,7 @@ function TeamDetailScreenContent({ teamId }) {
         groupName={groups.find((g) => g.id === runnerDetailMember?.groupId)?.name ?? '—'}
         joinedAt={runnerDetailMember?.joinedAt}
         onClose={() => setRunnerDetailMember(null)}
+        subscriptionLabel={(SUBSCRIPTION_META[runnerDetailMember?.subscriptionStatus] ?? SUBSCRIPTION_META.activo).label}
         userId={runnerDetailMember?.userId}
         visible={Boolean(runnerDetailMember)}
       />

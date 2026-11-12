@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { CalendarDayOverflowActions } from './calendar-day-overflow-actions.jsx';
 
 // Panel del menú contextual de un día del calendario — ver
 // docs/superpowers/specs/2026-09-21-calendar-day-menu-design.md §2 para
@@ -7,6 +8,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 // (group-calendar-screen.jsx) decide qué mostrar y qué pasa al tocar
 // cada ítem, esto solo dibuja el panel. El AnimatedDropdown que lo
 // posiciona y le da el backdrop-para-cerrar vive en el caller, no acá.
+//
+// Vaciar/Cancelar/Seleccionar/Desplazar viven en CalendarDayOverflowActions
+// (compartido con el overflow "..." de GroupDayContentModal, 2026-11-10) --
+// por eso Estampar quedó al final en vez de entre Seleccionar y Desplazar
+// como antes: reorder deliberado para agrupar las 4 filas compartidas.
 export function CalendarDayMenu({ hasContent, closed, isTraining, onAssignOrEdit, onClear, onCancel, onSelect, onStamp, onShift }) {
   return (
     <View
@@ -30,45 +36,7 @@ export function CalendarDayMenu({ hasContent, closed, isTraining, onAssignOrEdit
         </Text>
       </Pressable>
 
-      {hasContent && !closed && (
-        <Pressable
-          className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-          nativeID="calendar-day-menu-clear"
-          onPress={onClear}
-          testID="calendar-day-menu-clear"
-        >
-          <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={16} />
-          <Text className="text-sm text-red-600 dark:text-red-400" nativeID="calendar-day-menu-clear-label" testID="calendar-day-menu-clear-label">
-            Vaciar día
-          </Text>
-        </Pressable>
-      )}
-
-      {isTraining && (
-        <Pressable
-          className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-          nativeID="calendar-day-menu-cancel"
-          onPress={onCancel}
-          testID="calendar-day-menu-cancel"
-        >
-          <MaterialCommunityIcons color="#d97706" name="calendar-remove-outline" size={16} />
-          <Text className="text-sm text-amber-700 dark:text-amber-400" nativeID="calendar-day-menu-cancel-label" testID="calendar-day-menu-cancel-label">
-            Cancelar sesión
-          </Text>
-        </Pressable>
-      )}
-
-      <Pressable
-        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-        nativeID="calendar-day-menu-select"
-        onPress={onSelect}
-        testID="calendar-day-menu-select"
-      >
-        <MaterialCommunityIcons color="#64748b" name="checkbox-marked-outline" size={16} />
-        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="calendar-day-menu-select-label" testID="calendar-day-menu-select-label">
-          Seleccionar
-        </Text>
-      </Pressable>
+      <CalendarDayOverflowActions closed={closed} hasContent={hasContent} idPrefix="calendar-day-menu" isTraining={isTraining} onCancel={onCancel} onClear={onClear} onSelect={onSelect} onShift={onShift} />
 
       {!closed && (
         <Pressable
@@ -83,18 +51,6 @@ export function CalendarDayMenu({ hasContent, closed, isTraining, onAssignOrEdit
           </Text>
         </Pressable>
       )}
-
-      <Pressable
-        className="flex-row items-center gap-2 px-3 py-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-        nativeID="calendar-day-menu-shift"
-        onPress={onShift}
-        testID="calendar-day-menu-shift"
-      >
-        <MaterialCommunityIcons color="#64748b" name="arrow-right-bold-outline" size={16} />
-        <Text className="text-sm text-slate-700 dark:text-slate-200" nativeID="calendar-day-menu-shift-label" testID="calendar-day-menu-shift-label">
-          Desplazar desde acá
-        </Text>
-      </Pressable>
     </View>
   );
 }
