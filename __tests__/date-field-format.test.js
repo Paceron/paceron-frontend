@@ -125,4 +125,20 @@ describe('dashboard datepicker values', () => {
       to: '25/10/2026',
     });
   });
+
+  test('si el backend echoa un "max" a futuro (ej. desfasaje de huso horario), el "hasta" por defecto no pasa de hoy', () => {
+    const today = new Date(2026, 10, 11);
+    expect(defaultDashboardDateRange({ min: '2026-09-01', max: '2026-11-12' }, 731, today)).toEqual({
+      from: '01/09/2026',
+      to: '11/11/2026',
+    });
+  });
+
+  test('un "max" que no supera hoy no se toca', () => {
+    const today = new Date(2026, 10, 11);
+    expect(defaultDashboardDateRange({ min: '2026-09-01', max: '2026-10-25' }, 731, today)).toEqual({
+      from: '01/09/2026',
+      to: '25/10/2026',
+    });
+  });
 });
