@@ -773,6 +773,44 @@ function metTargetOf(row, tolerance) {
   return isCompliant(row, tolerance);
 }
 
+// Gap 43 (2026-11-12): el menor tiempo entre las series que CUMPLIERON el
+// objetivo, no cualquier serie válida (eso sigue siendo `best_time_ms`,
+// sin tocar). Sobre `validRows` porque una serie inválida nunca puede dar
+// `met_target: true` (isCompliant exige tiempo/distancia logrados > 0).
+function bestTimeMetMsOf(validRows, tolerance) {
+  let best = null;
+  validRows.forEach((row) => {
+    if (metTargetOf(row, tolerance) !== true) return;
+    const timeMs = achievedTimeMs(row);
+    if (timeMs > 0 && (best === null || timeMs < best)) best = timeMs;
+  });
+  return best;
+}
+
+// Gap 44 (2026-11-12): par objetivo/logrado de distancia para el eje
+// Volumen del radar, sobre el MISMO conjunto de series (con y sin medición
+// válida) donde la distancia es parte del objetivo -- a propósito distinto
+// de `metrics.sumTargetDistanceM` (que solo suma sobre `targetedRows()`,
+// ya filtrado a series válidas): acá una serie saltada/sin registro SIGUE
+// aportando su distancia esperada al denominador (decisión confirmada con
+// el frontend al cerrar el gap) -- `achievedOf(row).distanceM` da `null`
+// para esas, y el `?? 0` las deja en 0 del lado logrado sin excluirlas del
+// objetivo. Ninguna serie con objetivo de distancia → los dos `null`.
+function targetDistancePairOf(rows) {
+  let target = 0;
+  let achieved = 0;
+  let any = false;
+  rows.forEach((row) => {
+    if (!CURRENT_KINDS.includes(row.kind)) return;
+    const targetM = positiveInt(targetsOf(row).distanceM);
+    if (targetM === null) return;
+    any = true;
+    target += targetM;
+    achieved += achievedOf(row).distanceM ?? 0;
+  });
+  return any ? { target, achieved } : { target: null, achieved: null };
+}
+
 function magnitudesFor(axis, targets, achieved) {
   if (axis === 'time') {
     const minutes = positiveInt(targets.minutes);
@@ -1029,6 +1067,7 @@ function bandCountsOf(rows, tolerance) {
 function buildSummary(rows, tolerance, openSessions) {
   const metrics = metricsOf(rows);
   const { axis, hasTarget } = axisAndHasTarget(metrics);
+  const distancePair = targetDistancePairOf(rows);
   const totals = {
     sessions: metrics.sessions,
     series: metrics.totalSeries,
@@ -1040,6 +1079,9 @@ function buildSummary(rows, tolerance, openSessions) {
     delta_pct: null,
     compliance_rate: complianceRateOf(metrics, tolerance),
     best_time_ms: metrics.bestTimeMs,
+    best_time_met_ms: bestTimeMetMsOf(metrics.validRows, tolerance),
+    target_distance_m: distancePair.target,
+    achieved_target_distance_m: distancePair.achieved,
   };
   if (metrics.validSeries > 0) {
     totals.distance_m = metrics.totalDistanceM;

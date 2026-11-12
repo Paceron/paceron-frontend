@@ -373,7 +373,14 @@ export function DashboardScreen({ teamId }) {
         { label: 'Delta contra objetivo', value: formatDelta(totals.delta_pct, units.delta) },
         { label: 'Cumplimiento', value: formatMetric(totals.compliance_rate, units.compliance) },
         { label: 'Consistencia', value: formatMetric(summary.consistency?.cv) },
-        { label: 'Mejor tiempo', value: formatMetric(normalizeBestTimeMs(totals.best_time_ms), units.best_time) },
+        // Con objetivo (gap 43, 2026-11-12): el PDF reporta la MISMA cifra
+        // que la paleta que de verdad se mostró para este scope -- cumplido
+        // con objetivo, cualquier serie válida sin él (mismo criterio que
+        // palette-with-target.jsx/palette-without-target.jsx).
+        {
+          label: summary.has_target ? 'Mejor tiempo cumplido' : 'Mejor tiempo',
+          value: formatMetric(normalizeBestTimeMs(summary.has_target ? totals.best_time_met_ms : totals.best_time_ms), units.best_time),
+        },
         { label: 'Distancia total', value: formatMetric(totals.distance_m, units.distance) },
       ],
       series,

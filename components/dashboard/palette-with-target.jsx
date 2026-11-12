@@ -143,8 +143,13 @@ export function PaletteWithTarget({
           },
           {
             key: 'best_time',
-            label: 'Mejor tiempo',
-            value: normalizeBestTimeMs(totals.best_time_ms),
+            // "cumplido" en el label (gap 43, 2026-11-12): esta paleta SÍ
+            // tiene objetivo, así que lo que importa no es cualquier mejor
+            // marca sino la mejor marca entre las series que lo cumplieron
+            // -- `best_time_ms` (cualquier serie válida, objetivo aparte)
+            // sigue existiendo y es lo que muestra la paleta SIN objetivo.
+            label: 'Mejor tiempo cumplido',
+            value: normalizeBestTimeMs(totals.best_time_met_ms),
             unit: units.best_time,
             icon: 'timer-outline',
           },
@@ -335,7 +340,7 @@ const FORMULAS = {
   achieved_speed_kph: 'Velocidad ponderada por distancia: suma(distancia × velocidad) ÷ suma(distancia), sobre las series válidas del período.',
   distance_m: 'Suma de la distancia de las series válidas del período.',
   time_ms: 'Suma del tiempo alcanzado de las series válidas del período.',
-  best_time_ms: 'El menor tiempo alcanzado entre las series válidas del período.',
+  best_time_met_ms: 'El menor tiempo entre las series que cumplieron el objetivo (met_target=true), con la tolerancia aplicada en la consulta.',
   delta: 'Diferencia contra el objetivo en porcentaje. Positivo es mejora: en el eje temporal el signo viene invertido.',
   compliance_rate: 'Series válidas que cumplen el objetivo según la tolerancia aplicada, sobre las series válidas que tienen objetivo cargado.',
   cv: 'Coeficiente de variación de la velocidad (σ ÷ μ) de las series válidas del período. Sin dato con menos de 2 series.',
@@ -348,11 +353,14 @@ const FORMULAS = {
 // casualidad), así que esos 4 tooltips nunca mostraban su fórmula, aunque
 // el texto ya estuviera escrito arriba. `target_speed` queda sin mapear a
 // propósito: no tiene fórmula (ver su `hint` más abajo, es un valor
-// congelado, no un agregado).
+// congelado, no un agregado). `best_time` apunta a `best_time_met_ms`
+// (gap 43, 2026-11-12) -- esta paleta tiene objetivo, así que su "Mejor
+// tiempo" es el cumplido, no cualquier serie válida como en la paleta sin
+// objetivo (que sigue usando `best_time_ms` sin tocar).
 const KPI_FORMULA_KEYS = {
   pace: 'achieved_speed_kph',
   compliance: 'compliance_rate',
-  best_time: 'best_time_ms',
+  best_time: 'best_time_met_ms',
   delta: 'delta',
   consistency: 'cv',
 };
