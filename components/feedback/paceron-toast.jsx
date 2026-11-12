@@ -12,7 +12,7 @@ const VARIANTS = {
   warning: { icon: 'alert', accent: '#f59e0b', tint: 'bg-amber-500/15' },
 };
 
-function ToastCard({ type, text1, text2 }) {
+function ToastCard({ type, text1, text2, onPress }) {
   const variant = VARIANTS[type] ?? VARIANTS.info;
 
   return (
@@ -27,7 +27,12 @@ function ToastCard({ type, text1, text2 }) {
         accessibilityRole="button"
         className="w-full max-w-md flex-row items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-surface"
         nativeID="paceron-toast-card"
-        onPress={() => Toast.hide()}
+        // onPress del toast (ej. notificación en foreground, ver
+        // use-push-notifications.js) llega acá vía la librería — antes se
+        // ignoraba y solo se ocultaba el toast, tocar un aviso de
+        // notificación no navegaba a nada. Los Toast.show(...) existentes
+        // sin onPress siguen igual (no-op por el `?.`).
+        onPress={() => { onPress?.(); Toast.hide(); }}
         style={{ borderLeftWidth: 4, borderLeftColor: variant.accent }}
         testID="paceron-toast-card"
       >
@@ -50,8 +55,8 @@ function ToastCard({ type, text1, text2 }) {
 // Config para react-native-toast-message. Los Toast.show({ type: 'error' | 'success' | 'info' })
 // existentes mapean a estos renderers branded.
 export const toastConfig = {
-  success: ({ text1, text2 }) => <ToastCard type="success" text1={text1} text2={text2} />,
-  error: ({ text1, text2 }) => <ToastCard type="error" text1={text1} text2={text2} />,
-  info: ({ text1, text2 }) => <ToastCard type="info" text1={text1} text2={text2} />,
-  warning: ({ text1, text2 }) => <ToastCard type="warning" text1={text1} text2={text2} />,
+  success: ({ text1, text2, onPress }) => <ToastCard type="success" text1={text1} text2={text2} onPress={onPress} />,
+  error: ({ text1, text2, onPress }) => <ToastCard type="error" text1={text1} text2={text2} onPress={onPress} />,
+  info: ({ text1, text2, onPress }) => <ToastCard type="info" text1={text1} text2={text2} onPress={onPress} />,
+  warning: ({ text1, text2, onPress }) => <ToastCard type="warning" text1={text1} text2={text2} onPress={onPress} />,
 };

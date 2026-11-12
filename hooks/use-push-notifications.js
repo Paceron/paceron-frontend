@@ -55,14 +55,23 @@ export function usePushNotifications() {
           const { status } = await Notifications.requestPermissionsAsync();
           finalStatus = status;
         }
-        if (finalStatus !== 'granted') return;
+        if (finalStatus !== 'granted') {
+          if (__DEV__) console.warn('[push] permiso no concedido, no se registra token', { finalStatus });
+          return;
+        }
 
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
         await registerPushToken(token, 'android');
-      } catch {
+        if (__DEV__) console.log('[push] token registrado contra el backend', { token });
+      } catch (err) {
         // best-effort — permiso rechazado o fallo de red no debe romper
-        // el arranque de la app; el badge in-app sigue siendo el fallback
+        // el arranque de la app; el badge in-app sigue siendo el fallback.
+        // El log (solo __DEV__) es a propósito: sin él, un fallo de
+        // registro (token/permiso/red) es indistinguible de "todo bien
+        // pero no llegó ninguna notificación" — bug reportado 2026-11-12
+        // donde no se podía saber en qué paso se estaba perdiendo.
+        if (__DEV__) console.warn('[push] error registrando token', err?.message ?? err);
       }
     })();
   }, [userId]);
@@ -89,20 +98,33 @@ export function usePushNotifications() {
         const response = await Notifications.getLastNotificationResponseAsync();
         if (!response) return;
         const route = response.notification.request.content.data?.route;
+        if (__DEV__) console.log('[push] respuesta de cold-start recuperada', { route });
         if (route) router.push(route);
         await Notifications.clearLastNotificationResponseAsync();
-      } catch {
+      } catch (err) {
         // best-effort, mismo criterio que el resto del archivo
+        if (__DEV__) console.warn('[push] error recuperando respuesta de cold-start', err?.message ?? err);
       }
     })();
 
     const foregroundSub = Notifications.addNotificationReceivedListener((notification) => {
-      const { title, body } = notification.request.content;
-      Toast.show({ type: 'info', text1: title ?? '', text2: body ?? '' });
+      const { title, body, data } = notification.request.content;
+      if (__DEV__) console.log('[push] notificación recibida en foreground', { title, body, data });
+      Toast.show({
+        type: 'info',
+        text1: title ?? '',
+        text2: body ?? '',
+        // Mismo destino que el tap del banner nativo (responseSub de abajo) —
+        // antes tocar este toast solo lo cerraba, sin navegar a nada (bug
+        // reportado 2026-11-12: "adentro de la app no te lleva a la pantalla
+        // correcta").
+        onPress: data?.route ? () => router.push(data.route) : undefined,
+      });
     });
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const route = response.notification.request.content.data?.route;
+      if (__DEV__) console.log('[push] tap sobre notificación (app abierta/background)', { route });
       if (route) router.push(route);
     });
 
