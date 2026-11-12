@@ -2214,3 +2214,58 @@ con la pantalla ya montada). `/profile/tier-upgrade` salió de
 `SHARED_ROLE_SCREENS` (`role-switch-overlay.jsx`) por el mismo motivo: dejó
 de "adaptarse" al rol activo, ahora es contenido exclusivo de entrenador.
 Gap cerrado — sin acción pendiente de ningún lado.
+
+## Gap 43 — `best_time_ms` del dashboard no filtra por objetivo cumplido
+
+**Contexto (2026-11-11).** El KPI "Mejor tiempo" del dashboard de
+rendimiento (`totals.best_time_ms`) hoy es "el menor tiempo entre las
+series válidas del período" (ver `FORMULAS.best_time_ms`,
+`components/dashboard/palette-with-target.jsx`) — pedido del usuario: debería
+ser el mejor tiempo **entre las series que cumplieron el objetivo**, no
+cualquier serie válida.
+
+**Por qué no se resolvió en el front.** `GET /dashboard/exercises/{id}/series`
+(la única fuente con `met_target` por serie) exige un `exerciseId` puntual —
+no hay forma de pedirlo para el scope agregado (varios ejercicios del mismo
+`kind`, sin un ejercicio elegido) que es como se arma `totals` hoy. Derivarlo
+en el front desde ahí daría un número con un scope distinto (y a veces vacío)
+al resto de los KPIs del mismo tile, peor que el bug actual.
+
+**Pedido concreto:** que `totals.best_time_ms` (o un campo nuevo al lado,
+ej. `best_time_met_ms`) se calcule ya filtrado a series con
+`band === 'met'` (o `met_target === true`) en el propio agregado del
+backend, al mismo nivel de scope que el resto de `totals`.
+
+**Hecho mientras tanto (frontend, 2026-11-11):** `best_time_ms` en 0 (o
+negativo) se trata como "sin dato" (`utils/dashboard-format.js#normalizeBestTimeMs`)
+en vez de mostrarse como "00:00" — no toca el filtro por objetivo cumplido,
+solo evita un cero fantasma si el agregado llega en 0 en vez de `null`.
+
+## Gap 44 — sin agregado de distancia-objetivo para el eje "Volumen" del radar
+
+**Contexto (2026-11-11).** El eje "Volumen" del perfil de 5 ejes
+(`utils/dashboard-chart.js`, `RADAR_AXES`) hoy normaliza la distancia total
+del período contra un techo fijo de 100 km, sin relación con ningún
+objetivo. Pedido del usuario: debería ser el volumen logrado contra el
+volumen ESPERADO (km objetivo), en ejercicios donde ese objetivo de
+distancia existe.
+
+**Por qué no se resolvió en el front.** El backend ya calcula internamente
+la suma de distancia-objetivo por serie (`sumTargetDistanceM` en el mock,
+espejo de lo que hace el backend real) para otro cálculo (`delta_pct` en el
+eje "distance"), pero **no la expone como campo propio en `totals`** — no
+hay forma de reconstruir "km logrados ÷ km esperados" como ratio 0-100 sin
+ese agregado. Igual que el Gap 43, reconstruirlo desde
+`/dashboard/exercises/{id}/series` requeriría un ejercicio puntual elegido,
+scope distinto al resto del radar.
+
+**Pedido concreto:** exponer en `totals` (o en el payload que alimenta el
+radar) un agregado de distancia-objetivo across el scope filtrado — ej.
+`totals.target_distance_m` — para que el eje Volumen pueda calcularse como
+`distancia lograda ÷ distancia esperada` en vez de contra un techo fijo,
+restringido a series donde la distancia es parte del objetivo del
+ejercicio.
+
+**Sin cambios en el frontend todavía:** el eje sigue con el techo fijo de
+100 km hasta que el campo exista — no se intentó una aproximación parcial
+para no mostrar un número que pareciera correcto sin serlo.

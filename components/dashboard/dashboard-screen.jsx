@@ -28,6 +28,7 @@ import {
   formatMetric,
   hasInsufficientData,
   isLegacyNote,
+  normalizeBestTimeMs,
 } from '../../utils/dashboard-format.js';
 import { defaultDashboardDateRange, resolveDashboardDateRange } from '../../utils/date-field-format.js';
 import { availableMetricKinds, exercisesForKind, reconcileExercise } from '../../utils/dashboard-filter-cascade.js';
@@ -372,7 +373,7 @@ export function DashboardScreen({ teamId }) {
         { label: 'Delta contra objetivo', value: formatDelta(totals.delta_pct, units.delta) },
         { label: 'Cumplimiento', value: formatMetric(totals.compliance_rate, units.compliance) },
         { label: 'Consistencia', value: formatMetric(summary.consistency?.cv) },
-        { label: 'Mejor tiempo', value: formatMetric(totals.best_time_ms, units.best_time) },
+        { label: 'Mejor tiempo', value: formatMetric(normalizeBestTimeMs(totals.best_time_ms), units.best_time) },
         { label: 'Distancia total', value: formatMetric(totals.distance_m, units.distance) },
       ],
       series,

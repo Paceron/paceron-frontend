@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { formatDelta, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
+import { formatDelta, formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
 import { describePalette } from '../../utils/dashboard-palette.js';
 import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { DotPlot } from './charts/dot-plot.jsx';
@@ -61,7 +61,7 @@ export function PaletteWithoutTarget({
           {
             key: 'best_time',
             label: primary.label,
-            value: totals.best_time_ms,
+            value: normalizeBestTimeMs(totals.best_time_ms),
             unit: units.best_time,
             icon: 'timer-outline',
           },
@@ -155,7 +155,7 @@ export function PaletteWithoutTarget({
           id={`${id}-evolution-card`}
           preview={(
             <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-evolution-preview`} testID={`${id}-evolution-preview`}>
-              {`${formatMetric(totals.best_time_ms, units.best_time)} · ${bestBuckets.length} ${bestBuckets.length === 1 ? 'período' : 'períodos'}`}
+              {`${formatMetric(normalizeBestTimeMs(totals.best_time_ms), units.best_time)} · ${bestBuckets.length} ${bestBuckets.length === 1 ? 'período' : 'períodos'}`}
             </Text>
           )}
           title="Evolución de la mejor marca"

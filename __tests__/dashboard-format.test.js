@@ -13,9 +13,30 @@ import {
   hasInsufficientData,
   hasMetric,
   isLegacyNote,
+  normalizeBestTimeMs,
   resolveTolerance,
   verdictIcon,
 } from '../utils/dashboard-format.js';
+
+describe('normalizeBestTimeMs', () => {
+  test('un valor positivo finito se devuelve tal cual', () => {
+    expect(normalizeBestTimeMs(780_000)).toBe(780_000);
+  });
+
+  test('0 no es un tiempo real -- se trata como sin dato', () => {
+    expect(normalizeBestTimeMs(0)).toBeNull();
+  });
+
+  test('un negativo tampoco es un tiempo real', () => {
+    expect(normalizeBestTimeMs(-500)).toBeNull();
+  });
+
+  test('null/undefined/NaN siguen siendo null', () => {
+    expect(normalizeBestTimeMs(null)).toBeNull();
+    expect(normalizeBestTimeMs(undefined)).toBeNull();
+    expect(normalizeBestTimeMs(NaN)).toBeNull();
+  });
+});
 
 describe('formatMetric', () => {
   test('un null muestra un guion, no un cero (design.md D5)', () => {
