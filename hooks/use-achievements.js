@@ -22,6 +22,7 @@ function joinAchievements(catalog, progressList) {
       name: item.name,
       description: item.description,
       iconKey: item.iconKey,
+      iconName: item.iconName,
       threshold: item.threshold,
       unit: item.unit,
       counterTrophyEvery: item.counterTrophyEvery,
@@ -54,6 +55,13 @@ export function useAchievements() {
     queryKey: ['achievements-catalog'],
     queryFn: () => getAchievementsCatalog().then((dtos) => dtos.map(toAchievementCatalogItemModel)),
     staleTime: Infinity,
+    // Sin esto, un logout (que limpia el cache entero vía queryClient.clear()
+    // en auth-store.js) revivía esta consulta de inmediato si el componente
+    // todavía estaba montado en el instante de la limpieza -- el token ya
+    // estaba borrado, así que salía sin Authorization y volvía 401 (reportado
+    // 2026-11-12, visible en la consola justo al navegar a /login). La
+    // consulta hermana de abajo (progreso por usuario) ya tenía este guard.
+    enabled: Boolean(userId),
   });
 
   const progressQuery = useQuery({

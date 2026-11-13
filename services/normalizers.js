@@ -1279,6 +1279,12 @@ export function toAchievementCatalogItemModel(dto) {
     name: dto.name,
     description: dto.description,
     iconKey: dto.icon_key,
+    // `icon_name` (2026-11-13): glyph real de MaterialCommunityIcons --
+    // `icon_key` nunca lo fue (es la clave semántica del logro, igual a
+    // `id`). Se valida/con fallback recién al RENDERIZAR
+    // (utils/achievement-icon.js#resolveAchievementIconName), no acá --
+    // el modelo lleva el dato crudo tal cual llega.
+    iconName: dto.icon_name ?? null,
     // `threshold`/`unit` -- confirmado contra la implementación real
     // (2026-10-14): backend renombró `once_threshold` a `threshold` y
     // sumó `unit` (v1 es 100% familia `once`, sin `leveled`/`counter`

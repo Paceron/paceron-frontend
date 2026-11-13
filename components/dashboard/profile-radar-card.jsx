@@ -63,7 +63,7 @@ export function ProfileRadarCard({ id, summary, kind, title = 'Perfil del equipo
           // `max-w-full`: en web un flex item centrado NO se encoge como en Yoga,
           // así que sin el techo el grupo se sale de la card en vez de envolver el
           // radar a una segunda fila.
-          className="max-w-full flex-row flex-wrap items-center justify-center gap-6"
+          className="max-w-full flex-row flex-wrap items-center justify-center gap-4 mt-4"
           nativeID={`${id}-group`}
           onLayout={(event) => setRadarGroupWidth(Math.round(event.nativeEvent.layout.width))}
           testID={`${id}-group`}

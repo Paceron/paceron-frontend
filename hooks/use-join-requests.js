@@ -8,6 +8,7 @@ import {
   respondJoinRequest,
 } from '../services/join-requests.js';
 import { toJoinRequestModel } from '../services/normalizers.js';
+import { useAuthStore } from '../store/auth-store.js';
 
 // Estado de servidor del dominio de solicitudes de ingreso — TanStack
 // Query, no Zustand (ver CLAUDE.md), mismo criterio que
@@ -39,12 +40,20 @@ export function useTeamJoinRequests(teamId, { enabled = true } = {}) {
 
 // Conteo agregado (todos los equipos del entrenador) — para el badge de
 // la campana/drawer. `enabled` lo controla el caller: solo tiene sentido
-// pedirlo cuando activeRole === 'trainer'.
+// pedirlo cuando activeRole === 'trainer'. Combinado acá con `userId` del
+// store -- los 3 shells (app-web-shell.jsx/-narrow.jsx/app-mobile-shell.jsx)
+// montan esto con el shell entero, y `activeRole` NO se limpia en
+// logout (solo token/refreshToken/userId), así que el `enabled` del
+// caller solo no alcanza: tras un logout, queryClient.clear() (en
+// auth-store.js) vacía el cache y, si el shell sigue montado un
+// instante más durante la navegación a /login, esta consulta se
+// reactiva sin token y vuelve 401 (reportado 2026-11-12).
 export function usePendingRequestsCount(enabled = true) {
+  const userId = useAuthStore((s) => s.userId);
   const query = useQuery({
     queryKey: ['join-requests-pending-count'],
     queryFn: () => getPendingRequestsCount().then((dto) => dto.count),
-    enabled,
+    enabled: enabled && Boolean(userId),
   });
   return query.data ?? 0;
 }
