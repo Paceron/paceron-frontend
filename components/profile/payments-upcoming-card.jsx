@@ -23,7 +23,7 @@ const ROW_TONE = {
     icon: '#f59e0b',
   },
   normal: {
-    box: 'border-slate-100 dark:border-slate-800',
+    box: 'border-slate-200 bg-blue-50 dark:border-slate-700 dark:bg-slate-800/50',
     due: 'text-slate-500 dark:text-slate-400',
     icon: null,
   },
