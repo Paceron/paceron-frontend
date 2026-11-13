@@ -190,7 +190,7 @@ function AssignmentRow({ assignment, variant, cardRef, onOpenMenu }) {
       )}
       {variant === 'administered' && (
         <View className="mt-2 w-full" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
-          <StartSessionButton assignment={assignment} fill role="trainer" />
+          <StartSessionButton assignment={assignment} role="trainer" />
         </View>
       )}
     </View>

@@ -33,7 +33,13 @@ const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday
   // hay alguna, si no la primera del array) — un día con varias
   // asignaciones puede tener una presencial y otra no.
   const relevant = assignments.find((a) => a.isPresencial) ?? assignments[0] ?? null;
-  const closed = relevant ? isCalendarDayClosed(date.dateString, relevant) : false;
+  // `relevant ?? {}` -- NO "relevant ? ... : false": isCalendarDayClosed ya
+  // resuelve bien un día sin asignación (sus defaults de parámetro cubren
+  // {}, y compara la FECHA antes que nada) -- el ternario viejo hardcodeaba
+  // `false` para cualquier día vacío sin mirar la fecha, así que un día
+  // vacío de hace una semana se mostraba "abierto" igual que uno futuro
+  // (bug real, encontrado con un console.log de depuración, 2026-11-12).
+  const closed = isCalendarDayClosed(date.dateString, relevant ?? {});
   const severity = showCollisions ? collisionSeverity(assignments) : null;
   const visibleDots = assignments.slice(0, MAX_DOTS);
   const overflowCount = assignments.length - MAX_DOTS;
@@ -50,14 +56,14 @@ const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday
 
   return (
     <Pressable
-      className={`h-14 w-full items-center justify-start p-1 gap-1 rounded-xl ${borderClass}`}
+      className={`h-14 w-full items-center justify-start py-1.5 px-1 gap-1 rounded-xl ${borderClass}`}
       nativeID={`aggregated-calendar-day-${date.dateString}`}
       onPress={() => { if (!isOtherMonth) onPress(date.dateString); }}
-      style={{ opacity: closed ? 0.7 : 1 }}
+      style={{ opacity: closed ? 0.4 : 1 }}
       testID={`aggregated-calendar-day-${date.dateString}`}
     >
       <Text
-        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+        className={`text-base font-bold ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
         nativeID={`aggregated-calendar-day-${date.dateString}-label`}
         testID={`aggregated-calendar-day-${date.dateString}-label`}
       >
@@ -65,18 +71,18 @@ const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday
       </Text>
       {hasAssignments && (
         <View
-          className="flex-row items-center gap-0.5"
+          className="flex-row items-center"
           nativeID={`aggregated-calendar-day-${date.dateString}-dots`}
           testID={`aggregated-calendar-day-${date.dateString}-dots`}
         >
           {visibleDots.map((assignment, i) => (
             assignment.isPresencial ? (
-              <MaterialCommunityIcons color={colors.primary} key={assignment.id} name="map-marker" size={10} />
+              <MaterialCommunityIcons color={colors.primary} key={assignment.id} name="map-marker" size={12} />
             ) : (
               <View
                 key={assignment.id}
                 nativeID={`aggregated-calendar-day-${date.dateString}-dot-${i}`}
-                style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KIND_DOT_COLORS[assignment.kind] }}
+                style={{ marginHorizontal: 3, width: 9, height: 9, borderRadius: 6, backgroundColor: KIND_DOT_COLORS[assignment.kind] }}
                 testID={`aggregated-calendar-day-${date.dateString}-dot-${i}`}
               />
             )

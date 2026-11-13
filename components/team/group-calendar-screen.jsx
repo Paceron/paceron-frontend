@@ -49,21 +49,25 @@ const CATALOG_QUICK_LINKS = [
 // marcar que está ocupada (pedido real 2026-11-09). Vacía sigue igual que
 // siempre (border-slate-200/bg-slate-100, en el branch default de abajo).
 const KIND_FILLED_CLASS = {
-  training: 'border-green-200 bg-green-400 dark:border-green-400 dark:bg-green-600',
-  rest: 'border-slate-300 bg-slate-400 dark:border-slate-400 dark:bg-slate-500',
-  other: 'border-amber-200 bg-amber-400 dark:border-amber-400 dark:bg-amber-600',
-  cancelled: 'border-red-200 bg-red-400 dark:border-red-400 dark:bg-red-600',
+  training: 'border-green-300 bg-green-200 dark:border-green-700 dark:bg-green-800',
+  rest: 'border-slate-300 bg-slate-200 dark:border-slate-700 dark:bg-slate-800',
+  other: 'border-amber-300 bg-amber-200 dark:border-amber-700 dark:bg-amber-800',
+  cancelled: 'border-rose-300 bg-rose-200 dark:border-rose-700 dark:bg-rose-800',
 };
 
 function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, onOpenMenu, onOpenContent, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
+  const { themeMode } = useThemeMode();
+  const isDark = themeMode === 'dark';
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
-  const closed = marking ? isCalendarDayClosed(date.dateString, marking) : false;
-  // Estado de "cerrado" para la REGLA DE SELECCIÓN — a diferencia de
-  // `closed` de arriba (que solo importa para el tinte y siempre da
-  // false en un día vacío), acá sí necesitamos el valor real incluso sin
-  // contenido: un día vacío del mes pasado igual cuenta como "cerrado" a
+  // Único cómputo de "cerrado" de la celda (el otro, local y redundante,
+  // se sacó 2026-11-12: comparaba marking contra isCalendarDayClosed con
+  // el mismo bug de abajo, y su único consumo -- la opacidad del punto de
+  // marca -- ya había quedado sin uso). `marking ?? {}`, nunca `marking ?
+  // ... : false`: isCalendarDayClosed ya resuelve bien un día sin
+  // contenido (sus defaults cubren {}, y compara la fecha antes que
+  // nada) -- un día vacío del mes pasado igual cuenta como "cerrado" a
   // los fines de no mezclarlo con una selección de días futuros.
   const closedForSelection = isCalendarDayClosed(date.dateString, marking ?? {});
   const canSelect = !selectionActive || selected || canAddToSelection(selectionClosedClass, closedForSelection);
@@ -125,7 +129,7 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
       : isMenuOpen
         ? `${hoverFx} border-4 border-blue-200 bg-blue-100 dark:border-blue-600 dark:bg-blue-500`
         : isToday
-          ? `${hoverFx} border-2 border-dashed border-primary bg-green-100 dark:bg-green-700 dark:hover:bg-opacity-60`
+          ? `${hoverFx} border-2 border-dashed border-primary bg-green-100 dark:bg-green-800 dark:hover:bg-opacity-60`
           : isPlainFilledDay
             ? `${hoverFx} border-2 ${KIND_FILLED_CLASS[marking.kind] ?? KIND_FILLED_CLASS.other} dark:hover:bg-opacity-60`
             : `${hoverFx} border-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-opacity-60`;
@@ -133,14 +137,14 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
   const cell = (
     <Pressable
       ref={cellRef}
-      className={`h-14 w-full items-center justify-start p-1 gap-1 rounded-xl ${borderClass}`}
+      className={`h-14 w-full items-center justify-center flex-row py-1.5 px-1 gap-1 rounded-xl ${borderClass}`}
       nativeID={`group-calendar-day-${date.dateString}`}
       onPress={handlePress}
       style={{ opacity: cellOpacity }}
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
-        className={`text-sm ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+        className={`text-base font-bold ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
         nativeID={`group-calendar-day-${date.dateString}-label`}
         testID={`group-calendar-day-${date.dateString}-label`}
       >
@@ -148,9 +152,8 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
       </Text>
       {marking && marking.kind !== 'rest' && (
         <View
-          className="flex-row items-center gap-0.5"
+          className="items-center"
           nativeID={`group-calendar-day-${date.dateString}-marks`}
-          style={{ opacity: closed ? 0.45 : 1 }}
           testID={`group-calendar-day-${date.dateString}-marks`}
         >
           {marking.isPresencial ? (
@@ -159,11 +162,11 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
             // encima de eso (ej. un cancelled en rojo) perdía contraste o
             // desentonaba. En los demás estados (hoy/seleccionado/menú) el
             // fondo sigue siendo claro, así que el verde de marca sigue andando.
-            <MaterialCommunityIcons color={isPlainFilledDay ? '#ffffff' : colors.primary} name="map-marker" size={10} />
+            <MaterialCommunityIcons color={isDark ? '#f0fff0' : '#006400'} name="map-marker" size={16} />
           ) : (
             <View
               nativeID={`group-calendar-day-${date.dateString}-dot`}
-              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isPlainFilledDay ? '#ffffff' : KIND_DOT_COLORS[marking.kind] }}
+              style={{ marginHorizontal: 3, width: 12, height: 12, borderRadius: 6, backgroundColor: isPlainFilledDay ? (isDark ? '#f0fff0' : '#006400') : KIND_DOT_COLORS[marking.kind] }}
               testID={`group-calendar-day-${date.dateString}-dot`}
             />
           )}
@@ -173,10 +176,10 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
         <View
           className="absolute right-1 top-1"
           nativeID={`group-calendar-day-${date.dateString}-closed-badge`}
-          style={{ opacity: 0.55 }}
+          style={{ opacity: 0.85 }}
           testID={`group-calendar-day-${date.dateString}-closed-badge`}
         >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="lock-outline" size={9} />
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="lock-outline" size={12} />
         </View>
       )}
     </Pressable>
@@ -326,10 +329,15 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   };
 
   const openMarking = openDayMenu ? markingsByDate[openDayMenu.date] : null;
-  const openClosed = openDayMenu && openMarking ? isCalendarDayClosed(openDayMenu.date, openMarking) : false;
+  // `?? {}`, nunca `X ? ... : false` -- mismo bug que el `closed` ya sacado
+  // de CalendarDayCell más arriba: para un día VACÍO ya pasado, el
+  // ternario daba `false` sin mirar la fecha, así que "Estampar plan" en
+  // CalendarDayMenu quedaba habilitado para un día que el backend iba a
+  // rechazar con 422 (2026-11-12).
+  const openClosed = openDayMenu ? isCalendarDayClosed(openDayMenu.date, openMarking ?? {}) : false;
 
   const openContentDay = openDayContent ? daysByDate[openDayContent] : null;
-  const openContentClosed = openContentDay ? isCalendarDayClosed(openDayContent, openContentDay) : false;
+  const openContentClosed = openDayContent ? isCalendarDayClosed(openDayContent, openContentDay ?? {}) : false;
 
   const { refreshing, onRefresh } = usePullToRefresh(() => (
     queryClient.invalidateQueries({ queryKey: ['group-calendar', groupId] })
