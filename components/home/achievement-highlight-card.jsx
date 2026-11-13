@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { pickAchievementHighlight } from '../../utils/achievement-highlight.js';
+import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 
@@ -46,7 +47,7 @@ export function AchievementHighlightCard({ paired = false }) {
           Logro más cercano
         </Text>
         <View className="flex-row items-center gap-3" nativeID="achievement-highlight-card-header" testID="achievement-highlight-card-header">
-          <MaterialCommunityIcons color={meta.color} name={highlight.iconKey} size={26} />
+          <MaterialCommunityIcons color={meta.color} name={resolveAchievementIconName(highlight.iconName)} size={26} />
           <Text className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="achievement-highlight-card-name" testID="achievement-highlight-card-name">
             {highlight.name}
           </Text>

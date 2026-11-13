@@ -3,13 +3,23 @@
 // ver la barra de progreso sin levantar backend. `has_unseen: true` en el
 // leveled, para poder probar el punto rojo (Gap 34) sin esperar un
 // desbloqueo real.
+//
+// `icon_key === id` (2026-11-13, confirmado por backend): es la clave
+// semántica del logro, NUNCA un nombre de ícono real -- antes este mock
+// tenía `icon_key` con valores que CASUALMENTE eran glyphs válidos
+// (`star-outline`, `fire`, `medal-outline`), lo que escondía el bug real
+// del backend (ahí `icon_key` es algo como `streak_7`, nada parecido a un
+// glyph). `icon_name` es el campo nuevo con el glyph real; `fire` para
+// `consecutive_trainings` es el mismo ejemplo que dio el backend
+// (`streak_7` → `fire`).
 const MOCK_CATALOG = [
   {
     id: 'first_training',
     family: 'once',
     name: 'Primera vez',
     description: 'Completaste tu primer entrenamiento.',
-    icon_key: 'star-outline',
+    icon_key: 'first_training',
+    icon_name: 'star-outline',
     threshold: 1,
     unit: 'sessions',
   },
@@ -18,7 +28,8 @@ const MOCK_CATALOG = [
     family: 'leveled',
     name: 'Entrenamientos Consecutivos',
     description: 'Entrená días consecutivos sin cortar la racha.',
-    icon_key: 'fire',
+    icon_key: 'consecutive_trainings',
+    icon_name: 'fire',
     levels: [
       { level: 1, name: 'Chispa', threshold: 5 },
       { level: 2, name: 'Fuego', threshold: 10 },
@@ -33,7 +44,8 @@ const MOCK_CATALOG = [
     family: 'counter',
     name: 'Entrenamientos totales',
     description: 'Cada entrenamiento completado suma una estampa.',
-    icon_key: 'medal-outline',
+    icon_key: 'total_trainings',
+    icon_name: 'calendar-check',
     counter_trophy_every: 1,
   },
 ];

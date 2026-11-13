@@ -2,6 +2,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
+import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { LevelPips } from './level-pips.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -25,7 +26,7 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="achievement-detail-modal-backdrop" onPress={onClose} testID="achievement-detail-modal-backdrop">
         <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="achievement-detail-modal-card" onPress={() => {}} testID="achievement-detail-modal-card">
           <View className="flex-row items-center gap-3" nativeID="achievement-detail-modal-header" testID="achievement-detail-modal-header">
-            <MaterialCommunityIcons color={meta.color} name={achievement.iconKey} size={32} />
+            <MaterialCommunityIcons color={meta.color} name={resolveAchievementIconName(achievement.iconName)} size={32} />
             <Text className="flex-1 text-lg font-bold text-slate-900 dark:text-white" nativeID="achievement-detail-modal-title" testID="achievement-detail-modal-title">
               {achievement.name}
             </Text>

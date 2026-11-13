@@ -1290,6 +1290,22 @@ los 3 endpoints reales (`GET /achievements/catalog`, `GET /users/{id}/achievemen
 `GET /users/{id}/stamps`) con `USE_MOCKS=false` — contrato final según el "pedido concreto" de
 abajo, con `icon_key` ya incorporado.
 
+**Addendum 2026-11-13 — `icon_key` nunca fue un glyph real, `icon_name` lo resuelve.**
+`icon_key` es la clave semántica del logro (igual a `id`, ej. `streak_7`), nunca un nombre válido
+de `MaterialCommunityIcons` — el frontend venía usándolo directo como `name` del ícono, así que
+cada logro mostraba el glyph "que caía" según si la clave coincidía por casualidad con un nombre
+real. Backend sumó `icon_name` a `GET /achievements/catalog` (glyph real, compatible con
+`@expo/vector-icons@^15.0.3` — confirmado contra el glyphMap instalado, no solo de palabra).
+Frontend: `toAchievementCatalogItemModel` lleva `iconName` crudo; `utils/achievement-icon.js
+#resolveAchievementIconName` es el único punto que lo valida contra el glyphMap real y cae a un
+fallback (`trophy-outline`, también confirmado válido) si falta o no existe — cubre tanto un
+backend viejo sin el campo como un glyph que dejara de existir en una futura versión de la
+librería. Los 3 call sites que mostraban el ícono de un logro (`achievements-tab.jsx`,
+`achievement-detail-modal.jsx`, `achievement-highlight-card.jsx`) pasan por esa función en vez de
+usar el campo crudo. La vitrina de estampas/trofeos (`GET /users/{id}/stamps`,
+`trophy-case-tab.jsx`) queda fuera de este addendum — no estaba en el pedido del backend, sigue
+usando `icon_key` tal cual hasta que se confirme si tiene el mismo problema.
+
 **Pedido concreto** (shapes en snake_case):
 
 1. `GET /achievements/catalog` → config, no cambia por usuario: `{id, family:

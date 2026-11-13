@@ -3,6 +3,7 @@ import { Pressable, View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
+import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { LevelPips } from './level-pips.jsx';
 import { AchievementDetailModal } from './achievement-detail-modal.jsx';
@@ -20,14 +21,18 @@ function AchievementCard({ achievement, columnClass }) {
   return (
     <>
       <Pressable className={`${columnClass} rounded-2xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:border-transparent dark:bg-surface-2 dark:hover:bg-surface-3 dark:active:bg-surface-3`} nativeID={idPrefix} onPress={() => setDetailVisible(true)} testID={idPrefix}>
-        {/* `achievement.iconKey` (del catálogo) identifica AL LOGRO en sí
-            (medalla, llama, estrella, según cada uno) -- antes se mostraba el
-            ícono del NIVEL (meta.icon, genérico por nivel 1-5), así que todos
-            los logros "leveled" se veían iguales entre sí. El color de nivel
-            se mantiene, tiñe el ícono propio del logro en vez de reemplazarlo
-            (bug/pedido real, 2026-10-14). */}
+        {/* `achievement.iconName` (del catálogo, Gap 31) identifica AL LOGRO
+            en sí (medalla, llama, estrella, según cada uno) -- antes se
+            mostraba el ícono del NIVEL (meta.icon, genérico por nivel 1-5),
+            así que todos los logros "leveled" se veían iguales entre sí. El
+            color de nivel se mantiene, tiñe el ícono propio del logro en vez
+            de reemplazarlo (bug/pedido real, 2026-10-14). `iconKey` (la
+            clave semántica, ej. "streak_7") nunca fue un nombre de ícono
+            real -- `resolveAchievementIconName` valida `iconName` contra el
+            glyphMap real y cae a un fallback si falta o no existe
+            (2026-11-13). */}
         <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-          <MaterialCommunityIcons color={meta.color} name={achievement.iconKey} size={22} />
+          <MaterialCommunityIcons color={meta.color} name={resolveAchievementIconName(achievement.iconName)} size={22} />
           <Text className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
             {achievement.name}
           </Text>

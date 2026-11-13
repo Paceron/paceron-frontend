@@ -22,6 +22,7 @@ function joinAchievements(catalog, progressList) {
       name: item.name,
       description: item.description,
       iconKey: item.iconKey,
+      iconName: item.iconName,
       threshold: item.threshold,
       unit: item.unit,
       counterTrophyEvery: item.counterTrophyEvery,
