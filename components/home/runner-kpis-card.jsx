@@ -40,6 +40,12 @@ function todayISODate() {
 // columnas en mobile y 3 en desktop; `openTooltip` sube la celda (y la grilla)
 // para que el bubble no quede debajo de la card vecina, igual que la paleta del
 // dashboard.
+// Altura de la card cuando hay un tooltip abierto. En react-native-web cada
+// View es su propio stacking context (`position: relative; z-index: 0`), así
+// que subir solo la celda o la grilla no alcanza: el bubble se dibuja dentro
+// de la card y las cards hermanas del Home (banner, resumen, etc.) la tapan.
+const OPEN_TOOLTIP_CARD_Z_INDEX = 1000;
+
 export function RunnerKpisCard() {
   const { colorScheme } = useThemeMode();
   const [referenceDate] = useState(todayISODate);
@@ -124,6 +130,7 @@ export function RunnerKpisCard() {
     <View
       className="relative mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface"
       nativeID="runner-kpis-card"
+      style={{ zIndex: openTooltip || infoTooltipOpen ? OPEN_TOOLTIP_CARD_Z_INDEX : 0 }}
       testID="runner-kpis-card"
     >
       <View
