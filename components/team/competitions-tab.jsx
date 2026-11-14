@@ -7,11 +7,10 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
-import { useCompetitions, useCompetitionMutations, useCompetitionDetail, useCompetitionAttempts, useSeedDynamicRouteCompetition } from '../../hooks/use-competitions.js';
+import { useCompetitions, useCompetitionMutations, useCompetitionAttempts, useSeedDynamicRouteCompetition } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
-import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -25,10 +24,12 @@ import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
 import { AttemptsListModal } from './attempts-list-modal.jsx';
+import { CompetitionParticipantsModal } from './competition-participants-modal.jsx';
+import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { useCompetitionsUiStore } from '../../store/competitions-ui-store.js';
 import { RouteMapPreview } from './route-map-preview';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
-import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
 import { logDebug } from '../../utils/debug-log.js';
 
 const STATUS_META = {
@@ -54,44 +55,7 @@ const EMPTY_MESSAGE = {
   history: 'Todavía no hay competencias finalizadas.',
 };
 
-function memberName(members, userId) {
-  return members.find((m) => m.userId === userId)?.name ?? 'Corredor';
-}
-
-// Pill estática (no Pressable, sin hover/active) a propósito -- pedido
-// real: que no se confunda con un botón. Ganador: acento ámbar + trofeo,
-// y el caller la ordena primero en la lista (ver sortedParticipantIds).
-// `progressLabel` (Spec 4b) -- solo llega con algo para type='metric', ya
-// formateado (formatMetricValue), null mientras el detalle no cargó o para
-// type='route'.
-function ParticipantPill({ idPrefix, name, isWinner, progressLabel }) {
-  return (
-    <View
-      className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${
-        isWinner ? 'bg-amber-50 dark:bg-amber-900/15' : 'bg-slate-100 dark:bg-slate-800'
-      }`}
-      nativeID={idPrefix}
-      testID={idPrefix}
-    >
-      {isWinner && <MaterialCommunityIcons color="#eab308" name="trophy" size={12} />}
-      <Text
-        className={`text-xs font-medium ${isWinner ? 'text-amber-700 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}`}
-        nativeID={`${idPrefix}-name`}
-        testID={`${idPrefix}-name`}
-      >
-        {name}{progressLabel ? ` · ${progressLabel}` : ''}
-      </Text>
-    </View>
-  );
-}
-
-// Bloque de detalle de una competencia type='route' -- pedido real,
-// 2026-10-17: dirección del punto de inicio (clickeable a Google Maps) +
-// participantes a la izquierda, mapa real con el trazado a la derecha, en
-// 2 columnas en web ancho y apilado (mismo orden: dirección, participantes,
-// mapa) en mobile/web angosto. Detrás del chevron de expandir, igual que
-// los participantes de type='metric' (el caller gatea esto con `expanded`).
-function RouteDetailSection({ idPrefix, competition, members, sortedParticipantIds }) {
+function RouteDetailSection({ idPrefix, competition }) {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const twoColumns = isWeb && !isNarrowWeb;
@@ -120,26 +84,13 @@ function RouteDetailSection({ idPrefix, competition, members, sortedParticipantI
           </Pressable>
         </>
       )}
-      <View className="flex-row flex-wrap items-center gap-1.5 mt-1" nativeID={`${idPrefix}-route-participants`} testID={`${idPrefix}-route-participants`}>
-        <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-participants-caption`} testID={`${idPrefix}-route-participants-caption`}>
-          Participantes:
-        </Text>
-        {sortedParticipantIds.map((userId) => (
-          <ParticipantPill idPrefix={`${idPrefix}-participant-${userId}`} isWinner={competition.winnerUserIds.includes(userId)} key={userId} name={memberName(members, userId)} progressLabel={null} />
-        ))}
-        {competition.status === 'finished' && competition.winnerUserIds.length === 0 && (
-          <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-route-no-winner`} testID={`${idPrefix}-route-no-winner`}>
-            Sin ganador — nadie completó un intento.
-          </Text>
-        )}
-      </View>
     </View>
   );
 
   // Alto fijo (no `vh`, ver bug real del modal más arriba en este mismo
   // archivo histórico de commits) -- "mínimo asegurado": en 2 columnas el
   // ancho sí crece libre vía `flex-1` según lo que sobre al lado de la
-  // dirección/participantes.
+  // dirección.
   const mapColumn = (
     <View nativeID={`${idPrefix}-route-map-wrap`} style={{ height: twoColumns ? 220 : 180 }} testID={`${idPrefix}-route-map-wrap`}>
       <RouteMapPreview coordinates={coordinates} nativeID={`${idPrefix}-route-map`} testID={`${idPrefix}-route-map`} />
@@ -154,7 +105,7 @@ function RouteDetailSection({ idPrefix, competition, members, sortedParticipantI
   );
 }
 
-function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, busy }) {
+function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busy }) {
   const colors = useThemeColors();
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const idPrefix = `competitions-tab-row-${competition.id}`;
@@ -220,27 +171,19 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   // Pendientes de aprobación y rechazadas quedan afuera: nunca corrieron,
   // no hay nada que rankear.
   const canViewRanking = competition.status === 'active' || competition.status === 'finished';
+  const canViewParticipants = Boolean(competition);
+  const participantCount = competition.participantUserIds?.length ?? 0;
+  const canExpand = competition.type === 'route';
   // El botón de Play (canRunBase) solo entra en el grupo de acciones ícono
   // en nativo -- en web `canRunBase` sigue true pero no hay botón, solo un
   // aviso informativo (más abajo), así que no cuenta para decidir si el
   // grupo de acciones se renderiza.
-  const hasActions = canApproveReject || isOwnPendingProposal || canClose || canViewRanking || (canRunBase && !isWeb);
-
-  const sortedParticipantIds = [...competition.participantUserIds].sort((a, b) => {
-    const aWinner = competition.winnerUserIds.includes(a) ? 0 : 1;
-    const bWinner = competition.winnerUserIds.includes(b) ? 0 : 1;
-    return aWinner - bWinner;
-  });
-
-  // Progreso (Spec 4b) -- solo pide el detalle (progress) para type='metric'
-  // y recién al expandir, no de entrada para toda la lista.
-  const { detail } = useCompetitionDetail(competition.id, { enabled: expanded && competition.type === 'metric' });
-  const progressByUserId = new Map((detail?.progress ?? []).map((p) => [p.userId, p.value]));
+  const hasActions = canViewParticipants || canApproveReject || isOwnPendingProposal || canClose || canViewRanking || (canRunBase && !isWeb);
 
   return (
     <View className={`rounded-xl border p-3 transition-colors ${highlighted ? 'border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
-      <Pressable className="flex-row items-start gap-2" nativeID={`${idPrefix}-header`} onPress={onToggleExpand} testID={`${idPrefix}-header`}>
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} />
+      <Pressable className="flex-row items-start gap-2" disabled={!canExpand} nativeID={`${idPrefix}-header`} onPress={canExpand ? onToggleExpand : undefined} testID={`${idPrefix}-header`}>
+        {canExpand ? <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} /> : null}
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
           {/* Sin línea de meta aparte para type='metric' -- pedido real,
               2026-10-16: duplicaba exactamente la misma info que el título
@@ -279,6 +222,14 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
 
         {hasActions && (
           <View className="flex-row items-center gap-1.5" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+            <IconTooltip align="end" idPrefix={`${idPrefix}-participants-tooltip`} label="Participantes" position="bottom">
+              <Pressable className="h-8 flex-row items-center justify-center gap-1 rounded-full bg-slate-100 px-2 active:opacity-70 dark:bg-slate-800" nativeID={`${idPrefix}-participants-button`} onPress={() => onOpenParticipants(competition)} testID={`${idPrefix}-participants-button`}>
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-group" size={18} />
+                <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-participants-count`} testID={`${idPrefix}-participants-count`}>
+                  {participantCount}
+                </Text>
+              </Pressable>
+            </IconTooltip>
             {canViewRanking && (
               <IconTooltip align="end" idPrefix={`${idPrefix}-ranking-tooltip`} label="Ver ranking" position="bottom">
                 <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:opacity-70 dark:bg-slate-800" nativeID={`${idPrefix}-ranking-button`} onPress={() => onOpenRanking(competition)} testID={`${idPrefix}-ranking-button`}>
@@ -316,7 +267,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
             )}
             {canClose && (
               <IconTooltip align="end" idPrefix={`${idPrefix}-close-tooltip`} label="Cerrar competencia" position="bottom">
-                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-amber-100 active:opacity-70 disabled:opacity-60 dark:bg-amber-900/30" disabled={busy} nativeID={`${idPrefix}-close-button`} onPress={() => onClose(competition.id)} testID={`${idPrefix}-close-button`}>
+                <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-amber-100 active:opacity-70 disabled:opacity-60 dark:bg-amber-900/30" disabled={busy} nativeID={`${idPrefix}-close-button`} onPress={() => onClose(competition)} testID={`${idPrefix}-close-button`}>
                   <MaterialCommunityIcons color="#d97706" name="flag-checkered" size={18} />
                 </Pressable>
               </IconTooltip>
@@ -332,31 +283,8 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
         )}
       </View>
 
-      {expanded && competition.type === 'metric' && (
-        <View className="ml-6 mt-3 flex-row flex-wrap items-center gap-1.5" nativeID={`${idPrefix}-participants`} testID={`${idPrefix}-participants`}>
-          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-participants-caption`} testID={`${idPrefix}-participants-caption`}>
-            Participantes:
-          </Text>
-          {sortedParticipantIds.map((userId) => {
-            const progressValue = progressByUserId.get(userId);
-            const progressLabel = progressValue != null ? formatMetricValue(competition.metric, progressValue) : null;
-            return (
-              <ParticipantPill idPrefix={`${idPrefix}-participant-${userId}`} isWinner={competition.winnerUserIds.includes(userId)} key={userId} name={memberName(members, userId)} progressLabel={progressLabel} />
-            );
-          })}
-          {competition.status === 'finished' && competition.winnerUserIds.length === 0 && (
-            <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-no-winner`} testID={`${idPrefix}-no-winner`}>
-              Sin ganador — nadie completó un intento.
-            </Text>
-          )}
-        </View>
-      )}
-
-      {/* Colapsar/expandir aplica igual a las dos variantes ahora -- pedido
-          real, 2026-10-17: "al colapsar una competencia por trayectoria no
-          pasa nada" (antes esto era incondicional a propósito; revertido). */}
       {expanded && competition.type === 'route' && (
-        <RouteDetailSection competition={competition} idPrefix={idPrefix} members={members} sortedParticipantIds={sortedParticipantIds} />
+        <RouteDetailSection competition={competition} idPrefix={idPrefix} />
       )}
 
       {canRunBase && isWeb && (
@@ -385,8 +313,11 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
   const [createVisible, setCreateVisible] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState(null);
   const [rankingCompetition, setRankingCompetition] = useState(null);
+  const [participantsCompetition, setParticipantsCompetition] = useState(null);
+  const [participantsReturn, setParticipantsReturn] = useState(null);
   const [attemptsCompetition, setAttemptsCompetition] = useState(null);
   const [reopenAthleteId, setReopenAthleteId] = useState(null);
+  const [closeTarget, setCloseTarget] = useState(null);
   const [subTab, setSubTab] = useState('active');
   const [filterType, setFilterType] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
@@ -481,10 +412,47 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
     else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos cancelar la propuesta', text2: result.error }); }
   };
 
-  const handleClose = async (id) => {
-    const result = await mutations.closeCompetition(id);
-    if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Competencia cerrada' }); }
-    else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos cerrar la competencia', text2: result.error }); }
+  const handleRequestClose = (competition) => {
+    notifyWarning();
+    setCloseTarget(competition);
+  };
+
+  const handleConfirmClose = async () => {
+    if (!closeTarget || mutations.isClosing) return;
+    const result = await mutations.closeCompetition(closeTarget.id);
+    if (result.success) {
+      notifySuccess();
+      Toast.show({ type: 'success', text1: 'Competencia cerrada' });
+      setCloseTarget(null);
+    } else {
+      notifyError();
+      Toast.show({ type: 'error', text1: 'No pudimos cerrar la competencia', text2: result.error });
+    }
+  };
+
+  const handleCancelClose = () => {
+    if (mutations.isClosing) return;
+    setCloseTarget(null);
+  };
+
+  const handleOpenAttemptsFromParticipants = (competition, athleteId) => {
+    setParticipantsReturn(competition);
+    setParticipantsCompetition(null);
+    setAttemptsCompetition(competition);
+    setReopenAthleteId(athleteId);
+  };
+
+  const handleOpenAttempts = (competition) => {
+    setReopenAthleteId(null);
+    setAttemptsCompetition(competition);
+  };
+
+  const handleCloseAttempts = () => {
+    setAttemptsCompetition(null);
+    if (participantsReturn) {
+      setParticipantsCompetition(participantsReturn);
+      setParticipantsReturn(null);
+    }
   };
 
   // El intake real (POST /competitions/{id}/attempts, sin reintentos v1 --
@@ -600,13 +568,13 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
                 expanded={!collapsedIds.has(competition.id)}
                 highlighted={competition.id === highlightedId}
                 isTrainerView={isTrainerView}
-                members={members}
                 onApprove={handleApprove}
                 onCancel={handleCancel}
-                onClose={handleClose}
+                onClose={handleRequestClose}
                 onRun={handleRun}
                 onReject={setRejectTargetId}
-                onOpenAttempts={setAttemptsCompetition}
+                onOpenAttempts={handleOpenAttempts}
+                onOpenParticipants={setParticipantsCompetition}
                 onOpenRanking={setRankingCompetition}
                 onToggleExpand={() => toggleExpanded(competition.id)}
               />
@@ -633,13 +601,30 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
         onClose={() => setRankingCompetition(null)}
         visible={rankingCompetition != null}
       />
+      <CompetitionParticipantsModal
+        competition={participantsCompetition}
+        members={members}
+        onClose={() => setParticipantsCompetition(null)}
+        onOpenAttempts={handleOpenAttemptsFromParticipants}
+        visible={participantsCompetition != null}
+      />
       <AttemptsListModal
         competition={attemptsCompetition}
         currentUserId={currentUserId}
         initialAthleteId={reopenAthleteId}
         members={members}
-        onClose={() => setAttemptsCompetition(null)}
+        onClose={handleCloseAttempts}
         visible={attemptsCompetition != null}
+      />
+      <ConfirmDestructiveModal
+        confirmLabel="Cerrar competencia"
+        description="Al cerrar la competencia se calculan los resultados y pasa al historial. Esta acción no se puede deshacer."
+        idPrefix="competition-close"
+        loading={mutations.isClosing}
+        onCancel={handleCancelClose}
+        onConfirm={handleConfirmClose}
+        title="Cerrar competencia"
+        visible={closeTarget != null}
       />
     </SectionCard>
   );

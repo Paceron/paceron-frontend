@@ -36,18 +36,10 @@ export function AttemptsListModal({ visible, onClose, competition, members, curr
   const participantIds = competition?.participantUserIds ?? [];
   const defaultAthleteId = participantIds.includes(currentUserId) ? currentUserId : (participantIds[0] ?? null);
   const [athleteId, setAthleteId] = useState(initialAthleteId ?? defaultAthleteId);
-  // Bug real encontrado en preview: este componente está SIEMPRE montado
-  // en el JSX de competitions-tab.jsx (solo `visible` cambia) -- monta en
-  // el mismo commit que CompetitionsTab, ANTES de que el efecto de
-  // restauración (que corre después del montaje) llegue a escribir
-  // `initialAthleteId`. El valor inicial de `useState` arriba lo capturó
-  // en null, y una prop que cambia después NO reinicializa un useState ya
-  // montado -- de ahí este efecto, que sincroniza explícitamente apenas
-  // `initialAthleteId` deja de ser null (pasa una sola vez: cuando hay algo
-  // real para restaurar, nunca en el caso normal sin restauración).
   useEffect(() => {
-    if (initialAthleteId != null) setAthleteId(initialAthleteId);
-  }, [initialAthleteId]);
+    if (!visible) return;
+    setAthleteId(initialAthleteId ?? defaultAthleteId);
+  }, [visible, initialAthleteId, defaultAthleteId]);
   const resolvedAthleteId = participantIds.includes(athleteId) ? athleteId : defaultAthleteId;
 
   const { attempts, loading } = useCompetitionAttempts(competition?.id, resolvedAthleteId, { enabled: visible && Boolean(competition) });
