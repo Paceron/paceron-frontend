@@ -130,6 +130,31 @@ export function statusTileContent(summary, group, mode) {
   return { value: formatArs(amount ?? 0), hint: formatInstallmentCount(summary?.[`${prefix}Count`]) };
 }
 
+// Períodos del selector compartido por los KPIs de pendientes y rechazadas.
+// "Todas" son las cuotas vencidas más las del mes en curso; no proyecta meses
+// futuros.
+export const RECEIVED_KPI_PERIODS = [
+  { id: 'all', name: 'Todas' },
+  { id: 'current', name: 'Mes en curso' },
+  { id: 'last', name: 'Mes pasado' },
+  { id: 'quarter', name: 'Último trimestre' },
+];
+
+export const DEFAULT_RECEIVED_KPI_PERIOD = 'all';
+
+export function periodLabel(id) {
+  return RECEIVED_KPI_PERIODS.find((period) => period.id === id)?.name ?? RECEIVED_KPI_PERIODS[0].name;
+}
+
+// Contenido de los KPIs de pendientes y rechazadas: el monto SIEMPRE es neto y
+// el hint es la cantidad de cuotas con la que se armó ese monto.
+export function periodTileContent(block) {
+  return {
+    value: formatArs(block?.netAmount ?? 0),
+    hint: formatInstallmentCount(block?.count ?? 0),
+  };
+}
+
 // Detalle de un mes para el tooltip del gráfico: lo cobrado con sus cuotas, la
 // comisión, el neto y lo pendiente. El neto y la comisión solo se muestran si
 // el neto se conoce; nunca se estiman.

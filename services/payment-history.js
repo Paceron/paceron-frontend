@@ -23,9 +23,9 @@ function toQueryString(params) {
 
 // GET /api/v1/payments/received?page&team_id&status — payment.ReceivedPaymentsResponse
 // {payments, has_more}. `status` es un grupo (approved|pending|rejected|refunded).
-export async function getReceivedPayments({ page = 1, teamId, status } = {}) {
-  if (USE_MOCKS) return await mockGetReceivedPayments({ page, teamId, status });
-  return await api.get(`/payments/received${toQueryString({ page, team_id: teamId, status })}`);
+export async function getReceivedPayments({ page = 1, teamId, status, payerId, from, to } = {}) {
+  if (USE_MOCKS) return await mockGetReceivedPayments({ page, teamId, status, payerId, from, to });
+  return await api.get(`/payments/received${toQueryString({ page, team_id: teamId, payer_id: payerId, status, from, to })}`);
 }
 
 // GET /api/v1/payments/received/summary?months&until — payment.ReceivedSummaryResponse.

@@ -59,6 +59,18 @@ function monthKeyART(iso) {
   return `${year}-${String(month + 1).padStart(2, '0')}`;
 }
 
+function dayKeyART(iso) {
+  const { year, month, day } = artParts(new Date(iso));
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// 'YYYY-MM' corrido `delta` meses (negativo = hacia atrás).
+function shiftMonthKey(key, delta) {
+  const [year, month] = key.split('-').map(Number);
+  const d = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 function splitName(full) {
   const [name, ...rest] = full.split(' ');
   return { name, surname: rest.join(' ') };
@@ -229,11 +241,16 @@ function paginate(items, page) {
 }
 
 // GET /api/v1/payments/received
-export async function mockGetReceivedPayments({ page = 1, teamId, status } = {}) {
+export async function mockGetReceivedPayments({ page = 1, teamId, status, payerId, from, to } = {}) {
   let items = buildReceived();
   if (teamId !== undefined && teamId !== null && teamId !== '') {
     items = items.filter((p) => p.team.id === Number(teamId));
   }
+  if (payerId !== undefined && payerId !== null && payerId !== '') {
+    items = items.filter((p) => p.payer.id === Number(payerId));
+  }
+  if (from) items = items.filter((p) => dayKeyART(p.created_at) >= from);
+  if (to) items = items.filter((p) => dayKeyART(p.created_at) <= to);
   if (status) {
     const statuses = STATUS_GROUP_STATUSES[status] ?? [];
     items = items.filter((p) => statuses.includes(p.status));
@@ -327,10 +344,25 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
   monthly.forEach((m) => Object.assign(m, { pending_amount: 0, pending_net_amount: 0, pending_count: 0 }));
   const todayKey = (() => { const t = artParts(now()); return `${t.year}-${String(t.month + 1).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`; })();
   const currentKey = todayKey.slice(0, 7);
+  const lastKey = shiftMonthKey(currentKey, -1);
+  const quarterKey = shiftMonthKey(currentKey, -2);
+  const emptyPeriods = () => ({
+    all: { count: 0, amount: 0, net_amount: 0 },
+    current: { count: 0, amount: 0, net_amount: 0 },
+    last: { count: 0, amount: 0, net_amount: 0 },
+    quarter: { count: 0, amount: 0, net_amount: 0 },
+  });
+  const addPeriod = (block, amount) => {
+    block.count += 1;
+    block.amount += amount;
+    block.net_amount += netOf(amount);
+  };
+  const pendingPeriods = emptyPeriods();
   const block = () => ({ count: 0, amount: 0, net_amount: 0, items: [] });
   const due = block();
   const overdue = block();
-  buildObligations().forEach((o) => {
+  const obligations = buildObligations();
+  obligations.forEach((o) => {
     const key = monthKeyART(o.due_date);
     if (key in monthIndex) {
       const m = monthly[monthIndex[key]];
@@ -338,6 +370,12 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
       m.pending_net_amount += netOf(o.amount);
       m.pending_count += 1;
     }
+    // "Todas" = vencidas + mes en curso; las obligaciones mock no proyectan
+    // meses futuros.
+    addPeriod(pendingPeriods.all, o.amount);
+    if (key === currentKey) addPeriod(pendingPeriods.current, o.amount);
+    if (key === lastKey) addPeriod(pendingPeriods.last, o.amount);
+    if (key >= quarterKey && key <= currentKey) addPeriod(pendingPeriods.quarter, o.amount);
     const late = o.due_date.slice(0, 10) < todayKey;
     if (!late && key !== currentKey) return;
     const target = late ? overdue : due;
@@ -347,6 +385,38 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
     target.items.push(o);
   });
   [due, overdue].forEach((b) => b.items.sort((a, c) => a.due_date.localeCompare(c.due_date)));
+
+  // Rechazadas por período: sobre el historial completo, agrupadas por cuota.
+  const rejectedByInstallment = new Map();
+  allRows.forEach((p) => {
+    const current = rejectedByInstallment.get(p.installment_id);
+    const isLater = !current || p.created_at > current.latest.created_at || (p.created_at === current.latest.created_at && p.id > current.latest.id);
+    rejectedByInstallment.set(p.installment_id, {
+      latest: isLater ? p : current.latest,
+      anyApproved: (current?.anyApproved ?? false) || p.status === 'approved',
+    });
+  });
+  const rejectedPeriods = emptyPeriods();
+  rejectedByInstallment.forEach(({ latest, anyApproved }) => {
+    if (anyApproved || statusGroupOf(latest.status) !== 'rejected') return;
+    const key = monthKeyART(latest.created_at);
+    addPeriod(rejectedPeriods.all, latest.gross_amount);
+    if (key === currentKey) addPeriod(rejectedPeriods.current, latest.gross_amount);
+    if (key === lastKey) addPeriod(rejectedPeriods.last, latest.gross_amount);
+    if (key >= quarterKey && key <= currentKey) addPeriod(rejectedPeriods.quarter, latest.gross_amount);
+  });
+
+  const payerMap = new Map();
+  allRows.forEach((p) => { if (p.payer?.id != null && !payerMap.has(p.payer.id)) payerMap.set(p.payer.id, p.payer); });
+  const payers = [...payerMap.values()].sort((a, c) => (a.surname ?? '').localeCompare(c.surname ?? '') || (a.name ?? '').localeCompare(c.name ?? ''));
+
+  const roundPeriods = (periods) => {
+    for (const p of Object.values(periods)) {
+      p.amount = round2(p.amount);
+      p.net_amount = round2(p.net_amount);
+    }
+    return periods;
+  };
 
   return {
     currency_id: 'ARS',
@@ -362,6 +432,9 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
     pending_net_amount: round2(amounts.pendingNet),
     rejected_amount: round2(amounts.rejected),
     rejected_net_amount: round2(amounts.rejectedNet),
+    pending_periods: roundPeriods(pendingPeriods),
+    rejected_periods: roundPeriods(rejectedPeriods),
+    payers,
     earliest_month: earliest ? monthKeyART(earliest) : null,
     due_this_month: { ...due, amount: round2(due.amount), net_amount: round2(due.net_amount) },
     overdue: { ...overdue, amount: round2(overdue.amount), net_amount: round2(overdue.net_amount) },

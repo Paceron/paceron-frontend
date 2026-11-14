@@ -67,9 +67,10 @@ const RECEIVED_AMOUNT_COLUMN = {
 export const RECEIVED_COLUMNS = [
   { key: 'date', label: 'Fecha', flex: 1.1 },
   { key: 'payer', label: 'Corredor', flex: 2 },
-  { key: 'team', label: 'Equipo', flex: 1.8 },
-  { key: 'status', label: 'Estado', flex: 1.3 },
-  { ...RECEIVED_AMOUNT_COLUMN, flex: 1.3 },
+  { key: 'team', label: 'Equipo', flex: 1.6 },
+  { key: 'detail', label: 'Detalle', flex: 1.9 },
+  { key: 'status', label: 'Estado', flex: 1.2 },
+  { ...RECEIVED_AMOUNT_COLUMN, flex: 1.2 },
 ];
 
 export const RECEIVED_COLUMNS_NARROW = [
@@ -134,6 +135,8 @@ function NetAmount({ payment, id, compact = false }) {
 function ReceivedRow({ payment, isWide, id, date }) {
   const payer = payment.payer?.fullName || 'Corredor';
   const team = payment.team?.name || 'Equipo eliminado';
+  // Mismo detalle que la tabla de pagos: equipo + número de cuota.
+  const detail = receiptConcept(payment);
   const status = <StatusBadge id={id} status={payment.status} statusGroup={payment.statusGroup} />;
   if (isWide) {
     return (
@@ -143,6 +146,7 @@ function ReceivedRow({ payment, isWide, id, date }) {
           date: <CellText id={`${id}-date-text`}>{date}</CellText>,
           payer: <CellText id={`${id}-payer-text`} strong>{payer}</CellText>,
           team: <CellText id={`${id}-team-text`}>{team}</CellText>,
+          detail: <CellText id={`${id}-detail-text`} lines={2}>{detail}</CellText>,
           status,
           amount: <NetAmount id={id} payment={payment} />,
         }}
@@ -159,7 +163,7 @@ function ReceivedRow({ payment, isWide, id, date }) {
         payer: (
           <View className="w-full" nativeID={`${id}-payer`} testID={`${id}-payer`}>
             <CellText compact id={`${id}-payer-text`} strong>{payer}</CellText>
-            <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-team-text`} numberOfLines={1} testID={`${id}-team-text`}>{team}</Text>
+            <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-detail-text`} numberOfLines={1} testID={`${id}-detail-text`}>{detail}</Text>
           </View>
         ),
         status,

@@ -13,6 +13,7 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { PAYMENT_HISTORY_KEYS, usePaymentHistory, useReceivedPayments, useReceivedPaymentsSummary, useUpcomingPayments } from '../../hooks/use-payment-history.js';
 import { buildReceiptHtml, receiptFileName } from '../../utils/receipt-html.js';
 import { canGoBack, shiftMonth } from '../../utils/payments-summary.js';
+import { toISODate } from '../../utils/date-field-format.js';
 import { createPreference } from '../../services/payments.js';
 import { getCurrentSubscription } from '../../services/tier-subscriptions.js';
 import { getTeamSubscription } from '../../services/team-subscriptions.js';
@@ -57,6 +58,9 @@ function PaymentsScreenContent() {
   const [tab, setTab] = useState('received');
   const activeTab = isTrainer ? tab : 'history';
   const [teamId, setTeamId] = useState('');
+  const [payerId, setPayerId] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [receivedStatus, setReceivedStatus] = useState('');
   const [historyType, setHistoryType] = useState('');
   const [historyStatus, setHistoryStatus] = useState('');
@@ -79,7 +83,14 @@ function PaymentsScreenContent() {
   const until = windowOffset > 0 && currentMonth ? shiftMonth(currentMonth, -WINDOW_MONTHS * windowOffset) : undefined;
   const windowQuery = useReceivedPaymentsSummary({ enabled: isTrainer && Boolean(until), until });
   const windowSummary = until ? windowQuery.summary : summary.summary;
-  const received = useReceivedPayments({ teamId, status: receivedStatus, enabled: isTrainer && activeTab === 'received' });
+  const received = useReceivedPayments({
+    teamId,
+    status: receivedStatus,
+    payerId,
+    from: toISODate(dateFrom),
+    to: toISODate(dateTo),
+    enabled: isTrainer && activeTab === 'received',
+  });
   const history = usePaymentHistory({ type: historyType, status: historyStatus, enabled: activeTab === 'history' });
   const upcoming = useUpcomingPayments({ enabled: activeTab === 'history' });
   const activeList = activeTab === 'received' ? received : history;
@@ -277,16 +288,23 @@ function PaymentsScreenContent() {
               windowSummary={windowSummary}
             />
             <PaymentsFilters
+              dateFrom={dateFrom}
+              dateTo={dateTo}
               isWide={isWide}
+              onChangeDateFrom={setDateFrom}
+              onChangeDateTo={setDateTo}
+              onChangePayer={setPayerId}
               onChangeStatus={setReceivedStatus}
               onChangeTeam={setTeamId}
+              payerId={payerId}
+              payers={summary.summary?.payers ?? []}
               status={receivedStatus}
               teamId={teamId}
               teams={summary.summary?.byTeam ?? []}
             />
-            {receivedStatus === 'pending' || receivedStatus === 'rejected' ? (
+            {receivedStatus === 'rejected' ? (
               <Text className="mb-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-screen-attempts-note" testID="payments-screen-attempts-note">
-                Se listan todos los intentos de pago. El resumen cuenta cuotas: una cuota que se rechazó y después se pagó no figura como rechazada.
+                Se listan todos los intentos de pago. El KPI cuenta cuotas rechazadas: una cuota que se rechazó y después se pagó no figura como rechazada.
               </Text>
             ) : null}
           </>

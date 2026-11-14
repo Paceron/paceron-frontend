@@ -61,6 +61,22 @@ describe('payment-history mock — cobros', () => {
     rejected.forEach((p) => expect(['rejected', 'cancelled']).toContain(p.status));
   });
 
+  test('filtra por corredor', async () => {
+    const all = await allReceived();
+    const payer = all[0].payer.id;
+    const filtered = await allReceived({ payerId: payer });
+    expect(filtered.length).toBeGreaterThan(0);
+    filtered.forEach((p) => expect(p.payer.id).toBe(payer));
+  });
+
+  test('filtra por rango de fechas inclusivo', async () => {
+    const all = await allReceived();
+    const day = all[0].created_at.slice(0, 10);
+    const filtered = await allReceived({ from: day, to: day });
+    expect(filtered.length).toBeGreaterThan(0);
+    filtered.forEach((p) => expect(p.created_at.slice(0, 10)).toBe(day));
+  });
+
   // Neto = bruto − comisión de Paceron (change cobros-pendientes-y-vencimientos).
   test('todo cobro aprobado tiene neto igual al bruto menos la comisión', async () => {
     const all = await allReceived();
@@ -211,6 +227,11 @@ describe('normalizers de historial de pagos', () => {
     expect(model.monthly[5]).toEqual(expect.objectContaining({ month: '2026-09', grossAmount: expect.any(Number) }));
     expect(model.byTeam[0]).toEqual(expect.objectContaining({ teamId: expect.any(String), pendingCount: expect.any(Number) }));
     expect(model.pendingCount).toBe(2);
+    expect(model.pendingPeriods.all.count).toBeGreaterThan(0);
+    expect(model.pendingPeriods.all.netAmount).toBeGreaterThan(0);
+    expect(model.rejectedPeriods.all.count).toBe(2);
+    expect(model.payers.length).toBeGreaterThan(0);
+    expect(model.payers[0].fullName).toBeTruthy();
     expect(model.earliestMonth).toMatch(/^\d{4}-\d{2}$/);
     expect(toReceivedSummaryModel({ monthly: [], by_team: [] }).earliestMonth).toBeNull();
     expect(toReceivedSummaryModel(null)).toBeNull();

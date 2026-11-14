@@ -642,6 +642,13 @@ export function toReceivedSummaryModel(dto) {
       pendingCount: t.pending_count ?? 0,
       rejectedCount: t.rejected_count ?? 0,
     })),
+    pendingPeriods: toPeriodAmounts(dto.pending_periods),
+    rejectedPeriods: toPeriodAmounts(dto.rejected_periods),
+    payers: (dto.payers ?? []).map((p) => ({
+      id: String(p.id),
+      fullName: [p.name, p.surname].filter(Boolean).join(' '),
+      email: p.email ?? '',
+    })),
     pendingCount: dto.pending_count ?? 0,
     rejectedCount: dto.rejected_count ?? 0,
     pendingAmount: dto.pending_amount ?? 0,
@@ -652,6 +659,22 @@ export function toReceivedSummaryModel(dto) {
     dueThisMonth: toObligationsBlock(dto.due_this_month),
     overdue: toObligationsBlock(dto.overdue),
     generatedAt: dto.generated_at,
+  };
+}
+
+// Montos y cantidades por período de los KPIs (pending_periods /
+// rejected_periods). Cada período ausente queda en cero.
+function toPeriodAmounts(dto) {
+  const amountPeriod = (block) => ({
+    count: block?.count ?? 0,
+    amount: block?.amount ?? 0,
+    netAmount: block?.net_amount ?? 0,
+  });
+  return {
+    all: amountPeriod(dto?.all),
+    current: amountPeriod(dto?.current),
+    last: amountPeriod(dto?.last),
+    quarter: amountPeriod(dto?.quarter),
   };
 }
 
