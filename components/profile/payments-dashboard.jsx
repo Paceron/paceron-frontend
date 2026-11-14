@@ -97,7 +97,7 @@ export function PaymentsDashboard({
   const pendingTile = periodTileContent(summary.pendingPeriods?.[kpiPeriod]);
   const rejectedTile = periodTileContent(summary.rejectedPeriods?.[kpiPeriod]);
   const toggle = (group) => onSelectStatus(activeStatus === group ? '' : group);
-  const kpiBox = isWide ? { flex: 1 } : { width: '47%' };
+  const kpiBox = { flex: 1 };
   const statusHint = (group) => (activeStatus === group ? 'Filtrando · tocá para quitar' : 'Tocá para filtrar');
 
   const shown = windowSummary ?? summary;
@@ -109,7 +109,7 @@ export function PaymentsDashboard({
 
   return (
     <View className="mb-2" nativeID="payments-dashboard" testID="payments-dashboard">
-      <View className="mb-5 flex-row flex-wrap gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
+      <View className="mb-4 flex-row gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
         <View nativeID="payments-dashboard-kpi-month" style={kpiBox} testID="payments-dashboard-kpi-month">
           <IconTooltip idPrefix="payments-kpi-month-tooltip" label="Monto cobrado en el mes actual" wrap>
             <Pressable nativeID="payments-kpi-month-trigger" style={{ flex: 1 }} testID="payments-kpi-month-trigger">
@@ -131,60 +131,69 @@ export function PaymentsDashboard({
             </Pressable>
           </IconTooltip>
         </View>
-        <View nativeID="payments-dashboard-kpi-pending" style={kpiBox} testID="payments-dashboard-kpi-pending">
-          <IconTooltip idPrefix="payments-kpi-pending-tooltip" label={`Pendiente de cobro · ${periodLabel(kpiPeriod)}`} wrap>
-            <Pressable nativeID="payments-kpi-pending-trigger" style={{ flex: 1 }} testID="payments-kpi-pending-trigger">
-              <StatTile
-                hint={pendingTile.hint}
-                icon="clock-outline"
-                idPrefix="payments-kpi"
-                label="Pendiente de cobro"
-                surface="bg-slate-50 dark:bg-surface-2"
-                value={pendingTile.value}
-              />
-            </Pressable>
-          </IconTooltip>
-        </View>
-        <View nativeID="payments-dashboard-kpi-rejected" style={kpiBox} testID="payments-dashboard-kpi-rejected">
-          <IconTooltip idPrefix="payments-kpi-rejected-tooltip" label={`Monto rechazado · ${periodLabel(kpiPeriod)}`} wrap>
-            <Pressable nativeID="payments-kpi-rejected-trigger" style={{ flex: 1 }} testID="payments-kpi-rejected-trigger">
-              <StatTile
-                actionHint={statusHint('rejected')}
-                active={activeStatus === 'rejected'}
-                hint={rejectedTile.hint}
-                icon="close-circle-outline"
-                idPrefix="payments-kpi"
-                label="Monto rechazado"
-                onPress={() => toggle('rejected')}
-                surface="bg-slate-50 dark:bg-surface-2"
-                value={rejectedTile.value}
-              />
-            </Pressable>
-          </IconTooltip>
-        </View>
       </View>
 
-      {/* Selector compartido: "Todas" = vencidas + mes en curso. Cambia los dos
-          KPIs de arriba a la vez; los dos primeros tiles siguen fijos al mes
-          actual y al anterior. */}
-      <View className="mb-5 flex-row items-center justify-between gap-3" nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-kpi-period-caption" testID="payments-dashboard-kpi-period-caption">
-          Período de pendientes y rechazadas
-        </Text>
-        <View style={{ width: 200 }} nativeID="payments-dashboard-kpi-period-select" testID="payments-dashboard-kpi-period-select">
-          <ResponsiveSelectField
-            dense
-            hideErrorRow
-            hideLabel
-            label="Período"
-            onChange={setKpiPeriod}
-            options={RECEIVED_KPI_PERIODS}
-            placeholder=""
-            required
-            value={kpiPeriod}
-          />
+      {/* Panel propio para los dos KPIs que dependen del período. El selector
+          vive en el encabezado del panel, con su label, así queda claro qué
+          cards cambia y cuáles no. */}
+      <SectionCard
+        icon="cash-clock"
+        scope="payments-dashboard-kpi-periods"
+        title="Pendientes y rechazados"
+        variant="nested"
+      >
+        <View className={`mb-4 gap-3 ${isWide ? 'flex-row items-end justify-between' : ''}`} nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
+          <Text className="flex-1 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-kpi-period-caption" testID="payments-dashboard-kpi-period-caption">
+            Montos netos y cantidad de cuotas del período elegido.
+          </Text>
+          <View style={isWide ? { width: 220 } : undefined} nativeID="payments-dashboard-kpi-period-select" testID="payments-dashboard-kpi-period-select">
+            <ResponsiveSelectField
+              className=""
+              dense
+              hideErrorRow
+              label="Período"
+              onChange={setKpiPeriod}
+              options={RECEIVED_KPI_PERIODS}
+              placeholder=""
+              required
+              value={kpiPeriod}
+            />
+          </View>
         </View>
-      </View>
+        <View className="flex-row gap-3" nativeID="payments-dashboard-kpi-period-cards" testID="payments-dashboard-kpi-period-cards">
+          <View nativeID="payments-dashboard-kpi-pending" style={kpiBox} testID="payments-dashboard-kpi-pending">
+            <IconTooltip idPrefix="payments-kpi-pending-tooltip" label={`Pendiente de cobro · ${periodLabel(kpiPeriod)}`} wrap>
+              <Pressable nativeID="payments-kpi-pending-trigger" style={{ flex: 1 }} testID="payments-kpi-pending-trigger">
+                <StatTile
+                  hint={pendingTile.hint}
+                  icon="clock-outline"
+                  idPrefix="payments-kpi"
+                  label="Pendiente de cobro"
+                  surface="bg-slate-50 dark:bg-surface-2"
+                  value={pendingTile.value}
+                />
+              </Pressable>
+            </IconTooltip>
+          </View>
+          <View nativeID="payments-dashboard-kpi-rejected" style={kpiBox} testID="payments-dashboard-kpi-rejected">
+            <IconTooltip idPrefix="payments-kpi-rejected-tooltip" label={`Monto rechazado · ${periodLabel(kpiPeriod)}`} wrap>
+              <Pressable nativeID="payments-kpi-rejected-trigger" style={{ flex: 1 }} testID="payments-kpi-rejected-trigger">
+                <StatTile
+                  actionHint={statusHint('rejected')}
+                  active={activeStatus === 'rejected'}
+                  hint={rejectedTile.hint}
+                  icon="close-circle-outline"
+                  idPrefix="payments-kpi"
+                  label="Monto rechazado"
+                  onPress={() => toggle('rejected')}
+                  surface="bg-slate-50 dark:bg-surface-2"
+                  value={rejectedTile.value}
+                />
+              </Pressable>
+            </IconTooltip>
+          </View>
+        </View>
+      </SectionCard>
 
       <PaymentsDueCard amountMode={AMOUNT_MODE} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdue={summary.overdue} />
 
