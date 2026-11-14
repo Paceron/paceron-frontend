@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
@@ -169,6 +169,7 @@ export function ExportActions({
         />
       ) : null}
       <ExportButton
+        busy={exportingPdf}
         disabled={exportingPdf}
         icon="file-pdf-box"
         id={`${id}-pdf`}
@@ -180,7 +181,7 @@ export function ExportActions({
   );
 }
 
-function ExportButton({ id, icon, label, onPress, tint, disabled = false }) {
+function ExportButton({ id, icon, label, onPress, tint, disabled = false, busy = false }) {
   return (
     <Pressable
       accessibilityHint={label === 'CSV'
@@ -188,14 +189,19 @@ function ExportButton({ id, icon, label, onPress, tint, disabled = false }) {
         : 'Genera un PDF con el resumen del período para imprimir o guardar.'}
       accessibilityLabel={`Exportar ${label}`}
       accessibilityRole="button"
+      accessibilityState={{ disabled, busy }}
       className={`h-8 flex-row items-center gap-1.5 rounded-full border border-slate-300 px-3 active:opacity-70 dark:border-slate-600 ${disabled ? 'opacity-50' : ''}`}
       nativeID={id}
       onPress={onPress}
       testID={id}
     >
-      <MaterialCommunityIcons color={tint} name={icon} size={15} />
+      {busy ? (
+        <ActivityIndicator color={tint} nativeID={`${id}-spinner`} size="small" testID={`${id}-spinner`} />
+      ) : (
+        <MaterialCommunityIcons color={tint} name={icon} size={15} />
+      )}
       <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${id}-label`} testID={`${id}-label`}>
-        {label}
+        {busy ? 'Generando…' : label}
       </Text>
     </Pressable>
   );

@@ -68,6 +68,10 @@ const EMPTY_FILTERS = {
   to: '',
 };
 
+// Tope de espera para que el PDF no quede bloqueado si la sección de ranking no
+// avisa que terminó de cargar (ver captureDashboardReport).
+const RANKING_READY_TIMEOUT_MS = 5000;
+
 // Orquesta las dos pestañas principales de Rendimiento. Métricas deportivas
 // conserva el cuerpo compartido por roles; Comparación contiene sesiones A/B y,
 // cuando la capacidad lo permite, el submodo de períodos.
@@ -415,7 +419,13 @@ export function DashboardScreen({ teamId }) {
     try {
       await new Promise((resolve) => { reportRenderResolver.current = resolve; });
       if (canReadTeamRanking(activeRole) && !rankingIsReady.current) {
-        await new Promise((resolve) => { rankingReadyResolver.current = resolve; });
+        // La espera por el ranking no puede colgar el PDF para siempre: si la
+        // sección no avisa (por ejemplo, porque no llegó a montarse), a los
+        // pocos segundos se captura lo que haya.
+        await Promise.race([
+          new Promise((resolve) => { rankingReadyResolver.current = resolve; }),
+          new Promise((resolve) => { setTimeout(resolve, RANKING_READY_TIMEOUT_MS); }),
+        ]);
       }
       const pageKeys = [
         'dashboard-report-kpis-page',
@@ -660,7 +670,7 @@ export function DashboardScreen({ teamId }) {
                       onRankingLoadingChange={setRankingLoading}
                       onGranularityChange={setGranularity}
                       radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
-                      renderRanking={false ? ({ reportMode = false, captureRef = null, onReportReady = null, onLoadingChange = null }) => (
+                      renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null, onLoadingChange = null }) => (
                         <TeamRankingSection
                           captureRef={captureRef}
                           onLoadingChange={onLoadingChange}
@@ -725,7 +735,7 @@ export function DashboardScreen({ teamId }) {
               kind={effectiveKind}
               onGranularityChange={setGranularity}
               radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
-              renderRanking={false ? ({ reportMode = false, captureRef = null, onReportReady = null }) => (
+              renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null }) => (
                 <TeamRankingSection
                   captureRef={captureRef}
                   onReportReady={onReportReady}
