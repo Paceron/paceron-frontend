@@ -160,7 +160,7 @@ export function PaymentsDashboard({
 
       <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-dashboard-panels" testID="payments-dashboard-panels">
         <View nativeID="payments-dashboard-chart-panel" style={isWide ? { flex: 3 } : undefined} testID="payments-dashboard-chart-panel">
-          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title="Neto por mes" variant="nested">
+          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title="Ingresos por mes" variant="nested">
             <WindowNav canNext={canNext} canPrev={canPrev} label={range} onNext={onNext} onPrev={onPrev} />
             {windowLoading ? (
               <SkeletonBlock height={170} nativeID="payments-dashboard-window-skeleton" rounded="rounded-xl" testID="payments-dashboard-window-skeleton" />

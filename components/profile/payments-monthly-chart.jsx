@@ -13,14 +13,16 @@ const CHART_HEIGHT = 170;
 const PENDING_COLOR = '#f59e0b';
 
 // Barras de lo cobrado por mes, en bruto o en neto según `points` (ver
-// toChartPoints). Si algún mes tiene cuotas sin pagar, cada mes suma una
-// segunda barra ámbar con lo pendiente y aparece la leyenda (change
-// cobros-pendientes-y-vencimientos del backend). Un mes sin neto se dibuja como
-// un contorno con "s/d" y un neto parcial lleva "*": quedan por compatibilidad,
-// desde que el neto es bruto − comisión no deberían aparecer. SVG a mano con
-// react-native-svg (ya instalado): no hay librería de gráficos en el repo. El
-// ancho se mide con onLayout porque SVG necesita números. El Text de svg se
-// importa como SvgText para no confundirlo con el de RN.
+// toChartPoints). Todas las barras de lo cobrado van en verde; el mes actual se
+// distingue por la etiqueta en negrita y el fondo resaltado. Si algún mes tiene
+// cuotas sin pagar, cada mes suma una segunda barra ámbar con lo pendiente y
+// aparece la leyenda (change cobros-pendientes-y-vencimientos del backend). Un
+// mes sin neto se dibuja como un contorno con "s/d" y un neto parcial lleva
+// "*": quedan por compatibilidad, desde que el neto es bruto − comisión no
+// deberían aparecer. SVG a mano con react-native-svg (ya instalado): no hay
+// librería de gráficos en el repo. El ancho se mide con onLayout porque SVG
+// necesita números. El Text de svg se importa como SvgText para no confundirlo
+// con el de RN.
 //
 // Pasar el mouse (web) o tocar (nativo) un mes muestra un tooltip con lo que
 // suma: cobrado y sus cuotas, comisión, neto y pendiente (`monthly`, los meses
@@ -74,7 +76,7 @@ export function PaymentsMonthlyChart({ points, currentMonth, monthly, amountMode
                   </>
                 ) : (
                   <Rect
-                    fill={bar.isCurrent ? colors.primary : colors.outlineVariant}
+                    fill={colors.primary}
                     height={bar.height}
                     rx={4}
                     width={bar.width}
