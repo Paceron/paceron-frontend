@@ -358,7 +358,10 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   de Paceron y dice explícitamente que la comisión es el **5% del monto bruto**
   (2026-11-14, pedido del usuario). En el gráfico mensual, la barra ámbar y su fila
   del tooltip se llaman **"Adeudado"**, no "Pendiente": pendiente es un estado de
-  pago (en proceso), y esa barra son cuotas que nadie pagó. En angosto (`RECEIVED_COLUMNS_NARROW`) el equipo baja como segunda
+  pago (en proceso), y esa barra son cuotas que nadie pagó. Mismo nombre para el tile
+  de período de Finanzas (panel "Adeudado y rechazado") y el KPI del Home del
+  entrenador (`utils/trainer-home-kpis.js`), que salen de esas mismas cuotas. "Cuotas
+  pendientes"/estado "Pendiente" quedan solo para pagos en proceso. En angosto (`RECEIVED_COLUMNS_NARROW`) el equipo baja como segunda
   línea del corredor y el estado conserva su columna, porque se filtra por él. La
   lista de Pagos también es tabla en angosto (`HISTORY_COLUMNS_NARROW`): tipo y
   método bajan debajo del detalle y el botón del comprobante va debajo del monto.
