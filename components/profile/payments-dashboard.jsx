@@ -1,35 +1,51 @@
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { formatArs } from '../../utils/currency.js';
 import {
   amountFor,
+  DEFAULT_RECEIVED_KPI_PERIOD,
   formatMonthLong,
   monthOverMonthTileContent,
   monthTileContent,
+  periodLabel,
+  periodTileContent,
+  RECEIVED_KPI_PERIODS,
   selectCurrentAndPrevious,
-  statusTileContent,
   toChartPoints,
   windowRange,
 } from '../../utils/payments-summary.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
-import { PaymentsAmountMode } from './payments-amount-mode.jsx';
+import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { PaymentsMonthlyChart } from './payments-monthly-chart.jsx';
 import { PaymentsDueCard } from './payments-due-card.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+
+// El panel muestra SOLO montos netos (pedido 2026-11-13): se quitó el
+// segmentado "Bruto / Neto" y con él la etiqueta "Montos". El bruto sigue en
+// la respuesta del backend y en el tooltip de cada mes (Cobrado/Comisión/Neto),
+// pero no hay un modo bruto navegable.
+const AMOUNT_MODE = 'net';
 
 // Dashboard de cobros: KPIs, lo que hay por cobrar este mes, evolución mensual
 // (cobrado y pendiente) y cobros por equipo.
 // - Los tiles usan `summary` (la ventana que termina hoy): correr el gráfico no
 //   cambia "Cobrado en <mes actual>". El gráfico y cobros por equipo usan
 //   `windowSummary`, la ventana elegida con las flechas.
-// - `amountMode` ('gross' | 'net') cambia tiles, gráfico y equipos juntos.
-// - Cada tile muestra el monto y, abajo, cuántas cuotas suma.
-// - Tocar "Cuotas pendientes" o "Cuotas rechazadas" filtra la lista de cobros
-//   (onSelectStatus). Los tiles cuentan cuotas y la lista muestra intentos: por
-//   eso pueden no coincidir, y la pantalla lo aclara sobre la lista.
+// - Los montos son siempre netos: el neto es el bruto menos la comisión de
+//   Paceron (ver utils/payments-summary.js#amountFor).
+// - "Pendiente de cobro" y "Monto rechazado" usan un selector de período
+//   compartido: Todas (vencidas + mes en curso), mes en curso, mes pasado y
+//   último trimestre. El hint de cada tile es la cantidad de cuotas de ese
+//   período, no un contador aparte (bug reportado 2026-11-13: el KPI mostraba
+//   $0 y "0 cuotas" aunque el gráfico tuviera pendientes).
+// - "Pendiente de cobro" sale de las obligaciones esperadas del backend, no de
+//   los intentos de pago. Por eso no filtra la lista: la lista de cobros
+//   muestra pagos/intentos, y el detalle de lo pendiente está en la card "Por
+//   cobrar este mes". "Monto rechazado" sí conserva el filtro por intentos.
 export function PaymentsDashboard({
   summary,
   loading,
@@ -38,8 +54,6 @@ export function PaymentsDashboard({
   isWide,
   activeStatus,
   onSelectStatus,
-  amountMode = 'gross',
-  onChangeAmountMode,
   windowSummary,
   windowLoading = false,
   windowFailed = false,
@@ -50,6 +64,7 @@ export function PaymentsDashboard({
   onPrev,
   onNext,
 }) {
+  const [kpiPeriod, setKpiPeriod] = useState(DEFAULT_RECEIVED_KPI_PERIOD);
   if (loading) {
     return (
       <View className="mb-5 gap-3" nativeID="payments-dashboard-loading" testID="payments-dashboard-loading">
@@ -77,28 +92,24 @@ export function PaymentsDashboard({
   }
 
   const { current, previous } = selectCurrentAndPrevious(summary.monthly);
-  const monthTile = monthTileContent(current, amountMode);
-  const momTile = monthOverMonthTileContent(current, previous, amountMode);
-  const pendingTile = statusTileContent(summary, 'pending', amountMode);
-  const rejectedTile = statusTileContent(summary, 'rejected', amountMode);
+  const monthTile = monthTileContent(current, AMOUNT_MODE);
+  const momTile = monthOverMonthTileContent(current, previous, AMOUNT_MODE);
+  const pendingTile = periodTileContent(summary.pendingPeriods?.[kpiPeriod]);
+  const rejectedTile = periodTileContent(summary.rejectedPeriods?.[kpiPeriod]);
   const toggle = (group) => onSelectStatus(activeStatus === group ? '' : group);
-  const kpiBox = isWide ? { flex: 1 } : { width: '47%' };
+  const kpiBox = { flex: 1 };
   const statusHint = (group) => (activeStatus === group ? 'Filtrando · tocá para quitar' : 'Tocá para filtrar');
 
   const shown = windowSummary ?? summary;
-  const points = toChartPoints(shown.monthly, amountMode);
+  const points = toChartPoints(shown.monthly, AMOUNT_MODE);
   const range = windowRange(shown.monthly);
-  const teams = shown.byTeam.map((team) => ({ team, amount: amountFor(team, amountMode) }));
+  const teams = shown.byTeam.map((team) => ({ team, amount: amountFor(team, AMOUNT_MODE) }));
   const maxTeam = Math.max(1, ...teams.map((t) => t.amount.value ?? 0));
-  const netIncomplete = amountMode === 'net' && (points.some((p) => p.partial || p.missing) || teams.some((t) => t.amount.partial || t.amount.missing));
+  const netIncomplete = points.some((p) => p.partial || p.missing) || teams.some((t) => t.amount.partial || t.amount.missing);
 
   return (
     <View className="mb-2" nativeID="payments-dashboard" testID="payments-dashboard">
-      <View className="mb-3 flex-row justify-end" nativeID="payments-dashboard-toolbar" testID="payments-dashboard-toolbar">
-        <PaymentsAmountMode mode={amountMode} onChange={onChangeAmountMode} />
-      </View>
-
-      <View className="mb-5 flex-row flex-wrap gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
+      <View className="mb-4 flex-row gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
         <View nativeID="payments-dashboard-kpi-month" style={kpiBox} testID="payments-dashboard-kpi-month">
           <IconTooltip idPrefix="payments-kpi-month-tooltip" label="Monto cobrado en el mes actual" wrap>
             <Pressable nativeID="payments-kpi-month-trigger" style={{ flex: 1 }} testID="payments-kpi-month-trigger">
@@ -120,60 +131,86 @@ export function PaymentsDashboard({
             </Pressable>
           </IconTooltip>
         </View>
-        <View nativeID="payments-dashboard-kpi-pending" style={kpiBox} testID="payments-dashboard-kpi-pending">
-          <IconTooltip idPrefix="payments-kpi-pending-tooltip" label="Cuotas pendientes de cobro" wrap>
-            <Pressable nativeID="payments-kpi-pending-trigger" style={{ flex: 1 }} testID="payments-kpi-pending-trigger">
-              <StatTile
-                actionHint={statusHint('pending')}
-                active={activeStatus === 'pending'}
-                hint={pendingTile.hint}
-                icon="clock-outline"
-                idPrefix="payments-kpi"
-                label="Cuotas pendientes"
-                onPress={() => toggle('pending')}
-                surface="bg-slate-50 dark:bg-surface-2"
-                value={pendingTile.value}
-              />
-            </Pressable>
-          </IconTooltip>
-        </View>
-        <View nativeID="payments-dashboard-kpi-rejected" style={kpiBox} testID="payments-dashboard-kpi-rejected">
-          <IconTooltip idPrefix="payments-kpi-rejected-tooltip" label="Cuotas rechazadas" wrap>
-            <Pressable nativeID="payments-kpi-rejected-trigger" style={{ flex: 1 }} testID="payments-kpi-rejected-trigger">
-              <StatTile
-                actionHint={statusHint('rejected')}
-                active={activeStatus === 'rejected'}
-                hint={rejectedTile.hint}
-                icon="close-circle-outline"
-                idPrefix="payments-kpi"
-                label="Cuotas rechazadas"
-                onPress={() => toggle('rejected')}
-                surface="bg-slate-50 dark:bg-surface-2"
-                value={rejectedTile.value}
-              />
-            </Pressable>
-          </IconTooltip>
-        </View>
       </View>
 
-      <PaymentsDueCard amountMode={amountMode} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdue={summary.overdue} />
+      {/* Panel propio para los dos KPIs que dependen del período. El selector
+          vive en el encabezado del panel, con su label, así queda claro qué
+          cards cambia y cuáles no. */}
+      <SectionCard
+        icon="cash-clock"
+        scope="payments-dashboard-kpi-periods"
+        title="Pendientes y rechazados"
+        variant="nested"
+      >
+        <View className={`mb-4 gap-3 ${isWide ? 'flex-row items-end justify-between' : ''}`} nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
+          <Text className="flex-1 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-kpi-period-caption" testID="payments-dashboard-kpi-period-caption">
+            Montos netos y cantidad de cuotas del período elegido.
+          </Text>
+          <View style={isWide ? { width: 220 } : undefined} nativeID="payments-dashboard-kpi-period-select" testID="payments-dashboard-kpi-period-select">
+            <ResponsiveSelectField
+              className=""
+              dense
+              hideErrorRow
+              label="Período"
+              onChange={setKpiPeriod}
+              options={RECEIVED_KPI_PERIODS}
+              placeholder=""
+              required
+              value={kpiPeriod}
+            />
+          </View>
+        </View>
+        <View className="flex-row gap-3" nativeID="payments-dashboard-kpi-period-cards" testID="payments-dashboard-kpi-period-cards">
+          <View nativeID="payments-dashboard-kpi-pending" style={kpiBox} testID="payments-dashboard-kpi-pending">
+            <IconTooltip idPrefix="payments-kpi-pending-tooltip" label={`Pendiente de cobro · ${periodLabel(kpiPeriod)}`} wrap>
+              <Pressable nativeID="payments-kpi-pending-trigger" style={{ flex: 1 }} testID="payments-kpi-pending-trigger">
+                <StatTile
+                  hint={pendingTile.hint}
+                  icon="clock-outline"
+                  idPrefix="payments-kpi"
+                  label="Pendiente de cobro"
+                  surface="bg-slate-50 dark:bg-surface-2"
+                  value={pendingTile.value}
+                />
+              </Pressable>
+            </IconTooltip>
+          </View>
+          <View nativeID="payments-dashboard-kpi-rejected" style={kpiBox} testID="payments-dashboard-kpi-rejected">
+            <IconTooltip idPrefix="payments-kpi-rejected-tooltip" label={`Monto rechazado · ${periodLabel(kpiPeriod)}`} wrap>
+              <Pressable nativeID="payments-kpi-rejected-trigger" style={{ flex: 1 }} testID="payments-kpi-rejected-trigger">
+                <StatTile
+                  actionHint={statusHint('rejected')}
+                  active={activeStatus === 'rejected'}
+                  hint={rejectedTile.hint}
+                  icon="close-circle-outline"
+                  idPrefix="payments-kpi"
+                  label="Monto rechazado"
+                  onPress={() => toggle('rejected')}
+                  surface="bg-slate-50 dark:bg-surface-2"
+                  value={rejectedTile.value}
+                />
+              </Pressable>
+            </IconTooltip>
+          </View>
+        </View>
+      </SectionCard>
+
+      <PaymentsDueCard amountMode={AMOUNT_MODE} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdue={summary.overdue} />
 
       <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-dashboard-panels" testID="payments-dashboard-panels">
         <View nativeID="payments-dashboard-chart-panel" style={isWide ? { flex: 3 } : undefined} testID="payments-dashboard-chart-panel">
-          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title={amountMode === 'net' ? 'Neto por mes' : 'Cobrado por mes'} variant="nested">
+          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title="Ingresos por mes" variant="nested">
             <WindowNav canNext={canNext} canPrev={canPrev} label={range} onNext={onNext} onPrev={onPrev} />
             {windowLoading ? (
               <SkeletonBlock height={170} nativeID="payments-dashboard-window-skeleton" rounded="rounded-xl" testID="payments-dashboard-window-skeleton" />
             ) : windowFailed ? (
               <WindowError onRetry={onRetryWindow} />
             ) : (
-              <PaymentsMonthlyChart amountMode={amountMode} currentMonth={currentMonth} monthly={shown.monthly} points={points} />
+              <PaymentsMonthlyChart amountMode={AMOUNT_MODE} currentMonth={currentMonth} monthly={shown.monthly} points={points} />
             )}
-            {amountMode === 'net' ? (
-              <Text className="mt-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-net-note" testID="payments-dashboard-net-note">
-                {`Neto = lo cobrado menos la comisión de Paceron.${netIncomplete ? ' * neto parcial · s/d sin datos de neto.' : ''}`}
-              </Text>
-            ) : null}
+            <Text className="mt-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-net-note" testID="payments-dashboard-net-note">
+              {`Neto = lo cobrado menos la comisión de Paceron.${netIncomplete ? ' * neto parcial · s/d sin datos de neto.' : ''}`}
+            </Text>
           </SectionCard>
         </View>
 
@@ -227,7 +264,7 @@ function WindowNav({ label, canPrev, canNext, onPrev, onNext }) {
         accessibilityLabel={a11y}
         accessibilityState={{ disabled: !enabled }}
         // Clases fijas aunque cambie `enabled`: agregar/quitar pseudo-estados después
-        // del primer render remonta el componente en nativo (ver payments-amount-mode).
+        // del primer render remonta el componente en nativo (ver CLAUDE.md, "Quirks").
         className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
         disabled={!enabled}
         nativeID={id}

@@ -625,22 +625,40 @@ function toObligationsBlock(dto) {
 // (change cobros-pendientes-y-vencimientos del backend).
 export function toReceivedSummaryModel(dto) {
   if (!dto) return null;
+  const monthly = (dto.monthly ?? []).map((m) => ({
+    month: m.month,
+    ...toAmountBucket(m),
+    pendingAmount: m.pending_amount ?? 0,
+    pendingNetAmount: m.pending_net_amount ?? 0,
+    pendingCount: m.pending_count ?? 0,
+  }));
+  const overdue = toObligationsBlock(dto.overdue);
+  const dueThisMonth = toObligationsBlock(dto.due_this_month);
   return {
     currencyId: dto.currency_id,
     months: dto.months,
-    monthly: (dto.monthly ?? []).map((m) => ({
-      month: m.month,
-      ...toAmountBucket(m),
-      pendingAmount: m.pending_amount ?? 0,
-      pendingNetAmount: m.pending_net_amount ?? 0,
-      pendingCount: m.pending_count ?? 0,
-    })),
+    monthly,
     byTeam: (dto.by_team ?? []).map((t) => ({
       teamId: String(t.team_id),
       teamName: t.team_name,
       ...toAmountBucket(t),
       pendingCount: t.pending_count ?? 0,
       rejectedCount: t.rejected_count ?? 0,
+    })),
+    // Los períodos son campos nuevos. Si la API todavía no los devuelve (build
+    // anterior), se reconstruyen con los datos que ya existían: `monthly` para
+    // el mes en curso/mes pasado/trimestre y `overdue + due_this_month` para
+    // "Todas". Así el KPI de pendientes coincide siempre con el gráfico.
+    pendingPeriods: dto.pending_periods
+      ? toPeriodAmounts(dto.pending_periods)
+      : pendingPeriodsFromMonthly(monthly, overdue, dueThisMonth),
+    rejectedPeriods: dto.rejected_periods
+      ? toPeriodAmounts(dto.rejected_periods)
+      : rejectedPeriodsFallback(dto),
+    payers: (dto.payers ?? []).map((p) => ({
+      id: String(p.id),
+      fullName: [p.name, p.surname].filter(Boolean).join(' '),
+      email: p.email ?? '',
     })),
     pendingCount: dto.pending_count ?? 0,
     rejectedCount: dto.rejected_count ?? 0,
@@ -649,9 +667,65 @@ export function toReceivedSummaryModel(dto) {
     rejectedAmount: dto.rejected_amount ?? 0,
     rejectedNetAmount: dto.rejected_net_amount ?? 0,
     earliestMonth: dto.earliest_month ?? null,
-    dueThisMonth: toObligationsBlock(dto.due_this_month),
-    overdue: toObligationsBlock(dto.overdue),
+    dueThisMonth,
+    overdue,
     generatedAt: dto.generated_at,
+  };
+}
+
+// Reconstruye los períodos de pendientes con el contrato anterior: el mes en
+// curso y el anterior salen de `monthly`, el trimestre de esos tres meses y
+// "Todas" es vencidas + mes en curso.
+function pendingPeriodsFromMonthly(monthly, overdue, dueThisMonth) {
+  const last = monthly[monthly.length - 1] ?? {};
+  const previous = monthly[monthly.length - 2] ?? {};
+  const quarter = monthly.slice(-3).reduce((acc, month) => ({
+    count: acc.count + (month.pendingCount ?? 0),
+    amount: acc.amount + (month.pendingAmount ?? 0),
+    netAmount: acc.netAmount + (month.pendingNetAmount ?? 0),
+  }), { count: 0, amount: 0, netAmount: 0 });
+  const block = (month) => ({
+    count: month.pendingCount ?? 0,
+    amount: month.pendingAmount ?? 0,
+    netAmount: month.pendingNetAmount ?? 0,
+  });
+  return {
+    all: {
+      count: (overdue.count ?? 0) + (dueThisMonth.count ?? 0),
+      amount: (overdue.amount ?? 0) + (dueThisMonth.amount ?? 0),
+      netAmount: (overdue.netAmount ?? 0) + (dueThisMonth.netAmount ?? 0),
+    },
+    current: block(last),
+    last: block(previous),
+    quarter,
+  };
+}
+
+// El contrato anterior solo trae el total de rechazadas de la ventana, sin
+// desglose mensual: se usa para "Todas" y los demás períodos quedan en cero
+// hasta que la API devuelva `rejected_periods`.
+function rejectedPeriodsFallback(dto) {
+  return {
+    all: { count: dto.rejected_count ?? 0, amount: dto.rejected_amount ?? 0, netAmount: dto.rejected_net_amount ?? 0 },
+    current: { count: 0, amount: 0, netAmount: 0 },
+    last: { count: 0, amount: 0, netAmount: 0 },
+    quarter: { count: 0, amount: 0, netAmount: 0 },
+  };
+}
+
+// Montos y cantidades por período de los KPIs (pending_periods /
+// rejected_periods). Cada período ausente queda en cero.
+function toPeriodAmounts(dto) {
+  const amountPeriod = (block) => ({
+    count: block?.count ?? 0,
+    amount: block?.amount ?? 0,
+    netAmount: block?.net_amount ?? 0,
+  });
+  return {
+    all: amountPeriod(dto?.all),
+    current: amountPeriod(dto?.current),
+    last: amountPeriod(dto?.last),
+    quarter: amountPeriod(dto?.quarter),
   };
 }
 

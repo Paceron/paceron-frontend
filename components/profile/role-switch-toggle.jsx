@@ -25,8 +25,7 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
   // `hover:`/`active:`/`focus:` y `shadow-*` tienen que estar SIEMPRE
   // presentes o SIEMPRE ausentes entre los dos estados de un mismo
   // componente, nunca aparecer solo en uno -- ver CLAUDE.md "Quirks
-  // conocidos" y el mismo patrón ya resuelto en payments-amount-mode.jsx.
-  // El hover queda fijo en las dos ramas acá abajo.
+  // conocidos". El hover queda fijo en las dos ramas acá abajo.
   //
   // Esto NO alcanzó solo: el bug seguía pasando al cambiar de rol (no en
   // la primera carga). Causa real: `transition-all` ya estaba sin

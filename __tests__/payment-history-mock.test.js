@@ -61,6 +61,22 @@ describe('payment-history mock — cobros', () => {
     rejected.forEach((p) => expect(['rejected', 'cancelled']).toContain(p.status));
   });
 
+  test('filtra por corredor', async () => {
+    const all = await allReceived();
+    const payer = all[0].payer.id;
+    const filtered = await allReceived({ payerId: payer });
+    expect(filtered.length).toBeGreaterThan(0);
+    filtered.forEach((p) => expect(p.payer.id).toBe(payer));
+  });
+
+  test('filtra por rango de fechas inclusivo', async () => {
+    const all = await allReceived();
+    const day = all[0].created_at.slice(0, 10);
+    const filtered = await allReceived({ from: day, to: day });
+    expect(filtered.length).toBeGreaterThan(0);
+    filtered.forEach((p) => expect(p.created_at.slice(0, 10)).toBe(day));
+  });
+
   // Neto = bruto − comisión de Paceron (change cobros-pendientes-y-vencimientos).
   test('todo cobro aprobado tiene neto igual al bruto menos la comisión', async () => {
     const all = await allReceived();
@@ -211,9 +227,32 @@ describe('normalizers de historial de pagos', () => {
     expect(model.monthly[5]).toEqual(expect.objectContaining({ month: '2026-09', grossAmount: expect.any(Number) }));
     expect(model.byTeam[0]).toEqual(expect.objectContaining({ teamId: expect.any(String), pendingCount: expect.any(Number) }));
     expect(model.pendingCount).toBe(2);
+    expect(model.pendingPeriods.all.count).toBeGreaterThan(0);
+    expect(model.pendingPeriods.all.netAmount).toBeGreaterThan(0);
+    expect(model.rejectedPeriods.all.count).toBe(2);
+    expect(model.payers.length).toBeGreaterThan(0);
+    expect(model.payers[0].fullName).toBeTruthy();
     expect(model.earliestMonth).toMatch(/^\d{4}-\d{2}$/);
     expect(toReceivedSummaryModel({ monthly: [], by_team: [] }).earliestMonth).toBeNull();
     expect(toReceivedSummaryModel(null)).toBeNull();
+  });
+
+  test('si la API no trae pending_periods, se derivan del contrato anterior', () => {
+    const model = toReceivedSummaryModel({
+      monthly: [
+        { month: '2026-08', pending_amount: 100, pending_net_amount: 95, pending_count: 1 },
+        { month: '2026-09', pending_amount: 200, pending_net_amount: 190, pending_count: 2 },
+      ],
+      due_this_month: { count: 1, amount: 200, net_amount: 190, items: [] },
+      overdue: { count: 1, amount: 100, net_amount: 95, items: [] },
+      rejected_count: 3, rejected_amount: 600, rejected_net_amount: 570,
+    });
+    expect(model.pendingPeriods.all).toEqual({ count: 2, amount: 300, netAmount: 285 });
+    expect(model.pendingPeriods.current).toEqual({ count: 2, amount: 200, netAmount: 190 });
+    expect(model.pendingPeriods.last).toEqual({ count: 1, amount: 100, netAmount: 95 });
+    expect(model.pendingPeriods.quarter).toEqual({ count: 3, amount: 300, netAmount: 285 });
+    expect(model.rejectedPeriods.all).toEqual({ count: 3, amount: 600, netAmount: 570 });
+    expect(model.payers).toEqual([]);
   });
 });
 

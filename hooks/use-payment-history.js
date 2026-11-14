@@ -86,11 +86,11 @@ function usePaymentsInfiniteList({ queryKey, fetchPage, mapItem, enabled }) {
 
 // Cobros de membresía de equipo. teamId y status ('' = todos) son parte de la
 // key: cambiar un filtro arranca de la página 1.
-export function useReceivedPayments({ teamId = '', status = '', enabled = true } = {}) {
+export function useReceivedPayments({ teamId = '', status = '', payerId = '', from = '', to = '', enabled = true } = {}) {
   const userId = useAuthStore((s) => s.userId);
   return usePaymentsInfiniteList({
-    queryKey: [...PAYMENT_HISTORY_KEYS.received(userId), { teamId, status }],
-    fetchPage: (page) => getReceivedPayments({ page, teamId, status }),
+    queryKey: [...PAYMENT_HISTORY_KEYS.received(userId), { teamId, status, payerId, from, to }],
+    fetchPage: (page) => getReceivedPayments({ page, teamId, status, payerId, from, to }),
     mapItem: toReceivedPaymentModel,
     enabled: enabled && Boolean(userId),
   });

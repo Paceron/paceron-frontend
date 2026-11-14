@@ -20,6 +20,9 @@ import {
   formatDueDate,
   formatFeeLabel,
   overdueLabel,
+  periodTileContent,
+  periodLabel,
+  RECEIVED_KPI_PERIODS,
 } from '../utils/payments-summary.js';
 
 const plain = (s) => s.replace(/ /g, ' ');
@@ -157,7 +160,7 @@ describe('bruto o neto', () => {
     const n = monthTileContent(month({ netKnownCount: 1 }), 'net');
     expect(plain(n.value)).toBe('$ 11.000');
     expect(n.hint).toBe('2 cuotas · Neto parcial (1 de 2)');
-    expect(plain(monthTileContent(month(), 'net').hint)).toBe('2 cuotas · Bruto $ 12.000');
+    expect(plain(monthTileContent(month(), 'net').hint)).toBe('2 cuotas');
     expect(monthTileContent(month({ netAmount: null, netKnownCount: 0 }), 'net')).toEqual({ value: '—', hint: '2 cuotas · Sin datos de neto' });
     expect(plain(monthTileContent(null, 'net').value)).toBe('$ 0');
     expect(monthTileContent(null, 'gross').hint).toBe('0 cuotas');
@@ -247,5 +250,22 @@ describe('vencimientos y comisión', () => {
     expect(overdueLabel({ overdue: false, overdueCount: 0 })).toBe('');
     expect(overdueLabel({ overdue: true, overdueCount: 1 })).toBe('vencida');
     expect(overdueLabel({ overdue: true, overdueCount: 3 })).toBe('3 cuotas vencidas');
+  });
+});
+
+describe('períodos de los KPIs de pendientes y rechazadas', () => {
+  test('el tile usa el monto NETO y muestra la cantidad de cuotas', () => {
+    const tile = periodTileContent({ count: 3, amount: 18000, netAmount: 17100 });
+    expect(plain(tile.value)).toBe('$ 17.100');
+    expect(tile.hint).toBe('3 cuotas');
+    expect(plain(periodTileContent({ count: 0, amount: 0, netAmount: 0 }).value)).toBe('$ 0');
+    expect(periodTileContent(null).hint).toBe('0 cuotas');
+  });
+
+  test('las opciones son las cuatro del selector y "Todas" es el default', () => {
+    expect(RECEIVED_KPI_PERIODS.map((p) => p.name)).toEqual(['Todas', 'Mes en curso', 'Mes pasado', 'Último trimestre']);
+    expect(periodLabel('all')).toBe('Todas');
+    expect(periodLabel('current')).toBe('Mes en curso');
+    expect(periodLabel('desconocido')).toBe('Todas');
   });
 });

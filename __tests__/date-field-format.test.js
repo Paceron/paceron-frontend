@@ -54,6 +54,12 @@ describe('formatDateInput', () => {
     expect(formatDateInput('15/03/2026')).toBe('15/03/2026');
     expect(formatDateInput('15-03-2026')).toBe('15/03/2026');
   });
+
+  test('completa con cero el día y el mes tipeados con separadores', () => {
+    expect(formatDateInput('8/11/2026')).toBe('08/11/2026');
+    expect(formatDateInput('8/1/2026')).toBe('08/01/2026');
+    expect(formatDateInput('08/1/2026')).toBe('08/01/2026');
+  });
 });
 
 describe('fromISODate', () => {
