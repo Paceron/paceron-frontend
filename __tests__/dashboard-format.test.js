@@ -73,7 +73,13 @@ describe('formatMetric', () => {
     expect(formatMetric(248000, 'ms')).toBe('04:08');
     expect(formatMetric(95000, 'ms')).toBe('01:35');
     expect(formatMetric(3725000, 'ms')).toBe('1:02:05');
-    expect(formatMetric(0, 'ms')).toBe('00:00');
+  });
+
+  test('un tiempo en 0 o negativo es "—", nunca "00:00"', () => {
+    // Nadie corre una serie en 0 ms: el cero es una ausencia disfrazada de
+    // número, no una marca. Mismo criterio que D5 para el resto de las unidades.
+    expect(formatMetric(0, 'ms')).toBe(EMPTY_METRIC);
+    expect(formatMetric(-500, 'ms')).toBe(EMPTY_METRIC);
   });
 
   test('el negativo usa el signo tipográfico, no el guion', () => {

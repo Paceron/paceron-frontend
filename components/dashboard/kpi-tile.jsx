@@ -25,7 +25,7 @@ const VERDICT_STYLES = {
   regressing: { text: 'text-red-600 dark:text-red-400', icon: '#ba1a1a' },
 };
 
-export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false, labelNumberOfLines = 1 }) {
+export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false, labelNumberOfLines = 1, showInfo = false }) {
   const verdictStyle = VERDICT_STYLES[verdict] ?? null;
 
   // Las seis cifras vuelven a ser cards del MISMO tamaño que las de gráficos.
@@ -55,7 +55,15 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
     >
       <View className="flex-row items-center gap-1" nativeID={`${id}-header`} testID={`${id}-header`}>
         {icon ? <MaterialCommunityIcons color="#166534" name={icon} size={13} /> : null}
-        <Text className="flex-1 text-[11px] leading-4 text-slate-800 dark:text-slate-200" nativeID={`${id}-label`} numberOfLines={labelNumberOfLines} testID={`${id}-label`}>
+        {/* `showInfo` reserva el extremo derecho para el botón "i" que dibuja
+            `KpiTooltip` encima de la esquina. Sin este padding, un label de dos
+            líneas queda debajo del ícono. */}
+        <Text
+          className={`flex-1 text-[11px] leading-4 text-slate-800 dark:text-slate-200 ${showInfo ? 'pr-4' : ''}`}
+          nativeID={`${id}-label`}
+          numberOfLines={labelNumberOfLines}
+          testID={`${id}-label`}
+        >
           {label}
         </Text>
       </View>

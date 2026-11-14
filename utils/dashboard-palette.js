@@ -12,7 +12,7 @@
 // derivar de la distancia sola — `target_speed_kph` llega `null` y un gauge
 // "ritmo vs objetivo" ahí sería inventar un objetivo que no existe.
 
-import { hasMetric } from './dashboard-format.js';
+import { hasMetric, normalizeBestTimeMs } from './dashboard-format.js';
 
 export const PALETTE_CASES = {
   withTarget: 'with_target',
@@ -57,8 +57,9 @@ export function resolvePrimaryMetric({
 
   if (paletteCase === PALETTE_CASES.withoutTarget) {
     // Sin objetivo no hay contra qué comparar: el mejor tiempo es el único
-    // número que significa algo por sí mismo.
-    return { ...metric('best_time_ms', 'Mejor tiempo', t.best_time_ms, u.best_time), case: paletteCase };
+    // número que significa algo por sí mismo. Un 0 no es una marca (nadie corre
+    // una serie en 0 ms), así que se trata como sin dato y no como "00:00".
+    return { ...metric('best_time_ms', 'Mejor tiempo', normalizeBestTimeMs(t.best_time_ms), u.best_time), case: paletteCase };
   }
 
   if (paletteCase === PALETTE_CASES.reducedTarget) {

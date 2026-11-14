@@ -114,10 +114,12 @@ describe('runner-kpis — contrato de tabs y filas', () => {
     expect(row.formula).toMatch(/solo con series de ritmo continuo/);
   });
 
-  test('cada fila trae ícono y fórmula para la card y su tooltip', () => {
+  test('cada fila trae ícono, definición y fórmula para la card y su tooltip', () => {
     Object.values(RUNNER_KPI_ROWS).flat().forEach((row) => {
       expect(typeof row.icon).toBe('string');
       expect(row.icon.length).toBeGreaterThan(0);
+      expect(typeof row.definition).toBe('string');
+      expect(row.definition.length).toBeGreaterThan(0);
       expect(typeof row.formula).toBe('string');
       expect(row.formula.length).toBeGreaterThan(0);
       if (row.detail) {

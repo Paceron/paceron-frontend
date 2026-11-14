@@ -13,6 +13,7 @@ import { LineChart } from './charts/line-chart.jsx';
 import { GranularitySelect } from './granularity-select.jsx';
 import { KpiTile } from './kpi-tile.jsx';
 import { KpiTooltip } from './kpi-tooltip.jsx';
+import { MetricHelpSheet } from './metric-help-sheet.jsx';
 
 // Paleta A COMPLETO: hay objetivo de ritmo. Ritmo como número principal, delta
 // semántico, cumplimiento, consistencia, evolución y reparto de bandas.
@@ -45,6 +46,10 @@ export function PaletteWithTarget({
   // queda encerrado en su celda y la celda de al lado (o la card de abajo, que
   // se pinta despues) lo tapa igual.
   const [openTooltip, setOpenTooltip] = useState(null);
+  // Métrica cuya ventana de documentación está abierta. Se guarda el id del
+  // campo del backend (no el id corto de la tarjeta) porque es la clave del
+  // catálogo `utils/metric-help.js`.
+  const [helpMetric, setHelpMetric] = useState(null);
   // Ancho del cuerpo de la card de cumplimiento: decide si la curva y el anillo
   // van en fila. Se mide la card y no el viewport porque el dashboard vive dentro
   // del shell con sidebar, así que la ventana no es el ancho disponible (mismo
@@ -118,6 +123,10 @@ export function PaletteWithTarget({
             hint: hasMetric(totals.target_speed_kph)
               ? 'No se calcula a partir de tus resultados: es la velocidad objetivo cargada en el plan para este ejercicio, congelada al momento de asignarse (si el plan cambia después, esto no se actualiza).'
               : 'Este ejercicio no tiene velocidad esperada cargada.',
+            // La tolerancia y las series son contexto de un cálculo; este
+            // número es un valor del plan, no un agregado de tus series.
+            showSeries: false,
+            showTolerance: false,
           },
           {
             key: 'delta',
@@ -153,7 +162,13 @@ export function PaletteWithTarget({
             unit: units.best_time,
             icon: 'timer-outline',
           },
-        ].map((kpi) => (
+        ].map((kpi) => {
+          // Clave del campo del backend (y del catálogo de ayuda). `pace` es
+          // `achieved_speed_kph`, etc.; `target_speed` está mapeado para que su
+          // "Más información" abra la guía de la velocidad esperada.
+          const metricKey = KPI_FORMULA_KEYS[kpi.key] ?? kpi.key;
+
+          return (
           <View
             className="w-1/3 p-1"
             key={kpi.key}
@@ -162,14 +177,19 @@ export function PaletteWithTarget({
             testID={`${id}-kpi-cell-${kpi.key}`}
           >
           <KpiTooltip
-            formula={FORMULAS[KPI_FORMULA_KEYS[kpi.key] ?? kpi.key]}
+            definition={DEFINITIONS[metricKey]}
+            formula={FORMULAS[metricKey]}
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
+            onHelp={() => setHelpMetric(metricKey)}
             onOpenChange={(open) =>
               setOpenTooltip((current) => (open ? kpi.key : current === kpi.key ? null : current))
             }
             seriesCount={summary?.series_count ?? null}
+            showSeries={kpi.showSeries}
+            showTolerance={kpi.showTolerance}
             tolerance={summary?.tolerance_applied}
+            triggerLabel={`Ver explicación de ${kpi.label}`}
             unit={kpi.unit}
             value={kpi.value}
           >
@@ -181,13 +201,15 @@ export function PaletteWithTarget({
                 icon={kpi.icon}
                 id={`${id}-kpi-${kpi.key}`}
                 label={kpi.label}
+                showInfo
                 unit={kpi.unit}
                 value={kpi.value}
               />
             )}
           </KpiTooltip>
           </View>
-        ))}
+          );
+        })}
       </View>
 
       {!hasTarget(summary) ? (
@@ -328,9 +350,29 @@ export function PaletteWithTarget({
         </ChartGridItem>
       </ChartGrid>
       ) : null}
+
+      {/* Una sola ventana por paleta, no una por tarjeta: el catálogo de ayuda
+          se elige por id y las tarjetas solo avisan cuál abrir. */}
+      <MetricHelpSheet
+        id={`${id}-metric-help`}
+        metricId={helpMetric}
+        onClose={() => setHelpMetric(null)}
+      />
     </View>
   );
 }
+
+// La definición en lenguaje llano de cada KPI: qué representa el número antes
+// de entrar en la fórmula. Va primero en el tooltip porque sin esto una fórmula
+// sola no dice qué se está mirando. No recalcula nada; describe el mismo dato
+// que ya viene del backend.
+const DEFINITIONS = {
+  achieved_speed_kph: 'Tu ritmo de carrera en el período: un solo número que resume todas las series válidas, dándole más peso a las más largas.',
+  delta: 'Cuánto te acercaste o alejaste del objetivo, en porcentaje. Un valor positivo es una mejora respecto del objetivo; uno negativo, un resultado por debajo.',
+  compliance_rate: 'Qué parte de tus series con objetivo cargado lo cumplieron dentro de la tolerancia permitida.',
+  cv: 'Cuán parejas fueron tus velocidades entre series. Cuanto más bajo, más consistente fuiste.',
+  best_time_met_ms: 'Tu mejor tiempo entre las series que cumplieron el objetivo. Si ninguna lo cumplió, no hay marca que mostrar y ves «—».',
+};
 
 // La fórmula de cada KPI, tal como la calcula el backend. Va en el tooltip y NO
 // se recalcula acá: el front no reimplementa ni una fórmula, solo muestra de dónde
@@ -351,14 +393,17 @@ const FORMULAS = {
 // bug real, 2026-11-11: `FORMULAS[kpi.key]` fallaba en silencio para pace/
 // target_speed/compliance/best_time (solo 'delta' y 'cv' coincidían de
 // casualidad), así que esos 4 tooltips nunca mostraban su fórmula, aunque
-// el texto ya estuviera escrito arriba. `target_speed` queda sin mapear a
-// propósito: no tiene fórmula (ver su `hint` más abajo, es un valor
-// congelado, no un agregado). `best_time` apunta a `best_time_met_ms`
-// (gap 43, 2026-11-12) -- esta paleta tiene objetivo, así que su "Mejor
-// tiempo" es el cumplido, no cualquier serie válida como en la paleta sin
-// objetivo (que sigue usando `best_time_ms` sin tocar).
+// el texto ya estuviera escrito arriba. `target_speed` se mapea a
+// `target_speed_kph` (2026-11-12) para que las tres búsquedas (definición,
+// fórmula y ayuda) usen la misma clave: no tiene fórmula ni definición propia
+// porque es un valor congelado del plan, así que sigue mostrando su `hint`.
+// `best_time` apunta a `best_time_met_ms` (gap 43, 2026-11-12) -- esta paleta
+// SÍ tiene objetivo, así que su "Mejor tiempo" es el cumplido, no cualquier
+// serie válida como en la paleta sin objetivo (que sigue usando `best_time_ms`
+// sin tocar).
 const KPI_FORMULA_KEYS = {
   pace: 'achieved_speed_kph',
+  target_speed: 'target_speed_kph',
   compliance: 'compliance_rate',
   best_time: 'best_time_met_ms',
   delta: 'delta',
