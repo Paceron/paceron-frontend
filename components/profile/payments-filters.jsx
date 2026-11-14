@@ -29,10 +29,13 @@ export function PaymentsFilters({
 }) {
   const teamOptions = teams.map((t) => ({ id: t.teamId, name: t.teamName || 'Equipo eliminado' }));
   const payerOptions = payers.map((p) => ({ id: p.id, name: p.fullName || p.email || 'Corredor' }));
-  const fieldStyle = isWide ? { flex: 1, minWidth: 150 } : undefined;
+  // Todos los filtros miden lo mismo: una fila de cinco columnas iguales en
+  // web ancha. Antes los dos campos de fecha caían en una segunda fila y se
+  // estiraban al 50 %, mientras los selects quedaban a un tercio.
+  const fieldStyle = isWide ? { flex: 1, minWidth: 0 } : undefined;
 
   return (
-    <View className={`gap-4 rounded-xl bg-slate-200/50 p-5 pb-0 pt-5 dark:bg-slate-800/60 ${isWide ? 'flex-row flex-wrap' : ''}`} nativeID="payments-filters" testID="payments-filters">
+    <View className={`gap-4 rounded-xl bg-slate-200/50 p-5 pb-0 pt-5 dark:bg-slate-800/60 ${isWide ? 'flex-row' : ''}`} nativeID="payments-filters" testID="payments-filters">
       <View nativeID="payments-filters-team" style={fieldStyle} testID="payments-filters-team">
         <ResponsiveSelectField dense label="Equipo" onChange={onChangeTeam} options={teamOptions} placeholder="Todos los equipos" value={teamId} />
       </View>
@@ -44,6 +47,7 @@ export function PaymentsFilters({
       </View>
       <View nativeID="payments-filters-date-from" style={fieldStyle} testID="payments-filters-date-from">
         <CalendarDateField
+          compactControl
           dense
           hideErrorRow
           idPrefix="payments-filters-date-from"
@@ -55,6 +59,7 @@ export function PaymentsFilters({
       </View>
       <View nativeID="payments-filters-date-to" style={fieldStyle} testID="payments-filters-date-to">
         <CalendarDateField
+          compactControl
           dense
           hideErrorRow
           idPrefix="payments-filters-date-to"

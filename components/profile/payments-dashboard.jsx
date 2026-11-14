@@ -52,8 +52,6 @@ export function PaymentsDashboard({
   failed,
   onRetry,
   isWide,
-  activeStatus,
-  onSelectStatus,
   windowSummary,
   windowLoading = false,
   windowFailed = false,
@@ -96,9 +94,7 @@ export function PaymentsDashboard({
   const momTile = monthOverMonthTileContent(current, previous, AMOUNT_MODE);
   const pendingTile = periodTileContent(summary.pendingPeriods?.[kpiPeriod]);
   const rejectedTile = periodTileContent(summary.rejectedPeriods?.[kpiPeriod]);
-  const toggle = (group) => onSelectStatus(activeStatus === group ? '' : group);
   const kpiBox = { flex: 1 };
-  const statusHint = (group) => (activeStatus === group ? 'Filtrando · tocá para quitar' : 'Tocá para filtrar');
 
   const shown = windowSummary ?? summary;
   const points = toChartPoints(shown.monthly, AMOUNT_MODE);
@@ -179,13 +175,10 @@ export function PaymentsDashboard({
             <IconTooltip idPrefix="payments-kpi-rejected-tooltip" label={`Monto rechazado · ${periodLabel(kpiPeriod)}`} wrap>
               <Pressable nativeID="payments-kpi-rejected-trigger" style={{ flex: 1 }} testID="payments-kpi-rejected-trigger">
                 <StatTile
-                  actionHint={statusHint('rejected')}
-                  active={activeStatus === 'rejected'}
                   hint={rejectedTile.hint}
                   icon="close-circle-outline"
                   idPrefix="payments-kpi"
                   label="Monto rechazado"
-                  onPress={() => toggle('rejected')}
                   surface="bg-slate-50 dark:bg-surface-2"
                   value={rejectedTile.value}
                 />

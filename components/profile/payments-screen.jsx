@@ -218,11 +218,6 @@ function PaymentsScreenContent() {
     ])
   );
 
-  const selectStatus = (group) => {
-    setTab('received');
-    setReceivedStatus(group);
-  };
-
   const handleReceipt = async (payment) => {
     setReceiptBusyId(payment.id);
     try {
@@ -270,7 +265,6 @@ function PaymentsScreenContent() {
         {activeTab === 'received' ? (
           <>
             <PaymentsDashboard
-              activeStatus={receivedStatus}
               canNext={windowOffset > 0}
               canPrev={Boolean(windowSummary) && canGoBack(windowSummary.monthly, summary.summary?.earliestMonth)}
               currentMonth={currentMonth}
@@ -281,7 +275,6 @@ function PaymentsScreenContent() {
               onPrev={() => setWindowOffset((o) => o + 1)}
               onRetry={() => summary.refetch()}
               onRetryWindow={() => windowQuery.refetch()}
-              onSelectStatus={selectStatus}
               summary={summary.summary}
               windowFailed={Boolean(until) && windowQuery.failed}
               windowLoading={Boolean(until) && windowQuery.loading}
