@@ -172,7 +172,9 @@ export function monthTooltipContent(entry, mode) {
     rows.push({ key: 'net', label: 'Neto', value: formatArs(net.value), detail: net.partial ? `${entry.netKnownCount} de ${entry.approvedCount}` : '' });
   }
   if (entry?.pendingCount) {
-    rows.push({ key: 'pending', label: mode === 'net' ? 'Pendiente (neto)' : 'Pendiente', value: formatArs(pendingFor(entry, mode)), detail: formatInstallmentCount(entry.pendingCount) });
+    // "Adeudado" y no "Pendiente": pendiente es un estado de pago (en proceso),
+    // y esto son cuotas que nadie pagó (2026-11-14).
+    rows.push({ key: 'pending', label: mode === 'net' ? 'Adeudado (neto)' : 'Adeudado', value: formatArs(pendingFor(entry, mode)), detail: formatInstallmentCount(entry.pendingCount) });
   }
   return { title, rows };
 }

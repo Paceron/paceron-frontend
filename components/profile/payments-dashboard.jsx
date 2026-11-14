@@ -37,12 +37,12 @@ const AMOUNT_MODE = 'net';
 //   `windowSummary`, la ventana elegida con las flechas.
 // - Los montos son siempre netos: el neto es el bruto menos la comisión de
 //   Paceron (ver utils/payments-summary.js#amountFor).
-// - "Pendiente de cobro" y "Monto rechazado" usan un selector de período
+// - "Adeudado" y "Monto rechazado" usan un selector de período
 //   compartido: Todas (vencidas + mes en curso), mes en curso, mes pasado y
 //   último trimestre. El hint de cada tile es la cantidad de cuotas de ese
 //   período, no un contador aparte (bug reportado 2026-11-13: el KPI mostraba
 //   $0 y "0 cuotas" aunque el gráfico tuviera pendientes).
-// - "Pendiente de cobro" sale de las obligaciones esperadas del backend, no de
+// - "Adeudado" sale de las obligaciones esperadas del backend, no de
 //   los intentos de pago. Por eso no filtra la lista: la lista de cobros
 //   muestra pagos/intentos, y el detalle de lo pendiente está en la card "Por
 //   cobrar este mes". "Monto rechazado" sí conserva el filtro por intentos.
@@ -135,7 +135,7 @@ export function PaymentsDashboard({
       <SectionCard
         icon="cash-clock"
         scope="payments-dashboard-kpi-periods"
-        title="Pendientes y rechazados"
+        title="Adeudado y rechazado"
         variant="nested"
       >
         <View className={`mb-4 gap-3 ${isWide ? 'flex-row items-end justify-between' : ''}`} nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
@@ -158,13 +158,13 @@ export function PaymentsDashboard({
         </View>
         <View className="flex-row gap-3" nativeID="payments-dashboard-kpi-period-cards" testID="payments-dashboard-kpi-period-cards">
           <View nativeID="payments-dashboard-kpi-pending" style={kpiBox} testID="payments-dashboard-kpi-pending">
-            <IconTooltip idPrefix="payments-kpi-pending-tooltip" label={`Pendiente de cobro · ${periodLabel(kpiPeriod)}`} wrap>
+            <IconTooltip idPrefix="payments-kpi-pending-tooltip" label={`Adeudado · ${periodLabel(kpiPeriod)}`} wrap>
               <Pressable nativeID="payments-kpi-pending-trigger" style={{ flex: 1 }} testID="payments-kpi-pending-trigger">
                 <StatTile
                   hint={pendingTile.hint}
                   icon="clock-outline"
                   idPrefix="payments-kpi"
-                  label="Pendiente de cobro"
+                  label="Adeudado"
                   surface="bg-slate-50 dark:bg-surface-2"
                   value={pendingTile.value}
                 />

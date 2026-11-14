@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Text, View, ScrollView } from 'react-native';
 import { formatArs } from '../../utils/currency.js';
 import { formatDueDate } from '../../utils/payments-summary.js';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -11,7 +11,8 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // debiendo en noviembre). Vencido es pasar el vencimiento, sin días de gracia.
 // Lo calcula el backend (change cobros-pendientes-y-vencimientos): las cuotas
 // de meses no pagados no existen como filas. `amountMode` elige bruto o neto
-// del total; cada cuota se muestra por su monto.
+// del total y de cada cuota, así la suma de las filas coincide con el total. En
+// neto, una cuota sin `netAmount` (backend sin el campo) muestra "—", no el bruto.
 export function PaymentsDueCard({ dueThisMonth, overdue, amountMode = 'gross', isWide }) {
   if (!dueThisMonth?.count && !overdue?.count) return null;
   return (
@@ -24,12 +25,17 @@ export function PaymentsDueCard({ dueThisMonth, overdue, amountMode = 'gross', i
   );
 }
 
+function itemAmountLabel(item, amountMode) {
+  if (amountMode !== 'net') return formatArs(item.amount);
+  return item.netAmount === null || item.netAmount === undefined ? '—' : formatArs(item.netAmount);
+}
+
 function DueColumn({ block, title, tone, empty, amountMode, id }) {
   const total = amountMode === 'net' ? block?.netAmount : block?.amount;
   const overdue = tone === 'overdue';
   return (
-    <View className="flex-1" nativeID={id} testID={id}>
-      <View className="mb-2 flex-row items-baseline justify-between gap-3" nativeID={`${id}-header`} testID={`${id}-header`}>
+    <View className={`flex-1 border rounded-xl p-3 ${overdue ? 'bg-rose-300/50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-900' : 'bg-amber-200/70 dark:bg-amber-950/50 border-amber-300 dark:border-amber-900'}`} nativeID={id} testID={id}>
+      <View className={`mb-2 flex-row items-baseline justify-between gap-3`} nativeID={`${id}-header`} testID={`${id}-header`}>
         <Text className={`text-sm font-semibold ${overdue ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'}`} nativeID={`${id}-title`} testID={`${id}-title`}>
           {title}
           {block?.count ? ` · ${block.count} ${block.count === 1 ? 'cuota' : 'cuotas'}` : ''}
@@ -41,10 +47,10 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
       {!block?.items?.length ? (
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-empty`} testID={`${id}-empty`}>{empty}</Text>
       ) : (
-        <View className="gap-2" nativeID={`${id}-items`} testID={`${id}-items`}>
+        <ScrollView className="p-1" nativeID={`${id}-items-scroll`} testID={`${id}-items-scroll`}>
           {block.items.map((item) => (
             <View
-              className="flex-row items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2 dark:border-slate-800"
+              className={`flex-row items-center p-3 justify-between gap-3 my-1 mx-0.5 rounded-xl border ${overdue ? 'border-rose-400 dark:border-rose-600 bg-rose-100/70 dark:bg-rose-600/30' : 'border-amber-400 dark:border-amber-600 bg-amber-100/70 dark:bg-amber-600/30'}`}
               key={item.key}
               nativeID={`${id}-item-${item.key}`}
               testID={`${id}-item-${item.key}`}
@@ -53,21 +59,21 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
                 <Text className="text-sm font-medium text-slate-800 dark:text-slate-100" nativeID={`${id}-item-${item.key}-payer`} numberOfLines={1} testID={`${id}-item-${item.key}-payer`}>
                   {item.payerName || 'Corredor'}
                 </Text>
-                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-item-${item.key}-meta`} numberOfLines={1} testID={`${id}-item-${item.key}-meta`}>
+                <Text className={`text-xs ${overdue ? 'text-rose-800 dark:text-rose-200' : 'text-amber-800 dark:text-amber-200'}`} nativeID={`${id}-item-${item.key}-meta`} numberOfLines={1} testID={`${id}-item-${item.key}-meta`}>
                   {`${item.teamName || 'Equipo'} · cuota ${item.installmentNumber}`}
                 </Text>
               </View>
               <View className="items-end" nativeID={`${id}-item-${item.key}-side`} testID={`${id}-item-${item.key}-side`}>
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-item-${item.key}-amount`} style={TABULAR} testID={`${id}-item-${item.key}-amount`}>
-                  {formatArs(item.amount)}
+                  {itemAmountLabel(item, amountMode)}
                 </Text>
-                <Text className={`text-xs ${overdue ? 'text-rose-600 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-item-${item.key}-due`} testID={`${id}-item-${item.key}-due`}>
+                <Text className={`text-xs ${overdue ? 'text-rose-800 dark:text-rose-200' : 'text-amber-800 dark:text-amber-200'}`} nativeID={`${id}-item-${item.key}-due`} testID={`${id}-item-${item.key}-due`}>
                   {`${overdue ? 'venció' : 'vence'} ${formatDueDate(item.dueDate)}`}
                 </Text>
               </View>
             </View>
           ))}
-        </View>
+        </ScrollView>
       )}
     </View>
   );

@@ -206,7 +206,7 @@ describe('bruto o neto', () => {
       ['Cobrado', '$ 12.000', '2 cuotas'],
       ['Comisión', '$ 1.000', ''],
       ['Neto', '$ 11.000', ''],
-      ['Pendiente', '$ 24.000', '2 cuotas'],
+      ['Adeudado', '$ 24.000', '2 cuotas'],
     ]);
     expect(plain(monthTooltipContent(month({ pendingAmount: 24000, pendingNetAmount: 22800, pendingCount: 2 }), 'net').rows[3].value)).toBe('$ 22.800');
     // Sin cobros: solo el cobrado en 0, sin comisión ni neto.

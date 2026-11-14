@@ -35,7 +35,7 @@ export function PaymentsFilters({
   const fieldStyle = isWide ? { flex: 1, minWidth: 0 } : undefined;
 
   return (
-    <View className={`gap-4 rounded-xl bg-slate-200/50 p-5 pb-0 pt-5 dark:bg-slate-800/60 ${isWide ? 'flex-row' : ''}`} nativeID="payments-filters" testID="payments-filters">
+    <View className={`gap-4 rounded-xl bg-slate-200/50 p-5 pb-0 pt-5 rounded-b-none dark:bg-slate-800/60 ${isWide ? 'flex-row' : ''}`} nativeID="payments-filters" testID="payments-filters">
       <View nativeID="payments-filters-team" style={fieldStyle} testID="payments-filters-team">
         <ResponsiveSelectField dense label="Equipo" onChange={onChangeTeam} options={teamOptions} placeholder="Todos los equipos" value={teamId} />
       </View>

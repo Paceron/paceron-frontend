@@ -27,7 +27,7 @@ export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadi
 
   if (failed) {
     return (
-      <View className="flex-row items-center justify-between gap-3 rounded-2xl bg-rose-50 p-4 dark:bg-rose-900/20" nativeID={`${scope}-error`} testID={`${scope}-error`}>
+      <View className="flex-row items-center justify-between gap-3 rounded-t-none rounded-2xl bg-rose-50 p-4 dark:bg-rose-900/20" nativeID={`${scope}-error`} testID={`${scope}-error`}>
         <Text className="flex-1 text-sm text-rose-700 dark:text-rose-300" nativeID={`${scope}-error-text`} testID={`${scope}-error-text`}>
           No pudimos cargar la lista.
         </Text>
@@ -54,7 +54,7 @@ export function PaymentsList({ variant, items, hasMore, loadMore, loading, loadi
 
   return (
     <View nativeID={scope} testID={scope}>
-      <View className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-surface-2" nativeID={`${scope}-card`} testID={`${scope}-card`}>
+      <View className="overflow-hidden rounded-t-none rounded-2xl border border-t-4 border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-surface-2" nativeID={`${scope}-card`} testID={`${scope}-card`}>
         <View className={`flex-row border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 ${compact ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2.5'}`} nativeID={`${scope}-header`} testID={`${scope}-header`}>
           {columns.map((column) => (
             <View key={column.key} className={`flex-row items-center gap-1 ${column.align === 'right' ? 'justify-end' : 'justify-start'}`} nativeID={`${scope}-header-${column.key}`} style={{ flex: column.flex }} testID={`${scope}-header-${column.key}`}>

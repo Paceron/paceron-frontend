@@ -60,7 +60,7 @@ const RECEIVED_AMOUNT_COLUMN = {
   align: 'right',
   hint: {
     title: 'Monto neto',
-    description: 'Corresponde a lo que recibís por cada cuota: el importe abonado por el corredor (monto bruto) menos la comisión de Paceron, calculada como un porcentaje del monto bruto.\n\nMonto neto = monto bruto − comisión de Paceron.\n\nEste monto no contempla impuestos, retenciones ni comisiones de procesamiento de pagos que puedan aplicarse posteriormente.',
+    description: 'Corresponde a lo que recibís por cada cuota: el importe abonado por el corredor (monto bruto) menos la comisión de Paceron, que corresponde al 5% del monto bruto.\n\nMonto neto = monto bruto − comisión de Paceron (5% del monto bruto).\n\nEste monto no contempla impuestos, retenciones ni comisiones de procesamiento de pagos que puedan aplicarse posteriormente.',
   },
 };
 
@@ -118,7 +118,7 @@ function CellText({ id, children, strong = false, muted = false, compact = false
 
 function WideRow({ id, columns, content, compact = false }) {
   return (
-    <View className={`flex-row items-center border-b border-slate-100 dark:border-slate-800 ${compact ? 'gap-2 px-3 py-2.5' : 'gap-3 px-4 py-3'}`} nativeID={id} testID={id}>
+    <View className={`flex-row items-center border-b border-slate-200/50 dark:border-slate-700/50 ${compact ? 'gap-2 px-3 py-2.5' : 'gap-3 px-4 py-3'}`} nativeID={id} testID={id}>
       {columns.map((column) => (
         <Cell key={column.key} column={column} id={id}>{content[column.key]}</Cell>
       ))}

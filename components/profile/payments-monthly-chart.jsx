@@ -155,7 +155,7 @@ export function PaymentsMonthlyChart({ points, currentMonth, monthly, amountMode
       {hasPending ? (
         <View className="mt-3 flex-row flex-wrap items-center gap-4" nativeID="payments-monthly-chart-legend" testID="payments-monthly-chart-legend">
           <LegendItem color={colors.primary} id="payments-monthly-chart-legend-collected" label="Cobrado" />
-          <LegendItem color={PENDING_COLOR} id="payments-monthly-chart-legend-pending" label="Pendiente (cuotas sin pagar que vencen en el mes)" />
+          <LegendItem color={PENDING_COLOR} id="payments-monthly-chart-legend-pending" label="Adeudado (cuotas sin pagar que vencen en el mes)" />
         </View>
       ) : null}
     </View>

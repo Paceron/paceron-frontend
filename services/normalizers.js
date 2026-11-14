@@ -614,6 +614,9 @@ function toObligationsBlock(dto) {
       payerName: [o.payer?.name, o.payer?.surname].filter(Boolean).join(' '),
       installmentNumber: o.installment_number,
       amount: o.amount,
+      // Neto de la cuota (bruto − comisión de Paceron), lo calcula el backend.
+      // null si el backend todavía no lo manda: nunca se estima.
+      netAmount: o.net_amount ?? null,
       dueDate: o.due_date,
     })),
   };
