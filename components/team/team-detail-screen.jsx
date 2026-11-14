@@ -5,8 +5,6 @@ import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { DASHBOARD_KEYS } from '../../hooks/use-dashboard-query.js';
-import { getDashboardSummary } from '../../services/dashboard.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
@@ -758,14 +756,6 @@ function TeamDetailScreenContent({ teamId }) {
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [runnerDetailMember, setRunnerDetailMember] = useState(null);
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!team?.id) return;
-    queryClient.prefetchQuery({
-      queryKey: DASHBOARD_KEYS.summary({ teamId: team.id }),
-      queryFn: () => getDashboardSummary({ teamId: team.id }),
-    });
-  }, [team?.id, queryClient]);
 
   useEffect(() => {
     setRunnerMenuOpen(false);
