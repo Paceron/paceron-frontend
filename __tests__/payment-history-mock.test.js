@@ -313,6 +313,9 @@ describe('normalizers de pendientes y vencimientos', () => {
     expect(model.monthly[0]).toEqual(expect.objectContaining({ pendingAmount: expect.any(Number), pendingNetAmount: expect.any(Number), pendingCount: expect.any(Number) }));
     const item = model.dueThisMonth.items[0];
     expect(item).toEqual(expect.objectContaining({ teamName: expect.any(String), payerName: expect.any(String), installmentNumber: expect.any(Number), amount: expect.any(Number), dueDate: expect.any(String) }));
+    // Neto por cuota, para que las filas sumen lo mismo que el total neto; sin el dato queda null, no 0.
+    expect(item.netAmount).toBe(Math.round(item.amount * 95) / 100);
+    expect(toReceivedSummaryModel({ monthly: [], by_team: [], overdue: { items: [{ amount: 100 }] } }).overdue.items[0].netAmount).toBeNull();
     expect(model.overdue.count).toBe(model.overdue.items.length);
     const empty = toReceivedSummaryModel({ monthly: [], by_team: [] });
     expect(empty.dueThisMonth).toEqual({ count: 0, amount: 0, netAmount: 0, items: [] });

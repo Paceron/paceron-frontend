@@ -382,7 +382,7 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
     target.count += 1;
     target.amount += o.amount;
     target.net_amount += netOf(o.amount);
-    target.items.push(o);
+    target.items.push({ ...o, net_amount: netOf(o.amount) });
   });
   [due, overdue].forEach((b) => b.items.sort((a, c) => a.due_date.localeCompare(c.due_date)));
 
