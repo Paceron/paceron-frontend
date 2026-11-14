@@ -236,6 +236,24 @@ describe('normalizers de historial de pagos', () => {
     expect(toReceivedSummaryModel({ monthly: [], by_team: [] }).earliestMonth).toBeNull();
     expect(toReceivedSummaryModel(null)).toBeNull();
   });
+
+  test('si la API no trae pending_periods, se derivan del contrato anterior', () => {
+    const model = toReceivedSummaryModel({
+      monthly: [
+        { month: '2026-08', pending_amount: 100, pending_net_amount: 95, pending_count: 1 },
+        { month: '2026-09', pending_amount: 200, pending_net_amount: 190, pending_count: 2 },
+      ],
+      due_this_month: { count: 1, amount: 200, net_amount: 190, items: [] },
+      overdue: { count: 1, amount: 100, net_amount: 95, items: [] },
+      rejected_count: 3, rejected_amount: 600, rejected_net_amount: 570,
+    });
+    expect(model.pendingPeriods.all).toEqual({ count: 2, amount: 300, netAmount: 285 });
+    expect(model.pendingPeriods.current).toEqual({ count: 2, amount: 200, netAmount: 190 });
+    expect(model.pendingPeriods.last).toEqual({ count: 1, amount: 100, netAmount: 95 });
+    expect(model.pendingPeriods.quarter).toEqual({ count: 3, amount: 300, netAmount: 285 });
+    expect(model.rejectedPeriods.all).toEqual({ count: 3, amount: 600, netAmount: 570 });
+    expect(model.payers).toEqual([]);
+  });
 });
 
 describe('payment-status', () => {

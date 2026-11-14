@@ -49,8 +49,24 @@ export function fromISODate(value) {
 // formato es 100% nuestro, en cualquier navegador/SO, igual que ya se mostró
 // correcto en mobile nativo (que arma su propia Pressable + Text, nunca
 // delega el render del valor al picker del sistema).
-export function formatDateInput(digits) {
-  const d = String(digits ?? '').replace(/\D/g, '').slice(0, 8);
+export function formatDateInput(value) {
+  const raw = String(value ?? '');
+  // Si el usuario escribe los separadores a mano, se respetan los componentes y
+  // se completa el día/mes con un cero. Sin esto, "8/11/2026" se convertía en
+  // "81/12/026" (el mask tomaba el 8 y el 1 como día de dos dígitos) y el filtro
+  // de fechas quedaba con una fecha inválida: `toISODate` devolvía '' y no
+  // filtraba nada (bug reportado 2026-11-13).
+  let digits;
+  if (raw.includes('/')) {
+    const [day = '', month = '', year = ''] = raw.split('/');
+    const dd = day.replace(/\D/g, '');
+    const mm = month.replace(/\D/g, '');
+    const yyyy = year.replace(/\D/g, '');
+    digits = `${dd ? dd.padStart(2, '0') : ''}${mm ? mm.padStart(2, '0') : ''}${yyyy}`;
+  } else {
+    digits = raw.replace(/\D/g, '');
+  }
+  const d = digits.slice(0, 8);
   if (d.length <= 2) return d;
   if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
   return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
