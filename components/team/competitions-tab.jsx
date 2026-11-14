@@ -18,6 +18,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { filterCompetitionsByFields } from '../../utils/competition-filters.js';
+import { canCloseCompetition } from '../../utils/competition-close.js';
 import { useScrollToHighlight } from '../../hooks/use-scroll-to-highlight.js';
 import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
@@ -169,7 +170,12 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   // `false` para una competencia recién creada con horario de inicio ya
   // pasado, bloqueando "Correr esta trayectoria" sin ningún motivo real.
   const now = Date.now();
-  const canClose = isTrainerView && competition.status === 'active' && competition.endAt && new Date(competition.endAt).getTime() < now;
+  // `canCloseCompetition` (utils/competition-close.js) distingue por tipo:
+  // métrica se cierra recién vencida su ventana; ruta (end_at null, abierta
+  // por contrato) se cierra cuando el entrenador decide -- el gate anterior
+  // exigía endAt pasado sin excepción, así que una ruta nunca mostraba el
+  // botón de cerrar (bug real, 2026-11-14).
+  const canClose = isTrainerView && canCloseCompetition(competition, now);
   // `canRunBase` sigue siendo "¿esto es algo que este corredor podría
   // llegar a correr alguna vez?" (participante + ruta + activa) -- NO
   // incluye fecha/cupo. Eso decide si el botón se RENDERIZA en absoluto
