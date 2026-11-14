@@ -355,7 +355,16 @@ activo, por `payments-summary-card.jsx`. Consume `GET /payments/history`,
   todos los anchos y su columna "Monto" es el NETO (2026-11-10, pedido del usuario)**:
   el header lleva un "i" (`InfoHint` con `openOnPress`, para que también se abra
   con click/toque en web de celular, sin hover) que explica neto = bruto − comisión
-  de Paceron. En angosto (`RECEIVED_COLUMNS_NARROW`) el equipo baja como segunda
+  de Paceron y dice explícitamente que la comisión es el **5% del monto bruto**
+  (2026-11-14, pedido del usuario). En el gráfico mensual, la barra ámbar y su fila
+  del tooltip se llaman **"Adeudado"**, no "Pendiente": pendiente es un estado de
+  pago (en proceso), y esa barra son cuotas que nadie pagó. Mismo nombre para el tile
+  de período de Finanzas (panel "Adeudado y rechazado") y el KPI del Home del
+  entrenador (`utils/trainer-home-kpis.js`), que salen de esas mismas cuotas. "Cuotas
+  pendientes"/estado "Pendiente" quedan solo para pagos en proceso. En "Por cobrar este
+  mes" cada cuota va en neto igual que el total (`net_amount` por ítem, que el backend
+  suma desde `fix/obligation-item-net-amount`; sin el campo se muestra "—", nunca el
+  bruto). En angosto (`RECEIVED_COLUMNS_NARROW`) el equipo baja como segunda
   línea del corredor y el estado conserva su columna, porque se filtra por él. La
   lista de Pagos también es tabla en angosto (`HISTORY_COLUMNS_NARROW`): tipo y
   método bajan debajo del detalle y el botón del comprobante va debajo del monto.

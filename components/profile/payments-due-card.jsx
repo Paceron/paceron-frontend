@@ -11,7 +11,8 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // debiendo en noviembre). Vencido es pasar el vencimiento, sin días de gracia.
 // Lo calcula el backend (change cobros-pendientes-y-vencimientos): las cuotas
 // de meses no pagados no existen como filas. `amountMode` elige bruto o neto
-// del total; cada cuota se muestra por su monto.
+// del total y de cada cuota, así la suma de las filas coincide con el total. En
+// neto, una cuota sin `netAmount` (backend sin el campo) muestra "—", no el bruto.
 export function PaymentsDueCard({ dueThisMonth, overdue, amountMode = 'gross', isWide }) {
   if (!dueThisMonth?.count && !overdue?.count) return null;
   return (
@@ -22,6 +23,11 @@ export function PaymentsDueCard({ dueThisMonth, overdue, amountMode = 'gross', i
       </View>
     </SectionCard>
   );
+}
+
+function itemAmountLabel(item, amountMode) {
+  if (amountMode !== 'net') return formatArs(item.amount);
+  return item.netAmount === null || item.netAmount === undefined ? '—' : formatArs(item.netAmount);
 }
 
 function DueColumn({ block, title, tone, empty, amountMode, id }) {
@@ -59,7 +65,7 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
               </View>
               <View className="items-end" nativeID={`${id}-item-${item.key}-side`} testID={`${id}-item-${item.key}-side`}>
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-item-${item.key}-amount`} style={TABULAR} testID={`${id}-item-${item.key}-amount`}>
-                  {formatArs(item.amount)}
+                  {itemAmountLabel(item, amountMode)}
                 </Text>
                 <Text className={`text-xs ${overdue ? 'text-rose-600 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-item-${item.key}-due`} testID={`${id}-item-${item.key}-due`}>
                   {`${overdue ? 'venció' : 'vence'} ${formatDueDate(item.dueDate)}`}

@@ -24,9 +24,11 @@ export const TRAINER_HOME_PERIOD_METRICS = [
   },
   {
     field: 'pendingAmount',
-    label: 'Pendiente de cobro',
+    // "Adeudado" y no "Pendiente": pendiente es un estado de pago (en proceso),
+    // y esto son cuotas que nadie pagó. Mismo nombre que en Finanzas (2026-11-14).
+    label: 'Adeudado',
     icon: 'cash-clock',
-    formula: 'Monto de cuotas no pagadas cuyo vencimiento cae dentro del período. La cantidad de cuotas pendientes se muestra en este detalle.',
+    formula: 'Monto de cuotas no pagadas cuyo vencimiento cae dentro del período. La cantidad de cuotas adeudadas se muestra en este detalle.',
   },
 ];
 
