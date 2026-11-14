@@ -157,7 +157,7 @@ describe('bruto o neto', () => {
     const n = monthTileContent(month({ netKnownCount: 1 }), 'net');
     expect(plain(n.value)).toBe('$ 11.000');
     expect(n.hint).toBe('2 cuotas · Neto parcial (1 de 2)');
-    expect(plain(monthTileContent(month(), 'net').hint)).toBe('2 cuotas · Bruto $ 12.000');
+    expect(plain(monthTileContent(month(), 'net').hint)).toBe('2 cuotas');
     expect(monthTileContent(month({ netAmount: null, netKnownCount: 0 }), 'net')).toEqual({ value: '—', hint: '2 cuotas · Sin datos de neto' });
     expect(plain(monthTileContent(null, 'net').value)).toBe('$ 0');
     expect(monthTileContent(null, 'gross').hint).toBe('0 cuotas');

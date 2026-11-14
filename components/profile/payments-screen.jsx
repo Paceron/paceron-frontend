@@ -61,7 +61,6 @@ function PaymentsScreenContent() {
   const [historyType, setHistoryType] = useState('');
   const [historyStatus, setHistoryStatus] = useState('');
   const [receiptBusyId, setReceiptBusyId] = useState(null);
-  const [amountMode, setAmountMode] = useState('gross');
   // 0 = la ventana termina en el mes actual; 1 = los 6 meses anteriores; etc.
   const [windowOffset, setWindowOffset] = useState(0);
   // Pago de una cuota de "Próximos vencimientos" sin salir de la pantalla:
@@ -261,14 +260,12 @@ function PaymentsScreenContent() {
           <>
             <PaymentsDashboard
               activeStatus={receivedStatus}
-              amountMode={amountMode}
               canNext={windowOffset > 0}
               canPrev={Boolean(windowSummary) && canGoBack(windowSummary.monthly, summary.summary?.earliestMonth)}
               currentMonth={currentMonth}
               failed={summary.failed}
               isWide={isWide}
               loading={summary.loading}
-              onChangeAmountMode={setAmountMode}
               onNext={() => setWindowOffset((o) => Math.max(0, o - 1))}
               onPrev={() => setWindowOffset((o) => o + 1)}
               onRetry={() => summary.refetch()}

@@ -15,17 +15,23 @@ import {
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
-import { PaymentsAmountMode } from './payments-amount-mode.jsx';
 import { PaymentsMonthlyChart } from './payments-monthly-chart.jsx';
 import { PaymentsDueCard } from './payments-due-card.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+
+// El panel muestra SOLO montos netos (pedido 2026-11-13): se quitó el
+// segmentado "Bruto / Neto" y con él la etiqueta "Montos". El bruto sigue en
+// la respuesta del backend y en el tooltip de cada mes (Cobrado/Comisión/Neto),
+// pero no hay un modo bruto navegable.
+const AMOUNT_MODE = 'net';
 
 // Dashboard de cobros: KPIs, lo que hay por cobrar este mes, evolución mensual
 // (cobrado y pendiente) y cobros por equipo.
 // - Los tiles usan `summary` (la ventana que termina hoy): correr el gráfico no
 //   cambia "Cobrado en <mes actual>". El gráfico y cobros por equipo usan
 //   `windowSummary`, la ventana elegida con las flechas.
-// - `amountMode` ('gross' | 'net') cambia tiles, gráfico y equipos juntos.
+// - Los montos son siempre netos: el neto es solo el que informó Mercado Pago,
+//   nunca se estima (ver utils/payments-summary.js#amountFor).
 // - Cada tile muestra el monto y, abajo, cuántas cuotas suma.
 // - Tocar "Cuotas pendientes" o "Cuotas rechazadas" filtra la lista de cobros
 //   (onSelectStatus). Los tiles cuentan cuotas y la lista muestra intentos: por
@@ -38,8 +44,6 @@ export function PaymentsDashboard({
   isWide,
   activeStatus,
   onSelectStatus,
-  amountMode = 'gross',
-  onChangeAmountMode,
   windowSummary,
   windowLoading = false,
   windowFailed = false,
@@ -77,27 +81,23 @@ export function PaymentsDashboard({
   }
 
   const { current, previous } = selectCurrentAndPrevious(summary.monthly);
-  const monthTile = monthTileContent(current, amountMode);
-  const momTile = monthOverMonthTileContent(current, previous, amountMode);
-  const pendingTile = statusTileContent(summary, 'pending', amountMode);
-  const rejectedTile = statusTileContent(summary, 'rejected', amountMode);
+  const monthTile = monthTileContent(current, AMOUNT_MODE);
+  const momTile = monthOverMonthTileContent(current, previous, AMOUNT_MODE);
+  const pendingTile = statusTileContent(summary, 'pending', AMOUNT_MODE);
+  const rejectedTile = statusTileContent(summary, 'rejected', AMOUNT_MODE);
   const toggle = (group) => onSelectStatus(activeStatus === group ? '' : group);
   const kpiBox = isWide ? { flex: 1 } : { width: '47%' };
   const statusHint = (group) => (activeStatus === group ? 'Filtrando · tocá para quitar' : 'Tocá para filtrar');
 
   const shown = windowSummary ?? summary;
-  const points = toChartPoints(shown.monthly, amountMode);
+  const points = toChartPoints(shown.monthly, AMOUNT_MODE);
   const range = windowRange(shown.monthly);
-  const teams = shown.byTeam.map((team) => ({ team, amount: amountFor(team, amountMode) }));
+  const teams = shown.byTeam.map((team) => ({ team, amount: amountFor(team, AMOUNT_MODE) }));
   const maxTeam = Math.max(1, ...teams.map((t) => t.amount.value ?? 0));
-  const netIncomplete = amountMode === 'net' && (points.some((p) => p.partial || p.missing) || teams.some((t) => t.amount.partial || t.amount.missing));
+  const netIncomplete = points.some((p) => p.partial || p.missing) || teams.some((t) => t.amount.partial || t.amount.missing);
 
   return (
     <View className="mb-2" nativeID="payments-dashboard" testID="payments-dashboard">
-      <View className="mb-3 flex-row justify-end" nativeID="payments-dashboard-toolbar" testID="payments-dashboard-toolbar">
-        <PaymentsAmountMode mode={amountMode} onChange={onChangeAmountMode} />
-      </View>
-
       <View className="mb-5 flex-row flex-wrap gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
         <View nativeID="payments-dashboard-kpi-month" style={kpiBox} testID="payments-dashboard-kpi-month">
           <IconTooltip idPrefix="payments-kpi-month-tooltip" label="Monto cobrado en el mes actual" wrap>
@@ -156,24 +156,22 @@ export function PaymentsDashboard({
         </View>
       </View>
 
-      <PaymentsDueCard amountMode={amountMode} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdue={summary.overdue} />
+      <PaymentsDueCard amountMode={AMOUNT_MODE} dueThisMonth={summary.dueThisMonth} isWide={isWide} overdue={summary.overdue} />
 
       <View className={isWide ? 'flex-row gap-4' : ''} nativeID="payments-dashboard-panels" testID="payments-dashboard-panels">
         <View nativeID="payments-dashboard-chart-panel" style={isWide ? { flex: 3 } : undefined} testID="payments-dashboard-chart-panel">
-          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title={amountMode === 'net' ? 'Neto por mes' : 'Cobrado por mes'} variant="nested">
+          <SectionCard icon="chart-bar" scope="payments-dashboard-chart-card" title="Neto por mes" variant="nested">
             <WindowNav canNext={canNext} canPrev={canPrev} label={range} onNext={onNext} onPrev={onPrev} />
             {windowLoading ? (
               <SkeletonBlock height={170} nativeID="payments-dashboard-window-skeleton" rounded="rounded-xl" testID="payments-dashboard-window-skeleton" />
             ) : windowFailed ? (
               <WindowError onRetry={onRetryWindow} />
             ) : (
-              <PaymentsMonthlyChart amountMode={amountMode} currentMonth={currentMonth} monthly={shown.monthly} points={points} />
+              <PaymentsMonthlyChart amountMode={AMOUNT_MODE} currentMonth={currentMonth} monthly={shown.monthly} points={points} />
             )}
-            {amountMode === 'net' ? (
-              <Text className="mt-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-net-note" testID="payments-dashboard-net-note">
-                {`Neto = lo cobrado menos la comisión de Paceron.${netIncomplete ? ' * neto parcial · s/d sin datos de neto.' : ''}`}
-              </Text>
-            ) : null}
+            <Text className="mt-3 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-net-note" testID="payments-dashboard-net-note">
+              {`Neto = lo cobrado menos la comisión de Paceron.${netIncomplete ? ' * neto parcial · s/d sin datos de neto.' : ''}`}
+            </Text>
           </SectionCard>
         </View>
 
@@ -227,7 +225,7 @@ function WindowNav({ label, canPrev, canNext, onPrev, onNext }) {
         accessibilityLabel={a11y}
         accessibilityState={{ disabled: !enabled }}
         // Clases fijas aunque cambie `enabled`: agregar/quitar pseudo-estados después
-        // del primer render remonta el componente en nativo (ver payments-amount-mode).
+        // del primer render remonta el componente en nativo (ver CLAUDE.md, "Quirks").
         className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
         disabled={!enabled}
         nativeID={id}

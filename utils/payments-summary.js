@@ -92,11 +92,9 @@ export function formatInstallmentCount(count) {
 
 const joinHint = (...parts) => parts.filter(Boolean).join(' · ');
 
-// Los tiles del dashboard muestran el monto como dato principal y la cantidad
-// de cuotas como aclaración (pedido del tutor, 2026-11-03).
-//
-// Tile "Cobrado en <mes>". Después de las cuotas, en bruto va el neto; en neto,
-// el bruto o por qué el neto está incompleto.
+// Tile "Cobrado en <mes>". En el dashboard solo se muestran montos netos (el
+// segmentado bruto/neto se quitó el 2026-11-13): el hint queda con la cantidad
+// de cuotas y, si el neto está incompleto, la aclaración de por qué.
 export function monthTileContent(current, mode) {
   const count = formatInstallmentCount(current?.approvedCount);
   if (mode !== 'net') return { value: formatArs(current?.grossAmount ?? 0), hint: joinHint(count, formatNetLabel(current ?? {})) };
@@ -104,7 +102,7 @@ export function monthTileContent(current, mode) {
   if (missing) return { value: '—', hint: joinHint(count, 'Sin datos de neto') };
   if (!current?.approvedCount) return { value: formatArs(0), hint: count };
   if (partial) return { value: formatArs(value), hint: joinHint(count, `Neto parcial (${current.netKnownCount} de ${current.approvedCount})`) };
-  return { value: formatArs(value), hint: joinHint(count, `Bruto ${formatArs(current.grossAmount)}`) };
+  return { value: formatArs(value), hint: count };
 }
 
 // Tile "vs <mes anterior>": la diferencia en pesos, y abajo el porcentaje (si
