@@ -18,7 +18,7 @@ export const TRAINER_HOME_PERIOD_METRICS = [
   },
   {
     field: 'netCollected',
-    label: 'Cobrado neto',
+    label: 'Cobrado',
     icon: 'cash-check',
     formula: 'Suma de los cobros de membresías aprobados en el período, menos la comisión de Paceron.',
   },

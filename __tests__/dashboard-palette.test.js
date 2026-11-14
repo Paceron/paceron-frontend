@@ -138,6 +138,11 @@ describe('resolvePrimaryMetric', () => {
     expect(empty.value).not.toBe(0);
   });
 
+  test('B: un mejor tiempo en 0 es sin dato, no una marca de 00:00', () => {
+    const zero = primary({ ...WITHOUT, totals: { ...WITHOUT.totals, best_time_ms: 0 } }, 'elongacion');
+    expect(zero).toMatchObject({ value: null, available: false });
+  });
+
   test('la unidad sale del bloque `units` de la respuesta, no de un sufijo fijo', () => {
     expect(primary({ ...FULL, units: { speed: 'km/h' } }, 'ritmo_continuo').unit).toBe('km/h');
     expect(primary({ ...FULL, units: {} }, 'ritmo_continuo').unit).toBeNull();

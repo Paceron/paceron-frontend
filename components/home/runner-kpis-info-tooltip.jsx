@@ -39,6 +39,7 @@ export function RunnerKpisInfoTooltip({ onOpenChange }) {
       openOnHover={false}
       showSeries={false}
       showTolerance={false}
+      trigger="card"
     >
       <View className="flex-row items-center gap-1" nativeID="runner-kpis-info-trigger-content" testID="runner-kpis-info-trigger-content">
         <Text

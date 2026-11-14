@@ -64,6 +64,7 @@ export function TrainerHomeKpisCard() {
           onOpenChange={(open) => setOpenTooltip((current) => (open ? field : current === field ? null : current))}
           showSeries={false}
           showTolerance={false}
+          triggerLabel={`Ver explicación de ${metric.label}`}
           valueLabel={formattedValue}
         >
           {(hovered) => (
@@ -74,6 +75,7 @@ export function TrainerHomeKpisCard() {
               id={`${cardId}-tile`}
               label={metric.label}
               labelNumberOfLines={metric.field === 'sessions' || metric.field === 'presencialSessions' ? 3 : 2}
+              showInfo
             />
           )}
         </KpiTooltip>

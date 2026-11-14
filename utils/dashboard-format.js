@@ -57,21 +57,26 @@ function decimal(n, maxFractionDigits, minimumFractionDigits = 0) {
 // milisegundos SIEMPRE y se muestran como reloj (m:ss o h:mm:ss según la
 // duración — de ahí la conversión de D4): no existe una clave `s` ni `min` que
 // el backend pueda declarar, así que no hay nada que convertir a otra unidad.
+//
+// Un tiempo en 0 (o negativo) NO es un tiempo real: nadie corre una serie en
+// 0 ms y una duración total de 0 significa "no hay tiempos medidos", no "tardó
+// nada". Se muestra "—" en el propio formateador y no solo en los call sites
+// de "Mejor tiempo", porque el "00:00" fantasma puede aparecer en cualquier
+// pieza que formatee `ms` (ranking, comparación, gráficos). El backend ya usa
+// `null` para la ausencia; este guard cubre el 0 que se coló como número.
 const UNIT_FORMATTERS = {
   'km/h': (n) => `${decimal(n, 1)} km/h`,
-  ms: (n) => formatClock(n),
+  ms: (n) => (n > 0 ? formatClock(n) : EMPTY_METRIC),
   m: (n) => `${decimal(n, 0)} m`,
   '%': (n) => `${decimal(n, 1)} %`,
   pp: (n) => `${decimal(n, 1)} pp`,
 };
 
 // `best_time_ms` en 0 (o negativo) no es un tiempo real -- nadie corre una
-// serie en 0ms. Mismo espíritu que D5 (null es "—", nunca 0) pero acá el
-// cero puede llegar como NÚMERO válido desde el backend en vez de null, así
-// que `formatMetric` por sí solo no lo atrapa (0 pasa `Number.isFinite`).
-// Aplicar esto ANTES de formatMetric en los 3 lugares que muestran el KPI
-// "Mejor tiempo" (las dos paletas + el modelo del PDF) evita el "00:00"
-// fantasma reportado 2026-11-11.
+// serie en 0ms. Se conserva como helper de dominio para los lugares que
+// necesitan decidir "hay marca" ANTES de formatear (gráficos, orden, barras):
+// `formatMetric` ya escribe "—" para un `ms` <= 0, pero un gráfico que recibe
+// el 0 lo dibujaría en el piso si no se normaliza antes.
 export function normalizeBestTimeMs(ms) {
   const n = toNumber(ms);
   if (n === null || n <= 0) return null;

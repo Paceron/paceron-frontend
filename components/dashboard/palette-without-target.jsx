@@ -8,6 +8,7 @@ import { LineChart } from './charts/line-chart.jsx';
 import { GranularitySelect } from './granularity-select.jsx';
 import { KpiTile } from './kpi-tile.jsx';
 import { KpiTooltip } from './kpi-tooltip.jsx';
+import { MetricHelpSheet } from './metric-help-sheet.jsx';
 
 // Paleta B: NO hay objetivo cargado. El mejor tiempo es el número grande, y
 // alrededor van la dispersión de las marcas y la evolución de la mejor marca.
@@ -32,11 +33,15 @@ export function PaletteWithoutTarget({
   const totals = summary?.totals ?? {};
   const primary = palette.primary;
   const buckets = timeseries?.buckets ?? [];
-  const bestBuckets = buckets.map((bucket) => ({ label: bucket.period_start, value: bucket.best_time_ms }));
+  // Un bucket sin marca (null) o con 0 fantasma corta la línea en vez de caer
+  // al piso del gráfico; `LineChart` trata `null` como hueco.
+  const bestBuckets = buckets.map((bucket) => ({ label: bucket.period_start, value: normalizeBestTimeMs(bucket.best_time_ms) }));
   // Mismo criterio que la paleta con objetivo: sube la CELDA abierta (y la fila)
   // porque react-native-web hace stacking context de cada `View` y un z-index
   // alto en el bubble no sale de su celda.
   const [openTooltip, setOpenTooltip] = useState(null);
+  // Métrica cuya documentación larga está abierta (ver MetricHelpSheet).
+  const [helpMetric, setHelpMetric] = useState(null);
 
   return (
     <View nativeID={`${id}-root`} style={{ position: 'relative', zIndex: openTooltip ? 10 : 0 }} testID={`${id}-root`}>
@@ -100,8 +105,14 @@ export function PaletteWithoutTarget({
             value: null,
             icon: 'target',
             hint: 'Este ejercicio no tiene objetivo cargado, así que no hay contra qué comparar.',
+            // No hay cálculo detrás de este guion: "Series usadas" no explica
+            // nada acá.
+            showSeries: false,
           },
-        ].map((kpi) => (
+        ].map((kpi) => {
+          const metricKey = KPI_FORMULA_KEYS[kpi.key] ?? kpi.key;
+
+          return (
           <View
             className="w-1/3 p-1"
             key={kpi.key}
@@ -110,11 +121,20 @@ export function PaletteWithoutTarget({
             testID={`${id}-kpi-cell-${kpi.key}`}
           >
           <KpiTooltip
+            definition={DEFINITIONS[metricKey]}
+            formula={FORMULAS[metricKey]}
             hint={kpi.hint}
             id={`${id}-kpi-${kpi.key}-tooltip`}
+            onHelp={() => setHelpMetric(metricKey)}
             onOpenChange={(open) =>
               setOpenTooltip((current) => (open ? kpi.key : current === kpi.key ? null : current))
             }
+            // Sin objetivo cargado no hay tolerancia de cumplimiento que
+            // explicar: mostrarla como "—" solo suma ruido.
+            seriesCount={summary?.series_count ?? null}
+            showSeries={kpi.showSeries}
+            showTolerance={false}
+            triggerLabel={`Ver explicación de ${kpi.label}`}
           >
             {(hovered) => (
               <KpiTile
@@ -122,13 +142,15 @@ export function PaletteWithoutTarget({
                 icon={kpi.icon}
                 id={`${id}-kpi-${kpi.key}`}
                 label={kpi.label}
+                showInfo
                 unit={kpi.unit}
                 value={kpi.value}
               />
             )}
           </KpiTooltip>
           </View>
-        ))}
+          );
+        })}
       </View>
 
       <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
@@ -136,6 +158,12 @@ export function PaletteWithoutTarget({
           ? `Delta ${formatDelta(totals.delta_pct, units.delta)}.`
           : 'Sin objetivo cargado: no se calculan delta, cumplimiento ni ritmo esperado.'}
       </Text>
+
+      <MetricHelpSheet
+        id={`${id}-metric-help`}
+        metricId={helpMetric}
+        onClose={() => setHelpMetric(null)}
+      />
         </>
       ) : null}
 
@@ -198,6 +226,39 @@ export function PaletteWithoutTarget({
     </View>
   );
 }
+
+// Qué mide y cómo se calcula cada cifra de esta paleta. Sin objetivo cargado
+// no hay delta, cumplimiento ni tolerancia: los tooltips explican volumen,
+// conteos y mejor marca, y NO muestran una tolerancia que no aplica.
+const DEFINITIONS = {
+  best_time_ms: 'Tu mejor marca del período, sin compararla contra un objetivo porque este ejercicio no tiene uno cargado.',
+  distance_m: 'Cuánto sumaste en distancia en todas las series válidas del período.',
+  sessions: 'Cuántas sesiones distintas aportaron datos al período.',
+  series: 'Cuántas series se registraron en el período, incluidas las que no se pueden medir.',
+  time_ms: 'Cuánto tiempo total sumaste en las series válidas del período.',
+};
+
+const FORMULAS = {
+  best_time_ms: 'El menor tiempo logrado entre las series válidas del período.',
+  distance_m: 'Suma de la distancia de las series válidas del período.',
+  sessions: 'Cantidad de sesiones distintas con series en el período.',
+  series: 'Cantidad de series registradas en el período, válidas o no.',
+  time_ms: 'Suma del tiempo alcanzado de las series válidas del período.',
+};
+
+// Mismo puente que en la paleta A: los ids cortos de las tarjetas
+// (`best_time`, `volume`, `total_time`) no son los nombres de campo del
+// backend que usan DEFINITIONS/FORMULAS. `no_target` no tiene fórmula (la
+// tarjeta muestra «—»), pero sí una entrada en el catálogo de ayuda, así que se
+// mapea explícito para que no dependa del fallback.
+const KPI_FORMULA_KEYS = {
+  best_time: 'best_time_ms',
+  volume: 'distance_m',
+  sessions: 'sessions',
+  series: 'series',
+  total_time: 'time_ms',
+  no_target: 'no_target',
+};
 
 // Misma lista que usa la paleta A: el dot plot entra solo cuando hay más de
 // una marca, porque con una sola no hay dispersión que dibujar.

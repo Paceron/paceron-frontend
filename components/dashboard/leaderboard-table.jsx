@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { barPath } from '../../utils/dashboard-chart.js';
-import { EMPTY_METRIC, formatMetric, hasMetric } from '../../utils/dashboard-format.js';
+import { EMPTY_METRIC, formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { InfoHint } from './info-hint.jsx';
 
@@ -63,6 +63,14 @@ const TITLE = 'Ranking del equipo';
 const DESCRIPTION =
   'La barra de cada fila es la columna activa, proporcional al valor más alto de las filas cargadas. La posición es la global del ranking —no la de esta página— y tu fila va marcada.';
 
+// El valor de una celda, con el único saneamiento de dominio que hace falta:
+// un tiempo en 0 no es una marca. El resto de las columnas se leen tal cual
+// llegan; el formateo y el "—" los decide `formatMetric`.
+function columnValue(item, columnKey) {
+  const raw = item?.[columnKey];
+  return columnKey === 'best_time_ms' ? normalizeBestTimeMs(raw) : raw;
+}
+
 export function LeaderboardTable({
   id = 'dashboard-leaderboard',
   items = [],
@@ -90,7 +98,7 @@ export function LeaderboardTable({
   // (`barPath`), no una regla local: con una sola fila o con todos los valores
   // iguales tiene que dar un largo válido y no `NaN`.
   const bars = useMemo(() => {
-    const values = items.map((item) => item?.[activeColumn.key]);
+    const values = items.map((item) => columnValue(item, activeColumn.key));
     return barPath(values, { width: barWidth, height: BAR_HEIGHT, horizontal: true });
   }, [activeColumn.key, barWidth, items]);
 
@@ -132,23 +140,29 @@ export function LeaderboardTable({
     );
   };
 
-  const metricValue = (item, column, rowId) => (
-    <View
-      className="flex-1"
-      key={column.key}
-      nativeID={`${rowId}-${column.key}-cell`}
-      style={{ flex: 1 }}
-      testID={`${rowId}-${column.key}-cell`}
-    >
-      <Text
-        className="text-right text-xs text-slate-700 dark:text-slate-200"
-        nativeID={`${rowId}-${column.key}`}
-        testID={`${rowId}-${column.key}`}
+  const metricValue = (item, column, rowId) => {
+    // `best_time_ms` en 0 no es una marca: se muestra "—" y la barra no se
+    // dibuja, en vez del "00:00" fantasma que el backend puede devolver en
+    // filas sin tiempo medido.
+    const value = columnValue(item, column.key);
+    return (
+      <View
+        className="flex-1"
+        key={column.key}
+        nativeID={`${rowId}-${column.key}-cell`}
+        style={{ flex: 1 }}
+        testID={`${rowId}-${column.key}-cell`}
       >
-        {hasMetric(item?.[column.key]) ? formatMetric(item[column.key], units?.[column.unitKey]) : EMPTY_METRIC}
-      </Text>
-    </View>
-  );
+        <Text
+          className="text-right text-xs text-slate-700 dark:text-slate-200"
+          nativeID={`${rowId}-${column.key}`}
+          testID={`${rowId}-${column.key}`}
+        >
+          {hasMetric(value) ? formatMetric(value, units?.[column.unitKey]) : EMPTY_METRIC}
+        </Text>
+      </View>
+    );
+  };
 
   const athleteName = (item, rowId, nameFlex) => (
     <View className="flex-row items-center gap-1" nativeID={`${rowId}-name-row`} style={{ flex: nameFlex }} testID={`${rowId}-name-row`}>

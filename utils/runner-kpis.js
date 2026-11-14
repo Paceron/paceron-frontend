@@ -55,12 +55,14 @@ export const RUNNER_KPI_ROWS = {
       field: 'total_distance_m',
       icon: 'map-marker-distance',
       formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+      definition: 'Cuánto sumaste en distancia en esta pestaña del período.',
     },
     {
       label: 'Mayor distancia en un día',
       field: 'best_day_distance_m',
       icon: 'calendar-star',
       formula: 'La mayor distancia sumada en un mismo día. Si hay empate, se toma el día más antiguo.',
+      definition: 'El día en que acumulaste más distancia.',
       // La fecha no es una métrica propia: es el contexto de este número y va
       // como línea extra del tooltip, no como card.
       detail: { field: 'best_day_date', label: 'Fecha del mejor día' },
@@ -70,6 +72,7 @@ export const RUNNER_KPI_ROWS = {
       field: 'best_speed_kph',
       icon: 'speedometer',
       formula: 'La mayor velocidad promedio entre las series válidas de esta pestaña.',
+      definition: 'Tu mejor velocidad promedio en una sola serie de esta pestaña.',
     },
     {
       // El label corto entra en la grilla de cards; el alcance (solo ritmo
@@ -79,6 +82,7 @@ export const RUNNER_KPI_ROWS = {
       field: 'average_speed_kph',
       icon: 'chart-line',
       formula: 'Velocidad promedio ponderada por distancia, solo con series de ritmo continuo: Σ(distancia × velocidad) ÷ Σ(distancia).',
+      definition: 'Tu velocidad promedio en las series de ritmo continuo del período.',
     },
   ],
   ritmo_continuo: [
@@ -87,24 +91,28 @@ export const RUNNER_KPI_ROWS = {
       field: 'total_distance_m',
       icon: 'map-marker-distance',
       formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+      definition: 'Cuánto sumaste en distancia en esta pestaña del período.',
     },
     {
       label: 'Velocidad promedio',
       field: 'average_speed_kph',
       icon: 'chart-line',
       formula: 'Velocidad promedio ponderada por distancia: Σ(distancia × velocidad) ÷ Σ(distancia).',
+      definition: 'Tu velocidad promedio en las series de esta pestaña, dándole más peso a las series más largas.',
     },
     {
       label: 'Mejor velocidad',
       field: 'best_speed_kph',
       icon: 'speedometer',
       formula: 'La mayor velocidad promedio entre las series válidas de esta pestaña.',
+      definition: 'Tu mejor velocidad promedio en una sola serie de esta pestaña.',
     },
     {
       label: 'Mayor distancia en un ejercicio',
       field: 'best_distance_m',
       icon: 'map-marker-radius',
       formula: 'La mayor distancia lograda en un solo ejercicio.',
+      definition: 'La distancia más larga que lograste en un solo ejercicio.',
     },
   ],
   velocidad_tiempo: [
@@ -113,18 +121,21 @@ export const RUNNER_KPI_ROWS = {
       field: 'total_distance_m',
       icon: 'map-marker-distance',
       formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+      definition: 'Cuánto sumaste en distancia en esta pestaña del período.',
     },
     {
       label: 'Velocidad promedio',
       field: 'average_speed_kph',
       icon: 'chart-line',
       formula: 'Velocidad promedio ponderada por distancia: Σ(distancia × velocidad) ÷ Σ(distancia).',
+      definition: 'Tu velocidad promedio en las series de esta pestaña, dándole más peso a las series más largas.',
     },
     {
       label: 'Mejor tiempo',
       field: 'best_time_ms',
       icon: 'timer-outline',
       formula: 'El menor tiempo logrado entre las series de esta pestaña.',
+      definition: 'Tu menor tiempo entre las series de velocidad en tiempo del período.',
     },
   ],
   velocidad_distancia: [
@@ -133,18 +144,21 @@ export const RUNNER_KPI_ROWS = {
       field: 'total_distance_m',
       icon: 'map-marker-distance',
       formula: 'Suma de la distancia de las series válidas de esta pestaña.',
+      definition: 'Cuánto sumaste en distancia en esta pestaña del período.',
     },
     {
       label: 'Velocidad promedio',
       field: 'average_speed_kph',
       icon: 'chart-line',
       formula: 'Velocidad promedio ponderada por distancia: Σ(distancia × velocidad) ÷ Σ(distancia).',
+      definition: 'Tu velocidad promedio en las series de esta pestaña, dándole más peso a las series más largas.',
     },
     {
       label: 'Mejor velocidad',
       field: 'best_speed_kph',
       icon: 'speedometer',
       formula: 'La mayor velocidad promedio entre las series válidas de esta pestaña.',
+      definition: 'Tu mejor velocidad promedio en una sola serie de esta pestaña.',
     },
   ],
 };

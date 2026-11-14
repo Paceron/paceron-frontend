@@ -5,6 +5,7 @@ import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { DashboardLoadingOverlay } from '../dashboard/dashboard-loading-overlay.jsx';
 import { KpiTile } from '../dashboard/kpi-tile.jsx';
 import { KpiTooltip } from '../dashboard/kpi-tooltip.jsx';
+import { MetricHelpSheet } from '../dashboard/metric-help-sheet.jsx';
 import { RunnerKpisInfoTooltip } from './runner-kpis-info-tooltip.jsx';
 import { useRunnerKpis } from '../../hooks/use-runner-kpis.js';
 import { isWeb } from '../../utils/platform.js';
@@ -46,6 +47,9 @@ export function RunnerKpisCard() {
   const [tab, setTab] = useState('general');
   const [openTooltip, setOpenTooltip] = useState(null);
   const [infoTooltipOpen, setInfoTooltipOpen] = useState(false);
+  // Campo cuya guía larga está abierta ("Más información" del tooltip). Es la
+  // misma clave que `row.field`, resuelta contra `utils/metric-help.js`.
+  const [helpMetric, setHelpMetric] = useState(null);
 
   const { data, loading, refreshing, failed, error, refetch } = useRunnerKpis({ period, referenceDate, tab });
 
@@ -257,14 +261,17 @@ export function RunnerKpisCard() {
                   testID={`${cardID}-cell`}
                 >
                   <KpiTooltip
+                    definition={row.definition}
                     formula={row.formula}
                     id={cardID}
                     meta={rowTooltipMeta(row)}
+                    onHelp={() => setHelpMetric(row.field)}
                     onOpenChange={(open) =>
                       setOpenTooltip((current) => (open ? row.field : current === row.field ? null : current))
                     }
                     showSeries={false}
                     showTolerance={false}
+                    triggerLabel={`Ver explicación de ${row.label}`}
                     valueLabel={value}
                   >
                     {(hovered) => (
@@ -275,6 +282,7 @@ export function RunnerKpisCard() {
                         id={`${cardID}-tile`}
                         label={row.label}
                         labelNumberOfLines={2}
+                        showInfo
                       />
                     )}
                   </KpiTooltip>
@@ -296,6 +304,12 @@ export function RunnerKpisCard() {
       </View>
 
       <DashboardLoadingOverlay visible={loading} />
+
+      <MetricHelpSheet
+        id="runner-kpis-metric-help"
+        metricId={helpMetric}
+        onClose={() => setHelpMetric(null)}
+      />
     </View>
   );
 }

@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { EMPTY_METRIC, formatDelta, formatMetric, formatVerdict, hasMetric, verdictIcon } from '../../utils/dashboard-format.js';
+import { EMPTY_METRIC, formatDelta, formatMetric, formatVerdict, hasMetric, normalizeBestTimeMs, verdictIcon } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { InfoHint } from './info-hint.jsx';
 
@@ -125,8 +125,12 @@ function previousValue(key, previous, units) {
       return hasMetric(previous.mean_speed_kph) ? formatMetric(previous.mean_speed_kph, units.speed) : EMPTY_METRIC;
     case 'compliance_pp':
       return hasMetric(previous.compliance_rate) ? formatMetric(previous.compliance_rate, units.compliance) : EMPTY_METRIC;
-    case 'best_time_pct':
-      return hasMetric(previous.best_time_ms) ? formatMetric(previous.best_time_ms, units.best_time) : EMPTY_METRIC;
+    case 'best_time_pct': {
+      // Un 0 no es un tiempo: se muestra "—" en vez del "00:00" de la fila
+      // anterior cuando el período no tenía una marca real.
+      const bestTime = normalizeBestTimeMs(previous.best_time_ms);
+      return hasMetric(bestTime) ? formatMetric(bestTime, units.best_time) : EMPTY_METRIC;
+    }
     default:
       return EMPTY_METRIC;
   }
