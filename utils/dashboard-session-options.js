@@ -1,4 +1,9 @@
-const COMPARABLE_KINDS = new Set(['ritmo_continuo', 'velocidad_distancia', 'velocidad_tiempo']);
+import { METRIC_KINDS } from './dashboard-filter-cascade.js';
+
+// Los mismos tres tipos con métrica que ofrece el filtro del dashboard. Se
+// importa de la cascada en vez de duplicar la lista: si mañana cambia el
+// subconjunto, la comparación de sesiones se actualiza sola.
+const COMPARABLE_KINDS = new Set(METRIC_KINDS);
 
 function dateLabel(isoDate) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDate ?? ''));
