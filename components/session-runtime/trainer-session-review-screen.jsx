@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View, ActivityIndicator } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -44,15 +44,20 @@ const STATUS_META = {
 function ParticipantRow({ participant, idPrefix, onPress }) {
   const meta = STATUS_META[participant.runnerStatus ?? 'none'];
   const rowId = `${idPrefix}-participant-${participant.userId}`;
+  const statusLoading = Boolean(participant.statusLoading);
   return (
-    <Pressable className="flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-transparent dark:bg-surface-2" nativeID={rowId} onPress={onPress} testID={rowId}>
+    <Pressable className={`flex-row items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-transparent dark:bg-surface-2 ${statusLoading ? 'opacity-60' : ''}`} disabled={statusLoading} nativeID={rowId} onPress={onPress} testID={rowId}>
       <ParticipantAvatar color={colorForUserId(participant.userId)} idPrefix={rowId} name={participant.name} photoUrl={participant.photoUrl} size={36} />
       <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${rowId}-name`} numberOfLines={1} testID={`${rowId}-name`}>
         {participant.name}
       </Text>
-      <View className={`rounded-full px-2.5 py-1 ${meta.bg}`} nativeID={`${rowId}-status`} testID={`${rowId}-status`}>
-        <Text className={`text-[11px] font-semibold ${meta.text}`} nativeID={`${rowId}-status-label`} testID={`${rowId}-status-label`}>{meta.label}</Text>
-      </View>
+      {statusLoading ? (
+        <ActivityIndicator color="#8cc63e" nativeID={`${rowId}-status-loading`} size="small" testID={`${rowId}-status-loading`} />
+      ) : (
+        <View className={`rounded-full px-2.5 py-1 ${meta.bg}`} nativeID={`${rowId}-status`} testID={`${rowId}-status`}>
+          <Text className={`text-[11px] font-semibold ${meta.text}`} nativeID={`${rowId}-status-label`} testID={`${rowId}-status-label`}>{meta.label}</Text>
+        </View>
+      )}
       <MaterialCommunityIcons color="#9ca3af" name="chevron-right" size={18} />
     </Pressable>
   );
@@ -83,7 +88,7 @@ function TrainerSessionReviewScreenContent() {
   const groupId = pendingSession?.groupId ?? null;
   const sessionInstanceId = pendingSession?.sessionInstance?.id;
   const exercises = pendingSession?.sessionInstance?.exercises ?? [];
-  const { members: rosterMembers } = useTeamRoster(teamId, groupId ? [groupId] : []);
+  const { members: rosterMembers, loading: rosterLoading, error: rosterError } = useTeamRoster(teamId, groupId ? [groupId] : []);
   const trainerUserId = useAuthStore((s) => s.userId);
   const { user: trainerUser } = useUser(trainerUserId);
   // El entrenador puede figurar en el roster del grupo -- no es un corredor
@@ -222,18 +227,37 @@ function TrainerSessionReviewScreenContent() {
           </Text>
         </Pressable>
 
+        {trainerUser && (
+          <View className="mb-4" nativeID="trainer-session-review-screen-trainer-container" testID="trainer-session-review-screen-trainer-container">
+            <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="trainer-session-review-screen-trainer-label" testID="trainer-session-review-screen-trainer-label">
+              Entrenador
+            </Text>
+            <TrainerCard idPrefix="trainer-session-review-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
+          </View>
+        )}
+
         <View nativeID="trainer-session-review-screen-participants-container" testID="trainer-session-review-screen-participants-container">
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="trainer-session-review-screen-participants-label" testID="trainer-session-review-screen-participants-label">
             Participantes ({attendedCount}/{sortedParticipants.length})
           </Text>
-          {trainerUser && (
-            <TrainerCard idPrefix="trainer-session-review-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
-          )}
-          <View className="mt-2 gap-2" nativeID="trainer-session-review-screen-participants-list" testID="trainer-session-review-screen-participants-list">
-            {sortedParticipants.map((participant) => (
+          <View className="gap-2" nativeID="trainer-session-review-screen-participants-list" testID="trainer-session-review-screen-participants-list">
+            {rosterLoading ? (
+              <View className="flex-row items-center gap-2 py-2" nativeID="trainer-session-review-screen-participants-loading" testID="trainer-session-review-screen-participants-loading">
+                <ActivityIndicator color="#8cc63e" size="small" />
+                <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-review-screen-participants-loading-label" testID="trainer-session-review-screen-participants-loading-label">
+                  Cargando participantes…
+                </Text>
+              </View>
+            ) : null}
+            {!rosterLoading && rosterError ? (
+              <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-review-screen-participants-error" testID="trainer-session-review-screen-participants-error">
+                No pudimos cargar los participantes.
+              </Text>
+            ) : null}
+            {!rosterLoading && !rosterError && sortedParticipants.map((participant) => (
               <ParticipantRow idPrefix="trainer-session-review-screen" key={participant.userId} onPress={() => openAthleteReview(participant)} participant={participant} />
             ))}
-            {!loading && sortedParticipants.length === 0 && (
+            {!rosterLoading && !rosterError && !loading && sortedParticipants.length === 0 && (
               <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-review-screen-participants-empty" testID="trainer-session-review-screen-participants-empty">
                 Sin participantes en este grupo.
               </Text>

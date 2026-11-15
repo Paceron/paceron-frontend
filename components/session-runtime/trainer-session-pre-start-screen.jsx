@@ -90,7 +90,7 @@ function TrainerSessionPreStartScreenContent() {
 
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
-  const { members, loading: rosterLoading } = useTeamRoster(teamId, groupId ? [groupId] : []);
+  const { members, loading: rosterLoading, error: rosterError } = useTeamRoster(teamId, groupId ? [groupId] : []);
   const trainerUserId = useAuthStore((s) => s.userId);
   const { user: trainerUser } = useUser(trainerUserId);
   // El entrenador puede figurar en el roster del grupo (es dueño del equipo,
@@ -241,6 +241,15 @@ function TrainerSessionPreStartScreenContent() {
           </View>
         </View>
 
+        {trainerUser && (
+          <View className="mb-4" nativeID="trainer-session-pre-start-screen-trainer-container" testID="trainer-session-pre-start-screen-trainer-container">
+            <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-trainer-label" testID="trainer-session-pre-start-screen-trainer-label">
+              Entrenador
+            </Text>
+            <TrainerCard idPrefix="trainer-session-pre-start-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
+          </View>
+        )}
+
         <View className="mb-4" nativeID="trainer-session-pre-start-screen-participants-container" testID="trainer-session-pre-start-screen-participants-container">
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-label" testID="trainer-session-pre-start-screen-participants-label">
             Participantes ({sortedMembers.length})
@@ -256,14 +265,24 @@ function TrainerSessionPreStartScreenContent() {
               value={participantsQuery}
             />
           )}
-          {trainerUser && (
-            <TrainerCard idPrefix="trainer-session-pre-start-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
-          )}
-          <View className="mt-2 gap-2" nativeID="trainer-session-pre-start-screen-participants-list" testID="trainer-session-pre-start-screen-participants-list">
-            {visibleMembers.map((member) => (
+          <View className="gap-2" nativeID="trainer-session-pre-start-screen-participants-list" testID="trainer-session-pre-start-screen-participants-list">
+            {rosterLoading ? (
+              <View className="flex-row items-center gap-2 py-2" nativeID="trainer-session-pre-start-screen-participants-loading" testID="trainer-session-pre-start-screen-participants-loading">
+                <ActivityIndicator color="#8cc63e" size="small" />
+                <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-loading-label" testID="trainer-session-pre-start-screen-participants-loading-label">
+                  Cargando participantes…
+                </Text>
+              </View>
+            ) : null}
+            {!rosterLoading && rosterError ? (
+              <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-error" testID="trainer-session-pre-start-screen-participants-error">
+                No pudimos cargar los participantes.
+              </Text>
+            ) : null}
+            {!rosterLoading && !rosterError && visibleMembers.map((member) => (
               <ParticipantRow idPrefix="trainer-session-pre-start-screen" key={member.userId} member={member} />
             ))}
-            {!rosterLoading && sortedMembers.length === 0 && (
+            {!rosterLoading && !rosterError && sortedMembers.length === 0 && (
               <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-empty" testID="trainer-session-pre-start-screen-participants-empty">
                 Sin participantes en este grupo.
               </Text>

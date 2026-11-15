@@ -62,6 +62,7 @@ export function useTrainerSessionSummary({ sessionInstanceId, exercises, rosterM
       // cascada funcionó, pero posible si nunca volvió a abrir la app),
       // 'finished' o 'interrupted'.
       runnerStatus: statusQueries[index]?.data?.status ?? null,
+      statusLoading: Boolean(statusQueries[index]?.isLoading),
       resolvedSetCount: rows.length,
     };
   });

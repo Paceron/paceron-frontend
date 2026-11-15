@@ -346,9 +346,17 @@ function ParticipantsListModal({ visible, onClose, participants, onSelectPartici
               value={query}
             />
             {trainerName && (
-              <TrainerCard idPrefix={`${idPrefix}-trainer-card`} name={trainerName} photoUrl={trainerPhotoUrl} />
+              <View className="mb-3" nativeID={`${idPrefix}-trainer-container`} testID={`${idPrefix}-trainer-container`}>
+                <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-trainer-label`} testID={`${idPrefix}-trainer-label`}>
+                  Entrenador
+                </Text>
+                <TrainerCard idPrefix={`${idPrefix}-trainer-card`} name={trainerName} photoUrl={trainerPhotoUrl} />
+              </View>
             )}
-            <ScrollView className="mt-2" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
+            <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-list-label`} testID={`${idPrefix}-list-label`}>
+              Participantes
+            </Text>
+            <ScrollView className="mt-1" nativeID={`${idPrefix}-list`} testID={`${idPrefix}-list`}>
               {visibleParticipants.map((participant) => {
                 const activity = currentActivityLabel(participant);
                 return (
