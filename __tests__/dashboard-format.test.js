@@ -23,10 +23,16 @@ import {
 describe('normalizeBestTimeMs', () => {
   test('un valor positivo finito se devuelve tal cual', () => {
     expect(normalizeBestTimeMs(780_000)).toBe(780_000);
+    expect(normalizeBestTimeMs(1000)).toBe(1000);
   });
 
   test('0 no es un tiempo real -- se trata como sin dato', () => {
     expect(normalizeBestTimeMs(0)).toBeNull();
+  });
+
+  test('un tiempo menor a 1 s se vería como 00:00: también es sin dato', () => {
+    expect(normalizeBestTimeMs(986)).toBeNull();
+    expect(normalizeBestTimeMs(999)).toBeNull();
   });
 
   test('un negativo tampoco es un tiempo real', () => {
