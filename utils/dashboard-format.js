@@ -77,9 +77,15 @@ const UNIT_FORMATTERS = {
 // necesitan decidir "hay marca" ANTES de formatear (gráficos, orden, barras):
 // `formatMetric` ya escribe "—" para un `ms` <= 0, pero un gráfico que recibe
 // el 0 lo dibujaría en el piso si no se normaliza antes.
+//
+// Además, el reloj de la app trunca a segundos: un tiempo positivo menor a 1 s
+// se mostraría "00:00", que se lee como un dato roto. No hay series de running
+// reales por debajo de 1 s, así que también se trata como sin dato.
+const MIN_BEST_TIME_MS = 1000;
+
 export function normalizeBestTimeMs(ms) {
   const n = toNumber(ms);
-  if (n === null || n <= 0) return null;
+  if (n === null || n < MIN_BEST_TIME_MS) return null;
   return n;
 }
 
