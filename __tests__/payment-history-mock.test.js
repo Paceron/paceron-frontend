@@ -182,6 +182,17 @@ describe('payment-history mock — historial', () => {
     expect(trainer.payments[0].status).toBe('in_process');
   });
 
+  test('el perfil corredor no trae tiers; el entrenador sí los de entrenador', async () => {
+    const corredor = await mockGetPaymentHistory({ page: 1, profile: 'corredor' });
+    expect(corredor.payments.length).toBeGreaterThan(0);
+    expect(corredor.payments.every((p) => p.type === 'trainer_payment')).toBe(true);
+
+    const entrenador = await mockGetPaymentHistory({ page: 1, profile: 'entrenador' });
+    const tiers = entrenador.payments.filter((p) => p.type === 'subscription');
+    expect(tiers.length).toBeGreaterThan(0);
+    tiers.forEach((p) => expect(p.tier.role_name).toBe('entrenador'));
+  });
+
   test('la primera cuota no tiene vencimiento', async () => {
     const { payments } = await mockGetPaymentHistory({ page: 1 });
     payments.filter((p) => p.installment_number === 1).forEach((p) => expect(p.due_date).toBeNull());
@@ -298,6 +309,14 @@ describe('payment-history mock — pendientes y vencimientos', () => {
     const dates = items.map((i) => i.due_date);
     expect([...dates].sort()).toEqual(dates);
     expect(items.some((i) => i.overdue && i.overdue_count >= 1)).toBe(true);
+  });
+
+  test('el perfil corredor no recibe tiers en próximos vencimientos', async () => {
+    const corredor = await mockGetUpcomingPayments({ profile: 'corredor' });
+    expect(corredor.items.every((i) => i.type === 'trainer_payment')).toBe(true);
+
+    const entrenador = await mockGetUpcomingPayments({ profile: 'entrenador' });
+    expect(entrenador.items.some((i) => i.type === 'subscription')).toBe(true);
   });
 });
 

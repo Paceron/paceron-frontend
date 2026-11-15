@@ -94,7 +94,9 @@ export function AuthenticatedHomeScreen() {
         >
           {firstName ? `Hola, ${firstName}` : 'Bienvenido a Paceron'}
         </Text>
-        {/* Cuotas por vencer o vencidas, de los dos roles (los dos pagan tier). */}
+        {/* Cuotas por vencer o vencidas del PERFIL activo: el corredor ve sus
+            membresías de equipo y el entrenador suma sus tiers. El backend
+            recibe el perfil y no mezcla los dos. */}
         <HomePaymentsDueCard />
         <NextTrainingBanner />
         {activeRole === 'trainer' ? <TrainerHomeKpisCard /> : null}

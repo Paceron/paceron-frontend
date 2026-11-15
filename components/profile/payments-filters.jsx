@@ -74,11 +74,16 @@ export function PaymentsFilters({
 }
 
 // Filtros del historial propio: tipo (suscripción / pago a entrenador) y estado.
-export function PaymentsHistoryFilters({ type, status, onChangeType, onChangeStatus, isWide }) {
+// `showSubscriptions` es false para el perfil corredor: no tiene tiers, así que
+// ofrecer ese filtro solo llevaría a una lista vacía.
+export function PaymentsHistoryFilters({ type, status, onChangeType, onChangeStatus, isWide, showSubscriptions = true }) {
+  const typeOptions = showSubscriptions
+    ? PAYMENT_TYPE_FILTER_OPTIONS
+    : PAYMENT_TYPE_FILTER_OPTIONS.filter((option) => option.id !== 'subscription');
   return (
     <View className={isWide ? 'flex-row gap-4 bg-slate-200/50 dark:bg-slate-800/60 p-5 pb-0 rounded-xl mt-1 mb-4' : 'gap-4 bg-slate-200/50 dark:bg-slate-800/60 p-5 pb-0 rounded-xl mt-1 mb-4'} nativeID="payments-history-filters" testID="payments-history-filters">
       <View nativeID="payments-history-filters-type" style={isWide ? { flex: 1 } : undefined} testID="payments-history-filters-type">
-        <ResponsiveSelectField dense label="Tipo" onChange={onChangeType} options={PAYMENT_TYPE_FILTER_OPTIONS} placeholder="Todos los tipos" value={type} />
+        <ResponsiveSelectField dense label="Tipo" onChange={onChangeType} options={typeOptions} placeholder="Todos los tipos" value={type} />
       </View>
       <View nativeID="payments-history-filters-status" style={isWide ? { flex: 1 } : undefined} testID="payments-history-filters-status">
         <ResponsiveSelectField dense label="Estado del pago" onChange={onChangeStatus} options={STATUS_FILTER_OPTIONS} placeholder="Todos los estados" value={status} />

@@ -12,6 +12,13 @@ export function isPayableUpcoming(item) {
   return Boolean(item) && !(item.type === 'subscription' && item.tierRoleName === 'corredor');
 }
 
+// Perfil activo que viaja a /payments/upcoming y /payments/history. El backend
+// recorta las suscripciones de tier a ese rol: el corredor no ve las del
+// entrenador. Las membresías de equipo no dependen del perfil.
+export function paymentProfileForRole(activeRole) {
+  return activeRole === 'trainer' ? 'entrenador' : 'corredor';
+}
+
 // Cuántos días antes del vencimiento una cuota pasa a mostrarse en el Home.
 export const HOME_DUE_WINDOW_DAYS = 10;
 

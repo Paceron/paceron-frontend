@@ -8,7 +8,7 @@ import {
   toHistoryPaymentModel,
   toUpcomingPaymentModel,
 } from '../services/normalizers.js';
-import { isPayableUpcoming } from '../utils/payment-due.js';
+import { isPayableUpcoming, paymentProfileForRole } from '../utils/payment-due.js';
 
 // Estado de servidor del historial de pagos (de cualquier usuario) y de los
 // cobros del entrenador. Ver
@@ -27,12 +27,15 @@ export const PAYMENT_HISTORY_KEYS = {
 };
 
 // Próximos vencimientos del usuario (cuotas de equipo y de tier), para la
-// pestaña Pagos. Lo calcula el backend: el front no deriva cuotas.
+// pestaña Pagos. Lo calcula el backend: el front no deriva cuotas. El perfil
+// activo va en la query: el corredor no ve las suscripciones del entrenador.
 export function useUpcomingPayments({ enabled = true } = {}) {
   const userId = useAuthStore((s) => s.userId);
+  const activeRole = useAuthStore((s) => s.activeRole);
+  const profile = paymentProfileForRole(activeRole);
   const query = useQuery({
-    queryKey: PAYMENT_HISTORY_KEYS.upcoming(userId),
-    queryFn: () => getUpcomingPayments().then((dto) => (dto?.items ?? []).map(toUpcomingPaymentModel).filter(isPayableUpcoming)),
+    queryKey: [...PAYMENT_HISTORY_KEYS.upcoming(userId), profile],
+    queryFn: () => getUpcomingPayments({ profile }).then((dto) => (dto?.items ?? []).map(toUpcomingPaymentModel).filter(isPayableUpcoming)),
     enabled: enabled && Boolean(userId),
   });
   return {
@@ -97,12 +100,16 @@ export function useReceivedPayments({ teamId = '', status = '', payerId = '', fr
 }
 
 // Historial de pagos propios: suscripciones de tier y pagos a entrenadores.
-// type y status ('' = todos) son parte de la key.
+// `type`, `status` y `profile` son parte de la key. El backend recorta los
+// tiers al perfil activo antes de paginar, así que la lista no se llena de
+// pagos que el perfil actual no debería ver.
 export function usePaymentHistory({ type = '', status = '', enabled = true } = {}) {
   const userId = useAuthStore((s) => s.userId);
+  const activeRole = useAuthStore((s) => s.activeRole);
+  const profile = paymentProfileForRole(activeRole);
   return usePaymentsInfiniteList({
-    queryKey: [...PAYMENT_HISTORY_KEYS.history(userId), { type, status }],
-    fetchPage: (page) => getPaymentHistory({ page, type, status }),
+    queryKey: [...PAYMENT_HISTORY_KEYS.history(userId), profile, { type, status }],
+    fetchPage: (page) => getPaymentHistory({ page, type, status, profile }),
     mapItem: toHistoryPaymentModel,
     enabled: enabled && Boolean(userId),
   });
