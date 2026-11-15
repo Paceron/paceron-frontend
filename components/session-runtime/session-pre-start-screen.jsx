@@ -546,7 +546,7 @@ function SessionPreStartScreenContent() {
               onPress={handlePlay}
               testID="session-pre-start-screen-play-button"
             >
-              {runnerSessionLoading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
+              {starting || runnerSessionLoading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : <MaterialCommunityIcons color={colors.onPrimary} name="play" size={44} />}
             </Pressable>
           </Animated.View>
         )}

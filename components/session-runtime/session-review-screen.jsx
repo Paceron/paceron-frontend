@@ -9,6 +9,8 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { buildReviewSlotNavParams, reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
+import { useSessionSyncStore } from '../../store/session-sync-store.js';
+import { LoadingOverlay } from '../shared/loading-overlay.jsx';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { useUser } from '../../hooks/use-user.js';
@@ -846,7 +848,6 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
 
 function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   const router = useRouter();
-  const colors = useThemeColors();
   const [selected, setSelected] = useState(null);
   const [completedNow, setCompletedNow] = useState(false);
   // Resuelve la serie abierta por URL UNA sola vez al cargar (F5/entrada
@@ -858,6 +859,12 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   const { sessionInstance: fetchedSessionInstance, loading: instanceLoading } = useSessionInstance(sessionInstanceId, !slot.sessionInstance);
   const sessionInstance = slot.sessionInstance ?? fetchedSessionInstance;
   const { groups, loading, refetch: refetchFeedback } = useSessionFeedback(sessionInstanceId, slot.athleteUserId);
+  const syncing = useSessionSyncStore((s) => Boolean(s.syncingBySessionId[String(sessionInstanceId)]));
+  const wasSyncingRef = useRef(false);
+  useEffect(() => {
+    if (wasSyncingRef.current && !syncing) refetchFeedback();
+    wasSyncingRef.current = syncing;
+  }, [syncing, refetchFeedback]);
   const { refreshing, onRefresh } = usePullToRefresh(refetchFeedback);
   // Spec 4b (Gap 33 punto 29) -- mismo criterio que session-pre-start-screen.jsx:
   // un ingreso manual (retroactivo) también cuenta si cae dentro de la ventana
@@ -919,8 +926,13 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   // refetch de fondo con datos ya mostrados no debería tapar la pantalla.
   if ((instanceLoading && !sessionInstance) || (loading && groups.length === 0)) {
     return (
-      <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="session-review-loading-root" testID="session-review-loading-root">
-        <ActivityIndicator color={colors.primary} />
+      <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-loading-root" testID="session-review-loading-root">
+        <LoadingOverlay
+          fullScreen
+          id="session-review-loading"
+          label={syncing ? 'Sincronizando el registro…' : 'Cargando el registro…'}
+          visible
+        />
       </View>
     );
   }
@@ -943,36 +955,42 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
 
   if (selected) {
     return (
-      <SetDetailView
-        exerciseId={selected.exerciseId}
-        exerciseName={selected.exerciseName}
-        key={`${selected.exerciseId}-${selected.setNumber}`}
-        onBack={() => {
-          setSelected(null);
-          router.replace({ params: baseNavParams, pathname: '/training-session-review' });
-        }}
-        onSeriesSaved={() => {
-          saveCountRef.current += 1;
-        }}
-        row={selected.row}
-        slot={{ ...slot, sessionName, sessionInstance }}
-      />
+      <View className="flex-1" nativeID="session-review-sync-detail-root" testID="session-review-sync-detail-root">
+        <SetDetailView
+          exerciseId={selected.exerciseId}
+          exerciseName={selected.exerciseName}
+          key={`${selected.exerciseId}-${selected.setNumber}`}
+          onBack={() => {
+            setSelected(null);
+            router.replace({ params: baseNavParams, pathname: '/training-session-review' });
+          }}
+          onSeriesSaved={() => {
+            saveCountRef.current += 1;
+          }}
+          row={selected.row}
+          slot={{ ...slot, sessionName, sessionInstance }}
+        />
+        <LoadingOverlay fullScreen id="session-review-sync" label="Sincronizando el registro…" visible={syncing} />
+      </View>
     );
   }
 
   return (
-    <ReviewListView
-      completing={finishing}
-      loading={loading}
-      onOpenRow={(payload) => {
-        setSelected(payload);
-        router.replace({ params: { ...baseNavParams, exerciseId: String(payload.exerciseId), setNumber: String(payload.setNumber) }, pathname: '/training-session-review' });
-      }}
-      onRefresh={onRefresh}
-      refreshing={refreshing}
-      reviewModel={reviewModel}
-      slot={navSlot}
-    />
+    <View className="flex-1" nativeID="session-review-sync-list-root" testID="session-review-sync-list-root">
+      <ReviewListView
+        completing={finishing}
+        loading={loading}
+        onOpenRow={(payload) => {
+          setSelected(payload);
+          router.replace({ params: { ...baseNavParams, exerciseId: String(payload.exerciseId), setNumber: String(payload.setNumber) }, pathname: '/training-session-review' });
+        }}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        reviewModel={reviewModel}
+        slot={navSlot}
+      />
+      <LoadingOverlay fullScreen id="session-review-sync" label="Sincronizando el registro…" visible={syncing} />
+    </View>
   );
 }
 

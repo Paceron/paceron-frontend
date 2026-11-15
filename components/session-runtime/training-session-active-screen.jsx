@@ -11,6 +11,9 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { useSessionReviewStore } from '../../store/session-review-store.js';
+import { useSessionSyncStore } from '../../store/session-sync-store.js';
+import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatStopwatch, toIsoUtc } from '../../utils/time.js';
 import { acceptGpsLeg, formatMeters, smoothGpsPoint } from '../../utils/distance.js';
@@ -514,14 +517,17 @@ function FinishSummaryModal({ summary, onClose, visible }) {
 // `onCompare` abre la comparación planificado vs realizado (Gap 35). Se ofrece
 // recién cuando la sincronización terminó sin errores: el detalle se arma con
 // lo que ya llegó al backend, y con series sin subir mostraría de menos.
-function SessionCompleteModal({ visible, runId, counts, onClose, onCompare }) {
+function SessionCompleteModal({ visible, runId, sessionInstanceId, counts, onClose, onCompare }) {
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState(null);
   const startedRef = useRef(false);
+  const startSync = useSessionSyncStore((s) => s.startSync);
+  const finishSync = useSessionSyncStore((s) => s.finishSync);
 
   const runSync = async () => {
     if (syncing) return;
     setSyncing(true);
+    startSync(sessionInstanceId);
     try {
       const syncResult = await syncRun(runId);
       setResult(syncResult);
@@ -537,6 +543,7 @@ function SessionCompleteModal({ visible, runId, counts, onClose, onCompare }) {
       setResult({ synced: 0, conflicts: 0, errors: [{ error }] });
       Toast.show({ type: 'error', text1: 'Error de conexión', text2: 'No pudimos sincronizar. Reintentá o salí — los datos quedaron guardados en el dispositivo.' });
     } finally {
+      finishSync(sessionInstanceId);
       setSyncing(false);
     }
   };
@@ -611,8 +618,7 @@ function SessionCompleteModal({ visible, runId, counts, onClose, onCompare }) {
               </Pressable>
             )}
             <Pressable
-              className="h-12 flex-1 items-center justify-center rounded-full bg-primary disabled:opacity-40 hover:opacity-90 active:opacity-80"
-              disabled={syncing}
+              className="h-12 flex-1 items-center justify-center rounded-full bg-primary hover:opacity-90 active:opacity-80"
               nativeID="session-complete-modal-close-button"
               onPress={onClose}
               testID="session-complete-modal-close-button"
@@ -1079,6 +1085,7 @@ function TrainingSessionActiveScreenContent() {
   const storeGpsEnabled = useLiveSessionStore((s) => s.gpsEnabled);
   const setSessionStarted = useLiveSessionStore((s) => s.setSessionStarted);
   const clearLiveSession = useLiveSessionStore((s) => s.clearLiveSession);
+  const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const userId = useAuthStore((s) => s.userId);
 
   const [booted, setBooted] = useState(false);
@@ -1278,6 +1285,26 @@ function TrainingSessionActiveScreenContent() {
     router.back();
   };
 
+  const handleFinishSession = () => {
+    if (!run) return;
+    const slot = {
+      sessionInstance: pendingSession?.sessionInstance ?? null,
+      sessionInstanceId: run.session_instance_id,
+      date: run.session_date,
+      sessionName: run.session_name,
+      role: 'runner',
+      athleteUserId: userId,
+      mode: 'review',
+      completionStatus: 'finished',
+      teamId: pendingSession?.teamId ?? null,
+      teamName: pendingSession?.teamName ?? null,
+      groupName: pendingSession?.groupName ?? null,
+    };
+    setReviewSlot(slot);
+    clearLiveSession();
+    router.replace({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });
+  };
+
   if (!pendingSession) {
     return (
       <MobileOnlyRoute>
@@ -1358,15 +1385,13 @@ function TrainingSessionActiveScreenContent() {
 
         <SessionCompleteModal
           counts={{ finished: sets.filter((s) => s.status === 'finished').length, skipped: sets.filter((s) => s.status === 'skipped').length }}
-          onClose={() => {
-            clearLiveSession();
-            router.back();
-          }}
+          onClose={handleFinishSession}
           onCompare={() => {
             clearLiveSession();
             router.replace({ pathname: '/training-comparison/session', params: { sessionInstanceId: run.session_instance_id, date: run.session_date } });
           }}
           runId={run.id}
+          sessionInstanceId={run.session_instance_id}
           visible={sessionCompleteVisible}
         />
       </SafeAreaView>
