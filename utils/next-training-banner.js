@@ -1,3 +1,5 @@
+import { filterUpcomingTrainingsByStatus } from './upcoming-trainings.js';
+
 function toISODate(date) {
   const pad2 = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
@@ -18,11 +20,19 @@ function isStillUpcoming(day, now) {
   return now.getTime() <= end.getTime();
 }
 
-export function selectNextTraining(days, { presencialOnly = false } = {}, now = new Date()) {
-  const candidates = days
+export function selectNextTrainingCandidates(days, { presencialOnly = false } = {}, now = new Date()) {
+  return days
     .filter((day) => day.kind === 'training' && (!presencialOnly || day.isPresencial) && isStillUpcoming(day, now))
     .sort((a, b) => a.date.localeCompare(b.date));
-  return candidates[0] ?? null;
+}
+
+export function selectNextTraining(days, { presencialOnly = false } = {}, now = new Date()) {
+  return selectNextTrainingCandidates(days, { presencialOnly }, now)[0] ?? null;
+}
+
+export function selectNextPendingTraining(days, statusBySessionId, options = {}, now = new Date()) {
+  const candidates = selectNextTrainingCandidates(days, options, now);
+  return filterUpcomingTrainingsByStatus(candidates, statusBySessionId)[0] ?? null;
 }
 
 export function selectCancelledBefore(days, beforeDate, now = new Date()) {
