@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -64,6 +64,12 @@ function PaymentsScreenContent() {
   const [receivedStatus, setReceivedStatus] = useState('');
   const [historyType, setHistoryType] = useState('');
   const [historyStatus, setHistoryStatus] = useState('');
+  // El corredor no tiene suscripciones de tier: si el filtro quedó en
+  // "subscription" al cambiar de perfil, se limpia para no pedir una lista que
+  // el backend va a devolver vacía.
+  useEffect(() => {
+    if (!isTrainer && historyType === 'subscription') setHistoryType('');
+  }, [isTrainer, historyType]);
   const [receiptBusyId, setReceiptBusyId] = useState(null);
   // 0 = la ventana termina en el mes actual; 1 = los 6 meses anteriores; etc.
   const [windowOffset, setWindowOffset] = useState(0);
@@ -313,9 +319,11 @@ function PaymentsScreenContent() {
               payingKey={payingKey}
             />
             <Text className="mb-4 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID="payments-screen-history-intro" testID="payments-screen-history-intro">
-              Tus pagos de suscripción y lo que les pagaste a tus entrenadores. De los pagos aprobados podés descargar el comprobante en PDF.
+              {isTrainer
+                ? 'Tus pagos de suscripción y lo que les pagaste a tus entrenadores. De los pagos aprobados podés descargar el comprobante en PDF.'
+                : 'Los pagos que les hiciste a tus entrenadores. De los pagos aprobados podés descargar el comprobante en PDF.'}
             </Text>
-            <PaymentsHistoryFilters isWide={isWide} onChangeStatus={setHistoryStatus} onChangeType={setHistoryType} status={historyStatus} type={historyType} />
+            <PaymentsHistoryFilters isWide={isWide} onChangeStatus={setHistoryStatus} onChangeType={setHistoryType} showSubscriptions={isTrainer} status={historyStatus} type={historyType} />
           </>
         )}
 

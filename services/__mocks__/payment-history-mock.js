@@ -259,8 +259,13 @@ export async function mockGetReceivedPayments({ page = 1, teamId, status, payerI
 }
 
 // GET /api/v1/payments/history
-export async function mockGetPaymentHistory({ page = 1, type, status } = {}) {
+export async function mockGetPaymentHistory({ page = 1, type, status, profile } = {}) {
   let items = buildHistory();
+  if (profile === 'corredor') {
+    items = items.filter((p) => p.type !== 'subscription');
+  } else if (profile === 'entrenador') {
+    items = items.filter((p) => p.type !== 'subscription' || p.tier?.role_name === 'entrenador');
+  }
   if (type) items = items.filter((p) => p.type === type);
   if (status) {
     const statuses = STATUS_GROUP_STATUSES[status] ?? [];
@@ -449,9 +454,9 @@ export async function mockGetReceivedPaymentsSummary({ months = 6, until } = {})
 // homeDuePayments/dueTone distinguen -- antes las 3 quedaban `normal` salvo
 // la atrasada, así que el tono ámbar nunca se pudo ver ni probar con mocks
 // (bug real reportado 2026-11-09, al ajustar los colores de esta tarjeta).
-export async function mockGetUpcomingPayments() {
+export async function mockGetUpcomingPayments({ profile } = {}) {
   const { day } = artParts(now());
-  const items = [
+  let items = [
     { type: 'trainer_payment', team: { id: 33, name: 'Club de Corredores Palermo' }, trainer: { id: 51, name: 'Mariana', surname: 'Ibarra' }, tier: null,
       installment_number: 5, amount: 18000, currency_id: 'ARS', due_date: dueAt(0, day + 5), overdue: false, overdue_count: 0 },
     // Atrasado: no pagó la cuota del 15 del mes pasado (ni la de este mes, si ya pasó).
@@ -460,5 +465,8 @@ export async function mockGetUpcomingPayments() {
     { type: 'subscription', team: null, trainer: null, tier: { id: 4, name: 'Premium_entrenador', role_name: 'entrenador' },
       installment_number: 6, amount: 9999, currency_id: 'ARS', due_date: dueAt(-1, 5), overdue: false, overdue_count: 0 },
   ];
+  // El perfil activo recorta los tiers: el corredor no ve los del entrenador.
+  if (profile === 'corredor') items = items.filter((item) => item.type !== 'subscription');
+  else if (profile === 'entrenador') items = items.filter((item) => item.type !== 'subscription' || item.tier?.role_name === 'entrenador');
   return { items: items.sort((a, b) => a.due_date.localeCompare(b.due_date)) };
 }

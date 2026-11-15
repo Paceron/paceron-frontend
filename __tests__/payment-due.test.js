@@ -1,4 +1,4 @@
-import { HOME_DUE_WINDOW_DAYS, dueCardVariant, dueTone, homeDuePayments, isPayableUpcoming, payRouteFor } from '../utils/payment-due.js';
+import { HOME_DUE_WINDOW_DAYS, dueCardVariant, dueTone, homeDuePayments, isPayableUpcoming, paymentProfileForRole, payRouteFor } from '../utils/payment-due.js';
 
 const NOW = new Date('2026-11-03T15:00:00Z');
 const item = (over) => ({ key: 'k', type: 'trainer_payment', teamId: 7, dueDate: '2026-11-20T00:00:00Z', overdue: false, ...over });
@@ -72,5 +72,13 @@ describe('isPayableUpcoming', () => {
 
   test('descarta un item vacío', () => {
     expect(isPayableUpcoming(null)).toBe(false);
+  });
+});
+
+describe('paymentProfileForRole', () => {
+  test('el rol entrenador viaja como entrenador; cualquier otro como corredor', () => {
+    expect(paymentProfileForRole('trainer')).toBe('entrenador');
+    expect(paymentProfileForRole('runner')).toBe('corredor');
+    expect(paymentProfileForRole(undefined)).toBe('corredor');
   });
 });

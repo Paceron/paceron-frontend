@@ -36,18 +36,22 @@ export async function getReceivedPaymentsSummary({ months = 6, until } = {}) {
   return await api.get(`/payments/received/summary${toQueryString({ months, until })}`);
 }
 
-// GET /api/v1/payments/history?page&type&status — payment.HistoryPaymentsResponse
+// GET /api/v1/payments/history?page&type&status&profile — payment.HistoryPaymentsResponse
 // {payments, has_more}: los pagos que hizo el usuario. `type` es
-// subscription (tier) o trainer_payment (membresía de un equipo).
-export async function getPaymentHistory({ page = 1, type, status } = {}) {
-  if (USE_MOCKS) return await mockGetPaymentHistory({ page, type, status });
-  return await api.get(`/payments/history${toQueryString({ page, type, status })}`);
+// subscription (tier) o trainer_payment (membresía de un equipo). `profile`
+// (corredor|entrenador) recorta las suscripciones de tier al perfil activo: el
+// corredor no ve las del entrenador.
+export async function getPaymentHistory({ page = 1, type, status, profile } = {}) {
+  if (USE_MOCKS) return await mockGetPaymentHistory({ page, type, status, profile });
+  return await api.get(`/payments/history${toQueryString({ page, type, status, profile })}`);
 }
 
-// GET /api/v1/payments/upcoming — payment.UpcomingPaymentsResponse {items}: la
-// próxima cuota sin pagar de cada equipo que paga el usuario y de cada tier,
-// ordenadas por vencimiento (change cobros-pendientes-y-vencimientos).
-export async function getUpcomingPayments() {
-  if (USE_MOCKS) return await mockGetUpcomingPayments();
-  return await api.get('/payments/upcoming');
+// GET /api/v1/payments/upcoming?profile — payment.UpcomingPaymentsResponse
+// {items}: la próxima cuota sin pagar de cada equipo que paga el usuario y de
+// cada tier del PERFIL activo, ordenadas por vencimiento. Sin `profile` el
+// backend devuelve todos los tiers (comportamiento viejo); la app siempre lo
+// manda para no mezclar perfiles.
+export async function getUpcomingPayments({ profile } = {}) {
+  if (USE_MOCKS) return await mockGetUpcomingPayments({ profile });
+  return await api.get(`/payments/upcoming${toQueryString({ profile })}`);
 }
