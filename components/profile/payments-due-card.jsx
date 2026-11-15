@@ -34,9 +34,9 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
   const total = amountMode === 'net' ? block?.netAmount : block?.amount;
   const overdue = tone === 'overdue';
   return (
-    <View className={`flex-1 border rounded-xl p-3 ${overdue ? 'bg-rose-300/50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-900' : 'bg-amber-200/70 dark:bg-amber-950/50 border-amber-300 dark:border-amber-900'}`} nativeID={id} testID={id}>
+    <View className={`flex-1 border rounded-xl p-3 ${overdue ? 'bg-rose-100 dark:bg-rose-950 border-rose-200 dark:border-rose-800' : 'bg-amber-100 dark:bg-amber-950 border-amber-200 dark:border-amber-800'}`} nativeID={id} testID={id}>
       <View className={`mb-2 flex-row items-baseline justify-between gap-3`} nativeID={`${id}-header`} testID={`${id}-header`}>
-        <Text className={`text-sm font-semibold ${overdue ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'}`} nativeID={`${id}-title`} testID={`${id}-title`}>
+        <Text className={`text-sm font-semibold ${overdue ? 'text-rose-900 dark:text-rose-100' : 'text-amber-900 dark:text-amber-100'}`} nativeID={`${id}-title`} testID={`${id}-title`}>
           {title}
           {block?.count ? ` · ${block.count} ${block.count === 1 ? 'cuota' : 'cuotas'}` : ''}
         </Text>
@@ -50,7 +50,7 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
         <ScrollView className="p-1" nativeID={`${id}-items-scroll`} testID={`${id}-items-scroll`}>
           {block.items.map((item) => (
             <View
-              className={`flex-row items-center p-3 justify-between gap-3 my-1 mx-0.5 rounded-xl border ${overdue ? 'border-rose-400 dark:border-rose-600 bg-rose-100/70 dark:bg-rose-600/30' : 'border-amber-400 dark:border-amber-600 bg-amber-100/70 dark:bg-amber-600/30'}`}
+              className={`flex-row items-center p-3 justify-between gap-3 my-1 mx-0.5 rounded-xl border ${overdue ? 'border-rose-400 bg-rose-300/70 dark:border-rose-500 dark:bg-rose-600/50' : 'border-amber-400 bg-amber-300/70 dark:border-amber-500 dark:bg-amber-600/50'}`}
               key={item.key}
               nativeID={`${id}-item-${item.key}`}
               testID={`${id}-item-${item.key}`}
@@ -59,7 +59,7 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
                 <Text className="text-sm font-medium text-slate-800 dark:text-slate-100" nativeID={`${id}-item-${item.key}-payer`} numberOfLines={1} testID={`${id}-item-${item.key}-payer`}>
                   {item.payerName || 'Corredor'}
                 </Text>
-                <Text className={`text-xs ${overdue ? 'text-rose-800 dark:text-rose-200' : 'text-amber-800 dark:text-amber-200'}`} nativeID={`${id}-item-${item.key}-meta`} numberOfLines={1} testID={`${id}-item-${item.key}-meta`}>
+                <Text className={`text-xs ${overdue ? 'text-rose-900 dark:text-rose-100' : 'text-amber-900 dark:text-amber-100'}`} nativeID={`${id}-item-${item.key}-meta`} numberOfLines={1} testID={`${id}-item-${item.key}-meta`}>
                   {`${item.teamName || 'Equipo'} · cuota ${item.installmentNumber}`}
                 </Text>
               </View>
@@ -67,7 +67,7 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${id}-item-${item.key}-amount`} style={TABULAR} testID={`${id}-item-${item.key}-amount`}>
                   {itemAmountLabel(item, amountMode)}
                 </Text>
-                <Text className={`text-xs ${overdue ? 'text-rose-800 dark:text-rose-200' : 'text-amber-800 dark:text-amber-200'}`} nativeID={`${id}-item-${item.key}-due`} testID={`${id}-item-${item.key}-due`}>
+                <Text className={`text-xs ${overdue ? 'text-rose-900 dark:text-rose-100' : 'text-amber-900 dark:text-amber-100'}`} nativeID={`${id}-item-${item.key}-due`} testID={`${id}-item-${item.key}-due`}>
                   {`${overdue ? 'venció' : 'vence'} ${formatDueDate(item.dueDate)}`}
                 </Text>
               </View>

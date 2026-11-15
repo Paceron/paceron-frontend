@@ -13,18 +13,18 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // Vencida en rojo, por vencer en ámbar, el resto neutro.
 const ROW_TONE = {
   overdue: {
-    box: 'border-rose-400 bg-rose-100/70 dark:border-rose-500 dark:bg-rose-600/50',
+    box: 'border-rose-400 bg-rose-300/70 dark:border-rose-500 dark:bg-rose-600/50',
     due: 'font-semibold text-rose-800 dark:text-rose-100',
     icon: '#fb7185',
   },
   soon: {
-    box: 'border-amber-400 bg-amber-100/70 dark:border-amber-500 dark:bg-amber-600/50',
+    box: 'border-amber-400 bg-amber-300/70 dark:border-amber-500 dark:bg-amber-600/50',
     due: 'font-semibold text-amber-800 dark:text-amber-100',
     icon: '#f59e0b',
   },
   normal: {
-    box: 'border-slate-400 bg-slate-100/70 dark:border-slate-500 dark:bg-slate-600/50',
-    due: 'text-slate-500 dark:text-slate-400',
+    box: 'border-slate-400 bg-slate-300/70 dark:border-slate-500 dark:bg-slate-600/50',
+    due: 'font-semibold text-slate-800 dark:text-slate-100',
     icon: null,
   },
 };
@@ -34,9 +34,9 @@ const ROW_TONE = {
 // mb-3 que usan las demás cards del Home (bg-white/p-4/shadow-sm, ver
 // recent-trainings-card.jsx) en vez del p-6/mb-5/border de SectionCard.
 const COMPACT_TONE = {
-  rose: { box: 'bg-rose-300 dark:bg-rose-950', title: 'text-rose-900 dark:text-rose-100', icon: '#f43f5e' },
-  warning: { box: 'bg-amber-300 dark:bg-amber-950', title: 'text-amber-900 dark:text-amber-100', icon: '#f59e0b' },
-  default: { box: 'bg-white dark:bg-surface', title: 'text-slate-900 dark:text-white', icon: null },
+  rose: { box: 'bg-rose-100 dark:bg-rose-950', title: 'text-rose-900 dark:text-rose-100', icon: '#f43f5e' },
+  warning: { box: 'bg-amber-100 dark:bg-amber-950', title: 'text-amber-900 dark:text-amber-100', icon: '#f59e0b' },
+  default: { box: 'bg-slate-100 dark:bg-slate-950', title: 'text-slate-900 dark:text-slate-100', icon: null },
 };
 
 // "Próximos vencimientos" de la pestaña Pagos, para cualquier rol: la próxima
