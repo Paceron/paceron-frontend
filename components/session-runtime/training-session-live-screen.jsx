@@ -200,7 +200,7 @@ const DRAG_VARIANTS = {
 };
 
 function DragToFinishButton({ onTrigger, disabled, idPrefix, label, icon = 'flag-checkered', variant = 'finish' }) {
-  const THUMB_SIZE = 64;
+  const THUMB_SIZE = 56;
   const colors = DRAG_VARIANTS[variant] || DRAG_VARIANTS.finish;
   const translateX = useSharedValue(0);
   const widthSV = useSharedValue(120);
@@ -257,19 +257,19 @@ function DragToFinishButton({ onTrigger, disabled, idPrefix, label, icon = 'flag
       <View
         accessibilityHint="Arrastrá hasta el final para confirmar"
         accessibilityLabel={label}
-        className={`h-24 flex-1 rounded-full border ${colors.trackBg} ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
+        className={`h-20 flex-1 rounded-full border ${colors.trackBg} ${colors.trackBorder} ${disabled ? 'opacity-50' : ''}`}
         nativeID={`${idPrefix}-drag-track`}
         onLayout={(event) => { widthSV.value = Math.round(event.nativeEvent.layout.width); }}
         testID={`${idPrefix}-drag-track`}
       >
         <Animated.View className={`absolute inset-y-0 left-0 rounded-full ${colors.fill}`} nativeID={`${idPrefix}-drag-fill`} style={fillStyle} testID={`${idPrefix}-drag-fill`} />
-        <Animated.View className={`absolute left-0.5 top-4 h-16 w-16 items-center justify-center rounded-full ${colors.thumb}`} nativeID={`${idPrefix}-drag-thumb`} style={thumbStyle} testID={`${idPrefix}-drag-thumb`}>
-          <MaterialCommunityIcons color={colors.iconColor} name={icon} size={26} />
+        <Animated.View className={`absolute left-0.5 top-3 h-14 w-14 items-center justify-center rounded-full ${colors.thumb}`} nativeID={`${idPrefix}-drag-thumb`} style={thumbStyle} testID={`${idPrefix}-drag-thumb`}>
+          <MaterialCommunityIcons color={colors.iconColor} name={icon} size={24} />
         </Animated.View>
         {/* Padding asimétrico -- ver route-attempt-live-screen.jsx para el detalle
             del bug (padding simétrico truncaba el label a "..." en el layout de
             dos sliders lado a lado, pausar+finalizar comparten fila). */}
-        <View className="absolute inset-0 items-center justify-center pl-20 pr-3" nativeID={`${idPrefix}-drag-content`} pointerEvents="none" testID={`${idPrefix}-drag-content`}>
+        <View className="absolute inset-0 items-center justify-center pl-16 pr-3" nativeID={`${idPrefix}-drag-content`} pointerEvents="none" testID={`${idPrefix}-drag-content`}>
           {/* Hint ANTES del texto, en el mismo flex-row -- ver
               route-attempt-live-screen.jsx para el detalle del bug (quedaba
               encima del label al estar absolute aparte). */}
@@ -638,6 +638,7 @@ function LiveSeriesView({
 
   const running = activePhase === 'running' && set.status === 'started';
   const paused = activePhase === 'paused' && set.status === 'started';
+  const showSkip = set.status === 'pending' || paused;
   const showTimer = running || paused;
   const idPrefix = `training-session-live-series-${set.id}`;
   const phaseLabel = running ? 'En curso' : paused ? 'En pausa' : countdown != null ? 'Preparando…' : 'Listo para iniciar';
@@ -649,17 +650,33 @@ function LiveSeriesView({
           <Pressable className="h-9 w-9 items-center justify-center rounded-full active:opacity-70" disabled={running || paused} nativeID={`${idPrefix}-back-button`} onPress={onBack} testID={`${idPrefix}-back-button`}>
             <MaterialCommunityIcons color={running || paused ? colors.onSurfaceVariant + '55' : colors.onSurfaceVariant} name="arrow-left" size={20} />
           </Pressable>
-          <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800" nativeID={`${idPrefix}-phase-pill`} testID={`${idPrefix}-phase-pill`}>
-            <View className={`h-2 w-2 rounded-full ${running ? 'bg-primary' : 'bg-amber-400'}`} nativeID={`${idPrefix}-phase-dot`} testID={`${idPrefix}-phase-dot`} />
-            <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-phase-label`} testID={`${idPrefix}-phase-label`}>{phaseLabel}</Text>
+          <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header-actions`} testID={`${idPrefix}-header-actions`}>
+            <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800" nativeID={`${idPrefix}-phase-pill`} testID={`${idPrefix}-phase-pill`}>
+              <View className={`h-2 w-2 rounded-full ${running ? 'bg-primary' : 'bg-amber-400'}`} nativeID={`${idPrefix}-phase-dot`} testID={`${idPrefix}-phase-dot`} />
+              <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-phase-label`} testID={`${idPrefix}-phase-label`}>{phaseLabel}</Text>
+            </View>
+            {showSkip ? (
+              <Pressable
+                className="h-8 flex-row items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 active:opacity-70 dark:border-slate-700 dark:bg-slate-800/40"
+                disabled={busy}
+                nativeID={`${idPrefix}-skip-button`}
+                onPress={() => setSkipVisible(true)}
+                testID={`${idPrefix}-skip-button`}
+              >
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="debug-step-over" size={16} />
+                <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-skip-label`} testID={`${idPrefix}-skip-label`}>Saltear</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
 
-        <View className="mt-3 items-center" nativeID={`${idPrefix}-context`} testID={`${idPrefix}-context`}>
-          <Text className="text-center text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-exercise-name`} testID={`${idPrefix}-exercise-name`}>{set.exercise_name}</Text>
-          <Text className="mt-0.5 text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-series-count`} testID={`${idPrefix}-series-count`}>
-            Serie {set.set_number + 1} de {totalSeriesForExercise}
-          </Text>
+        <View className="mt-3 flex-row items-center justify-center gap-2" nativeID={`${idPrefix}-context`} testID={`${idPrefix}-context`}>
+          <Text className="min-w-0 shrink text-center text-lg font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-exercise-name`} numberOfLines={1} testID={`${idPrefix}-exercise-name`}>{set.exercise_name}</Text>
+          <View className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 dark:bg-slate-800" nativeID={`${idPrefix}-series-count-pill`} testID={`${idPrefix}-series-count-pill`}>
+            <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-series-count`} testID={`${idPrefix}-series-count`}>
+              Serie {set.set_number + 1} de {totalSeriesForExercise}
+            </Text>
+          </View>
         </View>
 
         <View className="flex-1 items-center justify-center" nativeID={`${idPrefix}-timer-area`} testID={`${idPrefix}-timer-area`}>
@@ -679,14 +696,6 @@ function LiveSeriesView({
           </Text>
         </View>
 
-        {set.status === 'pending' && (
-          <View className="mb-4" nativeID={`${idPrefix}-skip-hint`} testID={`${idPrefix}-skip-hint`}>
-            <Pressable className="h-11 items-center justify-center rounded-full border border-slate-200 bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-800/40" disabled={busy} nativeID={`${idPrefix}-skip-button`} onPress={() => setSkipVisible(true)} testID={`${idPrefix}-skip-button`}>
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-skip-label`} testID={`${idPrefix}-skip-label`}>Saltear</Text>
-            </Pressable>
-          </View>
-        )}
-
         <View className="gap-3" nativeID={`${idPrefix}-controls`} testID={`${idPrefix}-controls`}>
           {set.status === 'pending' && countdown == null && (
             <Pressable className="h-16 flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 active:opacity-80" nativeID={`${idPrefix}-play-button`} onPress={handlePlay} testID={`${idPrefix}-play-button`}>
@@ -696,25 +705,10 @@ function LiveSeriesView({
           )}
 
           {paused && (
-            <>
-              {/* Saltear sube al slot que antes era "Reanudar" (pedido real
-                  2026-10-20) -- Reanudar pasa a ser un slider más, en el
-                  slot donde antes estaba el botón de saltear, mismo layout
-                  de dos sliders lado a lado que ya usa `running`. */}
-              <Pressable
-                className="h-11 items-center justify-center rounded-full border border-slate-200 bg-slate-100 active:opacity-70 dark:border-slate-700 dark:bg-slate-800/40"
-                disabled={busy}
-                nativeID={`${idPrefix}-skip-button`}
-                onPress={() => setSkipVisible(true)}
-                testID={`${idPrefix}-skip-button`}
-              >
-                <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-skip-label`} testID={`${idPrefix}-skip-label`}>Saltear</Text>
-              </Pressable>
-              <View className="flex-row gap-3" nativeID={`${idPrefix}-secondary-controls`} testID={`${idPrefix}-secondary-controls`}>
-                <DragToFinishButton icon="play" idPrefix={`${idPrefix}-resume`} label="Reanudar" onTrigger={handlePlay} variant="resume" />
-                <DragToFinishButton disabled={false} idPrefix={idPrefix} label="Finalizar" onTrigger={handleFinish} />
-              </View>
-            </>
+            <View className="flex-row gap-3" nativeID={`${idPrefix}-secondary-controls`} testID={`${idPrefix}-secondary-controls`}>
+              <DragToFinishButton icon="play" idPrefix={`${idPrefix}-resume`} label="Reanudar" onTrigger={handlePlay} variant="resume" />
+              <DragToFinishButton disabled={false} idPrefix={idPrefix} label="Finalizar" onTrigger={handleFinish} />
+            </View>
           )}
 
           {running && (
