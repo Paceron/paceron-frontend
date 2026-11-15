@@ -17,6 +17,7 @@ import { useUser } from '../../hooks/use-user.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { createRunnerSession } from '../../services/runnerSession.js';
+import { createRunnerSessionEnsurer } from '../../utils/runner-session-ensure.js';
 import { buildSessionReviewModel } from '../../services/normalizers.js';
 import { useCompetitions } from '../../hooks/use-competitions.js';
 import { findActiveMetricCompetitionId } from '../../utils/competition-match.js';
@@ -54,10 +55,10 @@ const formatDayTime = (iso) => {
 
 // --- Guardado por ejercicio: una tanda de valores → varias series ---
 
-function ExerciseBulkSave({ exercise, onClose, slot }) {
+function ExerciseBulkSave({ exercise, onClose, slot, ensureRunnerSession }) {
   const colors = useThemeColors();
   const sessionInstanceId = slot.sessionInstanceId ?? slot.sessionInstance?.id;
-  const { mutate: saveExercise, isPending } = useSaveExerciseMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId });
+  const { mutate: saveExercise, isPending } = useSaveExerciseMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId, ensureRunnerSession });
 
   const [durationText, setDurationText] = useState('');
   const [activeText, setActiveText] = useState('');
@@ -147,7 +148,7 @@ function ExerciseBulkSave({ exercise, onClose, slot }) {
 
 // --- Vista A: lista de ejercicios/series ---
 
-function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, refreshing, onRefresh }) {
+function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, refreshing, onRefresh, ensureRunnerSession }) {
   const colors = useThemeColors();
   const router = useRouter();
   const showBadge = slot.mode === 'review';
@@ -325,7 +326,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
                   })}
                 </View>
                 {bulkExerciseId === exercise.exerciseId && (
-                  <ExerciseBulkSave exercise={exercise} onClose={() => setBulkExerciseId(null)} slot={slot} />
+                  <ExerciseBulkSave ensureRunnerSession={ensureRunnerSession} exercise={exercise} onClose={() => setBulkExerciseId(null)} slot={slot} />
                 )}
               </View>
               );
@@ -373,7 +374,7 @@ function DataField({ editable, editing, id, label, hint, children, onToggleEdit 
 
 // --- Vista B: detalle a pantalla completa + edición ---
 
-function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSaved }) {
+function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSaved, ensureRunnerSession }) {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const feedback = row.feedback;
@@ -407,7 +408,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
   const [error, setError] = useState(null);
 
   const sessionInstanceId = slot.sessionInstanceId ?? slot.sessionInstance?.id;
-  const { mutate: saveSet, isPending: saving } = useSaveSetMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId });
+  const { mutate: saveSet, isPending: saving } = useSaveSetMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId, ensureRunnerSession });
 
   const isDirty = useFormDirty({ durationText, activeText, distanceText, startedDate, startedTime, endedDate, endedTime, annotations }, `${exerciseId}-${row.setNumber}`);
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
@@ -871,15 +872,14 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   // de una competencia type='metric' activa del atleta en cuestión.
   const { competitions: activeMetricCompetitions } = useCompetitions(slot.teamId, { status: 'active' });
 
-  // Primer ingreso al modo manual → upsert idempotente de runner_session
-  // (wip). Fire-and-forget: si falla (offline), el pipeline de sync del
-  // próximo run reintenta el mismo create. El 200 de "ya existía" es ok.
-  const manualFiredRef = useRef(false);
-  useEffect(() => {
-    if (slot.mode !== 'manual' || manualFiredRef.current) return;
-    manualFiredRef.current = true;
-    const competitionId = findActiveMetricCompetitionId(activeMetricCompetitions, slot.athleteUserId, slot.date);
-    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), athleteUserId: slot.athleteUserId, competitionId }).catch(() => {});
+  // Una sesión manual sin runner_session solo lo crea cuando hay un guardado
+  // real: entrar a ver el registro no debe marcar al atleta como "sin cerrar".
+  const ensureRunnerSession = useMemo(() => {
+    if (slot.mode !== 'manual') return null;
+    return createRunnerSessionEnsurer(() => {
+      const competitionId = findActiveMetricCompetitionId(activeMetricCompetitions, slot.athleteUserId, slot.date);
+      return createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), athleteUserId: slot.athleteUserId, competitionId });
+    });
   }, [slot.mode, sessionInstanceId, slot.athleteUserId, slot.date, activeMetricCompetitions]);
 
   // Completar la sesión (PATCH finished) vive ACÁ y no en el detalle: al
@@ -957,6 +957,7 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
     return (
       <View className="flex-1" nativeID="session-review-sync-detail-root" testID="session-review-sync-detail-root">
         <SetDetailView
+          ensureRunnerSession={ensureRunnerSession}
           exerciseId={selected.exerciseId}
           exerciseName={selected.exerciseName}
           key={`${selected.exerciseId}-${selected.setNumber}`}
@@ -979,6 +980,7 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
     <View className="flex-1" nativeID="session-review-sync-list-root" testID="session-review-sync-list-root">
       <ReviewListView
         completing={finishing}
+        ensureRunnerSession={ensureRunnerSession}
         loading={loading}
         onOpenRow={(payload) => {
           setSelected(payload);
