@@ -18,6 +18,7 @@ import { DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { filterCompetitionsByFields } from '../../utils/competition-filters.js';
 import { canCloseCompetition } from '../../utils/competition-close.js';
+import { resolveCompetitionWinner } from '../../utils/competition-winner.js';
 import { useScrollToHighlight } from '../../hooks/use-scroll-to-highlight.js';
 import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
@@ -55,7 +56,7 @@ const EMPTY_MESSAGE = {
   history: 'Todavía no hay competencias finalizadas.',
 };
 
-function RouteDetailSection({ idPrefix, competition }) {
+function RouteDetailSection({ idPrefix, competition, members }) {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const twoColumns = isWeb && !isNarrowWeb;
@@ -63,6 +64,9 @@ function RouteDetailSection({ idPrefix, competition }) {
   const startPoint = coordinates[0] ? { lat: coordinates[0][1], lng: coordinates[0][0] } : null;
   const { address, loading: addressLoading } = useReverseGeocode(startPoint?.lat, startPoint?.lng);
   const addressLabel = address?.label ?? (addressLoading ? 'Resolviendo dirección…' : 'Punto de inicio');
+  const winner = competition.status === 'finished'
+    ? resolveCompetitionWinner({ winnerUserIds: competition.winnerUserIds, members })
+    : null;
 
   const infoColumn = (
     <View className="gap-2" nativeID={`${idPrefix}-route-info`} testID={`${idPrefix}-route-info`}>
@@ -83,6 +87,25 @@ function RouteDetailSection({ idPrefix, competition }) {
             </Text>
           </Pressable>
         </>
+      )}
+      {winner && (
+        <View className="mt-1" nativeID={`${idPrefix}-route-winner`} testID={`${idPrefix}-route-winner`}>
+          <Text className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-winner-caption`} testID={`${idPrefix}-route-winner-caption`}>
+            Ganador:
+          </Text>
+          {winner.kind === 'winner' ? (
+            <View className="flex-row items-center gap-1.5 self-start rounded-full bg-amber-100 px-3 py-1.5 dark:bg-amber-900/30" nativeID={`${idPrefix}-route-winner-badge`} testID={`${idPrefix}-route-winner-badge`}>
+              <MaterialCommunityIcons color="#d97706" name="trophy" size={16} />
+              <Text className="text-sm font-bold text-amber-800 dark:text-amber-300" nativeID={`${idPrefix}-route-winner-name`} testID={`${idPrefix}-route-winner-name`}>
+                {winner.text}
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-route-winner-text`} testID={`${idPrefix}-route-winner-text`}>
+              {winner.text}
+            </Text>
+          )}
+        </View>
       )}
     </View>
   );
@@ -105,7 +128,7 @@ function RouteDetailSection({ idPrefix, competition }) {
   );
 }
 
-function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busy }) {
   const colors = useThemeColors();
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const idPrefix = `competitions-tab-row-${competition.id}`;
@@ -174,6 +197,9 @@ function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, h
   const canViewParticipants = Boolean(competition);
   const participantCount = competition.participantUserIds?.length ?? 0;
   const canExpand = competition.type === 'route';
+  const winner = competition.status === 'finished'
+    ? resolveCompetitionWinner({ winnerUserIds: competition.winnerUserIds, members })
+    : null;
   // El botón de Play (canRunBase) solo entra en el grupo de acciones ícono
   // en nativo -- en web `canRunBase` sigue true pero no hay botón, solo un
   // aviso informativo (más abajo), así que no cuenta para decidir si el
@@ -283,8 +309,17 @@ function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, h
         )}
       </View>
 
+      {winner && competition.type === 'metric' && (
+        <View className="ml-6 mt-1 flex-row items-center gap-1.5" nativeID={`${idPrefix}-winner`} testID={`${idPrefix}-winner`}>
+          {winner.kind === 'winner' ? <MaterialCommunityIcons color="#d97706" name="trophy" size={14} /> : null}
+          <Text className={`text-xs ${winner.kind === 'winner' ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-winner-text`} testID={`${idPrefix}-winner-text`}>
+            {winner.kind === 'winner' ? `Ganador: ${winner.text}` : winner.text}
+          </Text>
+        </View>
+      )}
+
       {expanded && competition.type === 'route' && (
-        <RouteDetailSection competition={competition} idPrefix={idPrefix} />
+        <RouteDetailSection competition={competition} idPrefix={idPrefix} members={members} />
       )}
 
       {canRunBase && isWeb && (
@@ -568,6 +603,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
                 expanded={!collapsedIds.has(competition.id)}
                 highlighted={competition.id === highlightedId}
                 isTrainerView={isTrainerView}
+                members={members}
                 onApprove={handleApprove}
                 onCancel={handleCancel}
                 onClose={handleRequestClose}
