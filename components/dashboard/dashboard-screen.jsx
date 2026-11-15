@@ -23,7 +23,9 @@ import { canCompareSessions, canReadPeriodComparison, canReadTeamRanking } from 
 import { resolveDashboardError } from '../../utils/dashboard-error-codes.js';
 import {
   DEFAULT_TOLERANCE,
+  consistencyPercent,
   formatDelta,
+  formatBestTimeMetSource,
   formatKind,
   formatMetric,
   hasInsufficientData,
@@ -71,6 +73,9 @@ const EMPTY_FILTERS = {
 // Tope de espera para que el PDF no quede bloqueado si la sección de ranking no
 // avisa que terminó de cargar (ver captureDashboardReport).
 const RANKING_READY_TIMEOUT_MS = 5000;
+// La pestaña de Gráficos es lazy: si se exporta el PDF desde KPIs, el timeseries
+// todavía no está. Se pide antes de rasterizar, con tope para no colgar el export.
+const CHARTS_READY_TIMEOUT_MS = 8000;
 
 // Orquesta las dos pestañas principales de Rendimiento. Métricas deportivas
 // conserva el cuerpo compartido por roles; Comparación contiene sesiones A/B y,
@@ -80,13 +85,16 @@ export function DashboardScreen({ teamId }) {
   const activeRole = useAuthStore((state) => state.activeRole);
   const isTrainer = activeRole === 'trainer';
   const [activeDashboardTab, setActiveDashboardTab] = useState('metrics');
+  // Sub-pestaña de Métricas (KPIs | Gráficos). Vive acá y no solo dentro del
+  // panel porque decide qué queries se habilitan: los KPIs se cargan al entrar,
+  // el timeseries de Gráficos recién al abrir esa pestaña (ver más abajo).
+  const [metricsSection, setMetricsSection] = useState('kpis');
   const [pdfReportMode, setPdfReportMode] = useState(false);
-  const [rankingLoading, setRankingLoading] = useState(false);
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [periodComparisonLoading, setPeriodComparisonLoading] = useState(false);
   useEffect(() => {
     setActiveDashboardTab('metrics');
-    setRankingLoading(false);
+    setMetricsSection('kpis');
     setComparisonLoading(false);
     setPeriodComparisonLoading(false);
   }, [teamId, activeRole]);
@@ -214,13 +222,23 @@ export function DashboardScreen({ teamId }) {
   // rango real existe. Con `enabled: false`, `isPending` sigue en true pero
   // `isFetching` en false, y por eso el `loading` de los hooks queda en false.
   const hasRange = Boolean(applied.from);
+  // La pestaña de Gráficos es lazy. El summary alcanza para pintar KPIs (y para
+  // decidir la paleta); el timeseries —evolución y bandas de cumplimiento— es
+  // grande y solo se pide al abrir Gráficos. Así el primer render no espera dos
+  // requests juntos.
+  const chartsTabActive = metricsSection === 'charts';
   const summaryQuery = useDashboardSummary({ ...scope, enabled: hasRange });
-  const timeseriesQuery = useDashboardTimeseries({ ...scope, granularity, enabled: hasRange });
+  const timeseriesQuery = useDashboardTimeseries({ ...scope, granularity, enabled: hasRange && chartsTabActive });
 
   const summary = summaryQuery.data;
   const timeseries = timeseriesQuery.data;
-  const metricsLoading = hasRange && (summaryQuery.loading || timeseriesQuery.loading);
-  const metricsError = summaryQuery.failed ? summaryQuery.error : timeseriesQuery.failed ? timeseriesQuery.error : null;
+  const refetchTimeseries = timeseriesQuery.refetch;
+  // El skeleton de la pantalla espera SOLO el summary: los gráficos no bloquean
+  // la primera pintura de los KPIs.
+  const metricsLoading = hasRange && summaryQuery.loading;
+  const chartsLoading = hasRange && chartsTabActive && timeseriesQuery.loading;
+  const metricsError = summaryQuery.failed ? summaryQuery.error : null;
+  const chartsError = timeseriesQuery.failed ? timeseriesQuery.error : null;
 
   // Feedback al aplicar: las cinco consultas heredan el resultado anterior
   // (`keepPreviousData`), así que sin esto "Filtrar" no se siente como que hizo
@@ -230,7 +248,7 @@ export function DashboardScreen({ teamId }) {
   const [applying, setApplying] = useState(false);
   const applyStartedRef = useRef(false);
   const applyMinUntilRef = useRef(0);
-  const metricsFetching = summaryQuery.refreshing || timeseriesQuery.refreshing;
+  const metricsFetching = summaryQuery.refreshing || (chartsTabActive && timeseriesQuery.refreshing);
 
   useEffect(() => {
     if (!applying) return undefined;
@@ -327,6 +345,10 @@ export function DashboardScreen({ teamId }) {
     const athlete = applied.athleteUserId
       ? (filtersData?.athletes ?? []).find((candidate) => String(candidate.id) === String(applied.athleteUserId))
       : null;
+    const bestTimeMet = normalizeBestTimeMs(summary.has_target ? totals.best_time_met_ms : totals.best_time_ms);
+    const bestTimeMetSource = summary.has_target && bestTimeMet !== null
+      ? formatBestTimeMetSource(totals.best_time_met_source)
+      : null;
 
     // Lista explícita de lo que recorta el documento. Solo lo que está puesto:
     // un "Grupo: Todo el equipo" en "Filtros aplicados" no filtra nada y hace
@@ -376,14 +398,14 @@ export function DashboardScreen({ teamId }) {
         { label: 'Velocidad esperada', value: formatMetric(totals.target_speed_kph, units.speed) },
         { label: 'Delta contra objetivo', value: formatDelta(totals.delta_pct, units.delta) },
         { label: 'Cumplimiento', value: formatMetric(totals.compliance_rate, units.compliance) },
-        { label: 'Consistencia', value: formatMetric(summary.consistency?.cv) },
+        { label: 'Variación de Velocidad (Consistencia)', value: formatMetric(consistencyPercent(summary.consistency?.cv), '%') },
         // Con objetivo (gap 43, 2026-11-12): el PDF reporta la MISMA cifra
         // que la paleta que de verdad se mostró para este scope -- cumplido
         // con objetivo, cualquier serie válida sin él (mismo criterio que
         // palette-with-target.jsx/palette-without-target.jsx).
         {
           label: summary.has_target ? 'Mejor tiempo cumplido' : 'Mejor tiempo',
-          value: formatMetric(normalizeBestTimeMs(summary.has_target ? totals.best_time_met_ms : totals.best_time_ms), units.best_time),
+          value: [formatMetric(bestTimeMet, units.best_time), bestTimeMetSource].filter(Boolean).join(' · '),
         },
         { label: 'Distancia total', value: formatMetric(totals.distance_m, units.distance) },
       ],
@@ -412,6 +434,20 @@ export function DashboardScreen({ teamId }) {
   const captureDashboardReport = useCallback(async () => {
     if (currentDashboardTab === 'comparison') {
       return captureDashboardView(comparisonCaptureRef);
+    }
+
+    // El PDF incluye la página de gráficos aunque el usuario esté en KPIs. Como
+    // esa data es lazy, se pide antes de montar el staging para no capturar una
+    // página vacía. Best-effort con tope: si falla, el PDF sale igual.
+    if (hasRange && !timeseries) {
+      try {
+        await Promise.race([
+          refetchTimeseries(),
+          new Promise((resolve) => { setTimeout(resolve, CHARTS_READY_TIMEOUT_MS); }),
+        ]);
+      } catch {
+        // La página de gráficos se captura con lo que haya.
+      }
     }
 
     rankingIsReady.current = false;
@@ -451,7 +487,7 @@ export function DashboardScreen({ teamId }) {
       rankingReadyResolver.current = null;
       rankingIsReady.current = false;
     }
-  }, [activeRole, currentDashboardTab]);
+  }, [activeRole, currentDashboardTab, hasRange, timeseries, refetchTimeseries]);
 
   // "Ver todo el período" y "Limpiar" son acciones, no borradores: aplican en el
   // mismo click. Vuelven el rango al `date_range` real del scope y dejan el resto
@@ -663,26 +699,21 @@ export function DashboardScreen({ teamId }) {
                   </DashboardFiltersSheet>
 
                   <DashboardBody id={isTrainer ? 'dashboard-trainer' : 'dashboard-runner'}>
+                    {/* El ranking del equipo NO va en la pantalla de métricas:
+                        vive en la pestaña Leaderboard del detalle de equipo. La
+                        única copia que queda en Rendimiento es la página del PDF
+                        (ver el panel de staging más abajo). */}
                     <DashboardMetricsPanel
+                      activeSection={metricsSection}
+                      chartsError={chartsError}
+                      chartsLoading={chartsLoading}
                       granularity={granularity}
                       id={isTrainer ? 'dashboard-trainer-metrics-panel' : 'dashboard-runner-metrics-panel'}
                       kind={effectiveKind}
-                      onRankingLoadingChange={setRankingLoading}
                       onGranularityChange={setGranularity}
+                      onRetryCharts={refetchTimeseries}
+                      onSectionChange={setMetricsSection}
                       radarTitle={isTrainer ? 'Perfil del equipo en cinco ejes' : 'Tu perfil en cinco ejes'}
-                      renderRanking={canReadTeamRanking(activeRole) ? ({ reportMode = false, captureRef = null, onReportReady = null, onLoadingChange = null }) => (
-                        <TeamRankingSection
-                          captureRef={captureRef}
-                          onLoadingChange={onLoadingChange}
-                          onReportReady={onReportReady}
-                          order={order}
-                          reportMode={reportMode}
-                          scope={scope}
-                          sort={sort}
-                          summaryUnits={summary?.units}
-                          toggleSort={toggleSort}
-                        />
-                      ) : null}
                       seriesPoints={seriesPoints}
                       seriesSamples={seriesSamples}
                       summary={summary}
@@ -761,9 +792,9 @@ export function DashboardScreen({ teamId }) {
         id="dashboard-screen-loading"
         label={currentDashboardTab === 'comparison'
           ? (periodComparisonLoading ? 'Comparando períodos…' : 'Cargando comparación…')
-          : (rankingLoading ? 'Cargando ranking…' : 'Cargando métricas…')}
+          : 'Cargando métricas…'}
         visible={currentDashboardTab === 'metrics'
-          ? applying || filtersQuery.loading || metricsLoading || rankingLoading
+          ? applying || filtersQuery.loading || metricsLoading
           : filtersQuery.loading || comparisonLoading || periodComparisonLoading}
       />
     </View>

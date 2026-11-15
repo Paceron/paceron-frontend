@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 import { RADAR_AXES, normalizeRadarAxes, radarPolygon } from '../../../utils/dashboard-chart.js';
-import { EMPTY_METRIC, formatDelta, formatMetric } from '../../../utils/dashboard-format.js';
+import { consistencyPercent, EMPTY_METRIC, formatDelta, formatMetric } from '../../../utils/dashboard-format.js';
 import { useThemeColors } from '../../../theme/colors.js';
 import { ChartSurface } from './chart-surface.jsx';
 
@@ -138,16 +138,15 @@ export function RadarChart({ id, summary, units, label }) {
 }
 
 // El valor real del eje, con la unidad que DECLARA la respuesta. El `cv` no
-// tiene clave en el bloque `units` —el contrato no declara ninguna para el
-// coeficiente de variación— así que se escribe sin sufijo en vez de inventar una.
+// tiene clave en el bloque `units`, pero se expresa como porcentaje (0.35 = 35 %).
 function rawLabel(axis, units) {
   if (axis.raw === null || axis.raw === undefined) return EMPTY_METRIC;
   if (axis.id === 'trend') return formatDelta(axis.raw, units?.delta);
-  if (axis.id === 'consistency') return formatMetric(axis.raw, null);
+  if (axis.id === 'consistency') return formatMetric(consistencyPercent(axis.raw), '%');
   return formatMetric(axis.raw, units?.[axis.unitKey]);
 }
 
 function radarDescription(axes, units) {
-  const parts = axes.map((axis) => `${axis.label}: ${rawLabel(axis, units)}${axis.available ? ` (${Math.round(axis.value)} de 100)` : ' (sin dato)'}`);
+  const parts = axes.map((axis) => `${axis.shortLabel ?? axis.label}: ${rawLabel(axis, units)}${axis.available ? ` (${Math.round(axis.value)} de 100)` : ' (sin dato)'}`);
   return `Perfil en cinco ejes. ${parts.join('. ')}`;
 }

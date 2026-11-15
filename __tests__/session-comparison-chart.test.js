@@ -30,6 +30,19 @@ const makeSide = (sessionId, date, setNumber, speed, distance) => ({
   total_distance_m: distance,
   series: [{ set_number: setNumber, speed_kph: speed, distance_meters: distance, active_duration_ms: 300000 }],
 });
+const makeSeriesSide = (sessionId, date, speeds) => ({
+  session_instance_id: sessionId,
+  exercise_id: 37,
+  session_date: date,
+  exercise_name: '100 mts planos',
+  total_distance_m: speeds.length * 100,
+  series: speeds.map((speed, index) => ({
+    set_number: index + 1,
+    speed_kph: speed,
+    distance_meters: 100,
+    active_duration_ms: 20000 - index * 500,
+  })),
+});
 
 describe('SessionComparisonChart tooltips', () => {
   const renderChart = () => render(
@@ -59,5 +72,23 @@ describe('SessionComparisonChart tooltips', () => {
     expect(getByTestId('dashboard-session-comparison-chart-distance-tooltip')).toBeTruthy();
     expect(getByText(/Sesión B/)).toBeTruthy();
     expect(getByTestId('dashboard-session-comparison-chart-distance-tooltip-delta')).toBeTruthy();
+  });
+
+  test('une las series de cada sesión con una línea propia', () => {
+    const { getByTestId } = render(
+      <SessionComparisonChart
+        a={makeSeriesSide(101, '2026-09-24', [19, 18.5, 18, 17.5])}
+        b={makeSeriesSide(102, '2026-09-28', [26, 25.5, 25, 24.5])}
+        distanceDeltaM={0}
+        units={units}
+      />,
+    );
+
+    const lineA = getByTestId('dashboard-session-comparison-chart-speed-line-a');
+    const lineB = getByTestId('dashboard-session-comparison-chart-speed-line-b');
+    expect(lineA).toBeTruthy();
+    expect(lineB).toBeTruthy();
+    // Un vértice por serie, con comandos explícitos M/L (4 en total).
+    expect(lineA.props.d.match(/[ML]/g)).toHaveLength(4);
   });
 });

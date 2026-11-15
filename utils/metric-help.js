@@ -240,16 +240,16 @@ export const METRIC_HELP = {
 
   cv: {
     id: 'cv',
-    title: 'Consistencia',
-    summary: 'Cuán parejas fueron tus velocidades entre series. Cuanto más bajo el número, más regular fuiste.',
+    title: 'Variación de Velocidad (Consistencia)',
+    summary: 'Cuán parejas fueron tus velocidades entre series. Cuanto más bajo el porcentaje, más regular fuiste.',
     sections: [
       {
         kind: 'paragraph',
-        text: 'Si todas tus series salieron a la misma velocidad, la consistencia es 0 %. Cuanto más se mezclan series rápidas y lentas, más alto el número. Se expresa en porcentaje para poder comparar períodos que corriste a velocidades distintas.',
+        text: 'Si todas tus series salieron a la misma velocidad, la variación de velocidad es 0 %. Cuanto más se mezclan series rápidas y lentas, más alto el porcentaje. Se expresa así para poder comparar períodos que corriste a velocidades distintas.',
       },
       {
         kind: 'formula',
-        text: 'Consistencia = desvío ÷ promedio de las velocidades × 100',
+        text: 'Variación de velocidad = desvío ÷ promedio de las velocidades × 100',
       },
       {
         kind: 'paragraph',
@@ -258,14 +258,14 @@ export const METRIC_HELP = {
       { kind: 'heading', text: 'Ejemplos' },
       {
         kind: 'table',
-        columns: ['Velocidades', 'Promedio', 'Consistencia'],
+        columns: ['Velocidades', 'Promedio', 'Variación'],
         rows: [
           ['10 · 10 · 10 km/h', '10 km/h', '0 %'],
           ['9 · 10 · 11 km/h', '10 km/h', '8 %'],
           ['8 · 10 · 12 km/h', '10 km/h', '16 %'],
           ['6 · 10 · 14 km/h', '10 km/h', '33 %'],
         ],
-        note: 'El promedio es 10 en los cuatro casos. Lo que cambia es la dispersión: por eso una consistencia baja no significa "lento", significa "parejo".',
+        note: 'El promedio es 10 en los cuatro casos. Lo que cambia es la dispersión: por eso una variación baja no significa "lento", significa "parejo".',
       },
       {
         kind: 'note',

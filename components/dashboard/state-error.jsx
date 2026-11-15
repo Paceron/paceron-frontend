@@ -8,7 +8,7 @@ import { resolveDashboardError } from '../../utils/dashboard-error-codes.js';
 // El mensaje sale de `resolveDashboardError` y no se escribe acá: el mapa literal
 // de utils/dashboard-error-codes.js es el que clasifica, y los códigos UPPER_SNAKE
 // del backend no se muestran crudos.
-export function StateError({ id = 'dashboard-state-error', error, onRetry, retrying = false }) {
+export function StateError({ id = 'dashboard-state-error', error, onRetry, retrying = false, title = 'No pudimos cargar las métricas' }) {
   const resolved = resolveDashboardError(error);
 
   return (
@@ -16,7 +16,7 @@ export function StateError({ id = 'dashboard-state-error', error, onRetry, retry
       icon="wifi-alert"
       id={id}
       message={resolved.message}
-      title="No pudimos cargar las métricas"
+      title={title}
       tone="danger"
     >
       <StateAction

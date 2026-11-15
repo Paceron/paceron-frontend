@@ -33,6 +33,12 @@ export function dashboardRetry(failureCount, error) {
 // refetch por filtro.
 export const DASHBOARD_METRIC_QUERY_OPTIONS = { placeholderData: keepPreviousData };
 
+// Frescura corta para las métricas que se ven al entrar a la pantalla: si el
+// usuario vuelve a Rendimiento (o reabre Gráficos) dentro de esta ventana,
+// TanStack pinta el caché al instante en vez de disparar otro GET. El sondeo de
+// 90 s sigue trayendo datos nuevos, así que no se pierde actualización.
+export const DASHBOARD_STALE_TIME_MS = 30 * 1000;
+
 // Sondeo de 90 s, en el medio del rango de 60-120 s que fija la spec. Va con
 // TanStack Query y no con WebSocket: el WS del repo publica por sesión
 // (`session_{id}`), no por scope de dashboard.

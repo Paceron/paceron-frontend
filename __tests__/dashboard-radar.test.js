@@ -25,6 +25,18 @@ describe('normalizeRadarAxes', () => {
     expect(axes.map((axis) => axis.id)).toEqual(['speed', 'volume', 'consistency', 'compliance', 'trend']);
     expect(RADAR_AXES).toHaveLength(5);
     expect(axes.map((axis) => axis.unitKey)).toEqual(['speed', 'distance', null, 'compliance', 'delta']);
+    // El nombre completo se usa en el KPI y en las barras; el radar usa la
+    // versión corta para que no se pise con los ejes vecinos.
+    expect(axisById(axes, 'consistency')).toMatchObject({
+      label: 'Variación de Velocidad (Consistencia)',
+      shortLabel: 'Variación',
+    });
+  });
+
+  test('el radar rotula el eje de consistencia con la etiqueta corta', () => {
+    const axes = normalizeRadarAxes(summary());
+    const polygon = radarPolygon(axes, { cx: 0, cy: 0, radius: 100 });
+    expect(polygon.points.find((point) => point.id === 'consistency').label).toBe('Variación');
   });
 
   test('cada eje trae su bajada, y la de volumen habla de logrado contra objetivo', () => {

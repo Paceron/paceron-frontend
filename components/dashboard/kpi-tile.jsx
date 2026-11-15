@@ -25,7 +25,7 @@ const VERDICT_STYLES = {
   regressing: { text: 'text-red-600 dark:text-red-400', icon: '#ba1a1a' },
 };
 
-export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false, labelNumberOfLines = 1, showInfo = false }) {
+export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false, labelNumberOfLines = 1, showInfo = false, source = null }) {
   const verdictStyle = VERDICT_STYLES[verdict] ?? null;
 
   // Las seis cifras vuelven a ser cards del MISMO tamaño que las de gráficos.
@@ -102,6 +102,19 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
           <MaterialCommunityIcons color={verdictStyle?.icon ?? '#b45309'} name={verdictIcon(verdict)} size={12} />
         ) : null}
       </View>
+      {/* Procedencia del dato (por ahora solo el mejor tiempo cumplido): el
+          número sin ejercicio/fecha no dice de dónde salió. Va debajo del valor
+          y en cuerpo chico para no competir con la cifra. */}
+      {source ? (
+        <Text
+          className="mt-0.5 text-[10px] leading-3 text-slate-700 dark:text-slate-300"
+          nativeID={`${id}-source`}
+          numberOfLines={2}
+          testID={`${id}-source`}
+        >
+          {source}
+        </Text>
+      ) : null}
     </View>
   );
 }

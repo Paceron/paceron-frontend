@@ -435,7 +435,7 @@ export function TierUpgradeScreen() {
           </Pressable>
           <Text nativeID="tier-upgrade-screen-breadcrumb-separator" testID="tier-upgrade-screen-breadcrumb-separator" className="text-sm text-slate-400 dark:text-slate-600">/</Text>
           <Text nativeID="tier-upgrade-screen-title" testID="tier-upgrade-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} className="text-xl text-slate-900 dark:text-white">
-            Mejorar tier
+            Seleccionar Tier
           </Text>
         </View>
 

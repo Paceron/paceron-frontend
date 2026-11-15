@@ -512,9 +512,13 @@ export const RADAR_AXES = [
   },
   {
     id: 'consistency',
-    label: 'Consistencia',
+    label: 'Variación de Velocidad (Consistencia)',
+    // El radar dibuja los rótulos alrededor del círculo: el nombre completo no
+    // entra y se pisa con los ejes vecinos. Las barras sí muestran el nombre
+    // completo (`label`); el radar usa esta versión corta.
+    shortLabel: 'Variación',
     unitKey: null,
-    hint: 'Qué tan parejo fue el ritmo entre series: sin variación es 100, y más dispersión resta.',
+    hint: 'Qué tan parejo fue el ritmo entre series (coeficiente de variación): 0 % de variación es 100 en la escala, y más dispersión resta.',
   },
   {
     id: 'compliance',
@@ -604,7 +608,7 @@ export function radarPolygon(axes, { cx = 0, cy = 0, radius = 100, startAngle = 
     const factor = value === null ? 0 : clamp(value, 0, 100) / 100;
     return {
       id: axis?.id ?? String(index),
-      label: typeof axis?.label === 'string' ? axis.label : '',
+      label: typeof (axis?.shortLabel ?? axis?.label) === 'string' ? (axis?.shortLabel ?? axis?.label) : '',
       value,
       available: value !== null,
       // Un vértice sin dato se ubica en el centro: es donde el path NO pasa,

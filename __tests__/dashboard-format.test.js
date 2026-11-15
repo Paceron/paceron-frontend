@@ -5,6 +5,8 @@ import {
   TOLERANCE_MAX,
   TOLERANCE_MIN,
   VERDICT_LABELS,
+  consistencyPercent,
+  formatBestTimeMetSource,
   formatDelta,
   formatKind,
   formatMetric,
@@ -209,6 +211,35 @@ describe('enums del contrato traducidos para pantalla', () => {
     // y aunque no sepamos qué es, hay que poder mostrarlo.
     expect(formatKind('ritmo_antiguo')).toBe('ritmo_antiguo');
     expect(formatKind(null)).toBe(EMPTY_METRIC);
+  });
+});
+
+describe('consistencyPercent', () => {
+  test('la fracción del contrato se muestra como porcentaje', () => {
+    expect(consistencyPercent(0.35)).toBeCloseTo(35, 10);
+    expect(formatMetric(consistencyPercent(0.35), '%')).toBe('35 %');
+    expect(formatMetric(consistencyPercent(0.083), '%')).toBe('8,3 %');
+  });
+
+  test('sin dato sigue siendo null, no 0 %', () => {
+    expect(consistencyPercent(null)).toBeNull();
+    expect(consistencyPercent(undefined)).toBeNull();
+    expect(consistencyPercent(NaN)).toBeNull();
+    expect(formatMetric(consistencyPercent(null), '%')).toBe(EMPTY_METRIC);
+  });
+});
+
+describe('formatBestTimeMetSource', () => {
+  test('muestra el ejercicio y la fecha de la serie que dio el tiempo', () => {
+    expect(formatBestTimeMetSource({ exercise_name: '100 mts planos', session_date: '2026-09-28' }))
+      .toBe('100 mts planos · 28/09/2026');
+  });
+
+  test('sin procedencia devuelve null, y con datos parciales muestra lo que hay', () => {
+    expect(formatBestTimeMetSource(null)).toBeNull();
+    expect(formatBestTimeMetSource({})).toBeNull();
+    expect(formatBestTimeMetSource({ exercise_name: '100 mts planos' })).toBe('100 mts planos');
+    expect(formatBestTimeMetSource({ session_date: '2026-09-28' })).toBe('28/09/2026');
   });
 });
 

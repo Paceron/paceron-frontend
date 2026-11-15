@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import { EMPTY_METRIC, formatMetric, hasMetric } from '../../../utils/dashboard-format.js';
+import { consistencyPercent, EMPTY_METRIC, formatMetric, hasMetric } from '../../../utils/dashboard-format.js';
 import { normalizeRadarAxes } from '../../../utils/dashboard-chart.js';
 import { InfoHint } from '../info-hint.jsx';
 
@@ -33,10 +33,11 @@ export function AxisBars({ id, summary, units }) {
       {axes.map((axis) => (
         <View key={axis.id} nativeID={`${id}-row-${axis.id}`} testID={`${id}-row-${axis.id}`}>
           <View className="mb-1 flex-row items-baseline justify-between" nativeID={`${id}-${axis.id}-header`} testID={`${id}-${axis.id}-header`}>
-            <View className="flex-row items-center gap-1.5" nativeID={`${id}-${axis.id}-title`} testID={`${id}-${axis.id}-title`}>
+            <View className="min-w-0 flex-1 flex-row items-center gap-1.5" nativeID={`${id}-${axis.id}-title`} testID={`${id}-${axis.id}-title`}>
               <Text
-                className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                className="shrink text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
                 nativeID={`${id}-${axis.id}-label`}
+                numberOfLines={2}
                 testID={`${id}-${axis.id}-label`}
               >
                 {axis.label}
@@ -49,7 +50,7 @@ export function AxisBars({ id, summary, units }) {
               />
             </View>
             <Text
-              className="text-xs font-semibold text-slate-700 dark:text-slate-200"
+              className="ml-2 shrink-0 text-xs font-semibold text-slate-700 dark:text-slate-200"
               nativeID={`${id}-${axis.id}-raw`}
               testID={`${id}-${axis.id}-raw`}
             >
@@ -92,9 +93,9 @@ export function AxisBars({ id, summary, units }) {
 function rawLabel(axis, units) {
   const value = axis.raw;
   if (!hasMetric(value)) return EMPTY_METRIC;
-  // `consistency.cv` viene como fracción (0.08 = 8%) y su unidad no está en
-  // `units`: mostrarla crudo como "0,08" al lado de "10,7 km/h" engaña.
-  if (axis.id === 'consistency') return `${Math.round(value * 1000) / 10} % CV`;
+  // `consistency.cv` viene como fracción (0.35 = 35 %): se muestra en % y no
+  // como "0,35", para que el eje de la barra no parezca una escala distinta.
+  if (axis.id === 'consistency') return formatMetric(consistencyPercent(value), '%');
   if (axis.id === 'trend') return `${value > 0 ? '+' : ''}${Math.round(value * 10) / 10} %`;
   if (axis.unitKey && units?.[axis.unitKey]) return formatMetric(value, units[axis.unitKey]);
   return formatMetric(value);

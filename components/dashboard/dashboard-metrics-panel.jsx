@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { TabBar } from '../shared/tab-bar.jsx';
+import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { PaletteSwitch } from './palette-switch.jsx';
 import { ProfileRadarCard } from './profile-radar-card.jsx';
+import { StateError } from './state-error.jsx';
 
 export function DashboardMetricsPanel({
   id,
@@ -18,15 +20,29 @@ export function DashboardMetricsPanel({
   reportMode = false,
   capturePageRefFor,
   onReportReady,
-  onRankingLoadingChange,
+  // La pestaña activa puede vivir en la pantalla (ver DashboardScreen): así el
+  // screen sabe cuándo habilitar la query de gráficos, que es carísima y no hace
+  // falta para pintar los KPIs. Sin estas props el panel sigue funcionando solo.
+  activeSection = null,
+  onSectionChange = null,
+  chartsLoading = false,
+  chartsError = null,
+  onRetryCharts = null,
 }) {
-  const [active, setActive] = useState('kpis');
+  const [localActive, setLocalActive] = useState('kpis');
+  const active = activeSection ?? localActive;
+  // El ranking NO es una pestaña de la pantalla: se muestra en la pestaña
+  // Leaderboard del detalle de equipo. Acá solo se usa para armar la página del
+  // PDF en `reportMode` (ver dashboard-screen.jsx#captureDashboardReport).
   const tabs = [
     { id: 'kpis', label: 'KPIs', icon: 'view-dashboard-outline' },
     { id: 'charts', label: 'Gráficos', icon: 'chart-box-outline' },
-    ...(renderRanking ? [{ id: 'ranking', label: 'Ranking', icon: 'podium' }] : []),
   ];
   const current = tabs.some((tab) => tab.id === active) ? active : 'kpis';
+  const changeSection = (next) => {
+    setLocalActive(next);
+    onSectionChange?.(next);
+  };
   const paletteProps = {
     granularity,
     id: `${id}-palette`,
@@ -90,7 +106,7 @@ export function DashboardMetricsPanel({
     <View nativeID={id} testID={id}>
       <TabBar
         active={current}
-        onChange={setActive}
+        onChange={changeSection}
         scope={`${id}-tabs`}
         tabs={tabs}
         variant="default"
@@ -107,9 +123,34 @@ export function DashboardMetricsPanel({
             <ProfileRadarCard id={`${id}-profile`} kind={kind} summary={summary} title={radarTitle} />
           </>
         ) : null}
-        {current === 'charts' ? <PaletteSwitch {...paletteProps} section="charts" /> : null}
-        {current === 'ranking' && renderRanking ? renderRanking({ reportMode: false, onLoadingChange: onRankingLoadingChange }) : null}
+        {current === 'charts' ? (
+          chartsError && !timeseries ? (
+            <StateError
+              error={chartsError}
+              id={`${id}-charts-error`}
+              onRetry={onRetryCharts}
+              title="No pudimos cargar los gráficos"
+            />
+          ) : chartsLoading || !timeseries ? (
+            <ChartsSkeleton id={`${id}-charts-loading`} />
+          ) : (
+            <PaletteSwitch {...paletteProps} section="charts" />
+          )
+        ) : null}
       </View>
+    </View>
+  );
+}
+
+// La pestaña de gráficos es lazy: mientras llega la primera respuesta del
+// timeseries se muestra este esqueleto en vez de gráficos vacíos. Reusa el
+// shimmer compartido; no bloquea los KPIs, que ya están visibles arriba.
+function ChartsSkeleton({ id }) {
+  return (
+    <View className="gap-3" nativeID={id} testID={id}>
+      <SkeletonBlock height={20} nativeID={`${id}-title`} testID={`${id}-title`} width="45%" />
+      <SkeletonBlock height={196} nativeID={`${id}-chart`} testID={`${id}-chart`} />
+      <SkeletonBlock height={140} nativeID={`${id}-chart-2`} testID={`${id}-chart-2`} />
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardTimeseries, DASHBOARD_GRANULARITIES } from '../services/dashboard.js';
 import { DEFAULT_TOLERANCE } from '../utils/dashboard-format.js';
-import { DASHBOARD_KEYS, DASHBOARD_METRIC_QUERY_OPTIONS, DASHBOARD_POLL_INTERVAL_MS, dashboardRetry } from './use-dashboard-query.js';
+import { DASHBOARD_KEYS, DASHBOARD_METRIC_QUERY_OPTIONS, DASHBOARD_POLL_INTERVAL_MS, DASHBOARD_STALE_TIME_MS, dashboardRetry } from './use-dashboard-query.js';
 
 // GET /dashboard/metrics/timeseries: la evolución, con los mismos KPIs del
 // resumen en cada bucket de calendario.
@@ -35,6 +35,7 @@ export function useDashboardTimeseries({
     enabled: enabled && Boolean(teamId),
     refetchInterval: DASHBOARD_POLL_INTERVAL_MS,
     retry: dashboardRetry,
+    staleTime: DASHBOARD_STALE_TIME_MS,
   });
 
   return {
