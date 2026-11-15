@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Svg, { Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { barPath, dotPoints } from '../../utils/dashboard-chart.js';
+import { barPath, dotPoints, linePath } from '../../utils/dashboard-chart.js';
 import { formatDelta, formatMetric } from '../../utils/dashboard-format.js';
 import { buildDashboardComparisonChartPoints } from '../../utils/dashboard-session-options.js';
 import { useThemeColors } from '../../theme/colors.js';
@@ -27,10 +27,10 @@ export function SessionComparisonChart({ id = 'dashboard-session-comparison-char
   return (
     <View nativeID={id} testID={id}>
       <ChartCard
-        description="Cada punto representa la velocidad calculada de una serie. El eje horizontal es el número de serie; A y B usan la misma escala."
+        description="Cada punto representa la velocidad calculada de una serie, unida por una línea del mismo color que su sesión. El eje horizontal es el número de serie; A y B usan la misma escala."
         id={`${id}-speed-card`}
         title="Velocidad por serie"
-        icon="chart-scatter-plot"
+        icon="chart-line"
         subtitle="Misma escala para A y B"
       >
         {hasSpeed ? (
@@ -101,6 +101,28 @@ export function SessionComparisonChart({ id = 'dashboard-session-comparison-char
                         >
                           {formatMetric(value, '')}
                         </SvgText>
+                      );
+                    })}
+                    {['a', 'b'].map((side) => {
+                      const sidePoints = chart.points
+                        .filter((dot) => dot.item.side === side)
+                        .sort((one, other) => one.item.point.set_number - other.item.point.set_number);
+                      if (sidePoints.length < 2) return null;
+                      const d = linePath(sidePoints.map((dot) => ({ x: left + dot.cx, y: dot.cy })));
+                      if (!d) return null;
+                      return (
+                        <Path
+                          d={d}
+                          fill="none"
+                          key={`${id}-speed-line-${side}`}
+                          nativeID={`${id}-speed-line-${side}`}
+                          stroke={SESSION_SIDE_COLORS[side]}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeOpacity={0.75}
+                          strokeWidth={1.75}
+                          testID={`${id}-speed-line-${side}`}
+                        />
                       );
                     })}
                     {chart.points.map((dot) => {

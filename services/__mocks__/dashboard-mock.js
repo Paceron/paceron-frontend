@@ -335,6 +335,7 @@ function buildSeriesRow({ sessionInstanceId, daysAgo, exercise, athlete, setNumb
     set_number: setNumber,
     feedback_id: sessionInstanceId * 1_000_000 + athlete.id * 100 + exercise.id * 10 + setNumber,
     exercise_id: exercise.id,
+    exercise_name: exercise.name,
     kind: exercise.kind,
     duration_ms: durationMs,
     // Sin tiempo activo el tiempo se evalúa igual con el fallback, y la
@@ -787,6 +788,27 @@ function bestTimeMetMsOf(validRows, tolerance) {
   return best;
 }
 
+// Procedencia de `best_time_met_ms`: el ejercicio y la fecha de la MISMA serie
+// que ganó. Se calcula con el mismo recorrido para no desincronizarse del tiempo.
+function bestTimeMetSourceOf(validRows, tolerance) {
+  let bestRow = null;
+  let best = null;
+  validRows.forEach((row) => {
+    if (metTargetOf(row, tolerance) !== true) return;
+    const timeMs = achievedTimeMs(row);
+    if (timeMs <= 0) return;
+    if (best === null || timeMs < best) {
+      best = timeMs;
+      bestRow = row;
+    }
+  });
+  if (!bestRow) return null;
+  return {
+    exercise_name: bestRow.exercise_name ?? '',
+    session_date: bestRow.session_date,
+  };
+}
+
 // Gap 44 (2026-11-12): par objetivo/logrado de distancia para el eje
 // Volumen del radar, sobre el MISMO conjunto de series (con y sin medición
 // válida) donde la distancia es parte del objetivo -- a propósito distinto
@@ -1080,6 +1102,7 @@ function buildSummary(rows, tolerance, openSessions) {
     compliance_rate: complianceRateOf(metrics, tolerance),
     best_time_ms: metrics.bestTimeMs,
     best_time_met_ms: bestTimeMetMsOf(metrics.validRows, tolerance),
+    best_time_met_source: bestTimeMetSourceOf(metrics.validRows, tolerance),
     target_distance_m: distancePair.target,
     achieved_target_distance_m: distancePair.achieved,
   };

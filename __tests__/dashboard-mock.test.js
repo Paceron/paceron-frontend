@@ -307,6 +307,15 @@ describe('dashboard mock — los números de la respuesta se reconstruyen desde 
     expect(data.totals.best_time_met_ms).toBeGreaterThanOrEqual(data.totals.best_time_ms);
   });
 
+  test('best_time_met_source (gap 43) dice de qué ejercicio y fecha salió la marca', async () => {
+    const data = await summary();
+    const source = data.totals.best_time_met_source;
+    expect(source).toBeTruthy();
+    expect(typeof source.exercise_name).toBe('string');
+    expect(source.exercise_name.length).toBeGreaterThan(0);
+    expect(source.session_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
   test('target_distance_m/achieved_target_distance_m (gap 44) cubren el mismo conjunto de series, series saltadas incluidas', async () => {
     const data = await summary();
     const rows = scopeRows(RANGE);

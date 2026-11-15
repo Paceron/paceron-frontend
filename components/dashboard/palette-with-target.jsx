@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
-import { formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
+import { consistencyPercent, formatBestTimeMetSource, formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
@@ -57,6 +57,10 @@ export function PaletteWithTarget({
   const [periodsWidth, setPeriodsWidth] = useState(0);
   const units = summary?.units ?? {};
   const totals = summary?.totals ?? {};
+  // El mejor tiempo cumplido solo vale con un tiempo > 0; si no, el KPI muestra
+  // "—" y tampoco se muestra la procedencia (evita un "0 · ejercicio" roto).
+  const bestTimeMet = normalizeBestTimeMs(totals.best_time_met_ms);
+  const bestTimeMetSource = bestTimeMet === null ? null : formatBestTimeMetSource(totals.best_time_met_source);
   const buckets = timeseries?.buckets ?? [];
   const speedBuckets = buckets.map((bucket) => ({ label: bucket.period_start, value: bucket.achieved_speed_kph }));
   const targetBuckets = buckets.map((bucket) => ({ label: bucket.period_start, value: bucket.target_speed_kph }));
@@ -146,8 +150,12 @@ export function PaletteWithTarget({
             key: 'consistency',
             // La fórmula del cv se indexa por `cv`, que es como se llama el campo
             // en el contrato (`consistency.cv`).
-            label: 'Consistencia',
-            value: summary?.consistency?.cv,
+            label: 'Variación de Velocidad (Consistencia)',
+            // El nombre completo no entra en una línea de 1/3 de ancho.
+            labelNumberOfLines: 2,
+            // El backend manda una fracción (0.35) y acá se muestra como 35 %.
+            value: consistencyPercent(summary?.consistency?.cv),
+            unit: '%',
             icon: 'chart-bell-curve',
           },
           {
@@ -158,9 +166,10 @@ export function PaletteWithTarget({
             // -- `best_time_ms` (cualquier serie válida, objetivo aparte)
             // sigue existiendo y es lo que muestra la paleta SIN objetivo.
             label: 'Mejor tiempo cumplido',
-            value: normalizeBestTimeMs(totals.best_time_met_ms),
+            value: bestTimeMet,
             unit: units.best_time,
             icon: 'timer-outline',
+            source: bestTimeMetSource,
           },
         ].map((kpi) => {
           // Clave del campo del backend (y del catálogo de ayuda). `pace` es
@@ -201,7 +210,9 @@ export function PaletteWithTarget({
                 icon={kpi.icon}
                 id={`${id}-kpi-${kpi.key}`}
                 label={kpi.label}
+                labelNumberOfLines={kpi.labelNumberOfLines ?? 1}
                 showInfo
+                source={kpi.source}
                 unit={kpi.unit}
                 value={kpi.value}
               />
@@ -283,7 +294,7 @@ export function PaletteWithTarget({
 
         {seriesSamples && seriesSamples.length ? (
           <ChartGridItem
-            description="Cómo se reparten las velocidades de las series del período: la caja abarca el 50 % central de las marcas, la línea del medio es la mediana y los bigotes llegan hasta el resto (los valores atípicos quedan marcados fuera). Es la geometría de la misma distribución de la que sale la consistencia del KPI."
+            description="Cómo se reparten las velocidades de las series del período: la caja abarca el 50 % central de las marcas, la línea del medio es la mediana y los bigotes llegan hasta el resto (los valores atípicos quedan marcados fuera). Es la geometría de la misma distribución de la que sale la variación de velocidad del KPI."
             icon="chart-bell-curve"
             id={`${id}-box-card`}
             preview={(
@@ -370,7 +381,7 @@ const DEFINITIONS = {
   achieved_speed_kph: 'Tu ritmo de carrera en el período: un solo número que resume todas las series válidas, dándole más peso a las más largas.',
   delta: 'Cuánto te acercaste o alejaste del objetivo, en porcentaje. Un valor positivo es una mejora respecto del objetivo; uno negativo, un resultado por debajo.',
   compliance_rate: 'Qué parte de tus series con objetivo cargado lo cumplieron dentro de la tolerancia permitida.',
-  cv: 'Cuán parejas fueron tus velocidades entre series. Cuanto más bajo, más consistente fuiste.',
+  cv: 'Variación de velocidad: cuán parejas fueron tus velocidades entre series. Cuanto más bajo el porcentaje, más consistente fuiste.',
   best_time_met_ms: 'Tu mejor tiempo entre las series que cumplieron el objetivo. Si ninguna lo cumplió, no hay marca que mostrar y ves «—».',
 };
 
@@ -385,7 +396,7 @@ const FORMULAS = {
   best_time_met_ms: 'El menor tiempo entre las series que cumplieron el objetivo (met_target=true), con la tolerancia aplicada en la consulta.',
   delta: 'Diferencia contra el objetivo en porcentaje. Positivo es mejora: en el eje temporal el signo viene invertido.',
   compliance_rate: 'Series válidas que cumplen el objetivo según la tolerancia aplicada, sobre las series válidas que tienen objetivo cargado.',
-  cv: 'Coeficiente de variación de la velocidad (σ ÷ μ) de las series válidas del período. Sin dato con menos de 2 series.',
+  cv: 'Coeficiente de variación de la velocidad (σ ÷ μ) de las series válidas del período, expresado en porcentaje. Sin dato con menos de 2 series.',
 };
 
 // `kpi.key` (el id corto que usan nativeID/el estado de tooltip abierto) NO

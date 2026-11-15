@@ -95,6 +95,25 @@ export function formatMetric(value, unit) {
   return `${decimal(n, 2)}${suffix}`;
 }
 
+// `consistency.cv` llega como fracción (0.35 = 35 %) y el contrato no le declara
+// una unidad. El KPI y los ejes del perfil lo muestran como porcentaje, así que
+// la conversión vive en un solo lugar y no repetida en cada pieza.
+export function consistencyPercent(cv) {
+  const n = toNumber(cv);
+  return n === null ? null : n * 100;
+}
+
+// Procedencia del mejor tiempo cumplido: `{ exercise_name, session_date }` tal
+// como la manda el resumen. Devuelve "100 mts planos · 28/09/2026" o null si el
+// backend no encontró una serie cumplidora con tiempo positivo.
+export function formatBestTimeMetSource(source) {
+  const name = typeof source?.exercise_name === 'string' ? source.exercise_name.trim() : '';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(source?.session_date ?? ''));
+  const date = match ? `${match[3]}/${match[2]}/${match[1]}` : '';
+  if (!name && !date) return null;
+  return [name, date].filter(Boolean).join(' · ');
+}
+
 // Igual que formatMetric pero con el signo explícito en los positivos, para
 // donde el signo es parte del dato y no un detalle: el delta de ritmo y la
 // diferencia de cumplimiento (que va en puntos porcentuales, D6 — "−6 pp" y no
