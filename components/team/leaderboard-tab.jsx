@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, View, Text } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 import { LeaderboardDateRangeModal } from './leaderboard-date-range-modal.jsx';
 import { useTeamLeaderboard } from '../../hooks/use-team-leaderboard.js';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -184,14 +185,14 @@ export function LeaderboardTab({ teamId }) {
             {fromDate} – {toDate}
           </Text>
           <IconTooltip idPrefix="leaderboard-tab-range-edit-tooltip" label="Editar rango" position="bottom">
-            <Pressable
-              className="h-6 w-6 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="leaderboard-tab-range-edit-button"
+            <IconButton
+              icon="pencil-outline"
+              iconSize={14}
+              idPrefix="leaderboard-tab-range-edit-button"
+              label="Editar rango"
               onPress={openRangeModal}
-              testID="leaderboard-tab-range-edit-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="pencil-outline" size={14} />
-            </Pressable>
+              size={28}
+            />
           </IconTooltip>
         </View>
       )}

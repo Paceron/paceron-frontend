@@ -5,6 +5,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { StartSessionButton } from './start-session-button.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
+import { useUpcomingTrainingsVisibility } from '../../hooks/use-upcoming-trainings-visibility.js';
 
 const PREVIEW_COUNT = 5;
 
@@ -53,19 +54,20 @@ function UpcomingTrainingCard({ training, variant, onPress }) {
   );
 }
 
-export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching }) {
+export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching, userId }) {
   const colors = useThemeColors();
   const [seeAllVisible, setSeeAllVisible] = useState(false);
   const [openTraining, setOpenTraining] = useState(null);
   const [detailVisible, setDetailVisible] = useState(false);
+  const { trainings: visibleTrainings, loading: statusLoading } = useUpcomingTrainingsVisibility(trainings, variant === 'member' ? userId : null);
 
   const openTrainingDetail = (training) => {
     setOpenTraining(training);
     setDetailVisible(true);
   };
 
-  const previewTrainings = trainings.slice(0, PREVIEW_COUNT);
-  const hasMore = trainings.length > PREVIEW_COUNT;
+  const previewTrainings = visibleTrainings.slice(0, PREVIEW_COUNT);
+  const hasMore = visibleTrainings.length > PREVIEW_COUNT;
 
   return (
     <View className="mt-6 gap-2" nativeID="upcoming-trainings-grid-root" testID="upcoming-trainings-grid-root">
@@ -73,12 +75,12 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching 
         <Text className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="upcoming-trainings-grid-title" testID="upcoming-trainings-grid-title">
           Próximos entrenamientos
         </Text>
-        {(loading || isFetching) && (
+        {(loading || isFetching || statusLoading) && (
           <ActivityIndicator color={colors.primary} nativeID="upcoming-trainings-grid-loading" size="small" testID="upcoming-trainings-grid-loading" />
         )}
       </View>
 
-      {!loading && previewTrainings.length === 0 && (
+      {!loading && !statusLoading && previewTrainings.length === 0 && (
         <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="upcoming-trainings-grid-empty" testID="upcoming-trainings-grid-empty">
           No tenés entrenamientos próximos.
         </Text>
@@ -99,7 +101,7 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching 
         >
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-horizontal" size={16} />
           <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="upcoming-trainings-grid-see-all-button-label" testID="upcoming-trainings-grid-see-all-button-label">
-            Ver todos ({trainings.length})
+            Ver todos ({visibleTrainings.length})
           </Text>
         </Pressable>
       )}
@@ -129,7 +131,7 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching 
             </Text>
             <ScrollView nativeID="upcoming-trainings-grid-see-all-modal-scroll" testID="upcoming-trainings-grid-see-all-modal-scroll">
               <View className="gap-2" nativeID="upcoming-trainings-grid-see-all-modal-list" testID="upcoming-trainings-grid-see-all-modal-list">
-                {trainings.map((training) => (
+                {visibleTrainings.map((training) => (
                   <UpcomingTrainingCard key={training.id} onPress={() => openTrainingDetail(training)} training={training} variant={variant} />
                 ))}
               </View>

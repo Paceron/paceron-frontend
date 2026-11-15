@@ -2,6 +2,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'rea
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { IconButton } from '../shared/icon-button.jsx';
 import { useCompetitionDetail } from '../../hooks/use-competitions.js';
 import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { buildCompetitionTitle } from '../../utils/competition-title.js';
@@ -52,9 +53,7 @@ export function CompetitionRankingModal({ visible, onClose, competition, members
             <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID="competition-ranking-modal-title" testID="competition-ranking-modal-title" numberOfLines={2}>
               {competition ? (competition.name ?? buildCompetitionTitle(competition)) : 'Ranking'}
             </Text>
-            <Pressable className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID="competition-ranking-modal-close-button" onPress={onClose} testID="competition-ranking-modal-close-button">
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-            </Pressable>
+            <IconButton icon="close" iconSize={18} idPrefix="competition-ranking-modal-close-button" label="Cerrar" onPress={onClose} size={32} />
           </View>
 
           {loading ? (

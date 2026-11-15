@@ -12,6 +12,7 @@ import {
   sortParticipantsByName,
 } from '../../utils/competition-participants.js';
 import { ParticipantAvatar } from '../session-runtime/participant-avatar.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 const ID_PREFIX = 'competition-participants-modal';
 
@@ -82,15 +83,14 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
             <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID={`${ID_PREFIX}-title`} testID={`${ID_PREFIX}-title`} numberOfLines={1}>
               Participantes
             </Text>
-            <Pressable
-              accessibilityLabel="Cerrar"
-              className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID={`${ID_PREFIX}-close-button`}
+            <IconButton
+              icon="close"
+              iconSize={18}
+              idPrefix={`${ID_PREFIX}-close-button`}
+              label="Cerrar"
               onPress={onClose}
-              testID={`${ID_PREFIX}-close-button`}
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-            </Pressable>
+              size={32}
+            />
           </View>
 
           <View
@@ -115,15 +115,14 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
               value={query}
             />
             {query ? (
-              <Pressable
-                accessibilityLabel="Limpiar búsqueda"
-                className="h-8 w-8 items-center justify-center rounded-full"
-                nativeID={`${ID_PREFIX}-search-clear-button`}
+              <IconButton
+                icon="close-circle"
+                iconSize={16}
+                idPrefix={`${ID_PREFIX}-search-clear-button`}
+                label="Limpiar búsqueda"
                 onPress={() => setQuery('')}
-                testID={`${ID_PREFIX}-search-clear-button`}
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={16} />
-              </Pressable>
+                size={32}
+              />
             ) : null}
           </View>
 

@@ -1,4 +1,4 @@
-import { upcomingTrainingsRange, selectUpcomingTrainings } from '../utils/upcoming-trainings.js';
+import { filterUpcomingTrainingsByStatus, upcomingTrainingsRange, selectUpcomingTrainings } from '../utils/upcoming-trainings.js';
 
 describe('upcomingTrainingsRange', () => {
   it('returns from=today and to=today+90 days', () => {
@@ -41,5 +41,23 @@ describe('selectUpcomingTrainings', () => {
       { id: '3', date: '2026-09-30', kind: 'training' },
     ];
     expect(selectUpcomingTrainings(days, now).map((d) => d.id)).toEqual(['2', '3', '1']);
+  });
+});
+
+describe('filterUpcomingTrainingsByStatus', () => {
+  const trainings = [
+    { id: 'a', sessionInstance: { id: 1 } },
+    { id: 'b', sessionInstance: { id: 2 } },
+    { id: 'c', sessionInstance: { id: 3 } },
+    { id: 'd' },
+  ];
+
+  it('excluye sesiones finalizadas o interrumpidas', () => {
+    const statuses = { 1: 'finished', 2: 'interrupted', 3: 'wip' };
+    expect(filterUpcomingTrainingsByStatus(trainings, statuses).map((t) => t.id)).toEqual(['c', 'd']);
+  });
+
+  it('mantiene las sesiones sin estado conocido', () => {
+    expect(filterUpcomingTrainingsByStatus(trainings, {}).map((t) => t.id)).toEqual(['a', 'b', 'c', 'd']);
   });
 });

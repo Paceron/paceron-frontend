@@ -15,6 +15,7 @@ import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 
 function TeamRow({ team, onPress, hasPendingRequests }) {
@@ -75,42 +76,37 @@ function TeamsListScreenContent() {
     >
       <ScreenCard nativeID="teams-list-screen-container" testID="teams-list-screen-container">
         <View className="mb-8 flex-row items-center gap-2" nativeID="teams-list-screen-header" testID="teams-list-screen-header">
-          <Pressable
-            className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
-            nativeID="teams-list-screen-back-button"
+          <IconButton
+            icon="arrow-left"
+            iconSize={18}
+            idPrefix="teams-list-screen-back-button"
+            label="Volver"
             onPress={() => router.back()}
-            testID="teams-list-screen-back-button"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
-          </Pressable>
+          />
           <Text className="flex-1 text-xl text-slate-900 dark:text-white" nativeID="teams-list-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="teams-list-screen-title">
             Mis equipos
           </Text>
           {activeRole === 'runner' && (
             <IconTooltip idPrefix="teams-list-search-button-tooltip" label="Buscar equipos">
-              <Pressable
-                accessibilityLabel="Buscar equipos"
-                className="rounded-full p-2 active:opacity-70"
-                nativeID="teams-list-search-button"
+              <IconButton
+                icon="magnify"
+                iconSize={22}
+                idPrefix="teams-list-search-button"
+                label="Buscar equipos"
                 onPress={() => router.push('/teams/search')}
-                style={{ backgroundColor: colors.primary }}
-                testID="teams-list-search-button"
-              >
-                <MaterialCommunityIcons color="#ffffff" name="magnify" size={22} />
-              </Pressable>
+                variant="primary"
+              />
             </IconTooltip>
           )}
           {canCreateTeam && (
             <IconTooltip idPrefix="teams-list-create-button-tooltip" label="Crear equipo">
-              <Pressable
-                accessibilityLabel="Crear equipo"
-                className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-                nativeID="teams-list-create-button"
+              <IconButton
+                icon="plus"
+                iconSize={22}
+                idPrefix="teams-list-create-button"
+                label="Crear equipo"
                 onPress={() => router.push('/teams/create')}
-                testID="teams-list-create-button"
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
-              </Pressable>
+              />
             </IconTooltip>
           )}
         </View>

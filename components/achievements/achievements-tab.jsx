@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
 import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
+import { isAchievementUnlocked } from '../../utils/achievement-status.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { LevelPips } from './level-pips.jsx';
 import { AchievementDetailModal } from './achievement-detail-modal.jsx';
@@ -17,10 +18,14 @@ function AchievementCard({ achievement, columnClass }) {
   const meta = levelMeta(achievement.currentLevel || 1);
   const idPrefix = `achievements-tab-card-${achievement.id}`;
   const [detailVisible, setDetailVisible] = useState(false);
+  const unlocked = isAchievementUnlocked(achievement);
+  const cardClass = unlocked
+    ? 'border-primary/40 bg-primary-tint-subtle dark:border-primary/30 dark:bg-primary/10'
+    : 'border-slate-200 bg-slate-50 dark:border-transparent dark:bg-surface-2';
 
   return (
     <>
-      <Pressable className={`${columnClass} rounded-2xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:border-transparent dark:bg-surface-2 dark:hover:bg-surface-3 dark:active:bg-surface-3`} nativeID={idPrefix} onPress={() => setDetailVisible(true)} testID={idPrefix}>
+      <Pressable className={`${columnClass} rounded-2xl border p-3 transition-colors duration-150 hover:opacity-90 active:opacity-80 ${cardClass}`} nativeID={idPrefix} onPress={() => setDetailVisible(true)} testID={idPrefix}>
         {/* `achievement.iconName` (del catálogo, Gap 31) identifica AL LOGRO
             en sí (medalla, llama, estrella, según cada uno) -- antes se
             mostraba el ícono del NIVEL (meta.icon, genérico por nivel 1-5),
@@ -32,10 +37,20 @@ function AchievementCard({ achievement, columnClass }) {
             glyphMap real y cae a un fallback si falta o no existe
             (2026-11-13). */}
         <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-          <MaterialCommunityIcons color={meta.color} name={resolveAchievementIconName(achievement.iconName)} size={22} />
+          <View style={unlocked ? undefined : { opacity: 0.55 }} nativeID={`${idPrefix}-icon-wrap`} testID={`${idPrefix}-icon-wrap`}>
+            <MaterialCommunityIcons color={meta.color} name={resolveAchievementIconName(achievement.iconName)} size={22} />
+          </View>
           <Text className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
             {achievement.name}
           </Text>
+          {unlocked ? (
+            <View className="flex-row items-center gap-1 rounded-full bg-primary px-2 py-0.5" nativeID={`${idPrefix}-unlocked-badge`} testID={`${idPrefix}-unlocked-badge`}>
+              <MaterialCommunityIcons color="#111518" name="trophy" size={11} />
+              <Text className="text-[10px] font-bold text-[#111518]" nativeID={`${idPrefix}-unlocked-badge-label`} testID={`${idPrefix}-unlocked-badge-label`}>
+                Desbloqueado
+              </Text>
+            </View>
+          ) : null}
         </View>
         {achievement.levelName && (
           <Text className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-level`} testID={`${idPrefix}-level`}>

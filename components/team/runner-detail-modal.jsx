@@ -1,6 +1,6 @@
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { IconButton } from '../shared/icon-button.jsx';
 import { useUser } from '../../hooks/use-user.js';
 import { calculateAge } from '../../utils/age.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
@@ -51,9 +51,7 @@ export function RunnerDetailModal({ visible, onClose, userId, joinedAt, groupNam
             <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID="runner-detail-modal-title" testID="runner-detail-modal-title">
               Detalle del corredor
             </Text>
-            <Pressable className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID="runner-detail-modal-close-button" onPress={onClose} testID="runner-detail-modal-close-button">
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-            </Pressable>
+            <IconButton icon="close" iconSize={18} idPrefix="runner-detail-modal-close-button" label="Cerrar" onPress={onClose} size={32} />
           </View>
 
           {loading || !user ? (

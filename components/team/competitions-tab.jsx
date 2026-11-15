@@ -10,8 +10,7 @@ import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useCompetitions, useCompetitionMutations, useCompetitionAttempts, useSeedDynamicRouteCompetition } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
-import { buildCompetitionTitle } from '../../utils/competition-title.js';
-import { formatDisplayDate } from '../../utils/format-date-display.js';
+import { buildCompetitionTitle, formatCompetitionDate } from '../../utils/competition-title.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { DateField } from '../forms/fields.jsx';
@@ -170,7 +169,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
   const hasStarted = new Date(competition.startAt).getTime() <= now;
   const canPlayNow = hasStarted && remainingAttempts > 0;
   const runTooltipLabel = !hasStarted
-    ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
+    ? `Todavía no empezó (desde ${formatCompetitionDate(competition.startAt)})`
     : remainingAttempts > 0
       ? `Correr esta trayectoria (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
       : 'Sin intentos disponibles';
@@ -224,7 +223,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
           </Text>
           {competition.type === 'route' && competition.status === 'active' && (
             <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-meta`} testID={`${idPrefix}-route-meta`}>
-              Desde: {formatDisplayDate(competition.startAt)} · Intentos: {attemptsLabel}
+              Desde: {formatCompetitionDate(competition.startAt)} · Intentos: {attemptsLabel}
             </Text>
           )}
         </View>
@@ -326,7 +325,7 @@ function CompetitionRow({ competition, members, isTrainerView, currentUserId, ex
         <View className="mt-3 items-center justify-center" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
           <Text className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
             {!hasStarted
-              ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
+              ? `Todavía no empezó (desde ${formatCompetitionDate(competition.startAt)})`
               : remainingAttempts > 0
                 ? `Correr una trayectoria solo está disponible en la app nativa (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
                 : 'Ya alcanzaste el máximo de intentos para esta competencia'}

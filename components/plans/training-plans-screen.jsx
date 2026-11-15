@@ -17,6 +17,7 @@ import { ScreenCard } from '../shared/screen-card.jsx';
 import { SessionsCatalogTab } from './sessions-catalog-tab.jsx';
 import { ExercisesCatalogTab } from './exercises-catalog-tab.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 // Planes / Sesiones / Ejercicios — a diferencia de TeamDetailScreen
 // (pestañas solo en web), acá van en ambas plataformas: cada pestaña es
@@ -56,7 +57,6 @@ function PlanRow({ plan, onPress }) {
 
 function PlansTab() {
   const router = useRouter();
-  const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const { plans, loading } = useTrainingPlans(user?.userId);
@@ -65,15 +65,13 @@ function PlansTab() {
     <SectionCard
       headerRight={(
         <IconTooltip idPrefix="training-plans-create-button-tooltip" label="Crear plan">
-          <Pressable
-            accessibilityLabel="Crear plan"
-            className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-            nativeID="training-plans-create-button"
+          <IconButton
+            icon="plus"
+            iconSize={22}
+            idPrefix="training-plans-create-button"
+            label="Crear plan"
             onPress={() => router.push('/training-plans/create')}
-            testID="training-plans-create-button"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
-          </Pressable>
+          />
         </IconTooltip>
       )}
       icon="clipboard-text-outline"
