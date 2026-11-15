@@ -195,7 +195,7 @@ function MyCalendarScreenContent() {
               year={visibleYear}
             />
 
-            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} variant="member" />
+            <UpcomingTrainingsGrid isFetching={upcomingIsFetching} loading={upcomingLoading} trainings={filteredUpcomingTrainings} userId={userId} variant="member" />
           </>
         )}
 

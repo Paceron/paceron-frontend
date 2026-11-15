@@ -2,25 +2,31 @@ import { useState } from 'react';
 import { Pressable, View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
-import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
+import { isAchievementUnlocked } from '../../utils/achievement-status.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { LevelPips } from './level-pips.jsx';
 import { AchievementDetailModal } from './achievement-detail-modal.jsx';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { isWeb } from '../../utils/platform.js';
+import { useThemeColors } from '../../theme/colors.js';
 
 // Tocar la card abre el detalle (descripción + progreso) -- pedido
 // 2026-10-14, sirve igual para logros bloqueados (qué falta) y
 // desbloqueados (progreso actual).
 function AchievementCard({ achievement, columnClass }) {
-  const meta = levelMeta(achievement.currentLevel || 1);
+  const colors = useThemeColors();
   const idPrefix = `achievements-tab-card-${achievement.id}`;
   const [detailVisible, setDetailVisible] = useState(false);
+  const unlocked = isAchievementUnlocked(achievement);
+  const cardClass = unlocked
+    ? 'border-primary/40 bg-primary-tint-subtle dark:border-primary/30 dark:bg-primary/10'
+    : 'border-slate-200 bg-slate-100/70 dark:border-slate-700/60 dark:bg-slate-800/50';
+  const iconColor = unlocked ? colors.primary : colors.onSurfaceVariant;
 
   return (
     <>
-      <Pressable className={`${columnClass} rounded-2xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:border-transparent dark:bg-surface-2 dark:hover:bg-surface-3 dark:active:bg-surface-3`} nativeID={idPrefix} onPress={() => setDetailVisible(true)} testID={idPrefix}>
+      <Pressable className={`${columnClass} rounded-2xl border p-3 transition-colors duration-150 hover:opacity-90 active:opacity-80 ${cardClass}`} nativeID={idPrefix} onPress={() => setDetailVisible(true)} testID={idPrefix}>
         {/* `achievement.iconName` (del catálogo, Gap 31) identifica AL LOGRO
             en sí (medalla, llama, estrella, según cada uno) -- antes se
             mostraba el ícono del NIVEL (meta.icon, genérico por nivel 1-5),
@@ -32,8 +38,10 @@ function AchievementCard({ achievement, columnClass }) {
             glyphMap real y cae a un fallback si falta o no existe
             (2026-11-13). */}
         <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-          <MaterialCommunityIcons color={meta.color} name={resolveAchievementIconName(achievement.iconName)} size={22} />
-          <Text className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
+          <View style={unlocked ? undefined : { opacity: 0.5 }} nativeID={`${idPrefix}-icon-wrap`} testID={`${idPrefix}-icon-wrap`}>
+            <MaterialCommunityIcons color={iconColor} name={resolveAchievementIconName(achievement.iconName)} size={22} />
+          </View>
+          <Text className="flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-name`} numberOfLines={2} testID={`${idPrefix}-name`}>
             {achievement.name}
           </Text>
         </View>

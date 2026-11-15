@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 // ScrollView de gesture-handler (no el de 'react-native' plano) — en
 // nativo, un ScrollView plano no negocia correctamente con un
 // GestureDetector anidado adentro (acá, las DraggableExerciseCard con
@@ -19,6 +19,7 @@ import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
 import { DraggableExerciseCard } from './session-drag-and-drop.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 // Mini-catálogo embebido en el modal de sesión (columna derecha, solo
 // web ancho) — mismo criterio visual que exercises-catalog-tab.jsx,
@@ -99,15 +100,13 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
         <View className="mb-2 flex-row items-center justify-between" nativeID="session-exercise-panel-header" testID="session-exercise-panel-header">
           <Text className={FIELD_LABEL} nativeID="session-exercise-panel-header-label" testID="session-exercise-panel-header-label">Catálogo de ejercicios</Text>
           <IconTooltip idPrefix="session-exercise-panel-create-button-tooltip-h" label="Crear ejercicio">
-            <Pressable
-              accessibilityLabel="Crear ejercicio"
-              className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="session-exercise-panel-create-button"
+            <IconButton
+              icon="plus"
+              iconSize={20}
+              idPrefix="session-exercise-panel-create-button"
+              label="Crear ejercicio"
               onPress={() => setShowCreateModal(true)}
-              testID="session-exercise-panel-create-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
-            </Pressable>
+            />
           </IconTooltip>
         </View>
 
@@ -158,15 +157,13 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
       <View className="mb-2 flex-row items-center justify-between" nativeID="session-exercise-panel-header" testID="session-exercise-panel-header">
         <Text className={FIELD_LABEL} nativeID="session-exercise-panel-header-label" testID="session-exercise-panel-header-label">Catálogo de ejercicios</Text>
         <IconTooltip idPrefix="session-exercise-panel-create-button-tooltip-v" label="Crear ejercicio">
-          <Pressable
-            accessibilityLabel="Crear ejercicio"
-            className="rounded-full p-1.5 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-            nativeID="session-exercise-panel-create-button"
+          <IconButton
+            icon="plus"
+            iconSize={20}
+            idPrefix="session-exercise-panel-create-button"
+            label="Crear ejercicio"
             onPress={() => setShowCreateModal(true)}
-            testID="session-exercise-panel-create-button"
-          >
-            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={20} />
-          </Pressable>
+          />
         </IconTooltip>
       </View>
 

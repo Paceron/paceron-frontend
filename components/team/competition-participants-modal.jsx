@@ -12,11 +12,13 @@ import {
   sortParticipantsByName,
 } from '../../utils/competition-participants.js';
 import { ParticipantAvatar } from '../session-runtime/participant-avatar.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 const ID_PREFIX = 'competition-participants-modal';
 
 function progressLabel(competition, progress) {
   if (competition?.type === 'route') {
+    if (competition.status !== 'active' && competition.status !== 'finished') return '—';
     if (progress?.complianceRatio != null) return `${Math.round(progress.complianceRatio)}%`;
     return progress?.hasAttempt ? '—' : 'Sin intentos';
   }
@@ -49,6 +51,7 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
   );
   const filteredRows = useMemo(() => filterParticipants(rows, query), [rows, query]);
   const isRoute = competition?.type === 'route';
+  const canViewAttempts = isRoute && (competition?.status === 'active' || competition?.status === 'finished');
 
   const counterText = query
     ? `${filteredRows.length} de ${rows.length} participantes`
@@ -80,15 +83,14 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
             <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID={`${ID_PREFIX}-title`} testID={`${ID_PREFIX}-title`} numberOfLines={1}>
               Participantes
             </Text>
-            <Pressable
-              accessibilityLabel="Cerrar"
-              className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID={`${ID_PREFIX}-close-button`}
+            <IconButton
+              icon="close"
+              iconSize={18}
+              idPrefix={`${ID_PREFIX}-close-button`}
+              label="Cerrar"
               onPress={onClose}
-              testID={`${ID_PREFIX}-close-button`}
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-            </Pressable>
+              size={32}
+            />
           </View>
 
           <View
@@ -113,15 +115,14 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
               value={query}
             />
             {query ? (
-              <Pressable
-                accessibilityLabel="Limpiar búsqueda"
-                className="h-8 w-8 items-center justify-center rounded-full"
-                nativeID={`${ID_PREFIX}-search-clear-button`}
+              <IconButton
+                icon="close-circle"
+                iconSize={16}
+                idPrefix={`${ID_PREFIX}-search-clear-button`}
+                label="Limpiar búsqueda"
                 onPress={() => setQuery('')}
-                testID={`${ID_PREFIX}-search-clear-button`}
-              >
-                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close-circle" size={16} />
-              </Pressable>
+                size={32}
+              />
             ) : null}
           </View>
 
@@ -169,16 +170,17 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
                       <Text className="text-sm font-semibold text-primary" nativeID={`${rowId}-progress`} testID={`${rowId}-progress`}>
                         {progressLabel(competition, row.progress)}
                       </Text>
-                      {isRoute ? (
+                      {canViewAttempts ? (
                         <Pressable
                           accessibilityLabel={`Ver intentos de ${row.name}`}
                           accessibilityRole="button"
-                          className="rounded-full px-2 py-1 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
+                          className="h-8 flex-row items-center gap-1 rounded-full bg-primary px-2.5 active:opacity-80"
                           nativeID={`${rowId}-attempts-button`}
                           onPress={() => onOpenAttempts(competition, row.userId)}
                           testID={`${rowId}-attempts-button`}
                         >
-                          <Text className="text-xs font-semibold text-primary" nativeID={`${rowId}-attempts-label`} testID={`${rowId}-attempts-label`}>
+                          <MaterialCommunityIcons color={colors.onPrimary} name="format-list-bulleted" size={14} />
+                          <Text className="text-xs font-bold text-[#111518]" nativeID={`${rowId}-attempts-label`} testID={`${rowId}-attempts-label`}>
                             Ver intentos
                           </Text>
                         </Pressable>

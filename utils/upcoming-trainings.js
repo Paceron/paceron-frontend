@@ -20,3 +20,13 @@ export function selectUpcomingTrainings(days, now = new Date()) {
     .filter((day) => day.kind === 'training' && day.date >= todayISO)
     .sort((a, b) => a.date.localeCompare(b.date));
 }
+
+const CLOSED_RUNNER_STATUSES = new Set(['finished', 'interrupted']);
+
+export function filterUpcomingTrainingsByStatus(trainings, statusBySessionId = {}) {
+  return trainings.filter((training) => {
+    const sessionInstanceId = training.sessionInstance?.id;
+    if (sessionInstanceId == null) return true;
+    return !CLOSED_RUNNER_STATUSES.has(statusBySessionId[String(sessionInstanceId)]);
+  });
+}

@@ -9,12 +9,15 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { buildReviewSlotNavParams, reviewSlotFromNavParams } from '../../utils/review-slot-nav.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
+import { useSessionSyncStore } from '../../store/session-sync-store.js';
+import { LoadingOverlay } from '../shared/loading-overlay.jsx';
 import { useSessionFeedback, useSaveSetMutation, useFinishRunnerMutation, useSaveExerciseMutation, buildManualSetPayload } from '../../hooks/use-session-feedback.js';
 import { useSessionInstance } from '../../hooks/use-session-instance.js';
 import { useUser } from '../../hooks/use-user.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { createRunnerSession } from '../../services/runnerSession.js';
+import { createRunnerSessionEnsurer } from '../../utils/runner-session-ensure.js';
 import { buildSessionReviewModel } from '../../services/normalizers.js';
 import { useCompetitions } from '../../hooks/use-competitions.js';
 import { findActiveMetricCompetitionId } from '../../utils/competition-match.js';
@@ -52,10 +55,10 @@ const formatDayTime = (iso) => {
 
 // --- Guardado por ejercicio: una tanda de valores → varias series ---
 
-function ExerciseBulkSave({ exercise, onClose, slot }) {
+function ExerciseBulkSave({ exercise, onClose, slot, ensureRunnerSession }) {
   const colors = useThemeColors();
   const sessionInstanceId = slot.sessionInstanceId ?? slot.sessionInstance?.id;
-  const { mutate: saveExercise, isPending } = useSaveExerciseMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId });
+  const { mutate: saveExercise, isPending } = useSaveExerciseMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId, ensureRunnerSession });
 
   const [durationText, setDurationText] = useState('');
   const [activeText, setActiveText] = useState('');
@@ -145,7 +148,7 @@ function ExerciseBulkSave({ exercise, onClose, slot }) {
 
 // --- Vista A: lista de ejercicios/series ---
 
-function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, refreshing, onRefresh }) {
+function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, refreshing, onRefresh, ensureRunnerSession }) {
   const colors = useThemeColors();
   const router = useRouter();
   const showBadge = slot.mode === 'review';
@@ -323,7 +326,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
                   })}
                 </View>
                 {bulkExerciseId === exercise.exerciseId && (
-                  <ExerciseBulkSave exercise={exercise} onClose={() => setBulkExerciseId(null)} slot={slot} />
+                  <ExerciseBulkSave ensureRunnerSession={ensureRunnerSession} exercise={exercise} onClose={() => setBulkExerciseId(null)} slot={slot} />
                 )}
               </View>
               );
@@ -371,7 +374,7 @@ function DataField({ editable, editing, id, label, hint, children, onToggleEdit 
 
 // --- Vista B: detalle a pantalla completa + edición ---
 
-function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSaved }) {
+function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSaved, ensureRunnerSession }) {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const feedback = row.feedback;
@@ -405,7 +408,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
   const [error, setError] = useState(null);
 
   const sessionInstanceId = slot.sessionInstanceId ?? slot.sessionInstance?.id;
-  const { mutate: saveSet, isPending: saving } = useSaveSetMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId });
+  const { mutate: saveSet, isPending: saving } = useSaveSetMutation({ sessionInstanceId, athleteUserId: slot.athleteUserId, ensureRunnerSession });
 
   const isDirty = useFormDirty({ durationText, activeText, distanceText, startedDate, startedTime, endedDate, endedTime, annotations }, `${exerciseId}-${row.setNumber}`);
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
@@ -846,7 +849,6 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
 
 function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   const router = useRouter();
-  const colors = useThemeColors();
   const [selected, setSelected] = useState(null);
   const [completedNow, setCompletedNow] = useState(false);
   // Resuelve la serie abierta por URL UNA sola vez al cargar (F5/entrada
@@ -858,21 +860,26 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   const { sessionInstance: fetchedSessionInstance, loading: instanceLoading } = useSessionInstance(sessionInstanceId, !slot.sessionInstance);
   const sessionInstance = slot.sessionInstance ?? fetchedSessionInstance;
   const { groups, loading, refetch: refetchFeedback } = useSessionFeedback(sessionInstanceId, slot.athleteUserId);
+  const syncing = useSessionSyncStore((s) => Boolean(s.syncingBySessionId[String(sessionInstanceId)]));
+  const wasSyncingRef = useRef(false);
+  useEffect(() => {
+    if (wasSyncingRef.current && !syncing) refetchFeedback();
+    wasSyncingRef.current = syncing;
+  }, [syncing, refetchFeedback]);
   const { refreshing, onRefresh } = usePullToRefresh(refetchFeedback);
   // Spec 4b (Gap 33 punto 29) -- mismo criterio que session-pre-start-screen.jsx:
   // un ingreso manual (retroactivo) también cuenta si cae dentro de la ventana
   // de una competencia type='metric' activa del atleta en cuestión.
   const { competitions: activeMetricCompetitions } = useCompetitions(slot.teamId, { status: 'active' });
 
-  // Primer ingreso al modo manual → upsert idempotente de runner_session
-  // (wip). Fire-and-forget: si falla (offline), el pipeline de sync del
-  // próximo run reintenta el mismo create. El 200 de "ya existía" es ok.
-  const manualFiredRef = useRef(false);
-  useEffect(() => {
-    if (slot.mode !== 'manual' || manualFiredRef.current) return;
-    manualFiredRef.current = true;
-    const competitionId = findActiveMetricCompetitionId(activeMetricCompetitions, slot.athleteUserId, slot.date);
-    createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), athleteUserId: slot.athleteUserId, competitionId }).catch(() => {});
+  // Una sesión manual sin runner_session solo lo crea cuando hay un guardado
+  // real: entrar a ver el registro no debe marcar al atleta como "sin cerrar".
+  const ensureRunnerSession = useMemo(() => {
+    if (slot.mode !== 'manual') return null;
+    return createRunnerSessionEnsurer(() => {
+      const competitionId = findActiveMetricCompetitionId(activeMetricCompetitions, slot.athleteUserId, slot.date);
+      return createRunnerSession(sessionInstanceId, { startDate: new Date().toISOString(), athleteUserId: slot.athleteUserId, competitionId });
+    });
   }, [slot.mode, sessionInstanceId, slot.athleteUserId, slot.date, activeMetricCompetitions]);
 
   // Completar la sesión (PATCH finished) vive ACÁ y no en el detalle: al
@@ -919,8 +926,13 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
   // refetch de fondo con datos ya mostrados no debería tapar la pantalla.
   if ((instanceLoading && !sessionInstance) || (loading && groups.length === 0)) {
     return (
-      <View className="flex-1 items-center justify-center bg-paper px-6 dark:bg-ink" nativeID="session-review-loading-root" testID="session-review-loading-root">
-        <ActivityIndicator color={colors.primary} />
+      <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-review-loading-root" testID="session-review-loading-root">
+        <LoadingOverlay
+          fullScreen
+          id="session-review-loading"
+          label={syncing ? 'Sincronizando el registro…' : 'Cargando el registro…'}
+          visible
+        />
       </View>
     );
   }
@@ -943,36 +955,44 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
 
   if (selected) {
     return (
-      <SetDetailView
-        exerciseId={selected.exerciseId}
-        exerciseName={selected.exerciseName}
-        key={`${selected.exerciseId}-${selected.setNumber}`}
-        onBack={() => {
-          setSelected(null);
-          router.replace({ params: baseNavParams, pathname: '/training-session-review' });
-        }}
-        onSeriesSaved={() => {
-          saveCountRef.current += 1;
-        }}
-        row={selected.row}
-        slot={{ ...slot, sessionName, sessionInstance }}
-      />
+      <View className="flex-1" nativeID="session-review-sync-detail-root" testID="session-review-sync-detail-root">
+        <SetDetailView
+          ensureRunnerSession={ensureRunnerSession}
+          exerciseId={selected.exerciseId}
+          exerciseName={selected.exerciseName}
+          key={`${selected.exerciseId}-${selected.setNumber}`}
+          onBack={() => {
+            setSelected(null);
+            router.replace({ params: baseNavParams, pathname: '/training-session-review' });
+          }}
+          onSeriesSaved={() => {
+            saveCountRef.current += 1;
+          }}
+          row={selected.row}
+          slot={{ ...slot, sessionName, sessionInstance }}
+        />
+        <LoadingOverlay fullScreen id="session-review-sync" label="Sincronizando el registro…" visible={syncing} />
+      </View>
     );
   }
 
   return (
-    <ReviewListView
-      completing={finishing}
-      loading={loading}
-      onOpenRow={(payload) => {
-        setSelected(payload);
-        router.replace({ params: { ...baseNavParams, exerciseId: String(payload.exerciseId), setNumber: String(payload.setNumber) }, pathname: '/training-session-review' });
-      }}
-      onRefresh={onRefresh}
-      refreshing={refreshing}
-      reviewModel={reviewModel}
-      slot={navSlot}
-    />
+    <View className="flex-1" nativeID="session-review-sync-list-root" testID="session-review-sync-list-root">
+      <ReviewListView
+        completing={finishing}
+        ensureRunnerSession={ensureRunnerSession}
+        loading={loading}
+        onOpenRow={(payload) => {
+          setSelected(payload);
+          router.replace({ params: { ...baseNavParams, exerciseId: String(payload.exerciseId), setNumber: String(payload.setNumber) }, pathname: '/training-session-review' });
+        }}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        reviewModel={reviewModel}
+        slot={navSlot}
+      />
+      <LoadingOverlay fullScreen id="session-review-sync" label="Sincronizando el registro…" visible={syncing} />
+    </View>
   );
 }
 

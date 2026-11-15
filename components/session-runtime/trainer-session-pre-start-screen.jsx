@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -69,6 +70,13 @@ function TrainerSessionPreStartScreenContent() {
   const [participantsExpanded, setParticipantsExpanded] = useState(false);
   const [participantsQuery, setParticipantsQuery] = useState('');
   const [attendanceVisible, setAttendanceVisible] = useState(false);
+  const [starting, setStarting] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setStarting(false);
+    }, []),
+  );
 
   // El store (Zustand, sin persist) es el camino rápido -- siempre
   // preferido, cero requests extra. Un F5 en web lo vacía (bug real,
@@ -82,7 +90,7 @@ function TrainerSessionPreStartScreenContent() {
 
   const teamId = pendingSession?.teamId ?? null;
   const groupId = pendingSession?.groupId ?? null;
-  const { members, loading: rosterLoading } = useTeamRoster(teamId, groupId ? [groupId] : []);
+  const { members, loading: rosterLoading, error: rosterError } = useTeamRoster(teamId, groupId ? [groupId] : []);
   const trainerUserId = useAuthStore((s) => s.userId);
   const { user: trainerUser } = useUser(trainerUserId);
   // El entrenador puede figurar en el roster del grupo (es dueño del equipo,
@@ -111,6 +119,8 @@ function TrainerSessionPreStartScreenContent() {
   // getCurrentPositionAsync bloqueante (ya descartado del lado del corredor
   // por no respetar su propio timeout).
   const handlePlay = async () => {
+    if (starting) return;
+    setStarting(true);
     const startedAt = Date.now();
     let gpsEnabled = false;
     try {
@@ -231,6 +241,15 @@ function TrainerSessionPreStartScreenContent() {
           </View>
         </View>
 
+        {trainerUser && (
+          <View className="mb-4" nativeID="trainer-session-pre-start-screen-trainer-container" testID="trainer-session-pre-start-screen-trainer-container">
+            <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-trainer-label" testID="trainer-session-pre-start-screen-trainer-label">
+              Entrenador
+            </Text>
+            <TrainerCard idPrefix="trainer-session-pre-start-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
+          </View>
+        )}
+
         <View className="mb-4" nativeID="trainer-session-pre-start-screen-participants-container" testID="trainer-session-pre-start-screen-participants-container">
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-label" testID="trainer-session-pre-start-screen-participants-label">
             Participantes ({sortedMembers.length})
@@ -246,14 +265,24 @@ function TrainerSessionPreStartScreenContent() {
               value={participantsQuery}
             />
           )}
-          {trainerUser && (
-            <TrainerCard idPrefix="trainer-session-pre-start-screen-trainer-card" name={trainerUser.name} photoUrl={trainerUser.photoUrl} />
-          )}
-          <View className="mt-2 gap-2" nativeID="trainer-session-pre-start-screen-participants-list" testID="trainer-session-pre-start-screen-participants-list">
-            {visibleMembers.map((member) => (
+          <View className="gap-2" nativeID="trainer-session-pre-start-screen-participants-list" testID="trainer-session-pre-start-screen-participants-list">
+            {rosterLoading ? (
+              <View className="flex-row items-center gap-2 py-2" nativeID="trainer-session-pre-start-screen-participants-loading" testID="trainer-session-pre-start-screen-participants-loading">
+                <ActivityIndicator color="#8cc63e" size="small" />
+                <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-loading-label" testID="trainer-session-pre-start-screen-participants-loading-label">
+                  Cargando participantes…
+                </Text>
+              </View>
+            ) : null}
+            {!rosterLoading && rosterError ? (
+              <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-error" testID="trainer-session-pre-start-screen-participants-error">
+                No pudimos cargar los participantes.
+              </Text>
+            ) : null}
+            {!rosterLoading && !rosterError && visibleMembers.map((member) => (
               <ParticipantRow idPrefix="trainer-session-pre-start-screen" key={member.userId} member={member} />
             ))}
-            {!rosterLoading && sortedMembers.length === 0 && (
+            {!rosterLoading && !rosterError && sortedMembers.length === 0 && (
               <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-participants-empty" testID="trainer-session-pre-start-screen-participants-empty">
                 Sin participantes en este grupo.
               </Text>
@@ -279,7 +308,8 @@ function TrainerSessionPreStartScreenContent() {
         <View className="border-t border-slate-100 bg-white px-4 pb-4 pt-3 dark:border-slate-800 dark:bg-surface" nativeID="trainer-session-pre-start-screen-footer" testID="trainer-session-pre-start-screen-footer">
           <View className="items-center" nativeID="trainer-session-pre-start-screen-play-container" testID="trainer-session-pre-start-screen-play-container">
             <Pressable
-              className="h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80"
+              className={`h-24 w-24 items-center justify-center self-center rounded-full bg-primary active:opacity-80 ${starting ? 'opacity-50' : ''}`}
+              disabled={starting}
               nativeID="trainer-session-pre-start-screen-play-button"
               onPress={handlePlay}
               testID="trainer-session-pre-start-screen-play-button"
@@ -287,7 +317,11 @@ function TrainerSessionPreStartScreenContent() {
               {/* Ya abierta (el entrenador salió y volvió sin finalizar) -- no
                   es "iniciar de nuevo", es retomar la supervisión de la misma
                   sesión. Mismo ícono base (play), distinto label abajo. */}
-              <MaterialCommunityIcons color={colors.onPrimary} name={sessionAlreadyOpen ? 'play-circle-outline' : 'play'} size={44} />
+              {starting ? (
+                <ActivityIndicator color={colors.onPrimary} size="small" />
+              ) : (
+                <MaterialCommunityIcons color={colors.onPrimary} name={sessionAlreadyOpen ? 'play-circle-outline' : 'play'} size={44} />
+              )}
             </Pressable>
             {sessionAlreadyOpen && (
               <Text className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="trainer-session-pre-start-screen-play-resume-label" testID="trainer-session-pre-start-screen-play-resume-label">

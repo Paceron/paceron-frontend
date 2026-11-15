@@ -17,6 +17,7 @@ import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { usePendingRequestsCount } from '../../hooks/use-join-requests.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
+import { IconButton } from '../shared/icon-button.jsx';
 
 const isWeb = Platform.OS === 'web';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -31,8 +32,6 @@ const ANIMATION_CONFIG = { duration: 280, easing: Easing.out(Easing.cubic) };
 export const MOBILE_TOPBAR_HEIGHT = 60;
 
 function TopAppBar({ onTogglePress, open }) {
-  const colors = useThemeColors();
-
   return (
     <View
       className="h-[60px] w-full flex-row items-center justify-center border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-surface"
@@ -40,15 +39,14 @@ function TopAppBar({ onTogglePress, open }) {
       style={{ zIndex: 70 }}
       testID="mobile-topbar"
     >
-      <Pressable
-        accessibilityLabel={open ? 'Cerrar menú' : 'Abrir menú'}
-        className="absolute left-4 rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-        nativeID="mobile-topbar-menu-toggle"
+      <IconButton
+        className="absolute left-4"
+        icon={open ? 'close' : 'menu'}
+        iconSize={24}
+        idPrefix="mobile-topbar-menu-toggle"
+        label={open ? 'Cerrar menú' : 'Abrir menú'}
         onPress={onTogglePress}
-        testID="mobile-topbar-menu-toggle"
-      >
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'close' : 'menu'} size={24} />
-      </Pressable>
+      />
       <View className="flex-row items-center gap-3" nativeID="mobile-topbar-brand" testID="mobile-topbar-brand">
         <PaceronBrand size={18} />
       </View>

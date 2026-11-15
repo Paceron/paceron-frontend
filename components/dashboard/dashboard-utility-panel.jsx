@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useThemeColors } from '../../theme/colors.js';
+import { Text, View } from 'react-native';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { TabBar } from '../shared/tab-bar.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 // Filtros y Calidad de los datos en UN panel con dos pestañas al mismo nivel.
 //
@@ -28,7 +27,6 @@ export function DashboardUtilityPanel({
   meta = null,
   onOpenFilters = () => {},
 }) {
-  const colors = useThemeColors();
   const narrow = useIsNarrowWeb();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState('filters');
@@ -81,19 +79,17 @@ export function DashboardUtilityPanel({
             wrapClassName="flex-row flex-wrap gap-2"
           />
         </View>
-        {(!narrow || current === 'quality') ? <Pressable
+        {(!narrow || current === 'quality') ? <IconButton
           accessibilityHint={open ? 'Oculta el contenido del panel' : 'Muestra el contenido del panel'}
-          accessibilityLabel={open ? 'Minimizar filtros y calidad' : 'Maximizar filtros y calidad'}
-          accessibilityRole="button"
           accessibilityState={{ expanded: open }}
-          className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
           hitSlop={8}
-          nativeID={`${id}-toggle`}
+          icon={open ? 'chevron-up' : 'chevron-down'}
+          iconSize={20}
+          idPrefix={`${id}-toggle`}
+          label={open ? 'Minimizar filtros y calidad' : 'Maximizar filtros y calidad'}
           onPress={() => setOpen((value) => !value)}
-          testID={`${id}-toggle`}
-        >
-          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'chevron-up' : 'chevron-down'} size={20} />
-        </Pressable> : null}
+          size={32}
+        /> : null}
       </View>
 
       {meta ? (

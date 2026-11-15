@@ -1,6 +1,7 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { IconButton } from '../shared/icon-button.jsx';
 
 const DASH = '—';
 function display(value) {
@@ -35,9 +36,7 @@ export function TeamInfoModal({ visible, onClose, ownerName, description, requir
             <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID="team-info-modal-title" testID="team-info-modal-title">
               Sobre el equipo
             </Text>
-            <Pressable className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID="team-info-modal-close-button" onPress={onClose} testID="team-info-modal-close-button">
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-            </Pressable>
+            <IconButton icon="close" iconSize={18} idPrefix="team-info-modal-close-button" label="Cerrar" onPress={onClose} size={32} />
           </View>
 
           <InfoField idPrefix="team-info-modal-owner" label="Entrenador a cargo" value={display(ownerName)} />

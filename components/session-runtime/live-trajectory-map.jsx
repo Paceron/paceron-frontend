@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { OPENFREEMAP_MINIMAL_STYLE_URL } from '../../config/maps.js';
-import { computeBounds, expandBounds } from '../../utils/map-bounds.js';
+import { computeBounds, expandBounds, hasBoundsArea } from '../../utils/map-bounds.js';
 import { ROUTE_MARKER_META } from '../../utils/route-marker-meta.js';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -150,16 +150,11 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
     [currentPosition?.longitude, currentPosition?.latitude]
   );
 
-  // Bug real reportado 2026-10-31: en un entrenamiento (sin referenceRoute --
-  // LiveSessionMapPanel no pasa ruta, a diferencia de un intento de
-  // competencia) `bounds` es null hasta el primer punto GPS, así que
-  // `onDidFinishLoadingMap` de abajo no tiene nada que encuadrar y el mapa
-  // se queda clavado en initialCenter (Buenos Aires, DEFAULT_CENTER) hasta
-  // que el corredor toca "centrar" a mano. Esta ref marca si YA se encuadró
-  // algo real (ahí abajo, con la ruta de referencia o la trayectoria) para
-  // que el efecto de acá nunca pelee con ese fit -- solo entra en juego
-  // cuando no hubo nada que encuadrar al cargar el mapa.
+  // Comandos de cámara enviados antes de `onDidFinishLoadingMap` se pierden
+  // en el módulo nativo. Si marcáramos `didInitialFitRef` al pedirlos, el
+  // foco inicial no se reintentaría nunca -- de ahí el gate por `mapReady`.
   const didInitialFitRef = useRef(false);
+  const mapReadyRef = useRef(false);
 
   // Foco automático a la posición del corredor, UNA sola vez, apenas llega
   // el primer punto -- solo si `onDidFinishLoadingMap` no encuadró ya algo
@@ -167,7 +162,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
   // arranque). No se repite en cada punto GPS siguiente: competiría contra
   // cualquier pan/zoom manual del corredor mientras corre.
   useEffect(() => {
-    if (didInitialFitRef.current || !currentPositionLngLat) return;
+    if (!mapReadyRef.current || didInitialFitRef.current || !currentPositionLngLat) return;
     didInitialFitRef.current = true;
     cameraRef.current?.flyTo({ center: currentPositionLngLat, zoom: 16, duration: 500 });
   }, [currentPositionLngLat]);
@@ -176,7 +171,7 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
   // botón de recentrar) en vez de exponer `cameraRef` hacia afuera -- este
   // componente sigue sin dar acceso a su cámara a quien lo usa.
   useEffect(() => {
-    if (recenterSignal == null || !currentPositionLngLat) return;
+    if (!mapReadyRef.current || recenterSignal == null || !currentPositionLngLat) return;
     cameraRef.current?.flyTo({ center: currentPositionLngLat, duration: 500 });
     // Deliberadamente solo [recenterSignal] -- este efecto tiene que
     // disparar únicamente cuando el corredor toca el botón de recentrar
@@ -223,9 +218,17 @@ export function LiveTrajectoryMap({ traveledPoints, referenceRoute, currentPosit
           // sin límite real en mobile (bug real reportado 2026-10-21) --
           // minZoom/maxBounds quedaban peleando contra un comando de
           // cámara que se repetía solo.
+          mapReadyRef.current = true;
           if (didInitialFitRef.current) return;
-          if (bounds) {
+          if (hasBoundsArea(bounds)) {
             cameraRef.current?.fitBounds(bounds, { duration: 0, padding: { bottom: 40, left: 40, right: 40, top: 40 } });
+            didInitialFitRef.current = true;
+            return;
+          }
+          // Un solo punto GPS deja bounds degenerados: fitBounds no tiene
+          // área que encuadrar, así que se centra con un zoom de corrida.
+          if (currentPositionLngLat) {
+            cameraRef.current?.flyTo({ center: currentPositionLngLat, zoom: 16, duration: 0 });
             didInitialFitRef.current = true;
           }
         }}

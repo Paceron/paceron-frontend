@@ -16,6 +16,7 @@ import { CreateSessionModal } from './create-session-modal.jsx';
 import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 // Planes (deduplicados por plan, no por día) que referencian esta
 // sesión en alguno de sus días. Ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
@@ -24,7 +25,6 @@ export function plansUsingSession(sessionId, plans) {
 }
 
 function SessionMenuButton({ session, onOpenMenu, containerRef }) {
-  const colors = useThemeColors();
   const ref = useRef(null);
 
   const handlePress = () => {
@@ -38,16 +38,15 @@ function SessionMenuButton({ session, onOpenMenu, containerRef }) {
 
   return (
     <IconTooltip idPrefix={`session-catalog-row-${session.id}-menu-toggle-tooltip`} label="Más opciones">
-      <Pressable
+      <IconButton
         ref={ref}
-        accessibilityLabel="Más opciones"
-        className="rounded-full p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800"
-        nativeID={`session-catalog-row-${session.id}-menu-toggle`}
+        icon="dots-vertical"
+        iconSize={18}
+        idPrefix={`session-catalog-row-${session.id}-menu-toggle`}
+        label="Más opciones"
         onPress={handlePress}
-        testID={`session-catalog-row-${session.id}-menu-toggle`}
-      >
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name="dots-vertical" size={18} />
-      </Pressable>
+        size={32}
+      />
     </IconTooltip>
   );
 }
@@ -165,15 +164,13 @@ export function SessionsCatalogTab() {
       <SectionCard
         headerRight={(
           <IconTooltip idPrefix="sessions-catalog-create-button-tooltip" label="Crear sesión">
-            <Pressable
-              accessibilityLabel="Crear sesión"
-              className="rounded-full p-2 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
-              nativeID="sessions-catalog-create-button"
+            <IconButton
+              icon="plus"
+              iconSize={22}
+              idPrefix="sessions-catalog-create-button"
+              label="Crear sesión"
               onPress={() => (isWeb ? setModalSession(null) : router.push('/training-plans/sessions/create'))}
-              testID="sessions-catalog-create-button"
-            >
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="plus" size={22} />
-            </Pressable>
+            />
           </IconTooltip>
         )}
         icon="clipboard-plus-outline"

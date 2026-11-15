@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'rea
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { IconButton } from '../shared/icon-button.jsx';
 import { useCompetitionAttempts } from '../../hooks/use-competitions.js';
 import { pickBestAttempt } from '../../utils/route-geometry.js';
 import { formatMeters } from '../../utils/distance.js';
@@ -69,9 +70,7 @@ export function AttemptsListModal({ visible, onClose, competition, members, curr
             <Text className="flex-1 text-base font-bold text-slate-900 dark:text-white" nativeID="attempts-list-modal-title" numberOfLines={2} testID="attempts-list-modal-title">
               {competition ? (competition.name ?? buildCompetitionTitle(competition)) : 'Intentos'}
             </Text>
-            <Pressable className="h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800" nativeID="attempts-list-modal-close-button" onPress={onClose} testID="attempts-list-modal-close-button">
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="close" size={18} />
-            </Pressable>
+            <IconButton icon="close" iconSize={18} idPrefix="attempts-list-modal-close-button" label="Cerrar" onPress={onClose} size={32} />
           </View>
 
           <View className="mb-3" nativeID="attempts-list-modal-athlete-picker-wrap" testID="attempts-list-modal-athlete-picker-wrap">

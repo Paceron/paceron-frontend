@@ -62,12 +62,13 @@ export function buildManualSetPayload({ slot, exerciseId, setNumber, values }) {
 // (completed), POST /workout-feedback si no (modo manual) con el 409→PATCH de
 // resiliencia (una serie que "sin registro" en manual pero que el backend
 // tiene de un sync parcial).
-export function useSaveSetMutation({ sessionInstanceId, athleteUserId }) {
+export function useSaveSetMutation({ sessionInstanceId, athleteUserId, ensureRunnerSession }) {
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: sessionFeedbackQueryKey(sessionInstanceId, athleteUserId) });
 
   return useMutation({
     mutationFn: async ({ feedback, editValues, createPayload }) => {
+      await ensureRunnerSession?.();
       if (feedback?.id) {
         return await updateWorkoutFeedback(feedback.id, toFeedbackEditPayload(editValues));
       }
@@ -103,9 +104,9 @@ export function useFinishRunnerMutation({ sessionInstanceId, athleteUserId }) {
 // (una request atrás de otra, no Promise.all) para que el 409→PATCH de una serie
 // no compita con el POST de la siguiente por el índice único, y para poder
 // informar cuántas quedaron guardadas si una falla a mitad.
-export function useSaveExerciseMutation({ sessionInstanceId, athleteUserId }) {
+export function useSaveExerciseMutation({ sessionInstanceId, athleteUserId, ensureRunnerSession }) {
   const queryClient = useQueryClient();
-  const saveSet = useSaveSetMutation({ sessionInstanceId, athleteUserId }).mutateAsync;
+  const saveSet = useSaveSetMutation({ sessionInstanceId, athleteUserId, ensureRunnerSession }).mutateAsync;
 
   return useMutation({
     mutationFn: async ({ slot, exerciseId, targets, values }) => {

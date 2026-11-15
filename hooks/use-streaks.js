@@ -6,6 +6,7 @@ import { getStreaks } from '../services/streaks.js';
 import { toStreaksModel } from '../services/normalizers.js';
 import { buildStreakBrokenMessage } from '../utils/streak-break-message.js';
 import { notifyWarning } from '../utils/haptics.js';
+import { visibleQueryError } from '../utils/query-state.js';
 
 // Rachas del corredor (Gap 30) -- estado de servidor, TanStack Query (ver
 // CLAUDE.md "Estado de aplicación vs. de servidor"). Una sola query,
@@ -38,5 +39,5 @@ export function useStreaks() {
     previousCurrent.current = streaks.strict.current;
   }, [streaks]);
 
-  return { streaks, loading: query.isLoading, error: query.error ?? null };
+  return { streaks, loading: query.isLoading, error: visibleQueryError(query.data, query.error) };
 }

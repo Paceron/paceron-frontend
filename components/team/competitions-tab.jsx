@@ -10,14 +10,14 @@ import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useCompetitions, useCompetitionMutations, useCompetitionAttempts, useSeedDynamicRouteCompetition } from '../../hooks/use-competitions.js';
 import { useGamificationBadge } from '../../hooks/use-gamification-badge.js';
 import { useReverseGeocode } from '../../hooks/use-reverse-geocode.js';
-import { buildCompetitionTitle } from '../../utils/competition-title.js';
-import { formatDisplayDate } from '../../utils/format-date-display.js';
+import { buildCompetitionTitle, formatCompetitionDate } from '../../utils/competition-title.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { filterCompetitionsByFields } from '../../utils/competition-filters.js';
 import { canCloseCompetition } from '../../utils/competition-close.js';
+import { resolveCompetitionWinner } from '../../utils/competition-winner.js';
 import { useScrollToHighlight } from '../../hooks/use-scroll-to-highlight.js';
 import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
@@ -55,7 +55,7 @@ const EMPTY_MESSAGE = {
   history: 'Todavía no hay competencias finalizadas.',
 };
 
-function RouteDetailSection({ idPrefix, competition }) {
+function RouteDetailSection({ idPrefix, competition, members }) {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const twoColumns = isWeb && !isNarrowWeb;
@@ -63,6 +63,9 @@ function RouteDetailSection({ idPrefix, competition }) {
   const startPoint = coordinates[0] ? { lat: coordinates[0][1], lng: coordinates[0][0] } : null;
   const { address, loading: addressLoading } = useReverseGeocode(startPoint?.lat, startPoint?.lng);
   const addressLabel = address?.label ?? (addressLoading ? 'Resolviendo dirección…' : 'Punto de inicio');
+  const winner = competition.status === 'finished'
+    ? resolveCompetitionWinner({ winnerUserIds: competition.winnerUserIds, members })
+    : null;
 
   const infoColumn = (
     <View className="gap-2" nativeID={`${idPrefix}-route-info`} testID={`${idPrefix}-route-info`}>
@@ -83,6 +86,25 @@ function RouteDetailSection({ idPrefix, competition }) {
             </Text>
           </Pressable>
         </>
+      )}
+      {winner && (
+        <View className="mt-1" nativeID={`${idPrefix}-route-winner`} testID={`${idPrefix}-route-winner`}>
+          <Text className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-winner-caption`} testID={`${idPrefix}-route-winner-caption`}>
+            Ganador:
+          </Text>
+          {winner.kind === 'winner' ? (
+            <View className="flex-row items-center gap-1.5 self-start rounded-full bg-amber-100 px-3 py-1.5 dark:bg-amber-900/30" nativeID={`${idPrefix}-route-winner-badge`} testID={`${idPrefix}-route-winner-badge`}>
+              <MaterialCommunityIcons color="#d97706" name="trophy" size={16} />
+              <Text className="text-sm font-bold text-amber-800 dark:text-amber-300" nativeID={`${idPrefix}-route-winner-name`} testID={`${idPrefix}-route-winner-name`}>
+                {winner.text}
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-sm text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-route-winner-text`} testID={`${idPrefix}-route-winner-text`}>
+              {winner.text}
+            </Text>
+          )}
+        </View>
       )}
     </View>
   );
@@ -105,7 +127,7 @@ function RouteDetailSection({ idPrefix, competition }) {
   );
 }
 
-function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busy }) {
+function CompetitionRow({ competition, members, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busy }) {
   const colors = useThemeColors();
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const idPrefix = `competitions-tab-row-${competition.id}`;
@@ -147,7 +169,7 @@ function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, h
   const hasStarted = new Date(competition.startAt).getTime() <= now;
   const canPlayNow = hasStarted && remainingAttempts > 0;
   const runTooltipLabel = !hasStarted
-    ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
+    ? `Todavía no empezó (desde ${formatCompetitionDate(competition.startAt)})`
     : remainingAttempts > 0
       ? `Correr esta trayectoria (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
       : 'Sin intentos disponibles';
@@ -174,6 +196,9 @@ function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, h
   const canViewParticipants = Boolean(competition);
   const participantCount = competition.participantUserIds?.length ?? 0;
   const canExpand = competition.type === 'route';
+  const winner = competition.status === 'finished'
+    ? resolveCompetitionWinner({ winnerUserIds: competition.winnerUserIds, members })
+    : null;
   // El botón de Play (canRunBase) solo entra en el grupo de acciones ícono
   // en nativo -- en web `canRunBase` sigue true pero no hay botón, solo un
   // aviso informativo (más abajo), así que no cuenta para decidir si el
@@ -198,7 +223,7 @@ function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, h
           </Text>
           {competition.type === 'route' && competition.status === 'active' && (
             <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-meta`} testID={`${idPrefix}-route-meta`}>
-              Desde: {formatDisplayDate(competition.startAt)} · Intentos: {attemptsLabel}
+              Desde: {formatCompetitionDate(competition.startAt)} · Intentos: {attemptsLabel}
             </Text>
           )}
         </View>
@@ -283,15 +308,24 @@ function CompetitionRow({ competition, isTrainerView, currentUserId, expanded, h
         )}
       </View>
 
+      {winner && competition.type === 'metric' && (
+        <View className="ml-6 mt-1 flex-row items-center gap-1.5" nativeID={`${idPrefix}-winner`} testID={`${idPrefix}-winner`}>
+          {winner.kind === 'winner' ? <MaterialCommunityIcons color="#d97706" name="trophy" size={14} /> : null}
+          <Text className={`text-xs ${winner.kind === 'winner' ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-winner-text`} testID={`${idPrefix}-winner-text`}>
+            {winner.kind === 'winner' ? `Ganador: ${winner.text}` : winner.text}
+          </Text>
+        </View>
+      )}
+
       {expanded && competition.type === 'route' && (
-        <RouteDetailSection competition={competition} idPrefix={idPrefix} />
+        <RouteDetailSection competition={competition} idPrefix={idPrefix} members={members} />
       )}
 
       {canRunBase && isWeb && (
         <View className="mt-3 items-center justify-center" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
           <Text className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" nativeID={`${idPrefix}-run-web-notice`} testID={`${idPrefix}-run-web-notice`}>
             {!hasStarted
-              ? `Todavía no empezó (desde ${formatDisplayDate(competition.startAt)})`
+              ? `Todavía no empezó (desde ${formatCompetitionDate(competition.startAt)})`
               : remainingAttempts > 0
                 ? `Correr una trayectoria solo está disponible en la app nativa (intento ${myAttempts.length + 1}${maxAttempts != null ? ` de ${maxAttempts}` : ''})`
                 : 'Ya alcanzaste el máximo de intentos para esta competencia'}
@@ -568,6 +602,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, isTrainerVi
                 expanded={!collapsedIds.has(competition.id)}
                 highlighted={competition.id === highlightedId}
                 isTrainerView={isTrainerView}
+                members={members}
                 onApprove={handleApprove}
                 onCancel={handleCancel}
                 onClose={handleRequestClose}

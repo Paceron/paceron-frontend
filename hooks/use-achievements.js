@@ -7,6 +7,7 @@ import { toAchievementCatalogItemModel, toUserAchievementModel } from '../servic
 import { computeLevelProgress } from '../utils/achievement-progress.js';
 import { buildAchievementUnlockMessage } from '../utils/achievement-unlock-message.js';
 import { notifySuccess } from '../utils/haptics.js';
+import { visibleQueryError } from '../utils/query-state.js';
 
 function joinAchievements(catalog, progressList) {
   const progressById = new Map(progressList.map((p) => [p.achievementId, p]));
@@ -91,6 +92,6 @@ export function useAchievements() {
     achievements,
     hasUnseen: achievements.some((a) => a.hasUnseen),
     loading: catalogQuery.isLoading || progressQuery.isLoading,
-    error: catalogQuery.error ?? progressQuery.error ?? null,
+    error: visibleQueryError(catalogQuery.data, catalogQuery.error) ?? visibleQueryError(progressQuery.data, progressQuery.error),
   };
 }

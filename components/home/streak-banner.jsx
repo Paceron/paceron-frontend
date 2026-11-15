@@ -85,7 +85,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
         <Animated.View nativeID="streak-banner-fire-icon" style={pulseStyle} testID="streak-banner-fire-icon">
           <MaterialCommunityIcons color={colors.primary} name="fire" size={20} />
         </Animated.View>
-        <View nativeID="streak-banner-current-text" testID="streak-banner-current-text">
+        <View className="flex-1 min-w-0" nativeID="streak-banner-current-text" testID="streak-banner-current-text">
           <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID="streak-banner-current-value" testID="streak-banner-current-value">
             {streaks.flexible.current} días consecutivos entrenando
           </Text>

@@ -1,4 +1,4 @@
-import { computeBounds, expandBounds } from '../utils/map-bounds.js';
+import { computeBounds, expandBounds, hasBoundsArea } from '../utils/map-bounds.js';
 
 describe('computeBounds', () => {
   test('sin puntos devuelve null', () => {
@@ -25,6 +25,24 @@ describe('computeBounds', () => {
       {},
     ];
     expect(computeBounds(points)).toEqual([-58.4, -34.6, -58.4, -34.6]);
+  });
+});
+
+describe('hasBoundsArea', () => {
+  test('null -- false', () => {
+    expect(hasBoundsArea(null)).toBe(false);
+  });
+
+  test('punto degenerado -- false', () => {
+    expect(hasBoundsArea([-58.4, -34.6, -58.4, -34.6])).toBe(false);
+  });
+
+  test('recorrido horizontal -- true', () => {
+    expect(hasBoundsArea([-58.41, -34.6, -58.4, -34.6])).toBe(true);
+  });
+
+  test('recorrido vertical -- true', () => {
+    expect(hasBoundsArea([-58.4, -34.61, -58.4, -34.6])).toBe(true);
   });
 });
 

@@ -23,6 +23,12 @@ export function computeBounds(points) {
   return [west, south, east, north];
 }
 
+export function hasBoundsArea(bounds) {
+  if (!bounds) return false;
+  const [west, south, east, north] = bounds;
+  return east > west || north > south;
+}
+
 const METERS_PER_DEGREE_LAT = 111320;
 
 // Agranda un rectángulo [west,south,east,north] un `marginRatio` de su

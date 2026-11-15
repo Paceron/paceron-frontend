@@ -1,4 +1,8 @@
-import { selectNextTraining, selectCancelledBefore } from '../utils/next-training-banner.js';
+import {
+  selectCancelledBefore,
+  selectNextPendingTraining,
+  selectNextTraining,
+} from '../utils/next-training-banner.js';
 
 describe('selectNextTraining', () => {
   const now = new Date(2026, 8, 25); // 2026-09-25
@@ -57,6 +61,46 @@ describe('selectNextTraining', () => {
     const nowNight = new Date(2026, 8, 25, 23, 0);
     const days = [{ id: '1', date: '2026-09-25', kind: 'training', isPresencial: false }];
     expect(selectNextTraining(days, {}, nowNight)?.id).toBe('1');
+  });
+});
+
+describe('selectNextPendingTraining', () => {
+  const now = new Date(2026, 8, 25); // 2026-09-25
+
+  it('skips trainings already finished or interrupted', () => {
+    const days = [
+      { id: '1', date: '2026-09-25', kind: 'training', sessionInstance: { id: 101 } },
+      { id: '2', date: '2026-09-26', kind: 'training', sessionInstance: { id: '102' } },
+      { id: '3', date: '2026-09-27', kind: 'training', sessionInstance: { id: 103 } },
+    ];
+    const statusBySessionId = { 101: 'finished', 102: 'interrupted' };
+    expect(selectNextPendingTraining(days, statusBySessionId, {}, now)?.id).toBe('3');
+  });
+
+  it('keeps trainings without runner status and with pending status', () => {
+    const days = [
+      { id: '1', date: '2026-09-25', kind: 'training', sessionInstance: { id: 101 } },
+      { id: '2', date: '2026-09-26', kind: 'training', sessionInstance: { id: 102 } },
+    ];
+    expect(selectNextPendingTraining(days, { 102: 'wip' }, {}, now)?.id).toBe('1');
+  });
+
+  it('returns null when every candidate is already closed', () => {
+    const days = [
+      { id: '1', date: '2026-09-25', kind: 'training', sessionInstance: { id: 101 } },
+      { id: '2', date: '2026-09-26', kind: 'training', sessionInstance: { id: 102 } },
+    ];
+    expect(selectNextPendingTraining(days, { 101: 'finished', 102: 'interrupted' }, {}, now)).toBeNull();
+  });
+
+  it('respects presencialOnly and the presencial end time', () => {
+    const nowEvening = new Date(2026, 8, 25, 20, 0);
+    const days = [
+      { id: '1', date: '2026-09-25', kind: 'training', isPresencial: true, presencialTimeFrom: '12:00', presencialTimeTo: '14:00' },
+      { id: '2', date: '2026-09-26', kind: 'training', isPresencial: false },
+      { id: '3', date: '2026-09-27', kind: 'training', isPresencial: true, presencialTimeFrom: '10:00', presencialTimeTo: '11:00' },
+    ];
+    expect(selectNextPendingTraining(days, {}, { presencialOnly: true }, nowEvening)?.id).toBe('3');
   });
 });
 
