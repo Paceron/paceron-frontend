@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 
 const VARIANTS = {
+  ghost: { bg: '', color: 'onSurfaceVariant' },
   neutral: { bg: 'bg-slate-100 dark:bg-slate-800', color: 'onSurfaceVariant' },
   primary: { bg: 'bg-primary', color: 'onPrimary' },
   danger: { bg: 'bg-red-100 dark:bg-red-900/30', color: '#ef4444' },

@@ -1,12 +1,12 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
-import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { LevelPips } from './level-pips.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
+import { isAchievementUnlocked } from '../../utils/achievement-status.js';
 
 // Detalle de un logro al tocarlo (pedido 2026-10-14) -- sirve igual para
 // bloqueados (qué falta para desbloquearlo) y desbloqueados (progreso
@@ -18,7 +18,7 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
   const colors = useThemeColors();
   if (!achievement) return null;
 
-  const meta = levelMeta(achievement.currentLevel || 1);
+  const unlocked = isAchievementUnlocked(achievement);
   const isMaxLevel = achievement.family === 'leveled' && achievement.currentLevel === achievement.levels?.[achievement.levels.length - 1]?.level;
 
   return (
@@ -26,7 +26,7 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="achievement-detail-modal-backdrop" onPress={onClose} testID="achievement-detail-modal-backdrop">
         <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="achievement-detail-modal-card" onPress={() => {}} testID="achievement-detail-modal-card">
           <View className="flex-row items-center gap-3" nativeID="achievement-detail-modal-header" testID="achievement-detail-modal-header">
-            <MaterialCommunityIcons color={meta.color} name={resolveAchievementIconName(achievement.iconName)} size={32} />
+            <MaterialCommunityIcons color={unlocked ? colors.primary : colors.onSurfaceVariant} name={resolveAchievementIconName(achievement.iconName)} size={32} />
             <Text className="flex-1 text-lg font-bold text-slate-900 dark:text-white" nativeID="achievement-detail-modal-title" testID="achievement-detail-modal-title">
               {achievement.name}
             </Text>
@@ -48,6 +48,13 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
           <Text className="mt-3 text-sm text-slate-600 dark:text-slate-300" nativeID="achievement-detail-modal-description" testID="achievement-detail-modal-description">
             {achievement.description}
           </Text>
+
+          <View className={`mt-3 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${unlocked ? 'bg-primary-tint-subtle dark:bg-primary/15' : 'bg-slate-100 dark:bg-slate-800'}`} nativeID="achievement-detail-modal-status" testID="achievement-detail-modal-status">
+            <MaterialCommunityIcons color={unlocked ? colors.primary : colors.onSurfaceVariant} name={unlocked ? 'trophy' : 'lock-outline'} size={14} />
+            <Text className={`text-xs font-semibold ${unlocked ? 'text-[#3c6b12] dark:text-primary' : 'text-slate-600 dark:text-slate-300'}`} nativeID="achievement-detail-modal-status-label" testID="achievement-detail-modal-status-label">
+              {unlocked ? 'Desbloqueado' : 'Bloqueado'}
+            </Text>
+          </View>
 
           {achievement.family === 'leveled' && (
             <View className="mt-4" nativeID="achievement-detail-modal-leveled" testID="achievement-detail-modal-leveled">

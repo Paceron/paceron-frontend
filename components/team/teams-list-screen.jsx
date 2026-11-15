@@ -82,6 +82,7 @@ function TeamsListScreenContent() {
             idPrefix="teams-list-screen-back-button"
             label="Volver"
             onPress={() => router.back()}
+            variant="ghost"
           />
           <Text className="flex-1 text-xl text-slate-900 dark:text-white" nativeID="teams-list-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="teams-list-screen-title">
             Mis equipos

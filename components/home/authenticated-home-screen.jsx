@@ -111,10 +111,10 @@ export function AuthenticatedHomeScreen() {
                 cards (el slot ya queda fijado por el hermano más alto). */}
             {hasAchievementHighlight ? (
               <View className="flex-row gap-3" nativeID="authenticated-home-screen-gamification-row" testID="authenticated-home-screen-gamification-row">
-                <View className="flex-1" nativeID="authenticated-home-screen-streak-slot" testID="authenticated-home-screen-streak-slot">
+                <View className="flex-1 min-w-0" nativeID="authenticated-home-screen-streak-slot" testID="authenticated-home-screen-streak-slot">
                   <StreakBanner daysCount={7} paired />
                 </View>
-                <View className="flex-1" nativeID="authenticated-home-screen-achievement-slot" testID="authenticated-home-screen-achievement-slot">
+                <View className="flex-1 min-w-0" nativeID="authenticated-home-screen-achievement-slot" testID="authenticated-home-screen-achievement-slot">
                   <AchievementHighlightCard paired />
                 </View>
               </View>
