@@ -13,17 +13,17 @@ const TABULAR = { fontVariant: ['tabular-nums'] };
 // Vencida en rojo, por vencer en ámbar, el resto neutro.
 const ROW_TONE = {
   overdue: {
-    box: 'border-rose-400 bg-rose-300/70 dark:border-rose-500 dark:bg-rose-600/50',
+    box: 'border-rose-400 bg-rose-300/50 dark:border-rose-500 dark:bg-rose-600/50',
     due: 'font-semibold text-rose-800 dark:text-rose-100',
     icon: '#fb7185',
   },
   soon: {
-    box: 'border-amber-400 bg-amber-300/70 dark:border-amber-500 dark:bg-amber-600/50',
+    box: 'border-amber-400 bg-amber-300/50 dark:border-amber-500 dark:bg-amber-600/50',
     due: 'font-semibold text-amber-800 dark:text-amber-100',
     icon: '#f59e0b',
   },
   normal: {
-    box: 'border-slate-400 bg-slate-300/70 dark:border-slate-500 dark:bg-slate-600/50',
+    box: 'border-slate-400 bg-slate-300/50 dark:border-slate-500 dark:bg-slate-600/50',
     due: 'font-semibold text-slate-800 dark:text-slate-100',
     icon: null,
   },

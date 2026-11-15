@@ -34,23 +34,23 @@ function DueColumn({ block, title, tone, empty, amountMode, id }) {
   const total = amountMode === 'net' ? block?.netAmount : block?.amount;
   const overdue = tone === 'overdue';
   return (
-    <View className={`flex-1 border rounded-xl p-3 ${overdue ? 'bg-rose-100 dark:bg-rose-950 border-rose-200 dark:border-rose-800' : 'bg-amber-100 dark:bg-amber-950 border-amber-200 dark:border-amber-800'}`} nativeID={id} testID={id}>
+    <View className={`flex-1 border rounded-xl p-3 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700`} nativeID={id} testID={id}>
       <View className={`mb-2 flex-row items-baseline justify-between gap-3`} nativeID={`${id}-header`} testID={`${id}-header`}>
-        <Text className={`text-sm font-semibold ${overdue ? 'text-rose-900 dark:text-rose-100' : 'text-amber-900 dark:text-amber-100'}`} nativeID={`${id}-title`} testID={`${id}-title`}>
+        <Text className={`text-base px-2 font-semibold ${overdue ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'}`} nativeID={`${id}-title`} testID={`${id}-title`}>
           {title}
           {block?.count ? ` · ${block.count} ${block.count === 1 ? 'cuota' : 'cuotas'}` : ''}
         </Text>
-        <Text className="text-base font-semibold text-slate-900 dark:text-white" nativeID={`${id}-total`} style={TABULAR} testID={`${id}-total`}>
+        <Text className={`text-base px-2 font-semibold ${overdue ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'}`} nativeID={`${id}-total`} style={TABULAR} testID={`${id}-total`}>
           {formatArs(total ?? 0)}
         </Text>
       </View>
       {!block?.items?.length ? (
         <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${id}-empty`} testID={`${id}-empty`}>{empty}</Text>
       ) : (
-        <ScrollView className="p-1" nativeID={`${id}-items-scroll`} testID={`${id}-items-scroll`}>
+        <ScrollView className="" nativeID={`${id}-items-scroll`} testID={`${id}-items-scroll`}>
           {block.items.map((item) => (
             <View
-              className={`flex-row items-center p-3 justify-between gap-3 my-1 mx-0.5 rounded-xl border ${overdue ? 'border-rose-400 bg-rose-300/70 dark:border-rose-500 dark:bg-rose-600/50' : 'border-amber-400 bg-amber-300/70 dark:border-amber-500 dark:bg-amber-600/50'}`}
+              className={`flex-row items-center p-3 justify-between gap-3 my-1 mx-0.5 rounded-xl border ${overdue ? 'border-rose-400 bg-rose-300/50 dark:border-rose-500 dark:bg-rose-600/50' : 'border-amber-400 bg-amber-300/50 dark:border-amber-500 dark:bg-amber-600/50'}`}
               key={item.key}
               nativeID={`${id}-item-${item.key}`}
               testID={`${id}-item-${item.key}`}
