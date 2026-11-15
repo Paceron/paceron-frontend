@@ -17,6 +17,14 @@ describe('formatMetricValue', () => {
     expect(formatMetricValue('pace', 5.4167)).toBe('5:25 /km');
   });
 
+  test('pace con más de una hora -> h:mm:ss /km', () => {
+    expect(formatMetricValue('pace', 468 + 1 / 60)).toBe('7:48:01 /km');
+  });
+
+  test('pace con más de un día -> Nd hh:mm:ss /km', () => {
+    expect(formatMetricValue('pace', 25 * 60)).toBe('1d 01:00:00 /km');
+  });
+
   test('peak_speed -> X.X km/h', () => {
     expect(formatMetricValue('peak_speed', 14.33)).toBe('14.3 km/h');
   });

@@ -1,5 +1,5 @@
 import { formatMeters } from './distance.js';
-import { formatClock } from './time.js';
+import { formatClock, pad2 } from './time.js';
 
 // `value` siempre viaja como número plano (Gap 32) -- acá se decide cómo
 // se ve cada métrica. Pura y testeada: hooks/use-team-leaderboard.js no
@@ -8,9 +8,14 @@ function formatPace(minutesPerKm) {
   const value = Number(minutesPerKm);
   if (minutesPerKm == null || !Number.isFinite(value)) return '—';
   const totalSeconds = Math.round(value * 60);
-  const minutes = Math.floor(totalSeconds / 60);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')} /km`;
+
+  if (days > 0) return `${days}d ${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)} /km`;
+  if (hours > 0) return `${hours}:${pad2(minutes)}:${pad2(seconds)} /km`;
+  return `${minutes}:${pad2(seconds)} /km`;
 }
 
 function formatPeakSpeed(kmh) {
