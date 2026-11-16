@@ -158,3 +158,35 @@ describe('NextTrainingBanner carousel', () => {
     expect(mockPush).toHaveBeenCalledWith('/teams/4/groups/12/calendar/2026-11-20');
   });
 });
+
+describe('NextTrainingBanner autoplay transitions', () => {
+  beforeEach(() => {
+    mockRole = 'runner';
+    mockIsWeb = false;
+    mockPush.mockClear();
+    mockSetPendingSession.mockClear();
+    mockBanner(TRAININGS);
+  });
+
+  it('ignores stale scroll events fired while the autoplay scroll starts', () => {
+    jest.useFakeTimers();
+    const { getByTestId, unmount } = render(<NextTrainingBanner />);
+    fireEvent(getByTestId('next-training-banner-carousel'), 'layout', {
+      nativeEvent: { layout: { width: 320 } },
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(10000);
+    });
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+
+    fireEvent.scroll(getByTestId('next-training-banner-carousel-pages'), {
+      nativeEvent: { contentOffset: { x: 0, y: 0 } },
+    });
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-autoplay-track')).toBeTruthy();
+
+    unmount();
+    jest.useRealTimers();
+  });
+});

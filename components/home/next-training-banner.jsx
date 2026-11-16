@@ -159,6 +159,8 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
   const scrollRef = useRef(null);
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollTimeoutRef = useRef(null);
   // 4 vueltas (~3.6s) y se queda quieto -- no infinito, ver el comentario
   // de useArrowBounce sobre el lag real reportado en el Home de corredor.
   const bounceStyle = useArrowBounce(4);
@@ -173,16 +175,27 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
     setActiveIndex(index);
   }, []);
 
+  const clearProgrammaticScroll = useCallback(() => {
+    programmaticScrollRef.current = false;
+    if (programmaticScrollTimeoutRef.current) {
+      clearTimeout(programmaticScrollTimeoutRef.current);
+      programmaticScrollTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearProgrammaticScroll(), [clearProgrammaticScroll]);
+
   // RNW ya soporta scroll suave con `animated: true`; el cambio inmediato en
   // web venía de un efecto que reescribía la posición sin animación en cada
   // cambio de índice.
   const scrollToX = useCallback((x, animated) => {
-    if (isWeb) {
-      const node = scrollRef.current?.getScrollableNode?.();
-      node?.scrollTo?.({ left: x, behavior: animated ? 'smooth' : 'auto' });
+    const scrollable = scrollRef.current;
+    if (scrollable?.scrollTo) {
+      scrollable.scrollTo({ x, y: 0, animated });
       return;
     }
-    scrollRef.current?.scrollTo?.({ x, y: 0, animated });
+    const node = scrollable?.getScrollableNode?.();
+    if (node?.scrollTo) node.scrollTo({ x, y: 0, animated });
   }, []);
 
   useEffect(() => {
@@ -197,6 +210,12 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const scrollToIndex = useCallback((index) => {
     const nextIndex = Math.max(0, Math.min(nextTrainings.length - 1, index));
     setIndex(nextIndex);
+    programmaticScrollRef.current = true;
+    if (programmaticScrollTimeoutRef.current) clearTimeout(programmaticScrollTimeoutRef.current);
+    programmaticScrollTimeoutRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+      programmaticScrollTimeoutRef.current = null;
+    }, 700);
     scrollToX(nextIndex * pageWidth, true);
   }, [nextTrainings.length, pageWidth, scrollToX, setIndex]);
 
@@ -209,7 +228,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   }, [currentIndex, nextTrainings.length, pageWidth, scrollToIndex]);
 
   const onScrollEnd = (event) => {
-    if (pageWidth <= 0) return;
+    if (pageWidth <= 0 || programmaticScrollRef.current) return;
     const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
     setIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
   };
@@ -257,6 +276,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
             nativeID="next-training-banner-carousel-pages"
             onMomentumScrollEnd={onScrollEnd}
             onScroll={onScrollEnd}
+            onScrollBeginDrag={clearProgrammaticScroll}
             pagingEnabled
             scrollEventThrottle={16}
             showsHorizontalScrollIndicator={false}
