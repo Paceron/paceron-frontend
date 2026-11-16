@@ -37,13 +37,13 @@ export function PaymentsFilters({
   return (
     <View className={`gap-4 rounded-xl bg-slate-200/50 p-5 pb-0 pt-5 rounded-b-none dark:bg-slate-800/60 ${isWide ? 'flex-row' : ''}`} nativeID="payments-filters" testID="payments-filters">
       <View nativeID="payments-filters-team" style={fieldStyle} testID="payments-filters-team">
-        <ResponsiveSelectField dense label="Equipo" onChange={onChangeTeam} options={teamOptions} placeholder="Todos los equipos" showChevron value={teamId} />
+        <ResponsiveSelectField dense label="Equipo" onChange={onChangeTeam} options={teamOptions} placeholder="Todos" showChevron value={teamId} />
       </View>
       <View nativeID="payments-filters-payer" style={fieldStyle} testID="payments-filters-payer">
-        <ResponsiveSelectField dense label="Corredor" onChange={onChangePayer} options={payerOptions} placeholder="Todos los corredores" showChevron value={payerId} />
+        <ResponsiveSelectField dense label="Corredor" onChange={onChangePayer} options={payerOptions} placeholder="Todos" showChevron value={payerId} />
       </View>
       <View nativeID="payments-filters-status" style={fieldStyle} testID="payments-filters-status">
-        <ResponsiveSelectField dense label="Estado" onChange={onChangeStatus} options={STATUS_FILTER_OPTIONS} placeholder="Todos los estados" showChevron value={status} />
+        <ResponsiveSelectField dense label="Estado" onChange={onChangeStatus} options={STATUS_FILTER_OPTIONS} placeholder="Todos" showChevron value={status} />
       </View>
       <View nativeID="payments-filters-date-from" style={fieldStyle} testID="payments-filters-date-from">
         <CalendarDateField
