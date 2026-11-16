@@ -1456,7 +1456,7 @@ export function toCompetitionModel(dto) {
     // leía siempre `[]` contra el backend real (el mock SÍ usaba
     // `participant_user_ids`, por eso nunca se notó).
     participantUserIds: (dto.participants ?? []).map((id) => String(id)),
-    createdByUserId: String(dto.created_by_user_id),
+    createdByUserId: dto.created_by_user_id != null ? String(dto.created_by_user_id) : null,
     createdByRole: dto.created_by_role,
     status: dto.status,
     approvedByUserId: dto.approved_by_user_id != null ? String(dto.approved_by_user_id) : null,

@@ -42,10 +42,22 @@ export function buildCompetitionName(competition) {
   return METRIC_OPTIONS.find((m) => m.id === competition.metric)?.name ?? competition.metric;
 }
 
+export const COMPETITION_TYPE_ICON = {
+  route: 'flag-checkered',
+  metric: 'trophy-variant',
+};
+
+export function buildCompetitionDatesLabel(competition) {
+  const start = formatCompetitionDate(competition.startAt);
+  const end = formatCompetitionDate(competition.endAt);
+  if (start && end) return `${start} → ${end}`;
+  if (start) return `Desde ${start}`;
+  return null;
+}
+
 export function buildCompetitionTitle(competition) {
   const name = buildCompetitionName(competition);
   if (competition.type === 'route') return name;
-  const start = formatCompetitionDate(competition.startAt);
-  const end = formatCompetitionDate(competition.endAt);
-  return `${name} (${start} → ${end})`;
+  const dates = buildCompetitionDatesLabel(competition);
+  return dates ? `${name} (${dates})` : name;
 }

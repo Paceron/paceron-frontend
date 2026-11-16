@@ -1,4 +1,4 @@
-import { buildCompetitionName, buildCompetitionTitle, formatCompetitionDate } from '../utils/competition-title.js';
+import { buildCompetitionDatesLabel, buildCompetitionName, buildCompetitionTitle, COMPETITION_TYPE_ICON, formatCompetitionDate } from '../utils/competition-title.js';
 import { totalRouteMeters } from '../utils/route-geometry.js';
 import { formatMeters } from '../utils/distance.js';
 
@@ -53,5 +53,27 @@ describe('buildCompetitionName', () => {
       route: { type: 'LineString', coordinates: [[-58.4, -34.6]] },
     };
     expect(buildCompetitionName(competition)).toBe('Por trayectoria · 0 m · 1 punto');
+  });
+});
+
+
+describe('buildCompetitionDatesLabel', () => {
+  test('con inicio y fin usa una flecha', () => {
+    expect(buildCompetitionDatesLabel({ startAt: '2026-10-01T00:00:00Z', endAt: '2026-10-07T00:00:00Z' })).toBe('01-10-2026 → 07-10-2026');
+  });
+
+  test('con solo inicio usa "Desde"', () => {
+    expect(buildCompetitionDatesLabel({ startAt: '2026-10-01', endAt: null })).toBe('Desde 01-10-2026');
+  });
+
+  test('sin fechas devuelve null', () => {
+    expect(buildCompetitionDatesLabel({ startAt: null, endAt: null })).toBeNull();
+  });
+});
+
+describe('COMPETITION_TYPE_ICON', () => {
+  test('mapea cada tipo a su icono', () => {
+    expect(COMPETITION_TYPE_ICON.route).toBe('flag-checkered');
+    expect(COMPETITION_TYPE_ICON.metric).toBe('trophy-variant');
   });
 });
