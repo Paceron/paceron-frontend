@@ -32,7 +32,7 @@ const ROLE_LABEL = { corredor: 'Corredor', entrenador: 'Entrenador' };
 const TIER_CONTENT = {
   base: { description: '1 equipo de hasta 10 integrantes', icon: 'account-group' },
   medium: { description: '5 equipos y hasta 60 corredores, con consultas de IA sobre tus equipos', icon: 'brain' },
-  premium: { description: '10 equipos y hasta 100 corredores, con acceso a todos los servicios de IA', icon: 'crown' },
+  premium: { description: '10 equipos y hasta 100 corredores, con acceso a todos los servicios de IA', icon: 'brain', crown: true },
 };
 
 function tierContent(tier) {
@@ -80,7 +80,14 @@ function TierCard({ tier, isCurrent, loading, onUpgrade, currentTierName }) {
       <View className="flex-1" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
         <View className="mb-3 items-center" nativeID={`${idPrefix}-heading`} testID={`${idPrefix}-heading`}>
           <View className="mb-2 h-11 w-11 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-icon-wrap`} testID={`${idPrefix}-icon-wrap`}>
-            <MaterialCommunityIcons color={colors.primary} name={content.icon} size={23} />
+            <View className="relative h-7 w-7 items-center justify-center" nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
+              <MaterialCommunityIcons color={colors.primary} name={content.icon} size={23} />
+              {content.crown ? (
+                <View className="absolute -right-1.5 -top-1.5 items-center justify-center rounded-full bg-primary p-0.5" nativeID={`${idPrefix}-icon-crown`} testID={`${idPrefix}-icon-crown`}>
+                  <MaterialCommunityIcons color={colors.onPrimary} name="crown" size={11} />
+                </View>
+              ) : null}
+            </View>
           </View>
           <Text className="text-center text-base font-bold capitalize text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
             {formatTierDisplayName(tier.name)}
