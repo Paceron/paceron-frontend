@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 
 function useShimmer() {
@@ -43,4 +44,15 @@ export function SkeletonBlock({ width, height, rounded = 'rounded-lg', className
 
 export function SkeletonCircle({ size, className = '', nativeID, testID }) {
   return <SkeletonBlock className={className} height={size} nativeID={nativeID} rounded="rounded-full" testID={testID} width={size} />;
+}
+
+export function SkeletonPulse({ children, className = '', nativeID, testID }) {
+  const shimmerStyle = useShimmer();
+  return (
+    <Animated.View nativeID={`${nativeID}-animated`} style={shimmerStyle} testID={`${testID}-animated`}>
+      <View className={className} nativeID={nativeID} testID={testID}>
+        {children}
+      </View>
+    </Animated.View>
+  );
 }

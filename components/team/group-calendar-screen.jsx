@@ -32,6 +32,7 @@ import { BulkEditDaysModal } from './bulk-edit-days-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { CalendarMonthYearHeader } from '../calendar/calendar-month-year-header.jsx';
 import { CalendarFadeIn } from '../calendar/calendar-fade-in.jsx';
+import { CalendarLoadingSkeleton } from '../calendar/calendar-loading-skeleton.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -231,7 +232,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const [stampTargetDate, setStampTargetDate] = useState(null);
   const [shiftTargetDate, setShiftTargetDate] = useState(null);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
-  const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
+  const { days, loading: loadingDays } = useGroupCalendar(groupId, from, to);
   usePrefetchAdjacentGroupCalendar(groupId, visibleYear, visibleMonth);
   const { deleteDay, bulkClear, isBulkClearing } = useGroupCalendarMutations(groupId);
   const startActivity = useCalendarActivityStore((state) => state.startActivity);
@@ -414,9 +415,6 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="group-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="group-calendar-screen-title">
             Calendario de {group?.name ?? '...'}
           </Text>
-          {(loadingDays || isFetching) && (
-            <ActivityIndicator color={colors.primary} nativeID="group-calendar-screen-fetching" size="small" testID="group-calendar-screen-fetching" />
-          )}
           {selectionActive ? (
             <View className="ml-auto flex-row items-center gap-2" nativeID="group-calendar-screen-selection-bar" testID="group-calendar-screen-selection-bar">
               <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="group-calendar-screen-selection-count" testID="group-calendar-screen-selection-count">
@@ -490,7 +488,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         <CalendarKindLegend counts={monthCounts} idPrefix="group-calendar-kind-legend" />
 
         <View
-          className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
+          className="relative mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
           nativeID="group-calendar-month-view"
           testID="group-calendar-month-view"
         >
@@ -538,6 +536,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
               }}
             />
           </CalendarFadeIn>
+          {loadingDays && <CalendarLoadingSkeleton idPrefix="group-calendar-month" surfaceClassName="bg-slate-50 dark:bg-surface" />}
         </View>
       </ScreenCard>
       </ScrollView>

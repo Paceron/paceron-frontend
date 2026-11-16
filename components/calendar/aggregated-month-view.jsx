@@ -11,6 +11,7 @@ import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { isCalendarDatePending, useCalendarActivityStore } from '../../store/calendar-activity-store.js';
 import { CalendarMonthYearHeader } from './calendar-month-year-header.jsx';
 import { CalendarFadeIn } from './calendar-fade-in.jsx';
+import { CalendarLoadingSkeleton } from './calendar-loading-skeleton.jsx';
 
 const MAX_DOTS = 4;
 
@@ -177,15 +178,7 @@ export const AggregatedMonthView = memo(function AggregatedMonthView({ currentMo
           }}
         />
       </CalendarFadeIn>
-      {loading && (
-        <View
-          className="absolute inset-0 items-center justify-center rounded-2xl bg-white/70 dark:bg-surface/70"
-          nativeID="aggregated-month-view-loading-overlay"
-          testID="aggregated-month-view-loading-overlay"
-        >
-          <ActivityIndicator color={colors.primary} nativeID="aggregated-month-view-loading-indicator" testID="aggregated-month-view-loading-indicator" />
-        </View>
-      )}
+      {loading && <CalendarLoadingSkeleton idPrefix="aggregated-month-view" />}
     </View>
   );
 });
