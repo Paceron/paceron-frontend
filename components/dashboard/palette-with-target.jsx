@@ -141,18 +141,22 @@ export function PaletteWithTarget({
           },
           {
             key: 'compliance',
-            label: 'Cumplimiento',
+            label: 'Cumplimiento de Series',
             value: totals.compliance_rate,
             unit: units.compliance,
             icon: 'check-decagram-outline',
+            source: 'Series con objetivo cumplido',
           },
           {
             key: 'consistency',
             // La fórmula del cv se indexa por `cv`, que es como se llama el campo
             // en el contrato (`consistency.cv`).
-            label: 'Variación de Velocidad (Consistencia)',
-            // El nombre completo no entra en una línea de 1/3 de ancho.
+            label: 'Variación de Velocidad',
+            // El nombre se reparte en dos líneas; la aclaración va debajo del
+            // porcentaje con el mismo estilo auxiliar que la procedencia del
+            // mejor tiempo.
             labelNumberOfLines: 2,
+            source: '(Consistencia)',
             // El backend manda una fracción (0.35) y acá se muestra como 35 %.
             value: consistencyPercent(summary?.consistency?.cv),
             unit: '%',
