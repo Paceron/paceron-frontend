@@ -79,9 +79,9 @@ describe('findClosedDraftDates', () => {
     expect(findClosedDraftDates(draft, NOW)).toEqual([]);
   });
 
-  test('un día de HOY presencial con horario ya arrancado está cerrado', () => {
+  test('un día de HOY presencial con horario ya arrancado sigue abierto hasta medianoche argentina', () => {
     const draft = [{ date: '2026-03-15', sequenceNo: 1, kind: 'training', otherName: null, sessionId: '9', isPresencial: true, presencialTimeFrom: '08:00', presencialTimeTo: '09:00', presencialLocation: null, touched: false }];
-    expect(findClosedDraftDates(draft, NOW)).toEqual(['2026-03-15']);
+    expect(findClosedDraftDates(draft, NOW)).toEqual([]);
   });
 
   test('un día de HOY no presencial ya NO está cerrado (Gap 39)', () => {
