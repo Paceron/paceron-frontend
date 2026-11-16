@@ -4,13 +4,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useMyCompetitions } from '../../hooks/use-my-competitions.js';
 import { sortCompetitionsForPreview } from '../../utils/competition-sort.js';
-import { buildCompetitionName, formatCompetitionDate } from '../../utils/competition-title.js';
+import { buildCompetitionDatesLabel, buildCompetitionName, COMPETITION_TYPE_ICON } from '../../utils/competition-title.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
-
-const TYPE_ICON = { route: 'flag-checkered', metric: 'trophy-variant' };
 
 function statusLabel(competition) {
   if (competition.type === 'route') return 'Abierta';
@@ -20,18 +18,10 @@ function statusLabel(competition) {
   return `Cierra en ${days} ${days === 1 ? 'día' : 'días'}`;
 }
 
-function datesLabel(competition) {
-  const start = formatCompetitionDate(competition.startAt);
-  const end = formatCompetitionDate(competition.endAt);
-  if (start && end) return `${start} → ${end}`;
-  if (start) return `Desde ${start}`;
-  return null;
-}
-
 function PreviewBox({ competition, onPress, wide }) {
   const colors = useThemeColors();
   const idPrefix = `competitions-preview-box-${competition.id}`;
-  const dates = datesLabel(competition);
+  const dates = buildCompetitionDatesLabel(competition);
   return (
     <Pressable
       accessibilityLabel={`Ver ${buildCompetitionName(competition)}`}
@@ -42,7 +32,7 @@ function PreviewBox({ competition, onPress, wide }) {
       testID={idPrefix}
     >
       <View className="mb-4 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
-        <MaterialCommunityIcons color={colors.primary} name={TYPE_ICON[competition.type] ?? 'trophy-variant'} size={18} />
+        <MaterialCommunityIcons color={colors.primary} name={COMPETITION_TYPE_ICON[competition.type] ?? 'trophy-variant'} size={18} />
         <Text className="flex-1 font-bold text-slate-900 dark:text-white" nativeID={`${idPrefix}-title`} numberOfLines={3} testID={`${idPrefix}-title`}>
           {buildCompetitionName(competition)}
         </Text>

@@ -1075,7 +1075,7 @@ function TeamDetailScreenContent({ teamId }) {
   const visibleTabs = TABS.filter((tab) => tab.id !== 'grupos' || isTrainerView);
   const leaderboardContent = <LeaderboardTab teamId={team.id} />;
   const competitionsContent = (
-    <CompetitionsTab currentUserId={String(user?.userId)} focusCompetitionId={focusCompetitionId} groups={groupOptions} isTrainerView={isTrainerView} members={members} scrollViewRef={scrollViewRef} teamId={team.id} teamName={team.name} />
+    <CompetitionsTab currentUserId={String(user?.userId)} focusCompetitionId={focusCompetitionId} groups={groupOptions} isTrainerView={isTrainerView} members={members} ownerId={team.ownerId} ownerName={ownerName} scrollViewRef={scrollViewRef} teamId={team.id} teamName={team.name} />
   );
 
   return (
