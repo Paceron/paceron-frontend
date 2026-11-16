@@ -237,7 +237,14 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
       programmaticTargetIndexRef.current = null;
       programmaticScrollTimeoutRef.current = null;
     }, 1500);
-    scrollToX(nextIndex * pageWidth, true);
+    const targetX = nextIndex * pageWidth;
+    if (isWeb) {
+      // En web, iniciar el scroll suave dentro del evento de puntero hace que
+      // el navegador lo cancele (la card activa cambia pero la tira no se mueve).
+      setTimeout(() => scrollToX(targetX, true), 0);
+      return;
+    }
+    scrollToX(targetX, true);
   }, [nextTrainings.length, pageWidth, scrollToX, setIndex]);
 
   useEffect(() => {
