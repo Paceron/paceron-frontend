@@ -26,6 +26,23 @@ export function buildReviewSlotNavParams(reviewSlot) {
   return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined));
 }
 
+export function buildFinishedSessionReviewSlot({ run, pendingSession, athleteUserId } = {}) {
+  if (run?.session_instance_id == null) return null;
+  return {
+    sessionInstance: pendingSession?.sessionInstance ?? null,
+    sessionInstanceId: run.session_instance_id,
+    date: run.session_date,
+    sessionName: run.session_name,
+    role: 'runner',
+    athleteUserId,
+    mode: 'review',
+    completionStatus: 'finished',
+    teamId: pendingSession?.teamId ?? null,
+    teamName: pendingSession?.teamName ?? null,
+    groupName: pendingSession?.groupName ?? null,
+  };
+}
+
 export function reviewSlotFromNavParams(params) {
   if (!params?.sessionInstanceId) return null;
   return {

@@ -13,7 +13,7 @@ import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
 import { useSessionSyncStore } from '../../store/session-sync-store.js';
-import { buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
+import { buildFinishedSessionReviewSlot, buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { isWeb } from '../../utils/platform.js';
 import { formatStopwatch, toIsoUtc } from '../../utils/time.js';
 import { acceptGpsLeg, formatMeters, smoothGpsPoint } from '../../utils/distance.js';
@@ -1286,20 +1286,8 @@ function TrainingSessionActiveScreenContent() {
   };
 
   const handleFinishSession = () => {
-    if (!run) return;
-    const slot = {
-      sessionInstance: pendingSession?.sessionInstance ?? null,
-      sessionInstanceId: run.session_instance_id,
-      date: run.session_date,
-      sessionName: run.session_name,
-      role: 'runner',
-      athleteUserId: userId,
-      mode: 'review',
-      completionStatus: 'finished',
-      teamId: pendingSession?.teamId ?? null,
-      teamName: pendingSession?.teamName ?? null,
-      groupName: pendingSession?.groupName ?? null,
-    };
+    const slot = buildFinishedSessionReviewSlot({ run, pendingSession, athleteUserId: userId });
+    if (!slot) return;
     setReviewSlot(slot);
     clearLiveSession();
     router.replace({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });

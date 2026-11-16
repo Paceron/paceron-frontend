@@ -1,4 +1,4 @@
-import { buildReviewSlotNavParams, reviewSlotFromNavParams } from '../utils/review-slot-nav.js';
+import { buildFinishedSessionReviewSlot, buildReviewSlotNavParams, reviewSlotFromNavParams } from '../utils/review-slot-nav.js';
 
 describe('buildReviewSlotNavParams', () => {
   it('returns empty object for no reviewSlot', () => {
@@ -40,6 +40,56 @@ describe('buildReviewSlotNavParams', () => {
     const reviewSlot = { sessionInstanceId: '1', completionStatus: null };
     const params = buildReviewSlotNavParams(reviewSlot);
     expect('completionStatus' in params).toBe(false);
+  });
+});
+
+describe('buildFinishedSessionReviewSlot', () => {
+  it('returns null without a run', () => {
+    expect(buildFinishedSessionReviewSlot({ pendingSession: { teamId: '7' }, athleteUserId: '9' })).toBeNull();
+  });
+
+  it('returns null for a run without a session instance id', () => {
+    expect(buildFinishedSessionReviewSlot({ run: { id: 3 } })).toBeNull();
+  });
+
+  it('builds a finished runner review slot from the run and pending session', () => {
+    const run = { id: 3, session_instance_id: 42, session_date: '2026-11-16', session_name: 'Fondo' };
+    const pendingSession = {
+      sessionInstance: { id: 42, name: 'Fondo' },
+      teamId: 7,
+      teamName: 'Team A',
+      groupName: 'Group B',
+    };
+    expect(buildFinishedSessionReviewSlot({ run, pendingSession, athleteUserId: '9' })).toEqual({
+      sessionInstance: { id: 42, name: 'Fondo' },
+      sessionInstanceId: 42,
+      date: '2026-11-16',
+      sessionName: 'Fondo',
+      role: 'runner',
+      athleteUserId: '9',
+      mode: 'review',
+      completionStatus: 'finished',
+      teamId: 7,
+      teamName: 'Team A',
+      groupName: 'Group B',
+    });
+  });
+
+  it('keeps team fields null when the pending session is gone', () => {
+    const run = { session_instance_id: 42, session_date: '2026-11-16', session_name: 'Fondo' };
+    expect(buildFinishedSessionReviewSlot({ run, athleteUserId: 9 })).toEqual({
+      sessionInstance: null,
+      sessionInstanceId: 42,
+      date: '2026-11-16',
+      sessionName: 'Fondo',
+      role: 'runner',
+      athleteUserId: 9,
+      mode: 'review',
+      completionStatus: 'finished',
+      teamId: null,
+      teamName: null,
+      groupName: null,
+    });
   });
 });
 
