@@ -328,12 +328,12 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
       </View>
 
       {carousel ? (
-        <View className="absolute bottom-2 left-0 right-0 flex-row items-center justify-center gap-3" nativeID={`${idPrefix}-controls`} style={{ pointerEvents: 'box-none' }} testID={`${idPrefix}-controls`}>
+        <View className="absolute bottom-2 left-0 right-0 flex-row items-center justify-center gap-4" nativeID={`${idPrefix}-controls`} style={{ pointerEvents: 'box-none' }} testID={`${idPrefix}-controls`}>
           <Pressable
             accessibilityLabel="Entrenamiento anterior"
             accessibilityRole="button"
             accessibilityState={{ disabled: !carousel.canPrev }}
-            className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
+            className="h-6 w-8 items-center justify-center rounded-full border border-lime-900/15 bg-lime-300/90 shadow-sm active:opacity-80 dark:border-lime-500/15 dark:bg-lime-700/90"
             disabled={!carousel.canPrev}
             nativeID={`${idPrefix}-previous`}
             onPress={(event) => {
@@ -351,7 +351,7 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
             accessibilityLabel="Siguiente entrenamiento"
             accessibilityRole="button"
             accessibilityState={{ disabled: !carousel.canNext }}
-            className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
+            className="h-6 w-8 items-center justify-center rounded-full border border-lime-900/15 bg-lime-300/90 shadow-sm active:opacity-80 dark:border-lime-500/15 dark:bg-lime-700/90"
             disabled={!carousel.canNext}
             nativeID={`${idPrefix}-next`}
             onPress={(event) => {
