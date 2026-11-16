@@ -31,15 +31,8 @@ import { CheckoutFlow } from '../payments/checkout-flow';
 const ROLE_LABEL = { corredor: 'Corredor', entrenador: 'Entrenador' };
 const TIER_CONTENT = {
   base: { description: '1 equipo de hasta 10 integrantes', icon: 'account-group' },
-  medium: { description: '5 equipos y hasta 60 corredores, con consultas de IA sobre tus equipos', icon: 'brain' },
-  premium: {
-    description: '10 equipos y hasta 100 corredores, con acceso a todos los servicios de IA',
-    iconOptions: [
-      { id: 'robot-crown', icon: 'robot-happy-outline', accentIcon: 'crown', label: 'Robot' },
-      { id: 'idea-crown', icon: 'head-lightbulb-outline', accentIcon: 'crown', label: 'Idea' },
-      { id: 'crown-ai', icon: 'crown-outline', accentIcon: 'creation', label: 'IA premium' },
-    ],
-  },
+  medium: { description: '5 equipos y hasta 60 corredores, con consultas de IA sobre tus equipos', icon: 'creation' },
+  premium: { description: '10 equipos y hasta 100 corredores, con acceso a todos los servicios de IA', icon: 'crown-outline', accentIcon: 'creation' },
 };
 
 function tierContent(tier) {
@@ -86,25 +79,12 @@ function TierCard({ tier, isCurrent, loading, onUpgrade, currentTierName }) {
     >
       <View className="flex-1" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
         <View className="mb-3 items-center" nativeID={`${idPrefix}-heading`} testID={`${idPrefix}-heading`}>
-          {content.iconOptions ? (
-            <View className="mb-2 flex-row items-start justify-center gap-2" nativeID={`${idPrefix}-icon-options`} testID={`${idPrefix}-icon-options`}>
-              {content.iconOptions.map((option, index) => (
-                <View className="w-12 items-center gap-1" key={option.id} nativeID={`${idPrefix}-icon-option-${index + 1}`} testID={`${idPrefix}-icon-option-${index + 1}`}>
-                  <View className="h-11 w-12 flex-row items-center justify-center gap-0.5 rounded-xl bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-icon-option-${index + 1}-symbols`} testID={`${idPrefix}-icon-option-${index + 1}-symbols`}>
-                    <MaterialCommunityIcons color={colors.primary} name={option.icon} size={21} />
-                    <MaterialCommunityIcons color={colors.onSurfaceVariant} name={option.accentIcon} size={13} />
-                  </View>
-                  <Text className="text-center text-[10px] leading-3 text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-icon-option-${index + 1}-label`} testID={`${idPrefix}-icon-option-${index + 1}-label`}>
-                    {option.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View className="mb-2 h-11 w-11 items-center justify-center rounded-xl bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-icon-wrap`} testID={`${idPrefix}-icon-wrap`}>
+          <View className="mb-2 h-11 w-11 flex-row items-center justify-center gap-0.5 rounded-xl bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-icon-wrap`} testID={`${idPrefix}-icon-wrap`}>
+            <View className="flex-row items-center gap-0.5" nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
               <MaterialCommunityIcons color={colors.primary} name={content.icon} size={23} />
+              {content.accentIcon ? <MaterialCommunityIcons color={colors.onSurfaceVariant} name={content.accentIcon} size={13} /> : null}
             </View>
-          )}
+          </View>
           <Text className="text-center text-base font-bold capitalize text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
             {formatTierDisplayName(tier.name)}
           </Text>
