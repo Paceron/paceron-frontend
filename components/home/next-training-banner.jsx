@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,8 @@ import { isWeb } from '../../utils/platform.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
+
+const CAROUSEL_AUTOPLAY_MS = 10000;
 
 function CancelledCard({ session, onPress }) {
   const idPrefix = `next-training-banner-cancelled-${session.id}`;
@@ -132,6 +134,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const { colorScheme } = useThemeMode();
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(0);
   const scrollRef = useRef(null);
   // 4 vueltas (~3.6s) y se queda quieto -- no infinito, ver el comentario
   // de useArrowBounce sobre el lag real reportado en el Home de corredor.
@@ -142,33 +145,64 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const currentIndex = Math.min(activeIndex, nextTrainings.length - 1);
   const selectedTraining = nextTrainings[currentIndex] ?? nextTrainings[0];
 
-  useEffect(() => {
-    setActiveIndex(0);
-    scrollRef.current?.scrollTo?.({ x: 0, y: 0, animated: false });
-  }, [carouselKey]);
+  const setIndex = useCallback((index) => {
+    activeIndexRef.current = index;
+    setActiveIndex(index);
+  }, []);
 
-  useEffect(() => {
-    if (pageWidth > 0) {
-      scrollRef.current?.scrollTo?.({ x: currentIndex * pageWidth, y: 0, animated: false });
+  // RNW ya soporta scroll suave con `animated: true`; el cambio inmediato en
+  // web venía de un efecto que reescribía la posición sin animación en cada
+  // cambio de índice.
+  const scrollToX = useCallback((x, animated) => {
+    if (isWeb) {
+      const node = scrollRef.current?.getScrollableNode?.();
+      node?.scrollTo?.({ left: x, behavior: animated ? 'smooth' : 'auto' });
+      return;
     }
-  }, [currentIndex, pageWidth]);
+    scrollRef.current?.scrollTo?.({ x, y: 0, animated });
+  }, []);
 
-  const scrollToIndex = (index) => {
+  useEffect(() => {
+    setIndex(0);
+    scrollToX(0, false);
+  }, [carouselKey, scrollToX, setIndex]);
+
+  useEffect(() => {
+    if (pageWidth > 0) scrollToX(activeIndexRef.current * pageWidth, false);
+  }, [pageWidth, scrollToX]);
+
+  const scrollToIndex = useCallback((index) => {
     const nextIndex = Math.max(0, Math.min(nextTrainings.length - 1, index));
-    setActiveIndex(nextIndex);
-    scrollRef.current?.scrollTo?.({ x: nextIndex * pageWidth, y: 0, animated: true });
-  };
+    setIndex(nextIndex);
+    scrollToX(nextIndex * pageWidth, true);
+  }, [nextTrainings.length, pageWidth, scrollToX, setIndex]);
+
+  useEffect(() => {
+    if (nextTrainings.length <= 1 || pageWidth <= 0) return undefined;
+    const timer = setTimeout(() => {
+      scrollToIndex((currentIndex + 1) % nextTrainings.length);
+    }, CAROUSEL_AUTOPLAY_MS);
+    return () => clearTimeout(timer);
+  }, [currentIndex, nextTrainings.length, pageWidth, scrollToIndex]);
 
   const onScrollEnd = (event) => {
     if (pageWidth <= 0) return;
     const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
-    setActiveIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
+    setIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
   };
 
   const renderTrainingCard = (session, key, idPrefix, isCarousel = false) => (
     <NextTrainingHeroCard
       key={key}
       bounceStyle={bounceStyle}
+      carousel={isCarousel ? {
+        canNext: currentIndex < nextTrainings.length - 1,
+        canPrev: currentIndex > 0,
+        currentIndex,
+        onNext: () => scrollToIndex(currentIndex + 1),
+        onPrev: () => scrollToIndex(currentIndex - 1),
+        total: nextTrainings.length,
+      } : null}
       colorScheme={colorScheme}
       idPrefix={idPrefix}
       isCarousel={isCarousel}
@@ -197,7 +231,9 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
             horizontal
             nativeID="next-training-banner-carousel-pages"
             onMomentumScrollEnd={onScrollEnd}
+            onScroll={onScrollEnd}
             pagingEnabled
+            scrollEventThrottle={16}
             showsHorizontalScrollIndicator={false}
             testID="next-training-banner-carousel-pages"
           >
@@ -222,43 +258,12 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
           renderTrainingCard(selectedTraining, 'hero-single', 'next-training-banner-hero')
         )}
 
-        {nextTrainings.length > 1 && (
-          <View className="absolute bottom-2 left-0 right-0 z-10 flex-row items-center justify-center gap-3" nativeID="next-training-banner-carousel-controls" style={{ pointerEvents: 'box-none' }} testID="next-training-banner-carousel-controls">
-            <Pressable
-              accessibilityLabel="Entrenamiento anterior"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: currentIndex === 0 }}
-              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
-              disabled={currentIndex === 0}
-              nativeID="next-training-banner-carousel-previous"
-              onPress={() => scrollToIndex(currentIndex - 1)}
-              testID="next-training-banner-carousel-previous"
-            >
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-left" size={22} />
-            </Pressable>
-            <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-carousel-position" pointerEvents="none" testID="next-training-banner-carousel-position">
-              {currentIndex + 1} / {nextTrainings.length}
-            </Text>
-            <Pressable
-              accessibilityLabel="Siguiente entrenamiento"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: currentIndex === nextTrainings.length - 1 }}
-              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
-              disabled={currentIndex === nextTrainings.length - 1}
-              nativeID="next-training-banner-carousel-next"
-              onPress={() => scrollToIndex(currentIndex + 1)}
-              testID="next-training-banner-carousel-next"
-            >
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-right" size={22} />
-            </Pressable>
-          </View>
-        )}
       </View>
     </View>
   );
 }
 
-function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel }) {
+function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel }) {
   const heroIcon = session.isPresencial ? 'map-marker-radius' : 'run-fast';
 
   return (
@@ -321,6 +326,44 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
           </View>
         </View>
       </View>
+
+      {carousel ? (
+        <View className="absolute bottom-2 left-0 right-0 flex-row items-center justify-center gap-3" nativeID={`${idPrefix}-controls`} style={{ pointerEvents: 'box-none' }} testID={`${idPrefix}-controls`}>
+          <Pressable
+            accessibilityLabel="Entrenamiento anterior"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !carousel.canPrev }}
+            className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
+            disabled={!carousel.canPrev}
+            nativeID={`${idPrefix}-previous`}
+            onPress={(event) => {
+              event?.stopPropagation?.();
+              carousel.onPrev();
+            }}
+            testID={`${idPrefix}-previous`}
+          >
+            <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-left" size={22} />
+          </Pressable>
+          <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-position`} pointerEvents="none" testID={`${idPrefix}-position`}>
+            {carousel.currentIndex + 1} / {carousel.total}
+          </Text>
+          <Pressable
+            accessibilityLabel="Siguiente entrenamiento"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !carousel.canNext }}
+            className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
+            disabled={!carousel.canNext}
+            nativeID={`${idPrefix}-next`}
+            onPress={(event) => {
+              event?.stopPropagation?.();
+              carousel.onNext();
+            }}
+            testID={`${idPrefix}-next`}
+          >
+            <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-right" size={22} />
+          </Pressable>
+        </View>
+      ) : null}
 
       {isFetching && (
         <View className="absolute inset-0 items-center justify-center rounded-2xl bg-primary/70" nativeID={`${idPrefix}-fetching-overlay`} testID={`${idPrefix}-fetching-overlay`}>
