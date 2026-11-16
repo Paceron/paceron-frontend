@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
-import { consistencyPercent, formatBestTimeMetSource, formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
+import { consistencyPercent, formatBestTimeMetSource, formatDelta, formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
@@ -136,8 +136,11 @@ export function PaletteWithTarget({
             key: 'delta',
             label: 'Delta contra objetivo',
             value: totals.delta_pct,
+            formattedValue: formatDelta(totals.delta_pct, units.delta),
             unit: units.delta,
             icon: 'swap-vertical',
+            largeValue: true,
+            centerValue: true,
           },
           {
             key: 'compliance',
@@ -208,11 +211,12 @@ export function PaletteWithTarget({
           >
             {(hovered) => (
               <KpiTile
-                delta={kpi.key === 'delta' ? totals.delta_pct : undefined}
-                deltaUnit={units.delta}
+                centerValue={kpi.centerValue}
+                formattedValue={kpi.formattedValue}
                 hovered={hovered}
                 icon={kpi.icon}
                 id={`${id}-kpi-${kpi.key}`}
+                largeValue={kpi.largeValue}
                 label={kpi.label}
                 labelNumberOfLines={kpi.labelNumberOfLines ?? 1}
                 showInfo

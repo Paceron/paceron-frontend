@@ -25,7 +25,7 @@ const VERDICT_STYLES = {
   regressing: { text: 'text-red-600 dark:text-red-400', icon: '#ba1a1a' },
 };
 
-export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, hovered = false, labelNumberOfLines = 1, showInfo = false, source = null }) {
+export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUnit, verdict, hint, icon, emphasis = false, largeValue = false, centerValue = false, hovered = false, labelNumberOfLines = 1, showInfo = false, source = null }) {
   const verdictStyle = VERDICT_STYLES[verdict] ?? null;
 
   // Las seis cifras vuelven a ser cards del MISMO tamaño que las de gráficos.
@@ -73,12 +73,12 @@ export function KpiTile({ id, label, value, unit, formattedValue, delta, deltaUn
           diferencia de formato (color, peso, cuerpo chico) ya distinguishes el
           delta del valor principal, asi que no necesita su propia linea. */}
       <View
-        className="mt-1 flex-row items-baseline gap-1.5"
+        className={`mt-1 flex-row items-baseline gap-1.5 ${centerValue ? 'justify-center' : ''}`}
         nativeID={`${id}-value-row`}
         testID={`${id}-value-row`}
       >
         <Text
-          className={`shrink font-bold text-slate-950 dark:text-slate-50 ${emphasis ? 'text-2xl' : 'text-lg'}`}
+          className={`shrink font-bold text-slate-950 dark:text-slate-50 ${emphasis || largeValue ? 'text-2xl' : 'text-lg'}`}
           nativeID={`${id}-value`}
           numberOfLines={1}
           testID={`${id}-value`}

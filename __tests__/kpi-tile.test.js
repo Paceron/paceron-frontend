@@ -7,6 +7,23 @@ jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
 import { KpiTile } from '../components/dashboard/kpi-tile.jsx';
 
 describe('KpiTile — mejor tiempo cumplido', () => {
+  test('muestra el delta preformateado una sola vez, como cifra principal', () => {
+    const { getByTestId, queryByTestId } = render(
+      <KpiTile
+        centerValue
+        formattedValue="+2,1 %"
+        id="delta"
+        label="Delta contra objetivo"
+        largeValue
+        unit="%"
+        value={2.1}
+      />,
+    );
+
+    expect(getByTestId('delta-value')).toHaveTextContent('+2,1 %');
+    expect(queryByTestId('delta-delta')).toBeNull();
+  });
+
   test('muestra la procedencia del tiempo debajo del valor', () => {
     const { getByTestId, getByText } = render(
       <KpiTile
