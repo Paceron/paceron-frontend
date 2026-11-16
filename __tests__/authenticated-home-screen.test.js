@@ -1,11 +1,17 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 
 const mockAuthState = { userId: 33, activeRole: 'trainer' };
 const mockQueryClient = { invalidateQueries: jest.fn(async () => undefined) };
 let mockRefreshFn;
+let mockFocusEffectCallback = null;
 
 jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => mockQueryClient }));
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: (callback) => {
+    mockFocusEffectCallback = callback;
+  },
+}));
 jest.mock('../store/auth-store.js', () => ({ useAuthStore: (selector) => selector(mockAuthState) }));
 jest.mock('../hooks/use-user.js', () => ({ useUser: () => ({ user: { name: 'Alex' } }) }));
 jest.mock('../hooks/use-achievements.js', () => ({ useAchievements: () => ({ achievements: [], loading: false, error: null }) }));
@@ -39,6 +45,7 @@ import { AuthenticatedHomeScreen } from '../components/home/authenticated-home-s
 
 beforeEach(() => {
   mockAuthState.activeRole = 'trainer';
+  mockFocusEffectCallback = null;
   mockQueryClient.invalidateQueries.mockClear();
 });
 
@@ -67,4 +74,18 @@ test('no monta los KPIs de entrenador en el Home de corredor', () => {
   mockAuthState.activeRole = 'runner';
   const { queryByTestId } = render(<AuthenticatedHomeScreen />);
   expect(queryByTestId('trainer-home-kpis-mounted')).toBeNull();
+});
+
+test('refresca rachas y logros al volver a enfocar el Home del corredor', async () => {
+  mockAuthState.activeRole = 'runner';
+  render(<AuthenticatedHomeScreen />);
+
+  await act(async () => { mockFocusEffectCallback?.(); });
+  expect(mockQueryClient.invalidateQueries).not.toHaveBeenCalledWith({ queryKey: ['streaks', 33] });
+
+  await act(async () => { mockFocusEffectCallback?.(); });
+
+  expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['streaks', 33] });
+  expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['achievements', 33] });
+  expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['achievements-catalog'] });
 });

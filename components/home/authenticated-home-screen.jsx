@@ -1,5 +1,7 @@
+import { useCallback, useRef } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useUser } from '../../hooks/use-user.js';
 import { useThemeColors } from '../../theme/colors.js';
@@ -50,6 +52,22 @@ export function AuthenticatedHomeScreen() {
       queryClient.invalidateQueries({ queryKey: trainerHomeKpisPrefix(userId) }),
     ] : []),
   ]));
+
+  const refreshGamification = useCallback(() => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['streaks', userId] }),
+    queryClient.invalidateQueries({ queryKey: ['achievements', userId] }),
+    queryClient.invalidateQueries({ queryKey: ['achievements-catalog'] }),
+  ]), [queryClient, userId]);
+
+  const hasFocusedOnce = useRef(false);
+  useFocusEffect(useCallback(() => {
+    if (activeRole !== 'runner') return;
+    if (!hasFocusedOnce.current) {
+      hasFocusedOnce.current = true;
+      return;
+    }
+    refreshGamification();
+  }, [activeRole, refreshGamification]));
 
   return (
     <ScrollView
