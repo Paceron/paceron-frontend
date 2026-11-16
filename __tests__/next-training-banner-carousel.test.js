@@ -189,4 +189,29 @@ describe('NextTrainingBanner autoplay transitions', () => {
     unmount();
     jest.useRealTimers();
   });
+
+  it('keeps the selected slide through a slow manual transition', () => {
+    jest.useFakeTimers();
+    const { getByTestId, queryByTestId, unmount } = render(<NextTrainingBanner />);
+    fireEvent(getByTestId('next-training-banner-carousel'), 'layout', {
+      nativeEvent: { layout: { width: 320 } },
+    });
+
+    fireEvent.press(getByTestId('next-training-banner-hero-1-next'));
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+
+    act(() => {
+      jest.advanceTimersByTime(800);
+    });
+    fireEvent.scroll(getByTestId('next-training-banner-carousel-pages'), {
+      nativeEvent: { contentOffset: { x: 80, y: 0 } },
+    });
+
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-autoplay-track')).toBeTruthy();
+    expect(queryByTestId('next-training-banner-hero-1-autoplay-track')).toBeNull();
+
+    unmount();
+    jest.useRealTimers();
+  });
 });

@@ -161,6 +161,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const scrollRef = useRef(null);
   const programmaticScrollRef = useRef(false);
   const programmaticScrollTimeoutRef = useRef(null);
+  const programmaticTargetIndexRef = useRef(null);
   // 4 vueltas (~3.6s) y se queda quieto -- no infinito, ver el comentario
   // de useArrowBounce sobre el lag real reportado en el Home de corredor.
   const bounceStyle = useArrowBounce(4);
@@ -177,6 +178,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
 
   const clearProgrammaticScroll = useCallback(() => {
     programmaticScrollRef.current = false;
+    programmaticTargetIndexRef.current = null;
     if (programmaticScrollTimeoutRef.current) {
       clearTimeout(programmaticScrollTimeoutRef.current);
       programmaticScrollTimeoutRef.current = null;
@@ -211,11 +213,13 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
     const nextIndex = Math.max(0, Math.min(nextTrainings.length - 1, index));
     setIndex(nextIndex);
     programmaticScrollRef.current = true;
+    programmaticTargetIndexRef.current = nextIndex;
     if (programmaticScrollTimeoutRef.current) clearTimeout(programmaticScrollTimeoutRef.current);
     programmaticScrollTimeoutRef.current = setTimeout(() => {
       programmaticScrollRef.current = false;
+      programmaticTargetIndexRef.current = null;
       programmaticScrollTimeoutRef.current = null;
-    }, 700);
+    }, 1500);
     scrollToX(nextIndex * pageWidth, true);
   }, [nextTrainings.length, pageWidth, scrollToX, setIndex]);
 
@@ -228,8 +232,14 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   }, [currentIndex, nextTrainings.length, pageWidth, scrollToIndex]);
 
   const onScrollEnd = (event) => {
-    if (pageWidth <= 0 || programmaticScrollRef.current) return;
-    const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+    if (pageWidth <= 0) return;
+    const offsetX = event.nativeEvent.contentOffset.x;
+    if (programmaticScrollRef.current) {
+      const target = programmaticTargetIndexRef.current ?? activeIndexRef.current;
+      if (Math.abs(offsetX - target * pageWidth) < 2) clearProgrammaticScroll();
+      return;
+    }
+    const index = Math.round(offsetX / pageWidth);
     setIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
   };
 
