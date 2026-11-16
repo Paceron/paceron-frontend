@@ -159,6 +159,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [uniformCardHeight, setUniformCardHeight] = useState(0);
+  const [uniformContentHeight, setUniformContentHeight] = useState(0);
   const activeIndexRef = useRef(0);
   const scrollRef = useRef(null);
   const programmaticScrollRef = useRef(false);
@@ -182,6 +183,12 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
     if (!Number.isFinite(contentHeight) || contentHeight <= 0) return;
     const nextHeight = Math.ceil(contentHeight) + CAROUSEL_BODY_VERTICAL_PADDING;
     setUniformCardHeight((current) => (nextHeight > current ? nextHeight : current));
+  }, []);
+
+  const measureContentCardHeight = useCallback((contentHeight) => {
+    if (!Number.isFinite(contentHeight) || contentHeight <= 0) return;
+    const nextHeight = Math.ceil(contentHeight);
+    setUniformContentHeight((current) => (nextHeight > current ? nextHeight : current));
   }, []);
 
   const clearProgrammaticScroll = useCallback(() => {
@@ -211,6 +218,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   useEffect(() => {
     setIndex(0);
     setUniformCardHeight(0);
+    setUniformContentHeight(0);
     scrollToX(0, false);
   }, [carouselKey, scrollToX, setIndex]);
 
@@ -270,9 +278,11 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
       idPrefix={idPrefix}
       isCarousel={isCarousel}
       isFetching={isFetching}
+      onMeasureCardContentHeight={isCarousel ? measureContentCardHeight : undefined}
       onMeasureContentHeight={isCarousel ? measureCardContentHeight : undefined}
       onPress={() => onHeroPress(session)}
       session={session}
+      uniformContentHeight={isCarousel ? uniformContentHeight : 0}
       uniformHeight={isCarousel ? uniformCardHeight : 0}
     />
   );
@@ -332,29 +342,36 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
 
 function CarouselArrow({ colorScheme, direction, disabled, idPrefix, onPress }) {
   const isPrevious = direction === 'previous';
+  const color = colorScheme === 'dark' ? '#ffffff' : '#14532d';
 
   return (
     <Pressable
       accessibilityLabel={isPrevious ? 'Entrenamiento anterior' : 'Siguiente entrenamiento'}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
-      className="w-5 items-center justify-center active:opacity-60"
+      className="items-center justify-center active:opacity-60"
       disabled={disabled}
-      hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       nativeID={`${idPrefix}-${direction}`}
       onPress={(event) => {
         event?.stopPropagation?.();
         onPress();
       }}
-      style={{ opacity: disabled ? 0.3 : 1 }}
+      style={{ alignSelf: 'stretch', opacity: disabled ? 0.3 : 1, width: 28 }}
       testID={`${idPrefix}-${direction}`}
     >
-      <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name={isPrevious ? 'chevron-left' : 'chevron-right'} size={34} />
+      <Text
+        nativeID={`${idPrefix}-${direction}-glyph`}
+        style={{ color, fontSize: 32, fontWeight: '400', includeFontPadding: false, lineHeight: 34 }}
+        testID={`${idPrefix}-${direction}-glyph`}
+      >
+        {isPrevious ? '<' : '>'}
+      </Text>
     </Pressable>
   );
 }
 
-function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel, activeIndex, uniformHeight, onMeasureContentHeight }) {
+function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel, activeIndex, uniformHeight, uniformContentHeight, onMeasureContentHeight, onMeasureCardContentHeight }) {
   const heroIcon = session.isPresencial ? 'map-marker-radius' : 'run-fast';
   const isActive = isCarousel ? Boolean(carousel?.isActive) : true;
   const reveal = useSharedValue(1);
@@ -411,7 +428,7 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
             </View>
 
             <View className="flex-row items-center" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
-              <View className="flex-1 rounded-2xl bg-green-50/70 p-4 dark:bg-green-700/70" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
+              <View className="flex-1 rounded-2xl bg-green-50/70 p-4 dark:bg-green-700/70" nativeID={`${idPrefix}-text`} onLayout={isCarousel ? (event) => onMeasureCardContentHeight?.(event.nativeEvent.layout.height) : undefined} style={isCarousel && uniformContentHeight > 0 ? { minHeight: uniformContentHeight } : undefined} testID={`${idPrefix}-text`}>
                 <View className="min-w-0 flex-row items-center" nativeID={`${idPrefix}-date-name`} testID={`${idPrefix}-date-name`}>
                   <Animated.View nativeID={`${idPrefix}-icon`} style={[{ marginRight: 6 }, bounceStyle]} testID={`${idPrefix}-icon`}>
                     <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID={`${idPrefix}-icon-badge`} testID={`${idPrefix}-icon-badge`}>

@@ -110,6 +110,31 @@ describe('NextTrainingBanner carousel', () => {
     expect(secondHeight).toBe(202);
   });
 
+  it('uses the tallest inner content card height for every carousel card', () => {
+    const { getByTestId } = render(<NextTrainingBanner />);
+
+    fireEvent(getByTestId('next-training-banner-hero-1-text'), 'layout', {
+      nativeEvent: { layout: { height: 120 } },
+    });
+    fireEvent(getByTestId('next-training-banner-hero-2-text'), 'layout', {
+      nativeEvent: { layout: { height: 170 } },
+    });
+
+    expect(StyleSheet.flatten(getByTestId('next-training-banner-hero-1-text').props.style)?.minHeight).toBe(170);
+    expect(StyleSheet.flatten(getByTestId('next-training-banner-hero-2-text').props.style)?.minHeight).toBe(170);
+  });
+
+  it('renders both carousel arrows with a stable touch lane and narrow glyphs', () => {
+    const { getByTestId } = render(<NextTrainingBanner />);
+
+    const previous = getByTestId('next-training-banner-hero-1-previous');
+    const next = getByTestId('next-training-banner-hero-1-next');
+    expect(StyleSheet.flatten(previous.props.style)?.width).toBe(28);
+    expect(StyleSheet.flatten(next.props.style)?.width).toBe(28);
+    expect(getByTestId('next-training-banner-hero-1-previous-glyph').props.children).toBe('<');
+    expect(getByTestId('next-training-banner-hero-1-next-glyph').props.children).toBe('>');
+  });
+
   it('changes the selected session and starts that session', () => {
     const { getByTestId, queryByTestId } = render(<NextTrainingBanner />);
 
