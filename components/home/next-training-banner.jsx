@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -14,6 +14,29 @@ import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
 
 const CAROUSEL_AUTOPLAY_MS = 10000;
+
+function CarouselProgressBar({ active, colorScheme, idPrefix }) {
+  const progress = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: progress.value }] }));
+
+  useEffect(() => {
+    if (!active) return;
+    progress.value = 1;
+    progress.value = withTiming(0, { duration: CAROUSEL_AUTOPLAY_MS, easing: Easing.linear });
+  }, [active, progress]);
+
+  if (!active) return null;
+
+  return (
+    <View className="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden bg-green-900/10 dark:bg-white/10" nativeID={`${idPrefix}-autoplay-track`} pointerEvents="none" testID={`${idPrefix}-autoplay-track`}>
+      <Animated.View
+        nativeID={`${idPrefix}-autoplay-progress`}
+        style={[{ backgroundColor: colorScheme === 'dark' ? '#dcfce7' : '#14532d', height: '100%', transformOrigin: 'left center', width: '100%' }, animatedStyle]}
+        testID={`${idPrefix}-autoplay-progress`}
+      />
+    </View>
+  );
+}
 
 function CancelledCard({ session, onPress }) {
   const idPrefix = `next-training-banner-cancelled-${session.id}`;
@@ -191,14 +214,16 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
     setIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
   };
 
-  const renderTrainingCard = (session, key, idPrefix, isCarousel = false) => (
+  const renderTrainingCard = (session, key, idPrefix, isCarousel = false, index = 0) => (
     <NextTrainingHeroCard
       key={key}
+      activeIndex={currentIndex}
       bounceStyle={bounceStyle}
       carousel={isCarousel ? {
         canNext: currentIndex < nextTrainings.length - 1,
         canPrev: currentIndex > 0,
         currentIndex,
+        isActive: currentIndex === index,
         onNext: () => scrollToIndex(currentIndex + 1),
         onPrev: () => scrollToIndex(currentIndex - 1),
         total: nextTrainings.length,
@@ -250,6 +275,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
                   `hero-${session.groupId ?? ''}-${session.date}-${index}`,
                   `next-training-banner-hero-${index + 1}`,
                   true,
+                  index,
                 )}
               </View>
             ))}
@@ -263,8 +289,20 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   );
 }
 
-function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel }) {
+function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel, activeIndex }) {
   const heroIcon = session.isPresencial ? 'map-marker-radius' : 'run-fast';
+  const isActive = isCarousel ? Boolean(carousel?.isActive) : true;
+  const reveal = useSharedValue(1);
+  const revealStyle = useAnimatedStyle(() => ({
+    opacity: reveal.value,
+    transform: [{ translateX: (1 - reveal.value) * 14 }],
+  }));
+
+  useEffect(() => {
+    if (!isCarousel || !isActive) return;
+    reveal.value = 0;
+    reveal.value = withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
+  }, [activeIndex, isActive, isCarousel, reveal]);
 
   return (
     <Pressable
@@ -277,7 +315,8 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
         <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
       </View>
 
-      <View className={isCarousel ? 'px-4 pt-4 pb-12' : 'p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+      <View className={isCarousel ? 'relative px-4 pt-4 pb-12' : 'p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+        <Animated.View nativeID={`${idPrefix}-reveal`} style={revealStyle} testID={`${idPrefix}-reveal`}>
         <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
           Siguiente entrenamiento
         </Text>
@@ -325,6 +364,8 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
             )}
           </View>
         </View>
+        </Animated.View>
+        <CarouselProgressBar active={isCarousel && isActive} colorScheme={colorScheme} idPrefix={idPrefix} />
       </View>
 
       {carousel ? (

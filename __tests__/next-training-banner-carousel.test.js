@@ -9,7 +9,14 @@ let mockIsWeb = false;
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
 jest.mock('react-native-reanimated', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: { View } };
+  return {
+    __esModule: true,
+    default: { View },
+    Easing: { cubic: 0, linear: 0, out: (value) => value },
+    useAnimatedStyle: (styleFn) => styleFn(),
+    useSharedValue: (value) => ({ value }),
+    withTiming: (value) => value,
+  };
 });
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock('../theme/colors.js', () => ({ useThemeColors: () => ({ primary: '#168a52' }) }));
@@ -83,16 +90,19 @@ describe('NextTrainingBanner carousel', () => {
     expect(getByTestId('next-training-banner-hero-title').props.children).toBe('Fondo');
     expect(queryByTestId('next-training-banner-hero-controls')).toBeNull();
     expect(queryByTestId('next-training-banner-hero-next')).toBeNull();
+    expect(queryByTestId('next-training-banner-hero-autoplay-track')).toBeNull();
   });
 
   it('changes the selected session and starts that session', () => {
-    const { getByTestId } = render(<NextTrainingBanner />);
+    const { getByTestId, queryByTestId } = render(<NextTrainingBanner />);
 
     expect(getByTestId('next-training-banner-hero-1-title').props.children).toBe('Fondo');
     fireEvent.press(getByTestId('next-training-banner-hero-1-next'));
     expect(getByTestId('next-training-banner-hero-2-title').props.children).toBe('Intervalos');
     expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
     expect(getByTestId('next-training-banner-hero-2-controls')).toBeTruthy();
+    expect(getByTestId('next-training-banner-hero-2-autoplay-track')).toBeTruthy();
+    expect(queryByTestId('next-training-banner-hero-1-autoplay-track')).toBeNull();
     expect(mockSetPendingSession).not.toHaveBeenCalled();
 
     fireEvent.press(getByTestId('next-training-banner-hero-2'));
