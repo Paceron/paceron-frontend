@@ -56,7 +56,7 @@ const EMPTY_MESSAGE = {
   history: 'Todavía no hay competencias finalizadas.',
 };
 
-function RouteDetailSection({ idPrefix, competition, members }) {
+function RouteDetailSection({ idPrefix, competition, members, creatorName }) {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const twoColumns = isWeb && !isNarrowWeb;
@@ -64,16 +64,38 @@ function RouteDetailSection({ idPrefix, competition, members }) {
   const startPoint = coordinates[0] ? { lat: coordinates[0][1], lng: coordinates[0][0] } : null;
   const { address, loading: addressLoading } = useReverseGeocode(startPoint?.lat, startPoint?.lng);
   const addressLabel = address?.label ?? (addressLoading ? 'Resolviendo dirección…' : 'Punto de inicio');
+  const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const winner = competition.status === 'finished'
     ? resolveCompetitionWinner({ winnerUserIds: competition.winnerUserIds, members })
     : null;
 
   const infoColumn = (
-    <View className="gap-2" nativeID={`${idPrefix}-route-info`} testID={`${idPrefix}-route-info`}>
+    <View className="gap-3" nativeID={`${idPrefix}-route-info`} testID={`${idPrefix}-route-info`}>
+      <View className="gap-1" nativeID={`${idPrefix}-route-status`} testID={`${idPrefix}-route-status`}>
+        <View className="flex-row items-center gap-1.5" nativeID={`${idPrefix}-route-status-caption-row`} testID={`${idPrefix}-route-status-caption-row`}>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="flag-outline" size={14} />
+          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-status-caption`} testID={`${idPrefix}-route-status-caption`}>
+            Estado:
+          </Text>
+        </View>
+        <View className={`self-start rounded-full px-2 py-0.5 ${statusMeta.bg}`} nativeID={`${idPrefix}-route-status-badge`} testID={`${idPrefix}-route-status-badge`}>
+          <Text className={`text-xs font-semibold ${statusMeta.text}`} nativeID={`${idPrefix}-route-status-label`} testID={`${idPrefix}-route-status-label`}>
+            {statusMeta.label}
+          </Text>
+        </View>
+      </View>
+      {creatorName && (
+        <View className="flex-row items-start gap-1.5" nativeID={`${idPrefix}-route-creator`} testID={`${idPrefix}-route-creator`}>
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name="account-edit-outline" size={14} style={{ marginTop: 1 }} />
+          <Text className="flex-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-creator-label`} testID={`${idPrefix}-route-creator-label`}>
+            Creador: {creatorName}
+          </Text>
+        </View>
+      )}
       {startPoint && (
-        <View className="flex-row flex-wrap items-center gap-x-1.5 gap-y-1" nativeID={`${idPrefix}-route-start`} testID={`${idPrefix}-route-start`}>
-          <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-route-start-label-group`} testID={`${idPrefix}-route-start-label-group`}>
-            <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} />
+        <View className="gap-1" nativeID={`${idPrefix}-route-start`} testID={`${idPrefix}-route-start`}>
+          <View className="flex-row items-center gap-1.5" nativeID={`${idPrefix}-route-start-label-group`} testID={`${idPrefix}-route-start-label-group`}>
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="map-marker-outline" size={14} />
             <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-start-address-caption`} testID={`${idPrefix}-route-start-address-caption`}>
               Punto de inicio:
             </Text>
@@ -92,8 +114,8 @@ function RouteDetailSection({ idPrefix, competition, members }) {
         </View>
       )}
       {winner && (
-        <View className="mt-1" nativeID={`${idPrefix}-route-winner`} testID={`${idPrefix}-route-winner`}>
-          <Text className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-winner-caption`} testID={`${idPrefix}-route-winner-caption`}>
+        <View className="gap-1" nativeID={`${idPrefix}-route-winner`} testID={`${idPrefix}-route-winner`}>
+          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-route-winner-caption`} testID={`${idPrefix}-route-winner-caption`}>
             Ganador:
           </Text>
           {winner.kind === 'winner' ? (
@@ -348,7 +370,7 @@ function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerVie
       )}
 
       {expanded && competition.type === 'route' && (
-        <RouteDetailSection competition={competition} idPrefix={idPrefix} members={members} />
+        <RouteDetailSection competition={competition} creatorName={creatorName} idPrefix={idPrefix} members={members} />
       )}
 
       {canRunBase && isWeb && (
