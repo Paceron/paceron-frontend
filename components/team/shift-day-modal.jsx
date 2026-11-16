@@ -8,15 +8,18 @@ import { addDaysISO } from '../../utils/build-stamp-draft.js';
 import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { useCalendarActivityStore } from '../../store/calendar-activity-store.js';
 
 // Desplaza TODO lo que sigue desde `fromDate` (inclusive) N días adelante
 // — no es "mover este día puntual", el backend corre todas las filas con
 // date >= from_date (docs/BACKEND_CALENDAR_ASSIGNMENTS_SPEC.md §4). El
 // stepper +/- reusa el mismo patrón visual que la cantidad de días de un
 // plan (components/plans/training-plan-form-fields.jsx).
-export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
+export function ShiftDayModal({ visible, onClose, groupId, fromDate, activityDates = [] }) {
   const colors = useThemeColors();
   const { shiftCalendar, isShifting } = useGroupCalendarMutations(groupId);
+  const startActivity = useCalendarActivityStore((state) => state.startActivity);
+  const finishActivity = useCalendarActivityStore((state) => state.finishActivity);
 
   const [days, setDays] = useState(1);
 
@@ -30,22 +33,27 @@ export function ShiftDayModal({ visible, onClose, groupId, fromDate }) {
   if (!fromDate) return null;
 
   const handleSubmit = async () => {
-    const result = await shiftCalendar({ fromDate, days });
-    if (!result.success) {
-      notifyError();
-      if (result.conflict) {
-        Toast.show({ type: 'error', text1: 'No pudimos desplazar', text2: result.message ?? 'El corrimiento chocaría con una fecha existente.' });
-      } else {
-        Toast.show({ type: 'error', text1: 'No pudimos desplazar el calendario', text2: result.error });
+    startActivity(groupId, activityDates);
+    try {
+      const result = await shiftCalendar({ fromDate, days });
+      if (!result.success) {
+        notifyError();
+        if (result.conflict) {
+          Toast.show({ type: 'error', text1: 'No pudimos desplazar', text2: result.message ?? 'El corrimiento chocaría con una fecha existente.' });
+        } else {
+          Toast.show({ type: 'error', text1: 'No pudimos desplazar el calendario', text2: result.error });
+        }
+        return;
       }
-      return;
+      notifySuccess();
+      Toast.show({ type: 'success', text1: `Calendario desplazado ${days} día${days === 1 ? '' : 's'}` });
+      if (result.sameTeamWarnings?.length > 0) {
+        Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+      }
+      onClose();
+    } finally {
+      finishActivity(groupId, activityDates);
     }
-    notifySuccess();
-    Toast.show({ type: 'success', text1: `Calendario desplazado ${days} día${days === 1 ? '' : 's'}` });
-    if (result.sameTeamWarnings?.length > 0) {
-      Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
-    }
-    onClose();
   };
 
   return (

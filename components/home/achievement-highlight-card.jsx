@@ -1,4 +1,4 @@
-import { Pressable, View, Text } from 'react-native';
+import { ActivityIndicator, Pressable, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
@@ -6,26 +6,46 @@ import { levelMeta } from '../../utils/achievement-level-meta.js';
 import { pickAchievementHighlight } from '../../utils/achievement-highlight.js';
 import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
+import { useThemeColors } from '../../theme/colors.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 
-// `paired` (Home, 2026-11-09): true cuando el caller ya decidió emparejar
-// esta card con StreakBanner en una fila 50/50 (ver
-// authenticated-home-screen.jsx, que usa el mismo `pickAchievementHighlight`
-// para decidirlo ANTES de montar esta card). `flex-1` ahí estira la card a
-// la altura de la fila (el slot ya quedó fijado por el hermano más alto via
-// el `alignItems: stretch` default del row) -- sin pareja, la card vive
-// suelta en el flujo de la ScrollView (altura auto, sin hermano con quien
-// igualar), y `flex-1` ahí colapsaría a 0 (mismo quirk de CLAUDE.md sobre
-// flex-1 dentro de un padre sin altura propia).
+// `paired`: `flex-1` para igualar la altura de StreakBanner en la fila 50/50
+// del Home. Sin pareja, `flex-1` colapsaría a 0 dentro de un padre sin altura
+// propia (ver CLAUDE.md).
+const CARD_CLASS = 'mb-3 min-h-[96px] rounded-2xl bg-white p-4 shadow-sm dark:bg-surface';
+
 export function AchievementHighlightCard({ paired = false }) {
   const router = useRouter();
+  const colors = useThemeColors();
   const { achievements, loading, error } = useAchievements();
   const setActiveTab = useAchievementsTabStore((s) => s.setActiveTab);
+  const shellClass = `${CARD_CLASS} ${paired ? 'flex-1' : ''}`;
 
-  if (loading || error || !achievements.length) return null;
+  if (loading) {
+    return (
+      <View className={`${shellClass} items-center justify-center`} nativeID="achievement-highlight-card-loading" testID="achievement-highlight-card-loading">
+        <ActivityIndicator color={colors.primary} nativeID="achievement-highlight-card-loading-indicator" testID="achievement-highlight-card-loading-indicator" />
+      </View>
+    );
+  }
 
   const highlight = pickAchievementHighlight(achievements);
-  if (!highlight) return null;
+  const statusMessage = error
+    ? 'No pudimos cargar tus logros.'
+    : !achievements.length
+      ? 'Todavía no hay logros disponibles.'
+      : 'Todo desbloqueado.';
+
+  if (!highlight) {
+    return (
+      <View className={`${shellClass} items-center justify-center`} nativeID="achievement-highlight-card-empty" testID="achievement-highlight-card-empty">
+        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={error ? 'alert-circle-outline' : 'trophy-outline'} size={24} />
+        <Text className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="achievement-highlight-card-empty-label" testID="achievement-highlight-card-empty-label">
+          {statusMessage}
+        </Text>
+      </View>
+    );
+  }
 
   const meta = levelMeta(highlight.currentLevel || 1);
 
@@ -39,7 +59,7 @@ export function AchievementHighlightCard({ paired = false }) {
   };
 
   return (
-    <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
+    <Pressable className={`${shellClass} transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-surface-2 dark:active:bg-surface-3`} nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
         {/* Kicker "Logro" -- sin esto se confundía con la card de Racha
             justo arriba (mismo estilo blanco/ícono+texto+barra), pedido
             real 2026-10-14. */}

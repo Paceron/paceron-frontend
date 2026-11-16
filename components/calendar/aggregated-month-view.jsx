@@ -8,8 +8,10 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
+import { isCalendarDatePending, useCalendarActivityStore } from '../../store/calendar-activity-store.js';
 import { CalendarMonthYearHeader } from './calendar-month-year-header.jsx';
 import { CalendarFadeIn } from './calendar-fade-in.jsx';
+import { CalendarLoadingSkeleton } from './calendar-loading-skeleton.jsx';
 
 const MAX_DOTS = 4;
 
@@ -26,8 +28,10 @@ const EMPTY_ASSIGNMENTS = [];
 // celda).
 const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday, assignments, onPress, showCollisions }) {
   const colors = useThemeColors();
+  const activityByScope = useCalendarActivityStore((state) => state.activityByScope);
   const isOtherMonth = state === 'disabled';
   const hasAssignments = assignments.length > 0;
+  const pending = assignments.some((assignment) => isCalendarDatePending(activityByScope, assignment.groupId, date.dateString));
   // Misma noción de "día cerrado" que group-calendar-screen.jsx, evaluada
   // contra la asignación más relevante del día (la primera presencial, si
   // hay alguna, si no la primera del array) — un día con varias
@@ -57,9 +61,10 @@ const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday
   return (
     <Pressable
       className={`h-14 w-full items-center justify-start py-1.5 px-1 gap-1 rounded-xl ${borderClass}`}
+      disabled={pending}
       nativeID={`aggregated-calendar-day-${date.dateString}`}
-      onPress={() => { if (!isOtherMonth) onPress(date.dateString); }}
-      style={{ opacity: closed ? 0.4 : 1 }}
+      onPress={() => { if (!isOtherMonth && !pending) onPress(date.dateString); }}
+      style={{ opacity: pending ? 1 : closed ? 0.4 : 1 }}
       testID={`aggregated-calendar-day-${date.dateString}`}
     >
       <Text
@@ -69,7 +74,10 @@ const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday
       >
         {date.day}
       </Text>
-      {hasAssignments && (
+      {pending && (
+        <ActivityIndicator color={colors.primary} nativeID={`aggregated-calendar-day-${date.dateString}-pending`} size="small" testID={`aggregated-calendar-day-${date.dateString}-pending`} />
+      )}
+      {!pending && hasAssignments && (
         <View
           className="flex-row items-center"
           nativeID={`aggregated-calendar-day-${date.dateString}-dots`}
@@ -98,7 +106,7 @@ const AggregatedDayCell = memo(function AggregatedDayCell({ date, state, isToday
           )}
         </View>
       )}
-      {severity && (
+      {!pending && severity && (
         <View
           className="absolute right-1 top-1"
           nativeID={`aggregated-calendar-day-${date.dateString}-collision-badge`}
@@ -170,15 +178,7 @@ export const AggregatedMonthView = memo(function AggregatedMonthView({ currentMo
           }}
         />
       </CalendarFadeIn>
-      {loading && (
-        <View
-          className="absolute inset-0 items-center justify-center rounded-2xl bg-white/70 dark:bg-surface/70"
-          nativeID="aggregated-month-view-loading-overlay"
-          testID="aggregated-month-view-loading-overlay"
-        >
-          <ActivityIndicator color={colors.primary} nativeID="aggregated-month-view-loading-indicator" testID="aggregated-month-view-loading-indicator" />
-        </View>
-      )}
+      {loading && <CalendarLoadingSkeleton idPrefix="aggregated-month-view" />}
     </View>
   );
 });

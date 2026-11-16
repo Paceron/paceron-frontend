@@ -9,6 +9,9 @@ import Toast from 'react-native-toast-message';
 import { MobileOnlyRoute } from '../guards/platform-gate.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
+import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
+import { useSessionReviewStore } from '../../store/session-review-store.js';
+import { useSessionSyncStore } from '../../store/session-sync-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
@@ -17,6 +20,7 @@ import { useSessionMessages, useSendSessionMessage } from '../../hooks/use-sessi
 import { useUser } from '../../hooks/use-user.js';
 import { SessionMessagesModal } from './session-messages-modal.jsx';
 import { LiveSessionMapPanel } from './live-session-map-panel.jsx';
+import { buildFinishedSessionReviewSlot, buildReviewSlotNavParams } from '../../utils/review-slot-nav.js';
 import { formatStopwatch } from '../../utils/time.js';
 import { formatMeters } from '../../utils/distance.js';
 import { getUserInitials } from '../../utils/user-initials.js';
@@ -739,7 +743,10 @@ function LiveSeriesView({
 
 function TrainingSessionLiveScreenContent() {
   const router = useRouter();
+  const colors = useThemeColors();
   const clearLiveSession = useLiveSessionStore((s) => s.clearLiveSession);
+  const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
+  const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
   const myUserId = useAuthStore((s) => s.userId);
   const { user: myUser } = useUser(myUserId);
   const {
@@ -765,6 +772,9 @@ function TrainingSessionLiveScreenContent() {
     cancelSession,
     finalizeSession,
   } = useLiveSessionRuntime();
+  const syncing = useSessionSyncStore((state) => (
+    run?.session_instance_id != null && Boolean(state.syncingBySessionId[String(run.session_instance_id)])
+  ));
   const [mode, setMode] = useState('overview'); // 'overview' | 'series'
   const [currentSetId, setCurrentSetId] = useState(null);
   const [finishing, setFinishing] = useState(false);
@@ -783,6 +793,18 @@ function TrainingSessionLiveScreenContent() {
     const params = { sessionInstanceId: run.session_instance_id, date: run.session_date };
     clearLiveSession();
     router.replace({ pathname: '/training-comparison/session', params });
+  };
+
+  const handleFinishSession = () => {
+    const slot = buildFinishedSessionReviewSlot({ run, pendingSession, athleteUserId: myUserId });
+    if (!slot) {
+      clearLiveSession();
+      router.back();
+      return;
+    }
+    setReviewSlot(slot);
+    clearLiveSession();
+    router.replace({ pathname: '/training-session-review', params: buildReviewSlotNavParams(slot) });
   };
 
   // `run` recién existe después del bootstrap -- antes de eso, `teamId` es
@@ -859,8 +881,7 @@ function TrainingSessionLiveScreenContent() {
       // (bug real, 2026-10-04: alguien que ni había arrancado un ejercicio
       // quedaba con la sesión colgada hasta que el entrenador insistía).
       if (finalizeTriggeredRef.current || sessionComplete) {
-        clearLiveSession();
-        router.back();
+        handleFinishSession();
         return;
       }
       Toast.show({ type: 'info', text1: 'El entrenador finalizó la sesión' });
@@ -997,11 +1018,11 @@ function TrainingSessionLiveScreenContent() {
           )}
         </View>
 
-        <Modal animationType="fade" nativeID="training-session-live-complete-modal" onRequestClose={() => { clearLiveSession(); router.back(); }} testID="training-session-live-complete-modal" transparent visible={sessionComplete}>
+        <Modal animationType="fade" nativeID="training-session-live-complete-modal" onRequestClose={handleFinishSession} testID="training-session-live-complete-modal" transparent visible={sessionComplete}>
           <Pressable
             className="flex-1 items-center justify-center bg-black/50 px-4"
             nativeID="training-session-live-complete-modal-backdrop"
-            onPress={() => { clearLiveSession(); router.back(); }}
+            onPress={handleFinishSession}
             testID="training-session-live-complete-modal-backdrop"
           >
             <Pressable className="w-full max-w-md items-center rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="training-session-live-complete-modal-card" onPress={() => {}} testID="training-session-live-complete-modal-card">
@@ -1010,6 +1031,14 @@ function TrainingSessionLiveScreenContent() {
               <Text className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="training-session-live-complete-modal-subtitle" testID="training-session-live-complete-modal-subtitle">
                 Completaste todos los ejercicios de la sesión.
               </Text>
+              {syncing && (
+                <View className="mt-3 flex-row items-center gap-2" nativeID="training-session-live-complete-modal-syncing" testID="training-session-live-complete-modal-syncing">
+                  <ActivityIndicator color={colors.primary} size="small" />
+                  <Text accessibilityLiveRegion="polite" className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="training-session-live-complete-modal-syncing-label" testID="training-session-live-complete-modal-syncing-label">
+                    Sincronizando el registro…
+                  </Text>
+                </View>
+              )}
               <Pressable
                 className="mt-5 h-11 w-full flex-row items-center justify-center gap-2 rounded-full border border-primary bg-primary-tint active:opacity-80 dark:bg-primary/15"
                 disabled={openingComparison}
@@ -1025,7 +1054,7 @@ function TrainingSessionLiveScreenContent() {
               <Pressable
                 className="mt-3 h-12 w-full items-center justify-center rounded-full bg-primary active:opacity-80"
                 nativeID="training-session-live-complete-modal-close-button"
-                onPress={() => { clearLiveSession(); router.back(); }}
+                onPress={handleFinishSession}
                 testID="training-session-live-complete-modal-close-button"
               >
                 <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="training-session-live-complete-modal-close-label" testID="training-session-live-complete-modal-close-label">Terminar</Text>

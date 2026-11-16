@@ -14,6 +14,7 @@ import { StartSessionButton } from './start-session-button.jsx';
 import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { useCalendarActivityStore } from '../../store/calendar-activity-store.js';
 
 function kindLabel(assignment) {
   if (assignment.kind === 'rest') return 'Descanso';
@@ -203,22 +204,29 @@ function AssignmentRow({ assignment, variant, cardRef, onOpenMenu }) {
 function ClearDayConfirm({ clearTarget, onCancel, onCleared }) {
   const queryClient = useQueryClient();
   const { deleteDay, isDeleting } = useGroupCalendarMutations(clearTarget?.groupId ?? null);
+  const startActivity = useCalendarActivityStore((state) => state.startActivity);
+  const finishActivity = useCalendarActivityStore((state) => state.finishActivity);
 
   const handleConfirm = async () => {
-    const result = await deleteDay({ date: clearTarget.date });
-    if (!result.success) {
-      notifyError();
-      Toast.show({ type: 'error', text1: 'No pudimos vaciar el día', text2: result.error });
-      return;
+    startActivity(clearTarget?.groupId, [clearTarget?.date]);
+    try {
+      const result = await deleteDay({ date: clearTarget.date });
+      if (!result.success) {
+        notifyError();
+        Toast.show({ type: 'error', text1: 'No pudimos vaciar el día', text2: result.error });
+        return;
+      }
+      // La query agregada (administered-calendar/member-calendar) es un
+      // cache aparte del de group-calendar -- deleteDay ya invalida este
+      // último, acá se invalida el que de verdad alimenta este modal.
+      queryClient.invalidateQueries({ queryKey: ['administered-calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['member-calendar'] });
+      notifySuccess();
+      Toast.show({ type: 'success', text1: 'Día vaciado' });
+      onCleared();
+    } finally {
+      finishActivity(clearTarget?.groupId, [clearTarget?.date]);
     }
-    // La query agregada (administered-calendar/member-calendar) es un
-    // cache aparte del de group-calendar -- deleteDay ya invalida este
-    // último, acá se invalida el que de verdad alimenta este modal.
-    queryClient.invalidateQueries({ queryKey: ['administered-calendar'] });
-    queryClient.invalidateQueries({ queryKey: ['member-calendar'] });
-    notifySuccess();
-    Toast.show({ type: 'success', text1: 'Día vaciado' });
-    onCleared();
   };
 
   return (

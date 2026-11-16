@@ -19,8 +19,10 @@ import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
 import { buildCalendarDayTooltipLabel } from '../../utils/calendar-day-tooltip.js';
+import { hasCalendarDayContent } from '../../utils/calendar-day-content.js';
 import { summarizeMonthDays } from '../../utils/calendar-month-summary.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
+import { useCalendarActivityStore, useCalendarDateActivity } from '../../store/calendar-activity-store.js';
 import { CalendarKindLegend } from '../calendar/calendar-kind-legend.jsx';
 import { StampPlanModal } from './stamp-plan-modal.jsx';
 import { ShiftDayModal } from './shift-day-modal.jsx';
@@ -30,6 +32,7 @@ import { BulkEditDaysModal } from './bulk-edit-days-modal.jsx';
 import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { CalendarMonthYearHeader } from '../calendar/calendar-month-year-header.jsx';
 import { CalendarFadeIn } from '../calendar/calendar-fade-in.jsx';
+import { CalendarLoadingSkeleton } from '../calendar/calendar-loading-skeleton.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -55,12 +58,13 @@ const KIND_FILLED_CLASS = {
   cancelled: 'border-rose-300 bg-rose-200 dark:border-rose-700 dark:bg-rose-800',
 };
 
-function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, onOpenMenu, onOpenContent, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
+function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, groupId, onOpenMenu, onOpenContent, isMenuOpen, selectionActive, selectionClosedClass, selected, onToggleSelect, canManage }) {
   const colors = useThemeColors();
   const { themeMode } = useThemeMode();
   const isDark = themeMode === 'dark';
   const cellRef = useRef(null);
   const isOtherMonth = state === 'disabled';
+  const pending = useCalendarDateActivity(groupId, date.dateString);
   // Único cómputo de "cerrado" de la celda (el otro, local y redundante,
   // se sacó 2026-11-12: comparaba marking contra isCalendarDayClosed con
   // el mismo bug de abajo, y su único consumo -- la opacidad del punto de
@@ -91,7 +95,7 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
       : 1;
 
   const handlePress = () => {
-    if (!canManage || isOtherMonth) return;
+    if (pending || !canManage || isOtherMonth) return;
     if (selectionActive) {
       if (!canSelect) return;
       onToggleSelect(date.dateString);
@@ -138,9 +142,10 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
     <Pressable
       ref={cellRef}
       className={`h-14 w-full items-center justify-center flex-row py-1.5 px-1 gap-1 rounded-xl ${borderClass}`}
+      disabled={pending}
       nativeID={`group-calendar-day-${date.dateString}`}
       onPress={handlePress}
-      style={{ opacity: cellOpacity }}
+      style={{ opacity: pending ? 1 : cellOpacity }}
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
@@ -150,7 +155,10 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
       >
         {date.day}
       </Text>
-      {marking && marking.kind !== 'rest' && (
+      {pending && (
+        <ActivityIndicator color={colors.primary} nativeID={`group-calendar-day-${date.dateString}-pending`} size="small" testID={`group-calendar-day-${date.dateString}-pending`} />
+      )}
+      {!pending && marking && marking.kind !== 'rest' && (
         <View
           className="items-center"
           nativeID={`group-calendar-day-${date.dateString}-marks`}
@@ -172,7 +180,7 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
           )}
         </View>
       )}
-      {closedForSelection && !isOtherMonth && (
+      {!pending && closedForSelection && !isOtherMonth && (
         <View
           className="absolute right-1 top-1"
           nativeID={`group-calendar-day-${date.dateString}-closed-badge`}
@@ -224,9 +232,11 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   const [stampTargetDate, setStampTargetDate] = useState(null);
   const [shiftTargetDate, setShiftTargetDate] = useState(null);
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
-  const { days, loading: loadingDays, isFetching } = useGroupCalendar(groupId, from, to);
+  const { days, loading: loadingDays } = useGroupCalendar(groupId, from, to);
   usePrefetchAdjacentGroupCalendar(groupId, visibleYear, visibleMonth);
   const { deleteDay, bulkClear, isBulkClearing } = useGroupCalendarMutations(groupId);
+  const startActivity = useCalendarActivityStore((state) => state.startActivity);
+  const finishActivity = useCalendarActivityStore((state) => state.finishActivity);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
   const screenRootRef = useRef(null);
   const [openDayMenu, setOpenDayMenu] = useState(null);
@@ -242,6 +252,10 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   );
   const daysByDate = useMemo(() => Object.fromEntries(days.map((d) => [d.date, d])), [days]);
   const monthCounts = useMemo(() => summarizeMonthDays(days), [days]);
+  const shiftActivityDates = useMemo(() => {
+    if (!shiftTargetDate) return [];
+    return days.filter((day) => day.date >= shiftTargetDate).map((day) => day.date);
+  }, [days, shiftTargetDate]);
 
   const handleOpenDayMenu = (dateString, anchor) => {
     setOpenDayMenu({ date: dateString, anchor });
@@ -262,14 +276,19 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
   };
 
   const handleClearDay = async (date) => {
-    const result = await deleteDay({ date });
-    if (!result.success) {
-      notifyError();
-      Toast.show({ type: 'error', text1: 'No pudimos vaciar el día', text2: result.error });
-      return;
+    startActivity(groupId, [date]);
+    try {
+      const result = await deleteDay({ date });
+      if (!result.success) {
+        notifyError();
+        Toast.show({ type: 'error', text1: 'No pudimos vaciar el día', text2: result.error });
+        return;
+      }
+      notifySuccess();
+      Toast.show({ type: 'success', text1: 'Día vaciado' });
+    } finally {
+      finishActivity(groupId, [date]);
     }
-    notifySuccess();
-    Toast.show({ type: 'success', text1: 'Día vaciado' });
   };
 
   const handleCancelSession = (date) => {
@@ -310,6 +329,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
 
   const handleBulkClear = async () => {
     const dates = Array.from(selectedDates);
+    startActivity(groupId, dates);
     handleExitSelection();
     // handleExitSelection ya cerró el modo selección -- sin este toast
     // persistente, una operación de varios minutos (vaciar muchos días)
@@ -317,15 +337,19 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     // reportado, 2026-10-10). autoHide:false + Toast.hide() manual en vez
     // de un timeout fijo, porque no sabemos cuánto va a tardar.
     Toast.show({ type: 'info', text1: `Vaciando ${dates.length} día${dates.length === 1 ? '' : 's'}…`, text2: 'Puede demorar unos minutos.', autoHide: false });
-    const result = await bulkClear({ dates });
-    Toast.hide();
-    if (!result.success) {
-      notifyError();
-      Toast.show({ type: 'error', text1: 'No pudimos vaciar los días', text2: result.error });
-      return;
+    try {
+      const result = await bulkClear({ dates });
+      Toast.hide();
+      if (!result.success) {
+        notifyError();
+        Toast.show({ type: 'error', text1: 'No pudimos vaciar los días', text2: result.error });
+        return;
+      }
+      notifySuccess();
+      Toast.show({ type: 'success', text1: `${dates.length} día${dates.length === 1 ? '' : 's'} vaciados` });
+    } finally {
+      finishActivity(groupId, dates);
     }
-    notifySuccess();
-    Toast.show({ type: 'success', text1: `${dates.length} día${dates.length === 1 ? '' : 's'} vaciados` });
   };
 
   const openMarking = openDayMenu ? markingsByDate[openDayMenu.date] : null;
@@ -391,9 +415,6 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
           <Text className="text-xl text-slate-900 dark:text-white" nativeID="group-calendar-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="group-calendar-screen-title">
             Calendario de {group?.name ?? '...'}
           </Text>
-          {(loadingDays || isFetching) && (
-            <ActivityIndicator color={colors.primary} nativeID="group-calendar-screen-fetching" size="small" testID="group-calendar-screen-fetching" />
-          )}
           {selectionActive ? (
             <View className="ml-auto flex-row items-center gap-2" nativeID="group-calendar-screen-selection-bar" testID="group-calendar-screen-selection-bar">
               <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300" nativeID="group-calendar-screen-selection-count" testID="group-calendar-screen-selection-count">
@@ -467,7 +488,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         <CalendarKindLegend counts={monthCounts} idPrefix="group-calendar-kind-legend" />
 
         <View
-          className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
+          className="relative mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-transparent dark:bg-surface"
           nativeID="group-calendar-month-view"
           testID="group-calendar-month-view"
         >
@@ -487,6 +508,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
                   canManage={canManage}
                   containerRef={screenRootRef}
                   date={date}
+                  groupId={groupId}
                   isMenuOpen={openDayMenu?.date === date.dateString}
                   isToday={date.dateString === todayIso}
                   isPast={date.dateString < todayIso}
@@ -514,6 +536,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
               }}
             />
           </CalendarFadeIn>
+          {loadingDays && <CalendarLoadingSkeleton idPrefix="group-calendar-month" surfaceClassName="bg-slate-50 dark:bg-surface" />}
         </View>
       </ScreenCard>
       </ScrollView>
@@ -526,7 +549,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         {openDayMenu && (
           <CalendarDayMenu
             closed={openClosed}
-            hasContent={Boolean(openMarking)}
+            hasContent={hasCalendarDayContent(openMarking)}
             isTraining={openMarking?.kind === 'training'}
             onAssignOrEdit={() => { handleCloseDayMenu(); handleAssignOrEdit(openDayMenu.date); }}
             onCancel={() => { handleCloseDayMenu(); handleCancelSession(openDayMenu.date); }}
@@ -561,6 +584,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
       />
 
       <ShiftDayModal
+        activityDates={shiftActivityDates}
         fromDate={shiftTargetDate}
         groupId={groupId}
         onClose={() => setShiftTargetDate(null)}

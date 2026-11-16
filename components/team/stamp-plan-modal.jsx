@@ -14,6 +14,7 @@ import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { buildStampDraft, addDaysISO } from '../../utils/build-stamp-draft.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { useCalendarActivityStore } from '../../store/calendar-activity-store.js';
 
 function StampPreviewRow({ day, onToggleExpand, expanded, sessionOptions, onChangeDay, existingDay, onToggleExclude }) {
   const colors = useThemeColors();
@@ -98,6 +99,8 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
   const { plans } = useTrainingPlans(ownerId);
   const { sessions } = useSessions(ownerId);
   const { upsertDay, stampPlan, isStamping } = useGroupCalendarMutations(groupId);
+  const startActivity = useCalendarActivityStore((state) => state.startActivity);
+  const finishActivity = useCalendarActivityStore((state) => state.finishActivity);
 
   const [planId, setPlanId] = useState('');
   const [draftDays, setDraftDays] = useState([]);
@@ -164,43 +167,48 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
 
   const handleSave = async () => {
     frozenExistingByDateRef.current = existingByDate;
+    const affectedDates = draftDays.filter((d) => !d.excluded).map((d) => d.date);
+    startActivity(groupId, affectedDates);
     setSaving(true);
-    const excludeDates = draftDays.filter((d) => d.excluded).map((d) => d.date);
-    const hasConflicts = draftDays.some((d) => !d.excluded && Boolean(existingByDate[d.date]));
-    const stampResult = await stampPlan({ planId, startDate, force: hasConflicts, excludeDates });
-    if (!stampResult.success) {
-      setSaving(false);
-      notifyError();
-      if (stampResult.presencialCollision) {
-        Toast.show({ type: 'error', text1: 'Colisión presencial', text2: stampResult.message ?? 'Choca con un grupo de otro equipo.' });
-      } else if (stampResult.conflict) {
-        Toast.show({ type: 'error', text1: 'El calendario cambió', text2: 'Volvé a revisar el preview antes de guardar.' });
-      } else {
-        Toast.show({ type: 'error', text1: 'No pudimos estampar el plan', text2: stampResult.error });
-      }
-      return;
-    }
-
-    const touchedDays = draftDays.filter((d) => d.touched && !d.excluded);
-    if (touchedDays.length > 0) setTouchedProgress({ done: 0, total: touchedDays.length });
-    for (let i = 0; i < touchedDays.length; i += 1) {
-      const day = touchedDays[i];
-      const result = await upsertDay({ date: day.date, day });
-      if (!result.success) {
+    try {
+      const excludeDates = draftDays.filter((d) => d.excluded).map((d) => d.date);
+      const hasConflicts = draftDays.some((d) => !d.excluded && Boolean(existingByDate[d.date]));
+      const stampResult = await stampPlan({ planId, startDate, force: hasConflicts, excludeDates });
+      if (!stampResult.success) {
         notifyError();
-        Toast.show({ type: 'error', text1: `No pudimos ajustar el día ${day.date}`, text2: result.error });
+        if (stampResult.presencialCollision) {
+          Toast.show({ type: 'error', text1: 'Colisión presencial', text2: stampResult.message ?? 'Choca con un grupo de otro equipo.' });
+        } else if (stampResult.conflict) {
+          Toast.show({ type: 'error', text1: 'El calendario cambió', text2: 'Volvé a revisar el preview antes de guardar.' });
+        } else {
+          Toast.show({ type: 'error', text1: 'No pudimos estampar el plan', text2: stampResult.error });
+        }
+        return;
       }
-      setTouchedProgress({ done: i + 1, total: touchedDays.length });
-    }
-    setTouchedProgress(null);
 
-    setSaving(false);
-    notifySuccess();
-    Toast.show({ type: 'success', text1: 'Plan estampado' });
-    if (stampResult.sameTeamWarnings?.length > 0) {
-      Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+      const touchedDays = draftDays.filter((d) => d.touched && !d.excluded);
+      if (touchedDays.length > 0) setTouchedProgress({ done: 0, total: touchedDays.length });
+      for (let i = 0; i < touchedDays.length; i += 1) {
+        const day = touchedDays[i];
+        const result = await upsertDay({ date: day.date, day });
+        if (!result.success) {
+          notifyError();
+          Toast.show({ type: 'error', text1: `No pudimos ajustar el día ${day.date}`, text2: result.error });
+        }
+        setTouchedProgress({ done: i + 1, total: touchedDays.length });
+      }
+
+      notifySuccess();
+      Toast.show({ type: 'success', text1: 'Plan estampado' });
+      if (stampResult.sameTeamWarnings?.length > 0) {
+        Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+      }
+      bypassGuard(onClose);
+    } finally {
+      setTouchedProgress(null);
+      setSaving(false);
+      finishActivity(groupId, affectedDates);
     }
-    bypassGuard(onClose);
   };
 
   return (

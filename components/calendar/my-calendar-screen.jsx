@@ -70,7 +70,7 @@ function MyCalendarScreenContent() {
   }, [deepLinkDate, setActiveTab, openDayModal]);
 
   const { from, to } = useMemo(() => monthRange(visibleYear, visibleMonth), [visibleYear, visibleMonth]);
-  const { days, loading, isFetching } = useMemberCalendar(userId, from, to);
+  const { days, loading } = useMemberCalendar(userId, from, to);
   usePrefetchAdjacentCalendars('member', userId, visibleYear, visibleMonth);
   const currentMonthISO = `${visibleYear}-${pad2(visibleMonth)}-01`;
 
@@ -145,7 +145,7 @@ function MyCalendarScreenContent() {
 
         {activeTab === 'calendario' && (
           <>
-            <FilterPanel hasActiveFilters={Boolean(filterTeamId)} idPrefix="my-calendar-screen-filter" loading={loading} onClear={() => setFilterTeamId('')}>
+            <FilterPanel hasActiveFilters={Boolean(filterTeamId)} idPrefix="my-calendar-screen-filter" onClear={() => setFilterTeamId('')}>
               <View className="flex-1" nativeID="my-calendar-screen-filter-team-wrapper" testID="my-calendar-screen-filter-team-wrapper">
                 <ResponsiveSelectField
                   dense
@@ -187,7 +187,7 @@ function MyCalendarScreenContent() {
             <AggregatedMonthView
               currentMonthISO={currentMonthISO}
               daysByDate={daysByDate}
-              loading={loading || isFetching}
+              loading={loading}
               month={visibleMonth}
               onDayPress={openDayModal}
               onMonthChange={handleMonthChange}

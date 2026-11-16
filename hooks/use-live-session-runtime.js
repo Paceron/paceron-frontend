@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSessionRuntimeStore } from '../store/session-runtime-store.js';
 import { useLiveSessionStore } from '../store/live-session-store.js';
+import { useSessionSyncStore } from '../store/session-sync-store.js';
 import { useAuthStore } from '../store/auth-store.js';
 import {
   cancelRun,
@@ -46,6 +47,8 @@ export function useLiveSessionRuntime() {
   const gpsEnabled = useLiveSessionStore((s) => s.gpsEnabled);
   const setSessionStarted = useLiveSessionStore((s) => s.setSessionStarted);
   const userId = useAuthStore((s) => s.userId);
+  const startSync = useSessionSyncStore((s) => s.startSync);
+  const finishSync = useSessionSyncStore((s) => s.finishSync);
   const queryClient = useQueryClient();
 
   const [booted, setBooted] = useState(false);
@@ -263,16 +266,20 @@ export function useLiveSessionRuntime() {
     return () => clearInterval(heartbeat);
   }, [channel, send]);
 
-  const syncIncrementally = () => {
+  const syncIncrementally = ({ track = false } = {}) => {
     if (!run) return;
     logDebug(`[live] syncRun(${run.id}) disparado`);
+    if (track) startSync(run.session_instance_id);
     // Fire-and-forget, mismo patrón que createRunnerSession en el pre-start --
     // pero logueamos el resultado igual, para poder confirmar en los logs de
     // dispositivo si el feedback de cada serie efectivamente sube (y cuántas
     // quedaron sin sincronizar si algo falló).
     syncRun(run.id)
       .then((result) => logDebug(`[live] syncRun(${run.id}) OK synced=${result.synced} conflicts=${result.conflicts} errors=${result.errors.length}`))
-      .catch((error) => logDebug(`[live] syncRun(${run.id}) ERROR ${error.message}`));
+      .catch((error) => logDebug(`[live] syncRun(${run.id}) ERROR ${error.message}`))
+      .finally(() => {
+        if (track) finishSync(run.session_instance_id);
+      });
   };
 
   const startSet = async (setId) => {
@@ -376,7 +383,7 @@ export function useLiveSessionRuntime() {
 
   const finalizeSession = async () => {
     await finalizeRun(run.id);
-    syncIncrementally();
+    syncIncrementally({ track: true });
   };
 
   return {

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -12,6 +12,32 @@ import { isWeb } from '../../utils/platform.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
+
+const CAROUSEL_AUTOPLAY_MS = 20000;
+const CAROUSEL_BODY_VERTICAL_PADDING = 32;
+
+function CarouselProgressBar({ active, colorScheme, idPrefix }) {
+  const progress = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: progress.value }] }));
+
+  useEffect(() => {
+    if (!active) return;
+    progress.value = 1;
+    progress.value = withTiming(0, { duration: CAROUSEL_AUTOPLAY_MS, easing: Easing.linear });
+  }, [active, progress]);
+
+  if (!active) return null;
+
+  return (
+    <View className="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden bg-green-900/10 dark:bg-white/10" nativeID={`${idPrefix}-autoplay-track`} pointerEvents="none" testID={`${idPrefix}-autoplay-track`}>
+      <Animated.View
+        nativeID={`${idPrefix}-autoplay-progress`}
+        style={[{ backgroundColor: colorScheme === 'dark' ? '#dcfce7' : '#14532d', height: '100%', transformOrigin: 'left center', width: '100%' }, animatedStyle]}
+        testID={`${idPrefix}-autoplay-progress`}
+      />
+    </View>
+  );
+}
 
 function CancelledCard({ session, onPress }) {
   const idPrefix = `next-training-banner-cancelled-${session.id}`;
@@ -132,7 +158,13 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const { colorScheme } = useThemeMode();
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [uniformCardHeight, setUniformCardHeight] = useState(0);
+  const [uniformContentHeight, setUniformContentHeight] = useState(0);
+  const activeIndexRef = useRef(0);
   const scrollRef = useRef(null);
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollTimeoutRef = useRef(null);
+  const programmaticTargetIndexRef = useRef(null);
   // 4 vueltas (~3.6s) y se queda quieto -- no infinito, ver el comentario
   // de useArrowBounce sobre el lag real reportado en el Home de corredor.
   const bounceStyle = useArrowBounce(4);
@@ -142,39 +174,123 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const currentIndex = Math.min(activeIndex, nextTrainings.length - 1);
   const selectedTraining = nextTrainings[currentIndex] ?? nextTrainings[0];
 
-  useEffect(() => {
-    setActiveIndex(0);
-    scrollRef.current?.scrollTo?.({ x: 0, y: 0, animated: false });
-  }, [carouselKey]);
+  const setIndex = useCallback((index) => {
+    activeIndexRef.current = index;
+    setActiveIndex(index);
+  }, []);
 
-  useEffect(() => {
-    if (pageWidth > 0) {
-      scrollRef.current?.scrollTo?.({ x: currentIndex * pageWidth, y: 0, animated: false });
+  const measureCardContentHeight = useCallback((contentHeight) => {
+    if (!Number.isFinite(contentHeight) || contentHeight <= 0) return;
+    const nextHeight = Math.ceil(contentHeight) + CAROUSEL_BODY_VERTICAL_PADDING;
+    setUniformCardHeight((current) => (nextHeight > current ? nextHeight : current));
+  }, []);
+
+  const measureContentCardHeight = useCallback((contentHeight) => {
+    if (!Number.isFinite(contentHeight) || contentHeight <= 0) return;
+    const nextHeight = Math.ceil(contentHeight);
+    setUniformContentHeight((current) => (nextHeight > current ? nextHeight : current));
+  }, []);
+
+  const clearProgrammaticScroll = useCallback(() => {
+    programmaticScrollRef.current = false;
+    programmaticTargetIndexRef.current = null;
+    if (programmaticScrollTimeoutRef.current) {
+      clearTimeout(programmaticScrollTimeoutRef.current);
+      programmaticScrollTimeoutRef.current = null;
     }
-  }, [currentIndex, pageWidth]);
+  }, []);
 
-  const scrollToIndex = (index) => {
+  useEffect(() => () => clearProgrammaticScroll(), [clearProgrammaticScroll]);
+
+  // RNW ya soporta scroll suave con `animated: true`; el cambio inmediato en
+  // web venía de un efecto que reescribía la posición sin animación en cada
+  // cambio de índice.
+  const scrollToX = useCallback((x, animated) => {
+    const scrollable = scrollRef.current;
+    if (scrollable?.scrollTo) {
+      scrollable.scrollTo({ x, y: 0, animated });
+      return;
+    }
+    const node = scrollable?.getScrollableNode?.();
+    if (node?.scrollTo) node.scrollTo({ x, y: 0, animated });
+  }, []);
+
+  useEffect(() => {
+    setIndex(0);
+    setUniformCardHeight(0);
+    setUniformContentHeight(0);
+    scrollToX(0, false);
+  }, [carouselKey, scrollToX, setIndex]);
+
+  useEffect(() => {
+    if (pageWidth > 0) scrollToX(activeIndexRef.current * pageWidth, false);
+  }, [pageWidth, scrollToX]);
+
+  const scrollToIndex = useCallback((index) => {
     const nextIndex = Math.max(0, Math.min(nextTrainings.length - 1, index));
-    setActiveIndex(nextIndex);
-    scrollRef.current?.scrollTo?.({ x: nextIndex * pageWidth, y: 0, animated: true });
-  };
+    setIndex(nextIndex);
+    programmaticScrollRef.current = true;
+    programmaticTargetIndexRef.current = nextIndex;
+    if (programmaticScrollTimeoutRef.current) clearTimeout(programmaticScrollTimeoutRef.current);
+    programmaticScrollTimeoutRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+      programmaticTargetIndexRef.current = null;
+      programmaticScrollTimeoutRef.current = null;
+    }, 1500);
+    const targetX = nextIndex * pageWidth;
+    if (isWeb) {
+      // En web, iniciar el scroll suave dentro del evento de puntero hace que
+      // el navegador lo cancele (la card activa cambia pero la tira no se mueve).
+      setTimeout(() => scrollToX(targetX, true), 0);
+      return;
+    }
+    scrollToX(targetX, true);
+  }, [nextTrainings.length, pageWidth, scrollToX, setIndex]);
+
+  useEffect(() => {
+    if (nextTrainings.length <= 1 || pageWidth <= 0) return undefined;
+    const timer = setTimeout(() => {
+      scrollToIndex((currentIndex + 1) % nextTrainings.length);
+    }, CAROUSEL_AUTOPLAY_MS);
+    return () => clearTimeout(timer);
+  }, [currentIndex, nextTrainings.length, pageWidth, scrollToIndex]);
 
   const onScrollEnd = (event) => {
     if (pageWidth <= 0) return;
-    const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
-    setActiveIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
+    const offsetX = event.nativeEvent.contentOffset.x;
+    if (programmaticScrollRef.current) {
+      const target = programmaticTargetIndexRef.current ?? activeIndexRef.current;
+      if (Math.abs(offsetX - target * pageWidth) < 2) clearProgrammaticScroll();
+      return;
+    }
+    const index = Math.round(offsetX / pageWidth);
+    setIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
   };
 
-  const renderTrainingCard = (session, key, idPrefix, isCarousel = false) => (
+  const renderTrainingCard = (session, key, idPrefix, isCarousel = false, index = 0) => (
     <NextTrainingHeroCard
       key={key}
+      activeIndex={currentIndex}
       bounceStyle={bounceStyle}
+      carousel={isCarousel ? {
+        canNext: currentIndex < nextTrainings.length - 1,
+        canPrev: currentIndex > 0,
+        currentIndex,
+        isActive: currentIndex === index,
+        onNext: () => scrollToIndex(currentIndex + 1),
+        onPrev: () => scrollToIndex(currentIndex - 1),
+        total: nextTrainings.length,
+      } : null}
       colorScheme={colorScheme}
       idPrefix={idPrefix}
       isCarousel={isCarousel}
       isFetching={isFetching}
+      onMeasureCardContentHeight={isCarousel ? measureContentCardHeight : undefined}
+      onMeasureContentHeight={isCarousel ? measureCardContentHeight : undefined}
       onPress={() => onHeroPress(session)}
       session={session}
+      uniformContentHeight={isCarousel ? uniformContentHeight : 0}
+      uniformHeight={isCarousel ? uniformCardHeight : 0}
     />
   );
 
@@ -197,7 +313,10 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
             horizontal
             nativeID="next-training-banner-carousel-pages"
             onMomentumScrollEnd={onScrollEnd}
+            onScroll={onScrollEnd}
+            onScrollBeginDrag={clearProgrammaticScroll}
             pagingEnabled
+            scrollEventThrottle={16}
             showsHorizontalScrollIndicator={false}
             testID="next-training-banner-carousel-pages"
           >
@@ -214,6 +333,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
                   `hero-${session.groupId ?? ''}-${session.date}-${index}`,
                   `next-training-banner-hero-${index + 1}`,
                   true,
+                  index,
                 )}
               </View>
             ))}
@@ -222,107 +342,156 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
           renderTrainingCard(selectedTraining, 'hero-single', 'next-training-banner-hero')
         )}
 
-        {nextTrainings.length > 1 && (
-          <View className="absolute inset-0 z-10 flex-row items-center justify-between px-2" nativeID="next-training-banner-carousel-controls" style={{ pointerEvents: 'box-none' }} testID="next-training-banner-carousel-controls">
-            <Pressable
-              accessibilityLabel="Entrenamiento anterior"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: currentIndex === 0 }}
-              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm dark:border-white/20 dark:bg-slate-900/90"
-              disabled={currentIndex === 0}
-              nativeID="next-training-banner-carousel-previous"
-              onPress={() => scrollToIndex(currentIndex - 1)}
-              testID="next-training-banner-carousel-previous"
-            >
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-left" size={22} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Siguiente entrenamiento"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: currentIndex === nextTrainings.length - 1 }}
-              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm dark:border-white/20 dark:bg-slate-900/90"
-              disabled={currentIndex === nextTrainings.length - 1}
-              nativeID="next-training-banner-carousel-next"
-              onPress={() => scrollToIndex(currentIndex + 1)}
-              testID="next-training-banner-carousel-next"
-            >
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-right" size={22} />
-            </Pressable>
-          </View>
-        )}
-
-        {nextTrainings.length > 1 && (
-          <Text className="mt-2 text-center text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-carousel-position" testID="next-training-banner-carousel-position">
-            {currentIndex + 1} de {nextTrainings.length}
-          </Text>
-        )}
       </View>
     </View>
   );
 }
 
-function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel }) {
+function CarouselArrow({ colorScheme, direction, disabled, idPrefix, onPress }) {
+  const isPrevious = direction === 'previous';
+  const color = colorScheme === 'dark' ? '#ffffff' : '#14532d';
+
+  return (
+    <Pressable
+      accessibilityLabel={isPrevious ? 'Entrenamiento anterior' : 'Siguiente entrenamiento'}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      className="items-center justify-center active:opacity-60"
+      disabled={disabled}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      nativeID={`${idPrefix}-${direction}`}
+      onPress={(event) => {
+        event?.stopPropagation?.();
+        onPress();
+      }}
+      style={{ alignSelf: 'stretch', opacity: disabled ? 0.3 : 1, width: 28 }}
+      testID={`${idPrefix}-${direction}`}
+    >
+      <Text
+        nativeID={`${idPrefix}-${direction}-glyph`}
+        style={{ color, fontSize: 32, fontWeight: '400', includeFontPadding: false, lineHeight: 34 }}
+        testID={`${idPrefix}-${direction}-glyph`}
+      >
+        {isPrevious ? '<' : '>'}
+      </Text>
+    </Pressable>
+  );
+}
+
+function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel, activeIndex, uniformHeight, uniformContentHeight, onMeasureContentHeight, onMeasureCardContentHeight }) {
   const heroIcon = session.isPresencial ? 'map-marker-radius' : 'run-fast';
+  const isActive = isCarousel ? Boolean(carousel?.isActive) : true;
+  const reveal = useSharedValue(1);
+  const revealStyle = useAnimatedStyle(() => ({
+    opacity: reveal.value,
+    transform: [{ translateX: (1 - reveal.value) * 14 }],
+  }));
+
+  useEffect(() => {
+    if (!isCarousel || !isActive) return;
+    reveal.value = 0;
+    reveal.value = withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
+  }, [activeIndex, isActive, isCarousel, reveal]);
 
   return (
     <Pressable
       className="relative overflow-hidden rounded-2xl bg-green-200 shadow-sm hover:opacity-90 active:opacity-90 dark:bg-green-800"
       nativeID={idPrefix}
       onPress={onPress}
+      style={isCarousel && uniformHeight > 0 ? { height: uniformHeight } : undefined}
       testID={idPrefix}
     >
       <View className="absolute -bottom-8 -right-8" nativeID={`${idPrefix}-watermark`} pointerEvents="none" testID={`${idPrefix}-watermark`}>
         <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
       </View>
 
-      <View className={isCarousel ? 'px-12 py-4' : 'p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
-        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
-          Siguiente entrenamiento
-        </Text>
-        <View className="flex-row items-center" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
-          <View className="mr-1 flex-1 rounded-2xl bg-green-50/70 p-4 dark:bg-green-700/70" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
-            <View className="min-w-0 flex-row items-center" nativeID={`${idPrefix}-date-name`} testID={`${idPrefix}-date-name`}>
-              <Animated.View nativeID={`${idPrefix}-icon`} style={[{ marginRight: 6 }, bounceStyle]} testID={`${idPrefix}-icon`}>
-                <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID={`${idPrefix}-icon-badge`} testID={`${idPrefix}-icon-badge`}>
-                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="play" size={14} />
+      <View className={isCarousel ? 'relative flex-1 flex-row' : 'relative p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+        {isCarousel ? (
+          <CarouselArrow
+            colorScheme={colorScheme}
+            direction="previous"
+            disabled={!carousel.canPrev}
+            idPrefix={idPrefix}
+            onPress={carousel.onPrev}
+          />
+        ) : null}
+
+        <View className={isCarousel ? 'flex-1 px-1 py-4' : ''} nativeID={`${idPrefix}-content-wrapper`} testID={`${idPrefix}-content-wrapper`}>
+          <Animated.View
+            nativeID={`${idPrefix}-reveal`}
+            onLayout={isCarousel ? (event) => onMeasureContentHeight?.(event.nativeEvent.layout.height) : undefined}
+            style={revealStyle}
+            testID={`${idPrefix}-reveal`}
+          >
+            <View className="mb-1 flex-row items-center gap-1" nativeID={`${idPrefix}-heading`} testID={`${idPrefix}-heading`}>
+              <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
+                Siguiente entrenamiento
+              </Text>
+              {isCarousel ? (
+                <Text className="text-[10px] font-bold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID={`${idPrefix}-position`} testID={`${idPrefix}-position`}>
+                  {`(${carousel.currentIndex + 1}/${carousel.total})`}
+                </Text>
+              ) : null}
+            </View>
+
+            <View className="flex-row items-center" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
+              <View className="flex-1 rounded-2xl bg-green-50/70 p-4 dark:bg-green-700/70" nativeID={`${idPrefix}-text`} onLayout={isCarousel ? (event) => onMeasureCardContentHeight?.(event.nativeEvent.layout.height) : undefined} style={isCarousel && uniformContentHeight > 0 ? { minHeight: uniformContentHeight } : undefined} testID={`${idPrefix}-text`}>
+                <View className="min-w-0 flex-row items-center" nativeID={`${idPrefix}-date-name`} testID={`${idPrefix}-date-name`}>
+                  <Animated.View nativeID={`${idPrefix}-icon`} style={[{ marginRight: 6 }, bounceStyle]} testID={`${idPrefix}-icon`}>
+                    <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID={`${idPrefix}-icon-badge`} testID={`${idPrefix}-icon-badge`}>
+                      <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={14} />
+                    </View>
+                  </Animated.View>
+                  <View className="min-w-0 flex-1" nativeID={`${idPrefix}-title-block`} testID={`${idPrefix}-title-block`}>
+                    <Text className="text-xl font-bold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
+                      {session.sessionInstance?.name ?? 'Entrenamiento'}
+                    </Text>
+                    <Text className="mt-0.5 text-xs font-semibold text-green-900 dark:text-green-100" nativeID={`${idPrefix}-date`} numberOfLines={1} testID={`${idPrefix}-date`}>
+                      {formatWeekdayLabel(session.date, { short: true })}, {formatDisplayDate(session.date)}
+                    </Text>
+                  </View>
                 </View>
-              </Animated.View>
-              {/* `shrink` + `numberOfLines` mantiene la fecha visible si el nombre de sesión es largo. */}
-              <Text className="shrink px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
-                {session.sessionInstance?.name ?? 'Entrenamiento'}
-              </Text>
-              <Text className="shrink-0 text-sm text-green-950 dark:text-green-50" nativeID={`${idPrefix}-separator`} testID={`${idPrefix}-separator`}>/</Text>
-              <Text className="shrink-0 px-2 text-xs font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
-                {formatWeekdayLabel(session.date, { short: true })}, {formatDisplayDate(session.date)}
-              </Text>
-            </View>
 
-            <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID={`${idPrefix}-scope`} testID={`${idPrefix}-scope`}>
-              <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-team`} testID={`${idPrefix}-team`}>
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
-                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-team-label`} testID={`${idPrefix}-team-label`}>
-                  {session.teamName}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
-                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-group-label`} testID={`${idPrefix}-group-label`}>
-                  {session.groupName}
-                </Text>
+                <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID={`${idPrefix}-scope`} testID={`${idPrefix}-scope`}>
+                  <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-team`} testID={`${idPrefix}-team`}>
+                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
+                    <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-team-label`} testID={`${idPrefix}-team-label`}>
+                      {session.teamName}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
+                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
+                    <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-group-label`} testID={`${idPrefix}-group-label`}>
+                      {session.groupName}
+                    </Text>
+                  </View>
+                </View>
+
+                {session.isPresencial && (
+                  <View className="mt-2 flex-row items-center gap-1.5" nativeID={`${idPrefix}-presencial`} testID={`${idPrefix}-presencial`}>
+                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
+                    <Text className="text-xs text-green-950 dark:text-green-50" nativeID={`${idPrefix}-presencial-label`} testID={`${idPrefix}-presencial-label`}>
+                      {session.presencialTimeFrom}–{session.presencialTimeTo}
+                      {session.presencialLocation?.label ? ` · ${session.presencialLocation.label}` : ''}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
-
-            {session.isPresencial && (
-              <View className="mt-2 flex-row items-center gap-1.5" nativeID={`${idPrefix}-presencial`} testID={`${idPrefix}-presencial`}>
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
-                <Text className="text-xs text-green-950 dark:text-green-50" nativeID={`${idPrefix}-presencial-label`} testID={`${idPrefix}-presencial-label`}>
-                  {session.presencialTimeFrom}–{session.presencialTimeTo}
-                  {session.presencialLocation?.label ? ` · ${session.presencialLocation.label}` : ''}
-                </Text>
-              </View>
-            )}
-          </View>
+          </Animated.View>
         </View>
+
+        {isCarousel ? (
+          <CarouselArrow
+            colorScheme={colorScheme}
+            direction="next"
+            disabled={!carousel.canNext}
+            idPrefix={idPrefix}
+            onPress={carousel.onNext}
+          />
+        ) : null}
+
+        <CarouselProgressBar active={isCarousel && isActive} colorScheme={colorScheme} idPrefix={idPrefix} />
       </View>
 
       {isFetching && (

@@ -378,6 +378,7 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
             <input
               type="time"
               className={`${DATE_BASE} ${borderClass}`}
+              style={{ colorScheme: themeMode }}
               value={value}
               onChange={(e) => onChange(e.target.value)}
               onBlur={onBlur}
