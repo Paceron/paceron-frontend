@@ -107,7 +107,7 @@ export function Col({ children, flex = 1 }) {
   );
 }
 
-export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain, outline, fixedWidth }) {
+export function SelectField({ label, options, value, onChange, placeholder, disabled, error, dense, className, hideErrorRow, required, hideLabel, plain, outline, fixedWidth, showChevron = false }) {
   const colors = useThemeColors();
   const slug = slugify(label);
 
@@ -141,7 +141,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
       >
         <View className={outline || plain ? 'relative' : 'flex-1 relative'} nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
-            className={outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : (dense ? SELECT_CLASS_DENSE : SELECT_CLASS))}
+            className={`${outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : (dense ? SELECT_CLASS_DENSE : SELECT_CLASS))} ${showChevron && !plain && !outline ? 'pr-9' : ''}`}
             style={outline && fixedWidth ? { width: fixedWidth } : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -159,7 +159,12 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
               <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={16} />
             </View>
           )}
-          {!plain && !outline && !disabled && !required && Boolean(value) && (
+          {showChevron && !plain && !outline ? (
+            <View className="absolute right-3 top-1/2 -translate-y-1/2" nativeID={`select-field-${slug}-chevron`} pointerEvents="none" testID={`select-field-${slug}-chevron`}>
+              <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={18} />
+            </View>
+          ) : null}
+          {!showChevron && !plain && !outline && !disabled && !required && Boolean(value) && (
             <Pressable
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full hover:opacity-70"
               onPress={() => onChange('')}

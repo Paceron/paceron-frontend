@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BAND_LABELS, DASHBOARD_BANDS } from '../../utils/dashboard-chart.js';
-import { consistencyPercent, formatBestTimeMetSource, formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
+import { consistencyPercent, formatBestTimeMetSource, formatDelta, formatMetric, hasMetric, normalizeBestTimeMs } from '../../utils/dashboard-format.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { ChartGrid, ChartGridItem } from './chart-grid.jsx';
 import { BoxPlot } from './charts/box-plot.jsx';
@@ -136,23 +136,30 @@ export function PaletteWithTarget({
             key: 'delta',
             label: 'Delta contra objetivo',
             value: totals.delta_pct,
+            formattedValue: formatDelta(totals.delta_pct, units.delta),
             unit: units.delta,
             icon: 'swap-vertical',
+            largeValue: true,
+            centerValue: true,
           },
           {
             key: 'compliance',
-            label: 'Cumplimiento',
+            label: 'Cumplimiento de Series',
             value: totals.compliance_rate,
             unit: units.compliance,
             icon: 'check-decagram-outline',
+            source: 'Series con objetivo cumplido',
           },
           {
             key: 'consistency',
             // La fórmula del cv se indexa por `cv`, que es como se llama el campo
             // en el contrato (`consistency.cv`).
-            label: 'Variación de Velocidad (Consistencia)',
-            // El nombre completo no entra en una línea de 1/3 de ancho.
+            label: 'Variación de Velocidad',
+            // El nombre se reparte en dos líneas; la aclaración va debajo del
+            // porcentaje con el mismo estilo auxiliar que la procedencia del
+            // mejor tiempo.
             labelNumberOfLines: 2,
+            source: '(Consistencia)',
             // El backend manda una fracción (0.35) y acá se muestra como 35 %.
             value: consistencyPercent(summary?.consistency?.cv),
             unit: '%',
@@ -204,11 +211,12 @@ export function PaletteWithTarget({
           >
             {(hovered) => (
               <KpiTile
-                delta={kpi.key === 'delta' ? totals.delta_pct : undefined}
-                deltaUnit={units.delta}
+                centerValue={kpi.centerValue}
+                formattedValue={kpi.formattedValue}
                 hovered={hovered}
                 icon={kpi.icon}
                 id={`${id}-kpi-${kpi.key}`}
+                largeValue={kpi.largeValue}
                 label={kpi.label}
                 labelNumberOfLines={kpi.labelNumberOfLines ?? 1}
                 showInfo

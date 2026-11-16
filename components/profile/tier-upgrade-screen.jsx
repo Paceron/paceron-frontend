@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, Text, 
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb, isMobile } from '../../utils/platform.js';
@@ -28,6 +29,27 @@ import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-moda
 import { CheckoutFlow } from '../payments/checkout-flow';
 
 const ROLE_LABEL = { corredor: 'Corredor', entrenador: 'Entrenador' };
+const TIER_CONTENT = {
+  base: { description: '1 equipo de hasta 10 integrantes', icon: 'account-group' },
+  medium: { description: '5 equipos y hasta 60 corredores, con consultas de IA sobre tus equipos', icon: 'creation' },
+  premium: { description: '10 equipos y hasta 100 corredores, con acceso a todos los servicios de IA', icon: 'crown-outline', accentIcon: 'creation' },
+};
+
+function tierContent(tier) {
+  const name = formatTierDisplayName(tier.name)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^tier\s+/i, '')
+    .toLowerCase();
+  const key = name.startsWith('base')
+    ? 'base'
+    : name.startsWith('medium') || name.startsWith('medio') || name.startsWith('intermedio')
+      ? 'medium'
+      : name.startsWith('premium')
+        ? 'premium'
+        : null;
+  return key ? TIER_CONTENT[key] : { description: tier.description, icon: 'star-four-points' };
+}
 
 function formatTierPrice(tierAmount, paymentRequired) {
   if (!paymentRequired || !tierAmount) return 'Gratis';
@@ -42,63 +64,76 @@ function formatTierPrice(tierAmount, paymentRequired) {
 // flujo real (ver handleUpgrade en TierUpgradeScreen). Tiers gratis
 // que no son el actual (no debería pasar hoy, 1 solo tier gratis por
 // rol) no muestran ninguna acción.
-function TierCard({ tier, isCurrent, isDesktopWeb, loading, onUpgrade, currentTierName }) {
+function TierCard({ tier, isCurrent, loading, onUpgrade, currentTierName }) {
   const isCurrentPremium = String(currentTierName ?? '').toLowerCase().includes('premium');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const colors = useThemeColors();
   const idPrefix = `tier-card-${tier.id}`;
+  const content = tierContent(tier);
   return (
     <>
     <View
-      className={`rounded-2xl border p-5 ${isCurrent ? 'border-primary bg-primary-tint dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'} ${isDesktopWeb ? 'w-[31%]' : 'w-full'}`}
+      className={`min-h-[300px] flex-col rounded-2xl border p-5 ${isCurrent ? 'border-primary bg-primary-tint dark:bg-primary/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-surface'}`}
       nativeID={idPrefix}
       testID={idPrefix}
     >
-      <Text className="text-base font-bold capitalize text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
-        {formatTierDisplayName(tier.name)}
-      </Text>
-      <View className="mt-1 flex-row items-baseline gap-1" nativeID={`${idPrefix}-price-row`} testID={`${idPrefix}-price-row`}>
-        <Text className="text-lg font-bold text-primary" nativeID={`${idPrefix}-price`} testID={`${idPrefix}-price`}>
-          {formatTierPrice(tier.tierAmount, tier.paymentRequired)}
-        </Text>
-        {tier.paymentRequired && (
-          <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-price-period`} testID={`${idPrefix}-price-period`}>
-            /mes
+      <View className="flex-1" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
+        <View className="mb-3 items-center" nativeID={`${idPrefix}-heading`} testID={`${idPrefix}-heading`}>
+          <View className="mb-2 h-11 w-11 flex-row items-center justify-center gap-0.5 rounded-xl bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-icon-wrap`} testID={`${idPrefix}-icon-wrap`}>
+            <View className="flex-row items-center gap-0.5" nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
+              <MaterialCommunityIcons color={colors.primary} name={content.icon} size={23} />
+              {content.accentIcon ? <MaterialCommunityIcons color={colors.onSurfaceVariant} name={content.accentIcon} size={13} /> : null}
+            </View>
+          </View>
+          <Text className="text-center text-base font-bold capitalize text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
+            {formatTierDisplayName(tier.name)}
+          </Text>
+        </View>
+        <View className="mt-1 flex-row items-baseline justify-center gap-1" nativeID={`${idPrefix}-price-row`} testID={`${idPrefix}-price-row`}>
+          <Text className="text-lg font-bold text-primary" nativeID={`${idPrefix}-price`} testID={`${idPrefix}-price`}>
+            {formatTierPrice(tier.tierAmount, tier.paymentRequired)}
+          </Text>
+          {tier.paymentRequired && (
+            <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-price-period`} testID={`${idPrefix}-price-period`}>
+              /mes
+            </Text>
+          )}
+        </View>
+        {content.description && (
+          <Text className="mt-3 text-center text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-description`} testID={`${idPrefix}-description`}>
+            {content.description}
           </Text>
         )}
       </View>
-      {tier.description && (
-        <Text className="mt-3 text-sm leading-5 text-slate-600 dark:text-slate-300" nativeID={`${idPrefix}-description`} testID={`${idPrefix}-description`}>
-          {tier.description}
-        </Text>
-      )}
 
-      {isCurrent ? (
-        <View className="mt-4 h-10 flex-row items-center justify-center gap-2 rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-current-badge`} testID={`${idPrefix}-current-badge`}>
-          <MaterialCommunityIcons color="#8cc63e" name="check-circle" size={16} />
-          <Text className="text-xs font-semibold uppercase tracking-wide text-on-primary-tint dark:text-primary" nativeID={`${idPrefix}-current-badge-label`} testID={`${idPrefix}-current-badge-label`}>
-            Tier actual
-          </Text>
-        </View>
-      ) : (
-        <Pressable
-          className={`mt-4 h-10 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${loading ? 'opacity-60' : ''}`}
-          disabled={loading}
-          nativeID={`${idPrefix}-upgrade-button`}
-          onPress={() => {
-            const downgrade = isCurrentPremium && !String(tier.name ?? '').toLowerCase().includes('premium');
-            if (downgrade) setConfirmOpen(true);
-            else onUpgrade(tier);
-          }}
-          testID={`${idPrefix}-upgrade-button`}
-        >
-          {loading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
-            <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-upgrade-button-label`} testID={`${idPrefix}-upgrade-button-label`}>
-              {isCurrentPremium ? 'Seleccionar' : (tier.paymentRequired ? 'Mejorar' : 'Seleccionar')}
+      <View className="mt-auto pt-4" nativeID={`${idPrefix}-actions`} testID={`${idPrefix}-actions`}>
+        {isCurrent ? (
+          <View className="h-10 flex-row items-center justify-center gap-2 rounded-full bg-primary-tint dark:bg-primary/15" nativeID={`${idPrefix}-current-badge`} testID={`${idPrefix}-current-badge`}>
+            <MaterialCommunityIcons color="#8cc63e" name="check-circle" size={16} />
+            <Text className="text-xs font-semibold uppercase tracking-wide text-on-primary-tint dark:text-primary" nativeID={`${idPrefix}-current-badge-label`} testID={`${idPrefix}-current-badge-label`}>
+              Tier actual
             </Text>
-          )}
-        </Pressable>
-      )}
+          </View>
+        ) : (
+          <Pressable
+            className={`h-10 flex-row items-center justify-center gap-2 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${loading ? 'opacity-60' : ''}`}
+            disabled={loading}
+            nativeID={`${idPrefix}-upgrade-button`}
+            onPress={() => {
+              const downgrade = isCurrentPremium && !String(tier.name ?? '').toLowerCase().includes('premium');
+              if (downgrade) setConfirmOpen(true);
+              else onUpgrade(tier);
+            }}
+            testID={`${idPrefix}-upgrade-button`}
+          >
+            {loading ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
+              <Text className="text-xs font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-upgrade-button-label`} testID={`${idPrefix}-upgrade-button-label`}>
+                {isCurrentPremium ? 'Seleccionar' : (tier.paymentRequired ? 'Mejorar' : 'Seleccionar')}
+              </Text>
+            )}
+          </Pressable>
+        )}
+      </View>
       <Modal animationType="fade" nativeID={`${idPrefix}-confirm-modal`} testID={`${idPrefix}-confirm-modal`} transparent visible={confirmOpen}>
         <View className="flex-1 items-center justify-center px-6" nativeID={`${idPrefix}-confirm-container`} testID={`${idPrefix}-confirm-container`}>
           <Pressable className="absolute inset-0 bg-black/40" nativeID={`${idPrefix}-confirm-backdrop`} onPress={() => setConfirmOpen(false)} testID={`${idPrefix}-confirm-backdrop`} />
@@ -212,6 +247,7 @@ export function TierUpgradeScreen() {
   const colors = useThemeColors();
   const isNarrowWeb = useIsNarrowWeb();
   const isDesktopWeb = isWeb && !isNarrowWeb;
+  const reducedMotion = useReducedMotion();
   const activeRole = useAuthStore((s) => s.activeRole);
   const userId = useAuthStore((s) => s.userId);
   const { roles } = usePermissions(userId);
@@ -473,16 +509,22 @@ export function TierUpgradeScreen() {
             </Text>
           ) : (
             <View className={isDesktopWeb ? 'flex-row flex-wrap justify-center gap-4' : 'gap-3'} nativeID="tier-upgrade-screen-cards" testID="tier-upgrade-screen-cards">
-              {roleTiers.map((tier) => (
-                <TierCard
-                  currentTierName={currentTierName}
-                  isCurrent={tier.name === currentTierName}
-                  isDesktopWeb={isDesktopWeb}
+              {roleTiers.map((tier, index) => (
+                <Animated.View
+                  entering={reducedMotion ? undefined : FadeInDown.delay(index * 75).duration(280)}
                   key={tier.id}
-                  loading={isChangingTier && processingTierId === tier.id}
-                  onUpgrade={handleUpgrade}
-                  tier={tier}
-                />
+                  nativeID={`tier-card-${tier.id}-entry`}
+                  style={{ width: isDesktopWeb ? '31%' : '100%' }}
+                  testID={`tier-card-${tier.id}-entry`}
+                >
+                  <TierCard
+                    currentTierName={currentTierName}
+                    isCurrent={tier.name === currentTierName}
+                    loading={isChangingTier && processingTierId === tier.id}
+                    onUpgrade={handleUpgrade}
+                    tier={tier}
+                  />
+                </Animated.View>
               ))}
             </View>
           )}
