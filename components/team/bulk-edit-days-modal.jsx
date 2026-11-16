@@ -9,6 +9,7 @@ import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
+import { useCalendarActivityStore } from '../../store/calendar-activity-store.js';
 
 // Modal de "editar en lote" — un solo kind/contenido aplicado a TODAS
 // las fechas seleccionadas de una (mapea directo al bulk-assign del
@@ -20,6 +21,8 @@ export function BulkEditDaysModal({ visible, onClose, onSuccess, groupId, ownerI
   const colors = useThemeColors();
   const { sessions } = useSessions(ownerId);
   const { bulkAssign, isBulkAssigning } = useGroupCalendarMutations(groupId);
+  const startActivity = useCalendarActivityStore((state) => state.startActivity);
+  const finishActivity = useCalendarActivityStore((state) => state.finishActivity);
 
   const [kind, setKind] = useState('rest');
   const [otherName, setOtherName] = useState('');
@@ -76,19 +79,24 @@ export function BulkEditDaysModal({ visible, onClose, onSuccess, groupId, ownerI
     setError(null);
 
     const day = { kind, otherName, sessionId, isPresencial: kind === 'training' && isPresencial, presencialTimeFrom, presencialTimeTo, presencialLocation };
-    const result = await bulkAssign({ dates, day });
-    if (!result.success) {
-      notifyError();
-      Toast.show({ type: 'error', text1: 'No pudimos editar los días', text2: result.error });
-      return;
+    startActivity(groupId, dates);
+    try {
+      const result = await bulkAssign({ dates, day });
+      if (!result.success) {
+        notifyError();
+        Toast.show({ type: 'error', text1: 'No pudimos editar los días', text2: result.error });
+        return;
+      }
+      notifySuccess();
+      Toast.show({ type: 'success', text1: `${dates.length} día${dates.length === 1 ? '' : 's'} actualizados` });
+      if (result.sameTeamWarnings?.length > 0) {
+        Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
+      }
+      onSuccess();
+      onClose();
+    } finally {
+      finishActivity(groupId, dates);
     }
-    notifySuccess();
-    Toast.show({ type: 'success', text1: `${dates.length} día${dates.length === 1 ? '' : 's'} actualizados` });
-    if (result.sameTeamWarnings?.length > 0) {
-      Toast.show({ type: 'info', text1: 'Superposición con otro grupo', text2: 'Mismo equipo — se guardó igual.' });
-    }
-    onSuccess();
-    onClose();
   };
 
   const handleClose = () => guardedClose(onClose);

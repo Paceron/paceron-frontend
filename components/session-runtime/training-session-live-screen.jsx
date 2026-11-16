@@ -11,6 +11,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { useLiveSessionStore } from '../../store/live-session-store.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
 import { useSessionReviewStore } from '../../store/session-review-store.js';
+import { useSessionSyncStore } from '../../store/session-sync-store.js';
 import { useAuthStore } from '../../store/auth-store.js';
 import { useTeam } from '../../hooks/use-teams.js';
 import { useTeamRoster } from '../../hooks/use-team-roster.js';
@@ -742,6 +743,7 @@ function LiveSeriesView({
 
 function TrainingSessionLiveScreenContent() {
   const router = useRouter();
+  const colors = useThemeColors();
   const clearLiveSession = useLiveSessionStore((s) => s.clearLiveSession);
   const pendingSession = useSessionRuntimeStore((s) => s.pendingSession);
   const setReviewSlot = useSessionReviewStore((s) => s.setReviewSlot);
@@ -770,6 +772,9 @@ function TrainingSessionLiveScreenContent() {
     cancelSession,
     finalizeSession,
   } = useLiveSessionRuntime();
+  const syncing = useSessionSyncStore((state) => (
+    run?.session_instance_id != null && Boolean(state.syncingBySessionId[String(run.session_instance_id)])
+  ));
   const [mode, setMode] = useState('overview'); // 'overview' | 'series'
   const [currentSetId, setCurrentSetId] = useState(null);
   const [finishing, setFinishing] = useState(false);
@@ -1026,6 +1031,14 @@ function TrainingSessionLiveScreenContent() {
               <Text className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="training-session-live-complete-modal-subtitle" testID="training-session-live-complete-modal-subtitle">
                 Completaste todos los ejercicios de la sesión.
               </Text>
+              {syncing && (
+                <View className="mt-3 flex-row items-center gap-2" nativeID="training-session-live-complete-modal-syncing" testID="training-session-live-complete-modal-syncing">
+                  <ActivityIndicator color={colors.primary} size="small" />
+                  <Text accessibilityLiveRegion="polite" className="text-xs font-semibold text-slate-500 dark:text-slate-400" nativeID="training-session-live-complete-modal-syncing-label" testID="training-session-live-complete-modal-syncing-label">
+                    Sincronizando el registro…
+                  </Text>
+                </View>
+              )}
               <Pressable
                 className="mt-5 h-11 w-full flex-row items-center justify-center gap-2 rounded-full border border-primary bg-primary-tint active:opacity-80 dark:bg-primary/15"
                 disabled={openingComparison}

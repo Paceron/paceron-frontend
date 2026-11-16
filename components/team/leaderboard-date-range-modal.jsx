@@ -3,6 +3,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DateField } from '../forms/fields.jsx';
 import { toISODate } from '../../utils/date-field-format.js';
+import { useThemeColors } from '../../theme/colors.js';
 
 // Rango personalizado del leaderboard (Gap 32) -- modal chico solo para
 // Desde/Hasta, vuelto a este alcance acotado 2026-10-24 (se había probado
@@ -13,6 +14,7 @@ import { toISODate } from '../../utils/date-field-format.js';
 // `visible` -- este modal no tiene concepto de "resetKey" porque no hay
 // distintos registros que editar, uno por vez).
 export function LeaderboardDateRangeModal({ visible, initialFrom, initialTo, onCancel, onConfirm }) {
+  const colors = useThemeColors();
   const [fromDate, setFromDate] = useState(initialFrom ?? '');
   const [toDate, setToDate] = useState(initialTo ?? '');
 
@@ -34,7 +36,7 @@ export function LeaderboardDateRangeModal({ visible, initialFrom, initialTo, onC
       <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="leaderboard-date-range-modal-backdrop" onPress={onCancel} testID="leaderboard-date-range-modal-backdrop">
         <Pressable className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface" nativeID="leaderboard-date-range-modal-card" onPress={() => {}} testID="leaderboard-date-range-modal-card">
           <View className="mb-4 flex-row items-center gap-2" nativeID="leaderboard-date-range-modal-header" testID="leaderboard-date-range-modal-header">
-            <MaterialCommunityIcons name="calendar-range" size={20} />
+            <MaterialCommunityIcons color={colors.onSurfaceVariant} name="calendar-range" size={20} />
             <Text className="text-base font-bold text-slate-900 dark:text-white" nativeID="leaderboard-date-range-modal-title" testID="leaderboard-date-range-modal-title">
               Rango personalizado
             </Text>
