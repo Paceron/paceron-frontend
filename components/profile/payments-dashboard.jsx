@@ -105,29 +105,32 @@ export function PaymentsDashboard({
 
   return (
     <View className="mb-2" nativeID="payments-dashboard" testID="payments-dashboard">
-      <View className="mb-4 flex-row gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
-        <View nativeID="payments-dashboard-kpi-month" style={kpiBox} testID="payments-dashboard-kpi-month">
-          <IconTooltip idPrefix="payments-kpi-month-tooltip" label="Monto cobrado en el mes actual" wrap>
-            <Pressable nativeID="payments-kpi-month-trigger" style={{ flex: 1 }} testID="payments-kpi-month-trigger">
-              <StatTile hint={monthTile.hint} icon="cash-plus" idPrefix="payments-kpi" label={`Cobrado en ${formatMonthLong(current?.month)}`} surface="bg-slate-50 dark:bg-surface-2" value={monthTile.value} />
-            </Pressable>
-          </IconTooltip>
+      <SectionCard icon="chart-box-outline" scope="payments-dashboard-monthly-numbers" title="Números mensuales" variant="nested">
+        <View className="flex-row gap-3" nativeID="payments-dashboard-kpis" testID="payments-dashboard-kpis">
+          <View nativeID="payments-dashboard-kpi-month" style={kpiBox} testID="payments-dashboard-kpi-month">
+            <IconTooltip idPrefix="payments-kpi-month-tooltip" label="Monto cobrado en el mes actual" wrap>
+              <Pressable nativeID="payments-kpi-month-trigger" style={{ flex: 1 }} testID="payments-kpi-month-trigger">
+                <StatTile hint={monthTile.hint} icon="cash-plus" idPrefix="payments-kpi" label={`Cobrado en ${formatMonthLong(current?.month)}`} layout="horizontal" surface="bg-slate-50 dark:bg-surface-2" value={monthTile.value} />
+              </Pressable>
+            </IconTooltip>
+          </View>
+          <View nativeID="payments-dashboard-kpi-mom" style={kpiBox} testID="payments-dashboard-kpi-mom">
+            <IconTooltip idPrefix="payments-kpi-mom-tooltip" label="Variación respecto al mes anterior" wrap>
+              <Pressable nativeID="payments-kpi-mom-trigger" style={{ flex: 1 }} testID="payments-kpi-mom-trigger">
+                <StatTile
+                  hint={momTile.hint}
+                  icon={momTile.direction === 'down' ? 'trending-down' : momTile.direction === 'up' ? 'trending-up' : 'trending-neutral'}
+                  idPrefix="payments-kpi"
+                  label={`vs ${formatMonthLong(previous?.month)}`}
+                  layout="horizontal"
+                  surface="bg-slate-50 dark:bg-surface-2"
+                  value={momTile.value}
+                />
+              </Pressable>
+            </IconTooltip>
+          </View>
         </View>
-        <View nativeID="payments-dashboard-kpi-mom" style={kpiBox} testID="payments-dashboard-kpi-mom">
-          <IconTooltip idPrefix="payments-kpi-mom-tooltip" label="Variación respecto al mes anterior" wrap>
-            <Pressable nativeID="payments-kpi-mom-trigger" style={{ flex: 1 }} testID="payments-kpi-mom-trigger">
-              <StatTile
-                hint={momTile.hint}
-                icon={momTile.direction === 'down' ? 'trending-down' : momTile.direction === 'up' ? 'trending-up' : 'trending-neutral'}
-                idPrefix="payments-kpi"
-                label={`vs ${formatMonthLong(previous?.month)}`}
-                surface="bg-slate-50 dark:bg-surface-2"
-                value={momTile.value}
-              />
-            </Pressable>
-          </IconTooltip>
-        </View>
-      </View>
+      </SectionCard>
 
       {/* Panel propio para los dos KPIs que dependen del período. El selector
           vive en el encabezado del panel, con su label, así queda claro qué
@@ -138,22 +141,26 @@ export function PaymentsDashboard({
         title="Adeudado y rechazado"
         variant="nested"
       >
-        <View className={`mb-4 gap-3 ${isWide ? 'flex-row items-end justify-between' : ''}`} nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
-          <Text className="flex-1 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-kpi-period-caption" testID="payments-dashboard-kpi-period-caption">
+        <View className="mb-4 flex-row flex-wrap items-center justify-between gap-3" nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
+          <Text className="min-w-0 flex-1 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-kpi-period-caption" testID="payments-dashboard-kpi-period-caption">
             Montos netos y cantidad de cuotas del período elegido.
           </Text>
-          <View style={isWide ? { width: 220 } : undefined} nativeID="payments-dashboard-kpi-period-select" testID="payments-dashboard-kpi-period-select">
-            <ResponsiveSelectField
-              className=""
-              dense
-              hideErrorRow
-              label="Período"
-              onChange={setKpiPeriod}
-              options={RECEIVED_KPI_PERIODS}
-              placeholder=""
-              required
-              value={kpiPeriod}
-            />
+          <View className="ml-auto flex-row items-center gap-2" nativeID="payments-dashboard-kpi-period-select" testID="payments-dashboard-kpi-period-select">
+            <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="payments-dashboard-kpi-period-label" testID="payments-dashboard-kpi-period-label">Período:</Text>
+            <View style={{ width: isWide ? 220 : 190 }} nativeID="payments-dashboard-kpi-period-select-field" testID="payments-dashboard-kpi-period-select-field">
+              <ResponsiveSelectField
+                className=""
+                dense
+                hideErrorRow
+                hideLabel
+                onChange={setKpiPeriod}
+                options={RECEIVED_KPI_PERIODS}
+                placeholder=""
+                required
+                showChevron
+                value={kpiPeriod}
+              />
+            </View>
           </View>
         </View>
         <View className="flex-row gap-3" nativeID="payments-dashboard-kpi-period-cards" testID="payments-dashboard-kpi-period-cards">
@@ -165,6 +172,7 @@ export function PaymentsDashboard({
                   icon="clock-outline"
                   idPrefix="payments-kpi"
                   label="Adeudado"
+                  layout="horizontal"
                   surface="bg-slate-50 dark:bg-surface-2"
                   value={pendingTile.value}
                 />
@@ -179,6 +187,7 @@ export function PaymentsDashboard({
                   icon="close-circle-outline"
                   idPrefix="payments-kpi"
                   label="Monto rechazado"
+                  layout="horizontal"
                   surface="bg-slate-50 dark:bg-surface-2"
                   value={rejectedTile.value}
                 />

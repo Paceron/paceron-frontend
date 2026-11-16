@@ -471,6 +471,7 @@ function SessionSideSelector({
         onChange={onChangeGroup}
         options={groupSelectOptions}
         placeholder={noGroups ? 'Sin grupos disponibles' : 'Elegí un grupo'}
+        showChevron
         value={selected.groupId}
       />
 

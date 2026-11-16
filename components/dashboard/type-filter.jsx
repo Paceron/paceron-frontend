@@ -26,6 +26,7 @@ export function TypeFilter({ kind = '', onChange, disabled = false, kinds = METR
       onChange={onChange}
       options={options}
       placeholder="Todos"
+      showChevron
       value={kind}
     />
   );

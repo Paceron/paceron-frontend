@@ -111,6 +111,7 @@ export function FiltersBar({
             onChange={onChangeGroup}
             options={groupOptions}
             placeholder="Todos los grupos"
+            showChevron
             value={groupId ?? ''}
           />
         </Col>
@@ -124,6 +125,7 @@ export function FiltersBar({
               onChange={onChangeAthlete}
               options={athleteOptions}
               placeholder="Todos los corredores"
+              showChevron
               value={athleteUserId ?? ''}
             />
           </Col>
