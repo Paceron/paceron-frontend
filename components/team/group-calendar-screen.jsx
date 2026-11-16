@@ -19,6 +19,7 @@ import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
 import { canAddToSelection } from '../../utils/calendar-selection.js';
 import { KIND_DOT_COLORS } from '../../utils/calendar-kind-colors.js';
 import { buildCalendarDayTooltipLabel } from '../../utils/calendar-day-tooltip.js';
+import { hasCalendarDayContent } from '../../utils/calendar-day-content.js';
 import { summarizeMonthDays } from '../../utils/calendar-month-summary.js';
 import { monthRange, pad2 } from '../../utils/calendar-month-range.js';
 import { useCalendarActivityStore, useCalendarDateActivity } from '../../store/calendar-activity-store.js';
@@ -549,7 +550,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         {openDayMenu && (
           <CalendarDayMenu
             closed={openClosed}
-            hasContent={Boolean(openMarking)}
+            hasContent={hasCalendarDayContent(openMarking)}
             isTraining={openMarking?.kind === 'training'}
             onAssignOrEdit={() => { handleCloseDayMenu(); handleAssignOrEdit(openDayMenu.date); }}
             onCancel={() => { handleCloseDayMenu(); handleCancelSession(openDayMenu.date); }}

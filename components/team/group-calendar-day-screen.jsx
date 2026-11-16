@@ -19,6 +19,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { RequireRole } from '../guards/require-role.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
 import { isCalendarDayClosed } from '../../utils/calendar-day-closed.js';
+import { hasCalendarDayContent } from '../../utils/calendar-day-content.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { StartSessionButton } from '../calendar/start-session-button.jsx';
 import { KEEP_CURRENT_SESSION } from '../../services/normalizers.js';
@@ -301,7 +302,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
               </Pressable>
             )}
 
-            {existingDay && (
+            {hasCalendarDayContent(existingDay) && (
               <Pressable
                 className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-full border border-red-300 hover:bg-red-50 active:opacity-80 dark:border-red-800 dark:hover:bg-red-900/20 ${isDeleting || closed ? 'opacity-60' : ''}`}
                 disabled={isDeleting || closed}
