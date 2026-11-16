@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -50,7 +51,7 @@ export function NextTrainingBanner() {
   const userId = useAuthStore((s) => s.userId);
   const role = useAuthStore((s) => s.activeRole);
   const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
-  const { nextTraining, cancelledSessions, loading, isFetching } = useNextTrainingBanner(role, userId);
+  const { nextTraining, nextTrainings, cancelledSessions, loading, isFetching } = useNextTrainingBanner(role, userId);
 
   if (!role) return null;
 
@@ -106,21 +107,20 @@ export function NextTrainingBanner() {
       {!loading && nextTraining && (
         <NextTrainingCardGroup
           cancelledSessions={cancelledSessions}
-          eligible={canStartSession(nextTraining)}
           isFetching={isFetching}
-          nextTraining={nextTraining}
+          nextTrainings={nextTrainings}
           onCancelledPress={goToCalendarDay}
-          onHeroPress={() => {
-            if (canStartSession(nextTraining) && !isWeb) {
-              setPendingSession(nextTraining);
-              if (role === 'trainer' && nextTraining.isPresencial) {
+          onHeroPress={(session) => {
+            if (canStartSession(session) && !isWeb) {
+              setPendingSession(session);
+              if (role === 'trainer' && session.isPresencial) {
                 router.push('/trainer-session-pre-start');
                 return;
               }
               router.push('/training-session');
               return;
             }
-            goToCalendarDay(nextTraining);
+            goToCalendarDay(session);
           }}
         />
       )}
@@ -128,12 +128,54 @@ export function NextTrainingBanner() {
   );
 }
 
-function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFetching, onHeroPress, onCancelledPress }) {
-  const heroIcon = nextTraining.isPresencial ? 'map-marker-radius' : 'run-fast';
+function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, onHeroPress, onCancelledPress }) {
   const { colorScheme } = useThemeMode();
+  const [pageWidth, setPageWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
   // 4 vueltas (~3.6s) y se queda quieto -- no infinito, ver el comentario
   // de useArrowBounce sobre el lag real reportado en el Home de corredor.
   const bounceStyle = useArrowBounce(4);
+  const carouselKey = nextTrainings
+    .map((session) => `${session.groupId ?? ''}:${session.date}:${session.sessionInstance?.id ?? ''}`)
+    .join('|');
+  const currentIndex = Math.min(activeIndex, nextTrainings.length - 1);
+  const selectedTraining = nextTrainings[currentIndex] ?? nextTrainings[0];
+
+  useEffect(() => {
+    setActiveIndex(0);
+    scrollRef.current?.scrollTo?.({ x: 0, y: 0, animated: false });
+  }, [carouselKey]);
+
+  useEffect(() => {
+    if (pageWidth > 0) {
+      scrollRef.current?.scrollTo?.({ x: currentIndex * pageWidth, y: 0, animated: false });
+    }
+  }, [currentIndex, pageWidth]);
+
+  const scrollToIndex = (index) => {
+    const nextIndex = Math.max(0, Math.min(nextTrainings.length - 1, index));
+    setActiveIndex(nextIndex);
+    scrollRef.current?.scrollTo?.({ x: nextIndex * pageWidth, y: 0, animated: true });
+  };
+
+  const onScrollEnd = (event) => {
+    if (pageWidth <= 0) return;
+    const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+    setActiveIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
+  };
+
+  const renderTrainingCard = (session, key, idPrefix) => (
+    <NextTrainingHeroCard
+      key={key}
+      bounceStyle={bounceStyle}
+      colorScheme={colorScheme}
+      idPrefix={idPrefix}
+      isFetching={isFetching}
+      onPress={() => onHeroPress(session)}
+      session={session}
+    />
+  );
 
   return (
     <View className="gap-2" nativeID="next-training-banner-list" testID="next-training-banner-list">
@@ -141,79 +183,147 @@ function NextTrainingCardGroup({ nextTraining, cancelledSessions, eligible, isFe
         <CancelledCard key={session.id} onPress={() => onCancelledPress(session)} session={session} />
       ))}
 
-      <Pressable
-        className="relative overflow-hidden rounded-2xl bg-green-200 dark:bg-green-800 shadow-sm hover:opacity-90 active:opacity-90"
-        nativeID="next-training-banner-hero"
-        onPress={onHeroPress}
-        testID="next-training-banner-hero"
+      <View
+        className="w-full"
+        nativeID="next-training-banner-carousel"
+        onLayout={(event) => setPageWidth(event.nativeEvent.layout.width)}
+        testID="next-training-banner-carousel"
       >
-        <View className="absolute -bottom-8 -right-8" nativeID="next-training-banner-hero-watermark" pointerEvents="none" testID="next-training-banner-hero-watermark">
-          <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
-        </View>
-
-        <View className="p-4" nativeID="next-training-banner-hero-body" testID="next-training-banner-hero-body">
-          <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID="recent-trainings-card-kicker" testID="recent-trainings-card-kicker">
-            Siguiente entrenamiento
-          </Text>
-          <View className="flex-row items-center" nativeID="next-training-banner-hero-content" testID="next-training-banner-hero-content">
-            <View className="flex-1 p-4 mr-1 rounded-2xl bg-green-50/70 dark:bg-green-700/70" nativeID="next-training-banner-hero-text" testID="next-training-banner-hero-text">
-              <View className="min-w-0 flex-row items-center" nativeID="next-training-banner-hero-date-name" testID="next-training-banner-hero-date-name">
-                <Animated.View nativeID="next-training-banner-hero-icon" style={[{ marginRight: 6 }, bounceStyle]} testID="next-training-banner-hero-icon">
-                  <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID="next-training-banner-hero-icon-badge" testID="next-training-banner-hero-icon-badge">
-                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="play" size={14} />
-                  </View>
-                </Animated.View>
-                {/* `shrink` + `numberOfLines` en el título -- un nombre de
-                    sesión largo empujaba la fecha fuera de la tarjeta (sin
-                    esto, un Text dentro de flex-row no se achica, crece a su
-                    ancho de contenido). Ahora el título trunca con "…" y la
-                    fecha queda siempre visible, mismo criterio que el grupo
-                    título+"i" de info-hint.jsx (flex-1 min-w-0 + Text shrink). */}
-                <Text className="shrink px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-title" numberOfLines={1} testID="next-training-banner-hero-title">
-                  {nextTraining.sessionInstance?.name ?? 'Entrenamiento'}
-                </Text>
-                <Text className="shrink-0 text-sm text-green-950 dark:text-green-50" nativeID="training-comparison-breadcrumb-separator" testID="training-comparison-breadcrumb-separator">/</Text>
-                <Text className="shrink-0 text-xs px-2 font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID="next-training-banner-hero-date" testID="next-training-banner-hero-date">
-                  {formatWeekdayLabel(nextTraining.date, { short: true })}, {formatDisplayDate(nextTraining.date)}
-                </Text>
+        {nextTrainings.length > 1 ? (
+          <ScrollView
+            ref={scrollRef}
+            decelerationRate="fast"
+            horizontal
+            nativeID="next-training-banner-carousel-pages"
+            onMomentumScrollEnd={onScrollEnd}
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            testID="next-training-banner-carousel-pages"
+          >
+            {nextTrainings.map((session, index) => (
+              <View
+                key={`${session.groupId ?? ''}:${session.date}:${session.sessionInstance?.id ?? index}`}
+                nativeID={`next-training-banner-carousel-page-${index + 1}`}
+                style={{ width: pageWidth || '100%' }}
+                testID={`next-training-banner-carousel-page-${index + 1}`}
+              >
+                {renderTrainingCard(
+                  session,
+                  `hero-${session.groupId ?? ''}-${session.date}-${index}`,
+                  `next-training-banner-hero-${index + 1}`,
+                )}
               </View>
+            ))}
+          </ScrollView>
+        ) : (
+          renderTrainingCard(selectedTraining, 'hero-single', 'next-training-banner-hero')
+        )}
 
-              <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID="next-training-banner-hero-scope" testID="next-training-banner-hero-scope">
-                <View className="flex-row items-center gap-1" nativeID="next-training-banner-hero-team" testID="next-training-banner-hero-team">
-                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
-                  <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-team-label" testID="next-training-banner-hero-team-label">
-                    {nextTraining.teamName}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-1" nativeID="next-training-banner-hero-group" testID="next-training-banner-hero-group">
-                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
-                  <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-group-label" testID="next-training-banner-hero-group-label">
-                    {nextTraining.groupName}
-                  </Text>
-                </View>
-              </View>
-
-              {nextTraining.isPresencial && (
-                <View className="mt-2 flex-row items-center gap-1.5" nativeID="next-training-banner-hero-presencial" testID="next-training-banner-hero-presencial">
-                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
-                  <Text className="text-xs text-green-950 dark:text-green-50" nativeID="next-training-banner-hero-presencial-label" testID="next-training-banner-hero-presencial-label">
-                    {nextTraining.presencialTimeFrom}–{nextTraining.presencialTimeTo}
-                    {nextTraining.presencialLocation?.label ? ` · ${nextTraining.presencialLocation.label}` : ''}
-                  </Text>
-                </View>
-              )}
-
-            </View>
-          </View>
-
-        </View>
-
-        {isFetching && (
-          <View className="absolute inset-0 items-center justify-center rounded-2xl bg-primary/70" nativeID="next-training-banner-hero-fetching-overlay" testID="next-training-banner-hero-fetching-overlay">
-            <ActivityIndicator color={colorScheme === 'dark' ? '#ffffff' : '#111518'} nativeID="next-training-banner-hero-fetching-indicator" testID="next-training-banner-hero-fetching-indicator" />
+        {nextTrainings.length > 1 && (
+          <View className="mt-2 flex-row items-center justify-center gap-3" nativeID="next-training-banner-carousel-controls" testID="next-training-banner-carousel-controls">
+            <Pressable
+              accessibilityLabel="Entrenamiento anterior"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: currentIndex === 0 }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-green-100 dark:bg-green-700"
+              disabled={currentIndex === 0}
+              nativeID="next-training-banner-carousel-previous"
+              onPress={() => scrollToIndex(currentIndex - 1)}
+              testID="next-training-banner-carousel-previous"
+            >
+              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="chevron-left" size={22} />
+            </Pressable>
+            <Text className="min-w-12 text-center text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-carousel-position" testID="next-training-banner-carousel-position">
+              {currentIndex + 1} de {nextTrainings.length}
+            </Text>
+            <Pressable
+              accessibilityLabel="Siguiente entrenamiento"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: currentIndex === nextTrainings.length - 1 }}
+              className="h-9 w-9 items-center justify-center rounded-full bg-green-100 dark:bg-green-700"
+              disabled={currentIndex === nextTrainings.length - 1}
+              nativeID="next-training-banner-carousel-next"
+              onPress={() => scrollToIndex(currentIndex + 1)}
+              testID="next-training-banner-carousel-next"
+            >
+              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="chevron-right" size={22} />
+            </Pressable>
           </View>
         )}
-      </Pressable>
+      </View>
     </View>
+  );
+}
+
+function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix }) {
+  const heroIcon = session.isPresencial ? 'map-marker-radius' : 'run-fast';
+
+  return (
+    <Pressable
+      className="relative overflow-hidden rounded-2xl bg-green-200 shadow-sm hover:opacity-90 active:opacity-90 dark:bg-green-800"
+      nativeID={idPrefix}
+      onPress={onPress}
+      testID={idPrefix}
+    >
+      <View className="absolute -bottom-8 -right-8" nativeID={`${idPrefix}-watermark`} pointerEvents="none" testID={`${idPrefix}-watermark`}>
+        <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
+      </View>
+
+      <View className="p-4" nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
+          Siguiente entrenamiento
+        </Text>
+        <View className="flex-row items-center" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
+          <View className="mr-1 flex-1 rounded-2xl bg-green-50/70 p-4 dark:bg-green-700/70" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
+            <View className="min-w-0 flex-row items-center" nativeID={`${idPrefix}-date-name`} testID={`${idPrefix}-date-name`}>
+              <Animated.View nativeID={`${idPrefix}-icon`} style={[{ marginRight: 6 }, bounceStyle]} testID={`${idPrefix}-icon`}>
+                <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID={`${idPrefix}-icon-badge`} testID={`${idPrefix}-icon-badge`}>
+                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="play" size={14} />
+                </View>
+              </Animated.View>
+              {/* `shrink` + `numberOfLines` mantiene la fecha visible si el nombre de sesión es largo. */}
+              <Text className="shrink px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
+                {session.sessionInstance?.name ?? 'Entrenamiento'}
+              </Text>
+              <Text className="shrink-0 text-sm text-green-950 dark:text-green-50" nativeID={`${idPrefix}-separator`} testID={`${idPrefix}-separator`}>/</Text>
+              <Text className="shrink-0 px-2 text-xs font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
+                {formatWeekdayLabel(session.date, { short: true })}, {formatDisplayDate(session.date)}
+              </Text>
+            </View>
+
+            <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID={`${idPrefix}-scope`} testID={`${idPrefix}-scope`}>
+              <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-team`} testID={`${idPrefix}-team`}>
+                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
+                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-team-label`} testID={`${idPrefix}-team-label`}>
+                  {session.teamName}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
+                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
+                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-group-label`} testID={`${idPrefix}-group-label`}>
+                  {session.groupName}
+                </Text>
+              </View>
+            </View>
+
+            {session.isPresencial && (
+              <View className="mt-2 flex-row items-center gap-1.5" nativeID={`${idPrefix}-presencial`} testID={`${idPrefix}-presencial`}>
+                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
+                <Text className="text-xs text-green-950 dark:text-green-50" nativeID={`${idPrefix}-presencial-label`} testID={`${idPrefix}-presencial-label`}>
+                  {session.presencialTimeFrom}–{session.presencialTimeTo}
+                  {session.presencialLocation?.label ? ` · ${session.presencialLocation.label}` : ''}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {isFetching && (
+        <View className="absolute inset-0 items-center justify-center rounded-2xl bg-primary/70" nativeID={`${idPrefix}-fetching-overlay`} testID={`${idPrefix}-fetching-overlay`}>
+          <ActivityIndicator color={colorScheme === 'dark' ? '#ffffff' : '#111518'} nativeID={`${idPrefix}-fetching-indicator`} testID={`${idPrefix}-fetching-indicator`} />
+        </View>
+      )}
+    </Pressable>
   );
 }

@@ -5,7 +5,7 @@ import { runnerSessionQueryOptions } from './use-runner-session.js';
 import { upcomingTrainingsRange } from '../utils/upcoming-trainings.js';
 import {
   selectCancelledBefore,
-  selectNextPendingTraining,
+  selectNextTrainingGroup,
   selectNextTrainingCandidates,
 } from '../utils/next-training-banner.js';
 
@@ -36,20 +36,23 @@ export function useNextTrainingBanner(role, userId) {
 
   const statusLoading = role === 'runner' && statusQueries.some((query) => query.isLoading);
 
-  const nextTraining = useMemo(() => {
-    if (role !== 'runner') return candidates[0] ?? null;
+  const nextTrainings = useMemo(() => {
     const statusBySessionId = {};
-    sessionInstanceIds.forEach((id, index) => {
-      const status = statusQueries[index]?.data?.status;
-      if (status) statusBySessionId[id] = status;
-    });
-    return selectNextPendingTraining(days, statusBySessionId);
-  }, [candidates, days, role, sessionInstanceIds, statusQueries]);
+    if (role === 'runner') {
+      sessionInstanceIds.forEach((id, index) => {
+        const status = statusQueries[index]?.data?.status;
+        if (status) statusBySessionId[id] = status;
+      });
+    }
+    return selectNextTrainingGroup(candidates, statusBySessionId);
+  }, [candidates, role, sessionInstanceIds, statusQueries]);
+
+  const nextTraining = nextTrainings[0] ?? null;
 
   const cancelledSessions = useMemo(
     () => (nextTraining ? selectCancelledBefore(days, nextTraining.date) : []),
     [days, nextTraining],
   );
 
-  return { nextTraining, cancelledSessions, loading: loading || statusLoading, isFetching };
+  return { nextTraining, nextTrainings, cancelledSessions, loading: loading || statusLoading, isFetching };
 }

@@ -31,8 +31,23 @@ export function selectNextTraining(days, { presencialOnly = false } = {}, now = 
 }
 
 export function selectNextPendingTraining(days, statusBySessionId, options = {}, now = new Date()) {
+  return selectNextPendingTrainings(days, statusBySessionId, options, now)[0] ?? null;
+}
+
+// Devuelve todas las sesiones pendientes de la fecha más próxima. La Home
+// puede mostrarlas como un carrusel sin mezclar entrenamientos de otros días.
+export function selectNextPendingTrainings(days, statusBySessionId = {}, options = {}, now = new Date()) {
   const candidates = selectNextTrainingCandidates(days, options, now);
-  return filterUpcomingTrainingsByStatus(candidates, statusBySessionId)[0] ?? null;
+  return selectNextTrainingGroup(candidates, statusBySessionId);
+}
+
+// candidates ya es la lista válida y ordenada calculada para el instante de
+// este render; separar el filtro de estado evita recalcular "hoy" dos veces.
+export function selectNextTrainingGroup(candidates, statusBySessionId = {}) {
+  const pending = filterUpcomingTrainingsByStatus(candidates, statusBySessionId);
+  if (pending.length === 0) return [];
+  const firstDate = pending[0].date;
+  return pending.filter((training) => training.date === firstDate);
 }
 
 export function selectCancelledBefore(days, beforeDate, now = new Date()) {
