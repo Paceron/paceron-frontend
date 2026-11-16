@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -97,12 +97,26 @@ function ViewAllTile({ wide, onPress }) {
 
 export function CompetitionsPreviewCard() {
   const router = useRouter();
+  const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const isNarrow = useIsNarrowWeb();
   const setAchievementsTab = useAchievementsTabStore((s) => s.setActiveTab);
   const { competitions, loading } = useMyCompetitions(userId, { status: 'active' });
 
-  if (loading || competitions.length === 0) return null;
+  if (loading) {
+    return (
+      <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card-loading" testID="competitions-preview-card-loading">
+        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="competitions-preview-card-loading-kicker" testID="competitions-preview-card-loading-kicker">
+          Tus competencias
+        </Text>
+        <View className="min-h-[72px] items-center justify-center" nativeID="competitions-preview-card-loading-body" testID="competitions-preview-card-loading-body">
+          <ActivityIndicator color={colors.primary} nativeID="competitions-preview-card-loading-indicator" testID="competitions-preview-card-loading-indicator" />
+        </View>
+      </View>
+    );
+  }
+
+  if (competitions.length === 0) return null;
 
   const preview = sortCompetitionsForPreview(competitions).slice(0, 3);
   const wide = isWeb && !isNarrow;

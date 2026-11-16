@@ -223,12 +223,12 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
         )}
 
         {nextTrainings.length > 1 && (
-          <View className="absolute inset-0 z-10 flex-row items-center justify-between px-2" nativeID="next-training-banner-carousel-controls" style={{ pointerEvents: 'box-none' }} testID="next-training-banner-carousel-controls">
+          <View className="absolute bottom-2 left-0 right-0 z-10 flex-row items-center justify-center gap-3" nativeID="next-training-banner-carousel-controls" style={{ pointerEvents: 'box-none' }} testID="next-training-banner-carousel-controls">
             <Pressable
               accessibilityLabel="Entrenamiento anterior"
               accessibilityRole="button"
               accessibilityState={{ disabled: currentIndex === 0 }}
-              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm dark:border-white/20 dark:bg-slate-900/90"
+              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
               disabled={currentIndex === 0}
               nativeID="next-training-banner-carousel-previous"
               onPress={() => scrollToIndex(currentIndex - 1)}
@@ -236,11 +236,14 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
             >
               <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-left" size={22} />
             </Pressable>
+            <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-carousel-position" pointerEvents="none" testID="next-training-banner-carousel-position">
+              {currentIndex + 1} / {nextTrainings.length}
+            </Text>
             <Pressable
               accessibilityLabel="Siguiente entrenamiento"
               accessibilityRole="button"
               accessibilityState={{ disabled: currentIndex === nextTrainings.length - 1 }}
-              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm dark:border-white/20 dark:bg-slate-900/90"
+              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm active:opacity-80 dark:border-white/20 dark:bg-slate-900/90"
               disabled={currentIndex === nextTrainings.length - 1}
               nativeID="next-training-banner-carousel-next"
               onPress={() => scrollToIndex(currentIndex + 1)}
@@ -249,12 +252,6 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
               <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-right" size={22} />
             </Pressable>
           </View>
-        )}
-
-        {nextTrainings.length > 1 && (
-          <Text className="mt-2 text-center text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-carousel-position" testID="next-training-banner-carousel-position">
-            {currentIndex + 1} de {nextTrainings.length}
-          </Text>
         )}
       </View>
     </View>
@@ -275,7 +272,7 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
         <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
       </View>
 
-      <View className={isCarousel ? 'px-12 py-4' : 'p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+      <View className={isCarousel ? 'px-4 pt-4 pb-12' : 'p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
         <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
           Siguiente entrenamiento
         </Text>

@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -78,7 +78,20 @@ export function RecentTrainingsCard() {
 
   const { list, loading } = useComparisonList({ dateFrom, dateTo, enabled: Boolean(userId) });
 
-  if (loading || !list) return null;
+  if (loading) {
+    return (
+      <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="recent-trainings-card-loading" testID="recent-trainings-card-loading">
+        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="recent-trainings-card-loading-kicker" testID="recent-trainings-card-loading-kicker">
+          Tus entrenamientos recientes
+        </Text>
+        <View className="min-h-[72px] items-center justify-center" nativeID="recent-trainings-card-loading-body" testID="recent-trainings-card-loading-body">
+          <ActivityIndicator color={colors.primary} nativeID="recent-trainings-card-loading-indicator" testID="recent-trainings-card-loading-indicator" />
+        </View>
+      </View>
+    );
+  }
+
+  if (!list) return null;
   const trainings = selectRecentFinishedTrainings(list.sessions);
   if (trainings.length === 0) return null;
 

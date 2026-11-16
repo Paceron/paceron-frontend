@@ -91,7 +91,7 @@ describe('NextTrainingBanner carousel', () => {
     expect(getByTestId('next-training-banner-hero-1-title').props.children).toBe('Fondo');
     fireEvent.press(getByTestId('next-training-banner-carousel-next'));
     expect(getByTestId('next-training-banner-hero-2-title').props.children).toBe('Intervalos');
-    expect(getByTestId('next-training-banner-carousel-position').props.children).toEqual([2, ' de ', 2]);
+    expect(getByTestId('next-training-banner-carousel-position').props.children).toEqual([2, ' / ', 2]);
 
     fireEvent.press(getByTestId('next-training-banner-hero-2'));
 
@@ -108,7 +108,7 @@ describe('NextTrainingBanner carousel', () => {
       nativeEvent: { contentOffset: { x: 320, y: 0 } },
     });
 
-    expect(getByTestId('next-training-banner-carousel-position').props.children).toEqual([2, ' de ', 2]);
+    expect(getByTestId('next-training-banner-carousel-position').props.children).toEqual([2, ' / ', 2]);
     expect(getByTestId('next-training-banner-hero-2-title').props.children).toBe('Intervalos');
   });
 

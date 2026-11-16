@@ -48,7 +48,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
 
   if (loading) {
     return (
-      <View className={`mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
+      <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
         <ActivityIndicator color={colors.primary} nativeID="streak-banner-loading-indicator" testID="streak-banner-loading-indicator" />
       </View>
     );
@@ -56,7 +56,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
 
   if (error || !streaks) {
     return (
-      <View className={`mb-6 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
+      <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
         <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
       </View>
     );
