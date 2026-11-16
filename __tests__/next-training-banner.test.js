@@ -1,6 +1,7 @@
 import {
   selectCancelledBefore,
   selectNextPendingTraining,
+  selectNextPendingTrainings,
   selectNextTraining,
 } from '../utils/next-training-banner.js';
 
@@ -83,6 +84,36 @@ describe('selectNextPendingTraining', () => {
       { id: '2', date: '2026-09-26', kind: 'training', sessionInstance: { id: 102 } },
     ];
     expect(selectNextPendingTraining(days, { 102: 'wip' }, {}, now)?.id).toBe('1');
+  });
+
+  it('returns all pending trainings on the earliest date and excludes later dates', () => {
+    const days = [
+      { id: 'later', date: '2026-09-26', kind: 'training', sessionInstance: { id: 104 } },
+      { id: 'first-b', date: '2026-09-25', kind: 'training', sessionInstance: { id: 102 } },
+      { id: 'first-a', date: '2026-09-25', kind: 'training', sessionInstance: { id: 101 } },
+    ];
+
+    expect(selectNextPendingTrainings(days, {}, {}, now).map((day) => day.id)).toEqual(['first-b', 'first-a']);
+  });
+
+  it('keeps other sessions from the same date when one is already finished', () => {
+    const days = [
+      { id: 'finished', date: '2026-09-25', kind: 'training', sessionInstance: { id: 101 } },
+      { id: 'pending-today', date: '2026-09-25', kind: 'training', sessionInstance: { id: 102 } },
+      { id: 'tomorrow', date: '2026-09-26', kind: 'training', sessionInstance: { id: 103 } },
+    ];
+
+    expect(selectNextPendingTrainings(days, { 101: 'finished' }, {}, now).map((day) => day.id)).toEqual(['pending-today']);
+  });
+
+  it('moves to the next date when every session on the nearest date is closed', () => {
+    const days = [
+      { id: 'finished', date: '2026-09-25', kind: 'training', sessionInstance: { id: 101 } },
+      { id: 'interrupted', date: '2026-09-25', kind: 'training', sessionInstance: { id: 102 } },
+      { id: 'tomorrow', date: '2026-09-26', kind: 'training', sessionInstance: { id: 103 } },
+    ];
+
+    expect(selectNextPendingTrainings(days, { 101: 'finished', 102: 'interrupted' }, {}, now).map((day) => day.id)).toEqual(['tomorrow']);
   });
 
   it('returns null when every candidate is already closed', () => {
