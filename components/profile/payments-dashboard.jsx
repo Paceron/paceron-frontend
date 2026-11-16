@@ -141,11 +141,8 @@ export function PaymentsDashboard({
         title="Adeudado y rechazado"
         variant="nested"
       >
-        <View className="mb-4 flex-row flex-wrap items-center justify-between gap-3" nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
-          <Text className="min-w-0 flex-1 text-xs leading-4 text-slate-500 dark:text-slate-400" nativeID="payments-dashboard-kpi-period-caption" testID="payments-dashboard-kpi-period-caption">
-            Montos netos y cantidad de cuotas del período elegido.
-          </Text>
-          <View className="ml-auto flex-row items-center gap-2" nativeID="payments-dashboard-kpi-period-select" testID="payments-dashboard-kpi-period-select">
+        <View className="mb-4 flex-row flex-wrap items-center gap-2" nativeID="payments-dashboard-kpi-period" testID="payments-dashboard-kpi-period">
+          <View className="flex-row items-center gap-2" nativeID="payments-dashboard-kpi-period-select" testID="payments-dashboard-kpi-period-select">
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="payments-dashboard-kpi-period-label" testID="payments-dashboard-kpi-period-label">Período:</Text>
             <View style={{ width: isWide ? 220 : 190 }} nativeID="payments-dashboard-kpi-period-select-field" testID="payments-dashboard-kpi-period-select-field">
               <ResponsiveSelectField
