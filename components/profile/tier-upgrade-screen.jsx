@@ -30,8 +30,8 @@ import { CheckoutFlow } from '../payments/checkout-flow';
 
 const ROLE_LABEL = { corredor: 'Corredor', entrenador: 'Entrenador' };
 const TIER_CONTENT = {
-  base: { description: '1 equipo de hasta 10 integrantes', icon: 'seedling' },
-  medium: { description: '5 equipos y hasta 60 corredores, con consultas de IA sobre tus equipos', icon: 'account-group' },
+  base: { description: '1 equipo de hasta 10 integrantes', icon: 'account-group' },
+  medium: { description: '5 equipos y hasta 60 corredores, con consultas de IA sobre tus equipos', icon: 'brain' },
   premium: { description: '10 equipos y hasta 100 corredores, con acceso a todos los servicios de IA', icon: 'crown' },
 };
 
