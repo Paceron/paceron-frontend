@@ -1,6 +1,6 @@
 import { isCalendarDayClosed } from '../utils/calendar-day-closed.js';
 
-const NOW = new Date(2026, 9, 15, 10, 0, 0); // 2026-10-15 10:00 local
+const NOW = new Date('2026-10-15T13:00:00.000Z'); // 2026-10-15 10:00 en Argentina
 
 describe('isCalendarDayClosed', () => {
   test('fecha pasada siempre está cerrada', () => {
@@ -13,20 +13,27 @@ describe('isCalendarDayClosed', () => {
     expect(isCalendarDayClosed('2026-10-16', { isPresencial: false }, NOW)).toBe(false);
   });
 
-  test('hoy, no presencial, ya NO está cerrado (Gap 39)', () => {
+  test('hoy, no presencial, permanece abierto', () => {
     expect(isCalendarDayClosed('2026-10-15', { isPresencial: false }, NOW)).toBe(false);
   });
 
-  test('hoy, presencial, antes del horario de inicio, no está cerrado', () => {
+  test('hoy, presencial, permanece abierto antes de su hora de inicio', () => {
     expect(isCalendarDayClosed('2026-10-15', { isPresencial: true, presencialTimeFrom: '12:00' }, NOW)).toBe(false);
   });
 
-  test('hoy, presencial, después del horario de inicio, está cerrado', () => {
-    expect(isCalendarDayClosed('2026-10-15', { isPresencial: true, presencialTimeFrom: '08:00' }, NOW)).toBe(true);
+  test('hoy, presencial, permanece abierto aunque ya haya empezado', () => {
+    expect(isCalendarDayClosed('2026-10-15', { isPresencial: true, presencialTimeFrom: '08:00' }, NOW)).toBe(false);
   });
 
-  test('hoy, presencial, exactamente en el horario de inicio, está cerrado', () => {
-    expect(isCalendarDayClosed('2026-10-15', { isPresencial: true, presencialTimeFrom: '10:00' }, NOW)).toBe(true);
+  test('hoy, presencial, sigue abierto hasta el cambio de fecha argentina', () => {
+    const argentina2359 = new Date('2026-10-16T02:59:00.000Z');
+    expect(isCalendarDayClosed('2026-10-15', { isPresencial: true, presencialTimeFrom: '08:00' }, argentina2359)).toBe(false);
+  });
+
+  test('el día anterior se cierra al llegar la medianoche argentina', () => {
+    const argentinaMidnight = new Date('2026-10-16T03:00:00.000Z');
+    expect(isCalendarDayClosed('2026-10-15', {}, argentinaMidnight)).toBe(true);
+    expect(isCalendarDayClosed('2026-10-16', {}, argentinaMidnight)).toBe(false);
   });
 
   test('hoy, presencial sin presencialTimeFrom cargado, no está cerrado', () => {

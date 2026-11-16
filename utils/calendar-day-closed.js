@@ -1,28 +1,29 @@
-// Réplica del lado del frontend de isCalendarDayClosed (backend,
-// cmd/api/services/calendar_service.go) — mismo criterio exacto: una
-// fecha pasada siempre está cerrada; hoy async YA NO cierra (Gap 39,
-// resuelto en el backend 2026-11-05 — antes se cerraba igual que un día
-// pasado, sin excepción); hoy presencial sigue cerrado solo si ya pasó
-// `presencialTimeFrom`; una fecha futura nunca está cerrada. Uso
-// puramente advisory en el frontend (evitar mostrar una acción que el
-// backend va a rechazar con 422) — el backend sigue siendo la fuente de
-// verdad real.
+// Réplica advisory de isCalendarDayClosed (backend,
+// cmd/api/services/calendar_service.go): las fechas del calendario se
+// interpretan en Argentina, sin depender de la zona horaria del dispositivo.
+// Todo el día de hoy (presencial o async) está abierto hasta medianoche
+// argentina; las fechas anteriores quedan cerradas y las futuras abiertas.
+// El backend sigue siendo la fuente de verdad real.
 //
 // dateStr: 'YYYY-MM-DD'. presencialTimeFrom: 'HH:mm' o null/undefined.
-// Ambos son wall-clock literal, sin conversión de huso horario (mismo
-// criterio que TimeField/toCalendarDayPayload — nunca se convierte HH:mm
-// entre zonas, viaja tal cual).
+// presencialTimeFrom se mantiene en la firma para compatibilidad con callers;
+// ya no participa en el guard de escritura.
+const ARGENTINA_TIME_ZONE = 'America/Argentina/Cordoba';
+
+function todayInArgentina(now) {
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: ARGENTINA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export function isCalendarDayClosed(dateStr, { isPresencial, presencialTimeFrom } = {}, now = new Date()) {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const dayDate = new Date(year, month - 1, day);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  if (dayDate < today) return true;
-  if (dayDate > today) return false;
-  if (!isPresencial) return false;
-  if (!presencialTimeFrom) return false;
-
-  const [hh, mm] = presencialTimeFrom.split(':').map(Number);
-  const threshold = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-  return now >= threshold;
+  // Evita warnings de lint mientras se conserva la firma pública compatible.
+  void isPresencial;
+  void presencialTimeFrom;
+  return dateStr < todayInArgentina(now);
 }
