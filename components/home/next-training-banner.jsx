@@ -165,12 +165,13 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
     setActiveIndex(Math.max(0, Math.min(nextTrainings.length - 1, index)));
   };
 
-  const renderTrainingCard = (session, key, idPrefix) => (
+  const renderTrainingCard = (session, key, idPrefix, isCarousel = false) => (
     <NextTrainingHeroCard
       key={key}
       bounceStyle={bounceStyle}
       colorScheme={colorScheme}
       idPrefix={idPrefix}
+      isCarousel={isCarousel}
       isFetching={isFetching}
       onPress={() => onHeroPress(session)}
       session={session}
@@ -184,7 +185,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
       ))}
 
       <View
-        className="w-full"
+        className="relative w-full"
         nativeID="next-training-banner-carousel"
         onLayout={(event) => setPageWidth(event.nativeEvent.layout.width)}
         testID="next-training-banner-carousel"
@@ -204,6 +205,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
               <View
                 key={`${session.groupId ?? ''}:${session.date}:${session.sessionInstance?.id ?? index}`}
                 nativeID={`next-training-banner-carousel-page-${index + 1}`}
+                className="relative"
                 style={{ width: pageWidth || '100%' }}
                 testID={`next-training-banner-carousel-page-${index + 1}`}
               >
@@ -211,6 +213,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
                   session,
                   `hero-${session.groupId ?? ''}-${session.date}-${index}`,
                   `next-training-banner-hero-${index + 1}`,
+                  true,
                 )}
               </View>
             ))}
@@ -220,42 +223,45 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
         )}
 
         {nextTrainings.length > 1 && (
-          <View className="mt-2 flex-row items-center justify-center gap-3" nativeID="next-training-banner-carousel-controls" testID="next-training-banner-carousel-controls">
+          <View className="absolute inset-0 z-10 flex-row items-center justify-between px-2" nativeID="next-training-banner-carousel-controls" style={{ pointerEvents: 'box-none' }} testID="next-training-banner-carousel-controls">
             <Pressable
               accessibilityLabel="Entrenamiento anterior"
               accessibilityRole="button"
               accessibilityState={{ disabled: currentIndex === 0 }}
-              className="h-9 w-9 items-center justify-center rounded-full bg-green-100 dark:bg-green-700"
+              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm dark:border-white/20 dark:bg-slate-900/90"
               disabled={currentIndex === 0}
               nativeID="next-training-banner-carousel-previous"
               onPress={() => scrollToIndex(currentIndex - 1)}
               testID="next-training-banner-carousel-previous"
             >
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="chevron-left" size={22} />
+              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-left" size={22} />
             </Pressable>
-            <Text className="min-w-12 text-center text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-carousel-position" testID="next-training-banner-carousel-position">
-              {currentIndex + 1} de {nextTrainings.length}
-            </Text>
             <Pressable
               accessibilityLabel="Siguiente entrenamiento"
               accessibilityRole="button"
               accessibilityState={{ disabled: currentIndex === nextTrainings.length - 1 }}
-              className="h-9 w-9 items-center justify-center rounded-full bg-green-100 dark:bg-green-700"
+              className="h-9 w-9 items-center justify-center rounded-full border border-green-900/15 bg-white/90 shadow-sm dark:border-white/20 dark:bg-slate-900/90"
               disabled={currentIndex === nextTrainings.length - 1}
               nativeID="next-training-banner-carousel-next"
               onPress={() => scrollToIndex(currentIndex + 1)}
               testID="next-training-banner-carousel-next"
             >
-              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="chevron-right" size={22} />
+              <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-right" size={22} />
             </Pressable>
           </View>
+        )}
+
+        {nextTrainings.length > 1 && (
+          <Text className="mt-2 text-center text-xs font-semibold text-green-950 dark:text-green-50" nativeID="next-training-banner-carousel-position" testID="next-training-banner-carousel-position">
+            {currentIndex + 1} de {nextTrainings.length}
+          </Text>
         )}
       </View>
     </View>
   );
 }
 
-function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix }) {
+function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel }) {
   const heroIcon = session.isPresencial ? 'map-marker-radius' : 'run-fast';
 
   return (
@@ -269,7 +275,7 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
         <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
       </View>
 
-      <View className="p-4" nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+      <View className={isCarousel ? 'px-12 py-4' : 'p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
         <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
           Siguiente entrenamiento
         </Text>
