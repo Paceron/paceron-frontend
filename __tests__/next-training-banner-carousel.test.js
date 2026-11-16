@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 
 const mockPush = jest.fn();
@@ -88,9 +89,25 @@ describe('NextTrainingBanner carousel', () => {
 
     expect(getByTestId('next-training-banner-hero')).toBeTruthy();
     expect(getByTestId('next-training-banner-hero-title').props.children).toBe('Fondo');
-    expect(queryByTestId('next-training-banner-hero-controls')).toBeNull();
+    expect(queryByTestId('next-training-banner-hero-position')).toBeNull();
     expect(queryByTestId('next-training-banner-hero-next')).toBeNull();
     expect(queryByTestId('next-training-banner-hero-autoplay-track')).toBeNull();
+  });
+
+  it('uses the tallest content height for every carousel card', () => {
+    const { getByTestId } = render(<NextTrainingBanner />);
+
+    fireEvent(getByTestId('next-training-banner-hero-1-reveal'), 'layout', {
+      nativeEvent: { layout: { height: 120 } },
+    });
+    fireEvent(getByTestId('next-training-banner-hero-2-reveal'), 'layout', {
+      nativeEvent: { layout: { height: 170 } },
+    });
+
+    const firstHeight = StyleSheet.flatten(getByTestId('next-training-banner-hero-1').props.style)?.height;
+    const secondHeight = StyleSheet.flatten(getByTestId('next-training-banner-hero-2').props.style)?.height;
+    expect(firstHeight).toBe(202);
+    expect(secondHeight).toBe(202);
   });
 
   it('changes the selected session and starts that session', () => {
@@ -99,8 +116,9 @@ describe('NextTrainingBanner carousel', () => {
     expect(getByTestId('next-training-banner-hero-1-title').props.children).toBe('Fondo');
     fireEvent.press(getByTestId('next-training-banner-hero-1-next'));
     expect(getByTestId('next-training-banner-hero-2-title').props.children).toBe('Intervalos');
-    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
-    expect(getByTestId('next-training-banner-hero-2-controls')).toBeTruthy();
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toBe('(2/2)');
+    expect(getByTestId('next-training-banner-hero-2-previous')).toBeTruthy();
+    expect(getByTestId('next-training-banner-hero-2-next')).toBeTruthy();
     expect(getByTestId('next-training-banner-hero-2-autoplay-track')).toBeTruthy();
     expect(queryByTestId('next-training-banner-hero-1-autoplay-track')).toBeNull();
     expect(mockSetPendingSession).not.toHaveBeenCalled();
@@ -120,11 +138,11 @@ describe('NextTrainingBanner carousel', () => {
       nativeEvent: { contentOffset: { x: 320, y: 0 } },
     });
 
-    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toBe('(2/2)');
     expect(getByTestId('next-training-banner-hero-2-title').props.children).toBe('Intervalos');
   });
 
-  it('advances automatically every 10 seconds and wraps to the first session', () => {
+  it('advances automatically every 20 seconds and wraps to the first session', () => {
     jest.useFakeTimers();
     const { getByTestId, unmount } = render(<NextTrainingBanner />);
     fireEvent(getByTestId('next-training-banner-carousel'), 'layout', {
@@ -132,14 +150,14 @@ describe('NextTrainingBanner carousel', () => {
     });
 
     act(() => {
-      jest.advanceTimersByTime(10000);
+      jest.advanceTimersByTime(20000);
     });
-    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toBe('(2/2)');
 
     act(() => {
-      jest.advanceTimersByTime(10000);
+      jest.advanceTimersByTime(20000);
     });
-    expect(getByTestId('next-training-banner-hero-1-position').props.children).toEqual([1, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-1-position').props.children).toBe('(1/2)');
 
     unmount();
     jest.useRealTimers();
@@ -176,14 +194,14 @@ describe('NextTrainingBanner autoplay transitions', () => {
     });
 
     act(() => {
-      jest.advanceTimersByTime(10000);
+      jest.advanceTimersByTime(20000);
     });
-    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toBe('(2/2)');
 
     fireEvent.scroll(getByTestId('next-training-banner-carousel-pages'), {
       nativeEvent: { contentOffset: { x: 0, y: 0 } },
     });
-    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toBe('(2/2)');
     expect(getByTestId('next-training-banner-hero-2-autoplay-track')).toBeTruthy();
 
     unmount();
@@ -198,7 +216,7 @@ describe('NextTrainingBanner autoplay transitions', () => {
     });
 
     fireEvent.press(getByTestId('next-training-banner-hero-1-next'));
-    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toBe('(2/2)');
 
     act(() => {
       jest.advanceTimersByTime(800);
@@ -207,7 +225,7 @@ describe('NextTrainingBanner autoplay transitions', () => {
       nativeEvent: { contentOffset: { x: 80, y: 0 } },
     });
 
-    expect(getByTestId('next-training-banner-hero-2-position').props.children).toEqual([2, ' / ', 2]);
+    expect(getByTestId('next-training-banner-hero-2-position').props.children).toBe('(2/2)');
     expect(getByTestId('next-training-banner-hero-2-autoplay-track')).toBeTruthy();
     expect(queryByTestId('next-training-banner-hero-1-autoplay-track')).toBeNull();
 

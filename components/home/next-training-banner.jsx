@@ -13,7 +13,8 @@ import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-d
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
 
-const CAROUSEL_AUTOPLAY_MS = 10000;
+const CAROUSEL_AUTOPLAY_MS = 20000;
+const CAROUSEL_BODY_VERTICAL_PADDING = 32;
 
 function CarouselProgressBar({ active, colorScheme, idPrefix }) {
   const progress = useSharedValue(1);
@@ -157,6 +158,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const { colorScheme } = useThemeMode();
   const [pageWidth, setPageWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [uniformCardHeight, setUniformCardHeight] = useState(0);
   const activeIndexRef = useRef(0);
   const scrollRef = useRef(null);
   const programmaticScrollRef = useRef(false);
@@ -174,6 +176,12 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   const setIndex = useCallback((index) => {
     activeIndexRef.current = index;
     setActiveIndex(index);
+  }, []);
+
+  const measureCardContentHeight = useCallback((contentHeight) => {
+    if (!Number.isFinite(contentHeight) || contentHeight <= 0) return;
+    const nextHeight = Math.ceil(contentHeight) + CAROUSEL_BODY_VERTICAL_PADDING;
+    setUniformCardHeight((current) => (nextHeight > current ? nextHeight : current));
   }, []);
 
   const clearProgrammaticScroll = useCallback(() => {
@@ -202,6 +210,7 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
 
   useEffect(() => {
     setIndex(0);
+    setUniformCardHeight(0);
     scrollToX(0, false);
   }, [carouselKey, scrollToX, setIndex]);
 
@@ -261,8 +270,10 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
       idPrefix={idPrefix}
       isCarousel={isCarousel}
       isFetching={isFetching}
+      onMeasureContentHeight={isCarousel ? measureCardContentHeight : undefined}
       onPress={() => onHeroPress(session)}
       session={session}
+      uniformHeight={isCarousel ? uniformCardHeight : 0}
     />
   );
 
@@ -319,7 +330,31 @@ function NextTrainingCardGroup({ nextTrainings, cancelledSessions, isFetching, o
   );
 }
 
-function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel, activeIndex }) {
+function CarouselArrow({ colorScheme, direction, disabled, idPrefix, onPress }) {
+  const isPrevious = direction === 'previous';
+
+  return (
+    <Pressable
+      accessibilityLabel={isPrevious ? 'Entrenamiento anterior' : 'Siguiente entrenamiento'}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      className="w-5 items-center justify-center active:opacity-60"
+      disabled={disabled}
+      hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+      nativeID={`${idPrefix}-${direction}`}
+      onPress={(event) => {
+        event?.stopPropagation?.();
+        onPress();
+      }}
+      style={{ opacity: disabled ? 0.3 : 1 }}
+      testID={`${idPrefix}-${direction}`}
+    >
+      <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name={isPrevious ? 'chevron-left' : 'chevron-right'} size={34} />
+    </Pressable>
+  );
+}
+
+function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFetching, idPrefix, isCarousel, carousel, activeIndex, uniformHeight, onMeasureContentHeight }) {
   const heroIcon = session.isPresencial ? 'map-marker-radius' : 'run-fast';
   const isActive = isCarousel ? Boolean(carousel?.isActive) : true;
   const reveal = useSharedValue(1);
@@ -339,102 +374,101 @@ function NextTrainingHeroCard({ session, onPress, colorScheme, bounceStyle, isFe
       className="relative overflow-hidden rounded-2xl bg-green-200 shadow-sm hover:opacity-90 active:opacity-90 dark:bg-green-800"
       nativeID={idPrefix}
       onPress={onPress}
+      style={isCarousel && uniformHeight > 0 ? { height: uniformHeight } : undefined}
       testID={idPrefix}
     >
       <View className="absolute -bottom-8 -right-8" nativeID={`${idPrefix}-watermark`} pointerEvents="none" testID={`${idPrefix}-watermark`}>
         <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={130} style={{ opacity: 0.12 }} />
       </View>
 
-      <View className={isCarousel ? 'relative px-4 pt-4 pb-12' : 'p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
-        <Animated.View nativeID={`${idPrefix}-reveal`} style={revealStyle} testID={`${idPrefix}-reveal`}>
-        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
-          Siguiente entrenamiento
-        </Text>
-        <View className="flex-row items-center" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
-          <View className="mr-1 flex-1 rounded-2xl bg-green-50/70 p-4 dark:bg-green-700/70" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
-            <View className="min-w-0 flex-row items-center" nativeID={`${idPrefix}-date-name`} testID={`${idPrefix}-date-name`}>
-              <Animated.View nativeID={`${idPrefix}-icon`} style={[{ marginRight: 6 }, bounceStyle]} testID={`${idPrefix}-icon`}>
-                <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID={`${idPrefix}-icon-badge`} testID={`${idPrefix}-icon-badge`}>
-                  <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="play" size={14} />
+      <View className={isCarousel ? 'relative flex-1 flex-row' : 'relative p-4'} nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
+        {isCarousel ? (
+          <CarouselArrow
+            colorScheme={colorScheme}
+            direction="previous"
+            disabled={!carousel.canPrev}
+            idPrefix={idPrefix}
+            onPress={carousel.onPrev}
+          />
+        ) : null}
+
+        <View className={isCarousel ? 'flex-1 px-1 py-4' : ''} nativeID={`${idPrefix}-content-wrapper`} testID={`${idPrefix}-content-wrapper`}>
+          <Animated.View
+            nativeID={`${idPrefix}-reveal`}
+            onLayout={isCarousel ? (event) => onMeasureContentHeight?.(event.nativeEvent.layout.height) : undefined}
+            style={revealStyle}
+            testID={`${idPrefix}-reveal`}
+          >
+            <View className="mb-1 flex-row items-center gap-1" nativeID={`${idPrefix}-heading`} testID={`${idPrefix}-heading`}>
+              <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300" nativeID={`${idPrefix}-kicker`} testID={`${idPrefix}-kicker`}>
+                Siguiente entrenamiento
+              </Text>
+              {isCarousel ? (
+                <Text className="text-[10px] font-bold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID={`${idPrefix}-position`} testID={`${idPrefix}-position`}>
+                  {`(${carousel.currentIndex + 1}/${carousel.total})`}
+                </Text>
+              ) : null}
+            </View>
+
+            <View className="flex-row items-center" nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
+              <View className="flex-1 rounded-2xl bg-green-50/70 p-4 dark:bg-green-700/70" nativeID={`${idPrefix}-text`} testID={`${idPrefix}-text`}>
+                <View className="min-w-0 flex-row items-center" nativeID={`${idPrefix}-date-name`} testID={`${idPrefix}-date-name`}>
+                  <Animated.View nativeID={`${idPrefix}-icon`} style={[{ marginRight: 6 }, bounceStyle]} testID={`${idPrefix}-icon`}>
+                    <View className="h-6 w-6 items-center justify-center rounded-full border border-green-400 bg-green-300 dark:border-green-500 dark:bg-green-600" nativeID={`${idPrefix}-icon-badge`} testID={`${idPrefix}-icon-badge`}>
+                      <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name={heroIcon} size={14} />
+                    </View>
+                  </Animated.View>
+                  <View className="min-w-0 flex-1" nativeID={`${idPrefix}-title-block`} testID={`${idPrefix}-title-block`}>
+                    <Text className="text-xl font-bold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
+                      {session.sessionInstance?.name ?? 'Entrenamiento'}
+                    </Text>
+                    <Text className="mt-0.5 text-xs font-semibold text-green-900 dark:text-green-100" nativeID={`${idPrefix}-date`} numberOfLines={1} testID={`${idPrefix}-date`}>
+                      {formatWeekdayLabel(session.date, { short: true })}, {formatDisplayDate(session.date)}
+                    </Text>
+                  </View>
                 </View>
-              </Animated.View>
-              {/* `shrink` + `numberOfLines` mantiene la fecha visible si el nombre de sesión es largo. */}
-              <Text className="shrink px-2 text-xl font-bold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-title`} numberOfLines={1} testID={`${idPrefix}-title`}>
-                {session.sessionInstance?.name ?? 'Entrenamiento'}
-              </Text>
-              <Text className="shrink-0 text-sm text-green-950 dark:text-green-50" nativeID={`${idPrefix}-separator`} testID={`${idPrefix}-separator`}>/</Text>
-              <Text className="shrink-0 px-2 text-xs font-semibold uppercase tracking-wide text-green-900 dark:text-green-100" nativeID={`${idPrefix}-date`} testID={`${idPrefix}-date`}>
-                {formatWeekdayLabel(session.date, { short: true })}, {formatDisplayDate(session.date)}
-              </Text>
-            </View>
 
-            <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID={`${idPrefix}-scope`} testID={`${idPrefix}-scope`}>
-              <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-team`} testID={`${idPrefix}-team`}>
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
-                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-team-label`} testID={`${idPrefix}-team-label`}>
-                  {session.teamName}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
-                <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-group-label`} testID={`${idPrefix}-group-label`}>
-                  {session.groupName}
-                </Text>
+                <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1" nativeID={`${idPrefix}-scope`} testID={`${idPrefix}-scope`}>
+                  <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-team`} testID={`${idPrefix}-team`}>
+                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="shield-account-outline" size={14} />
+                    <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-team-label`} testID={`${idPrefix}-team-label`}>
+                      {session.teamName}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-group`} testID={`${idPrefix}-group`}>
+                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="account-multiple-outline" size={14} />
+                    <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-group-label`} testID={`${idPrefix}-group-label`}>
+                      {session.groupName}
+                    </Text>
+                  </View>
+                </View>
+
+                {session.isPresencial && (
+                  <View className="mt-2 flex-row items-center gap-1.5" nativeID={`${idPrefix}-presencial`} testID={`${idPrefix}-presencial`}>
+                    <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
+                    <Text className="text-xs text-green-950 dark:text-green-50" nativeID={`${idPrefix}-presencial-label`} testID={`${idPrefix}-presencial-label`}>
+                      {session.presencialTimeFrom}–{session.presencialTimeTo}
+                      {session.presencialLocation?.label ? ` · ${session.presencialLocation.label}` : ''}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
-
-            {session.isPresencial && (
-              <View className="mt-2 flex-row items-center gap-1.5" nativeID={`${idPrefix}-presencial`} testID={`${idPrefix}-presencial`}>
-                <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#111518'} name="map-marker-outline" size={14} />
-                <Text className="text-xs text-green-950 dark:text-green-50" nativeID={`${idPrefix}-presencial-label`} testID={`${idPrefix}-presencial-label`}>
-                  {session.presencialTimeFrom}–{session.presencialTimeTo}
-                  {session.presencialLocation?.label ? ` · ${session.presencialLocation.label}` : ''}
-                </Text>
-              </View>
-            )}
-          </View>
+          </Animated.View>
         </View>
-        </Animated.View>
+
+        {isCarousel ? (
+          <CarouselArrow
+            colorScheme={colorScheme}
+            direction="next"
+            disabled={!carousel.canNext}
+            idPrefix={idPrefix}
+            onPress={carousel.onNext}
+          />
+        ) : null}
+
         <CarouselProgressBar active={isCarousel && isActive} colorScheme={colorScheme} idPrefix={idPrefix} />
       </View>
-
-      {carousel ? (
-        <View className="absolute bottom-2 left-0 right-0 flex-row items-center justify-center gap-4" nativeID={`${idPrefix}-controls`} style={{ pointerEvents: 'box-none' }} testID={`${idPrefix}-controls`}>
-          <Pressable
-            accessibilityLabel="Entrenamiento anterior"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !carousel.canPrev }}
-            className="h-6 w-8 items-center justify-center rounded-full border border-lime-900/15 bg-lime-300/90 shadow-sm active:opacity-80 dark:border-lime-500/15 dark:bg-lime-700/90"
-            disabled={!carousel.canPrev}
-            nativeID={`${idPrefix}-previous`}
-            onPress={(event) => {
-              event?.stopPropagation?.();
-              carousel.onPrev();
-            }}
-            testID={`${idPrefix}-previous`}
-          >
-            <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-left" size={22} />
-          </Pressable>
-          <Text className="text-xs font-semibold text-green-950 dark:text-green-50" nativeID={`${idPrefix}-position`} pointerEvents="none" testID={`${idPrefix}-position`}>
-            {carousel.currentIndex + 1} / {carousel.total}
-          </Text>
-          <Pressable
-            accessibilityLabel="Siguiente entrenamiento"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !carousel.canNext }}
-            className="h-6 w-8 items-center justify-center rounded-full border border-lime-900/15 bg-lime-300/90 shadow-sm active:opacity-80 dark:border-lime-500/15 dark:bg-lime-700/90"
-            disabled={!carousel.canNext}
-            nativeID={`${idPrefix}-next`}
-            onPress={(event) => {
-              event?.stopPropagation?.();
-              carousel.onNext();
-            }}
-            testID={`${idPrefix}-next`}
-          >
-            <MaterialCommunityIcons color={colorScheme === 'dark' ? '#ffffff' : '#14532d'} name="chevron-right" size={22} />
-          </Pressable>
-        </View>
-      ) : null}
 
       {isFetching && (
         <View className="absolute inset-0 items-center justify-center rounded-2xl bg-primary/70" nativeID={`${idPrefix}-fetching-overlay`} testID={`${idPrefix}-fetching-overlay`}>
