@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Mapa de Procesos — Paceron v4</title>
+<style>
+  :root {
+    --bg: #f7f9fa;
+    --ink: #1f2937;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --green: #16a34a;
+    --strategic: #7c3aed;
+    --business: #0ea5e9;
+    --support: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center; min-height: 100vh;
+  }
+
+  .poster {
+    width: 1200px; height: 1200px;
+    background: #ffffff;
+    display: flex; flex-direction: column;
+    padding: 24px 30px 18px;
+    overflow: hidden;
+  }
+
+  header { display: flex; align-items: center; gap: 32px; margin-bottom: 12px; }
+  header .title h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.02em; color: #fff; }
+  header .title p { margin: 0; color: #fff; font-size: 12.5px; }
+  .ring { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .ring .cap { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+  .bands { flex: 1; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+
+  .band { display: flex; flex-direction: column; align-items: stretch; width: fit-content; }
+
+  .strategic-with-ring { display: flex; align-items: flex-start; gap: 24px; }
+
+  .band-head {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 11px; border-radius: 7px; color: #fff; font-weight: 700;
+    font-size: 13px; margin-bottom: 9px;
+    background: var(--green);
+  }
+  .band-head .tag { font-size: 9.5px; text-transform: uppercase; opacity: .9; font-weight: 600; letter-spacing: .04em; }
+  .band-head .count { margin-left: auto; font-size: 10px; font-weight: 700; opacity: .9; }
+
+  .cards-row { display: flex; gap: 12px; }
+
+  .card {
+    flex: 0 0 auto;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-top: 2.5px solid var(--green);
+    border-radius: 8px;
+    padding: 9px 11px 8px;
+  }
+
+  .card.future { border-style: dashed; background: #f6fef9; }
+  .card.future h3 { color: #6b7280; }
+  .future-badge {
+    display: inline-block; font-size: 8.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .03em; color: #92400e; background: #fef3c7; border: 1px solid #fde68a;
+    border-radius: 999px; padding: 1px 5px; margin-bottom: 4px;
+  }
+
+  .check { color: var(--green); font-weight: 800; }
+  .card h3 { margin: 0 0 6px; font-size: 12.5px; white-space: nowrap; }
+  .card ul { list-style: none; margin: 0; padding: 0; }
+  .card li {
+    position: relative; padding: 2.5px 0 2.5px 13px; font-size: 11.5px; color: #374151; white-space: nowrap;
+  }
+  .card li::before {
+    content: ""; position: absolute; left: 1px; top: 8px;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--green);
+  }
+
+  footer {
+    margin-top: 14px; font-size: 10.5px; color: var(--muted);
+    border-top: 1px solid var(--line); padding-top: 7px;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <header>
+    <div class="title">
+      <h1>Mapa de Procesos — Paceron</h1>
+      <p>Implementado vs. en alcance · relevado sobre el código del frontend.</p>
+    </div>
+  </header>
+
+  <div class="bands">
+
+    <!-- ESTRATÉGICOS -->
+    <div class="strategic-with-ring">
+      <section class="band band-strategic">
+        <div class="band-head"><span class="tag">Estratégicos</span><span class="count">2/3</span></div>
+        <div class="cards-row">
+          <div class="card">
+            <h3><span class="check">✓</span> Precios y suscripciones</h3>
+            <ul>
+              <li>Tiers y precio</li>
+              <li>Cuota de equipo</li>
+              <li>Comisión (5%)</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><span class="check">✓</span> Gamificación</h3>
+            <ul>
+              <li>Leaderboard</li>
+              <li>Competencias</li>
+              <li>Logros</li>
+              <li>Rachas</li>
+            </ul>
+          </div>
+          <div class="card future">
+            <span class="future-badge">En alcance · no implementado</span>
+            <h3>Administración</h3>
+            <ul>
+              <li>Precios de tiers</li>
+              <li>Control de acceso</li>
+              <li>Ganancias</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <div class="ring">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          <circle cx="65" cy="65" r="56" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+          <circle cx="65" cy="65" r="56" fill="none" stroke="#16a34a" stroke-width="12" stroke-linecap="round"
+            stroke-dasharray="351.86" stroke-dashoffset="52.78" transform="rotate(-90 65 65)"/>
+          <text x="65" y="62" text-anchor="middle" font-size="29" font-weight="800" fill="#1f2937">85%</text>
+          <text x="65" y="82" text-anchor="middle" font-size="11" fill="#64748b">completado</text>
+        </svg>
+        <span class="cap">10 de 12 procesos</span>
+      </div>
+    </div>
+
+    <!-- NEGOCIO -->
+    <section class="band band-business">
+      <div class="band-head"><span class="tag">De negocio</span><span class="count">4/4</span></div>
+      <div class="cards-row">
+        <div class="card">
+          <h3><span class="check">✓</span> Onboarding y roles</h3>
+          <ul>
+            <li>Registro</li>
+            <li>Acceso y sesión</li>
+            <li>Activar rol entrenador</li>
+            <li>Cambiar rol</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="check">✓</span> Planificación</h3>
+          <ul>
+            <li>Ejercicios</li>
+            <li>Sesiones</li>
+            <li>Planes</li>
+            <li>Calendario</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="check">✓</span> Ejecución y monitoreo</h3>
+          <ul>
+            <li>En vivo (GPS)</li>
+            <li>Series</li>
+            <li>Registro manual</li>
+            <li>Historial</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="check">✓</span> Encuentros presenciales</h3>
+          <ul>
+            <li>Días presenciales</li>
+            <li>Check-in QR</li>
+            <li>Asistencia</li>
+            <li>En vivo</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOPORTE -->
+    <section class="band band-support">
+      <div class="band-head"><span class="tag">De soporte</span><span class="count">4/5</span></div>
+      <div class="cards-row">
+        <div class="card">
+          <h3><span class="check">✓</span> Pagos y cobros</h3>
+          <ul>
+            <li>Checkout</li>
+            <li>Suscripciones</li>
+            <li>Cobros</li>
+            <li>Mercado Pago</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="check">✓</span> Rendimiento y feedback</h3>
+          <ul>
+            <li>Dashboard</li>
+            <li>KPIs Home</li>
+            <li>Comparar</li>
+            <li>Editar series</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="check">✓</span> Usuarios y miembros</h3>
+          <ul>
+            <li>Expulsar / mover</li>
+            <li>Solicitudes</li>
+            <li>Bajas</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="check">✓</span> Preferencias</h3>
+          <ul>
+            <li>Tema</li>
+            <li>Notificaciones</li>
+            <li>Términos</li>
+          </ul>
+        </div>
+        <div class="card future">
+          <span class="future-badge">En alcance · no implementado</span>
+          <h3>Asistente de IA</h3>
+          <ul>
+            <li>Consultar equipos</li>
+            <li>Crear ejercicios y planes</li>
+            <li>Interpretar métricas</li>
+            <li>Detectar oportunidades</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>✓ listo · punteado = en alcance, aún no implementado · fuente: relevamiento del código del frontend.</footer>
+
+</div>
+</body>
+</html>
