@@ -18,6 +18,8 @@ export { reorderList };
 // (fuente) y la lista de la sesión (destino), vive y muere con el
 // modal — no es estado global de la app.
 const SessionDragContext = createContext(null);
+const SessionDragPressGuardContext = createContext(null);
+const EMPTY_PRESS_GUARD = { current: false };
 
 // Cuánto antes del borde del contenedor (en px de pantalla) empieza a
 // autoscrollear, y cuánto scrollea por tick del loop. EDGE chico haría
@@ -155,14 +157,16 @@ export function SessionDragProvider({ children }) {
   const autoScrollIntervalRef = useRef(null);
 
   return (
-    <SessionDragContext.Provider value={{
-      dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV, suppressPressRef,
-      draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, autoScrollIntervalRef,
-      contentHeightRef, viewportHeightRef,
-    }}
-    >
-      {children}
-    </SessionDragContext.Provider>
+    <SessionDragPressGuardContext.Provider value={suppressPressRef}>
+      <SessionDragContext.Provider value={{
+        dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV, suppressPressRef,
+        draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, autoScrollIntervalRef,
+        contentHeightRef, viewportHeightRef,
+      }}
+      >
+        {children}
+      </SessionDragContext.Provider>
+    </SessionDragPressGuardContext.Provider>
   );
 }
 
@@ -186,8 +190,7 @@ export function useSessionDropTarget() {
 }
 
 export function useSessionDragPressGuard() {
-  const { suppressPressRef } = useContext(SessionDragContext);
-  return suppressPressRef;
+  return useContext(SessionDragPressGuardContext) ?? EMPTY_PRESS_GUARD;
 }
 
 // Ref imperativo al ScrollView de la lista + callback de scroll — para
@@ -559,7 +562,9 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // tamaño/timing ajustado — ver docs/2026-09-16-session-modal-drag-scroll-investigation.md.
   const gesture = useMemo(() => {
     let p = Gesture.Pan().runOnJS(true);
-    if (!isWeb) {
+    if (isWeb) {
+      p = p.minDistance(6);
+    } else {
       p = p.activateAfterLongPress(450).failOffsetY([-10, 10]);
       if (scrollViewRef) p = p.simultaneousWithExternalGesture(scrollViewRef);
     }
