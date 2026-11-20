@@ -22,7 +22,7 @@ function CreateSessionScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { exercises: catalogExercises } = useExercises(userId);
+  const { exercises: catalogExercises, loading: catalogLoading } = useExercises(userId);
   const { createSession } = useSessionMutations();
   const [submitting, setSubmitting] = useState(false);
 
@@ -70,6 +70,7 @@ function CreateSessionScreenContent() {
 
             <SessionFormBody
               catalogExercises={catalogExercises}
+              catalogLoading={catalogLoading}
               description={form.description}
               error={form.error}
               exercises={form.exercises}

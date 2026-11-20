@@ -21,13 +21,14 @@ import { SESSION_ROLE_ORDER, SESSION_ROLE_META, WARMCOOL_KINDS } from './exercis
 import { useFormDirty } from '../../hooks/use-form-dirty.js';
 import { useUnsavedChangesGuard } from '../../hooks/use-unsaved-changes-guard.js';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import {
   SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator,
   ReorderProvider, ReorderableRow, ReorderDropIndicator, DragGhost, reorderList,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
-import { SessionExerciseRow, SessionFormBody } from './session-form-body.jsx';
+import { SessionExerciseRow, SessionFormBody, SessionRoleCoverage } from './session-form-body.jsx';
 
 // Cuerpo del modal en layout ancho — 2 columnas: datos de la sesión +
 // catálogo de origen del arrastre a la izquierda (angosta), lista de
@@ -41,15 +42,15 @@ import { SessionExerciseRow, SessionFormBody } from './session-form-body.jsx';
 // padre (`create-session-modal-body`) es `flex-1` dentro de una card de
 // alto FIJO (`create-session-modal-card`, ver CreateSessionModal) — no
 // de un alto propio en cada columna.
-function SessionModalWideBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, exercisesError, visible }) {
+function SessionModalWideBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, exercisesError, visible }) {
   const dropTargetRef = useSessionDropTarget();
   const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
 
   return (
     <View className="flex-1 flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
       <View className="w-[320px] shrink-0" nativeID="create-session-modal-form-column" testID="create-session-modal-form-column">
-        <InputField autoFocus={visible} dense error={nameError} hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
-        <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
+        <InputField autoFocus={visible} dense error={nameError} label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
+        <InputField dense hideErrorRow label="Descripción (opcional)" multiline numberOfLines={3} onChange={onSetDescription} value={description} />
 
         <View className="flex-1" nativeID="create-session-modal-catalog-wrapper" testID="create-session-modal-catalog-wrapper">
           <SessionExercisePanel onExerciseAdded={onExerciseDropped} />
@@ -59,8 +60,10 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
       <View className="flex-1" nativeID="create-session-modal-exercises-column" testID="create-session-modal-exercises-column">
         <Text className={FIELD_LABEL} nativeID="create-session-modal-exercises-header-label" testID="create-session-modal-exercises-header-label">Ejercicios</Text>
         <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-drop-hint" testID="create-session-modal-drop-hint">
-          Arrastrá ejercicios del catálogo de la izquierda para agregarlos acá. Mantené presionada una fila para reordenarla.
+          Arrastrá ejercicios del catálogo de la izquierda para agregarlos acá. {isWeb ? 'Arrastrá' : 'Mantené presionada'} una fila para reordenarla.
         </Text>
+
+        <SessionRoleCoverage exercises={exercises} idPrefix="create-session-modal-role-coverage" />
 
         {/* flex-1: ocupa todo el alto que sobra en la columna, fijo por
             el alto fijo de la card — agregar ejercicios hace overflow
@@ -98,6 +101,7 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
                 <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder} scrollViewRef={autoScrollRef}>
                   <SessionExerciseRow
                     catalogExercises={catalogExercises}
+                    catalogLoading={catalogLoading}
                     entry={entry}
                     idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
                     index={index}
@@ -130,10 +134,10 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
 // con su propio rol (ver enmienda 2026-09-05 de
 // docs/superpowers/specs/2026-08-26-training-plans-design.md); igual se
 // pide al menos 1 ejercicio de cada rol al guardar.
-export function CreateSessionModal({ visible, onClose, onCreated, session }) {
+export function CreateSessionModal({ visible, onClose, onCreated, session, usedIn = 0 }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { exercises: catalogExercises } = useExercises(userId);
+  const { exercises: catalogExercises, loading: catalogLoading } = useExercises(userId);
   const { createSession, updateSession } = useSessionMutations();
   const isEditing = Boolean(session);
   const isNarrowWeb = useIsNarrowWeb();
@@ -146,7 +150,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   // "ya se intentó guardar" + "sigue vacío", no un segundo flag que haya
   // que apagar a mano en cada handler de texto.
   const [attempted, setAttempted] = useState(false);
-  const nameError = attempted && !name.trim();
+  const nameError = attempted && !name.trim() ? 'Ingresá un nombre.' : null;
   const missingRoles = SESSION_ROLE_ORDER.filter((role) => !exercises.some((e) => e.role === role));
   // Mismo criterio que hooks/use-session-form.js#exercisesError.
   const exercisesError = attempted && (
@@ -258,7 +262,8 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
   // layouts, ver onExerciseDropped en SessionModalWideBody/NarrowBody.
   const handleExerciseDropped = (exercise, insertIndex) => setExercises((rows) => {
     const next = [...rows];
-    next.splice(Math.min(insertIndex, next.length), 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
+    const index = Number.isInteger(insertIndex) ? Math.min(insertIndex, next.length) : next.length;
+    next.splice(index, 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
     return next;
   });
 
@@ -320,16 +325,33 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
         <SessionDragProvider>
           <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="create-session-modal-backdrop" onPress={handleClose} testID="create-session-modal-backdrop">
             <Pressable className={`max-h-[94%] w-full ${isWideLayout ? 'h-[640px] max-w-5xl' : 'h-[94%] max-w-lg'} rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface`} nativeID="create-session-modal-card" onPress={() => {}} testID="create-session-modal-card">
-              <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-modal-header" testID="create-session-modal-header">
-                <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
-                <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
-                  {isEditing ? 'Editar sesión' : 'Nueva sesión'}
-                </Text>
+              <View className="mb-4" nativeID="create-session-modal-header" testID="create-session-modal-header">
+                <View className="flex-row items-center gap-2" nativeID="create-session-modal-title-row" testID="create-session-modal-title-row">
+                  <MaterialCommunityIcons color={colors.primary} name={isEditing ? 'pencil-outline' : 'clipboard-plus-outline'} size={20} />
+                  <Text className="text-lg font-bold text-slate-900 dark:text-white" nativeID="create-session-modal-title" testID="create-session-modal-title">
+                    {isEditing ? 'Editar sesión' : 'Nueva sesión'}
+                  </Text>
+                  <IconButton
+                    className="ml-auto"
+                    icon="close"
+                    idPrefix="create-session-modal-close"
+                    label="Cerrar"
+                    onPress={handleClose}
+                    size={32}
+                    variant="ghost"
+                  />
+                </View>
+                {isEditing && usedIn > 0 && (
+                  <Text className="mt-1 text-xs text-amber-700 dark:text-amber-300" nativeID="create-session-modal-used-in" testID="create-session-modal-used-in">
+                    Esta sesión se usa en {usedIn} plan{usedIn === 1 ? '' : 'es'}. Los cambios afectan esos planes.
+                  </Text>
+                )}
               </View>
 
               {isWideLayout ? (
                 <SessionModalWideBody
                   catalogExercises={catalogExercises}
+                  catalogLoading={catalogLoading}
                   description={description}
                   error={error}
                   exercises={exercises}
@@ -366,6 +388,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                    aplicado a la rama ancha (h-[640px] junto a max-h-[94%]). */
                 <SessionFormBody
                   catalogExercises={catalogExercises}
+                  catalogLoading={catalogLoading}
                   description={description}
                   error={error}
                   exercises={exercises}
@@ -385,7 +408,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
 
             <View className="mt-2 flex-row gap-3" nativeID="create-session-modal-actions" testID="create-session-modal-actions">
               <Pressable
-                className="h-11 flex-1 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800"
+                className={`h-11 flex-1 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-70 dark:border-slate-700 dark:hover:bg-slate-800 ${submitting ? 'opacity-60' : ''}`}
                 disabled={submitting}
                 nativeID="create-session-modal-cancel-button"
                 onPress={handleClose}
@@ -394,7 +417,7 @@ export function CreateSessionModal({ visible, onClose, onCreated, session }) {
                 <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="create-session-modal-cancel-label" testID="create-session-modal-cancel-label">Cancelar</Text>
               </Pressable>
               <Pressable
-                className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-primary hover:opacity-90 active:opacity-80"
+                className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-primary hover:opacity-90 active:opacity-80 ${submitting ? 'opacity-60' : ''}`}
                 disabled={submitting}
                 nativeID="create-session-modal-confirm-button"
                 onPress={handleSubmit}
