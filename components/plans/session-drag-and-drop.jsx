@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedReaction, useAnimatedStyle, useDerivedValue, useSharedValue, withSpring } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isWeb } from '../../utils/platform.js';
@@ -26,6 +26,7 @@ const SessionDragContext = createContext(null);
 const AUTO_SCROLL_EDGE = 56;
 const AUTO_SCROLL_STEP = 14;
 const REORDER_ROW_GAP = 12;
+const ROW_STRIDE = ESTIMATED_ROW_HEIGHT + REORDER_ROW_GAP;
 // Período del loop de autoscroll (ver startAutoScrollLoop) -- ~30
 // ticks/s alcanza para que se vea fluido sin saturar el hilo de JS con
 // listas largas.
@@ -131,6 +132,7 @@ export function SessionDragProvider({ children }) {
   const targetWidth = useSharedValue(0);
   const targetHeight = useSharedValue(0);
   const isHoveringSV = useSharedValue(0);
+  const externalDropIndexSV = useSharedValue(-1);
   const [draggedExercise, setDraggedExercise] = useState(null);
   const dropTargetRef = useRef(null);
   // Ref imperativo al ScrollView de la lista destino — para autoscroll.
@@ -153,7 +155,7 @@ export function SessionDragProvider({ children }) {
 
   return (
     <SessionDragContext.Provider value={{
-      dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV,
+      dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV,
       draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, autoScrollIntervalRef,
       contentHeightRef, viewportHeightRef,
     }}
@@ -260,7 +262,7 @@ export function SessionDropIndicator() {
 // `.simultaneousWithExternalGesture` más abajo para el porqué.
 export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, scrollViewRef }) {
   const dragCtx = useContext(SessionDragContext);
-  const { dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, setDraggedExercise, dropTargetRef } = dragCtx;
+  const { dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV, setDraggedExercise, dropTargetRef } = dragCtx;
 
   // Chequeo fresco con la posición final real (absoluteX/Y del propio
   // onEnd), no el `isHoveringSV` acumulado de onUpdate — un arrastre
@@ -277,7 +279,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     const inside = absoluteX >= targetX.value && absoluteX <= targetX.value + targetWidth.value
       && absoluteY >= targetY.value && absoluteY <= targetY.value + targetHeight.value;
     if (!inside) return;
-    const insertIndex = estimateIndexFromOffset((absoluteY - targetY.value) + dragCtx.scrollOffsetSV.value);
+    const insertIndex = estimateIndexFromOffset((absoluteY - targetY.value) + dragCtx.scrollOffsetSV.value, ROW_STRIDE);
     onDropped(exercise, insertIndex);
   };
 
@@ -292,7 +294,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
   // exercise/onDropped porque van directo en checkDrop, holdMs/
   // scrollViewRef porque cambian la cadena de configuración del Pan.
   const pan = useMemo(() => {
-    let p = Gesture.Pan().runOnJS(true);
+    let p = Gesture.Pan().runOnJS(true).minDistance(6);
     if (holdMs) {
       // failOffsetX: si el dedo se mueve más de esto ANTES de cumplirse
       // el hold, el gesto falla de inmediato y libera el toque al
@@ -317,6 +319,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     return p
       .onStart((e) => {
         stopAutoScrollLoop(dragCtx); // insurance: no debería quedar uno de un drag anterior
+        externalDropIndexSV.value = -1;
         setDraggedExercise(exercise);
         cacheDropTargetMeasurements(dropTargetRef, targetX, targetY, targetWidth, targetHeight);
         dragX.value = e.absoluteX;
@@ -329,6 +332,9 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
           && e.absoluteX >= targetX.value && e.absoluteX <= targetX.value + targetWidth.value
           && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
         isHoveringSV.value = inside ? 1 : 0;
+        externalDropIndexSV.value = inside
+          ? estimateIndexFromOffset((e.absoluteY - targetY.value) + dragCtx.scrollOffsetSV.value, ROW_STRIDE)
+          : -1;
         if (inside && isNearEdge(e.absoluteY, targetY.value, targetHeight.value)) {
           startAutoScrollLoop(dragCtx, () => dragY.value);
         } else {
@@ -338,10 +344,12 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
       .onEnd((e) => {
         checkDrop(e.absoluteX, e.absoluteY);
         isHoveringSV.value = 0;
+        externalDropIndexSV.value = -1;
         setDraggedExercise(null);
       })
       .onFinalize(() => {
         stopAutoScrollLoop(dragCtx);
+        externalDropIndexSV.value = -1;
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise, onDropped, holdMs, scrollViewRef]);
@@ -460,7 +468,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // no hacía nada -- solo el arrastre desde el catálogo autoscrolleaba
   // (bug real, 2026-10-06).
   const dragCtx = useContext(SessionDragContext);
-  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth } = dragCtx;
+  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth, externalDropIndexSV } = dragCtx;
   const onReorderRef = useRef(onReorder);
 
   useEffect(() => {
@@ -527,6 +535,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         targetIndexSV.value = index;
         dragOffsetY.value = 0;
         scrollCompensationSV.value = 0;
+        externalDropIndexSV.value = -1;
         // Mide el contenedor de la lista -- mismo motivo que
         // DraggableExerciseCard#onStart: sin esto targetY/targetHeight
         // podrían seguir en 0 si todavía no se arrastró nada desde el
@@ -541,7 +550,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         // contenedor) — acá el desplazamiento es relativo a la fila propia
         // y puede ir para cualquier lado.
         const rowStride = (rowHeightsSV.value[index] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
-        const rowDelta = Math.round(e.translationY / rowStride);
+        const rowDelta = Math.round((e.translationY + scrollCompensationSV.value) / rowStride);
         targetIndexSV.value = clampIndex(index + rowDelta, itemCountSV.value);
         // Autoscroll cerca de los bordes del contenedor -- mismo mecanismo
         // que el cross-container, con la posición ABSOLUTA del dedo
@@ -566,15 +575,33 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         targetIndexSV.value = -1;
         dragOffsetY.value = 0;
         scrollCompensationSV.value = 0;
+        externalDropIndexSV.value = -1;
       });
     return Gesture.Simultaneous(p, Gesture.Native());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, scrollViewRef]);
+  useAnimatedReaction(
+    () => dragOffsetY.value + scrollCompensationSV.value,
+    (offset) => {
+      if (activeIndexSV.value !== index) return;
+      const rowStride = (rowHeightsSV.value[index] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
+      const next = index + Math.round(offset / rowStride);
+      targetIndexSV.value = Math.min(Math.max(next, 0), Math.max(0, itemCountSV.value - 1));
+    },
+    [index],
+  );
+
   const shiftY = useDerivedValue(() => {
     const active = activeIndexSV.value;
     const target = targetIndexSV.value;
-    const spring = { damping: 18, stiffness: 220 };
-    if (active < 0 || target < 0 || active === target) return withSpring(0, spring);
+    const spring = { damping: 30, stiffness: 180, overshootClamping: true };
+    if (active < 0) {
+      const external = externalDropIndexSV.value;
+      if (external < 0) return withSpring(0, spring);
+      const externalHeight = (rowHeightsSV.value[external] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
+      return withSpring(index >= external ? externalHeight : 0, spring);
+    }
+    if (target < 0 || active === target) return withSpring(0, spring);
     const activeHeight = (rowHeightsSV.value[active] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
     if (index > active && index <= target) return withSpring(-activeHeight, spring);
     if (index >= target && index < active) return withSpring(activeHeight, spring);
@@ -584,7 +611,8 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   const rowStyle = useAnimatedStyle(() => {
     const isActive = activeIndexSV.value === index;
     return {
-      transform: [{ translateY: isActive ? dragOffsetY.value + scrollCompensationSV.value : shiftY.value }, { scale: isActive ? 1.02 : 1 }],
+      transform: [{ translateY: isActive ? dragOffsetY.value + scrollCompensationSV.value : shiftY.value }, { scale: isActive ? 1.01 : 1 }],
+      marginBottom: REORDER_ROW_GAP,
       zIndex: isActive ? 10 : 0,
       opacity: isActive ? 0.95 : 1,
     };

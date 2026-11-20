@@ -230,7 +230,7 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
         />
       </View>
 
-      <View className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 p-2 dark:border-slate-700 dark:bg-slate-900/40" nativeID="session-exercise-panel-list" testID="session-exercise-panel-list">
+      <View className="flex-1 rounded-xl border border-slate-200 bg-slate-200/70 p-2 dark:border-slate-700 dark:bg-slate-950/60" nativeID="session-exercise-panel-list" testID="session-exercise-panel-list">
         {showLoading ? (
           <View className="flex-row items-center gap-2 py-3" nativeID="session-exercise-panel-loading" testID="session-exercise-panel-loading">
             <ActivityIndicator color={colors.primary} size="small" />
