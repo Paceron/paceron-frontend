@@ -356,7 +356,11 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
       })
       .onFinalize(() => {
         stopAutoScrollLoop(dragCtx);
+        isHoveringSV.value = 0;
         externalDropIndexSV.value = -1;
+        dragX.value = 0;
+        dragY.value = 0;
+        setDraggedExercise(null);
         setTimeout(() => { suppressPressRef.current = false; }, 50);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps

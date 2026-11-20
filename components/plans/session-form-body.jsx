@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { isWeb } from '../../utils/platform.js';
@@ -90,6 +90,7 @@ export function SessionRoleCoverage({ exercises, idPrefix = 'session-role-covera
 export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onRemove }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
   const [removing, setRemoving] = useState(false);
+  const reduceMotion = useReducedMotion();
   const exitProgress = useSharedValue(0);
   const roleMeta = SESSION_ROLE_META[entry.role] ?? SESSION_ROLE_META.main;
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
@@ -104,6 +105,10 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
 
   const handleRemove = () => {
     if (removing) return;
+    if (reduceMotion) {
+      onRemove(entry.localKey);
+      return;
+    }
     setRemoving(true);
     exitProgress.value = withTiming(1, {
       duration: 160,
