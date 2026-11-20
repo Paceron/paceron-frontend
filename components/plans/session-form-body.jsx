@@ -81,6 +81,7 @@ export function SessionRoleCoverage({ exercises, idPrefix = 'session-role-covera
 
 export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onRemove }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
+  const roleMeta = SESSION_ROLE_META[entry.role] ?? SESSION_ROLE_META.main;
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
 
   const handleToggleSeries = () => {
@@ -90,7 +91,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
   };
 
   return (
-    <View className="gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+    <View className="gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-900" style={{ borderLeftWidth: 4, borderLeftColor: roleMeta.iconColor }} nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-fields`} testID={`${idPrefix}-fields`}>
         <View className="w-36" nativeID={`${idPrefix}-role-select-wrapper`} testID={`${idPrefix}-role-select-wrapper`}>
           <ResponsiveSelectField
@@ -134,6 +135,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
       </View>
 
       <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>
+        <MaterialCommunityIcons color={roleMeta.iconColor} name="drag-vertical" size={18} />
         <Pressable
           accessibilityLabel="Marcar como serie repetida"
           accessibilityRole="checkbox"
@@ -182,7 +184,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
 // (undefined, mismo comportamiento de siempre).
 export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, exercisesError, visible, refreshControl }) {
   const dropTargetRef = useSessionDropTarget();
-  const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
+  const { autoScrollRef, onListScroll, onContentSizeChange, onListLayout } = useSessionAutoScrollTarget();
 
   return (
     <ScrollView className="flex-1" nativeID="session-form-body-scroll" refreshControl={refreshControl} testID="session-form-body-scroll">
@@ -201,8 +203,10 @@ export function SessionFormBody({ name, onSetName, nameError, description, onSet
       <View className={`h-[320px] rounded-xl border border-dashed ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="session-form-body-exercises-list" ref={dropTargetRef} testID="session-form-body-exercises-list">
         <ReorderProvider>
           <GestureScrollView
-            contentContainerClassName="gap-2 p-2 pb-4"
+            contentContainerClassName="gap-3 p-3 pb-5"
             nativeID="session-form-body-exercises-scroll"
+            onContentSizeChange={onContentSizeChange}
+            onLayout={onListLayout}
             onScroll={onListScroll}
             ref={autoScrollRef}
             scrollEventThrottle={16}

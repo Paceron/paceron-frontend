@@ -44,7 +44,7 @@ import { SessionExerciseRow, SessionFormBody, SessionRoleCoverage } from './sess
 // de un alto propio en cada columna.
 function SessionModalWideBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onReorder, onRemove, onExerciseDropped, error, exercisesError, visible }) {
   const dropTargetRef = useSessionDropTarget();
-  const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
+  const { autoScrollRef, onListScroll, onContentSizeChange, onListLayout } = useSessionAutoScrollTarget();
 
   return (
     <View className="flex-1 flex-row gap-4" nativeID="create-session-modal-body" testID="create-session-modal-body">
@@ -86,8 +86,10 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
         <View className={`flex-1 rounded-xl border border-dashed ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
           <ReorderProvider>
             <GestureScrollView
-              contentContainerClassName="gap-2 p-2"
+              contentContainerClassName="gap-3 p-3"
               nativeID="create-session-modal-exercises-scroll"
+              onContentSizeChange={onContentSizeChange}
+              onLayout={onListLayout}
               onScroll={onListScroll}
               ref={autoScrollRef}
               scrollEventThrottle={16}
