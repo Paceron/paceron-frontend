@@ -165,7 +165,7 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
           </Text>
         ) : (
           <ScrollView
-            className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 dark:border-slate-700 dark:bg-slate-900/40"
+            className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 dark:border-slate-700 dark:bg-slate-800/40"
             contentContainerClassName="gap-2"
             horizontal
             nativeID="session-exercise-panel-list"

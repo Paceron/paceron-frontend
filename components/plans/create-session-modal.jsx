@@ -83,7 +83,7 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
             (que a su vez habían reemplazado a react-native-drax,
             evaluado y descartado el mismo día por incompatibilidad con
             gesture-handler v2, ver CLAUDE.md). */}
-        <View className={`flex-1 rounded-xl border border-dashed bg-slate-200/60 dark:bg-slate-950/50 ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
+        <View className={`flex-1 rounded-xl p-2 border border-dashed bg-slate-200/60 dark:bg-slate-950/70 ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
           <ReorderProvider>
             <GestureScrollView
               contentContainerClassName="p-3"
