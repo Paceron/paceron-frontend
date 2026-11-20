@@ -29,6 +29,7 @@ jest.mock('expo-router', () => {
   const push = jest.fn();
   return { __mockPush: push, useRouter: () => ({ push }) };
 });
+jest.mock('@react-navigation/native', () => ({ useFocusEffect: jest.fn() }));
 jest.mock('../hooks/use-runner-kpis.js', () => ({ useRunnerKpis: jest.fn() }));
 
 // eslint-disable-next-line import/first -- los mocks de arriba tienen que registrarse antes del componente.
