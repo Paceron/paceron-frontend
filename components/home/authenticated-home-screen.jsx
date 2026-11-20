@@ -13,7 +13,7 @@ import { useRunnerKpis } from '../../hooks/use-runner-kpis.js';
 import { useTrainerHomeKpis } from '../../hooks/use-trainer-home-kpis.js';
 import { NextTrainingBannerView } from './next-training-banner.jsx';
 import { HomeReveal, HomeRevealProvider } from './home-reveal.jsx';
-import { HomeSkeleton } from './home-skeleton.jsx';
+import { HomeLoadingOverlay } from './home-loading-overlay.jsx';
 import { StreakBanner } from './streak-banner.jsx';
 import { AchievementHighlightCard } from './achievement-highlight-card.jsx';
 import { RunnerKpisCard } from './runner-kpis-card.jsx';
@@ -46,27 +46,28 @@ export function AuthenticatedHomeScreen() {
   });
   const kpiLoading = activeRole === 'trainer' ? trainerKpis.loading : runnerKpis.loading;
   const criticalLoading = Boolean(userId) && (userLoading || nextTrainingState.loading || kpiLoading);
-  const [revealState, setRevealState] = useState(() => ({
-    phase: criticalLoading ? 'hidden' : 'return',
-    revealKey: 0,
-  }));
+  const [revealState, setRevealState] = useState({ phase: 'hidden', revealKey: 0 });
   const criticalLoadingRef = useRef(criticalLoading);
   criticalLoadingRef.current = criticalLoading;
-  const previousCriticalLoadingRef = useRef(criticalLoading);
 
   useEffect(() => {
-    const previous = previousCriticalLoadingRef.current;
-    previousCriticalLoadingRef.current = criticalLoading;
     if (criticalLoading) {
       setRevealState((current) => (current.phase === 'hidden' ? current : { ...current, phase: 'hidden' }));
-      return;
+      return undefined;
     }
-    if (previous) {
-      setRevealState((current) => ({ phase: 'load', revealKey: current.revealKey + 1 }));
-    }
+
+    const timer = setTimeout(() => {
+      setRevealState((current) => (
+        current.phase === 'hidden'
+          ? { phase: 'load', revealKey: current.revealKey + 1 }
+          : current
+      ));
+    }, 200);
+
+    return () => clearTimeout(timer);
   }, [criticalLoading]);
 
-  const skeletonVisible = revealState.phase === 'hidden';
+  const loadingVisible = revealState.phase === 'hidden';
 
   const queryClient = useQueryClient();
   // Invalida calendario/user siempre; streaks/achievements solo tienen
@@ -125,9 +126,9 @@ export function AuthenticatedHomeScreen() {
       >
         <HomeRevealProvider phase={revealState.phase} revealKey={revealState.revealKey}>
           <View
-            accessibilityElementsHidden={skeletonVisible}
+            accessibilityElementsHidden={loadingVisible}
             className={`w-full self-center ${isWeb ? 'max-w-3xl' : ''}`}
-            importantForAccessibility={skeletonVisible ? 'no-hide-descendants' : 'auto'}
+            importantForAccessibility={loadingVisible ? 'no-hide-descendants' : 'auto'}
             nativeID="authenticated-home-screen-container"
             testID="authenticated-home-screen-container"
           >
@@ -190,7 +191,7 @@ export function AuthenticatedHomeScreen() {
           </View>
         </HomeRevealProvider>
       </ScrollView>
-      <HomeSkeleton visible={skeletonVisible} />
+      <HomeLoadingOverlay visible={loadingVisible} />
     </View>
   );
 }

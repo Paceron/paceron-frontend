@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
+import { act, render, waitFor } from '@testing-library/react-native';
 
 jest.mock('react-native-reanimated', () => {
   const { View } = require('react-native');
@@ -62,7 +62,15 @@ jest.mock('../components/home/home-reveal.jsx', () => ({
   HomeReveal: ({ children }) => children,
   HomeRevealProvider: ({ children }) => children,
 }));
-jest.mock('../components/home/home-skeleton.jsx', () => ({ HomeSkeleton: () => null }));
+jest.mock('../components/home/home-loading-overlay.jsx', () => {
+  const ReactModule = require('react');
+  const { View: NativeView } = require('react-native');
+  return {
+    HomeLoadingOverlay: ({ visible }) => (
+      visible ? ReactModule.createElement(NativeView, { testID: 'home-loading-overlay' }) : null
+    ),
+  };
+});
 jest.mock('../components/home/streak-banner.jsx', () => ({ StreakBanner: () => null }));
 jest.mock('../components/home/achievement-highlight-card.jsx', () => ({ AchievementHighlightCard: () => null }));
 jest.mock('../components/home/runner-kpis-card.jsx', () => ({ RunnerKpisCard: () => null }));
@@ -86,7 +94,7 @@ beforeEach(() => {
 
 test('muestra los KPIs del entrenador y los invalida al refrescar solo con ese rol', async () => {
   const { getByTestId, toJSON } = render(<AuthenticatedHomeScreen />);
-  expect(getByTestId('trainer-home-kpis-mounted')).toBeTruthy();
+  await waitFor(() => expect(getByTestId('trainer-home-kpis-mounted')).toBeTruthy());
 
   const testIDs = [];
   const visit = (node) => {
@@ -123,4 +131,22 @@ test('refresca rachas y logros al volver a enfocar el Home del corredor', async 
   expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['streaks', 33] });
   expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['achievements', 33] });
   expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['achievements-catalog'] });
+});
+
+test('muestra el spinner general desde el primer render y lo oculta al asentar la carga', () => {
+  jest.useFakeTimers();
+  mockAuthState.activeRole = 'runner';
+  try {
+    const { getByTestId, queryByTestId } = render(<AuthenticatedHomeScreen />);
+
+    expect(getByTestId('home-loading-overlay')).toBeTruthy();
+
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(queryByTestId('home-loading-overlay')).toBeNull();
+  } finally {
+    jest.useRealTimers();
+  }
 });

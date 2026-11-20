@@ -112,10 +112,13 @@ export function RegisterScreen() {
         }),
       );
       if (result.success) {
-        Toast.show({ type: 'success', text1: '¡Cuenta creada!', text2: 'Bienvenido a Paceron.' });
         const { activeRole: nextRole, userId: nextUserId } = useAuthStore.getState();
-        await prefetchHomeCriticalQueries(queryClient, { role: nextRole, userId: nextUserId });
+        setLoading(false);
         router.replace('/');
+        void prefetchHomeCriticalQueries(queryClient, { role: nextRole, userId: nextUserId });
+        setTimeout(() => {
+          Toast.show({ type: 'success', text1: '¡Cuenta creada!', text2: 'Bienvenido a Paceron.' });
+        }, 0);
       } else {
         Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Error al crear la cuenta.' });
       }

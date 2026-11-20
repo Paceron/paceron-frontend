@@ -63,10 +63,13 @@ function LoginForm() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        Toast.show({ type: 'success', text1: '¡Bienvenido de nuevo!', text2: 'Iniciaste sesión correctamente.' });
         const { activeRole: nextRole, userId: nextUserId } = useAuthStore.getState();
-        await prefetchHomeCriticalQueries(queryClient, { role: nextRole, userId: nextUserId });
+        setLoading(false);
         router.replace('/');
+        void prefetchHomeCriticalQueries(queryClient, { role: nextRole, userId: nextUserId });
+        setTimeout(() => {
+          Toast.show({ type: 'success', text1: '¡Bienvenido de nuevo!', text2: 'Iniciaste sesión correctamente.' });
+        }, 0);
       } else {
         Toast.show({
           type: 'error',

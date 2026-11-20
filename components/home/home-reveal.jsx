@@ -16,7 +16,7 @@ export const HomeRevealContext = createContext({
 
 export function resolveRevealStart(phase, reduceMotion) {
   if (reduceMotion) return 1;
-  return phase === 'return' ? 0.85 : 0;
+  return 0;
 }
 
 export function HomeReveal({ children, delay = 0, fill = false, idPrefix = 'home-reveal' }) {
@@ -36,7 +36,7 @@ export function HomeReveal({ children, delay = 0, fill = false, idPrefix = 'home
     progress.value = withDelay(
       phase === 'return' ? 0 : delay,
       withTiming(1, {
-        duration: phase === 'return' ? 220 : 240,
+        duration: 240,
         easing: Easing.out(Easing.cubic),
       }),
     );
@@ -44,7 +44,7 @@ export function HomeReveal({ children, delay = 0, fill = false, idPrefix = 'home
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ translateY: (1 - progress.value) * (phase === 'return' ? 6 : 8) }],
+    transform: [{ translateY: (1 - progress.value) * 8 }],
   }));
 
   return (
