@@ -25,7 +25,7 @@ import { IconButton } from '../shared/icon-button.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import {
   SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget,
-  ReorderProvider, ReorderableRow, DragGhost, reorderList,
+  ReorderProvider, ReorderableRow, ReorderTailGap, DragGhost, reorderList,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 import { SessionExerciseRow, SessionFormBody, SessionRoleCoverage } from './session-form-body.jsx';
@@ -83,43 +83,46 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
             (que a su vez habían reemplazado a react-native-drax,
             evaluado y descartado el mismo día por incompatibilidad con
             gesture-handler v2, ver CLAUDE.md). */}
-        <View className={`flex-1 rounded-xl p-2 border border-dashed bg-slate-200/60 dark:bg-slate-950/70 ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="create-session-modal-exercises-list" ref={dropTargetRef} testID="create-session-modal-exercises-list">
-          <ReorderProvider>
-            <GestureScrollView
-              contentContainerClassName="p-3"
-              nativeID="create-session-modal-exercises-scroll"
-              onContentSizeChange={onContentSizeChange}
-              onLayout={onListLayout}
-              onScroll={onListScroll}
-              ref={autoScrollRef}
-              scrollEventThrottle={16}
-              testID="create-session-modal-exercises-scroll"
-            >
-              {exercises.length === 0 ? (
-                <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
-                  Todavía no agregaste ejercicios.
-                </Text>
-              ) : exercises.map((entry, index) => (
-                <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder} scrollViewRef={autoScrollRef}>
-                  <SessionExerciseRow
-                    catalogExercises={catalogExercises}
-                    catalogLoading={catalogLoading}
-                    entry={entry}
-                    idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
-                    index={index}
-                    onChangeExercise={onChangeExercise}
-                    onChangeRole={onChangeRole}
-                    onRemove={onRemove}
-                  />
-                </ReorderableRow>
-              ))}
-            </GestureScrollView>
-          </ReorderProvider>
-        </View>
+        <View className="flex-1" nativeID="create-session-modal-exercises-drop-zone" ref={dropTargetRef} testID="create-session-modal-exercises-drop-zone">
+          <View className={`flex-1 rounded-xl p-2 border border-dashed bg-slate-200/60 dark:bg-slate-950/70 ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="create-session-modal-exercises-list" testID="create-session-modal-exercises-list">
+            <ReorderProvider>
+              <GestureScrollView
+                contentContainerClassName="p-3"
+                nativeID="create-session-modal-exercises-scroll"
+                onContentSizeChange={onContentSizeChange}
+                onLayout={onListLayout}
+                onScroll={onListScroll}
+                ref={autoScrollRef}
+                scrollEventThrottle={16}
+                testID="create-session-modal-exercises-scroll"
+              >
+                {exercises.length === 0 ? (
+                  <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
+                    Todavía no agregaste ejercicios.
+                  </Text>
+                ) : exercises.map((entry, index) => (
+                  <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder} scrollViewRef={autoScrollRef}>
+                    <SessionExerciseRow
+                      catalogExercises={catalogExercises}
+                      catalogLoading={catalogLoading}
+                      entry={entry}
+                      idPrefix={`create-session-modal-exercise-row-${entry.localKey}`}
+                      index={index}
+                      onChangeExercise={onChangeExercise}
+                      onChangeRole={onChangeRole}
+                      onRemove={onRemove}
+                    />
+                  </ReorderableRow>
+                ))}
+                <ReorderTailGap />
+              </GestureScrollView>
+            </ReorderProvider>
+          </View>
 
-        {error && (
-          <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
-        )}
+          {error && (
+            <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
+          )}
+        </View>
       </View>
     </View>
   );

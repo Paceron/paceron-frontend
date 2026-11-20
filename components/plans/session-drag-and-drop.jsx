@@ -446,6 +446,28 @@ export function ReorderDropIndicator() {
   );
 }
 
+export function ReorderTailGap({ idPrefix = 'session-exercise-tail-gap' }) {
+  const { externalDropIndexSV } = useContext(SessionDragContext);
+  const { itemCountSV, rowHeightsSV } = useContext(ReorderContext);
+  const style = useAnimatedStyle(() => {
+    const count = itemCountSV.value;
+    const visible = count > 0 && externalDropIndexSV.value >= count;
+    const height = visible
+      ? (rowHeightsSV.value[count - 1] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP
+      : 0;
+    return { height: withTiming(height, { duration: 140, easing: Easing.out(Easing.cubic) }) };
+  });
+
+  return (
+    <Animated.View
+      nativeID={idPrefix}
+      pointerEvents="none"
+      style={style}
+      testID={idPrefix}
+    />
+  );
+}
+
 // Fila reordenable — envuelve el contenido real (SessionExerciseRow) con
 // el gesto de mantener-presionado-y-arrastrar. `activateAfterLongPress`
 // (gesture-handler) hace que el Pan solo se active tras el hold: antes
@@ -606,7 +628,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
     const transition = { duration: 140, easing: Easing.out(Easing.cubic) };
     if (active < 0) {
       const external = externalDropIndexSV.value;
-      if (external < 0) return withTiming(0, transition);
+      if (external < 0) return 0;
       const externalHeight = (rowHeightsSV.value[external] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
       return withTiming(index >= external ? externalHeight : 0, transition);
     }

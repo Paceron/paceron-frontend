@@ -8,7 +8,7 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SESSION_ROLE_ORDER, SESSION_ROLE_META, WARMCOOL_KINDS } from './exercise-kind-meta.js';
 import {
   useSessionDropTarget, useSessionAutoScrollTarget,
-  ReorderProvider, ReorderableRow,
+  ReorderProvider, ReorderableRow, ReorderTailGap,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -208,43 +208,46 @@ export function SessionFormBody({ name, onSetName, nameError, description, onSet
 
       <SessionRoleCoverage exercises={exercises} />
 
-      <View className={`h-[320px] rounded-xl border border-dashed bg-slate-200/60 dark:bg-slate-950/50 ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="session-form-body-exercises-list" ref={dropTargetRef} testID="session-form-body-exercises-list">
-        <ReorderProvider>
-          <GestureScrollView
-            contentContainerClassName="p-3 pb-5"
-            nativeID="session-form-body-exercises-scroll"
-            onContentSizeChange={onContentSizeChange}
-            onLayout={onListLayout}
-            onScroll={onListScroll}
-            ref={autoScrollRef}
-            scrollEventThrottle={16}
-            testID="session-form-body-exercises-scroll"
-          >
-            {exercises.length === 0 ? (
-              <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="session-form-body-exercises-empty" testID="session-form-body-exercises-empty">
-                Todavía no agregaste ejercicios.
-              </Text>
-            ) : exercises.map((entry, index) => (
-              <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
-                <SessionExerciseRow
-                  catalogExercises={catalogExercises}
-                  catalogLoading={catalogLoading}
-                  entry={entry}
-                  idPrefix={`session-form-body-exercise-row-${entry.localKey}`}
-                  index={index}
-                  onChangeExercise={onChangeExercise}
-                  onChangeRole={onChangeRole}
-                  onRemove={onRemove}
-                />
-              </ReorderableRow>
-            ))}
-          </GestureScrollView>
-        </ReorderProvider>
-      </View>
+      <View nativeID="session-form-body-exercises-drop-zone" ref={dropTargetRef} testID="session-form-body-exercises-drop-zone">
+        <View className={`h-[320px] rounded-xl border border-dashed bg-slate-200/60 dark:bg-slate-950/50 ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="session-form-body-exercises-list" testID="session-form-body-exercises-list">
+          <ReorderProvider>
+            <GestureScrollView
+              contentContainerClassName="p-3 pb-5"
+              nativeID="session-form-body-exercises-scroll"
+              onContentSizeChange={onContentSizeChange}
+              onLayout={onListLayout}
+              onScroll={onListScroll}
+              ref={autoScrollRef}
+              scrollEventThrottle={16}
+              testID="session-form-body-exercises-scroll"
+            >
+              {exercises.length === 0 ? (
+                <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="session-form-body-exercises-empty" testID="session-form-body-exercises-empty">
+                  Todavía no agregaste ejercicios.
+                </Text>
+              ) : exercises.map((entry, index) => (
+                <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
+                  <SessionExerciseRow
+                    catalogExercises={catalogExercises}
+                    catalogLoading={catalogLoading}
+                    entry={entry}
+                    idPrefix={`session-form-body-exercise-row-${entry.localKey}`}
+                    index={index}
+                    onChangeExercise={onChangeExercise}
+                    onChangeRole={onChangeRole}
+                    onRemove={onRemove}
+                  />
+                </ReorderableRow>
+              ))}
+              <ReorderTailGap />
+            </GestureScrollView>
+          </ReorderProvider>
+        </View>
 
-      {error && (
-        <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="session-form-body-error" testID="session-form-body-error">{error}</Text>
-      )}
+        {error && (
+          <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="session-form-body-error" testID="session-form-body-error">{error}</Text>
+        )}
+      </View>
     </ScrollView>
   );
 }
