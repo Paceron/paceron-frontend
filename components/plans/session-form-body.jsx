@@ -9,7 +9,7 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SESSION_ROLE_ORDER, SESSION_ROLE_META, WARMCOOL_KINDS } from './exercise-kind-meta.js';
 import {
   useSessionDropTarget, useSessionAutoScrollTarget,
-  ReorderProvider, ReorderableRow, ReorderTailGap,
+  ReorderProvider, ReorderableRow, ReorderTailGap, RowDragHandle,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -172,7 +172,18 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
       </View>
 
       <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>
-        <MaterialCommunityIcons color={roleMeta.iconColor} name="drag-vertical" size={18} />
+        <RowDragHandle>
+          <View
+            accessibilityHint="Mantené presionado y arrastrá para cambiar el orden"
+            accessibilityLabel="Arrastrar ejercicio"
+            accessibilityRole="button"
+            className="h-8 w-8 items-center justify-center rounded-full active:opacity-70"
+            nativeID={`${idPrefix}-drag-handle`}
+            testID={`${idPrefix}-drag-handle`}
+          >
+            <MaterialCommunityIcons color={roleMeta.iconColor} name="drag-vertical" size={18} />
+          </View>
+        </RowDragHandle>
         <Pressable
           accessibilityLabel="Marcar como serie repetida"
           accessibilityRole="checkbox"

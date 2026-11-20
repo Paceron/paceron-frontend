@@ -424,6 +424,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
 // coordenadas absolutas de pantalla — evita competir con el autoscroll
 // del cross-container y mantiene los dos sistemas independientes.
 const ReorderContext = createContext(null);
+const RowDragGestureContext = createContext(null);
 
 // itemCount se pasa por prop en cada fila (no como prop del Provider)
 // porque la lista puede crecer/achicarse mientras el Provider ya está
@@ -594,7 +595,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   const gesture = useMemo(() => {
     let p = Gesture.Pan().runOnJS(true);
     if (isWeb) {
-      p = p.activateAfterLongPress(200).minDistance(6);
+      p = p.minDistance(6);
     } else {
       p = p.activateAfterLongPress(450).failOffsetY([-10, 10]);
       if (scrollViewRef) p = p.simultaneousWithExternalGesture(scrollViewRef);
@@ -648,7 +649,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         scrollCompensationSV.value = 0;
         externalDropIndexSV.value = -1;
       });
-    return Gesture.Simultaneous(p, Gesture.Native());
+    return p;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, scrollViewRef]);
   useAnimatedReaction(
@@ -736,7 +737,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   };
 
   return (
-    <GestureDetector gesture={gesture}>
+    <RowDragGestureContext.Provider value={gesture}>
       <Animated.View
         nativeID={`reorderable-exercise-row-${index}`}
         onLayout={(e) => {
@@ -767,8 +768,14 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
           testID={`reorderable-exercise-row-${index}-gap-bottom`}
         />
       </Animated.View>
-    </GestureDetector>
+    </RowDragGestureContext.Provider>
   );
+}
+
+export function RowDragHandle({ children }) {
+  const gesture = useContext(RowDragGestureContext);
+  if (!gesture) return children;
+  return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }
 
 // Overlay que sigue al cursor mientras hay un arrastre en curso — vive
