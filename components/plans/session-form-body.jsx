@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { isWeb } from '../../utils/platform.js';
@@ -88,8 +89,29 @@ export function SessionRoleCoverage({ exercises, idPrefix = 'session-role-covera
 
 export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onRemove }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
+  const [removing, setRemoving] = useState(false);
+  const exitProgress = useSharedValue(0);
   const roleMeta = SESSION_ROLE_META[entry.role] ?? SESSION_ROLE_META.main;
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
+
+  const exitStyle = useAnimatedStyle(() => ({
+    opacity: 1 - exitProgress.value,
+    transform: [
+      { translateX: exitProgress.value * 14 },
+      { scale: 1 - exitProgress.value * 0.02 },
+    ],
+  }));
+
+  const handleRemove = () => {
+    if (removing) return;
+    setRemoving(true);
+    exitProgress.value = withTiming(1, {
+      duration: 160,
+      easing: Easing.out(Easing.cubic),
+    }, (finished) => {
+      if (finished) runOnJS(onRemove)(entry.localKey);
+    });
+  };
 
   const handleToggleSeries = () => {
     const next = !isSeries;
@@ -98,6 +120,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
   };
 
   return (
+    <Animated.View nativeID={`${idPrefix}-exit`} pointerEvents={removing ? 'none' : 'auto'} style={exitStyle} testID={`${idPrefix}-exit`}>
     <View className={`gap-2 rounded-xl mx-1 border border-l-8 px-3 py-2.5 shadow-sm ${ROLE_ROW_BG[entry.role] ?? 'bg-slate-50 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-fields`} testID={`${idPrefix}-fields`}>
         <View className="w-36" nativeID={`${idPrefix}-role-select-wrapper`} testID={`${idPrefix}-role-select-wrapper`}>
@@ -132,10 +155,11 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
         </View>
         <IconTooltip idPrefix={`${idPrefix}-remove-button-tooltip`} label="Quitar ejercicio">
           <IconButton
+            disabled={removing}
             icon="trash-can-outline"
             idPrefix={`${idPrefix}-remove-button`}
             label="Quitar ejercicio"
-            onPress={() => onRemove(entry.localKey)}
+            onPress={handleRemove}
             size={48}
             variant="danger"
           />
@@ -183,6 +207,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
         )}
       </View>
     </View>
+    </Animated.View>
   );
 }
 
