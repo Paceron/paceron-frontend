@@ -135,6 +135,7 @@ export function SessionDragProvider({ children }) {
   const targetHeight = useSharedValue(0);
   const isHoveringSV = useSharedValue(0);
   const externalDropIndexSV = useSharedValue(-1);
+  const dragResetSignalSV = useSharedValue(0);
   const suppressPressRef = useRef(false);
   const [draggedExercise, setDraggedExercise] = useState(null);
   const dropTargetRef = useRef(null);
@@ -156,10 +157,40 @@ export function SessionDragProvider({ children }) {
   // porque nunca hay dos arrastres activos a la vez.
   const autoScrollIntervalRef = useRef(null);
 
+  useEffect(() => {
+    if (!isWeb) return undefined;
+    let resetTimer = null;
+    let pressGuardTimer = null;
+    const handlePointerRelease = () => {
+      if (resetTimer) clearTimeout(resetTimer);
+      if (pressGuardTimer) clearTimeout(pressGuardTimer);
+      resetTimer = setTimeout(() => {
+        dragResetSignalSV.value += 1;
+        setDraggedExercise(null);
+        dragX.value = 0;
+        dragY.value = 0;
+        isHoveringSV.value = 0;
+        externalDropIndexSV.value = -1;
+        stopAutoScrollLoop({ autoScrollIntervalRef });
+      }, 0);
+      pressGuardTimer = setTimeout(() => {
+        suppressPressRef.current = false;
+      }, 80);
+    };
+    window.addEventListener('pointerup', handlePointerRelease);
+    window.addEventListener('pointercancel', handlePointerRelease);
+    return () => {
+      if (resetTimer) clearTimeout(resetTimer);
+      if (pressGuardTimer) clearTimeout(pressGuardTimer);
+      window.removeEventListener('pointerup', handlePointerRelease);
+      window.removeEventListener('pointercancel', handlePointerRelease);
+    };
+  }, [dragResetSignalSV, dragX, dragY, externalDropIndexSV, isHoveringSV]);
+
   return (
     <SessionDragPressGuardContext.Provider value={suppressPressRef}>
       <SessionDragContext.Provider value={{
-        dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV, suppressPressRef,
+        dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV, dragResetSignalSV, suppressPressRef,
         draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, autoScrollIntervalRef,
         contentHeightRef, viewportHeightRef,
       }}
@@ -506,7 +537,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // no hacía nada -- solo el arrastre desde el catálogo autoscrolleaba
   // (bug real, 2026-10-06).
   const dragCtx = useContext(SessionDragContext);
-  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth, externalDropIndexSV } = dragCtx;
+  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth, externalDropIndexSV, dragResetSignalSV } = dragCtx;
   const onReorderRef = useRef(onReorder);
 
   useEffect(() => {
@@ -563,7 +594,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   const gesture = useMemo(() => {
     let p = Gesture.Pan().runOnJS(true);
     if (isWeb) {
-      p = p.minDistance(6);
+      p = p.activateAfterLongPress(200).minDistance(6);
     } else {
       p = p.activateAfterLongPress(450).failOffsetY([-10, 10]);
       if (scrollViewRef) p = p.simultaneousWithExternalGesture(scrollViewRef);
@@ -631,6 +662,19 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
     [index],
   );
 
+  useAnimatedReaction(
+    () => dragResetSignalSV.value,
+    () => {
+      if (activeIndexSV.value !== index) return;
+      activeIndexSV.value = -1;
+      targetIndexSV.value = -1;
+      dragOffsetY.value = 0;
+      scrollCompensationSV.value = 0;
+      externalDropIndexSV.value = -1;
+    },
+    [index],
+  );
+
   const shiftY = useDerivedValue(() => {
     const active = activeIndexSV.value;
     const target = targetIndexSV.value;
@@ -657,6 +701,10 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
       opacity: isActive ? 0.95 : 1,
     };
   });
+
+  const activeOutlineStyle = useAnimatedStyle(() => ({
+    opacity: activeIndexSV.value === index ? 1 : 0,
+  }));
 
   const topGapStyle = useAnimatedStyle(() => {
     const active = activeIndexSV.value;
@@ -706,6 +754,12 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
           testID={`reorderable-exercise-row-${index}-gap-top`}
         />
         {children}
+        <Animated.View
+          nativeID={`reorderable-exercise-row-${index}-active-outline`}
+          pointerEvents="none"
+          style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: colors.primary, borderRadius: 12, zIndex: 15 }, activeOutlineStyle]}
+          testID={`reorderable-exercise-row-${index}-active-outline`}
+        />
         <Animated.View
           nativeID={`reorderable-exercise-row-${index}-gap-bottom`}
           pointerEvents="none"
