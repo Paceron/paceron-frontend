@@ -9,6 +9,7 @@ import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
+import { HomeReveal } from './home-reveal.jsx';
 
 function statusLabel(competition) {
   if (competition.type === 'route') return 'Abierta';
@@ -117,7 +118,8 @@ export function CompetitionsPreviewCard() {
   };
 
   return (
-    <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card" testID="competitions-preview-card">
+    <HomeReveal delay={120} idPrefix="competitions-preview-card-reveal">
+      <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card" testID="competitions-preview-card">
       <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="competitions-preview-card-kicker" testID="competitions-preview-card-kicker">
         Tus competencias
       </Text>
@@ -132,6 +134,7 @@ export function CompetitionsPreviewCard() {
         ))}
         <ViewAllTile onPress={goToAllCompetitions} wide={wide} />
       </View>
-    </View>
+      </View>
+    </HomeReveal>
   );
 }

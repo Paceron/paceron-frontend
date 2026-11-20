@@ -8,6 +8,7 @@ import { resolveAchievementIconName } from '../../utils/achievement-icon.js';
 import { ProgressBar } from '../shared/progress-bar.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
+import { HomeReveal } from './home-reveal.jsx';
 
 // `paired`: `flex-1` para igualar la altura de StreakBanner en la fila 50/50
 // del Home. Sin pareja, `flex-1` colapsaría a 0 dentro de un padre sin altura
@@ -38,12 +39,14 @@ export function AchievementHighlightCard({ paired = false }) {
 
   if (!highlight) {
     return (
-      <View className={`${shellClass} items-center justify-center`} nativeID="achievement-highlight-card-empty" testID="achievement-highlight-card-empty">
-        <MaterialCommunityIcons color={colors.onSurfaceVariant} name={error ? 'alert-circle-outline' : 'trophy-outline'} size={24} />
-        <Text className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="achievement-highlight-card-empty-label" testID="achievement-highlight-card-empty-label">
-          {statusMessage}
-        </Text>
-      </View>
+      <HomeReveal delay={80} fill={paired} idPrefix="achievement-highlight-card-reveal">
+        <View className={`${shellClass} items-center justify-center`} nativeID="achievement-highlight-card-empty" testID="achievement-highlight-card-empty">
+          <MaterialCommunityIcons color={colors.onSurfaceVariant} name={error ? 'alert-circle-outline' : 'trophy-outline'} size={24} />
+          <Text className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="achievement-highlight-card-empty-label" testID="achievement-highlight-card-empty-label">
+            {statusMessage}
+          </Text>
+        </View>
+      </HomeReveal>
     );
   }
 
@@ -59,7 +62,8 @@ export function AchievementHighlightCard({ paired = false }) {
   };
 
   return (
-    <Pressable className={`${shellClass} transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-surface-2 dark:active:bg-surface-3`} nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
+    <HomeReveal delay={80} fill={paired} idPrefix="achievement-highlight-card-reveal">
+      <Pressable className={`${shellClass} transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-surface-2 dark:active:bg-surface-3`} nativeID="achievement-highlight-card-root" onPress={goToAchievementsTab} testID="achievement-highlight-card-root">
         {/* Kicker "Logro" -- sin esto se confundía con la card de Racha
             justo arriba (mismo estilo blanco/ícono+texto+barra), pedido
             real 2026-10-14. */}
@@ -85,5 +89,6 @@ export function AchievementHighlightCard({ paired = false }) {
           </Text>
         )}
       </Pressable>
+    </HomeReveal>
   );
 }

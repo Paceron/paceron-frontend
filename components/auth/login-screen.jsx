@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useThemeColors } from '../../theme/colors.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { prefetchHomeCriticalQueries } from '../../utils/home-prefetch.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
 import { AuthField } from './auth-field.jsx';
 
@@ -14,6 +16,7 @@ import { AuthField } from './auth-field.jsx';
 
 function LoginForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const colors = useThemeColors();
   const { login } = useAuthStore();
 
@@ -61,6 +64,8 @@ function LoginForm() {
       const result = await login(email, password);
       if (result.success) {
         Toast.show({ type: 'success', text1: '¡Bienvenido de nuevo!', text2: 'Iniciaste sesión correctamente.' });
+        const { activeRole: nextRole, userId: nextUserId } = useAuthStore.getState();
+        await prefetchHomeCriticalQueries(queryClient, { role: nextRole, userId: nextUserId });
         router.replace('/');
       } else {
         Toast.show({

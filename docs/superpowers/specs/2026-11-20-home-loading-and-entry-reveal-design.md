@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-20
 Rama: `fix/ux-audit-improvements`
-Estado: propuesta para revisión (sin implementación)
+Estado: implementado; pendiente validación en device y ajustes visuales menores.
 
 ## Objetivo
 
@@ -71,7 +71,6 @@ Vive en `authenticated-home-screen.jsx`. Provee:
 
 - `phase`: `hidden` (skeleton visible), `load` (primera entrada con datos) o `return` (retorno con caché).
 - `revealKey`: contador que se incrementa cuando termina el skeleton o cuando el Home recupera foco.
-- `initialReveal`: `true` mientras la carga crítica está en curso.
 
 La fase se decide así:
 

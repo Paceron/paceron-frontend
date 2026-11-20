@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
@@ -9,6 +10,7 @@ import { validateDNI } from '../../utils/dni-validators.js';
 import { toRegisterPayload } from '../../services/normalizers.js';
 import { toAddressFormFields } from '../../utils/location-to-address-fields.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { prefetchHomeCriticalQueries } from '../../utils/home-prefetch.js';
 import { isWeb } from '../../utils/platform.js';
 import { Row, Col, DateField, InputField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -20,6 +22,7 @@ import { TermsModal } from '../legal/terms-modal.jsx';
 
 export function RegisterScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -110,6 +113,8 @@ export function RegisterScreen() {
       );
       if (result.success) {
         Toast.show({ type: 'success', text1: '¡Cuenta creada!', text2: 'Bienvenido a Paceron.' });
+        const { activeRole: nextRole, userId: nextUserId } = useAuthStore.getState();
+        await prefetchHomeCriticalQueries(queryClient, { role: nextRole, userId: nextUserId });
         router.replace('/');
       } else {
         Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Error al crear la cuenta.' });

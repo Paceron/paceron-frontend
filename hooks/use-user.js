@@ -23,21 +23,29 @@ import { useAuthStore } from '../store/auth-store.js';
 // hook. Si en algún momento hace falta pedir el perfil de otro usuario,
 // usar este hook con ese id -- nunca una query propia contra el mismo
 // endpoint.
-export function useUser(userId) {
-  const query = useQuery({
+export function userQueryOptions(userId) {
+  return {
     queryKey: ['user', userId],
     queryFn: () => getUserService({ id: userId }).then((dto) => toUserModel(dto)),
     enabled: Boolean(userId),
-  });
+  };
+}
+
+export function useUser(userId) {
+  const query = useQuery(userQueryOptions(userId));
   return { user: query.data ?? null, loading: query.isLoading };
 }
 
-export function usePermissions(userId) {
-  const query = useQuery({
+export function permissionsQueryOptions(userId) {
+  return {
     queryKey: ['permissions', userId],
     queryFn: () => getPermissionsService(userId).then((data) => data?.roles ?? []),
     enabled: Boolean(userId),
-  });
+  };
+}
+
+export function usePermissions(userId) {
+  const query = useQuery(permissionsQueryOptions(userId));
   return { roles: query.data ?? [], loading: query.isLoading };
 }
 

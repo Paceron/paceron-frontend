@@ -12,6 +12,7 @@ import { isWeb } from '../../utils/platform.js';
 import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { useArrowBounce } from '../../hooks/use-arrow-bounce.js';
+import { HomeReveal } from './home-reveal.jsx';
 
 const CAROUSEL_AUTOPLAY_MS = 20000;
 const CAROUSEL_BODY_VERTICAL_PADDING = 32;
@@ -72,12 +73,18 @@ function CancelledCard({ session, onPress }) {
 }
 
 export function NextTrainingBanner() {
-  const router = useRouter();
-  const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const role = useAuthStore((s) => s.activeRole);
+  const state = useNextTrainingBanner(role, userId);
+  return <NextTrainingBannerView state={state} />;
+}
+
+export function NextTrainingBannerView({ state }) {
+  const router = useRouter();
+  const colors = useThemeColors();
+  const role = useAuthStore((s) => s.activeRole);
   const setPendingSession = useSessionRuntimeStore((s) => s.setPendingSession);
-  const { nextTraining, nextTrainings, cancelledSessions, loading, isFetching } = useNextTrainingBanner(role, userId);
+  const { nextTraining, nextTrainings, cancelledSessions, loading, isFetching } = state;
 
   if (!role) return null;
 
@@ -131,24 +138,26 @@ export function NextTrainingBanner() {
       )} */}
 
       {!loading && nextTraining && (
-        <NextTrainingCardGroup
-          cancelledSessions={cancelledSessions}
-          isFetching={isFetching}
-          nextTrainings={nextTrainings}
-          onCancelledPress={goToCalendarDay}
-          onHeroPress={(session) => {
-            if (canStartSession(session) && !isWeb) {
-              setPendingSession(session);
-              if (role === 'trainer' && session.isPresencial) {
-                router.push('/trainer-session-pre-start');
+        <HomeReveal delay={40} idPrefix="next-training-banner-reveal">
+          <NextTrainingCardGroup
+            cancelledSessions={cancelledSessions}
+            isFetching={isFetching}
+            nextTrainings={nextTrainings}
+            onCancelledPress={goToCalendarDay}
+            onHeroPress={(session) => {
+              if (canStartSession(session) && !isWeb) {
+                setPendingSession(session);
+                if (role === 'trainer' && session.isPresencial) {
+                  router.push('/trainer-session-pre-start');
+                  return;
+                }
+                router.push('/training-session');
                 return;
               }
-              router.push('/training-session');
-              return;
-            }
-            goToCalendarDay(session);
-          }}
-        />
+              goToCalendarDay(session);
+            }}
+          />
+        </HomeReveal>
       )}
     </View>
   );

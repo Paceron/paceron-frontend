@@ -13,12 +13,24 @@ import { runnerKpisQueryKey } from '../utils/runner-kpis.js';
 // `staleTime: 0` deja que volver a una pestaña ya vista muestre el cache y
 // revalide en segundo plano. `loading` solo es true cuando no hay dato para esa
 // combinación; con cache, `refreshing` alcanza para el indicador discreto.
-export function useRunnerKpis({ period = 'month', referenceDate, tab = 'general' } = {}) {
-  const query = useQuery({
+export function runnerKpisQueryOptions({ period = 'month', referenceDate, tab = 'general' } = {}) {
+  return {
     queryKey: runnerKpisQueryKey({ period, referenceDate, tab }),
     queryFn: () => getRunnerKpis({ period, referenceDate, tab }),
     staleTime: 0,
     retry: dashboardRetry,
+  };
+}
+
+export function useRunnerKpis({
+  period = 'month',
+  referenceDate,
+  tab = 'general',
+  enabled = true,
+} = {}) {
+  const query = useQuery({
+    ...runnerKpisQueryOptions({ period, referenceDate, tab }),
+    enabled,
   });
 
   return {

@@ -8,6 +8,7 @@ import { streakDayVisual } from '../../utils/streak-day-status.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { HomeReveal } from './home-reveal.jsx';
 
 // Ícono de racha con pulso sutil -- solo mobile (ver CLAUDE.md "Theming" y
 // la spec: en web no aporta y evita trabajo de animación donde no hace
@@ -56,16 +57,19 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
 
   if (error || !streaks) {
     return (
-      <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
-        <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
-      </View>
+      <HomeReveal delay={60} fill={paired} idPrefix="streak-banner-reveal">
+        <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
+          <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
+        </View>
+      </HomeReveal>
     );
   }
 
   const lastDays = streaks.days.slice(-daysCount);
 
   return (
-    <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
+    <HomeReveal delay={60} fill={paired} idPrefix="streak-banner-reveal">
+      <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
       {/* Kicker con el nombre de la racha -- antes la card solo mostraba
           "X días" sin aclarar cuál de las dos rachas es (estricta/flexible,
           ver streaks-tab.jsx), mismo patrón de kicker que el resto de las
@@ -109,6 +113,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
           );
         })}
       </View>
-    </Pressable>
+      </Pressable>
+    </HomeReveal>
   );
 }
