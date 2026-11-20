@@ -17,9 +17,9 @@ import { IconButton } from '../shared/icon-button.jsx';
 const SESSION_ROLE_OPTIONS = SESSION_ROLE_ORDER.map((role) => ({ id: role, name: SESSION_ROLE_META[role].label }));
 
 const ROLE_ROW_BG = {
-  warmup: 'bg-rose-50 dark:bg-rose-950/20',
-  main: 'bg-indigo-50 dark:bg-indigo-950/20',
-  cooldown: 'bg-cyan-50 dark:bg-cyan-950/20',
+  warmup: 'bg-rose-50 dark:bg-rose-950 border-rose-300 dark:border-rose-800',
+  main: 'bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-800',
+  cooldown: 'bg-cyan-50 dark:bg-cyan-950 border-cyan-300 dark:border-cyan-800',
 };
 
 function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibilityLabel, fallback = 0 }) {
@@ -98,7 +98,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
   };
 
   return (
-    <View className={`gap-2 rounded-xl mx-1 border border-slate-200 px-3 py-2.5 shadow-sm dark:border-slate-700 ${ROLE_ROW_BG[entry.role] ?? 'bg-slate-50 dark:bg-slate-900'}`} style={{ borderLeftWidth: 4, borderLeftColor: roleMeta.iconColor }} nativeID={idPrefix} testID={idPrefix}>
+    <View className={`gap-2 rounded-xl mx-1 border border-l-8 px-3 py-2.5 shadow-sm ${ROLE_ROW_BG[entry.role] ?? 'bg-slate-50 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-fields`} testID={`${idPrefix}-fields`}>
         <View className="w-36" nativeID={`${idPrefix}-role-select-wrapper`} testID={`${idPrefix}-role-select-wrapper`}>
           <ResponsiveSelectField

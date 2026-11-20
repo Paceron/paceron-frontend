@@ -41,7 +41,7 @@ function PanelExerciseCard({ exercise, onAdd }) {
         accessibilityHint="Tocá para agregarlo a la sesión"
         accessibilityLabel={`Agregar ${exercise.name}`}
         accessibilityRole="button"
-        className="mb-2 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 active:opacity-70 dark:border-slate-700 dark:bg-slate-900"
+        className="mb-2 flex-row items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 active:opacity-70 dark:border-slate-700 dark:bg-slate-900"
         nativeID={idPrefix}
         onPress={handleAdd}
         testID={idPrefix}
