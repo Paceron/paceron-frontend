@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 // ScrollView de gesture-handler (no el de 'react-native' plano) — en
 // nativo, un ScrollView plano no negocia correctamente con un
 // GestureDetector anidado adentro (acá, las DraggableExerciseCard con
@@ -8,7 +8,7 @@ import { Text, TextInput, View } from 'react-native';
 // a activarse el drag (bug real reportado en Expo Go, 2026-09-14). Este
 // ScrollView es API-compatible con el de 'react-native' (mismo props),
 // así que reemplaza sin cambios en el resto del archivo.
-import { ScrollView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { isWeb } from '../../utils/platform.js';
 import { useThemeColors } from '../../theme/colors.js';
@@ -17,7 +17,7 @@ import { useExercises } from '../../hooks/use-exercises.js';
 import { FIELD_LABEL } from '../forms/fields.jsx';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
-import { DraggableExerciseCard } from './session-drag-and-drop.jsx';
+import { DraggableExerciseCard, useSessionDragPressGuard } from './session-drag-and-drop.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
 
@@ -25,25 +25,41 @@ import { IconButton } from '../shared/icon-button.jsx';
 // web ancho) — mismo criterio visual que exercises-catalog-tab.jsx,
 // sin acciones de editar/eliminar (esto no es el catálogo real, es un
 // selector para arrastrar a la sesión).
-function PanelExerciseCard({ exercise }) {
+function PanelExerciseCard({ exercise, onAdd }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const statLine = buildExerciseStatLine(exercise);
   const idPrefix = `session-exercise-panel-card-${exercise.id}`;
+  const suppressPressRef = useSessionDragPressGuard();
+  const handleAdd = () => {
+    if (suppressPressRef.current) return;
+    onAdd?.(exercise);
+  };
 
   return (
-    <View className="mb-2 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
-        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={16} />
-      </View>
-      <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
-          {exercise.name}
-        </Text>
-        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} numberOfLines={1} testID={`${idPrefix}-stat`}>
-          {statLine || meta.label}
-        </Text>
-      </View>
-    </View>
+    <GestureDetector gesture={Gesture.Native()}>
+      <Pressable
+        accessibilityHint="Tocá para agregarlo a la sesión"
+        accessibilityLabel={`Agregar ${exercise.name}`}
+        accessibilityRole="button"
+        className="mb-2 flex-row items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 active:opacity-70 dark:border-slate-700 dark:bg-slate-900"
+        nativeID={idPrefix}
+        onPress={handleAdd}
+        testID={idPrefix}
+      >
+        <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
+          <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={16} />
+        </View>
+        <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
+          <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={1} testID={`${idPrefix}-name`}>
+            {exercise.name}
+          </Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-stat`} numberOfLines={1} testID={`${idPrefix}-stat`}>
+            {statLine || meta.label}
+          </Text>
+        </View>
+        <MaterialCommunityIcons color="#8cc63e" name="plus-circle" size={20} />
+      </Pressable>
+    </GestureDetector>
   );
 }
 
@@ -54,19 +70,35 @@ function PanelExerciseCard({ exercise }) {
 // nombre del ejercicio (bug real reportado, todas debían quedar
 // parejas) — justify-center además centra el contenido cuando el
 // nombre entra en 1 sola línea.
-function PanelExerciseCardCompact({ exercise }) {
+function PanelExerciseCardCompact({ exercise, onAdd }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const idPrefix = `session-exercise-panel-card-compact-${exercise.id}`;
+  const suppressPressRef = useSessionDragPressGuard();
+  const handleAdd = () => {
+    if (suppressPressRef.current) return;
+    onAdd?.(exercise);
+  };
 
   return (
-    <View className="h-20 w-28 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
-      <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
-        <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={16} />
-      </View>
-      <Text className="text-center text-[11px] font-medium text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={2} testID={`${idPrefix}-name`}>
-        {exercise.name}
-      </Text>
-    </View>
+    <GestureDetector gesture={Gesture.Native()}>
+      <Pressable
+        accessibilityHint="Tocá para agregarlo a la sesión"
+        accessibilityLabel={`Agregar ${exercise.name}`}
+        accessibilityRole="button"
+        className="relative h-20 w-28 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 active:opacity-70 dark:border-slate-700 dark:bg-slate-900"
+        nativeID={idPrefix}
+        onPress={handleAdd}
+        testID={idPrefix}
+      >
+        <MaterialCommunityIcons color="#8cc63e" name="plus-circle" size={16} style={{ position: 'absolute', right: 6, top: 6 }} />
+        <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
+          <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={16} />
+        </View>
+        <Text className="text-center text-[11px] font-medium text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} numberOfLines={2} testID={`${idPrefix}-name`}>
+          {exercise.name}
+        </Text>
+      </Pressable>
+    </GestureDetector>
   );
 }
 
@@ -81,7 +113,7 @@ function PanelExerciseCardCompact({ exercise }) {
 export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { exercises } = useExercises(userId);
+  const { exercises, loading, error, refetch } = useExercises(userId);
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   // Ref al propio ScrollView horizontal — pasado a cada card para
@@ -93,6 +125,8 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
 
   const query = search.trim().toLowerCase();
   const filtered = query ? exercises.filter((e) => e.name.toLowerCase().includes(query)) : exercises;
+  const showLoading = loading && exercises.length === 0;
+  const showError = Boolean(error) && exercises.length === 0;
 
   if (horizontal) {
     return (
@@ -110,14 +144,39 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
           </IconTooltip>
         </View>
 
-        {exercises.length === 0 ? (
+        {showLoading ? (
+          <View className="flex-row items-center gap-2 py-3" nativeID="session-exercise-panel-loading" testID="session-exercise-panel-loading">
+            <ActivityIndicator color={colors.primary} size="small" />
+            <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="session-exercise-panel-loading-label" testID="session-exercise-panel-loading-label">
+              Cargando ejercicios…
+            </Text>
+          </View>
+        ) : showError ? (
+          <View className="py-3" nativeID="session-exercise-panel-error" testID="session-exercise-panel-error">
+            <Text className="text-sm text-red-600 dark:text-red-400" nativeID="session-exercise-panel-error-label" testID="session-exercise-panel-error-label">
+              No pudimos cargar los ejercicios.
+            </Text>
+            <Pressable
+              accessibilityLabel="Reintentar carga de ejercicios"
+              accessibilityRole="button"
+              className="mt-2 self-start rounded-full border border-slate-300 px-3 py-1.5 active:opacity-70 dark:border-slate-600"
+              nativeID="session-exercise-panel-retry-button"
+              onPress={() => refetch?.()}
+              testID="session-exercise-panel-retry-button"
+            >
+              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="session-exercise-panel-retry-label" testID="session-exercise-panel-retry-label">
+                Reintentar
+              </Text>
+            </Pressable>
+          </View>
+        ) : exercises.length === 0 ? (
           <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="session-exercise-panel-empty" testID="session-exercise-panel-empty">
             Todavía no creaste ningún ejercicio.
           </Text>
         ) : (
           <ScrollView
-            className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 dark:border-slate-700 dark:bg-slate-900/40"
-            contentContainerClassName="gap-2"
+            className="rounded-xl border border-slate-200 bg-slate-200/70 p-2 dark:border-slate-700 dark:bg-slate-950/60"
+            contentContainerClassName="gap-2 px-2 py-2"
             horizontal
             nativeID="session-exercise-panel-list"
             ref={stripScrollRef}
@@ -141,7 +200,7 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
               // DraggableExerciseCard, relación explícita con este mismo
               // ScrollView para que reconozca el toque en simultáneo.
               <DraggableExerciseCard exercise={exercise} holdMs={isWeb ? undefined : 450} key={exercise.id} onDropped={onExerciseAdded} scrollViewRef={stripScrollRef}>
-                <PanelExerciseCardCompact exercise={exercise} />
+                <PanelExerciseCardCompact exercise={exercise} onAdd={onExerciseAdded} />
               </DraggableExerciseCard>
             ))}
           </ScrollView>
@@ -171,6 +230,7 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
         <MaterialCommunityIcons color={colors.onSurfaceVariant} name="magnify" size={16} />
         <TextInput
           className="flex-1 text-sm text-slate-900 outline-none dark:text-white"
+          editable={!showLoading && !showError}
           nativeID="session-exercise-panel-search-input"
           onChangeText={setSearch}
           placeholder="Buscar ejercicio"
@@ -180,19 +240,46 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
         />
       </View>
 
-      <ScrollView className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 p-2 dark:border-slate-700 dark:bg-slate-900/40" nativeID="session-exercise-panel-list" testID="session-exercise-panel-list">
-        {filtered.length === 0 ? (
+      <View className="flex-1 rounded-xl border border-slate-200 bg-slate-200/70 p-2 dark:border-slate-700 dark:bg-slate-950/60" nativeID="session-exercise-panel-list" testID="session-exercise-panel-list">
+        {showLoading ? (
+          <View className="flex-row items-center gap-2 py-3" nativeID="session-exercise-panel-loading" testID="session-exercise-panel-loading">
+            <ActivityIndicator color={colors.primary} size="small" />
+            <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="session-exercise-panel-loading-label" testID="session-exercise-panel-loading-label">
+              Cargando ejercicios…
+            </Text>
+          </View>
+        ) : showError ? (
+          <View className="py-3" nativeID="session-exercise-panel-error" testID="session-exercise-panel-error">
+            <Text className="text-sm text-red-600 dark:text-red-400" nativeID="session-exercise-panel-error-label" testID="session-exercise-panel-error-label">
+              No pudimos cargar los ejercicios.
+            </Text>
+            <Pressable
+              accessibilityLabel="Reintentar carga de ejercicios"
+              accessibilityRole="button"
+              className="mt-2 self-start rounded-full border border-slate-300 px-3 py-1.5 active:opacity-70 dark:border-slate-600"
+              nativeID="session-exercise-panel-retry-button"
+              onPress={() => refetch?.()}
+              testID="session-exercise-panel-retry-button"
+            >
+              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID="session-exercise-panel-retry-label" testID="session-exercise-panel-retry-label">
+                Reintentar
+              </Text>
+            </Pressable>
+          </View>
+        ) : filtered.length === 0 ? (
           <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="session-exercise-panel-empty" testID="session-exercise-panel-empty">
             Ningún ejercicio coincide.
           </Text>
         ) : (
-          filtered.map((exercise) => (
-            <DraggableExerciseCard exercise={exercise} key={exercise.id} onDropped={onExerciseAdded}>
-              <PanelExerciseCard exercise={exercise} />
-            </DraggableExerciseCard>
-          ))
+          <ScrollView className="flex-1" contentContainerClassName="pb-3 pr-2" nativeID="session-exercise-panel-scroll" testID="session-exercise-panel-scroll">
+            {filtered.map((exercise) => (
+              <DraggableExerciseCard exercise={exercise} key={exercise.id} onDropped={onExerciseAdded}>
+                <PanelExerciseCard exercise={exercise} onAdd={onExerciseAdded} />
+              </DraggableExerciseCard>
+            ))}
+          </ScrollView>
         )}
-      </ScrollView>
+      </View>
 
       <CreateExerciseModal onClose={() => setShowCreateModal(false)} onCreated={() => setShowCreateModal(false)} visible={showCreateModal} />
     </View>

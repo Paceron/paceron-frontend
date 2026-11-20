@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { InlinePicker } from '../forms/fields.jsx';
 import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { DashboardLoadingOverlay } from '../dashboard/dashboard-loading-overlay.jsx';
@@ -44,7 +45,7 @@ function todayISODate() {
 // View es su propio stacking context (`position: relative; z-index: 0`), así
 // que subir solo la celda o la grilla no alcanza: el bubble se dibuja dentro
 // de la card y las cards hermanas del Home (banner, resumen, etc.) la tapan.
-const OPEN_TOOLTIP_CARD_Z_INDEX = 1000;
+const OPEN_TOOLTIP_CARD_Z_INDEX = 10;
 
 export function RunnerKpisCard() {
   const { colorScheme } = useThemeMode();
@@ -56,6 +57,12 @@ export function RunnerKpisCard() {
   // Campo cuya guía larga está abierta ("Más información" del tooltip). Es la
   // misma clave que `row.field`, resuelta contra `utils/metric-help.js`.
   const [helpMetric, setHelpMetric] = useState(null);
+
+  useFocusEffect(useCallback(() => () => {
+    setOpenTooltip(null);
+    setInfoTooltipOpen(false);
+    setHelpMetric(null);
+  }, []));
 
   const { data, loading, refreshing, failed, error, refetch } = useRunnerKpis({ period, referenceDate, tab });
 
@@ -130,7 +137,11 @@ export function RunnerKpisCard() {
     <View
       className="relative mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface"
       nativeID="runner-kpis-card"
-      style={{ zIndex: openTooltip || infoTooltipOpen ? OPEN_TOOLTIP_CARD_Z_INDEX : 0 }}
+      style={{
+        zIndex: openTooltip || infoTooltipOpen ? OPEN_TOOLTIP_CARD_Z_INDEX : 0,
+        position: 'relative',
+        overflow: loading && !openTooltip && !infoTooltipOpen ? 'hidden' : 'visible',
+      }}
       testID="runner-kpis-card"
     >
       <View

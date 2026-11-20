@@ -11,6 +11,7 @@ import { formatMeters } from '../../utils/distance.js';
 import { pad2 } from '../../utils/calendar-month-range.js';
 import { ComplianceBadge } from '../comparison/compliance-badge.jsx';
 import { useThemeColors } from '../../theme/colors.js';
+import { HomeReveal } from './home-reveal.jsx';
 
 const WINDOW_DAYS = 90;
 
@@ -101,7 +102,8 @@ export function RecentTrainingsCard() {
   };
 
   return (
-    <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="recent-trainings-card" testID="recent-trainings-card">
+    <HomeReveal delay={140} idPrefix="recent-trainings-card-reveal">
+      <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="recent-trainings-card" testID="recent-trainings-card">
       <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="recent-trainings-card-kicker" testID="recent-trainings-card-kicker">
         Tus entrenamientos recientes
       </Text>
@@ -127,6 +129,7 @@ export function RecentTrainingsCard() {
         </Text>
         <MaterialCommunityIcons className="animate-pulse" color={colors.onSurfaceVariant} name="chevron-right" size={14} />
       </Pressable>
-    </View>
+      </View>
+    </HomeReveal>
   );
 }

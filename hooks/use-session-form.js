@@ -14,7 +14,7 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
   // se intentó guardar al menos una vez (no mostrar el borde en un form
   // recién abierto, sin tocar).
   const [attempted, setAttempted] = useState(false);
-  const nameError = attempted && !name.trim();
+  const nameError = attempted && !name.trim() ? 'Ingresá un nombre.' : null;
   const missingRoles = SESSION_ROLE_ORDER.filter((role) => !exercises.some((e) => e.role === role));
   // Mismo criterio que nameError -- cualquiera de las 3 condiciones que
   // validate() chequea sobre exercises (vacía, con filas sin elegir, o
@@ -71,7 +71,8 @@ export function useSessionForm({ initial, ownerId, catalogExercises } = {}) {
 
   const onExerciseDropped = (exercise, insertIndex) => setExercises((rows) => {
     const next = [...rows];
-    next.splice(Math.min(insertIndex, next.length), 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
+    const index = Number.isInteger(insertIndex) ? Math.min(insertIndex, next.length) : next.length;
+    next.splice(index, 0, { ...makeBlankRow('main'), exerciseId: exercise.id });
     return next;
   });
 

@@ -16,21 +16,29 @@ function administeredCalendarQueryKey(userId, from, to) {
   return ['administered-calendar', userId, from, to];
 }
 
-export function useMemberCalendar(userId, from, to) {
-  const query = useQuery({
+export function memberCalendarQueryOptions(userId, from, to) {
+  return {
     queryKey: memberCalendarQueryKey(userId, from, to),
     queryFn: () => getMemberCalendar(userId, from, to).then((dtos) => dtos.map(toAggregatedCalendarDayModel)),
     enabled: Boolean(userId && from && to),
-  });
+  };
+}
+
+export function administeredCalendarQueryOptions(userId, from, to) {
+  return {
+    queryKey: administeredCalendarQueryKey(userId, from, to),
+    queryFn: () => getAdministeredCalendar(userId, from, to).then((dtos) => dtos.map(toAggregatedCalendarDayModel)),
+    enabled: Boolean(userId && from && to),
+  };
+}
+
+export function useMemberCalendar(userId, from, to) {
+  const query = useQuery(memberCalendarQueryOptions(userId, from, to));
   return { days: query.data ?? [], loading: query.isLoading, isFetching: query.isFetching };
 }
 
 export function useAdministeredCalendar(userId, from, to) {
-  const query = useQuery({
-    queryKey: administeredCalendarQueryKey(userId, from, to),
-    queryFn: () => getAdministeredCalendar(userId, from, to).then((dtos) => dtos.map(toAggregatedCalendarDayModel)),
-    enabled: Boolean(userId && from && to),
-  });
+  const query = useQuery(administeredCalendarQueryOptions(userId, from, to));
   return { days: query.data ?? [], loading: query.isLoading, isFetching: query.isFetching };
 }
 
@@ -43,14 +51,10 @@ export function usePrefetchAdjacentCalendars(kind, userId, year, month) {
   useEffect(() => {
     if (!userId || !year || !month) return;
     const { prev, next } = adjacentMonths(year, month);
-    const fetcher = kind === 'member' ? getMemberCalendar : getAdministeredCalendar;
-    const queryKeyFor = kind === 'member' ? memberCalendarQueryKey : administeredCalendarQueryKey;
+    const queryOptions = kind === 'member' ? memberCalendarQueryOptions : administeredCalendarQueryOptions;
     for (const target of [prev, next]) {
       const { from, to } = monthRange(target.year, target.month);
-      queryClient.prefetchQuery({
-        queryKey: queryKeyFor(userId, from, to),
-        queryFn: () => fetcher(userId, from, to).then((dtos) => dtos.map(toAggregatedCalendarDayModel)),
-      });
+      queryClient.prefetchQuery(queryOptions(userId, from, to));
     }
   }, [kind, userId, year, month, queryClient]);
 }

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedReaction, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isWeb } from '../../utils/platform.js';
@@ -18,6 +18,8 @@ export { reorderList };
 // (fuente) y la lista de la sesión (destino), vive y muere con el
 // modal — no es estado global de la app.
 const SessionDragContext = createContext(null);
+const SessionDragPressGuardContext = createContext(null);
+const EMPTY_PRESS_GUARD = { current: false };
 
 // Cuánto antes del borde del contenedor (en px de pantalla) empieza a
 // autoscrollear, y cuánto scrollea por tick del loop. EDGE chico haría
@@ -25,6 +27,8 @@ const SessionDragContext = createContext(null);
 // dedo tapa la zona); STEP grande se siente a los saltos.
 const AUTO_SCROLL_EDGE = 56;
 const AUTO_SCROLL_STEP = 14;
+const REORDER_ROW_GAP = 12;
+const ROW_STRIDE = ESTIMATED_ROW_HEIGHT + REORDER_ROW_GAP;
 // Período del loop de autoscroll (ver startAutoScrollLoop) -- ~30
 // ticks/s alcanza para que se vea fluido sin saturar el hilo de JS con
 // listas largas.
@@ -62,7 +66,7 @@ function isNearEdge(absoluteY, top, height) {
 // compensationSV (opcional): ver startAutoScrollLoop -- solo lo usa
 // ReorderableRow, para que la fila arrastrada no se quede atrás del
 // contenido que este mismo autoscroll está moviendo.
-function maybeAutoScroll(autoScrollRef, scrollOffsetRef, scrollOffsetSV, absoluteY, top, height, compensationSV) {
+function maybeAutoScroll(autoScrollRef, scrollOffsetRef, scrollOffsetSV, absoluteY, top, height, compensationSV, contentHeightRef, viewportHeightRef) {
   if (!autoScrollRef.current) return;
   const relativeY = absoluteY - top;
   let next = null;
@@ -71,7 +75,10 @@ function maybeAutoScroll(autoScrollRef, scrollOffsetRef, scrollOffsetSV, absolut
   } else if (relativeY > height - AUTO_SCROLL_EDGE) {
     next = scrollOffsetRef.current + AUTO_SCROLL_STEP;
   }
-  if (next === null || next === scrollOffsetRef.current) return;
+  if (next === null) return;
+  const maxOffset = Math.max(0, (contentHeightRef?.current ?? 0) - (viewportHeightRef?.current ?? 0));
+  if (maxOffset > 0) next = Math.min(next, maxOffset);
+  if (next === scrollOffsetRef.current) return;
   const delta = next - scrollOffsetRef.current;
   scrollOffsetRef.current = next;
   scrollOffsetSV.value = next;
@@ -102,7 +109,8 @@ function startAutoScrollLoop(dragCtx, getPointerY, compensationSV) {
   dragCtx.autoScrollIntervalRef.current = setInterval(() => {
     maybeAutoScroll(
       dragCtx.autoScrollRef, dragCtx.scrollOffsetRef, dragCtx.scrollOffsetSV,
-      getPointerY(), dragCtx.targetY.value, dragCtx.targetHeight.value, compensationSV
+      getPointerY(), dragCtx.targetY.value, dragCtx.targetHeight.value, compensationSV,
+      dragCtx.contentHeightRef, dragCtx.viewportHeightRef
     );
   }, AUTO_SCROLL_THROTTLE_MS);
 }
@@ -126,6 +134,9 @@ export function SessionDragProvider({ children }) {
   const targetWidth = useSharedValue(0);
   const targetHeight = useSharedValue(0);
   const isHoveringSV = useSharedValue(0);
+  const externalDropIndexSV = useSharedValue(-1);
+  const dragResetSignalSV = useSharedValue(0);
+  const suppressPressRef = useRef(false);
   const [draggedExercise, setDraggedExercise] = useState(null);
   const dropTargetRef = useRef(null);
   // Ref imperativo al ScrollView de la lista destino — para autoscroll.
@@ -133,6 +144,8 @@ export function SessionDragProvider({ children }) {
   // porque el ScrollView no tiene forma de preguntar "en qué offset estoy
   // ahora", solo de pedirle uno nuevo (scrollTo).
   const autoScrollRef = useRef(null);
+  const contentHeightRef = useRef(0);
+  const viewportHeightRef = useRef(0);
   const scrollOffsetRef = useRef(0);
   // Mismo offset que scrollOffsetRef, pero como SharedValue -- un ref de
   // JS plano no es legible desde un worklet (onUpdate corre en el hilo de
@@ -144,14 +157,47 @@ export function SessionDragProvider({ children }) {
   // porque nunca hay dos arrastres activos a la vez.
   const autoScrollIntervalRef = useRef(null);
 
+  useEffect(() => {
+    if (!isWeb) return undefined;
+    let resetTimer = null;
+    let pressGuardTimer = null;
+    const handlePointerRelease = () => {
+      if (resetTimer) clearTimeout(resetTimer);
+      if (pressGuardTimer) clearTimeout(pressGuardTimer);
+      resetTimer = setTimeout(() => {
+        dragResetSignalSV.value += 1;
+        setDraggedExercise(null);
+        dragX.value = 0;
+        dragY.value = 0;
+        isHoveringSV.value = 0;
+        externalDropIndexSV.value = -1;
+        stopAutoScrollLoop({ autoScrollIntervalRef });
+      }, 0);
+      pressGuardTimer = setTimeout(() => {
+        suppressPressRef.current = false;
+      }, 80);
+    };
+    window.addEventListener('pointerup', handlePointerRelease);
+    window.addEventListener('pointercancel', handlePointerRelease);
+    return () => {
+      if (resetTimer) clearTimeout(resetTimer);
+      if (pressGuardTimer) clearTimeout(pressGuardTimer);
+      window.removeEventListener('pointerup', handlePointerRelease);
+      window.removeEventListener('pointercancel', handlePointerRelease);
+    };
+  }, [dragResetSignalSV, dragX, dragY, externalDropIndexSV, isHoveringSV]);
+
   return (
-    <SessionDragContext.Provider value={{
-      dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV,
-      draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, autoScrollIntervalRef,
-    }}
-    >
-      {children}
-    </SessionDragContext.Provider>
+    <SessionDragPressGuardContext.Provider value={suppressPressRef}>
+      <SessionDragContext.Provider value={{
+        dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV, dragResetSignalSV, suppressPressRef,
+        draggedExercise, setDraggedExercise, dropTargetRef, autoScrollRef, scrollOffsetRef, scrollOffsetSV, autoScrollIntervalRef,
+        contentHeightRef, viewportHeightRef,
+      }}
+      >
+        {children}
+      </SessionDragContext.Provider>
+    </SessionDragPressGuardContext.Provider>
   );
 }
 
@@ -174,18 +220,28 @@ export function useSessionDropTarget() {
   return dropTargetRef;
 }
 
+export function useSessionDragPressGuard() {
+  return useContext(SessionDragPressGuardContext) ?? EMPTY_PRESS_GUARD;
+}
+
 // Ref imperativo al ScrollView de la lista + callback de scroll — para
 // autoscroll cerca de los bordes mientras se arrastra desde el
 // catálogo. `onListScroll` se cablea al `onScroll` del ScrollView
 // consumidor.
 export function useSessionAutoScrollTarget() {
-  const { autoScrollRef, scrollOffsetRef, scrollOffsetSV } = useContext(SessionDragContext);
+  const { autoScrollRef, scrollOffsetRef, scrollOffsetSV, contentHeightRef, viewportHeightRef } = useContext(SessionDragContext);
   const onListScroll = (e) => {
     const y = e.nativeEvent.contentOffset.y;
     scrollOffsetRef.current = y;
     scrollOffsetSV.value = y;
   };
-  return { autoScrollRef, onListScroll };
+  const onContentSizeChange = (_width, height) => {
+    contentHeightRef.current = height;
+  };
+  const onListLayout = (e) => {
+    viewportHeightRef.current = e.nativeEvent.layout.height;
+  };
+  return { autoScrollRef, onListScroll, onContentSizeChange, onListLayout };
 }
 
 // Estado del hover sobre el target de drop -- ver SessionDropIndicator
@@ -196,7 +252,7 @@ export function useSessionDropIndicator() {
   return { dragY, targetY, targetHeight, isHoveringSV };
 }
 
-const DROP_INDICATOR_HEIGHT = 3;
+const DROP_INDICATOR_HEIGHT = 4;
 
 // Línea horizontal que marca dónde caería el ejercicio si se soltara
 // ahora — se monta una sola vez, adentro del `View` con `ref={dropTargetRef}`.
@@ -222,7 +278,7 @@ export function SessionDropIndicator() {
     <Animated.View
       nativeID="session-drop-indicator"
       style={[
-        { position: 'absolute', left: 8, right: 8, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary },
+        { position: 'absolute', left: 12, right: 12, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 4, elevation: 3 },
         style,
       ]}
       testID="session-drop-indicator"
@@ -246,7 +302,7 @@ export function SessionDropIndicator() {
 // `.simultaneousWithExternalGesture` más abajo para el porqué.
 export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, scrollViewRef }) {
   const dragCtx = useContext(SessionDragContext);
-  const { dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, setDraggedExercise, dropTargetRef } = dragCtx;
+  const { dragX, dragY, targetX, targetY, targetWidth, targetHeight, isHoveringSV, externalDropIndexSV, suppressPressRef, setDraggedExercise, dropTargetRef } = dragCtx;
 
   // Chequeo fresco con la posición final real (absoluteX/Y del propio
   // onEnd), no el `isHoveringSV` acumulado de onUpdate — un arrastre
@@ -263,7 +319,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     const inside = absoluteX >= targetX.value && absoluteX <= targetX.value + targetWidth.value
       && absoluteY >= targetY.value && absoluteY <= targetY.value + targetHeight.value;
     if (!inside) return;
-    const insertIndex = estimateIndexFromOffset((absoluteY - targetY.value) + dragCtx.scrollOffsetSV.value);
+    const insertIndex = estimateIndexFromOffset((absoluteY - targetY.value) + dragCtx.scrollOffsetSV.value, ROW_STRIDE);
     onDropped(exercise, insertIndex);
   };
 
@@ -278,7 +334,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
   // exercise/onDropped porque van directo en checkDrop, holdMs/
   // scrollViewRef porque cambian la cadena de configuración del Pan.
   const pan = useMemo(() => {
-    let p = Gesture.Pan().runOnJS(true);
+    let p = Gesture.Pan().runOnJS(true).minDistance(6);
     if (holdMs) {
       // failOffsetX: si el dedo se mueve más de esto ANTES de cumplirse
       // el hold, el gesto falla de inmediato y libera el toque al
@@ -303,6 +359,8 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
     return p
       .onStart((e) => {
         stopAutoScrollLoop(dragCtx); // insurance: no debería quedar uno de un drag anterior
+        externalDropIndexSV.value = -1;
+        suppressPressRef.current = true;
         setDraggedExercise(exercise);
         cacheDropTargetMeasurements(dropTargetRef, targetX, targetY, targetWidth, targetHeight);
         dragX.value = e.absoluteX;
@@ -315,6 +373,9 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
           && e.absoluteX >= targetX.value && e.absoluteX <= targetX.value + targetWidth.value
           && e.absoluteY >= targetY.value && e.absoluteY <= targetY.value + targetHeight.value;
         isHoveringSV.value = inside ? 1 : 0;
+        externalDropIndexSV.value = inside
+          ? estimateIndexFromOffset((e.absoluteY - targetY.value) + dragCtx.scrollOffsetSV.value, ROW_STRIDE)
+          : -1;
         if (inside && isNearEdge(e.absoluteY, targetY.value, targetHeight.value)) {
           startAutoScrollLoop(dragCtx, () => dragY.value);
         } else {
@@ -324,10 +385,17 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
       .onEnd((e) => {
         checkDrop(e.absoluteX, e.absoluteY);
         isHoveringSV.value = 0;
+        externalDropIndexSV.value = -1;
         setDraggedExercise(null);
       })
       .onFinalize(() => {
         stopAutoScrollLoop(dragCtx);
+        isHoveringSV.value = 0;
+        externalDropIndexSV.value = -1;
+        dragX.value = 0;
+        dragY.value = 0;
+        setDraggedExercise(null);
+        setTimeout(() => { suppressPressRef.current = false; }, 50);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise, onDropped, holdMs, scrollViewRef]);
@@ -356,6 +424,7 @@ export function DraggableExerciseCard({ exercise, onDropped, children, holdMs, s
 // coordenadas absolutas de pantalla — evita competir con el autoscroll
 // del cross-container y mantiene los dos sistemas independientes.
 const ReorderContext = createContext(null);
+const RowDragGestureContext = createContext(null);
 
 // itemCount se pasa por prop en cada fila (no como prop del Provider)
 // porque la lista puede crecer/achicarse mientras el Provider ya está
@@ -377,9 +446,10 @@ export function ReorderProvider({ children }) {
   // mismo, que onUpdate pisa con la traslación cruda del dedo en cada
   // evento y borraría la corrección en el próximo movimiento).
   const scrollCompensationSV = useSharedValue(0);
+  const rowHeightsSV = useSharedValue([]);
 
   return (
-    <ReorderContext.Provider value={{ activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY, scrollCompensationSV }}>
+    <ReorderContext.Provider value={{ activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY, scrollCompensationSV, rowHeightsSV }}>
       {children}
     </ReorderContext.Provider>
   );
@@ -407,10 +477,32 @@ export function ReorderDropIndicator() {
     <Animated.View
       nativeID="session-reorder-drop-indicator"
       style={[
-        { position: 'absolute', left: 8, right: 8, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary },
+        { position: 'absolute', left: 12, right: 12, top: 0, height: DROP_INDICATOR_HEIGHT, borderRadius: 2, backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 4, elevation: 3 },
         style,
       ]}
       testID="session-reorder-drop-indicator"
+    />
+  );
+}
+
+export function ReorderTailGap({ idPrefix = 'session-exercise-tail-gap' }) {
+  const { externalDropIndexSV } = useContext(SessionDragContext);
+  const { itemCountSV, rowHeightsSV } = useContext(ReorderContext);
+  const style = useAnimatedStyle(() => {
+    const count = itemCountSV.value;
+    const visible = count > 0 && externalDropIndexSV.value >= count;
+    const height = visible
+      ? (rowHeightsSV.value[count - 1] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP
+      : 0;
+    return { height: withTiming(height, { duration: 140, easing: Easing.out(Easing.cubic) }) };
+  });
+
+  return (
+    <Animated.View
+      nativeID={idPrefix}
+      pointerEvents="none"
+      style={style}
+      testID={idPrefix}
     />
   );
 }
@@ -435,7 +527,8 @@ export function ReorderDropIndicator() {
 // arrastra por vez); las demás no se reacomodan en vivo — la línea de
 // ReorderDropIndicator ya comunica el destino.
 export function ReorderableRow({ index, itemCount, onReorder, children, scrollViewRef }) {
-  const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY, scrollCompensationSV } = useContext(ReorderContext);
+  const colors = useThemeColors();
+  const { activeIndexSV, targetIndexSV, dragOffsetY, itemCountSV, dragAbsoluteY, scrollCompensationSV, rowHeightsSV } = useContext(ReorderContext);
   // SessionDragContext además de ReorderContext (los dos conviven, ver
   // nota de "Contexto propio" más abajo) -- no para el mecanismo de
   // reordenamiento en sí, sino para poder autoscrollear cerca de los
@@ -445,7 +538,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // no hacía nada -- solo el arrastre desde el catálogo autoscrolleaba
   // (bug real, 2026-10-06).
   const dragCtx = useContext(SessionDragContext);
-  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth } = dragCtx;
+  const { dropTargetRef, targetY, targetHeight, targetX, targetWidth, externalDropIndexSV, dragResetSignalSV } = dragCtx;
   const onReorderRef = useRef(onReorder);
 
   useEffect(() => {
@@ -501,7 +594,9 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
   // tamaño/timing ajustado — ver docs/2026-09-16-session-modal-drag-scroll-investigation.md.
   const gesture = useMemo(() => {
     let p = Gesture.Pan().runOnJS(true);
-    if (!isWeb) {
+    if (isWeb) {
+      p = p.minDistance(6);
+    } else {
       p = p.activateAfterLongPress(450).failOffsetY([-10, 10]);
       if (scrollViewRef) p = p.simultaneousWithExternalGesture(scrollViewRef);
     }
@@ -512,6 +607,7 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         targetIndexSV.value = index;
         dragOffsetY.value = 0;
         scrollCompensationSV.value = 0;
+        externalDropIndexSV.value = -1;
         // Mide el contenedor de la lista -- mismo motivo que
         // DraggableExerciseCard#onStart: sin esto targetY/targetHeight
         // podrían seguir en 0 si todavía no se arrastró nada desde el
@@ -525,7 +621,8 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         // pensada para una distancia siempre positiva desde el top de un
         // contenedor) — acá el desplazamiento es relativo a la fila propia
         // y puede ir para cualquier lado.
-        const rowDelta = Math.round(e.translationY / ESTIMATED_ROW_HEIGHT);
+        const rowStride = (rowHeightsSV.value[index] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
+        const rowDelta = Math.round((e.translationY + scrollCompensationSV.value) / rowStride);
         targetIndexSV.value = clampIndex(index + rowDelta, itemCountSV.value);
         // Autoscroll cerca de los bordes del contenedor -- mismo mecanismo
         // que el cross-container, con la posición ABSOLUTA del dedo
@@ -550,26 +647,135 @@ export function ReorderableRow({ index, itemCount, onReorder, children, scrollVi
         targetIndexSV.value = -1;
         dragOffsetY.value = 0;
         scrollCompensationSV.value = 0;
+        externalDropIndexSV.value = -1;
       });
-    return Gesture.Simultaneous(p, Gesture.Native());
+    return p;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, scrollViewRef]);
+  useAnimatedReaction(
+    () => dragOffsetY.value + scrollCompensationSV.value,
+    (offset) => {
+      if (activeIndexSV.value !== index) return;
+      const rowStride = (rowHeightsSV.value[index] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
+      const next = index + Math.round(offset / rowStride);
+      targetIndexSV.value = Math.min(Math.max(next, 0), Math.max(0, itemCountSV.value - 1));
+    },
+    [index],
+  );
+
+  useAnimatedReaction(
+    () => dragResetSignalSV.value,
+    () => {
+      if (activeIndexSV.value !== index) return;
+      activeIndexSV.value = -1;
+      targetIndexSV.value = -1;
+      dragOffsetY.value = 0;
+      scrollCompensationSV.value = 0;
+      externalDropIndexSV.value = -1;
+    },
+    [index],
+  );
+
+  const shiftY = useDerivedValue(() => {
+    const active = activeIndexSV.value;
+    const target = targetIndexSV.value;
+    const transition = { duration: 140, easing: Easing.out(Easing.cubic) };
+    if (active < 0) {
+      const external = externalDropIndexSV.value;
+      if (external < 0) return 0;
+      const externalHeight = (rowHeightsSV.value[external] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
+      return withTiming(index >= external ? externalHeight : 0, transition);
+    }
+    if (target < 0 || active === target) return withTiming(0, transition);
+    const activeHeight = (rowHeightsSV.value[active] ?? ESTIMATED_ROW_HEIGHT) + REORDER_ROW_GAP;
+    if (index > active && index <= target) return withTiming(-activeHeight, transition);
+    if (index >= target && index < active) return withTiming(activeHeight, transition);
+    return withTiming(0, transition);
+  });
+
   const rowStyle = useAnimatedStyle(() => {
     const isActive = activeIndexSV.value === index;
     return {
-      transform: [{ translateY: isActive ? dragOffsetY.value + scrollCompensationSV.value : 0 }, { scale: isActive ? 1.02 : 1 }],
+      transform: [{ translateY: isActive ? dragOffsetY.value + scrollCompensationSV.value : shiftY.value }, { scale: isActive ? 1.01 : 1 }],
+      marginBottom: REORDER_ROW_GAP,
       zIndex: isActive ? 10 : 0,
       opacity: isActive ? 0.95 : 1,
     };
   });
 
+  const activeOutlineStyle = useAnimatedStyle(() => ({
+    opacity: activeIndexSV.value === index ? 1 : 0,
+  }));
+
+  const topGapStyle = useAnimatedStyle(() => {
+    const active = activeIndexSV.value;
+    const target = targetIndexSV.value;
+    const external = externalDropIndexSV.value;
+    const show = external >= 0
+      ? index === external
+      : active >= 0 && target >= 0 && active !== target && active > target && index === target;
+    return { opacity: withTiming(show ? 1 : 0, { duration: 80 }) };
+  });
+  const bottomGapStyle = useAnimatedStyle(() => {
+    const active = activeIndexSV.value;
+    const target = targetIndexSV.value;
+    const external = externalDropIndexSV.value;
+    const last = itemCountSV.value - 1;
+    const show = external >= 0
+      ? index === last && external >= itemCountSV.value
+      : active >= 0 && target >= 0 && active !== target && active < target && index === target;
+    return { opacity: withTiming(show ? 1 : 0, { duration: 80 }) };
+  });
+  const gapLineStyle = {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    zIndex: 20,
+  };
+
   return (
-    <GestureDetector gesture={gesture}>
-      <Animated.View nativeID={`reorderable-exercise-row-${index}`} style={rowStyle} testID={`reorderable-exercise-row-${index}`}>
+    <RowDragGestureContext.Provider value={gesture}>
+      <Animated.View
+        nativeID={`reorderable-exercise-row-${index}`}
+        onLayout={(e) => {
+          const next = [...rowHeightsSV.value];
+          next[index] = e.nativeEvent.layout.height;
+          rowHeightsSV.value = next;
+        }}
+        style={rowStyle}
+        testID={`reorderable-exercise-row-${index}`}
+      >
+        <Animated.View
+          nativeID={`reorderable-exercise-row-${index}-gap-top`}
+          pointerEvents="none"
+          style={[gapLineStyle, { top: -7 }, topGapStyle]}
+          testID={`reorderable-exercise-row-${index}-gap-top`}
+        />
         {children}
+        <Animated.View
+          nativeID={`reorderable-exercise-row-${index}-active-outline`}
+          pointerEvents="none"
+          style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: colors.primary, borderRadius: 12, zIndex: 15 }, activeOutlineStyle]}
+          testID={`reorderable-exercise-row-${index}-active-outline`}
+        />
+        <Animated.View
+          nativeID={`reorderable-exercise-row-${index}-gap-bottom`}
+          pointerEvents="none"
+          style={[gapLineStyle, { bottom: -7 }, bottomGapStyle]}
+          testID={`reorderable-exercise-row-${index}-gap-bottom`}
+        />
       </Animated.View>
-    </GestureDetector>
+    </RowDragGestureContext.Provider>
   );
+}
+
+export function RowDragHandle({ children }) {
+  const gesture = useContext(RowDragGestureContext);
+  if (!gesture) return children;
+  return <GestureDetector gesture={gesture}>{children}</GestureDetector>;
 }
 
 // Overlay que sigue al cursor mientras hay un arrastre en curso — vive

@@ -46,6 +46,15 @@ export function useUnsavedChangesGuard(isDirty) {
     action();
   }, [bypassing]);
 
+  // Los modales persistentes no se desmontan al cerrarse: sin este reset,
+  // el primer descarte o guardado dejaba `bypassing` en true para siempre
+  // y las siguientes aperturas cerraban sin preguntar.
+  useEffect(() => {
+    if (isDirty) return;
+    pendingActionRef.current = null;
+    setBypassing(false);
+  }, [isDirty]);
+
   const guardedClose = (closeFn) => {
     if (!effectiveIsDirty) {
       closeFn();

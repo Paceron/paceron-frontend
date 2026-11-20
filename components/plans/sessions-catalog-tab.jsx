@@ -208,6 +208,7 @@ export function SessionsCatalogTab() {
         onClose={() => setModalSession(undefined)}
         onCreated={() => setModalSession(undefined)}
         session={modalSession ?? undefined}
+        usedIn={modalSession ? plansUsingSession(modalSession.id, plans).length : 0}
         visible={modalSession !== undefined}
       />
 
