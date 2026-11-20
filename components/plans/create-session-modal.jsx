@@ -24,8 +24,8 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import {
-  SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator,
-  ReorderProvider, ReorderableRow, ReorderDropIndicator, DragGhost, reorderList,
+  SessionDragProvider, useSessionDropTarget, useSessionAutoScrollTarget,
+  ReorderProvider, ReorderableRow, DragGhost, reorderList,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 import { SessionExerciseRow, SessionFormBody, SessionRoleCoverage } from './session-form-body.jsx';
@@ -114,8 +114,6 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
                 </ReorderableRow>
               ))}
             </GestureScrollView>
-            <SessionDropIndicator />
-            <ReorderDropIndicator />
           </ReorderProvider>
         </View>
 

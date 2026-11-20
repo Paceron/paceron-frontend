@@ -17,7 +17,7 @@ import { useExercises } from '../../hooks/use-exercises.js';
 import { FIELD_LABEL } from '../forms/fields.jsx';
 import { EXERCISE_KIND_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 import { CreateExerciseModal } from './create-exercise-modal.jsx';
-import { DraggableExerciseCard } from './session-drag-and-drop.jsx';
+import { DraggableExerciseCard, useSessionDragPressGuard } from './session-drag-and-drop.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
 
@@ -29,6 +29,11 @@ function PanelExerciseCard({ exercise, onAdd }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const statLine = buildExerciseStatLine(exercise);
   const idPrefix = `session-exercise-panel-card-${exercise.id}`;
+  const suppressPressRef = useSessionDragPressGuard();
+  const handleAdd = () => {
+    if (suppressPressRef.current) return;
+    onAdd?.(exercise);
+  };
 
   return (
     <GestureDetector gesture={Gesture.Native()}>
@@ -38,7 +43,7 @@ function PanelExerciseCard({ exercise, onAdd }) {
         accessibilityRole="button"
         className="mb-2 flex-row items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 active:opacity-70 dark:border-slate-700 dark:bg-slate-900"
         nativeID={idPrefix}
-        onPress={() => onAdd?.(exercise)}
+        onPress={handleAdd}
         testID={idPrefix}
       >
         <View className={`h-8 w-8 items-center justify-center rounded-full ${meta.bg}`} nativeID={`${idPrefix}-icon`} testID={`${idPrefix}-icon`}>
@@ -68,6 +73,11 @@ function PanelExerciseCard({ exercise, onAdd }) {
 function PanelExerciseCardCompact({ exercise, onAdd }) {
   const meta = EXERCISE_KIND_META[exercise.kind] ?? EXERCISE_KIND_META.liviano;
   const idPrefix = `session-exercise-panel-card-compact-${exercise.id}`;
+  const suppressPressRef = useSessionDragPressGuard();
+  const handleAdd = () => {
+    if (suppressPressRef.current) return;
+    onAdd?.(exercise);
+  };
 
   return (
     <GestureDetector gesture={Gesture.Native()}>
@@ -77,7 +87,7 @@ function PanelExerciseCardCompact({ exercise, onAdd }) {
         accessibilityRole="button"
         className="relative h-20 w-28 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 active:opacity-70 dark:border-slate-700 dark:bg-slate-900"
         nativeID={idPrefix}
-        onPress={() => onAdd?.(exercise)}
+        onPress={handleAdd}
         testID={idPrefix}
       >
         <MaterialCommunityIcons color="#8cc63e" name="plus-circle" size={16} style={{ position: 'absolute', right: 6, top: 6 }} />
@@ -165,8 +175,8 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
           </Text>
         ) : (
           <ScrollView
-            className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 dark:border-slate-700 dark:bg-slate-800/40"
-            contentContainerClassName="gap-2"
+            className="rounded-xl border border-slate-200 bg-slate-200/70 p-2 dark:border-slate-700 dark:bg-slate-950/60"
+            contentContainerClassName="gap-2 px-2 py-2"
             horizontal
             nativeID="session-exercise-panel-list"
             ref={stripScrollRef}
@@ -261,7 +271,7 @@ export function SessionExercisePanel({ onExerciseAdded, horizontal = false }) {
             Ningún ejercicio coincide.
           </Text>
         ) : (
-          <ScrollView className="flex-1" nativeID="session-exercise-panel-scroll" testID="session-exercise-panel-scroll">
+          <ScrollView className="flex-1" contentContainerClassName="pb-3 pr-2" nativeID="session-exercise-panel-scroll" testID="session-exercise-panel-scroll">
             {filtered.map((exercise) => (
               <DraggableExerciseCard exercise={exercise} key={exercise.id} onDropped={onExerciseAdded}>
                 <PanelExerciseCard exercise={exercise} onAdd={onExerciseAdded} />

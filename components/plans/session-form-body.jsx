@@ -7,18 +7,19 @@ import { InputField, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SESSION_ROLE_ORDER, SESSION_ROLE_META, WARMCOOL_KINDS } from './exercise-kind-meta.js';
 import {
-  useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator,
-  ReorderProvider, ReorderableRow, ReorderDropIndicator,
+  useSessionDropTarget, useSessionAutoScrollTarget,
+  ReorderProvider, ReorderableRow,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 const SESSION_ROLE_OPTIONS = SESSION_ROLE_ORDER.map((role) => ({ id: role, name: SESSION_ROLE_META[role].label }));
 
 const ROLE_ROW_BG = {
-  warmup: 'bg-rose-100 dark:bg-rose-950',
-  main: 'bg-indigo-100 dark:bg-indigo-950',
-  cooldown: 'bg-cyan-100 dark:bg-cyan-950',
+  warmup: 'bg-rose-50 dark:bg-rose-950/20',
+  main: 'bg-indigo-50 dark:bg-indigo-950/20',
+  cooldown: 'bg-cyan-50 dark:bg-cyan-950/20',
 };
 
 function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibilityLabel, fallback = 0 }) {
@@ -108,6 +109,8 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
             label="Rol"
             onChange={(role) => onChangeRole(entry.localKey, role)}
             options={SESSION_ROLE_OPTIONS}
+            required
+            showPlaceholderOption={false}
             value={entry.role}
           />
         </View>
@@ -128,15 +131,14 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, c
           />
         </View>
         <IconTooltip idPrefix={`${idPrefix}-remove-button-tooltip`} label="Quitar ejercicio">
-          <Pressable
-            accessibilityLabel="Quitar ejercicio"
-            className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
-            nativeID={`${idPrefix}-remove-button`}
+          <IconButton
+            icon="trash-can-outline"
+            idPrefix={`${idPrefix}-remove-button`}
+            label="Quitar ejercicio"
             onPress={() => onRemove(entry.localKey)}
-            testID={`${idPrefix}-remove-button`}
-          >
-            <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-          </Pressable>
+            size={48}
+            variant="danger"
+          />
         </IconTooltip>
       </View>
 
@@ -237,8 +239,6 @@ export function SessionFormBody({ name, onSetName, nameError, description, onSet
               </ReorderableRow>
             ))}
           </GestureScrollView>
-          <SessionDropIndicator />
-          <ReorderDropIndicator />
         </ReorderProvider>
       </View>
 
