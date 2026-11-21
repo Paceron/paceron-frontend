@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Pressable, Text } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { InputField, Row, Col } from '../forms/fields.jsx';
 import { OtpInput } from '../forms/otp-input.jsx';
+import { useThemeColors } from '../../theme/colors.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
 import { AuthSubmitButton } from './auth-submit-button.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
@@ -14,6 +15,7 @@ import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from 
 
 export function ResetPasswordScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
   const { email } = useLocalSearchParams();
 
   const [code, setCode] = useState('');
@@ -24,6 +26,13 @@ export function ResetPasswordScreen() {
   const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = setTimeout(() => setResendCooldown((seconds) => seconds - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   // Deep-link directo a /reset-password sin pasar por /forgot-password (sin
   // email en los params) — no hay contexto para mostrar nada, se redirige.
@@ -62,11 +71,12 @@ export function ResetPasswordScreen() {
   };
 
   const handleResend = async () => {
-    if (resending) return;
+    if (resending || resendCooldown > 0) return;
     setResending(true);
     try {
       await forgotPassword(email);
       Toast.show({ type: 'success', text1: 'Código reenviado', text2: 'Si el email está registrado, te enviamos un código nuevo.' });
+      setResendCooldown(30);
     } catch {
       Toast.show({ type: 'error', text1: 'Error de conexión', text2: 'Intentá de nuevo más tarde.' });
     } finally {
@@ -138,14 +148,20 @@ export function ResetPasswordScreen() {
       <AuthSubmitButton className="mt-8" idPrefix="reset-password-screen" label="Restablecer contraseña" loading={loading} onPress={handleSubmit} />
 
       <Pressable
-        className="mt-6 items-center py-1 hover:opacity-70"
-        disabled={resending}
+        accessibilityState={{ busy: resending, disabled: resending || resendCooldown > 0 }}
+        className="mt-6 flex-row items-center justify-center gap-2 py-1 hover:opacity-70 active:opacity-70"
+        disabled={resending || resendCooldown > 0}
         onPress={handleResend}
         nativeID="reset-password-screen-resend-button"
         testID="reset-password-screen-resend-button"
       >
+        {resending ? <ActivityIndicator color={colors.primary} size="small" /> : null}
         <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="reset-password-screen-resend-label" testID="reset-password-screen-resend-label">
-          {resending ? 'Reenviando...' : '¿No recibiste el código? Reenviar'}
+          {resending
+            ? 'Reenviando…'
+            : resendCooldown > 0
+              ? `Podés reenviar en ${resendCooldown}s`
+              : '¿No recibiste el código? Reenviar'}
         </Text>
       </Pressable>
     </AuthCardShell>

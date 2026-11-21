@@ -29,6 +29,7 @@ import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
 import { PaymentsUpcomingCard } from './payments-upcoming-card.jsx';
+import { PaymentsScreenSkeleton } from './payments-screen-skeleton.jsx';
 
 // Cuántos meses corre la ventana del gráfico cada flecha: los mismos que muestra.
 const WINDOW_MONTHS = 6;
@@ -50,7 +51,7 @@ function PaymentsScreenContent() {
   const userId = useAuthStore((s) => s.userId);
   const activeRole = useAuthStore((s) => s.activeRole);
   const { user } = useUser(userId);
-  const { roles } = usePermissions(userId);
+  const { roles, loading: permissionsLoading } = usePermissions(userId);
   // El entrenador activo suma sus cobros y el dashboard; cualquier otro usuario
   // ve solo su historial de pagos.
   const isTrainer = activeRole === 'trainer' && roles.some((r) => r.name === 'entrenador');
@@ -235,6 +236,14 @@ function PaymentsScreenContent() {
       setReceiptBusyId(null);
     }
   };
+
+  if (permissionsLoading) {
+    return (
+      <PaymentsScreenSkeleton
+        onBack={from === 'profile' ? () => router.back() : null}
+      />
+    );
+  }
 
   return (
     <ScrollView
