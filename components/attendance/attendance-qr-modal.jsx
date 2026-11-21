@@ -227,11 +227,11 @@ export function AttendanceQrModal({ visible, onClose, teamName, session, teamId,
               testID="attendance-qr-modal-download"
             >
               {busyAction === 'download' ? (
-                <ActivityIndicator color="#ffffff" size="small" />
+                <ActivityIndicator color="#111518" size="small" />
               ) : (
                 <>
-                  <MaterialCommunityIcons color="#ffffff" name="file-download-outline" size={18} />
-                  <Text className="text-sm font-semibold uppercase tracking-wide text-white" nativeID="attendance-qr-modal-download-label" testID="attendance-qr-modal-download-label">
+                  <MaterialCommunityIcons color={busyAction || !qrDataUri ? '#111518' : '#ffffff'} name="file-download-outline" size={18} />
+                  <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="attendance-qr-modal-download-label" testID="attendance-qr-modal-download-label">
                     Descargar PDF
                   </Text>
                 </>
