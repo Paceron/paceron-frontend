@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, View, Text } from 'react-native';
+import { Pressable, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { HomeReveal } from './home-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 
 // Ícono de racha con pulso sutil -- solo mobile (ver CLAUDE.md "Theming" y
 // la spec: en web no aporta y evita trabajo de animación donde no hace
@@ -49,8 +50,14 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
 
   if (loading) {
     return (
-      <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
-        <ActivityIndicator color={colors.primary} nativeID="streak-banner-loading-indicator" testID="streak-banner-loading-indicator" />
+      <View className={`min-h-[96px] mb-3 h-24 justify-center rounded-2xl bg-white px-4 shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
+        <SkeletonPulse idPrefix="streak-banner-loading-skeleton" nativeID="streak-banner-loading-skeleton" testID="streak-banner-loading-skeleton">
+          <View className="gap-2" nativeID="streak-banner-loading-body" testID="streak-banner-loading-body">
+            <SkeletonBlock height={10} nativeID="streak-banner-loading-kicker" testID="streak-banner-loading-kicker" width="40%" />
+            <SkeletonBlock height={28} nativeID="streak-banner-loading-value" testID="streak-banner-loading-value" width="60%" />
+            <SkeletonBlock height={14} nativeID="streak-banner-loading-days" testID="streak-banner-loading-days" width="80%" />
+          </View>
+        </SkeletonPulse>
       </View>
     );
   }

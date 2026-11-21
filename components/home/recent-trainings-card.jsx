@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -12,6 +12,7 @@ import { pad2 } from '../../utils/calendar-month-range.js';
 import { ComplianceBadge } from '../comparison/compliance-badge.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { HomeReveal } from './home-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 
 const WINDOW_DAYS = 90;
 
@@ -85,9 +86,13 @@ export function RecentTrainingsCard() {
         <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="recent-trainings-card-loading-kicker" testID="recent-trainings-card-loading-kicker">
           Tus entrenamientos recientes
         </Text>
-        <View className="min-h-[72px] items-center justify-center" nativeID="recent-trainings-card-loading-body" testID="recent-trainings-card-loading-body">
-          <ActivityIndicator color={colors.primary} nativeID="recent-trainings-card-loading-indicator" testID="recent-trainings-card-loading-indicator" />
-        </View>
+        <SkeletonPulse idPrefix="recent-trainings-card-loading-skeleton" nativeID="recent-trainings-card-loading-skeleton" testID="recent-trainings-card-loading-skeleton">
+          <View className="gap-2" nativeID="recent-trainings-card-loading-body" testID="recent-trainings-card-loading-body">
+            <SkeletonBlock height={56} nativeID="recent-trainings-card-loading-row-1" rounded="rounded-xl" testID="recent-trainings-card-loading-row-1" width="100%" />
+            <SkeletonBlock height={56} nativeID="recent-trainings-card-loading-row-2" rounded="rounded-xl" testID="recent-trainings-card-loading-row-2" width="100%" />
+            <SkeletonBlock height={56} nativeID="recent-trainings-card-loading-row-3" rounded="rounded-xl" testID="recent-trainings-card-loading-row-3" width="100%" />
+          </View>
+        </SkeletonPulse>
       </View>
     );
   }

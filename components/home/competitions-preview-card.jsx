@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -10,6 +10,7 @@ import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 import { HomeReveal } from './home-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 
 function statusLabel(competition) {
   if (competition.type === 'route') return 'Abierta';
@@ -88,7 +89,6 @@ function ViewAllTile({ wide, onPress }) {
 
 export function CompetitionsPreviewCard() {
   const router = useRouter();
-  const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const isNarrow = useIsNarrowWeb();
   const setAchievementsTab = useAchievementsTabStore((s) => s.setActiveTab);
@@ -100,9 +100,12 @@ export function CompetitionsPreviewCard() {
         <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="competitions-preview-card-loading-kicker" testID="competitions-preview-card-loading-kicker">
           Tus competencias
         </Text>
-        <View className="min-h-[72px] items-center justify-center" nativeID="competitions-preview-card-loading-body" testID="competitions-preview-card-loading-body">
-          <ActivityIndicator color={colors.primary} nativeID="competitions-preview-card-loading-indicator" testID="competitions-preview-card-loading-indicator" />
-        </View>
+        <SkeletonPulse idPrefix="competitions-preview-card-loading-skeleton" nativeID="competitions-preview-card-loading-skeleton" testID="competitions-preview-card-loading-skeleton">
+          <View className="gap-2" nativeID="competitions-preview-card-loading-body" testID="competitions-preview-card-loading-body">
+            <SkeletonBlock height={96} nativeID="competitions-preview-card-loading-box-1" rounded="rounded-2xl" testID="competitions-preview-card-loading-box-1" width="100%" />
+            <SkeletonBlock height={96} nativeID="competitions-preview-card-loading-box-2" rounded="rounded-2xl" testID="competitions-preview-card-loading-box-2" width="100%" />
+          </View>
+        </SkeletonPulse>
       </View>
     );
   }

@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, View, Text } from 'react-native';
+import { Pressable, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAchievements } from '../../hooks/use-achievements.js';
@@ -9,6 +9,7 @@ import { ProgressBar } from '../shared/progress-bar.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 import { HomeReveal } from './home-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 
 // `paired`: `flex-1` para igualar la altura de StreakBanner en la fila 50/50
 // del Home. Sin pareja, `flex-1` colapsaría a 0 dentro de un padre sin altura
@@ -24,8 +25,14 @@ export function AchievementHighlightCard({ paired = false }) {
 
   if (loading) {
     return (
-      <View className={`${shellClass} items-center justify-center`} nativeID="achievement-highlight-card-loading" testID="achievement-highlight-card-loading">
-        <ActivityIndicator color={colors.primary} nativeID="achievement-highlight-card-loading-indicator" testID="achievement-highlight-card-loading-indicator" />
+      <View className={shellClass} nativeID="achievement-highlight-card-loading" testID="achievement-highlight-card-loading">
+        <SkeletonPulse idPrefix="achievement-highlight-card-loading-skeleton" nativeID="achievement-highlight-card-loading-skeleton" testID="achievement-highlight-card-loading-skeleton">
+          <View className="gap-2" nativeID="achievement-highlight-card-loading-body" testID="achievement-highlight-card-loading-body">
+            <SkeletonBlock height={10} nativeID="achievement-highlight-card-loading-kicker" testID="achievement-highlight-card-loading-kicker" width="45%" />
+            <SkeletonBlock height={24} nativeID="achievement-highlight-card-loading-title" testID="achievement-highlight-card-loading-title" width="70%" />
+            <SkeletonBlock height={8} nativeID="achievement-highlight-card-loading-progress" rounded="rounded-full" testID="achievement-highlight-card-loading-progress" width="100%" />
+          </View>
+        </SkeletonPulse>
       </View>
     );
   }
