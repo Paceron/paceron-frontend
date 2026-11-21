@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { isWeb } from '../../utils/platform.js';
@@ -18,6 +18,8 @@ import { isWeb } from '../../utils/platform.js';
 export function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(-8);
+  const panelRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
   useEffect(() => {
     const config = { duration: open ? 160 : 120, easing: Easing.out(Easing.cubic) };
@@ -35,6 +37,25 @@ export function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!isWeb) return undefined;
+    if (!open) {
+      const previous = previousFocusRef.current;
+      previousFocusRef.current = null;
+      if (previous?.isConnected) previous.focus?.();
+      return undefined;
+    }
+    previousFocusRef.current = document.activeElement;
+    const frame = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      const focusable = panel?.querySelector?.(
+        'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      focusable?.focus?.();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
@@ -44,7 +65,9 @@ export function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
     <View className="absolute inset-0 z-50" nativeID="animated-dropdown" style={{ pointerEvents: open ? 'auto' : 'none' }} testID="animated-dropdown">
       <Pressable className="absolute inset-0" nativeID="animated-dropdown-backdrop" onPress={onClose} testID="animated-dropdown-backdrop" />
       <Animated.View nativeID="animated-dropdown-panel" style={[{ position: 'absolute' }, anchorStyle, animatedStyle]} testID="animated-dropdown-panel">
-        {children}
+        <View nativeID="animated-dropdown-panel-content" ref={panelRef} testID="animated-dropdown-panel-content">
+          {children}
+        </View>
       </Animated.View>
     </View>
   );
