@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -16,6 +16,7 @@ import { Row, Col, DateField, InputField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { LocationPicker } from '../shared/location-picker';
 import { AuthCardShell } from './auth-card-shell.jsx';
+import { AuthSubmitButton } from './auth-submit-button.jsx';
 import { StrengthBar, PasswordRequirementsList } from '../forms/password-strength.jsx';
 import { CheckboxField } from '../forms/checkbox-field.jsx';
 import { TermsModal } from '../legal/terms-modal.jsx';
@@ -93,7 +94,11 @@ export function RegisterScreen() {
     touch('confirm');
     touch('terms');
 
-    if (!formValid) return;
+    if (!formValid) {
+      if (!personalOk) setOpenSection('personal');
+      else if (!passwordValid || !passwordsMatch) setOpenSection('password');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -317,25 +322,7 @@ export function RegisterScreen() {
 
       <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
 
-      <Pressable
-        className={`mt-8 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${
-          formValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
-        }`}
-        disabled={loading}
-        onPress={handleSubmit}
-        nativeID="register-screen-submit-button"
-        testID="register-screen-submit-button"
-      >
-        {loading ? (
-          <ActivityIndicator color="#111518" size="small" />
-        ) : (
-          <Text className={`text-sm font-semibold uppercase tracking-wide ${
-            formValid ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'
-          }`} nativeID="register-screen-submit-button-label" testID="register-screen-submit-button-label">
-            Crear cuenta
-          </Text>
-        )}
-      </Pressable>
+      <AuthSubmitButton className="mt-8" idPrefix="register-screen" label="Crear cuenta" loading={loading} onPress={handleSubmit} />
 
       <Pressable className="mt-6 items-center py-1 hover:opacity-70" onPress={() => router.push('/login')} nativeID="register-screen-login-link-button" testID="register-screen-login-link-button">
         <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="register-screen-login-link-label" testID="register-screen-login-link-label">

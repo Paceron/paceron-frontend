@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { useAuthStore } from '../../store/auth-store.js';
 import { prefetchHomeCriticalQueries } from '../../utils/home-prefetch.js';
 import { AuthCardShell } from './auth-card-shell.jsx';
 import { AuthField } from './auth-field.jsx';
+import { AuthSubmitButton } from './auth-submit-button.jsx';
 
 // --- Login form ---
 
@@ -25,6 +26,8 @@ function LoginForm() {
   const [emailTouched, setEmailTouched] = useState(false);
 
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -46,18 +49,29 @@ function LoginForm() {
     setEmailError(validateEmail(email));
   };
 
+  const emailOk = !emailError && emailTouched && email.length > 0;
+
   const handlePasswordChange = (value) => {
     setPassword(value);
+    if (passwordTouched) setPasswordError(value ? null : 'La contraseña es requerida.');
   };
 
-  const emailOk = !emailError && emailTouched && email.length > 0;
-  const isFormValid = emailOk && validateEmailFormat(email) && !isDisposableEmail(email);
+  const handlePasswordBlur = () => {
+    setPasswordTouched(true);
+    setPasswordError(password ? null : 'La contraseña es requerida.');
+  };
 
   const handleSubmit = async () => {
     if (loading) return;
     setEmailTouched(true);
     const err = validateEmail(email);
     if (err) { setEmailError(err); return; }
+    setPasswordTouched(true);
+    if (!password) {
+      setPasswordError('La contraseña es requerida.');
+      return;
+    }
+    setPasswordError(null);
 
     setLoading(true);
     try {
@@ -123,8 +137,10 @@ function LoginForm() {
       {/* Password */}
       <AuthField
         autoComplete="password"
+        error={passwordError}
         idPrefix="login-screen-password"
         label="Contraseña"
+        onBlur={handlePasswordBlur}
         onChangeText={handlePasswordChange}
         onSubmitEditing={handleSubmit}
         returnKeyType="done"
@@ -148,25 +164,7 @@ function LoginForm() {
           el conjunto de abajo también se reacomode animado, en vez de saltar. */}
       <Animated.View layout={LinearTransition.duration(200)} nativeID="login-screen-actions" testID="login-screen-actions">
         {/* Submit button */}
-        <Pressable
-          className={`mb-4 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${
-            isFormValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
-          }`}
-          disabled={loading}
-          onPress={handleSubmit}
-          nativeID="login-screen-submit-button"
-          testID="login-screen-submit-button"
-        >
-          {loading ? (
-            <ActivityIndicator color={isFormValid ? '#111518' : colors.onSurfaceVariant} size="small" />
-          ) : (
-            <Text className={`text-sm font-semibold uppercase tracking-wide ${
-              isFormValid ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'
-            }`} nativeID="login-screen-submit-button-label" testID="login-screen-submit-button-label">
-              Ingresar
-            </Text>
-          )}
-        </Pressable>
+        <AuthSubmitButton className="mb-4" idPrefix="login-screen" label="Ingresar" loading={loading} onPress={handleSubmit} />
 
         {/* Forgot password */}
         <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/forgot-password')} nativeID="login-screen-forgot-password-button" testID="login-screen-forgot-password-button">
