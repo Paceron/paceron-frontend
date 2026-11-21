@@ -23,7 +23,7 @@ export function useMyInvitations(userId, email) {
     queryFn: () => listMyInvitationsService(userId, email).then((dtos) => dtos.map((dto) => toInvitationModel(dto))),
     enabled: Boolean(userId),
   });
-  return { invitations: query.data ?? [], loading: query.isLoading, error: query.error };
+  return { invitations: query.data ?? [], loading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useInvitationMutations() {

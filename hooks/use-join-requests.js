@@ -21,7 +21,7 @@ export function useMyJoinRequests(enabled = true) {
     queryFn: () => listMyJoinRequests().then((dtos) => dtos.map(toJoinRequestModel)),
     enabled,
   });
-  return { requests: query.data ?? [], loading: query.isLoading, error: query.error };
+  return { requests: query.data ?? [], loading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 // Solicitudes pending de UN equipo puntual — usado tanto por la tab
@@ -35,7 +35,7 @@ export function useTeamJoinRequests(teamId, { enabled = true } = {}) {
     queryFn: () => listTeamJoinRequests(teamId).then((dtos) => dtos.map(toJoinRequestModel)),
     enabled: Boolean(teamId) && enabled,
   });
-  return { requests: query.data ?? [], loading: query.isLoading, error: query.error };
+  return { requests: query.data ?? [], loading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 // Conteo agregado (todos los equipos del entrenador) — para el badge de
@@ -75,7 +75,9 @@ export function useTeamsJoinRequestsMap(teamIds = []) {
   const byTeamId = new Map();
   queries.forEach((q, index) => byTeamId.set(teamIds[index], q.data ?? []));
   const loading = queries.some((q) => q.isLoading);
-  return { byTeamId, loading };
+  const error = queries.find((q) => q.error)?.error ?? null;
+  const refetch = () => Promise.all(queries.map((q) => q.refetch()));
+  return { byTeamId, loading, error, refetch };
 }
 
 // Las 4 mutaciones del dominio — todas invalidan el mismo set de queries

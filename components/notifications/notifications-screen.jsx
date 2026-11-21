@@ -21,6 +21,27 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { useTeamFees } from '../../hooks/use-team-fees.js';
 import { formatMonthlyFee } from '../../utils/currency.js';
 
+function SectionErrorState({ idPrefix, message, onRetry }) {
+  return (
+    <View className="gap-2 py-2" nativeID={`${idPrefix}-error`} testID={`${idPrefix}-error`}>
+      <Text className="text-sm text-rose-600 dark:text-rose-400" nativeID={`${idPrefix}-error-message`} testID={`${idPrefix}-error-message`}>
+        {message}
+      </Text>
+      <Pressable
+        accessibilityLabel="Reintentar"
+        className="h-9 self-start items-center justify-center rounded-full border border-slate-300 px-4 active:opacity-70 dark:border-slate-600"
+        nativeID={`${idPrefix}-retry-button`}
+        onPress={onRetry}
+        testID={`${idPrefix}-retry-button`}
+      >
+        <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-retry-label`} testID={`${idPrefix}-retry-label`}>
+          Reintentar
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 // Sin nombre de grupo: InvitationResponse trae group_id pero no
 // group_name — mismo criterio ya documentado en el
 // received-invitations-screen.jsx original (ver docs/BACKEND_API_GAPS.md
@@ -140,7 +161,7 @@ function SentJoinRequestRow({ request, onCancel, cancelling }) {
 // las demás secciones de esta pantalla, para no saturar si hay mucho
 // contenido.
 function MyJoinRequestsSection() {
-  const { requests, loading } = useMyJoinRequests();
+  const { requests, loading, error, refetch } = useMyJoinRequests();
   const { cancelJoinRequest, isCancelling } = useJoinRequestMutations();
   const [cancellingId, setCancellingId] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -162,6 +183,8 @@ function MyJoinRequestsSection() {
         <View className="gap-2" nativeID="my-join-requests-loading" testID="my-join-requests-loading">
           {[0, 1].map((i) => <SkeletonBlock height={52} key={i} nativeID={`my-join-requests-loading-row-${i}`} testID={`my-join-requests-loading-row-${i}`} width="100%" />)}
         </View>
+      ) : error ? (
+        <SectionErrorState idPrefix="my-join-requests" message="No pudimos cargar tus solicitudes." onRetry={refetch} />
       ) : requests.length === 0 ? (
         <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="my-join-requests-empty" testID="my-join-requests-empty">
           No enviaste solicitudes para unirte a ningún equipo.
@@ -192,7 +215,7 @@ function TrainerPendingRequestsSection() {
   const userId = useAuthStore((s) => s.userId);
   const { teams } = useTeams();
   const administeredTeamIds = selectAdministeredTeams(teams, userId).map((t) => t.id);
-  const { byTeamId, loading } = useTeamsJoinRequestsMap(administeredTeamIds);
+  const { byTeamId, loading, error, refetch } = useTeamsJoinRequestsMap(administeredTeamIds);
   const [collapsed, setCollapsed] = useState(false);
 
   const allPending = administeredTeamIds.flatMap((teamId) => byTeamId.get(teamId) ?? []);
@@ -203,6 +226,8 @@ function TrainerPendingRequestsSection() {
         <View className="gap-2" nativeID="trainer-pending-requests-loading" testID="trainer-pending-requests-loading">
           {[0, 1].map((i) => <SkeletonBlock height={52} key={i} nativeID={`trainer-pending-requests-loading-row-${i}`} testID={`trainer-pending-requests-loading-row-${i}`} width="100%" />)}
         </View>
+      ) : error ? (
+        <SectionErrorState idPrefix="trainer-pending-requests" message="No pudimos cargar las solicitudes." onRetry={refetch} />
       ) : allPending.length === 0 ? (
         <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="trainer-pending-requests-empty" testID="trainer-pending-requests-empty">
           No tenés solicitudes de ingreso pendientes.
@@ -240,7 +265,7 @@ function NotificationsScreenContent() {
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const { invitations: myInvitations, loading: loadingInvitations } = useMyInvitations(user?.userId, user?.email);
+  const { invitations: myInvitations, loading: loadingInvitations, error: invitationsError, refetch: refetchInvitations } = useMyInvitations(user?.userId, user?.email);
   const { acceptInvitation, rejectInvitation } = useInvitationMutations();
 
   const [respondingId, setRespondingId] = useState(null);
@@ -332,6 +357,8 @@ function NotificationsScreenContent() {
             <View className="gap-2" nativeID="received-invitations-loading" testID="received-invitations-loading">
               {[0, 1].map((i) => <SkeletonBlock height={78} key={i} nativeID={`received-invitations-loading-row-${i}`} testID={`received-invitations-loading-row-${i}`} width="100%" />)}
             </View>
+          ) : invitationsError ? (
+            <SectionErrorState idPrefix="received-invitations" message="No pudimos cargar las invitaciones." onRetry={refetchInvitations} />
           ) : myInvitations.length === 0 ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="received-invitations-empty" testID="received-invitations-empty">
               No tenés invitaciones pendientes.
