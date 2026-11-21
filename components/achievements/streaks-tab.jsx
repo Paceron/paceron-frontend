@@ -8,6 +8,8 @@ import { getWeekDates, canGoOlder } from '../../utils/streak-week.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { formatDisplayDate, formatShortDate, formatWeekdayLabel } from '../../utils/format-date-display.js';
+import { ErrorState } from '../shared/error-state.jsx';
+import { StreaksTabSkeleton } from './gamification-skeletons.jsx';
 
 // Orden pedido 2026-10-14: "N días" primero (misma fila en los dos cards sin
 // importar el largo del label de abajo), después ícono+label, después mejor
@@ -69,7 +71,7 @@ function EmptyDayCell({ idPrefix, label }) {
 export function StreaksTab() {
   const router = useRouter();
   const colors = useThemeColors();
-  const { streaks, loading, error } = useStreaks();
+  const { streaks, loading, error, refetch } = useStreaks();
   const [weekOffset, setWeekOffset] = useState(0);
   // Qué racha pinta la grilla -- son distintas día a día (la estricta corta
   // con una serie salteada, la flexible no), así que mostrar siempre
@@ -82,11 +84,11 @@ export function StreaksTab() {
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
   if (loading) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streaks-tab-loading" testID="streaks-tab-loading">Cargando…</Text>;
+    return <StreaksTabSkeleton />;
   }
 
   if (error || !streaks) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streaks-tab-error" testID="streaks-tab-error">No pudimos cargar tus rachas.</Text>;
+    return <ErrorState idPrefix="streaks-tab-error" message="No pudimos cargar tus rachas." onRetry={refetch} />;
   }
 
   const olderEnabled = canGoOlder(weekOffset, streaks.days.length);

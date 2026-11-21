@@ -10,6 +10,8 @@ import { AchievementDetailModal } from './achievement-detail-modal.jsx';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { isWeb } from '../../utils/platform.js';
 import { useThemeColors } from '../../theme/colors.js';
+import { ErrorState } from '../shared/error-state.jsx';
+import { AchievementsGridSkeleton } from './gamification-skeletons.jsx';
 
 // Tocar la card abre el detalle (descripción + progreso) -- pedido
 // 2026-10-14, sirve igual para logros bloqueados (qué falta) y
@@ -80,16 +82,16 @@ function AchievementCard({ achievement, columnClass }) {
 }
 
 export function AchievementsTab() {
-  const { achievements, loading, error } = useAchievements();
+  const { achievements, loading, error, refetch } = useAchievements();
   const isNarrowWeb = useIsNarrowWeb();
   const columnClass = !isWeb || isNarrowWeb ? 'w-[48%]' : 'w-[31%]';
 
   if (loading) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="achievements-tab-loading" testID="achievements-tab-loading">Cargando…</Text>;
+    return <AchievementsGridSkeleton columnClass={columnClass} />;
   }
 
   if (error) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="achievements-tab-error" testID="achievements-tab-error">No pudimos cargar tus logros.</Text>;
+    return <ErrorState idPrefix="achievements-tab-error" message="No pudimos cargar tus logros." onRetry={refetch} />;
   }
 
   return (

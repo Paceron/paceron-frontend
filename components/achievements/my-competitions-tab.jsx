@@ -12,6 +12,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
+import { ErrorState } from '../shared/error-state.jsx';
+import { CompetitionsTabSkeleton } from './gamification-skeletons.jsx';
 
 // Mismo par de tonos fijo por color que el resto de la app (ver
 // docs/superpowers/specs/2026-10-31-visual-design-refresh-design.md,
@@ -78,15 +80,13 @@ export function MyCompetitionsTab() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const { teams } = useMyMemberTeams(userId);
-  const { competitions, loading } = useMyCompetitions(userId);
+  const { competitions, loading, error, refetch } = useMyCompetitions(userId);
   const [subTab, setSubTab] = useState('active_tab');
   const [filterTeamId, setFilterTeamId] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
   const filterCount = [filterTeamId, filterType, filterFrom, filterTo].filter(Boolean).length;
-
-  if (loading) return null;
 
   const filtered = filterCompetitionsByFields(competitions, { teamId: filterTeamId, type: filterType, from: filterFrom, to: filterTo });
   const { active, history } = splitByLifecycle(filtered);
@@ -116,8 +116,12 @@ export function MyCompetitionsTab() {
         scope="my-competitions-tab-subtabs"
         tabs={SUBTABS}
       />
-      {visibleList.length === 0 ? (
-        <Text className="py-6 text-center text-sm text-slate-400 dark:text-slate-500" nativeID="my-competitions-tab-empty" testID="my-competitions-tab-empty">
+      {loading ? (
+        <CompetitionsTabSkeleton />
+      ) : error ? (
+        <ErrorState idPrefix="my-competitions-tab-error" message="No pudimos cargar tus competencias." onRetry={refetch} />
+      ) : visibleList.length === 0 ? (
+        <Text className="py-6 text-center text-sm text-slate-500 dark:text-slate-400" nativeID="my-competitions-tab-empty" testID="my-competitions-tab-empty">
           {EMPTY_MESSAGE[subTab]}
         </Text>
       ) : (
