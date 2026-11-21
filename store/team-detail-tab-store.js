@@ -1,14 +1,15 @@
 import { create } from 'zustand';
 
-// Un solo valor alcanza -- mismo criterio que calendar-tab-store.js: la
-// pantalla de detalle de un equipo se remonta al navegar fuera y volver
-// (vía un corredor en el roster, al calendario de un grupo, etc.), lo que
-// perdía la pestaña seleccionada (useState normal). Sin persist a
-// propósito -- sobrevive nav dentro de la app, no un cold-start.
+// La pestaña se recuerda por equipo -- un solo valor global la arrastraba
+// de un equipo a otro (ej. abrir el equipo B en "grupos" porque ahí quedó
+// el equipo A, aunque el usuario no pueda verla). Sin persist a propósito:
+// sobrevive la navegación dentro de la app, no un cold-start.
 export const useTeamDetailTabStore = create((set) => ({
-  // Corredores es el default -- General se eliminó (stats/acceso a
-  // Rendimiento redundante, movida la descripción a un modal propio, ver
-  // team-detail-screen.jsx).
+  activeTeamId: null,
   activeTab: 'corredores',
+  ensureTeam: (teamId) => set((state) => {
+    if (String(state.activeTeamId) === String(teamId)) return state;
+    return { activeTeamId: teamId ?? null, activeTab: 'corredores' };
+  }),
   setActiveTab: (activeTab) => set({ activeTab }),
 }));

@@ -720,15 +720,31 @@ function TeamDetailScreenContent({ teamId }) {
   // `?tab=` sigue pudiendo forzar una pestaña puntual al entrar, pero
   // solo una vez por montaje (si no, pisaría la pestaña recordada en
   // cualquier re-render futuro de este mismo montaje).
-  const activeTab = useTeamDetailTabStore((s) => s.activeTab);
+  const storedTab = useTeamDetailTabStore((s) => s.activeTab);
+  const storedTeamId = useTeamDetailTabStore((s) => s.activeTeamId);
+  const ensureTeamTab = useTeamDetailTabStore((s) => s.ensureTeam);
   const setActiveTab = useTeamDetailTabStore((s) => s.setActiveTab);
+  const activeTab = String(storedTeamId) === String(team.id) ? storedTab : 'corredores';
+  useEffect(() => {
+    ensureTeamTab(team.id);
+  }, [ensureTeamTab, team.id]);
+  // Cada pestaña se monta la primera vez que se abre y queda montada: al
+  // volver, filtros, scroll y queries conservan su estado en vez de
+  // reiniciarse. Las que nunca se visitaron no se montan.
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set([activeTab]));
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
+  }, [activeTab]);
   const appliedTabParamRef = useRef(false);
   useEffect(() => {
     if (appliedTabParamRef.current) return;
     appliedTabParamRef.current = true;
     const tab = TAB_ALIASES[params.tab] ?? params.tab;
-    if (TABS.some((t) => t.id === tab)) setActiveTab(tab);
-  }, [params.tab, setActiveTab]);
+    const visibleTabIds = TABS
+      .filter((item) => item.id !== 'grupos' || isTrainerView)
+      .map((item) => item.id);
+    if (visibleTabIds.includes(tab)) setActiveTab(tab);
+  }, [isTrainerView, params.tab, setActiveTab]);
   const scrollViewRef = useRef(null);
   const focusCompetitionId = params.focus ?? null;
   const [search, setSearch] = useState('');
@@ -1191,11 +1207,31 @@ function TeamDetailScreenContent({ teamId }) {
         )}
 
         <TabBar active={activeTab} badges={{ competencias: competitionsHasUnseen, corredores: hasPendingRequests }} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
-        {activeTab === 'corredores' && corredoresContent}
-        {activeTab === 'grupos' && gruposContent}
-        {activeTab === 'leaderboard' && leaderboardContent}
-        {activeTab === 'competencias' && competitionsContent}
-        {activeTab === 'rendimiento' && <DashboardScreen teamId={team.id} />}
+        {visitedTabs.has('corredores') ? (
+          <View nativeID="team-detail-tab-corredores" style={{ display: activeTab === 'corredores' ? 'flex' : 'none' }} testID="team-detail-tab-corredores">
+            {corredoresContent}
+          </View>
+        ) : null}
+        {visitedTabs.has('grupos') ? (
+          <View nativeID="team-detail-tab-grupos" style={{ display: activeTab === 'grupos' ? 'flex' : 'none' }} testID="team-detail-tab-grupos">
+            {gruposContent}
+          </View>
+        ) : null}
+        {visitedTabs.has('leaderboard') ? (
+          <View nativeID="team-detail-tab-leaderboard" style={{ display: activeTab === 'leaderboard' ? 'flex' : 'none' }} testID="team-detail-tab-leaderboard">
+            {leaderboardContent}
+          </View>
+        ) : null}
+        {visitedTabs.has('competencias') ? (
+          <View nativeID="team-detail-tab-competencias" style={{ display: activeTab === 'competencias' ? 'flex' : 'none' }} testID="team-detail-tab-competencias">
+            {competitionsContent}
+          </View>
+        ) : null}
+        {visitedTabs.has('rendimiento') ? (
+          <View nativeID="team-detail-tab-rendimiento" style={{ display: activeTab === 'rendimiento' ? 'flex' : 'none' }} testID="team-detail-tab-rendimiento">
+            <DashboardScreen teamId={team.id} />
+          </View>
+        ) : null}
       </ScreenCard>
 
       <TeamInfoModal
