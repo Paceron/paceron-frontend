@@ -199,13 +199,13 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
     <>
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="group-calendar-day-screen-scroll"
         showsVerticalScrollIndicator={false}
         testID="group-calendar-day-screen-scroll"
       >
         <ScreenCard nativeID="group-calendar-day-screen-container" testID="group-calendar-day-screen-container">
-          <View className="mb-8 flex-row items-center gap-2" nativeID="group-calendar-day-screen-header" testID="group-calendar-day-screen-header">
+          <View className="mb-6 flex-row items-center gap-2" nativeID="group-calendar-day-screen-header" testID="group-calendar-day-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
               nativeID="group-calendar-day-screen-back-button"

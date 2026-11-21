@@ -248,14 +248,14 @@ function PaymentsScreenContent() {
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="payments-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="payments-screen-scroll"
     >
       <ScreenCard maxWidthClassName="max-w-5xl" nativeID="payments-screen-container" testID="payments-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="payments-screen-header" testID="payments-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="payments-screen-header" testID="payments-screen-header">
           {from === 'profile' ? (
             <>
               <Pressable

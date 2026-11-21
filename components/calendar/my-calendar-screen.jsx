@@ -120,7 +120,7 @@ function MyCalendarScreenContent() {
     <View className="flex-1" nativeID="my-calendar-screen-root" testID="my-calendar-screen-root">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="my-calendar-screen-scroll"
         refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
         showsVerticalScrollIndicator={false}

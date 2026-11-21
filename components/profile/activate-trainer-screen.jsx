@@ -70,14 +70,14 @@ export function ActivateTrainerScreen() {
       nativeID="activate-trainer-screen-scroll"
       testID="activate-trainer-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       enableOnAndroid
       extraScrollHeight={24}
     >
       <ScreenCard nativeID="activate-trainer-screen-container" testID="activate-trainer-screen-container">
-        <View nativeID="activate-trainer-screen-header" testID="activate-trainer-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="activate-trainer-screen-header" testID="activate-trainer-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="activate-trainer-screen-back-button"
             testID="activate-trainer-screen-back-button"

@@ -227,14 +227,14 @@ function EditProfileForm({ user }) {
       nativeID="edit-profile-screen-scroll"
       testID="edit-profile-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       enableOnAndroid
       extraScrollHeight={24}
     >
       <ScreenCard nativeID="edit-profile-screen-container" testID="edit-profile-screen-container">
-        <View nativeID="edit-profile-screen-header" testID="edit-profile-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="edit-profile-screen-header" testID="edit-profile-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="edit-profile-screen-back-button"
             testID="edit-profile-screen-back-button"

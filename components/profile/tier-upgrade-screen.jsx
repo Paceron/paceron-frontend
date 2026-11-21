@@ -454,12 +454,12 @@ export function TierUpgradeScreen() {
       nativeID="tier-upgrade-screen-scroll"
       testID="tier-upgrade-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
     >
       <ScreenCard nativeID="tier-upgrade-screen-container" testID="tier-upgrade-screen-container">
-        <View nativeID="tier-upgrade-screen-header" testID="tier-upgrade-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="tier-upgrade-screen-header" testID="tier-upgrade-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="tier-upgrade-screen-back-button"
             testID="tier-upgrade-screen-back-button"

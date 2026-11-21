@@ -6,7 +6,7 @@ import { ErrorState } from './error-state.jsx';
 
 function FormScreenHeader({ idPrefix, onBack, title }) {
   return (
-    <View className="mb-8 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+    <View className="mb-6 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
       <IconButton
         icon="arrow-left"
         idPrefix={`${idPrefix}-back-button`}
@@ -30,7 +30,7 @@ export function FormScreenSkeleton({ idPrefix = 'form-screen', onBack }) {
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID={`${idPrefix}-skeleton-scroll`}
       showsVerticalScrollIndicator={false}
       testID={`${idPrefix}-skeleton-scroll`}
@@ -66,7 +66,7 @@ export function FormScreenError({ idPrefix = 'form-screen', message, onBack, onR
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID={`${idPrefix}-error-scroll`}
       showsVerticalScrollIndicator={false}
       testID={`${idPrefix}-error-scroll`}

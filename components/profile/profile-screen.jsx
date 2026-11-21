@@ -389,7 +389,7 @@ function DangerZone({ onDelete, hasTrainerRole, onDeactivateTrainer }) {
 // para que el swap a contenido real no mueva el layout.
 function ProfileSkeleton() {
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen-skeleton" testID="profile-screen-skeleton">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-6" nativeID="profile-screen-skeleton" testID="profile-screen-skeleton">
       <ScreenCard nativeID="profile-screen-skeleton-content" testID="profile-screen-skeleton-content">
         <SkeletonBlock height={28} nativeID="profile-screen-skeleton-title" rounded="rounded-lg" testID="profile-screen-skeleton-title" width={140} />
         <View className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-skeleton-header" testID="profile-screen-skeleton-header">
@@ -602,7 +602,7 @@ export function ProfileScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="profile-screen">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-6" nativeID="profile-screen" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="profile-screen">
       <ScreenCard nativeID="profile-screen-content" testID="profile-screen-content">
         <Text
           style={{ fontFamily: 'Orbitron_700Bold' }}

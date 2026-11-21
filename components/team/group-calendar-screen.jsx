@@ -396,7 +396,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
     <View className="relative flex-1" nativeID="group-calendar-screen-root" ref={screenRootRef} testID="group-calendar-screen-root">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="group-calendar-screen-scroll"
         refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
         showsVerticalScrollIndicator={false}

@@ -118,14 +118,14 @@ function EditGroupScreenContent({ teamId, groupId }) {
     <>
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="edit-group-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="edit-group-screen-scroll"
     >
       <ScreenCard nativeID="edit-group-screen-container" testID="edit-group-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="edit-group-screen-header" testID="edit-group-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="edit-group-screen-header" testID="edit-group-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="edit-group-screen-back-button"

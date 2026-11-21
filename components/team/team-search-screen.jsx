@@ -219,9 +219,9 @@ function TeamSearchScreenContent() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="team-search-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-6" nativeID="team-search-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
       <ScreenCard nativeID="team-search-screen-container" testID="team-search-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="team-search-screen-header" testID="team-search-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="team-search-screen-header" testID="team-search-screen-header">
           <Pressable className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70" nativeID="team-search-screen-back-button" onPress={() => router.back()} testID="team-search-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>

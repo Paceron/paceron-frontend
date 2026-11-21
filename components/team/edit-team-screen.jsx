@@ -118,14 +118,14 @@ function EditTeamForm({ team, teamId }) {
     <>
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="edit-team-screen-scroll"
         refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
         showsVerticalScrollIndicator={false}
         testID="edit-team-screen-scroll"
       >
         <ScreenCard nativeID="edit-team-screen-container" testID="edit-team-screen-container">
-          <View className="mb-8 flex-row items-center gap-2" nativeID="edit-team-screen-header" testID="edit-team-screen-header">
+          <View className="mb-6 flex-row items-center gap-2" nativeID="edit-team-screen-header" testID="edit-team-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
               nativeID="edit-team-screen-back-button"

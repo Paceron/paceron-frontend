@@ -10,13 +10,13 @@ export function PaymentsScreenSkeleton({ idPrefix = 'payments-screen-skeleton', 
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID={`${idPrefix}-scroll`}
       showsVerticalScrollIndicator={false}
       testID={`${idPrefix}-scroll`}
     >
       <ScreenCard maxWidthClassName="max-w-5xl" nativeID={`${idPrefix}-container`} testID={`${idPrefix}-container`}>
-        <View className="mb-8 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
+        <View className="mb-6 flex-row items-center gap-2" nativeID={`${idPrefix}-header`} testID={`${idPrefix}-header`}>
           {onBack ? (
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           ) : null}

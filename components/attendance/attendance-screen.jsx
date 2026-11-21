@@ -560,7 +560,7 @@ function AttendanceCascade() {
     <View className="flex-1" nativeID={`${ID_PREFIX}-root`} testID={`${ID_PREFIX}-root`}>
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID={`${ID_PREFIX}-scroll`}
         // Pull-to-refresh solo en nativo (tarea 5.8, D11): el mismo ternario
         // textual que usa el resto de pantallas. En web el gesture no existe y

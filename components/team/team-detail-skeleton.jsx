@@ -10,7 +10,7 @@ export function TeamDetailSkeleton({ idPrefix = 'team-detail-skeleton', onBack }
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID={`${idPrefix}-scroll`}
       showsVerticalScrollIndicator={false}
       testID={`${idPrefix}-scroll`}

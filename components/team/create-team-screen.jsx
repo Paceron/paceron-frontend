@@ -187,11 +187,11 @@ function CreateTeamScreenContent() {
       nativeID="create-team-screen-scroll"
       testID="create-team-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       showsVerticalScrollIndicator={false}
     >
       <ScreenCard nativeID="create-team-screen-container" testID="create-team-screen-container">
-        <View nativeID="create-team-screen-header" testID="create-team-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="create-team-screen-header" testID="create-team-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="create-team-screen-back-button"
             testID="create-team-screen-back-button"
