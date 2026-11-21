@@ -19,6 +19,7 @@ import { Row, Col, InputField, DateField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { LocationPicker } from '../shared/location-picker';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { FormScreenError, FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
@@ -73,7 +74,7 @@ function TabBar({ active, onChange }) {
 export function EditProfileScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
+  const { user, loading: userLoading, fetching: userFetching, error: userError, refetch: refetchUser } = useUser(userId);
 
   // userId (sesión), no user (perfil, todavía cargando en el momento del
   // mount) — mismo criterio que components/guards/require-auth.jsx.
@@ -82,7 +83,21 @@ export function EditProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  if (!user) return null;
+  if (userLoading) return <FormScreenSkeleton idPrefix="edit-profile" onBack={() => router.back()} />;
+
+  if (!user) {
+    return (
+      <FormScreenError
+        idPrefix="edit-profile"
+        message={userError ? 'No pudimos cargar tu perfil.' : 'No encontramos tu perfil.'}
+        onBack={() => router.back()}
+        onRetry={userError ? refetchUser : undefined}
+        retrying={userFetching}
+        title="Editar perfil"
+      />
+    );
+  }
+
   return <EditProfileForm user={user} />;
 }
 

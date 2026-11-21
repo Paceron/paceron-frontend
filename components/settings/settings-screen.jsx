@@ -10,6 +10,7 @@ import { useUser, useUserMutations } from '../../hooks/use-user.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { FormScreenError, FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TermsModal } from '../legal/terms-modal.jsx';
@@ -47,7 +48,7 @@ function SettingsScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
+  const { user, loading: userLoading, fetching: userFetching, error: userError, refetch: refetchUser } = useUser(userId);
   const { updateUser } = useUserMutations();
   const { setThemeMode } = useThemeMode();
 
@@ -57,7 +58,20 @@ function SettingsScreenContent() {
 
   // user (perfil) puede tardar en cargar — mismo guard que
   // edit-profile-screen.jsx, evita leer user.defaultTheme/etc contra null.
-  if (!user) return null;
+  if (userLoading) return <FormScreenSkeleton idPrefix="settings-screen" onBack={() => router.back()} />;
+
+  if (!user) {
+    return (
+      <FormScreenError
+        idPrefix="settings-screen"
+        message={userError ? 'No pudimos cargar tu perfil.' : 'No encontramos tu perfil.'}
+        onBack={() => router.back()}
+        onRetry={userError ? refetchUser : undefined}
+        retrying={userFetching}
+        title="Ajustes"
+      />
+    );
+  }
 
   const handleThemeChange = async (mode) => {
     setSavingTheme(true);

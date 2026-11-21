@@ -33,7 +33,13 @@ export function userQueryOptions(userId) {
 
 export function useUser(userId) {
   const query = useQuery(userQueryOptions(userId));
-  return { user: query.data ?? null, loading: query.isLoading };
+  return {
+    user: query.data ?? null,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error ?? null,
+    refetch: query.refetch,
+  };
 }
 
 export function permissionsQueryOptions(userId) {
