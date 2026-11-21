@@ -130,7 +130,7 @@ function TrainingComparisonContent() {
   return (
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="training-comparison-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
@@ -189,7 +189,7 @@ function TrainingComparisonContent() {
           </Text>
         ) : null}
 
-        {loading ? (
+        {loading && !list ? (
           <View className="items-center py-10" nativeID="training-comparison-loading" testID="training-comparison-loading">
             <ActivityIndicator color={colors.primary} />
           </View>

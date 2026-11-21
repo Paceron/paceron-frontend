@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth-store.js';
 import { getComparisons, getSessionComparison } from '../services/activity-comparison.js';
 import { toComparisonListModel, toSessionComparisonModel } from '../services/normalizers.js';
@@ -20,6 +20,7 @@ export function useComparisonList({ dateFrom, dateTo, teamId, kind, enabled = tr
     queryKey: [...ACTIVITY_COMPARISON_KEYS.list(userId), dateFrom, dateTo, teamId ?? 'all', kind ?? 'all'],
     queryFn: () => getComparisons({ dateFrom, dateTo, teamId, kind }).then(toComparisonListModel),
     enabled: enabled && Boolean(userId) && Boolean(dateFrom) && Boolean(dateTo),
+    placeholderData: keepPreviousData,
     retry: retryUnlessClientError,
   });
   return {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -75,11 +76,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
   ]));
 
   if (loadingTeam || loadingInvitations) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="invite-team" onBack={() => router.back()} />;
   }
 
   if (!team) {
@@ -128,14 +125,14 @@ function InviteTeamMembersScreenContent({ teamId }) {
     <View className="flex-1" nativeID="invite-team-screen-root" testID="invite-team-screen-root">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="invite-team-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="invite-team-screen-scroll"
     >
       <ScreenCard nativeID="invite-team-screen-container" testID="invite-team-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="invite-team-screen-header" testID="invite-team-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="invite-team-screen-header" testID="invite-team-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="invite-team-screen-back-button"
