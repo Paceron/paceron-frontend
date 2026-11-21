@@ -227,7 +227,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
               <StatusBadge hasDebt={hasDebt} status={status} />
 
               <View className="mt-4 flex-row items-baseline gap-1" nativeID="team-subscription-screen-price-row" testID="team-subscription-screen-price-row">
-                <Text className="text-2xl font-bold text-primary" nativeID="team-subscription-screen-price" testID="team-subscription-screen-price">
+                <Text className="text-2xl font-bold text-[#3c6b12] dark:text-primary" nativeID="team-subscription-screen-price" testID="team-subscription-screen-price">
                   {formatMonthlyFee(membershipFee)}
                 </Text>
                 <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID="team-subscription-screen-price-period" testID="team-subscription-screen-price-period">

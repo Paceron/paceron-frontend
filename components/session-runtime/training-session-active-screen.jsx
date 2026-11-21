@@ -58,7 +58,7 @@ const STATUS_META = {
 const PHASE_META = {
   ready: { label: 'Listo para iniciar', color: 'text-slate-500 dark:text-slate-400' },
   countdown: { label: 'Preparando…', color: 'text-amber-600 dark:text-amber-400' },
-  running: { label: 'En curso', color: 'text-primary' },
+  running: { label: 'En curso', color: 'text-[#3c6b12] dark:text-primary' },
   paused: { label: 'En pausa', color: 'text-amber-600 dark:text-amber-400' },
   finishing: { label: 'Finalizando', color: 'text-slate-500 dark:text-slate-400' },
 };

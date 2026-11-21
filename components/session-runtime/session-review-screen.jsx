@@ -196,7 +196,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
             onPress={() => router.push(`/training-comparison/session?sessionInstanceId=${slot.sessionInstanceId ?? slot.sessionInstance?.id}`)}
             testID="session-review-screen-comparison-button"
           >
-            <Text className="text-sm font-semibold text-primary" nativeID="session-review-screen-comparison-label" testID="session-review-screen-comparison-label">
+            <Text className="text-sm font-semibold text-[#3c6b12] dark:text-primary" nativeID="session-review-screen-comparison-label" testID="session-review-screen-comparison-label">
               Ver comparación
             </Text>
             <MaterialCommunityIcons color={colors.primary} name="chart-line" size={18} />

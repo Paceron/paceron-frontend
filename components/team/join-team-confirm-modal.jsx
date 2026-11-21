@@ -42,7 +42,7 @@ export function JoinTeamConfirmModal({ visible, teamName, membershipFee, onCance
           </Text>
 
           <View className="mt-2 flex-row items-baseline gap-1" nativeID="join-team-confirm-modal-price-row" testID="join-team-confirm-modal-price-row">
-            <Text className="text-2xl font-bold text-primary" nativeID="join-team-confirm-modal-price" testID="join-team-confirm-modal-price">
+            <Text className="text-2xl font-bold text-[#3c6b12] dark:text-primary" nativeID="join-team-confirm-modal-price" testID="join-team-confirm-modal-price">
               {formatMonthlyFee(membershipFee)}
             </Text>
             <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID="join-team-confirm-modal-price-period" testID="join-team-confirm-modal-price-period">

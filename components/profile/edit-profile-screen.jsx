@@ -55,7 +55,7 @@ function TabBar({ active, onChange }) {
           >
             <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
             <Text
-              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
+              className={`text-sm ${isActive ? 'font-semibold text-[#3c6b12] dark:text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
               nativeID={`edit-profile-screen-tab-${tab.id}-label`}
               testID={`edit-profile-screen-tab-${tab.id}-label`}
             >

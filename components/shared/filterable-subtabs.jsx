@@ -28,7 +28,7 @@ export function FilterableSubtabs({ tabs, active, onChange, badges, scope, filte
         >
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="filter-variant" size={18} />
           {filterCount > 0 && (
-            <Text className="text-xs font-semibold text-primary" nativeID={`${scope}-filter-count`} testID={`${scope}-filter-count`}>{filterCount}</Text>
+            <Text className="text-xs font-semibold text-[#3c6b12] dark:text-primary" nativeID={`${scope}-filter-count`} testID={`${scope}-filter-count`}>{filterCount}</Text>
           )}
         </Pressable>
       </View>

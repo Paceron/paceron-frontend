@@ -70,7 +70,7 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
       </Text>
       {isPaid ? (
         <View className="mb-2 mt-1 flex-row items-baseline gap-1" nativeID={`received-invitation-${slug}-fee-row`} testID={`received-invitation-${slug}-fee-row`}>
-          <Text className="text-xs font-bold text-primary" nativeID={`received-invitation-${slug}-fee`} testID={`received-invitation-${slug}-fee`}>
+          <Text className="text-xs font-bold text-[#3c6b12] dark:text-primary" nativeID={`received-invitation-${slug}-fee`} testID={`received-invitation-${slug}-fee`}>
             {formatMonthlyFee(membershipFee)}
           </Text>
           <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400" nativeID={`received-invitation-${slug}-fee-period`} testID={`received-invitation-${slug}-fee-period`}>

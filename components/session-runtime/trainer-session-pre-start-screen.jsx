@@ -288,7 +288,7 @@ function TrainerSessionPreStartScreenContent() {
               onPress={() => setParticipantsExpanded(true)}
               testID="trainer-session-pre-start-screen-participants-expand-button"
             >
-              <Text className="text-sm font-semibold text-primary" nativeID="trainer-session-pre-start-screen-participants-expand-label" testID="trainer-session-pre-start-screen-participants-expand-label">
+              <Text className="text-sm font-semibold text-[#3c6b12] dark:text-primary" nativeID="trainer-session-pre-start-screen-participants-expand-label" testID="trainer-session-pre-start-screen-participants-expand-label">
                 Ver todos ({sortedMembers.length})
               </Text>
             </Pressable>

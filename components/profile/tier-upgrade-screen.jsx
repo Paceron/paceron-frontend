@@ -90,7 +90,7 @@ function TierCard({ tier, isCurrent, loading, onUpgrade, currentTierName }) {
           </Text>
         </View>
         <View className="mt-1 flex-row items-baseline justify-center gap-1" nativeID={`${idPrefix}-price-row`} testID={`${idPrefix}-price-row`}>
-          <Text className="text-lg font-bold text-primary" nativeID={`${idPrefix}-price`} testID={`${idPrefix}-price`}>
+          <Text className="text-lg font-bold text-[#3c6b12] dark:text-primary" nativeID={`${idPrefix}-price`} testID={`${idPrefix}-price`}>
             {formatTierPrice(tier.tierAmount, tier.paymentRequired)}
           </Text>
           {tier.paymentRequired && (

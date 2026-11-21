@@ -156,7 +156,7 @@ export function HomeWebNarrowScreen() {
           >
             <MaterialCommunityIcons color={colors.primary} name="creation" size={16} />
             <Text
-              className="text-xs font-semibold uppercase tracking-wide text-primary"
+              className="text-xs font-semibold uppercase tracking-wide text-[#3c6b12] dark:text-primary"
               nativeID="home-web-narrow-screen-ai-panel-badge-label"
               testID="home-web-narrow-screen-ai-panel-badge-label"
             >

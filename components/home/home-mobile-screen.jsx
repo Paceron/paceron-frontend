@@ -168,7 +168,7 @@ export function HomeMobileScreen() {
               size={16}
             />
             <Text
-              className="text-xs font-semibold uppercase tracking-wide text-primary"
+              className="text-xs font-semibold uppercase tracking-wide text-[#3c6b12] dark:text-primary"
               nativeID="home-mobile-ai-panel-badge-label"
               testID="home-mobile-ai-panel-badge-label"
             >

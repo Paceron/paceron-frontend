@@ -57,7 +57,7 @@ function PreviewBox({ competition, onPress, wide }) {
           </View>
           <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-status-row`} testID={`${idPrefix}-status-row`}>
             <MaterialCommunityIcons color={colors.primary} name="clock-outline" size={12} />
-            <Text className="text-xs font-semibold text-primary" nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
+            <Text className="text-xs font-semibold text-[#3c6b12] dark:text-primary" nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
               {statusLabel(competition)}
             </Text>
           </View>

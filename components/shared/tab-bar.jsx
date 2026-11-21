@@ -55,7 +55,7 @@ const VARIANT = {
     iconSize: 13,
     activeClassName: 'border-primary',
     inactiveClassName: 'border-transparent',
-    labelActiveClassName: 'font-semibold text-primary',
+    labelActiveClassName: 'font-semibold text-on-primary-tint dark:text-primary',
     labelInactiveClassName: 'font-medium text-slate-500 dark:text-slate-400',
     labelClassName: 'text-xs',
   },

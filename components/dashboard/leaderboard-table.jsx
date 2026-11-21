@@ -346,7 +346,7 @@ export function LeaderboardTable({
           {loadingMore ? (
             <ActivityIndicator color={colors.primary} nativeID={`${id}-load-more-spinner`} size="small" testID={`${id}-load-more-spinner`} />
           ) : (
-            <Text className="text-xs font-semibold text-primary" nativeID={`${id}-load-more-label`} testID={`${id}-load-more-label`}>
+            <Text className="text-xs font-semibold text-[#3c6b12] dark:text-primary" nativeID={`${id}-load-more-label`} testID={`${id}-load-more-label`}>
               Cargar más
             </Text>
           )}

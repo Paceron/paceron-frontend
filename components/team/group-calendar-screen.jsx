@@ -149,7 +149,7 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
-        className={`text-base font-bold ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+        className={`text-base font-bold ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-green-900 dark:text-primary' : 'text-slate-700 dark:text-slate-200'}`}
         nativeID={`group-calendar-day-${date.dateString}-label`}
         testID={`group-calendar-day-${date.dateString}-label`}
       >
