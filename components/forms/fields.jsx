@@ -812,15 +812,19 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         nativeID={`picker-field-${slug}-modal`}
         testID={`picker-field-${slug}-modal`}
       >
-        <Pressable
+        <View
           className="flex-1 justify-center bg-black/50 px-6"
-          onPress={() => setVisible(false)}
-          nativeID={`picker-field-${slug}-modal-backdrop`}
-          testID={`picker-field-${slug}-modal-backdrop`}
+          nativeID={`picker-field-${slug}-modal-container`}
+          testID={`picker-field-${slug}-modal-container`}
         >
           <Pressable
+            className="absolute inset-0"
+            onPress={() => setVisible(false)}
+            nativeID={`picker-field-${slug}-modal-backdrop`}
+            testID={`picker-field-${slug}-modal-backdrop`}
+          />
+          <View
             className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
-            onPress={() => {}}
             nativeID={`picker-field-${slug}-modal-content`}
             testID={`picker-field-${slug}-modal-content`}
           >
@@ -862,8 +866,8 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
                 })
               )}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -954,16 +958,20 @@ export function InlinePicker({
         transparent
         visible={visible}
       >
-        <Pressable
+        <View
           className="flex-1 justify-center bg-black/50 px-6"
-          nativeID={`inline-picker-${scope}-modal-backdrop`}
-          onPress={() => setVisible(false)}
-          testID={`inline-picker-${scope}-modal-backdrop`}
+          nativeID={`inline-picker-${scope}-modal-container`}
+          testID={`inline-picker-${scope}-modal-container`}
         >
           <Pressable
+            className="absolute inset-0"
+            nativeID={`inline-picker-${scope}-modal-backdrop`}
+            onPress={() => setVisible(false)}
+            testID={`inline-picker-${scope}-modal-backdrop`}
+          />
+          <View
             className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
             nativeID={`inline-picker-${scope}-modal-content`}
-            onPress={() => {}}
             testID={`inline-picker-${scope}-modal-content`}
           >
             <ScrollView
@@ -1004,8 +1012,8 @@ export function InlinePicker({
                 })
               )}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </>
   );

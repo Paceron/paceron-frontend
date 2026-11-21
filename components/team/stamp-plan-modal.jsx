@@ -214,11 +214,11 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
   return (
     <>
       <Modal animationType="fade" nativeID="stamp-plan-modal" onRequestClose={handleClose} testID="stamp-plan-modal" transparent visible={visible}>
-        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="stamp-plan-modal-backdrop" onPress={handleClose} testID="stamp-plan-modal-backdrop">
-          <Pressable
+        <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="stamp-plan-modal-container" testID="stamp-plan-modal-container">
+          <Pressable className="absolute inset-0" nativeID="stamp-plan-modal-backdrop" onPress={handleClose} testID="stamp-plan-modal-backdrop" />
+          <View
             className="max-h-[85%] w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
             nativeID="stamp-plan-modal-card"
-            onPress={() => {}}
             testID="stamp-plan-modal-card"
           >
             <Text className="mb-2 text-lg font-bold text-slate-900 dark:text-white" nativeID="stamp-plan-modal-title" testID="stamp-plan-modal-title">
@@ -297,8 +297,8 @@ export function StampPlanModal({ visible, onClose, groupId, ownerId, startDate }
                 Elegí un plan para ver el preview de los días.
               </Text>
             )}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />

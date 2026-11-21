@@ -225,19 +225,22 @@ export function SearchablePickerField({
           style={{ flex: 1 }}
           testID={`${idPrefix}-modal-keyboard-avoiding`}
         >
-          {/* Backdrop presable: cierra al tocar afuera (CLAUDE.md, sección
-            "Modales"). La card de adentro también es Pressable con un onPress
-            no-op, que existe solo para frenar la propagación del click. */}
-          <Pressable
+          {/* Backdrop y card HERMANOS: un card hijo del backdrop rompe el
+            scroll del ScrollView en Android (CLAUDE.md, "Modales"). */}
+          <View
             className="flex-1 items-center justify-center bg-black/50 px-4"
-            nativeID={`${idPrefix}-modal-backdrop`}
-            onPress={closePicker}
-            testID={`${idPrefix}-modal-backdrop`}
+            nativeID={`${idPrefix}-modal-container`}
+            testID={`${idPrefix}-modal-container`}
           >
             <Pressable
+              className="absolute inset-0"
+              nativeID={`${idPrefix}-modal-backdrop`}
+              onPress={closePicker}
+              testID={`${idPrefix}-modal-backdrop`}
+            />
+            <View
               className="max-h-[85%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
               nativeID={`${idPrefix}-modal-card`}
-              onPress={() => {}}
               testID={`${idPrefix}-modal-card`}
             >
               <View className="mb-2 flex-row items-center" nativeID={`${idPrefix}-modal-header`} testID={`${idPrefix}-modal-header`}>
@@ -489,8 +492,8 @@ export function SearchablePickerField({
                   </View>
                 )}
               </ScrollView>
-            </Pressable>
-          </Pressable>
+            </View>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     </>

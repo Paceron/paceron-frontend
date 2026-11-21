@@ -33,8 +33,9 @@ export function BulkDeleteExercisesModal({ visible, items, withUsage, onCancel, 
 
   return (
     <Modal animationType="fade" nativeID="bulk-delete-exercises-modal" onRequestClose={handleCancel} testID="bulk-delete-exercises-modal" transparent visible={visible}>
-      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="bulk-delete-exercises-modal-backdrop" onPress={handleCancel} testID="bulk-delete-exercises-modal-backdrop">
-        <Pressable className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface" nativeID="bulk-delete-exercises-modal-card" onPress={() => {}} testID="bulk-delete-exercises-modal-card">
+      <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="bulk-delete-exercises-modal-container" testID="bulk-delete-exercises-modal-container">
+        <Pressable className="absolute inset-0" nativeID="bulk-delete-exercises-modal-backdrop" onPress={handleCancel} testID="bulk-delete-exercises-modal-backdrop" />
+        <View className="w-full max-w-md rounded-2xl border border-red-300 bg-white p-6 shadow-xl dark:border-red-900/50 dark:bg-surface" nativeID="bulk-delete-exercises-modal-card" testID="bulk-delete-exercises-modal-card">
           <View className="mb-3 flex-row items-center gap-2" nativeID="bulk-delete-exercises-modal-header" testID="bulk-delete-exercises-modal-header">
             <MaterialCommunityIcons color="#ef4444" name="alert-outline" size={20} />
             <Text className="text-lg font-bold text-red-700 dark:text-red-400" nativeID="bulk-delete-exercises-modal-title" testID="bulk-delete-exercises-modal-title">
@@ -90,8 +91,8 @@ export function BulkDeleteExercisesModal({ visible, items, withUsage, onCancel, 
               )}
             </Pressable>
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
