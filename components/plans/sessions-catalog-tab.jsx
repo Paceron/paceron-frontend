@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,6 +17,9 @@ import { DeleteCatalogItemModal } from './delete-catalog-item-modal.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
+import { ErrorState } from '../shared/error-state.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
+import { visibleQueryError } from '../../utils/query-state.js';
 
 // Planes (deduplicados por plan, no por día) que referencian esta
 // sesión en alguno de sus días. Ver docs/superpowers/specs/2026-09-03-exercises-sessions-catalog-design.md.
@@ -121,12 +124,11 @@ function SessionRow({ session, usedIn, onOpenMenu, onShowUsage, containerRef }) 
 }
 
 export function SessionsCatalogTab() {
-  const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { sessions, loading: sessionsLoading } = useSessions(userId);
+  const { sessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions(userId);
   const { deleteSession, cloneSession } = useSessionMutations();
   useExercises(userId); // solo para precargar el cache que usa SessionExercisesPreview de cada fila
-  const { plans, loading: plansLoading } = useTrainingPlans(userId);
+  const { plans, loading: plansLoading, error: plansError, refetch: refetchPlans } = useTrainingPlans(userId);
 
   const router = useRouter();
   const [modalSession, setModalSession] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
@@ -135,6 +137,8 @@ export function SessionsCatalogTab() {
   const containerRef = useRef(null);
   const [openMenu, setOpenMenu] = useState(null); // { anchor, session } | null
   const loading = sessionsLoading || plansLoading;
+  const error = visibleQueryError(sessions, sessionsError) ?? visibleQueryError(plans, plansError);
+  const retry = () => Promise.all([refetchSessions(), refetchPlans()]);
 
   const handleOpenMenu = (anchor, session) => setOpenMenu({ anchor, session });
   const handleCloseMenu = () => setOpenMenu(null);
@@ -178,9 +182,13 @@ export function SessionsCatalogTab() {
         variant="nested"
       >
         {loading ? (
-          <View className="items-center py-6" nativeID="sessions-catalog-loading" testID="sessions-catalog-loading">
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <SkeletonPulse className="gap-3" nativeID="sessions-catalog-loading" testID="sessions-catalog-loading">
+            {[0, 1, 2].map((index) => (
+              <SkeletonBlock className="rounded-xl" height={64} key={index} nativeID={`sessions-catalog-loading-row-${index}`} testID={`sessions-catalog-loading-row-${index}`} width="100%" />
+            ))}
+          </SkeletonPulse>
+        ) : error ? (
+          <ErrorState idPrefix="sessions-catalog-error" message="No pudimos cargar tus sesiones." onRetry={retry} />
         ) : sessions.length === 0 ? (
           <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="sessions-catalog-empty" testID="sessions-catalog-empty">
             Todavía no creaste ninguna sesión.

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -16,6 +16,9 @@ import { BulkDeleteExercisesModal } from './bulk-delete-exercises-modal.jsx';
 import { AttachToSessionPicker } from './attach-to-session-picker.jsx';
 import { UsageListModal } from './usage-list-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { ErrorState } from '../shared/error-state.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
+import { visibleQueryError } from '../../utils/query-state.js';
 
 // Sesiones (deduplicadas) que referencian este ejercicio en cualquiera
 // de sus ejercicios (lista libre, cualquier rol) — uso directo, no
@@ -171,9 +174,9 @@ function ExerciseRow({ exercise, usedIn, onOpenMenu, onShowUsage, containerRef, 
 export function ExercisesCatalogTab() {
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { exercises, loading } = useExercises(userId);
+  const { exercises, loading, error: exercisesError, refetch: refetchExercises } = useExercises(userId);
   const { deleteExercise, cloneExercise } = useExerciseMutations();
-  const { sessions } = useSessions(userId);
+  const { sessions, error: sessionsError, refetch: refetchSessions } = useSessions(userId);
   const { updateSession } = useSessionMutations();
   // Umbral propio (no BREAKPOINTS.lg — ese gobierna la elección de shell
   // ancho/angosto, un problema distinto): a partir de acá 2 cards fijas
@@ -182,6 +185,7 @@ export function ExercisesCatalogTab() {
   const { width } = useWindowDimensions();
   const isPhoneWidth = width < 600;
 
+  const visibleError = visibleQueryError(exercises, exercisesError) ?? visibleQueryError(sessions, sessionsError);
   const [search, setSearch] = useState('');
   const [modalExercise, setModalExercise] = useState(undefined); // undefined = cerrado, null = alta, objeto = edición
   const [deleteTarget, setDeleteTarget] = useState(null); // { exercise, usedIn }
@@ -339,9 +343,13 @@ export function ExercisesCatalogTab() {
         variant="nested"
       >
         {loading ? (
-          <View className="items-center py-6" nativeID="exercises-catalog-loading" testID="exercises-catalog-loading">
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <SkeletonPulse className="flex-row flex-wrap justify-center gap-3" nativeID="exercises-catalog-loading" testID="exercises-catalog-loading">
+            {[0, 1, 2, 3].map((index) => (
+              <SkeletonBlock className="rounded-xl" height={160} key={index} nativeID={`exercises-catalog-loading-card-${index}`} testID={`exercises-catalog-loading-card-${index}`} width="47%" />
+            ))}
+          </SkeletonPulse>
+        ) : visibleError ? (
+          <ErrorState idPrefix="exercises-catalog-error" message="No pudimos cargar tus ejercicios." onRetry={() => Promise.all([refetchExercises(), refetchSessions()])} />
         ) : exercises.length === 0 ? (
           <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="exercises-catalog-empty" testID="exercises-catalog-empty">
             Todavía no creaste ningún ejercicio.

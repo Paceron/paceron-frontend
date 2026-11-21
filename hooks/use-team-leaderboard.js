@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getTeamLeaderboard } from '../services/leaderboard.js';
 import { toLeaderboardModel } from '../services/normalizers.js';
 
@@ -10,11 +10,14 @@ export function useTeamLeaderboard(teamId, { metric, period, from, to } = {}) {
     queryKey: ['leaderboard', teamId, metric, period, from, to],
     queryFn: () => getTeamLeaderboard(teamId, { metric, period, from, to }).then(toLeaderboardModel),
     enabled: Boolean(teamId) && Boolean(metric) && Boolean(period),
+    placeholderData: keepPreviousData,
   });
 
   return {
     leaderboard: query.data ?? null,
     loading: query.isLoading,
+    fetching: query.isFetching,
     error: query.error ?? null,
+    refetch: query.refetch,
   };
 }

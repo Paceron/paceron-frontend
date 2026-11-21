@@ -18,7 +18,7 @@ export function useSessions(ownerId) {
     queryFn: () => listSessionsService({ ownerId }).then((dtos) => dtos.map(toSessionModel)),
     enabled: Boolean(ownerId),
   });
-  return { sessions: query.data ?? [], loading: query.isLoading, error: query.error };
+  return { sessions: query.data ?? [], loading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useSession(sessionId) {

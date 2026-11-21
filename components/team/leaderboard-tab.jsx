@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
@@ -17,6 +17,9 @@ import { toISODate } from '../../utils/date-field-format.js';
 import { getUserInitials } from '../../utils/user-initials.js';
 import { METRIC_OPTIONS } from '../../utils/gamification-metric-options.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
+import { ErrorState } from '../shared/error-state.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
+import { visibleQueryError } from '../../utils/query-state.js';
 
 const PERIOD_OPTIONS = [
   { id: 'week', name: 'Última semana' },
@@ -139,7 +142,9 @@ export function LeaderboardTab({ teamId }) {
   const fieldClassName = isNarrow ? 'items-center mb-0' : 'flex-row items-center gap-2';
   const fieldFixedWidth = isNarrow ? 130 : 200;
 
-  const { leaderboard, loading, error } = useTeamLeaderboard(teamId, { metric: activeMetric, period, from, to });
+  const { leaderboard, loading, fetching, error, refetch } = useTeamLeaderboard(teamId, { metric: activeMetric, period, from, to });
+  const visibleError = visibleQueryError(leaderboard, error);
+  const showLoading = loading && !leaderboard;
 
   const viewerInTop = Boolean(leaderboard?.rows?.some((row) => String(row.userId) === String(leaderboard?.viewerRank?.userId)));
   const isHistoric = period === 'all';
@@ -198,25 +203,25 @@ export function LeaderboardTab({ teamId }) {
       )}
 
       <View className="border-t border-slate-100 pt-3 dark:border-slate-800" nativeID="leaderboard-tab-body" testID="leaderboard-tab-body">
-        {loading && (
-          <View className="items-center py-4" nativeID="leaderboard-tab-loading" testID="leaderboard-tab-loading">
-            <ActivityIndicator color={colors.primary} size="small" />
-          </View>
+        {showLoading && (
+          <SkeletonPulse className="gap-2" nativeID="leaderboard-tab-loading" testID="leaderboard-tab-loading">
+            {[0, 1, 2, 3, 4].map((index) => (
+              <SkeletonBlock className="rounded-xl" height={56} key={index} nativeID={`leaderboard-tab-loading-row-${index}`} testID={`leaderboard-tab-loading-row-${index}`} width="100%" />
+            ))}
+          </SkeletonPulse>
         )}
 
-        {!loading && error && (
-          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="leaderboard-tab-error" testID="leaderboard-tab-error">
-            No pudimos cargar este leaderboard.
-          </Text>
+        {!showLoading && visibleError && (
+          <ErrorState idPrefix="leaderboard-tab-error" message="No pudimos cargar este leaderboard." onRetry={refetch} retrying={fetching} />
         )}
 
-        {!loading && !error && leaderboard && visibleRows.length === 0 && (
+        {!showLoading && !visibleError && leaderboard && visibleRows.length === 0 && (
           <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="leaderboard-tab-empty" testID="leaderboard-tab-empty">
             Todavía no hay datos para esta métrica en este período.
           </Text>
         )}
 
-        {!loading && !error && leaderboard && visibleRows.length > 0 && (
+        {!showLoading && !visibleError && leaderboard && visibleRows.length > 0 && (
           <View className="gap-2" nativeID="leaderboard-tab-rows" testID="leaderboard-tab-rows">
             {visibleRows.map((row) => (
               <LeaderboardRow idPrefix={`leaderboard-tab-row-${row.userId}`} isRecord={isHistoric && row.rank === 1} key={row.userId} metric={activeMetric} row={row} />

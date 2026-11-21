@@ -21,7 +21,7 @@ export function useTrainingPlans(ownerId) {
     queryFn: () => listTrainingPlansService({ ownerId }).then((dtos) => dtos.map(toTrainingPlanModel)),
     enabled: Boolean(ownerId),
   });
-  return { plans: query.data ?? [], loading: query.isLoading, error: query.error };
+  return { plans: query.data ?? [], loading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 // Un plan puntual, para pantallas de detalle/edición con deep-link
