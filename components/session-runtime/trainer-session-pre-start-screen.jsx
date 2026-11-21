@@ -140,19 +140,12 @@ function TrainerSessionPreStartScreenContent() {
     // del lado del backend (self, sin athleteUserId -- el owner autenticado).
     // Sin este POST, el backend nunca marca `opened_at` y CUALQUIER corredor
     // que intente crear su propio runner_session (su propio Play) recibe 409
-    // `session_not_opened` para siempre -- bug real, 2026-10-04: sin esto,
-    // ni un solo registro del corredor llegaba a sincronizarse (el loop de
-    // syncRun corta en el primer paso, createRunnerSession, y nunca llega a
-    // mandar ninguna serie). El entrenador no tiene SQLite propio para
-    // reintentar esto si falla, así que se loguea el resultado -- no bloquea
-    // la navegación (el entrenador sigue pudiendo supervisar aunque la
-    // apertura remota haya fallado, igual que el resto de esta pantalla).
-    try {
-      await createRunnerSession(sessionInstanceId);
-      logDebug(`[trainer-pre-start] sesión presencial ${sessionAlreadyOpen ? 'reanudada' : 'abierta'} (session_instance=${sessionInstanceId})`);
-    } catch (error) {
-      logDebug(`[trainer-pre-start] ERROR abriendo/reanudando sesión presencial: ${error?.message ?? error}`);
-    }
+    // `session_not_opened` para siempre. Se dispara en segundo plano: la
+    // navegación no espera la red (con Render frío podía tardar ~25 s), y un
+    // fallo queda logueado sin bloquear la supervisión.
+    createRunnerSession(sessionInstanceId)
+      .then(() => logDebug(`[trainer-pre-start] sesión presencial ${sessionAlreadyOpen ? 'reanudada' : 'abierta'} (session_instance=${sessionInstanceId})`))
+      .catch((error) => logDebug(`[trainer-pre-start] ERROR abriendo/reanudando sesión presencial: ${error?.message ?? error}`));
     router.push('/trainer-session-live');
   };
 
