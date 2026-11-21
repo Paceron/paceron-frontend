@@ -55,12 +55,13 @@ function InviteTeamMembersScreenContent({ teamId }) {
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const { team, loading: loadingTeam } = useTeam(teamId);
-  const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
+  const { groups } = useGroups(teamId, user?.userId);
   const { invitations, loading: loadingInvitations } = useTeamInvitations(teamId);
   const { sendInvite } = useInvitationMutations();
 
   const [draftInvites, setDraftInvites] = useState([]);
   const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState(null);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
 
   const isDirty = useFormDirty({ hasDrafts: draftInvites.length > 0 });
@@ -73,7 +74,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
     queryClient.invalidateQueries({ queryKey: ['groups', teamId] }),
   ]));
 
-  if (loadingTeam || loadingInvitations || loadingGroups) {
+  if (loadingTeam || loadingInvitations) {
     return (
       <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
         <ActivityIndicator color="#8cc63e" />
@@ -105,11 +106,14 @@ function InviteTeamMembersScreenContent({ teamId }) {
     if (draftInvites.length === 0 || sending) return;
     setSending(true);
     let failed = 0;
-    for (const invite of draftInvites) {
+    for (let index = 0; index < draftInvites.length; index += 1) {
+      const invite = draftInvites[index];
+      setSendProgress({ current: index + 1, total: draftInvites.length });
       const result = await sendInvite({ teamId, email: invite.email, groupId: invite.groupId });
       if (!result.success) failed += 1;
     }
     setSending(false);
+    setSendProgress(null);
     setDraftInvites([]);
     if (failed > 0) {
       notifyError();
@@ -187,7 +191,12 @@ function InviteTeamMembersScreenContent({ teamId }) {
             testID="invite-team-send-button"
           >
             {sending ? (
-              <ActivityIndicator color={colors.onPrimary} size="small" />
+              <>
+                <ActivityIndicator color={colors.onPrimary} size="small" />
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="invite-team-send-button-progress" testID="invite-team-send-button-progress">
+                  {sendProgress ? `Enviando ${sendProgress.current} de ${sendProgress.total}…` : 'Enviando…'}
+                </Text>
+              </>
             ) : (
               <>
                 <MaterialCommunityIcons color={colors.onPrimary} name="send-outline" size={18} />
