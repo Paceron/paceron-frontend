@@ -47,11 +47,13 @@ export function AttendanceSelectionPanel({
   sessionsError,
   notice,
   pendingSelectionCount,
+  resolvingLink = false,
 }) {
   const colors = useThemeColors();
   const tooltipOpen = false;
   const renderSessionMeta = buildSessionMeta(idPrefix);
   const hint = resolveHint({
+    resolvingLink,
     loadingTeams,
     teamsError,
     teamOptions,
@@ -115,11 +117,11 @@ export function AttendanceSelectionPanel({
         <Col>
           <SearchablePickerField
             dense
-            disabled={!groupId || sessionOptions.length === 0}
+            disabled={resolvingLink || !groupId || sessionOptions.length === 0}
             emptyMessage="Ninguna sesión coincide con lo que escribiste"
             idPrefix={`${idPrefix}-session`}
             label="Sesión"
-            loading={Boolean(groupId) && loadingSessions}
+            loading={resolvingLink || (Boolean(groupId) && loadingSessions)}
             onChange={onSelectSession}
             options={sessionOptions}
             placeholder="Elegí una sesión"
@@ -240,6 +242,7 @@ function optionKey(id) {
 // Un único motivo: el que bloquea el paso siguiente de la cascada. El orden es
 // "primero lo que necesita una acción, después lo que solo informa".
 function resolveHint({
+  resolvingLink,
   loadingTeams,
   teamsError,
   teamOptions,
@@ -255,6 +258,9 @@ function resolveHint({
 }) {
   if (teamsError) {
     return { tone: 'error', text: 'No pudimos cargar tus equipos. Revisá la conexión y volvé a intentar.' };
+  }
+  if (resolvingLink) {
+    return { tone: 'neutral', text: 'Resolviendo la sesión del link…' };
   }
   if (!loadingTeams && teamOptions.length === 0) {
     return { tone: 'neutral', text: 'Todavía no administrás ningún equipo, así que no hay nada que elegir.' };

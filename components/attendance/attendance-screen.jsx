@@ -591,6 +591,7 @@ function AttendanceCascade() {
             onSelectSession={handleSelectSession}
             onSelectTeam={handleSelectTeam}
             pendingSelectionCount={selectedIds.size}
+            resolvingLink={resolvingLink}
             sessionInstanceId={sessionInstanceId}
             sessionOptions={sessionOptions}
             sessionsError={sessionsError}
