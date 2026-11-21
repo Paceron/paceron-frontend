@@ -26,6 +26,8 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
+import { Reveal, RevealProvider } from '../shared/reveal.jsx';
+import { usePageReveal } from '../../hooks/use-page-reveal.js';
 import { TeamDetailSkeleton, TeamGroupsSkeleton } from './team-detail-skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -573,6 +575,7 @@ function TeamDetailScreenContent({ teamId }) {
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const { team, loading: loadingTeam } = useTeam(teamId);
+  const pageReveal = usePageReveal({ loading: loadingTeam });
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { deleteTeam, uploadTeamIcon, deleteTeamIcon } = useTeamMutations();
   const { createGroup: createGroupInTeam, deleteGroup: deleteGroupReal } = useGroupMutations(teamId);
@@ -724,10 +727,12 @@ function TeamDetailScreenContent({ teamId }) {
   const storedTeamId = useTeamDetailTabStore((s) => s.activeTeamId);
   const ensureTeamTab = useTeamDetailTabStore((s) => s.ensureTeam);
   const setActiveTab = useTeamDetailTabStore((s) => s.setActiveTab);
-  const activeTab = String(storedTeamId) === String(team.id) ? storedTab : 'corredores';
+  const teamIdForTab = team?.id ?? null;
+  const activeTab = teamIdForTab != null && String(storedTeamId) === String(teamIdForTab) ? storedTab : 'corredores';
   useEffect(() => {
-    ensureTeamTab(team.id);
-  }, [ensureTeamTab, team.id]);
+    if (teamIdForTab == null) return;
+    ensureTeamTab(teamIdForTab);
+  }, [ensureTeamTab, teamIdForTab]);
   // Cada pestaña se monta la primera vez que se abre y queda montada: al
   // volver, filtros, scroll y queries conservan su estado en vez de
   // reiniciarse. Las que nunca se visitaron no se montan.
@@ -1092,10 +1097,11 @@ function TeamDetailScreenContent({ teamId }) {
   );
 
   return (
+    <RevealProvider phase={pageReveal.phase} revealKey={pageReveal.revealKey}>
     <View className="relative flex-1" nativeID="team-detail-screen-root" ref={runnerMenuContainerRef} testID="team-detail-screen-root">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="team-detail-screen-scroll"
       ref={scrollViewRef}
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
@@ -1103,6 +1109,7 @@ function TeamDetailScreenContent({ teamId }) {
       testID="team-detail-screen-scroll"
     >
       <ScreenCard nativeID="team-detail-screen-container" testID="team-detail-screen-container">
+        <Reveal idPrefix="team-detail-back-reveal">
         <Pressable
           className="mb-6 flex-row items-center gap-1.5 self-start py-1 pr-1 hover:opacity-70 active:opacity-70"
           nativeID="team-detail-back-button"
@@ -1114,7 +1121,9 @@ function TeamDetailScreenContent({ teamId }) {
             Equipos
           </Text>
         </Pressable>
+        </Reveal>
 
+        <Reveal delay={40} idPrefix="team-detail-header-reveal">
         <View className="mb-5 flex-row items-start gap-4" nativeID="team-detail-header" testID="team-detail-header">
           <AvatarPicker
             accessibilityLabel={`Ícono de ${team.name}`}
@@ -1191,8 +1200,10 @@ function TeamDetailScreenContent({ teamId }) {
             </IconTooltip>
           )}
         </View>
+        </Reveal>
 
         {showSubscriptionBanner && (
+          <Reveal delay={60} idPrefix="team-detail-subscription-reveal">
           <TeamSubscriptionPendingBanner
             hasDebt={hasDebt}
             isPendingFirstPayment={isPendingFirstPayment}
@@ -1204,32 +1215,45 @@ function TeamDetailScreenContent({ teamId }) {
               ? { pathname: '/teams/[teamId]/subscription', params: { teamId: String(team.id), pay: '1' } }
               : `/teams/${team.id}/subscription`)}
           />
+          </Reveal>
         )}
 
+        <Reveal delay={80} idPrefix="team-detail-tabs-reveal">
         <TabBar active={activeTab} badges={{ competencias: competitionsHasUnseen, corredores: hasPendingRequests }} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
+        </Reveal>
         {visitedTabs.has('corredores') ? (
           <View nativeID="team-detail-tab-corredores" style={{ display: activeTab === 'corredores' ? 'flex' : 'none' }} testID="team-detail-tab-corredores">
-            {corredoresContent}
+            <Reveal delay={120} idPrefix="team-detail-runners-reveal">
+              {corredoresContent}
+            </Reveal>
           </View>
         ) : null}
         {visitedTabs.has('grupos') ? (
           <View nativeID="team-detail-tab-grupos" style={{ display: activeTab === 'grupos' ? 'flex' : 'none' }} testID="team-detail-tab-grupos">
-            {gruposContent}
+            <Reveal delay={120} idPrefix="team-detail-groups-reveal">
+              {gruposContent}
+            </Reveal>
           </View>
         ) : null}
         {visitedTabs.has('leaderboard') ? (
           <View nativeID="team-detail-tab-leaderboard" style={{ display: activeTab === 'leaderboard' ? 'flex' : 'none' }} testID="team-detail-tab-leaderboard">
-            {leaderboardContent}
+            <Reveal delay={120} idPrefix="team-detail-leaderboard-reveal">
+              {leaderboardContent}
+            </Reveal>
           </View>
         ) : null}
         {visitedTabs.has('competencias') ? (
           <View nativeID="team-detail-tab-competencias" style={{ display: activeTab === 'competencias' ? 'flex' : 'none' }} testID="team-detail-tab-competencias">
-            {competitionsContent}
+            <Reveal delay={120} idPrefix="team-detail-competitions-reveal">
+              {competitionsContent}
+            </Reveal>
           </View>
         ) : null}
         {visitedTabs.has('rendimiento') ? (
           <View nativeID="team-detail-tab-rendimiento" style={{ display: activeTab === 'rendimiento' ? 'flex' : 'none' }} testID="team-detail-tab-rendimiento">
-            <DashboardScreen teamId={team.id} />
+            <Reveal delay={120} idPrefix="team-detail-dashboard-reveal">
+              <DashboardScreen teamId={team.id} />
+            </Reveal>
           </View>
         ) : null}
       </ScreenCard>
@@ -1335,6 +1359,7 @@ function TeamDetailScreenContent({ teamId }) {
       <RunnerActionsMenu member={runnerMenuMember} onDetail={handleOpenRunnerDetail} onExpel={handleRequestExpel} onMove={handleRequestMove} />
     </AnimatedDropdown>
     </View>
+    </RevealProvider>
   );
 }
 
