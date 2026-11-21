@@ -20,6 +20,8 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { TrainingsHistoryRow } from './trainings-history-row.jsx';
 import { TrainingsHistoryRowMenu } from './trainings-history-row-menu.jsx';
 import { BulkDeleteFeedbackModal } from './bulk-delete-feedback-modal.jsx';
+import { TrainingsHistorySkeleton } from './trainings-history-skeleton.jsx';
+import { ErrorState } from '../shared/error-state.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 
 // El historial se navega por SESIÓN (ver trainings-history-grouping.js), así
@@ -73,9 +75,11 @@ export function TrainingsHistoryTab({ role }) {
     order,
   };
 
-  const { items, hasMore, availableAthletes, availableExercises, loading, isFetching, loadMore } = useTrainingsHistory(role, userId, filters);
+  const { items, hasMore, availableAthletes, availableExercises, loading, isFetching, error, refetch, loadMore } = useTrainingsHistory(role, userId, filters);
   const { deleteFeedback } = useDeleteWorkoutFeedbackMutation(role, userId, filters);
   const sessionGroups = groupHistoryItemsBySession(items);
+  const showSkeleton = loading || (isFetching && sessionGroups.length === 0);
+  const showSecondaryFilters = showSkeleton || sessionGroups.length > 0;
 
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -188,16 +192,17 @@ export function TrainingsHistoryTab({ role }) {
             <DateField label="Hasta" onChange={setDateToInput} value={dateToInput} />
           </View>
         </View>
-        {sessionGroups.length > 0 && (
+        {showSecondaryFilters && (
           <>
             <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-exercise-wrapper" testID="trainings-history-tab-filter-exercise-wrapper">
               <ResponsiveSelectField
                 dense
+                disabled={showSkeleton && availableExercises.length === 0}
                 hideErrorRow
                 label="Ejercicio"
                 onChange={setFilterExerciseId}
                 options={availableExercises}
-                placeholder="Todos"
+                placeholder={showSkeleton && availableExercises.length === 0 ? 'Cargando…' : 'Todos'}
                 value={filterExerciseId}
               />
             </View>
@@ -205,11 +210,12 @@ export function TrainingsHistoryTab({ role }) {
               <View className="min-w-[140px] flex-1" nativeID="trainings-history-tab-filter-athlete-wrapper" testID="trainings-history-tab-filter-athlete-wrapper">
                 <ResponsiveSelectField
                   dense
+                  disabled={showSkeleton && availableAthletes.length === 0}
                   hideErrorRow
                   label="Corredor"
                   onChange={setFilterAthleteId}
                   options={availableAthletes}
-                  placeholder="Todos"
+                  placeholder={showSkeleton && availableAthletes.length === 0 ? 'Cargando…' : 'Todos'}
                   value={filterAthleteId}
                 />
               </View>
@@ -287,10 +293,10 @@ export function TrainingsHistoryTab({ role }) {
         </View>
       )}
 
-      {loading ? (
-        <View className="items-center py-6" nativeID="trainings-history-tab-loading" testID="trainings-history-tab-loading">
-          <ActivityIndicator color={colors.primary} />
-        </View>
+      {showSkeleton ? (
+        <TrainingsHistorySkeleton />
+      ) : error && sessionGroups.length === 0 ? (
+        <ErrorState idPrefix="trainings-history-tab-error" message="No pudimos cargar el historial." onRetry={refetch} />
       ) : sessionGroups.length === 0 ? (
         <View className="items-center rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-surface" nativeID="trainings-history-tab-empty" testID="trainings-history-tab-empty">
           <MaterialCommunityIcons color={colors.onSurfaceVariant} name="history" size={32} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
@@ -26,6 +26,7 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
+import { TeamDetailSkeleton, TeamGroupsSkeleton } from './team-detail-skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
@@ -889,12 +890,8 @@ function TeamDetailScreenContent({ teamId }) {
     });
   }, [team, members, search, groupFilter, isTrainerView]);
 
-  if (loadingTeam || loadingGroups) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="team-detail-loading" testID="team-detail-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+  if (loadingTeam) {
+    return <TeamDetailSkeleton onBack={() => router.back()} />;
   }
 
   if (!team) {
@@ -1054,6 +1051,7 @@ function TeamDetailScreenContent({ teamId }) {
       title="Grupos"
     >
       <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
+        {loadingGroups && groups.length === 0 ? <TeamGroupsSkeleton /> : null}
         {[...groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
           <GroupRow
             canEdit={canManageTeam && !group.isDefault}
