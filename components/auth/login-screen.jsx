@@ -177,7 +177,7 @@ function LoginForm() {
         <Pressable className="items-center py-1 hover:opacity-70" onPress={() => router.push('/register')} nativeID="login-screen-register-link-button" testID="login-screen-register-link-button">
           <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="login-screen-register-link-label" testID="login-screen-register-link-label">
             ¿No tenés cuenta?{' '}
-            <Text className="font-semibold text-primary" nativeID="login-screen-register-link-emphasis" testID="login-screen-register-link-emphasis">Registrate</Text>
+            <Text className="font-semibold text-[#3c6b12] dark:text-primary" nativeID="login-screen-register-link-emphasis" testID="login-screen-register-link-emphasis">Registrate</Text>
           </Text>
         </Pressable>
       </Animated.View>

@@ -3,12 +3,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Checkbox con label presionable y error opcional debajo.
 // El label se pasa como children para permitir texto enriquecido (ej. un
-// link inline que abre un modal); un <Text onPress> anidado maneja su
-// propio toque sin togglear el checkbox.
+// link inline que abre un modal); un Pressable anidado maneja su propio
+// toque sin togglear el checkbox.
 export function CheckboxField({ checked, onChange, error, idPrefix, children }) {
   return (
     <View className="mb-2" nativeID={idPrefix} testID={idPrefix}>
       <Pressable
+        aria-checked={checked}
         className="flex-row items-center gap-3 py-1"
         nativeID={`${idPrefix}-pressable`}
         testID={`${idPrefix}-pressable`}

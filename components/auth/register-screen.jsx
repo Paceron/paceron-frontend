@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -303,21 +303,47 @@ export function RegisterScreen() {
         idPrefix="register-screen-terms"
         onChange={setTermsAccepted}
       >
-        <Text
-          className="text-sm text-slate-600 dark:text-slate-300"
-          nativeID="register-screen-terms-text"
-          testID="register-screen-terms-text"
+        <View
+          className="flex-row flex-wrap items-center gap-1"
+          nativeID="register-screen-terms-row"
+          testID="register-screen-terms-row"
         >
-          Acepto los{' '}
           <Text
-            className="font-semibold text-primary"
-            nativeID="register-screen-terms-link"
-            testID="register-screen-terms-link"
-            onPress={() => setShowTerms(true)}
+            className="text-sm text-slate-600 dark:text-slate-300"
+            nativeID="register-screen-terms-text"
+            testID="register-screen-terms-text"
           >
-            Términos y Condiciones
+            Acepto los
           </Text>
-        </Text>
+          <Pressable
+            accessibilityLabel="Abrir Términos y Condiciones"
+            accessibilityRole="link"
+            className="py-1 active:opacity-70"
+            nativeID="register-screen-terms-link"
+            onKeyDown={
+              isWeb
+                ? (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    setShowTerms(true);
+                  }
+                : undefined
+            }
+            onPress={(event) => {
+              event?.stopPropagation?.();
+              setShowTerms(true);
+            }}
+            testID="register-screen-terms-link"
+          >
+            <Text
+              className="text-sm font-semibold text-[#3c6b12] dark:text-primary"
+              nativeID="register-screen-terms-link-label"
+              testID="register-screen-terms-link-label"
+            >
+              Términos y Condiciones
+            </Text>
+          </Pressable>
+        </View>
       </CheckboxField>
 
       <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
@@ -327,7 +353,7 @@ export function RegisterScreen() {
       <Pressable className="mt-6 items-center py-1 hover:opacity-70" onPress={() => router.push('/login')} nativeID="register-screen-login-link-button" testID="register-screen-login-link-button">
         <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="register-screen-login-link-label" testID="register-screen-login-link-label">
           ¿Ya tenés cuenta?{' '}
-          <Text className="font-semibold text-primary" nativeID="register-screen-login-link-emphasis" testID="register-screen-login-link-emphasis">Iniciá sesión</Text>
+          <Text className="font-semibold text-[#3c6b12] dark:text-primary" nativeID="register-screen-login-link-emphasis" testID="register-screen-login-link-emphasis">Iniciá sesión</Text>
         </Text>
       </Pressable>
     </AuthCardShell>
