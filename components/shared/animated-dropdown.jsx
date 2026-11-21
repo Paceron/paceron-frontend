@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { isWeb } from '../../utils/platform.js';
 
 // Envuelve un panel para animar apertura/cierre (fade + slide sutil) con un
 // backdrop de pantalla completa que cierra al tocar afuera. Se mantiene
@@ -24,6 +25,15 @@ export function AnimatedDropdown({ open, onClose, anchorStyle, children }) {
     translateY.value = withTiming(open ? 0 : -8, config);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !isWeb) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
