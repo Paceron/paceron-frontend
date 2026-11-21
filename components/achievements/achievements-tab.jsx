@@ -60,7 +60,7 @@ function AchievementCard({ achievement, columnClass }) {
         {achievement.progressPercent != null && (
           <View className="mt-2" nativeID={`${idPrefix}-progress`} testID={`${idPrefix}-progress`}>
             <ProgressBar nativeID={`${idPrefix}-progress-bar`} percent={achievement.progressPercent} testID={`${idPrefix}-progress-bar`} />
-            <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-next-level`} testID={`${idPrefix}-next-level`}>
+            <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-next-level`} testID={`${idPrefix}-next-level`}>
               Próximo: {achievement.nextLevelName}
             </Text>
           </View>
@@ -71,7 +71,7 @@ function AchievementCard({ achievement, columnClass }) {
           </Text>
         )}
         {achievement.unlockedAt && (
-          <Text className="mt-2 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-unlocked`} testID={`${idPrefix}-unlocked`}>
+          <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-unlocked`} testID={`${idPrefix}-unlocked`}>
             Desbloqueado {achievement.unlockedAt.slice(0, 10)}
           </Text>
         )}

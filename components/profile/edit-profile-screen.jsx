@@ -390,7 +390,7 @@ function EditProfileForm({ user }) {
           ) : (
             <>
               <MaterialCommunityIcons color={canSubmit ? colors.onPrimary : colors.onSurfaceVariant} name="content-save" size={18} />
-              <Text nativeID="edit-profile-screen-submit-label" testID="edit-profile-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
+              <Text nativeID="edit-profile-screen-submit-label" testID="edit-profile-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'}`}>
                 Guardar cambios
               </Text>
             </>
@@ -513,7 +513,7 @@ function ChangePasswordSection({ userId }) {
         ) : (
           <>
             <MaterialCommunityIcons color={canSubmit ? colors.onPrimary : colors.onSurfaceVariant} name="lock-reset" size={18} />
-            <Text nativeID="edit-profile-screen-change-password-submit-label" testID="edit-profile-screen-change-password-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
+            <Text nativeID="edit-profile-screen-change-password-submit-label" testID="edit-profile-screen-change-password-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'}`}>
               Guardar contraseña
             </Text>
           </>

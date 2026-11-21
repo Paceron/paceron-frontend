@@ -50,7 +50,7 @@ export function MpConnectButtonView({ connected, loading, disabled, onPress }) {
           />
           <Text
             className={`text-sm font-semibold uppercase tracking-wide ${
-              inactive ? 'text-slate-400 dark:text-slate-500' : 'text-white'
+              inactive ? 'text-slate-500 dark:text-slate-400' : 'text-white'
             }`}
             nativeID="mp-connect-button-label"
             testID="mp-connect-button-label"

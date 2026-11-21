@@ -73,7 +73,7 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
           <Text className="text-xs font-bold text-primary" nativeID={`received-invitation-${slug}-fee`} testID={`received-invitation-${slug}-fee`}>
             {formatMonthlyFee(membershipFee)}
           </Text>
-          <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`received-invitation-${slug}-fee-period`} testID={`received-invitation-${slug}-fee-period`}>
+          <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400" nativeID={`received-invitation-${slug}-fee-period`} testID={`received-invitation-${slug}-fee-period`}>
             /mes · se paga al aceptar
           </Text>
         </View>

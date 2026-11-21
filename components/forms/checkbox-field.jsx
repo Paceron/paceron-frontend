@@ -39,7 +39,7 @@ export function CheckboxField({ checked, onChange, error, idPrefix, children }) 
 
       {error ? (
         <Text
-          className="mt-1.5 text-xs text-red-500 dark:text-red-400"
+          className="mt-1.5 text-xs text-red-600 dark:text-red-400"
           nativeID={`${idPrefix}-error`}
           testID={`${idPrefix}-error`}
         >

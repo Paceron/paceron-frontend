@@ -66,7 +66,7 @@ function FieldShell({ label, slug, children, fullWidth = false, labelClassName }
   return (
     <View className={isDesktopWeb && !fullWidth ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
       <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
-        <Text className={labelClassName ?? 'mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'} nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
+        <Text className={labelClassName ?? 'mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400'} nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
         {children}
       </View>
     </View>

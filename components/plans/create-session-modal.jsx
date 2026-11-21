@@ -97,7 +97,7 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
                 testID="create-session-modal-exercises-scroll"
               >
                 {exercises.length === 0 ? (
-                  <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
+                  <Text className="p-2 text-xs text-slate-500 dark:text-slate-400" nativeID="create-session-modal-exercises-empty" testID="create-session-modal-exercises-empty">
                     Todavía no agregaste ejercicios.
                   </Text>
                 ) : exercises.map((entry, index) => (
@@ -120,7 +120,7 @@ function SessionModalWideBody({ name, onSetName, nameError, description, onSetDe
           </View>
 
           {error && (
-            <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
+            <Text className="mb-3 mt-2 text-xs text-red-600 dark:text-red-400" nativeID="create-session-modal-error" testID="create-session-modal-error">{error}</Text>
           )}
         </View>
       </View>

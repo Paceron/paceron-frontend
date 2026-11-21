@@ -108,7 +108,7 @@ function Cell({ column, id, children }) {
 }
 
 function CellText({ id, children, strong = false, muted = false, compact = false, lines = 1 }) {
-  const tone = muted ? 'text-slate-400 dark:text-slate-500' : strong ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200';
+  const tone = muted ? 'text-slate-500 dark:text-slate-400' : strong ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200';
   return (
     <Text className={`${compact ? 'text-xs' : 'text-sm'} ${tone}`} nativeID={id} numberOfLines={lines} style={TABULAR} testID={id}>
       {children}

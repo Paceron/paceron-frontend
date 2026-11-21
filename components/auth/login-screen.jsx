@@ -161,7 +161,7 @@ function LoginForm() {
             <ActivityIndicator color={isFormValid ? '#111518' : colors.onSurfaceVariant} size="small" />
           ) : (
             <Text className={`text-sm font-semibold uppercase tracking-wide ${
-              isFormValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
+              isFormValid ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'
             }`} nativeID="login-screen-submit-button-label" testID="login-screen-submit-button-label">
               Ingresar
             </Text>

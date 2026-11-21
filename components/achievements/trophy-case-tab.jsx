@@ -8,7 +8,7 @@ import { TrophyCaseTabSkeleton } from './gamification-skeletons.jsx';
 
 function StampGrid({ items, idPrefix, columnClass, large = false }) {
   if (!items.length) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>Todavía no hay nada acá.</Text>;
+    return <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>Todavía no hay nada acá.</Text>;
   }
 
   return (

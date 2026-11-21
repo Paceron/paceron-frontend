@@ -94,7 +94,7 @@ function TierCard({ tier, isCurrent, loading, onUpgrade, currentTierName }) {
             {formatTierPrice(tier.tierAmount, tier.paymentRequired)}
           </Text>
           {tier.paymentRequired && (
-            <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-price-period`} testID={`${idPrefix}-price-period`}>
+            <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-price-period`} testID={`${idPrefix}-price-period`}>
               /mes
             </Text>
           )}

@@ -181,7 +181,7 @@ export function SearchablePickerField({
           testID={`${idPrefix}-trigger`}
         >
           <Text
-            className={`flex-1 text-sm ${selected || hasValue ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+            className={`flex-1 text-sm ${selected || hasValue ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
             nativeID={`${idPrefix}-trigger-value`}
             numberOfLines={1}
             testID={`${idPrefix}-trigger-value`}

@@ -44,7 +44,7 @@ export function StatTile({ icon, label, value, hint, actionHint, onPress, active
           </Text>
         </View>
         {hint ? (
-          <Text className={`${horizontal ? 'text-left' : 'text-center'} mt-1 text-[11px] leading-4 text-slate-400 dark:text-slate-500`} nativeID={`${id}-hint`} testID={`${id}-hint`}>
+          <Text className={`${horizontal ? 'text-left' : 'text-center'} mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400`} nativeID={`${id}-hint`} testID={`${id}-hint`}>
             {hint}
           </Text>
         ) : null}

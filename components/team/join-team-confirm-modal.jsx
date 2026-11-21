@@ -45,7 +45,7 @@ export function JoinTeamConfirmModal({ visible, teamName, membershipFee, onCance
             <Text className="text-2xl font-bold text-primary" nativeID="join-team-confirm-modal-price" testID="join-team-confirm-modal-price">
               {formatMonthlyFee(membershipFee)}
             </Text>
-            <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID="join-team-confirm-modal-price-period" testID="join-team-confirm-modal-price-period">
+            <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID="join-team-confirm-modal-price-period" testID="join-team-confirm-modal-price-period">
               /mes
             </Text>
           </View>

@@ -451,7 +451,7 @@ function SessionPreStartScreenContent() {
               testID="session-pre-start-screen-presencial-location"
             >
               <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} />
-              <Text className="text-sm font-semibold text-primary underline" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
+              <Text className="text-sm font-semibold text-[#3c6b12] underline dark:text-primary" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
                 {pendingSession.presencialLocation.label}
               </Text>
             </Pressable>

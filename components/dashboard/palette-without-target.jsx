@@ -153,7 +153,7 @@ export function PaletteWithoutTarget({
         })}
       </View>
 
-      <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
+      <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-footnote`} testID={`${id}-footnote`}>
         {hasMetric(totals.delta_pct)
           ? `Delta ${formatDelta(totals.delta_pct, units.delta)}.`
           : 'Sin objetivo cargado: no se calculan delta, cumplimiento ni ritmo esperado.'}

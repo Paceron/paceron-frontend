@@ -59,7 +59,7 @@ function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibil
         testID={`${idPrefix}-input`}
         value={draft}
       />
-      <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-suffix`} testID={`${idPrefix}-suffix`}>{suffix}</Text>
+      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-suffix`} testID={`${idPrefix}-suffix`}>{suffix}</Text>
     </View>
   );
 }
@@ -263,7 +263,7 @@ export function SessionFormBody({ name, onSetName, nameError, description, onSet
               testID="session-form-body-exercises-scroll"
             >
               {exercises.length === 0 ? (
-                <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="session-form-body-exercises-empty" testID="session-form-body-exercises-empty">
+                <Text className="p-2 text-xs text-slate-500 dark:text-slate-400" nativeID="session-form-body-exercises-empty" testID="session-form-body-exercises-empty">
                   Todavía no agregaste ejercicios.
                 </Text>
               ) : exercises.map((entry, index) => (
@@ -286,7 +286,7 @@ export function SessionFormBody({ name, onSetName, nameError, description, onSet
         </View>
 
         {error && (
-          <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="session-form-body-error" testID="session-form-body-error">{error}</Text>
+          <Text className="mb-3 mt-2 text-xs text-red-600 dark:text-red-400" nativeID="session-form-body-error" testID="session-form-body-error">{error}</Text>
         )}
       </View>
     </ScrollView>

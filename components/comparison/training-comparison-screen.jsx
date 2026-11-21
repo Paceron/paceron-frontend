@@ -184,7 +184,7 @@ function TrainingComparisonContent() {
         </FilterPanel>
 
         {rangeError ? (
-          <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="training-comparison-range-error" testID="training-comparison-range-error">
+          <Text className="mb-3 text-xs text-red-600 dark:text-red-400" nativeID="training-comparison-range-error" testID="training-comparison-range-error">
             {rangeError}
           </Text>
         ) : null}

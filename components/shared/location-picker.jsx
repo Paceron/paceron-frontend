@@ -253,7 +253,7 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
 
             <View className="gap-2 border-t border-slate-200 p-3 dark:border-slate-700" nativeID="location-picker-footer" testID="location-picker-footer">
               {picker.error && (
-                <Text className="text-xs text-red-500 dark:text-red-400" nativeID="location-picker-error" testID="location-picker-error">
+                <Text className="text-xs text-red-600 dark:text-red-400" nativeID="location-picker-error" testID="location-picker-error">
                   {picker.error}
                 </Text>
               )}

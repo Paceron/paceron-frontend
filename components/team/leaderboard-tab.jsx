@@ -205,13 +205,13 @@ export function LeaderboardTab({ teamId }) {
         )}
 
         {!loading && error && (
-          <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="leaderboard-tab-error" testID="leaderboard-tab-error">
+          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="leaderboard-tab-error" testID="leaderboard-tab-error">
             No pudimos cargar este leaderboard.
           </Text>
         )}
 
         {!loading && !error && leaderboard && visibleRows.length === 0 && (
-          <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="leaderboard-tab-empty" testID="leaderboard-tab-empty">
+          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="leaderboard-tab-empty" testID="leaderboard-tab-empty">
             Todavía no hay datos para esta métrica en este período.
           </Text>
         )}

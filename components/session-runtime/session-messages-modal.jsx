@@ -138,14 +138,14 @@ function MessageRow({ message, idPrefix, myUserId, rosterMembers, trainerName, o
               {senderLabel(message, { myUserId, rosterMembers, trainerName })}
             </Text>
           </View>
-          <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-time`} testID={`${idPrefix}-time`}>
+          <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-time`} testID={`${idPrefix}-time`}>
             {formatTime(message.createdAt)}
           </Text>
         </View>
         <Text className="text-base text-slate-800 dark:text-slate-100" nativeID={`${idPrefix}-body`} testID={`${idPrefix}-body`}>
           {message.body}
         </Text>
-        <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-recipients`} testID={`${idPrefix}-recipients`}>
+        <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-recipients`} testID={`${idPrefix}-recipients`}>
           {recipientSummary(message, { myUserId, rosterMembers, trainerName })}
         </Text>
       </View>
@@ -195,7 +195,7 @@ function ThreadCard({ thread, idPrefix, myUserId, rosterMembers, trainerName, on
         testID={`${idPrefix}-thread-${thread.rootId}-hide-button`}
       >
         <MaterialCommunityIcons color="#94a3b8" name="eye-off-outline" size={16} />
-        <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-thread-${thread.rootId}-hide-label`} testID={`${idPrefix}-thread-${thread.rootId}-hide-label`}>
+        <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-thread-${thread.rootId}-hide-label`} testID={`${idPrefix}-thread-${thread.rootId}-hide-label`}>
           Ocultar
         </Text>
       </Pressable>
@@ -321,7 +321,7 @@ function RunnerRecipientPicker({ idPrefix, trainerName, peerMembers, selectedUse
         );
       })}
       {peerMembers.length === 0 && (
-        <Text className="p-3 text-sm text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-runner-picker-empty`} testID={`${idPrefix}-runner-picker-empty`}>
+        <Text className="p-3 text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-runner-picker-empty`} testID={`${idPrefix}-runner-picker-empty`}>
           Ningún compañero conectado todavía.
         </Text>
       )}

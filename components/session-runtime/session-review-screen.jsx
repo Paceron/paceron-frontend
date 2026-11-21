@@ -128,7 +128,7 @@ function ExerciseBulkSave({ exercise, onClose, slot, ensureRunnerSession }) {
       </View>
 
       {error && (
-        <Text className="mb-2 text-xs text-red-500 dark:text-red-400" nativeID={`${boxId}-error`} testID={`${boxId}-error`}>{error}</Text>
+        <Text className="mb-2 text-xs text-red-600 dark:text-red-400" nativeID={`${boxId}-error`} testID={`${boxId}-error`}>{error}</Text>
       )}
 
       <View className="mt-2 flex-row gap-2" nativeID={`${boxId}-actions`} testID={`${boxId}-actions`}>
@@ -364,7 +364,7 @@ function DataField({ editable, editing, id, label, hint, children, onToggleEdit 
         {editing ? children : <Text className="text-sm text-slate-800 dark:text-slate-100" nativeID={`${id}-readonly-text`} testID={`${id}-readonly-text`}>{children}</Text>}
       </View>
       {hint ? (
-        <Text className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500" nativeID={`${id}-hint`} testID={`${id}-hint`}>
+        <Text className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400" nativeID={`${id}-hint`} testID={`${id}-hint`}>
           {hint}
         </Text>
       ) : null}
@@ -806,7 +806,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
         {editable && (
           <View className="mt-4 gap-2" nativeID="session-review-detail-actions" testID="session-review-detail-actions">
             {error && (
-              <Text className="text-xs text-red-500 dark:text-red-400" nativeID="session-review-detail-error" testID="session-review-detail-error">{error}</Text>
+              <Text className="text-xs text-red-600 dark:text-red-400" nativeID="session-review-detail-error" testID="session-review-detail-error">{error}</Text>
             )}
 
             <Pressable

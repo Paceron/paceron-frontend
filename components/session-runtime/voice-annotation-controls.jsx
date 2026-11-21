@@ -94,7 +94,7 @@ export function VoiceAnnotationControls({ text, onAppendText }) {
           )}
         </Pressable>
 
-        <Text className="flex-1 text-[10px] text-slate-400 dark:text-slate-500" nativeID="session-review-voice-controls-hint" testID="session-review-voice-controls-hint">
+        <Text className="flex-1 text-[10px] text-slate-500 dark:text-slate-400" nativeID="session-review-voice-controls-hint" testID="session-review-voice-controls-hint">
           {dictation.listening ? dictation.interim ? `“${dictation.interim}”` : 'Escuchando…' : 'Dictá con el micrófono o escuchá la nota.'}
         </Text>
       </View>

@@ -130,7 +130,7 @@ export function StreaksTab() {
           Todo dentro de una card (antes flotaba contra el fondo de la
           pantalla, se perdía -- pedido real 2026-10-15). */}
       <View className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="streaks-tab-week-card" testID="streaks-tab-week-card">
-        <Text className="mb-3 text-xs text-slate-400 dark:text-slate-500" nativeID="streaks-tab-grid-subtitle" testID="streaks-tab-grid-subtitle">
+        <Text className="mb-3 text-xs text-slate-500 dark:text-slate-400" nativeID="streaks-tab-grid-subtitle" testID="streaks-tab-grid-subtitle">
           Mostrando: {selectedStreak === 'strict' ? 'Entrenamientos consecutivos' : 'Días entrenando'}
         </Text>
 
@@ -203,7 +203,7 @@ export function StreaksTab() {
             if (!day) {
               return (
                 <View className="flex-1 gap-1" key={date} nativeID={`${dayIdPrefix}-column`} testID={`${dayIdPrefix}-column`}>
-                  <Text className="text-center text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
+                  <Text className="text-center text-[10px] font-medium text-slate-500 dark:text-slate-400" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
                   <EmptyDayCell idPrefix={dayIdPrefix} label={`${formatDisplayDate(date)}: sin datos`} />
                 </View>
               );
@@ -216,7 +216,7 @@ export function StreaksTab() {
 
             return (
               <View className="flex-1 gap-1" key={date} nativeID={`${dayIdPrefix}-column`} testID={`${dayIdPrefix}-column`}>
-                <Text className="text-center text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
+                <Text className="text-center text-[10px] font-medium text-slate-500 dark:text-slate-400" nativeID={`${dayIdPrefix}-weekday`} testID={`${dayIdPrefix}-weekday`}>{weekdayLabel}</Text>
                 <IconTooltip idPrefix={`${dayIdPrefix}-tooltip`} label={formatDisplayDate(date)} position="top">
                   <Pressable
                     accessibilityLabel={`${formatDisplayDate(date)}${isToday ? ' (hoy)' : ''}: ${visual.label}`}

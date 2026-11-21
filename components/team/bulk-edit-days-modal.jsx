@@ -116,7 +116,7 @@ export function BulkEditDaysModal({ visible, onClose, onSuccess, groupId, ownerI
             </Text>
 
             {error && (
-              <Text className="mb-2 text-xs text-red-500 dark:text-red-400" nativeID="bulk-edit-days-modal-error" testID="bulk-edit-days-modal-error">{error}</Text>
+              <Text className="mb-2 text-xs text-red-600 dark:text-red-400" nativeID="bulk-edit-days-modal-error" testID="bulk-edit-days-modal-error">{error}</Text>
             )}
 
             <CalendarDayFields
@@ -157,7 +157,7 @@ export function BulkEditDaysModal({ visible, onClose, onSuccess, groupId, ownerI
             </Pressable>
 
             {isBulkAssigning && (
-              <Text className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500" nativeID="bulk-edit-days-modal-processing-hint" testID="bulk-edit-days-modal-processing-hint">
+              <Text className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400" nativeID="bulk-edit-days-modal-processing-hint" testID="bulk-edit-days-modal-processing-hint">
                 Procesando {dates.length} día{dates.length === 1 ? '' : 's'}… puede demorar unos segundos.
               </Text>
             )}

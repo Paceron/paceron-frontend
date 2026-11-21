@@ -79,7 +79,7 @@ export function DeactivateAccountModal({ visible, userEmail, onCancel, onConfirm
               {loading ? (
                 <ActivityIndicator color={matches ? '#ffffff' : colors.onSurfaceVariant} size="small" />
               ) : (
-                <Text nativeID="deactivate-account-modal-confirm-label" testID="deactivate-account-modal-confirm-label" className={`text-sm font-semibold uppercase tracking-wide ${matches ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+                <Text nativeID="deactivate-account-modal-confirm-label" testID="deactivate-account-modal-confirm-label" className={`text-sm font-semibold uppercase tracking-wide ${matches ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
                   Confirmar baja
                 </Text>
               )}

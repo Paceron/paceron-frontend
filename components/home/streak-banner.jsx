@@ -59,7 +59,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
     return (
       <HomeReveal delay={60} fill={paired} idPrefix="streak-banner-reveal">
         <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
-          <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
+          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
         </View>
       </HomeReveal>
     );
@@ -82,7 +82,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
           ("Días entrenando"), no uno inventado nuevo. Los puntos del día
           abajo pasan a `flexibleStatus` para no mezclar: mostrar el número
           de una racha y los puntos de la otra confundía más que ayudaba. */}
-      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="streak-banner-kicker" testID="streak-banner-kicker">
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="streak-banner-kicker" testID="streak-banner-kicker">
         Estado de racha
       </Text>
       <View className="flex-row items-center gap-2" nativeID="streak-banner-current-row" testID="streak-banner-current-row">

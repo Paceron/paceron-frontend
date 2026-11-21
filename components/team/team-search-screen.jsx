@@ -75,7 +75,7 @@ function TeamSearchResultCard({ team, membershipFee, onRequest, requesting }) {
                 {formatMonthlyFee(membershipFee)}
               </Text>
               {membershipFee > 0 && (
-                <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-fee-period`} testID={`${idPrefix}-fee-period`}>
+                <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-fee-period`} testID={`${idPrefix}-fee-period`}>
                   /mes
                 </Text>
               )}

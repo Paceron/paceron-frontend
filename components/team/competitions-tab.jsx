@@ -107,7 +107,7 @@ function RouteDetailSection({ idPrefix, competition, members, creatorName }) {
             style={{ flexShrink: 1 }}
             testID={`${idPrefix}-route-start-address`}
           >
-            <Text className="text-sm font-semibold text-primary underline" nativeID={`${idPrefix}-route-start-address-label`} testID={`${idPrefix}-route-start-address-label`}>
+            <Text className="text-sm font-semibold text-[#3c6b12] underline dark:text-primary" nativeID={`${idPrefix}-route-start-address-label`} testID={`${idPrefix}-route-start-address-label`}>
               {addressLabel}
             </Text>
           </Pressable>
@@ -671,13 +671,13 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
       )}
 
       {!loading && error && (
-        <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="competitions-tab-error" testID="competitions-tab-error">
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="competitions-tab-error" testID="competitions-tab-error">
           No pudimos cargar las competencias.
         </Text>
       )}
 
       {!loading && !error && visibleList.length === 0 && (
-        <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="competitions-tab-empty" testID="competitions-tab-empty">
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="competitions-tab-empty" testID="competitions-tab-empty">
           {EMPTY_MESSAGE[subTab]}
         </Text>
       )}

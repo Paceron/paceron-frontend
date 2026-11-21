@@ -245,7 +245,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
             )}
 
             {error && (
-              <Text className="mb-4 text-xs text-red-500 dark:text-red-400" nativeID="group-calendar-day-error" testID="group-calendar-day-error">{error}</Text>
+              <Text className="mb-4 text-xs text-red-600 dark:text-red-400" nativeID="group-calendar-day-error" testID="group-calendar-day-error">{error}</Text>
             )}
 
             <CalendarDayFields

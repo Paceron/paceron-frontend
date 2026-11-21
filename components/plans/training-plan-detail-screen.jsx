@@ -32,7 +32,7 @@ function ExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restMinut
         <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
       </View>
       <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
-        <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-role`} testID={`${idPrefix}-role`}>
+        <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-role`} testID={`${idPrefix}-role`}>
           {roleLabel}
         </Text>
         <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>

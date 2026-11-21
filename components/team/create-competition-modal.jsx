@@ -269,7 +269,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                   />
                 )}
 
-                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="create-competition-modal-participants-label" testID="create-competition-modal-participants-label">
+                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="create-competition-modal-participants-label" testID="create-competition-modal-participants-label">
                   Participantes ({selectedIds.length})
                 </Text>
                 <View className="gap-1" nativeID="create-competition-modal-participants-list" testID="create-competition-modal-participants-list">

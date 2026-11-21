@@ -136,7 +136,7 @@ export function ActivateTrainerScreen() {
           onPress={handleSubmit}
         >
           <MaterialCommunityIcons color={canSubmit ? '#ffffff' : colors.onSurfaceVariant} name="whistle" size={18} />
-          <Text nativeID="activate-trainer-screen-submit-label" testID="activate-trainer-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+          <Text nativeID="activate-trainer-screen-submit-label" testID="activate-trainer-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
             Activar
           </Text>
         </Pressable>

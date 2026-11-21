@@ -493,7 +493,7 @@ function LiveOverviewView({ sets, run, activeSetId, activePhase, onOpenSet, onCa
                   ))}
                 </View>
                 {!isNext && !isActiveGroup && !isResolved && (
-                  <Text className="mt-2 text-xs text-slate-400 dark:text-slate-500" nativeID={`${hiddenPrefix}-locked-note`} testID={`${hiddenPrefix}-locked-note`}>
+                  <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400" nativeID={`${hiddenPrefix}-locked-note`} testID={`${hiddenPrefix}-locked-note`}>
                     Se habilita cuando completes las anteriores
                   </Text>
                 )}
@@ -695,7 +695,7 @@ function LiveSeriesView({
           <Text className="text-4xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
             {showTimer ? formatStopwatch(wallMs) : '00:00:00'}
           </Text>
-          <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-timer-hint`} testID={`${idPrefix}-timer-hint`}>
+          <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-timer-hint`} testID={`${idPrefix}-timer-hint`}>
             {set.status === 'pending' ? 'Toque Play para arrancar — se arma en 3 segundos' : ''}
           </Text>
         </View>

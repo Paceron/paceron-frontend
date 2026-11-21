@@ -230,7 +230,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
                 <Text className="text-2xl font-bold text-primary" nativeID="team-subscription-screen-price" testID="team-subscription-screen-price">
                   {formatMonthlyFee(membershipFee)}
                 </Text>
-                <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID="team-subscription-screen-price-period" testID="team-subscription-screen-price-period">
+                <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID="team-subscription-screen-price-period" testID="team-subscription-screen-price-period">
                   /mes
                 </Text>
               </View>
@@ -271,7 +271,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
                 </Text>
               ) : null}
 
-              <Text className="mt-4 text-xs leading-5 text-slate-400 dark:text-slate-500" nativeID="team-subscription-screen-recipient-hint" testID="team-subscription-screen-recipient-hint">
+              <Text className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400" nativeID="team-subscription-screen-recipient-hint" testID="team-subscription-screen-recipient-hint">
                 Tu pago va a la cuenta de Mercado Pago del entrenador del equipo.
               </Text>
             </View>

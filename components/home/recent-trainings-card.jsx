@@ -82,7 +82,7 @@ export function RecentTrainingsCard() {
   if (loading) {
     return (
       <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="recent-trainings-card-loading" testID="recent-trainings-card-loading">
-        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="recent-trainings-card-loading-kicker" testID="recent-trainings-card-loading-kicker">
+        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="recent-trainings-card-loading-kicker" testID="recent-trainings-card-loading-kicker">
           Tus entrenamientos recientes
         </Text>
         <View className="min-h-[72px] items-center justify-center" nativeID="recent-trainings-card-loading-body" testID="recent-trainings-card-loading-body">
@@ -104,7 +104,7 @@ export function RecentTrainingsCard() {
   return (
     <HomeReveal delay={140} idPrefix="recent-trainings-card-reveal">
       <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="recent-trainings-card" testID="recent-trainings-card">
-      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="recent-trainings-card-kicker" testID="recent-trainings-card-kicker">
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="recent-trainings-card-kicker" testID="recent-trainings-card-kicker">
         Tus entrenamientos recientes
       </Text>
       <View className="gap-2" nativeID="recent-trainings-card-list" testID="recent-trainings-card-list">

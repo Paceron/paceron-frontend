@@ -86,7 +86,7 @@ export function ForgotPasswordScreen() {
           <ActivityIndicator color="#111518" size="small" />
         ) : (
           <Text
-            className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}
+            className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'}`}
             nativeID="forgot-password-screen-submit-button-label"
             testID="forgot-password-screen-submit-button-label"
           >

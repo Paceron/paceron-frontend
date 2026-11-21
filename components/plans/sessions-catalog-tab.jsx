@@ -109,7 +109,7 @@ function SessionRow({ session, usedIn, onOpenMenu, onShowUsage, containerRef }) 
           onPress={() => onShowUsage(session, usedIn)}
           testID={`${idPrefix}-usage-button`}
         >
-          <Text className={`text-xs ${usedIn.length > 0 ? 'font-semibold text-primary underline' : 'text-slate-400 dark:text-slate-500'}`} nativeID={`${idPrefix}-usage-label`} testID={`${idPrefix}-usage-label`}>
+          <Text className={`text-xs ${usedIn.length > 0 ? 'font-semibold text-[#3c6b12] underline dark:text-primary' : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${idPrefix}-usage-label`} testID={`${idPrefix}-usage-label`}>
             Usado en {usedIn.length} {usedIn.length === 1 ? 'plan' : 'planes'}
           </Text>
         </Pressable>

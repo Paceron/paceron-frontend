@@ -97,7 +97,7 @@ export function CompetitionsPreviewCard() {
   if (loading) {
     return (
       <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card-loading" testID="competitions-preview-card-loading">
-        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="competitions-preview-card-loading-kicker" testID="competitions-preview-card-loading-kicker">
+        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="competitions-preview-card-loading-kicker" testID="competitions-preview-card-loading-kicker">
           Tus competencias
         </Text>
         <View className="min-h-[72px] items-center justify-center" nativeID="competitions-preview-card-loading-body" testID="competitions-preview-card-loading-body">
@@ -120,7 +120,7 @@ export function CompetitionsPreviewCard() {
   return (
     <HomeReveal delay={120} idPrefix="competitions-preview-card-reveal">
       <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card" testID="competitions-preview-card">
-      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="competitions-preview-card-kicker" testID="competitions-preview-card-kicker">
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="competitions-preview-card-kicker" testID="competitions-preview-card-kicker">
         Tus competencias
       </Text>
       <View className={wide ? 'flex-row gap-3' : 'gap-3'} nativeID="competitions-preview-card-list" testID="competitions-preview-card-list">

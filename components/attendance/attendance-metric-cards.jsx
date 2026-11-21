@@ -216,7 +216,7 @@ export function AttendanceMetricCards({ summary, idPrefix }) {
            asistencias — se anotan, no se esconden. */}
         {rate === null ? (
           <Text
-            className="mt-0.5 text-center text-[10px] leading-3 text-slate-400 dark:text-slate-500"
+            className="mt-0.5 text-center text-[10px] leading-3 text-slate-500 dark:text-slate-400"
             nativeID={`${idPrefix}-rate-unknown`}
             testID={`${idPrefix}-rate-unknown`}
           >

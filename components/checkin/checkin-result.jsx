@@ -84,7 +84,7 @@ export function CheckinResult({ visible, outcome, onAccept }) {
         </Pressable>
 
         <Text
-          className="mt-3 px-1 text-center text-xs text-slate-400 dark:text-slate-500"
+          className="mt-3 px-1 text-center text-xs text-slate-500 dark:text-slate-400"
           nativeID="checkin-result-hint"
           testID="checkin-result-hint"
         >

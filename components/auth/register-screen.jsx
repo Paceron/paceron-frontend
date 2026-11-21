@@ -330,7 +330,7 @@ export function RegisterScreen() {
           <ActivityIndicator color="#111518" size="small" />
         ) : (
           <Text className={`text-sm font-semibold uppercase tracking-wide ${
-            formValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
+            formValid ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'
           }`} nativeID="register-screen-submit-button-label" testID="register-screen-submit-button-label">
             Crear cuenta
           </Text>

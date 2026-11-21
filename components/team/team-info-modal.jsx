@@ -11,7 +11,7 @@ function display(value) {
 function InfoField({ label, value, idPrefix }) {
   return (
     <View className="mb-4" nativeID={idPrefix} testID={idPrefix}>
-      <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
+      <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-label`} testID={`${idPrefix}-label`}>
         {label}
       </Text>
       <Text className="text-sm leading-5 text-slate-700 dark:text-slate-200" nativeID={`${idPrefix}-value`} testID={`${idPrefix}-value`}>

@@ -64,7 +64,7 @@ export function OtpInput({ value, onChange, error, label }) {
         />
       </View>
       <View className="h-5 w-full max-w-[380px]" nativeID="otp-input-error-row" testID="otp-input-error-row">
-        {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID="otp-input-error" testID="otp-input-error">{error}</Text>}
+        {error && <Text className="text-xs text-red-600 dark:text-red-400" nativeID="otp-input-error" testID="otp-input-error">{error}</Text>}
       </View>
     </View>
   );

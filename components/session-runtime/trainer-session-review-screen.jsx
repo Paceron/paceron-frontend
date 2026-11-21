@@ -208,7 +208,7 @@ function TrainerSessionReviewScreenContent() {
               testID="trainer-session-review-screen-presencial-location"
             >
               <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} />
-              <Text className="text-sm font-semibold text-primary underline" nativeID="trainer-session-review-screen-presencial-location-label" numberOfLines={1} testID="trainer-session-review-screen-presencial-location-label">
+              <Text className="text-sm font-semibold text-[#3c6b12] underline dark:text-primary" nativeID="trainer-session-review-screen-presencial-location-label" numberOfLines={1} testID="trainer-session-review-screen-presencial-location-label">
                 {pendingSession.presencialLocation.label}
               </Text>
             </Pressable>

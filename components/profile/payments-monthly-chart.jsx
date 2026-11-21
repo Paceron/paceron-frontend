@@ -182,7 +182,7 @@ function MonthTooltip({ bar, entry, mode, width }) {
           <View className="flex-row items-baseline justify-between gap-3" key={row.key} nativeID={`payments-monthly-chart-tooltip-${row.key}`} testID={`payments-monthly-chart-tooltip-${row.key}`}>
             <Text className="text-xs text-slate-600 dark:text-slate-300" nativeID={`payments-monthly-chart-tooltip-${row.key}-label`} testID={`payments-monthly-chart-tooltip-${row.key}-label`}>
               {row.label}
-              {row.detail ? <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`payments-monthly-chart-tooltip-${row.key}-detail`} testID={`payments-monthly-chart-tooltip-${row.key}-detail`}>{` · ${row.detail}`}</Text> : null}
+              {row.detail ? <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`payments-monthly-chart-tooltip-${row.key}-detail`} testID={`payments-monthly-chart-tooltip-${row.key}-detail`}>{` · ${row.detail}`}</Text> : null}
             </Text>
             <Text className="text-xs font-semibold text-slate-900 dark:text-white" nativeID={`payments-monthly-chart-tooltip-${row.key}-value`} style={{ fontVariant: ['tabular-nums'] }} testID={`payments-monthly-chart-tooltip-${row.key}-value`}>
               {row.value}
