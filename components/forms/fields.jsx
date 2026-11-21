@@ -141,7 +141,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
       >
         <View className={outline || plain ? 'relative' : 'flex-1 relative'} nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
-            className={`${outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : (dense ? SELECT_CLASS_DENSE : SELECT_CLASS))} ${showChevron && !plain && !outline ? 'pr-9' : ''}`}
+            className={`${outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : (dense ? SELECT_CLASS_DENSE : SELECT_CLASS))} ${showChevron && !plain && !outline ? 'pr-9' : ''} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
             style={outline && fixedWidth ? { width: fixedWidth } : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -608,7 +608,7 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
         </View>
       )}
       <View
-        className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
+        className={`${rowSizeClass} flex-row rounded-xl border ${borderColor} ${disabled ? 'opacity-60' : ''}`}
         nativeID={`input-field-${slug}-row`}
         testID={`input-field-${slug}-row`}
       >
@@ -697,6 +697,9 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
         )}
         {onToggleSecure && (
           <Pressable
+            accessibilityLabel={showSecure ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            accessibilityRole="button"
+            accessibilityState={{ checked: showSecure }}
             className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800"
             onPress={onToggleSecure}
             nativeID={`input-field-${slug}-toggle-secure-button`}

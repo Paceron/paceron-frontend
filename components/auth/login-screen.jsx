@@ -133,7 +133,7 @@ function LoginForm() {
         value={password}
         className="mb-6"
         trailing={
-          <Pressable className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800" onPress={() => setShowPassword((v) => !v)} nativeID="login-screen-password-toggle-button" testID="login-screen-password-toggle-button">
+          <Pressable accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} accessibilityRole="button" accessibilityState={{ checked: showPassword }} className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800" onPress={() => setShowPassword((v) => !v)} nativeID="login-screen-password-toggle-button" testID="login-screen-password-toggle-button">
             <MaterialCommunityIcons
               color={colors.onSurfaceVariant}
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}

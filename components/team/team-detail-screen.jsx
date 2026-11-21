@@ -60,9 +60,8 @@ const RUNNER_MENU_WIDTH = 208;
 // FUNCTIONAL_PROPOSE.md, colores igual que STATUS_META en profile-screen.jsx
 // para no inventar una paleta nueva. Conectado a datos reales desde el Gap 41
 // (GET /teams/{id}/subscriptions) vía SUBSCRIPTION_STATUS_FROM_BACKEND más
-// abajo — sin esos datos (loading, 403, equipo que todavía no se consultó),
-// el fallback de member.subscriptionStatus a `activo` en el uso de este mapa
-// sigue siendo el default histórico, no una lectura real.
+// abajo — sin dato real (loading, 403, equipo sin consultar) el badge no se
+// muestra, en vez de afirmar "Activo" sin respaldo.
 const SUBSCRIPTION_META = {
   activo: {
     label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary',
@@ -241,7 +240,7 @@ function RunnerActionsMenu({ member, onExpel, onMove, onDetail }) {
 }
 
 function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu, onOpenDetail, containerRef }) {
-  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
+  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? null;
   // `isWeb` solo distingue nativo de web -- no alcanza acá (2026-11-11,
   // bug real reportado): en web angosta esto seguía cayendo en el layout
   // de fila ancha (identidad + tags + menú todo en una sola `flex-row`),
@@ -314,7 +313,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
       text="text-slate-700 dark:text-slate-200"
     />
   );
-  const subscriptionTag = (
+  const subscriptionTag = subMeta ? (
     <Tag
       bg={subMeta.bg}
       icon={subMeta.icon}
@@ -324,7 +323,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
       testID={`team-detail-runner-${member.id}-subscription-tag`}
       text={subMeta.text}
     />
-  );
+  ) : null;
   const identity = (
     <View className="flex-1" nativeID={`team-detail-runner-${member.id}-identity`} testID={`team-detail-runner-${member.id}-identity`}>
       <Text
@@ -408,7 +407,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
 }
 
 function GroupMemberRow({ member, colors }) {
-  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
+  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? null;
   return (
     <View
       className="flex-row items-center justify-between gap-2 py-1.5"
@@ -426,7 +425,7 @@ function GroupMemberRow({ member, colors }) {
           {member.name}
         </Text>
       </View>
-      <Tag bg={subMeta.bg} icon={subMeta.icon} iconColor={subMeta.iconColor} label={subMeta.label} nativeID={`team-detail-group-member-${member.id}-subscription-tag`} testID={`team-detail-group-member-${member.id}-subscription-tag`} text={subMeta.text} />
+      {subMeta ? <Tag bg={subMeta.bg} icon={subMeta.icon} iconColor={subMeta.iconColor} label={subMeta.label} nativeID={`team-detail-group-member-${member.id}-subscription-tag`} testID={`team-detail-group-member-${member.id}-subscription-tag`} text={subMeta.text} /> : null}
     </View>
   );
 }
@@ -1211,7 +1210,7 @@ function TeamDetailScreenContent({ teamId }) {
         groupName={groups.find((g) => g.id === runnerDetailMember?.groupId)?.name ?? '—'}
         joinedAt={runnerDetailMember?.joinedAt}
         onClose={() => setRunnerDetailMember(null)}
-        subscriptionLabel={(SUBSCRIPTION_META[runnerDetailMember?.subscriptionStatus] ?? SUBSCRIPTION_META.activo).label}
+        subscriptionLabel={SUBSCRIPTION_META[runnerDetailMember?.subscriptionStatus]?.label ?? 'Sin datos'}
         userId={runnerDetailMember?.userId}
         visible={Boolean(runnerDetailMember)}
       />
