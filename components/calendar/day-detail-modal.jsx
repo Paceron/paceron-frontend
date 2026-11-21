@@ -259,11 +259,12 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
 
   return (
     <Modal animationType="fade" nativeID="day-detail-modal" onRequestClose={handleClose} testID="day-detail-modal" transparent visible={visible}>
-      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="day-detail-modal-backdrop" onPress={handleClose} testID="day-detail-modal-backdrop">
-        <Pressable
+      <View className="flex-1 bg-black/50" nativeID="day-detail-modal-backdrop-wrapper" testID="day-detail-modal-backdrop-wrapper">
+        <Pressable className="absolute inset-0" nativeID="day-detail-modal-backdrop" onPress={handleClose} testID="day-detail-modal-backdrop" />
+        <View className="flex-1 items-center justify-center px-4" nativeID="day-detail-modal-card-wrapper" pointerEvents="box-none" testID="day-detail-modal-card-wrapper">
+        <View
           className="max-h-[80%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
           nativeID="day-detail-modal-card"
-          onPress={handleCloseRowMenu}
           testID="day-detail-modal-card"
         >
           {/* `cardRef` va acá, NO en el Pressable de arriba -- ese tiene
@@ -305,8 +306,9 @@ export function DayDetailModal({ visible, onClose, date, assignments, variant, l
               {rowMenu && <DayDetailRowMenu assignment={rowMenu.assignment} idPrefix="day-detail-modal-row-menu" onClose={handleCloseRowMenu} onRequestClear={setClearTarget} />}
             </AnimatedDropdown>
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+        </View>
+      </View>
 
       <ClearDayConfirm clearTarget={clearTarget} onCancel={() => setClearTarget(null)} onCleared={() => setClearTarget(null)} />
     </Modal>

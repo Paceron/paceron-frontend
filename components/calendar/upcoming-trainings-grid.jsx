@@ -114,16 +114,17 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching,
         transparent
         visible={seeAllVisible}
       >
-        <Pressable
-          className="flex-1 items-center justify-center bg-black/50 px-4"
-          nativeID="upcoming-trainings-grid-see-all-modal-backdrop"
-          onPress={() => setSeeAllVisible(false)}
-          testID="upcoming-trainings-grid-see-all-modal-backdrop"
-        >
+        <View className="flex-1 bg-black/50" nativeID="upcoming-trainings-grid-see-all-modal-backdrop-wrapper" testID="upcoming-trainings-grid-see-all-modal-backdrop-wrapper">
           <Pressable
+            className="absolute inset-0"
+            nativeID="upcoming-trainings-grid-see-all-modal-backdrop"
+            onPress={() => setSeeAllVisible(false)}
+            testID="upcoming-trainings-grid-see-all-modal-backdrop"
+          />
+          <View className="flex-1 items-center justify-center px-4" nativeID="upcoming-trainings-grid-see-all-modal-card-wrapper" pointerEvents="box-none" testID="upcoming-trainings-grid-see-all-modal-card-wrapper">
+          <View
             className="max-h-[80%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
             nativeID="upcoming-trainings-grid-see-all-modal-card"
-            onPress={() => {}}
             testID="upcoming-trainings-grid-see-all-modal-card"
           >
             <Text className="mb-3 text-lg font-bold text-slate-900 dark:text-white" nativeID="upcoming-trainings-grid-see-all-modal-title" testID="upcoming-trainings-grid-see-all-modal-title">
@@ -136,8 +137,9 @@ export function UpcomingTrainingsGrid({ trainings, variant, loading, isFetching,
                 ))}
               </View>
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+          </View>
+        </View>
       </Modal>
 
       <DayDetailModal
