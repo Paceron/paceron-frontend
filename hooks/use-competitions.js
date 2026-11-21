@@ -57,7 +57,13 @@ export function useCompetitionDetail(id, { enabled = true, refetchInterval } = {
     refetchInterval,
   });
 
-  return { detail: query.data ?? null, loading: query.isLoading };
+  return {
+    detail: query.data ?? null,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error ?? null,
+    refetch: query.refetch,
+  };
 }
 
 // Lista de intentos de UN atleta contra una competencia de ruta (Gap 36,
@@ -71,7 +77,13 @@ export function useCompetitionAttempts(competitionId, athleteUserId, { enabled =
     enabled: Boolean(competitionId) && Boolean(athleteUserId) && enabled,
   });
 
-  return { attempts: query.data ?? [], loading: query.isLoading };
+  return {
+    attempts: query.data ?? [],
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error ?? null,
+    refetch: query.refetch,
+  };
 }
 
 // Las 5 mutaciones del dominio -- todas invalidan la misma queryKey al
