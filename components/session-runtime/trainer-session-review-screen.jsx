@@ -25,6 +25,7 @@ import { RecordsFeedModal } from './records-feed-modal.jsx';
 import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 // Resumen post-sesión del entrenador -- entra acá después de confirmar el
 // slide-to-finish (trainer-session-live-screen.jsx) o desde el calendario
@@ -148,6 +149,7 @@ function TrainerSessionReviewScreenContent() {
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-review-screen-root" testID="trainer-session-review-screen-root">
+      <PageReveal idPrefix="trainer-session-review-page-reveal">
       <ScrollView className="flex-1" contentContainerClassName={`px-4 py-6 ${isWeb ? 'items-center' : ''}`} nativeID="trainer-session-review-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="trainer-session-review-screen-scroll">
       <ScreenCard nativeID="trainer-session-review-screen-container" testID="trainer-session-review-screen-container">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-review-screen-header-row" testID="trainer-session-review-screen-header-row">
@@ -266,6 +268,7 @@ function TrainerSessionReviewScreenContent() {
         </View>
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       <AttendanceSessionModal
         groupId={groupId}

@@ -24,6 +24,7 @@ import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 const PARTICIPANTS_COLLAPSED_COUNT = 5;
 
@@ -152,6 +153,7 @@ function TrainerSessionPreStartScreenContent() {
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-pre-start-screen-root" testID="trainer-session-pre-start-screen-root">
       <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="trainer-session-pre-start-screen-width-container" testID="trainer-session-pre-start-screen-width-container">
+      <PageReveal idPrefix="trainer-session-pre-start-page-reveal">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="trainer-session-pre-start-screen-scroll" testID="trainer-session-pre-start-screen-scroll">
       <ScreenCard nativeID="trainer-session-pre-start-screen-container" testID="trainer-session-pre-start-screen-container">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-pre-start-screen-header-row" testID="trainer-session-pre-start-screen-header-row">
@@ -296,6 +298,7 @@ function TrainerSessionPreStartScreenContent() {
         </View>
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       {!isWeb && (
         <View className="border-t border-slate-100 bg-white px-4 pb-4 pt-3 dark:border-slate-800 dark:bg-surface" nativeID="trainer-session-pre-start-screen-footer" testID="trainer-session-pre-start-screen-footer">

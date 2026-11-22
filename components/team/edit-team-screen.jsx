@@ -19,6 +19,7 @@ import { useTeamConfiguration } from '../../hooks/use-team-configuration.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
@@ -116,6 +117,7 @@ function EditTeamForm({ team, teamId }) {
 
   return (
     <>
+      <PageReveal idPrefix="edit-team-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
         contentContainerClassName="px-4 py-6"
@@ -245,6 +247,7 @@ function EditTeamForm({ team, teamId }) {
           </SectionCard>
         </ScreenCard>
       </ScrollView>
+      </PageReveal>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );

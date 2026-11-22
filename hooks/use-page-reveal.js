@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
-export function usePageReveal({ loading = false, settleMs = 120 } = {}) {
-  const [state, setState] = useState({ phase: 'hidden', revealKey: 0 });
+export function usePageReveal({ initialPhase = 'hidden', loading = false, settleMs = 120 } = {}) {
+  const [state, setState] = useState({
+    phase: initialPhase,
+    revealKey: initialPhase === 'hidden' ? 0 : 1,
+  });
   const loadingRef = useRef(loading);
   loadingRef.current = loading;
   const hasFocusedOnce = useRef(false);

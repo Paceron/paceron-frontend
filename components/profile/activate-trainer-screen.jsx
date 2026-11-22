@@ -13,6 +13,7 @@ import { resolveMpConnectErrorText } from '../../utils/mp-connect-messages.js';
 import { MpConnectButton } from '../payments/mp-connect-button';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { ActivateTrainerPasswordModal } from './activate-trainer-password-modal.jsx';
 
 export function ActivateTrainerScreen() {
@@ -66,6 +67,7 @@ export function ActivateTrainerScreen() {
   };
 
   return (
+    <PageReveal idPrefix="activate-trainer-screen-page-reveal">
     <KeyboardAwareScrollView
       nativeID="activate-trainer-screen-scroll"
       testID="activate-trainer-screen-scroll"
@@ -154,5 +156,6 @@ export function ActivateTrainerScreen() {
         visible={passwordModalVisible}
       />
     </KeyboardAwareScrollView>
+    </PageReveal>
   );
 }

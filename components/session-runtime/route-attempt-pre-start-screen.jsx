@@ -24,6 +24,7 @@ import { notifyError } from '../../utils/haptics.js';
 import { RouteMapPreview } from '../team/route-map-preview';
 import { CompetitionRankingModal } from '../team/competition-ranking-modal.jsx';
 import { logDebug } from '../../utils/debug-log.js';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 // Pre-start dedicado de un intento de competencia por trayectoria (Spec
 // 4c probó en dispositivo que el pre-start genérico, session-pre-start-
@@ -230,6 +231,7 @@ function RouteAttemptPreStartScreenContent() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-pre-start-screen-root" testID="route-attempt-pre-start-screen-root">
+      <PageReveal idPrefix="route-attempt-pre-start-page-reveal">
       <View className="flex-row items-center justify-between px-4 pt-2" nativeID="route-attempt-pre-start-screen-header-row" testID="route-attempt-pre-start-screen-header-row">
         <Pressable
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
@@ -308,6 +310,7 @@ function RouteAttemptPreStartScreenContent() {
           </Pressable>
         </Animated.View>
       </View>
+      </PageReveal>
 
       <CompetitionRankingModal competition={rankingCompetitionStub} members={members} onClose={() => setRankingVisible(false)} visible={rankingVisible} />
     </SafeAreaView>

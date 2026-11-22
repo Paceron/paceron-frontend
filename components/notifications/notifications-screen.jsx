@@ -16,6 +16,7 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { formatRelativeTime } from '../../utils/relative-time.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { useTeamFees } from '../../hooks/use-team-fees.js';
@@ -329,6 +330,7 @@ function NotificationsScreenContent() {
   ]));
 
   return (
+    <PageReveal idPrefix="notifications-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -384,6 +386,7 @@ function NotificationsScreenContent() {
         {activeRole === 'trainer' && <TrainerPendingRequestsSection />}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

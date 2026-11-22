@@ -24,6 +24,7 @@ import { shareReceiptPdf } from '../../services/receipt';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { CheckoutFlow } from '../payments/checkout-flow';
 import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
@@ -246,6 +247,7 @@ function PaymentsScreenContent() {
   }
 
   return (
+    <PageReveal idPrefix="payments-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -366,6 +368,7 @@ function PaymentsScreenContent() {
         )}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

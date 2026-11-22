@@ -20,6 +20,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InvitedEmailsList } from '../forms/fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -123,6 +124,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
 
   return (
     <View className="flex-1" nativeID="invite-team-screen-root" testID="invite-team-screen-root">
+    <PageReveal idPrefix="invite-team-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -206,6 +208,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </SectionCard>
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
     <InviteMemberModal
       existingEmails={draftInvites.map((invite) => invite.email)}
       groups={groups}

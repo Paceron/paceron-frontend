@@ -35,6 +35,7 @@ import { VoiceAnnotationControls } from './voice-annotation-controls.jsx';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 const ROW_STATUS = {
   completed: { label: 'Completada', color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle' },
@@ -978,6 +979,7 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
 
   return (
     <View className="flex-1" nativeID="session-review-sync-list-root" testID="session-review-sync-list-root">
+      <PageReveal idPrefix="session-review-page-reveal">
       <ReviewListView
         completing={finishing}
         ensureRunnerSession={ensureRunnerSession}
@@ -991,6 +993,7 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
         reviewModel={reviewModel}
         slot={navSlot}
       />
+      </PageReveal>
       <LoadingOverlay fullScreen id="session-review-sync" label="Sincronizando el registro…" visible={syncing} />
     </View>
   );

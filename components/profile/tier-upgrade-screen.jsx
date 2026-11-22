@@ -22,6 +22,7 @@ import { formatArs } from '../../utils/currency.js';
 import { formatTierName as formatTierDisplayName } from '../../utils/tier-name.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-modal.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por
 // plataforma (.web.jsx antes que .jsx) cuando el specifier no trae
@@ -450,6 +451,7 @@ export function TierUpgradeScreen() {
   }
 
   return (
+    <PageReveal idPrefix="tier-upgrade-screen-page-reveal">
     <ScrollView
       nativeID="tier-upgrade-screen-scroll"
       testID="tier-upgrade-screen-scroll"
@@ -551,5 +553,6 @@ export function TierUpgradeScreen() {
         />
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }

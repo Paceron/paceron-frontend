@@ -14,6 +14,7 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
 import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
@@ -212,6 +213,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   };
 
   return (
+    <PageReveal idPrefix="training-plan-detail-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -306,6 +308,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
         visible={deleteModalVisible}
       />
     </ScrollView>
+    </PageReveal>
   );
 }
 

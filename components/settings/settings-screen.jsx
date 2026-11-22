@@ -10,6 +10,7 @@ import { useUser, useUserMutations } from '../../hooks/use-user.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { FormScreenError, FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -95,6 +96,7 @@ function SettingsScreenContent() {
   };
 
   return (
+    <PageReveal idPrefix="settings-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -186,6 +188,7 @@ function SettingsScreenContent() {
 
       <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
     </ScrollView>
+    </PageReveal>
   );
 }
 

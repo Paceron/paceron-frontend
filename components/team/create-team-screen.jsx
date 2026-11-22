@@ -23,6 +23,7 @@ import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };
 const TOTAL_STEPS = 3;
@@ -183,6 +184,7 @@ function CreateTeamScreenContent() {
 
   return (
     <View className="flex-1" nativeID="create-team-screen-root" testID="create-team-screen-root">
+    <PageReveal idPrefix="create-team-screen-page-reveal">
     <ScrollView
       nativeID="create-team-screen-scroll"
       testID="create-team-screen-scroll"
@@ -274,6 +276,7 @@ function CreateTeamScreenContent() {
         )}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>
   );

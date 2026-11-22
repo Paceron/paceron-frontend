@@ -16,6 +16,7 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionTabBar } from '../shared/section-tab-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
 import { UpcomingTrainingsGrid } from './upcoming-trainings-grid.jsx';
@@ -118,6 +119,7 @@ function MyCalendarScreenContent() {
 
   return (
     <View className="flex-1" nativeID="my-calendar-screen-root" testID="my-calendar-screen-root">
+      <PageReveal idPrefix="my-calendar-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
         contentContainerClassName="px-4 py-6"
@@ -202,6 +204,7 @@ function MyCalendarScreenContent() {
         {activeTab === 'historial' && <TrainingsHistoryTab role="runner" />}
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="member" visible={dayModalVisible} />
     </View>

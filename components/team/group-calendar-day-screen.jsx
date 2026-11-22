@@ -15,6 +15,7 @@ import { InputField } from '../forms/fields.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { RequireRole } from '../guards/require-role.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
@@ -197,6 +198,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
 
   return (
     <>
+      <PageReveal idPrefix="group-calendar-day-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
         contentContainerClassName="px-4 py-6"
@@ -325,6 +327,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
           </SectionCard>
         </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       <Modal
         animationType="fade"

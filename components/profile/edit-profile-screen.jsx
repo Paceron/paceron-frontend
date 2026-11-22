@@ -19,6 +19,7 @@ import { Row, Col, InputField, DateField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { LocationPicker } from '../shared/location-picker';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { FormScreenError, FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
@@ -223,6 +224,7 @@ function EditProfileForm({ user }) {
 
   return (
     <>
+    <PageReveal idPrefix="edit-profile-screen-page-reveal">
     <KeyboardAwareScrollView
       nativeID="edit-profile-screen-scroll"
       testID="edit-profile-screen-scroll"
@@ -402,6 +404,7 @@ function EditProfileForm({ user }) {
         {activeTab === 'password' && <ChangePasswordSection userId={user.userId} />}
       </ScreenCard>
     </KeyboardAwareScrollView>
+    </PageReveal>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );

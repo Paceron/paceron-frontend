@@ -27,6 +27,7 @@ import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-d
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();
@@ -375,6 +376,7 @@ function SessionPreStartScreenContent() {
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
       <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="session-pre-start-screen-width-container" testID="session-pre-start-screen-width-container">
+      <PageReveal idPrefix="session-pre-start-page-reveal">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
       <ScreenCard nativeID="session-pre-start-screen-container" testID="session-pre-start-screen-container">
         <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
@@ -488,6 +490,7 @@ function SessionPreStartScreenContent() {
         </View>
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       {/* Botonera fija fuera del ScrollView: la lista scrollea sin arrastrarlo.
           En web, sin ninguna de las ramas de abajo, no queda nada que

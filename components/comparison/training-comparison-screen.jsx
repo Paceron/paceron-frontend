@@ -31,6 +31,7 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { DateField } from '../forms/fields.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { ComplianceBadge } from './compliance-badge.jsx';
 import { ComplianceChart } from './compliance-chart.jsx';
@@ -128,6 +129,7 @@ function TrainingComparisonContent() {
   };
 
   return (
+    <PageReveal idPrefix="training-comparison-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -245,6 +247,7 @@ function TrainingComparisonContent() {
         ) : null}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

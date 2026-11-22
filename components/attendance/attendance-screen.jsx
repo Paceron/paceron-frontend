@@ -22,6 +22,7 @@ import { ConfirmDestructiveModal } from '../shared/confirm-destructive-modal.jsx
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { AttendanceGrid } from './attendance-grid.jsx';
 import { AttendanceQrModal } from './attendance-qr-modal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -558,6 +559,7 @@ function AttendanceCascade() {
 
   return (
     <View className="flex-1" nativeID={`${ID_PREFIX}-root`} testID={`${ID_PREFIX}-root`}>
+      <PageReveal idPrefix="attendance-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
         contentContainerClassName="px-4 py-6"
@@ -727,6 +729,7 @@ function AttendanceCascade() {
           />
         </ScreenCard>
       </ScrollView>
+      </PageReveal>
     </View>
   );
 }

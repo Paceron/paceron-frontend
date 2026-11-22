@@ -18,6 +18,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { SessionDragProvider, DragGhost } from './session-drag-and-drop.jsx';
 import { SessionFormBody } from './session-form-body.jsx';
 
@@ -97,6 +98,7 @@ function EditSessionForm({ session }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SessionDragProvider>
+        <PageReveal idPrefix="edit-session-screen-page-reveal">
         <View className="flex-1 bg-paper px-4 pt-8 dark:bg-ink" nativeID="edit-session-screen-root" testID="edit-session-screen-root">
           <ScreenCard nativeID="edit-session-screen-container" style={{ flex: 1 }} testID="edit-session-screen-container">
             <View className="mb-4 flex-row items-center gap-2" nativeID="edit-session-screen-header" testID="edit-session-screen-header">
@@ -153,6 +155,7 @@ function EditSessionForm({ session }) {
             </Pressable>
           </ScreenCard>
         </View>
+        </PageReveal>
         <DragGhost />
       </SessionDragProvider>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />

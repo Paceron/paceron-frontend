@@ -27,6 +27,7 @@ import { mpConnectionState } from '../../utils/mp-connect-status.js';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
 import { RoleSwitchToggle } from './role-switch-toggle.jsx';
@@ -602,6 +603,7 @@ export function ProfileScreen() {
   };
 
   return (
+    <PageReveal idPrefix="profile-screen-page-reveal">
     <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-6" nativeID="profile-screen" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="profile-screen">
       <ScreenCard nativeID="profile-screen-content" testID="profile-screen-content">
         <Text
@@ -692,5 +694,6 @@ export function ProfileScreen() {
         />
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }

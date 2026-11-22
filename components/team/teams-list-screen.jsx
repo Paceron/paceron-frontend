@@ -17,6 +17,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 function TeamRow({ team, onPress, hasPendingRequests }) {
   const colors = useThemeColors();
@@ -66,6 +67,7 @@ function TeamsListScreenContent() {
   ]));
 
   return (
+    <PageReveal idPrefix="teams-list-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -141,6 +143,7 @@ function TeamsListScreenContent() {
         </SectionCard>
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

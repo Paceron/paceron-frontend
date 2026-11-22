@@ -24,6 +24,7 @@ import { buildSessionComparisonCsv, sessionComparisonFileName } from '../../util
 import { buildSessionComparisonHtml } from '../../utils/comparison-pdf-html.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { ComplianceBadge } from './compliance-badge.jsx';
 import { ComparisonExportButtons } from './comparison-export-buttons.jsx';
 
@@ -118,6 +119,7 @@ function SessionComparisonContent() {
   const notFound = error?.status === 404;
 
   return (
+    <PageReveal idPrefix="session-comparison-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -203,6 +205,7 @@ function SessionComparisonContent() {
         ) : null}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

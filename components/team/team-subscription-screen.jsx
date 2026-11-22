@@ -19,6 +19,7 @@ import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess } from '../../utils/haptics.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por plataforma
 // (.web.jsx antes que .jsx) cuando el specifier no trae extensión — ver quirk
@@ -177,6 +178,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
   const isFree = !membershipFee;
 
   return (
+    <PageReveal idPrefix="team-subscription-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
       contentContainerClassName="px-4 py-6"
@@ -306,6 +308,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
       </ScreenCard>
       </View>
     </ScrollView>
+    </PageReveal>
   );
 }
 
