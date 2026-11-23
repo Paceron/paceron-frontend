@@ -1,4 +1,10 @@
 import api from './api.js';
+import { USE_MOCKS } from '../config/env.js';
+import {
+  mockDeleteWorkoutFeedback,
+  mockGetAdministeredWorkoutFeedbackHistory,
+  mockGetWorkoutFeedbackHistory,
+} from './__mocks__/trainings-history-mock.js';
 
 function buildHistoryParams(filters) {
   const params = new URLSearchParams();
@@ -17,13 +23,16 @@ function buildHistoryParams(filters) {
 }
 
 export async function getWorkoutFeedbackHistory(userId, filters) {
+  if (USE_MOCKS) return await mockGetWorkoutFeedbackHistory(userId, filters);
   return await api.get(`/users/${userId}/workout-feedback-history?${buildHistoryParams(filters).toString()}`);
 }
 
 export async function getAdministeredWorkoutFeedbackHistory(userId, filters) {
+  if (USE_MOCKS) return await mockGetAdministeredWorkoutFeedbackHistory(userId, filters);
   return await api.get(`/users/${userId}/administered-workout-feedback-history?${buildHistoryParams(filters).toString()}`);
 }
 
 export async function deleteWorkoutFeedback(feedbackId) {
+  if (USE_MOCKS) return await mockDeleteWorkoutFeedback(feedbackId);
   return await api.delete(`/workout-feedback/${feedbackId}`);
 }
