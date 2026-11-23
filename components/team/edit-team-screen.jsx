@@ -20,6 +20,7 @@ import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
@@ -40,11 +41,7 @@ function EditTeamScreenContent({ teamId }) {
   const { team, loading } = useTeam(teamId);
 
   if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-team-loading" testID="edit-team-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="edit-team" onBack={() => router.back()} />;
   }
 
   if (!team) {

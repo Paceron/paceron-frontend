@@ -19,20 +19,16 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { SessionDragProvider, DragGhost } from './session-drag-and-drop.jsx';
 import { SessionFormBody } from './session-form-body.jsx';
 
 function EditSessionScreenContent({ sessionId }) {
-  const colors = useThemeColors();
   const router = useRouter();
   const { session, loading } = useSession(sessionId);
 
   if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-session-loading" testID="edit-session-loading">
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="edit-session" onBack={() => router.back()} />;
   }
 
   if (!session) {

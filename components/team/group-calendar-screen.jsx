@@ -37,6 +37,7 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 // Mismos ids/iconos que TABS en training-plans-screen.jsx -- ahí es donde
 // `?tab=` termina resolviendo.
@@ -394,6 +395,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
 
   return (
     <View className="relative flex-1" nativeID="group-calendar-screen-root" ref={screenRootRef} testID="group-calendar-screen-root">
+      <PageReveal idPrefix="group-calendar-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
         contentContainerClassName="px-4 py-6"
@@ -540,6 +542,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         </View>
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       <AnimatedDropdown
         anchorStyle={openDayMenu ? { left: openDayMenu.anchor.x, top: openDayMenu.anchor.y + openDayMenu.anchor.height + 4 } : {}}

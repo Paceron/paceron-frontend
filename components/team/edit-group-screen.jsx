@@ -19,6 +19,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 // Formulario chico: nombre + descripción — mismos campos que ya usa
@@ -63,11 +64,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
   }, [group]);
 
   if (loadingTeam || loadingGroups) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-group-loading" testID="edit-group-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="edit-group" onBack={() => router.back()} />;
   }
 
   if (!team || !group) {

@@ -15,6 +15,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
 import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
@@ -155,11 +156,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   ]));
 
   if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="training-plan-detail-loading" testID="training-plan-detail-loading">
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="training-plan-detail" onBack={() => router.back()} />;
   }
 
   if (!plan) {

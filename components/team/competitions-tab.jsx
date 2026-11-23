@@ -21,6 +21,7 @@ import { canCloseCompetition } from '../../utils/competition-close.js';
 import { resolveCompetitionWinner } from '../../utils/competition-winner.js';
 import { useScrollToHighlight } from '../../hooks/use-scroll-to-highlight.js';
 import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
@@ -665,9 +666,25 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
       />
 
       {loading && (
-        <View className="items-center py-6" nativeID="competitions-tab-loading" testID="competitions-tab-loading">
-          <ActivityIndicator color="#8cc63e" />
-        </View>
+        <SkeletonPulse className="gap-2" nativeID="competitions-tab-loading" testID="competitions-tab-loading">
+          {[0, 1, 2].map((index) => (
+            <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" key={index} nativeID={`competitions-tab-loading-row-${index}`} testID={`competitions-tab-loading-row-${index}`}>
+              <View className="flex-row items-center gap-2" nativeID={`competitions-tab-loading-row-${index}-header`} testID={`competitions-tab-loading-row-${index}-header`}>
+                <SkeletonBlock height={16} rounded="rounded-full" width={16} />
+                <SkeletonBlock height={16} width="52%" />
+                <View className="ml-auto" nativeID={`competitions-tab-loading-row-${index}-status`} testID={`competitions-tab-loading-row-${index}-status`}>
+                  <SkeletonBlock height={24} rounded="rounded-full" width={56} />
+                </View>
+              </View>
+              <SkeletonBlock className="mt-2" height={11} width="40%" />
+              <View className="mt-3 flex-row gap-2" nativeID={`competitions-tab-loading-row-${index}-actions`} testID={`competitions-tab-loading-row-${index}-actions`}>
+                <SkeletonBlock height={32} rounded="rounded-full" width={32} />
+                <SkeletonBlock height={32} rounded="rounded-full" width={32} />
+                <SkeletonBlock height={32} rounded="rounded-full" width={32} />
+              </View>
+            </View>
+          ))}
+        </SkeletonPulse>
       )}
 
       {!loading && error && (
