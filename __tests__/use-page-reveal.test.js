@@ -1,27 +1,24 @@
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: (callback) => {
-    global.__pageRevealFocusCallback = callback;
-  },
+let mockPathname = '/home';
+
+jest.mock('expo-router', () => ({
+  usePathname: () => mockPathname,
 }));
 
 import { act, renderHook } from '@testing-library/react-native';
 import { usePageReveal } from '../hooks/use-page-reveal.js';
 
-const fireFocus = () => {
-  act(() => {
-    global.__pageRevealFocusCallback?.();
-  });
+const setPathname = (nextPathname) => {
+  mockPathname = nextPathname;
 };
 
 describe('usePageReveal', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    global.__pageRevealFocusCallback = null;
+    mockPathname = '/home';
   });
 
   afterEach(() => {
     jest.useRealTimers();
-    delete global.__pageRevealFocusCallback;
   });
 
   test('pasa de hidden a load cuando termina la espera', () => {
@@ -62,13 +59,14 @@ describe('usePageReveal', () => {
     expect(result.current.phase).toBe('load');
   });
 
-  test('revela de nuevo cuando la pantalla recupera el foco', () => {
-    const { result } = renderHook(() => usePageReveal({ initialPhase: 'load' }));
+  test('revela de nuevo cuando cambia la ruta', () => {
+    const { result, rerender } = renderHook(() => usePageReveal({ initialPhase: 'load' }));
 
-    fireFocus();
     expect(result.current.phase).toBe('load');
 
-    fireFocus();
+    setPathname('/calendar');
+    rerender({});
+
     expect(result.current.phase).toBe('return');
     expect(result.current.revealKey).toBe(2);
   });

@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'expo-router';
 
 export function usePageReveal({ initialPhase = 'hidden', loading = false, settleMs = 120 } = {}) {
+  const pathname = usePathname();
   const [state, setState] = useState({
     phase: initialPhase,
     revealKey: initialPhase === 'hidden' ? 0 : 1,
   });
   const loadingRef = useRef(loading);
   loadingRef.current = loading;
-  const hasFocusedOnce = useRef(false);
+  const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
     if (loading) {
@@ -22,14 +23,12 @@ export function usePageReveal({ initialPhase = 'hidden', loading = false, settle
     return () => clearTimeout(timer);
   }, [loading, settleMs, state.phase]);
 
-  useFocusEffect(useCallback(() => {
-    if (!hasFocusedOnce.current) {
-      hasFocusedOnce.current = true;
-      return;
-    }
+  useEffect(() => {
+    if (previousPathnameRef.current === pathname) return;
+    previousPathnameRef.current = pathname;
     if (loadingRef.current) return;
     setState((prev) => ({ phase: 'return', revealKey: prev.revealKey + 1 }));
-  }, []));
+  }, [pathname]);
 
   return {
     phase: state.phase,
