@@ -7,8 +7,18 @@ import { __getAllMockTeams, __getMockTeamOwnerId, __getMockTeamName } from './te
 
 const PAGE_SIZE = 20;
 
-let mockJoinRequests = [];
-let nextJoinRequestId = 1;
+let mockJoinRequests = [
+  {
+    id: 1,
+    team_id: 5,
+    team_name: 'Atletas del Río',
+    runner_id: 1,
+    runner_name: 'Demo User',
+    status: 'pending',
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+];
+let nextJoinRequestId = 2;
 
 function findJoinRequestOrThrow(requestId) {
   const request = mockJoinRequests.find((r) => String(r.id) === String(requestId));
