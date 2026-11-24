@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import Animated, { FadeOut, LinearTransition, useReducedMotion } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { useExitAction } from '../shared/use-exit-action.js';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,24 +13,12 @@ import { useTeamJoinRequests, useJoinRequestMutations } from '../../hooks/use-jo
 // Solicitudes de ingreso, arriba de la lista de la pestaña Corredores y solo
 // para el entrenador dueño — aceptar/rechazar, tap directo sin modal de
 // confirmación (mismo patrón que received-invitations-screen.jsx/notifications-screen.jsx).
-function AnimatedListRow({ children, idPrefix }) {
-  const reducedMotion = useReducedMotion();
-  return (
-    <Animated.View
-      exiting={reducedMotion ? undefined : FadeOut.duration(140)}
-      layout={reducedMotion ? undefined : LinearTransition.duration(160)}
-      nativeID={`${idPrefix}-animated-row`}
-      testID={`${idPrefix}-animated-row`}
-    >
-      {children}
-    </Animated.View>
-  );
-}
-
 function JoinRequestRow({ request, onAccept, onReject, responding, respondingAction }) {
   const colors = useThemeColors();
+  const { runExit, style: exitStyle } = useExitAction();
 
   return (
+    <Animated.View nativeID={`team-request-${request.id}-exit`} style={exitStyle} testID={`team-request-${request.id}-exit`}>
     <View
       className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
       nativeID={`team-request-${request.id}`}
@@ -46,7 +35,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding, respondingAct
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
           disabled={responding}
           nativeID={`team-request-${request.id}-accept-button`}
-          onPress={onAccept}
+          onPress={() => runExit(onAccept)}
           testID={`team-request-${request.id}-accept-button`}
         >
           {respondingAction === 'accept' ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
@@ -62,7 +51,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding, respondingAct
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-80 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
           disabled={responding}
           nativeID={`team-request-${request.id}-reject-button`}
-          onPress={onReject}
+          onPress={() => runExit(onReject)}
           testID={`team-request-${request.id}-reject-button`}
         >
           {respondingAction === 'reject' ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : (
@@ -76,6 +65,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding, respondingAct
         </Pressable>
       </View>
     </View>
+    </Animated.View>
   );
 }
 
@@ -130,15 +120,14 @@ export function TeamJoinRequestsSection({ teamId }) {
     <SectionCard icon="account-question-outline" scope="team-requests-section" title={`Solicitudes de ingreso · ${requests.length}`} variant="nested">
       <View className="gap-2" nativeID="team-requests-tab-list" testID="team-requests-tab-list">
         {requests.map((request) => (
-          <AnimatedListRow idPrefix={`team-request-${request.id}`} key={request.id}>
           <JoinRequestRow
+            key={request.id}
             onAccept={() => handleAccept(request.id)}
             onReject={() => handleReject(request.id)}
             request={request}
             responding={(isAccepting || isRejecting) && respondingId === request.id}
             respondingAction={respondingId === request.id ? respondingAction : null}
           />
-          </AnimatedListRow>
         ))}
       </View>
     </SectionCard>

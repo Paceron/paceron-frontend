@@ -17,8 +17,17 @@ let mockJoinRequests = [
     status: 'pending',
     created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   },
+  {
+    id: 2,
+    team_id: 1,
+    team_name: 'Corredores del Sur',
+    runner_id: 101,
+    runner_name: 'Lucía Fernández',
+    status: 'pending',
+    created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
 ];
-let nextJoinRequestId = 2;
+let nextJoinRequestId = 3;
 
 function findJoinRequestOrThrow(requestId) {
   const request = mockJoinRequests.find((r) => String(r.id) === String(requestId));

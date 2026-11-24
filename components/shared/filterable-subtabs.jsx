@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { TabBar } from './tab-bar.jsx';
+import { Collapsible } from './collapsible.jsx';
 import { useThemeColors } from '../../theme/colors.js';
 
 // Compartido por CompetitionsTab (equipo) y MyCompetitionsTab (gamificación)
@@ -21,6 +22,7 @@ export function FilterableSubtabs({ tabs, active, onChange, badges, scope, filte
         <Pressable
           accessibilityLabel={expanded ? 'Ocultar filtros' : 'Mostrar filtros'}
           accessibilityRole="button"
+          accessibilityState={{ expanded }}
           className="flex-row items-center gap-1 rounded-full px-2.5 py-1 hover:bg-slate-100 active:opacity-70 dark:hover:bg-slate-800"
           nativeID={`${scope}-filter-toggle`}
           onPress={() => setExpanded((v) => !v)}
@@ -32,11 +34,11 @@ export function FilterableSubtabs({ tabs, active, onChange, badges, scope, filte
           )}
         </Pressable>
       </View>
-      {expanded && (
+      <Collapsible expanded={expanded} idPrefix={`${scope}-filters`}>
         <View className="mt-3 rounded-xl bg-slate-100 p-3 shadow-sm dark:bg-surface-2" nativeID={`${scope}-filter-panel`} testID={`${scope}-filter-panel`}>
           {filterContent}
         </View>
-      )}
+      </Collapsible>
     </View>
   );
 }

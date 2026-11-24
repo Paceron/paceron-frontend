@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import Animated, { FadeOut, LinearTransition, useReducedMotion } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { useExitAction } from '../shared/use-exit-action.js';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -52,26 +53,14 @@ function SectionErrorState({ idPrefix, message, onRetry }) {
 // no trae la cuota) y puede estar undefined mientras carga: en ese caso no se
 // muestra precio, porque mostrar "Gratis" sin saberlo sería mostrar un precio
 // equivocado justo donde el corredor decide aceptar.
-function AnimatedListRow({ children, idPrefix }) {
-  const reducedMotion = useReducedMotion();
-  return (
-    <Animated.View
-      exiting={reducedMotion ? undefined : FadeOut.duration(140)}
-      layout={reducedMotion ? undefined : LinearTransition.duration(160)}
-      nativeID={`${idPrefix}-animated-row`}
-      testID={`${idPrefix}-animated-row`}
-    >
-      {children}
-    </Animated.View>
-  );
-}
-
 function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, responding, respondingAction }) {
   const colors = useThemeColors();
   const slug = invite.id;
   const isPaid = membershipFee > 0;
+  const { runExit, style: exitStyle } = useExitAction();
 
   return (
+    <Animated.View nativeID={`received-invitation-${slug}-exit`} style={exitStyle} testID={`received-invitation-${slug}-exit`}>
     <View
       className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
       nativeID={`received-invitation-${slug}`}
@@ -101,7 +90,7 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
           disabled={responding}
           nativeID={`received-invitation-${slug}-accept-button`}
-          onPress={onAccept}
+          onPress={() => runExit(onAccept)}
           testID={`received-invitation-${slug}-accept-button`}
         >
           {respondingAction === 'accept' ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
@@ -117,7 +106,7 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-80 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
           disabled={responding}
           nativeID={`received-invitation-${slug}-reject-button`}
-          onPress={onReject}
+          onPress={() => runExit(onReject)}
           testID={`received-invitation-${slug}-reject-button`}
         >
           {respondingAction === 'reject' ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : (
@@ -131,6 +120,7 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
         </Pressable>
       </View>
     </View>
+    </Animated.View>
   );
 }
 
@@ -139,8 +129,10 @@ function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, resp
 function SentJoinRequestRow({ request, onCancel, cancelling }) {
   const colors = useThemeColors();
   const STATUS_LABEL = { pending: 'Pendiente', accepted: 'Aceptada', rejected: 'Rechazada' };
+  const { runExit, style: exitStyle } = useExitAction();
 
   return (
+    <Animated.View nativeID={`sent-join-request-${request.id}-exit`} style={exitStyle} testID={`sent-join-request-${request.id}-exit`}>
     <View
       className="flex-row items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
       nativeID={`sent-join-request-${request.id}`}
@@ -159,7 +151,7 @@ function SentJoinRequestRow({ request, onCancel, cancelling }) {
           className="h-9 flex-row items-center justify-center rounded-full border border-slate-200 px-3 hover:bg-slate-100 active:opacity-80 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
           disabled={cancelling}
           nativeID={`sent-join-request-${request.id}-cancel-button`}
-          onPress={onCancel}
+          onPress={() => runExit(onCancel)}
           testID={`sent-join-request-${request.id}-cancel-button`}
         >
           {cancelling ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : (
@@ -170,6 +162,7 @@ function SentJoinRequestRow({ request, onCancel, cancelling }) {
         </Pressable>
       )}
     </View>
+    </Animated.View>
   );
 }
 
@@ -208,13 +201,12 @@ function MyJoinRequestsSection() {
       ) : (
         <View className="gap-2" nativeID="my-join-requests-list" testID="my-join-requests-list">
           {requests.map((request) => (
-            <AnimatedListRow idPrefix={`sent-join-request-${request.id}`} key={request.id}>
             <SentJoinRequestRow
               cancelling={isCancelling && cancellingId === request.id}
+              key={request.id}
               onCancel={() => handleCancel(request.id)}
               request={request}
             />
-            </AnimatedListRow>
           ))}
         </View>
       )}
@@ -384,16 +376,15 @@ function NotificationsScreenContent() {
           ) : (
             <View className="gap-2" nativeID="received-invitations-list" testID="received-invitations-list">
               {myInvitations.map((invite) => (
-                <AnimatedListRow idPrefix={`received-invitation-${invite.id}`} key={invite.id}>
                 <ReceivedInvitationRow
                   invite={invite}
+                  key={invite.id}
                   membershipFee={getFee(invite.teamId)}
                   onAccept={() => handleAccept(invite.id)}
                   onReject={() => handleReject(invite.id)}
                   responding={respondingId === invite.id}
                   respondingAction={respondingId === invite.id ? respondingAction : null}
                 />
-                </AnimatedListRow>
               ))}
             </View>
           )}
