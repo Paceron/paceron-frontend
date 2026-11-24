@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -117,12 +117,13 @@ function SessionPreStartScreenContent() {
   // los renders de esta pantalla).
   const playReady = !starting && !runnerSessionLoading;
   const pulse = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
-    pulse.value = playReady
+    pulse.value = playReady && !reducedMotion
       ? withRepeat(withTiming(1.06, { duration: 650 }), -1, true)
       : withTiming(1, { duration: 200 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playReady]);
+  }, [playReady, reducedMotion]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   // Spec 4b (Gap 33 punto 29) -- si el Play cae dentro de la ventana de una

@@ -1,7 +1,7 @@
 import { Pressable, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, useReducedMotion } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { useStreaks } from '../../hooks/use-streaks.js';
 import { streakDayVisual } from '../../utils/streak-day-status.js';
@@ -17,11 +17,15 @@ import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 // components/shared/skeleton.jsx.
 function useFirePulse() {
   const scale = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (isWeb) return;
+    if (isWeb || reducedMotion) {
+      scale.value = 1;
+      return;
+    }
     scale.value = withRepeat(withTiming(1.12, { duration: 900, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [scale]);
+  }, [reducedMotion, scale]);
 
   return useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 }

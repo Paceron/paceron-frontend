@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Fondo del overlay: el mismo gris del asset, por el mismo motivo que en
@@ -22,17 +23,18 @@ const MESSAGES = {
 
 export function CheckinResult({ visible, outcome, onAccept }) {
   const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
   if (!visible) return null;
 
   const conf = MESSAGES[outcome?.kind] ?? MESSAGES.unknown;
   const isSuccess = conf.tone === 'success';
 
   return (
-    <View
+    <Animated.View
       accessibilityViewIsModal
-      className="absolute inset-0 items-center justify-center px-6"
+      entering={reducedMotion ? undefined : FadeIn.duration(180)}
       nativeID="checkin-result-overlay"
-      style={{ backgroundColor: OVERLAY_BG, paddingTop: insets.top, paddingBottom: insets.bottom, pointerEvents: 'auto' }}
+      style={{ alignItems: 'center', backgroundColor: OVERLAY_BG, bottom: 0, justifyContent: 'center', left: 0, paddingBottom: insets.bottom, paddingHorizontal: 24, paddingTop: insets.top, pointerEvents: 'auto', position: 'absolute', right: 0, top: 0 }}
       testID="checkin-result-overlay"
     >
       <View
@@ -93,6 +95,6 @@ export function CheckinResult({ visible, outcome, onAccept }) {
             : 'Podés intentar de nuevo escaneando el QR.'}
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }

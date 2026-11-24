@@ -43,7 +43,7 @@ export function SectionTabBar({ tabs, active, onChange, idPrefix }) {
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             aria-selected={isActive}
-            className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 ${
+            className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 active:opacity-70 hover:bg-slate-100 dark:hover:bg-slate-700 ${
               isActive ? 'bg-primary-tint-subtle dark:bg-primary/10' : 'bg-transparent'
             }`}
             focusable={isWeb}

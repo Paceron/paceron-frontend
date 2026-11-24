@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 // Ícono saltando hacia arriba -- extraído de role-switch-toggle.jsx
 // (2026-11-10) al sumarse un segundo caller (next-training-banner.jsx) que
@@ -22,8 +22,13 @@ import { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, with
 // pantalla con más animaciones simultáneas de toda la app.
 export function useArrowBounce(repeatCount = -1) {
   const bounce = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      bounce.value = 0;
+      return;
+    }
     bounce.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 450, easing: Easing.out(Easing.quad) }),
@@ -31,7 +36,7 @@ export function useArrowBounce(repeatCount = -1) {
       ),
       repeatCount,
     );
-  }, [bounce, repeatCount]);
+  }, [bounce, reducedMotion, repeatCount]);
 
   return useAnimatedStyle(() => ({ transform: [{ translateY: interpolate(bounce.value, [0, 1], [0, -3]) }] }));
 }
