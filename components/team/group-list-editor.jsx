@@ -55,7 +55,7 @@ export function GroupListEditor({ groups, onChange, onRemove }) {
                 Grupo principal
               </Text>
               <View className="rounded-full bg-primary/15 px-2 py-0.5 dark:bg-primary/25" nativeID="group-list-editor-default-row-badge" testID="group-list-editor-default-row-badge">
-                <Text className="text-[10px] font-semibold uppercase tracking-wide text-primary" nativeID="group-list-editor-default-row-badge-label" testID="group-list-editor-default-row-badge-label">
+                <Text className="text-[10px] font-semibold uppercase tracking-wide text-[#3c6b12] dark:text-primary" nativeID="group-list-editor-default-row-badge-label" testID="group-list-editor-default-row-badge-label">
                   Fijo
                 </Text>
               </View>

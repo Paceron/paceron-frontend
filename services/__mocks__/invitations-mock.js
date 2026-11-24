@@ -11,8 +11,23 @@
 // actual, que el backend real ignora (solo usa user_id como query param).
 import { __getMockTeamName, __getMockTeamOwnerId } from './teams-mock.js';
 
-let mockInvitations = [];
-let nextInvitationId = 1;
+let mockInvitations = [
+  {
+    id: 1,
+    team_id: 5,
+    invitee_email: 'demo@paceron.com',
+    invitee_id: null,
+    invitee_name: null,
+    group_id: null,
+    team_name: 'Atletas del Río',
+    inviter_id: 1,
+    inviter_name: 'Demo User',
+    status: 'pending',
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
+];
+let nextInvitationId = 2;
 
 function findInvitationOrThrow(invitationId) {
   const invitation = mockInvitations.find((i) => String(i.id) === String(invitationId));

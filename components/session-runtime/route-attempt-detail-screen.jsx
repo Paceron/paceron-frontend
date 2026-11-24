@@ -12,6 +12,7 @@ import { formatStopwatch } from '../../utils/time.js';
 import { LiveTrajectoryMap } from './live-trajectory-map';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 // % de cumplimiento (tiempo dentro del radio de aceptación) desde el que se
@@ -160,6 +161,7 @@ function RouteAttemptDetailScreenContent() {
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="route-attempt-detail-screen-root" testID="route-attempt-detail-screen-root">
+      <PageReveal idPrefix="route-attempt-detail-page-reveal">
       <ScreenCard nativeID="route-attempt-detail-screen-container" style={{ flex: 1 }} testID="route-attempt-detail-screen-container">
       {justFinished ? (
         <View className="mb-3 flex-row items-center gap-2 rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/40" nativeID="route-attempt-detail-screen-banner" testID="route-attempt-detail-screen-banner">
@@ -251,6 +253,7 @@ function RouteAttemptDetailScreenContent() {
         </Pressable>
       )}
       </ScreenCard>
+      </PageReveal>
     </View>
   );
 }

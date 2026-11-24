@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
@@ -32,7 +32,7 @@ export function CheckinScreen() {
 function CheckinGate() {
   const userId = useAuthStore((s) => s.userId);
   const activeRole = useAuthStore((s) => s.activeRole);
-  const { roles } = usePermissions(userId);
+  const { roles, loading: permissionsLoading } = usePermissions(userId);
 
   // Mismo criterio que attendance-screen.jsx: `activeRole` dice qué se está
   // mirando ahora, `hasTrainerRole` que el rol exista de verdad. Acá la
@@ -42,6 +42,7 @@ function CheckinGate() {
   const canCheckIn = hasRunnerRole && activeRole === 'runner';
 
   if (isWeb) return <PlatformNotice />;
+  if (permissionsLoading) return <CheckinLoading />;
   if (!canCheckIn) return <TrainerProfileNotice hasRunnerRole={hasRunnerRole} />;
 
   return <CheckinScanner />;
@@ -75,6 +76,20 @@ function PlatformNotice() {
           </Pressable>
         </View>
       </ScreenCard>
+    </View>
+  );
+}
+
+// Mientras se resuelven los permisos no se muestra un rechazo falso.
+function CheckinLoading() {
+  const colors = useThemeColors();
+
+  return (
+    <View className="flex-1 items-center justify-center bg-paper px-4 dark:bg-ink" nativeID="checkin-loading-root" testID="checkin-loading-root">
+      <ActivityIndicator color={colors.primary} size="large" nativeID="checkin-loading-spinner" testID="checkin-loading-spinner" />
+      <Text className="mt-3 text-sm text-slate-500 dark:text-slate-400" nativeID="checkin-loading-label" testID="checkin-loading-label">
+        Verificando tu perfil…
+      </Text>
     </View>
   );
 }

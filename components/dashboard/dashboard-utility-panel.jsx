@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
+import { Collapsible } from '../shared/collapsible.jsx';
 
 // Filtros y Calidad de los datos en UN panel con dos pestañas al mismo nivel.
 //
@@ -103,9 +104,13 @@ export function DashboardUtilityPanel({
         </Text>
       ) : null}
 
-      {open && !(narrow && current === 'filters') ? (
-        <View className="mt-3" nativeID={`${id}-content`} testID={`${id}-content`}>
-          {current === 'filters' ? filtersContent : qualityContent}
+      {!(narrow && current === 'filters') ? (
+        <View nativeID={`${id}-content`} testID={`${id}-content`}>
+          <Collapsible expanded={open} idPrefix={`${id}-collapsible`}>
+            <View className="pt-3" nativeID={`${id}-content-inner`} testID={`${id}-content-inner`}>
+              {current === 'filters' ? filtersContent : qualityContent}
+            </View>
+          </Collapsible>
         </View>
       ) : null}
     </View>

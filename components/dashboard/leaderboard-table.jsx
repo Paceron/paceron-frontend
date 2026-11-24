@@ -121,7 +121,7 @@ export function LeaderboardTable({
           testID={`${idPrefix}-sort-${column.key}-row`}
         >
           <Text
-            className={`${compactCell ? 'text-left' : 'text-right'} text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500`}
+            className={`${compactCell ? 'text-left' : 'text-right'} text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400`}
             nativeID={`${idPrefix}-sort-${column.key}-label`}
             numberOfLines={2}
             testID={`${idPrefix}-sort-${column.key}-label`}
@@ -181,7 +181,7 @@ export function LeaderboardTable({
 
   const positionCell = (item, rowId) => (
     <Text
-      className="text-xs font-semibold text-slate-400 dark:text-slate-500"
+      className="text-xs font-semibold text-slate-500 dark:text-slate-400"
       nativeID={`${rowId}-position`}
       style={{ width: POSITION_WIDTH }}
       testID={`${rowId}-position`}
@@ -257,7 +257,7 @@ export function LeaderboardTable({
         >
           <View nativeID={`${id}-column-position`} style={{ width: POSITION_WIDTH }} testID={`${id}-column-position`} />
           <Text
-            className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500"
+            className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
             nativeID={`${id}-column-name`}
             style={{ flex: NAME_FLEX }}
             testID={`${id}-column-name`}
@@ -346,7 +346,7 @@ export function LeaderboardTable({
           {loadingMore ? (
             <ActivityIndicator color={colors.primary} nativeID={`${id}-load-more-spinner`} size="small" testID={`${id}-load-more-spinner`} />
           ) : (
-            <Text className="text-xs font-semibold text-primary" nativeID={`${id}-load-more-label`} testID={`${id}-load-more-label`}>
+            <Text className="text-xs font-semibold text-[#3c6b12] dark:text-primary" nativeID={`${id}-load-more-label`} testID={`${id}-load-more-label`}>
               Cargar más
             </Text>
           )}

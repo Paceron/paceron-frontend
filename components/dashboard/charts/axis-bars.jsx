@@ -78,7 +78,7 @@ export function AxisBars({ id, summary, units }) {
               precisión, y el valor crudo (km/h, km) no es comparable entre ejes
               porque tienen unidades distintas. */}
           <Text
-            className="mt-1 text-[10px] text-slate-400 dark:text-slate-500"
+            className="mt-1 text-[10px] text-slate-500 dark:text-slate-400"
             nativeID={`${id}-${axis.id}-score`}
             testID={`${id}-${axis.id}-score`}
           >

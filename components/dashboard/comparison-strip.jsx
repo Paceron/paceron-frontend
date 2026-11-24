@@ -90,7 +90,7 @@ export function ComparisonStrip({ id = 'dashboard-comparison', data, rangeLabel 
                 {metric.label}
               </Text>
               <View className="flex-row items-center gap-3" nativeID={`${id}-${metric.key}-values`} testID={`${id}-${metric.key}-values`}>
-                <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-${metric.key}-previous`} testID={`${id}-${metric.key}-previous`}>
+                <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-${metric.key}-previous`} testID={`${id}-${metric.key}-previous`}>
                   {previousValue(metric.key, previous, units)}
                 </Text>
                 <Text className="text-sm font-bold text-slate-900 dark:text-white" nativeID={`${id}-${metric.key}-delta`} testID={`${id}-${metric.key}-delta`}>
@@ -103,7 +103,7 @@ export function ComparisonStrip({ id = 'dashboard-comparison', data, rangeLabel 
       )}
 
       <View className="px-4 py-2" nativeID={`${id}-current-row`} testID={`${id}-current-row`}>
-        <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-current-caption`} testID={`${id}-current-caption`}>
+        <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-current-caption`} testID={`${id}-current-caption`}>
           {current ? `Período actual: ${current.series} series` : 'Sin datos del período actual'}
         </Text>
       </View>

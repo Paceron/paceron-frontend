@@ -27,6 +27,7 @@ import { mpConnectionState } from '../../utils/mp-connect-status.js';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { DeactivateAccountModal } from './deactivate-account-modal.jsx';
 import { DeactivateTrainerModal } from './deactivate-trainer-modal.jsx';
 import { RoleSwitchToggle } from './role-switch-toggle.jsx';
@@ -66,7 +67,7 @@ function FieldShell({ label, slug, children, fullWidth = false, labelClassName }
   return (
     <View className={isDesktopWeb && !fullWidth ? 'w-1/2 pr-4' : 'w-full'} nativeID={slug} testID={slug}>
       <View className="mb-4" nativeID={`${slug}-inner`} testID={`${slug}-inner`}>
-        <Text className={labelClassName ?? 'mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500'} nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
+        <Text className={labelClassName ?? 'mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400'} nativeID={`${slug}-label`} testID={`${slug}-label`}>{label}</Text>
         {children}
       </View>
     </View>
@@ -389,7 +390,7 @@ function DangerZone({ onDelete, hasTrainerRole, onDeactivateTrainer }) {
 // para que el swap a contenido real no mueva el layout.
 function ProfileSkeleton() {
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen-skeleton" testID="profile-screen-skeleton">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-6" nativeID="profile-screen-skeleton" testID="profile-screen-skeleton">
       <ScreenCard nativeID="profile-screen-skeleton-content" testID="profile-screen-skeleton-content">
         <SkeletonBlock height={28} nativeID="profile-screen-skeleton-title" rounded="rounded-lg" testID="profile-screen-skeleton-title" width={140} />
         <View className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-surface" nativeID="profile-screen-skeleton-header" testID="profile-screen-skeleton-header">
@@ -602,7 +603,8 @@ export function ProfileScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="profile-screen" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="profile-screen">
+    <PageReveal idPrefix="profile-screen-page-reveal">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-6" nativeID="profile-screen" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} testID="profile-screen">
       <ScreenCard nativeID="profile-screen-content" testID="profile-screen-content">
         <Text
           style={{ fontFamily: 'Orbitron_700Bold' }}
@@ -692,5 +694,6 @@ export function ProfileScreen() {
         />
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }

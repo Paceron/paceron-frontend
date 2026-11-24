@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { isWeb } from '../../utils/platform.js';
@@ -7,35 +8,115 @@ import { InputField, FIELD_LABEL } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SESSION_ROLE_ORDER, SESSION_ROLE_META, WARMCOOL_KINDS } from './exercise-kind-meta.js';
 import {
-  useSessionDropTarget, useSessionAutoScrollTarget, SessionDropIndicator,
-  ReorderProvider, ReorderableRow, ReorderDropIndicator,
+  useSessionDropTarget, useSessionAutoScrollTarget,
+  ReorderProvider, ReorderableRow, ReorderTailGap, RowDragHandle,
 } from './session-drag-and-drop.jsx';
 import { SessionExercisePanel } from './session-exercise-panel.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
+import { IconButton } from '../shared/icon-button.jsx';
 
 const SESSION_ROLE_OPTIONS = SESSION_ROLE_ORDER.map((role) => ({ id: role, name: SESSION_ROLE_META[role].label }));
 
-function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibilityLabel }) {
+const ROLE_ROW_BG = {
+  warmup: 'bg-rose-50 dark:bg-rose-950 border-rose-300 dark:border-rose-800',
+  main: 'bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-800',
+  cooldown: 'bg-cyan-50 dark:bg-cyan-950 border-cyan-300 dark:border-cyan-800',
+};
+
+function CompactNumberPill({ idPrefix, icon, suffix, value, onChange, accessibilityLabel, fallback = 0 }) {
+  const [draft, setDraft] = useState(String(value ?? ''));
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusedRef.current) setDraft(String(value ?? ''));
+  }, [value]);
+
+  const handleChange = (text) => {
+    const digits = text.replace(/[^0-9]/g, '');
+    setDraft(digits);
+    if (digits !== '') onChange(digits);
+  };
+
+  const handleBlur = () => {
+    focusedRef.current = false;
+    const minimum = fallback === 0 ? 0 : 1;
+    const next = draft === '' ? fallback : Math.max(minimum, Number(draft) || fallback);
+    setDraft(String(next));
+    onChange(String(next));
+  };
+
   return (
     <View className="h-8 flex-row items-center gap-1 rounded-full bg-slate-100 px-2 dark:bg-slate-800" nativeID={idPrefix} testID={idPrefix}>
       <MaterialCommunityIcons color="#94a3b8" name={icon} size={14} />
       <TextInput
         accessibilityLabel={accessibilityLabel}
-        className="w-6 text-xs text-slate-900 outline-none dark:text-white"
+        className="w-8 text-center text-xs text-slate-900 outline-none dark:text-white"
         keyboardType="number-pad"
         nativeID={`${idPrefix}-input`}
-        onChangeText={onChange}
+        onBlur={handleBlur}
+        onChangeText={handleChange}
+        onFocus={() => { focusedRef.current = true; }}
         testID={`${idPrefix}-input`}
-        value={value}
+        value={draft}
       />
-      <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-suffix`} testID={`${idPrefix}-suffix`}>{suffix}</Text>
+      <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-suffix`} testID={`${idPrefix}-suffix`}>{suffix}</Text>
     </View>
   );
 }
 
-export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, onChangeExercise, onChangeRole, onRemove }) {
+export function SessionRoleCoverage({ exercises, idPrefix = 'session-role-coverage' }) {
+  return (
+    <View className="mb-2 flex-row flex-wrap gap-1.5" nativeID={idPrefix} testID={idPrefix}>
+      {SESSION_ROLE_ORDER.map((role) => {
+        const complete = exercises.some((entry) => entry.role === role && entry.exerciseId);
+        return (
+          <View
+            className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${complete ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}
+            key={role}
+            nativeID={`${idPrefix}-${role}`}
+            testID={`${idPrefix}-${role}`}
+          >
+            <MaterialCommunityIcons color={complete ? '#16a34a' : '#d97706'} name={complete ? 'check-circle-outline' : 'alert-circle-outline'} size={12} />
+            <Text className={`text-[11px] font-semibold ${complete ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`} nativeID={`${idPrefix}-${role}-label`} testID={`${idPrefix}-${role}-label`}>
+              {SESSION_ROLE_META[role].label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onRemove }) {
   const [isSeries, setIsSeries] = useState(entry.repeatCount > 1);
+  const [removing, setRemoving] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const exitProgress = useSharedValue(0);
+  const roleMeta = SESSION_ROLE_META[entry.role] ?? SESSION_ROLE_META.main;
   const roleOptions = entry.role === 'main' ? catalogExercises : catalogExercises.filter((e) => WARMCOOL_KINDS.includes(e.kind));
+
+  const exitStyle = useAnimatedStyle(() => ({
+    opacity: 1 - exitProgress.value,
+    transform: [
+      { translateX: exitProgress.value * 14 },
+      { scale: 1 - exitProgress.value * 0.02 },
+    ],
+  }));
+
+  const handleRemove = () => {
+    if (removing) return;
+    if (reduceMotion) {
+      onRemove(entry.localKey);
+      return;
+    }
+    setRemoving(true);
+    exitProgress.value = withTiming(1, {
+      duration: 160,
+      easing: Easing.out(Easing.cubic),
+    }, (finished) => {
+      if (finished) runOnJS(onRemove)(entry.localKey);
+    });
+  };
 
   const handleToggleSeries = () => {
     const next = !isSeries;
@@ -44,7 +125,8 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
   };
 
   return (
-    <View className="gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+    <Animated.View nativeID={`${idPrefix}-exit`} pointerEvents={removing ? 'none' : 'auto'} style={exitStyle} testID={`${idPrefix}-exit`}>
+    <View className={`gap-2 rounded-xl mx-1 border border-l-8 px-3 py-2.5 shadow-sm ${ROLE_ROW_BG[entry.role] ?? 'bg-slate-50 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
       <View className="flex-row items-center gap-2" nativeID={`${idPrefix}-fields`} testID={`${idPrefix}-fields`}>
         <View className="w-36" nativeID={`${idPrefix}-role-select-wrapper`} testID={`${idPrefix}-role-select-wrapper`}>
           <ResponsiveSelectField
@@ -55,6 +137,8 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
             label="Rol"
             onChange={(role) => onChangeRole(entry.localKey, role)}
             options={SESSION_ROLE_OPTIONS}
+            required
+            showPlaceholderOption={false}
             value={entry.role}
           />
         </View>
@@ -65,27 +149,41 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
             hideErrorRow
             hideLabel
             label={`Ejercicio ${index + 1}`}
+            disabled={catalogLoading}
+            loading={catalogLoading}
             onChange={(exerciseId) => onChangeExercise(entry.localKey, { exerciseId })}
             options={roleOptions.map((e) => ({ id: e.id, name: e.name }))}
-            placeholder={roleOptions.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
+            placeholder={catalogLoading ? 'Cargando ejercicios…' : roleOptions.length ? 'Elegí un ejercicio' : 'Todavía no hay ejercicios de este tipo'}
             required
             value={entry.exerciseId}
           />
         </View>
         <IconTooltip idPrefix={`${idPrefix}-remove-button-tooltip`} label="Quitar ejercicio">
-          <Pressable
-            accessibilityLabel="Quitar ejercicio"
-            className="h-12 w-12 items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 active:opacity-70 dark:border-slate-700 dark:hover:bg-red-900/20"
-            nativeID={`${idPrefix}-remove-button`}
-            onPress={() => onRemove(entry.localKey)}
-            testID={`${idPrefix}-remove-button`}
-          >
-            <MaterialCommunityIcons color="#ef4444" name="trash-can-outline" size={18} />
-          </Pressable>
+          <IconButton
+            disabled={removing}
+            icon="trash-can-outline"
+            idPrefix={`${idPrefix}-remove-button`}
+            label="Quitar ejercicio"
+            onPress={handleRemove}
+            size={48}
+            variant="danger"
+          />
         </IconTooltip>
       </View>
 
       <View className="flex-row flex-wrap items-center gap-2" nativeID={`${idPrefix}-series-row`} testID={`${idPrefix}-series-row`}>
+        <RowDragHandle>
+          <View
+            accessibilityHint="Mantené presionado y arrastrá para cambiar el orden"
+            accessibilityLabel="Arrastrar ejercicio"
+            accessibilityRole="button"
+            className="h-8 w-8 items-center justify-center rounded-full active:opacity-70"
+            nativeID={`${idPrefix}-drag-handle`}
+            testID={`${idPrefix}-drag-handle`}
+          >
+            <MaterialCommunityIcons color={roleMeta.iconColor} name="drag-vertical" size={18} />
+          </View>
+        </RowDragHandle>
         <Pressable
           accessibilityLabel="Marcar como serie repetida"
           accessibilityRole="checkbox"
@@ -108,6 +206,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
               icon="repeat-variant"
               idPrefix={`${idPrefix}-repeat-count`}
               onChange={(v) => onChangeExercise(entry.localKey, { repeatCount: Number(v) || 1 })}
+              fallback={1}
               suffix="×"
               value={String(entry.repeatCount)}
             />
@@ -116,6 +215,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
               icon="timer-outline"
               idPrefix={`${idPrefix}-rest-minutes`}
               onChange={(v) => onChangeExercise(entry.localKey, { restMinutes: Number(v) || 0 })}
+              fallback={0}
               suffix="min"
               value={String(entry.restMinutes)}
             />
@@ -123,6 +223,7 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
         )}
       </View>
     </View>
+    </Animated.View>
   );
 }
 
@@ -130,58 +231,64 @@ export function SessionExerciseRow({ idPrefix, entry, index, catalogExercises, o
 // otros 2 call sites (create-session-screen.jsx, create-session-modal.jsx)
 // son formularios de alta, sin nada que refrescar, quedan sin tocar
 // (undefined, mismo comportamiento de siempre).
-export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, exercisesError, visible, refreshControl }) {
+export function SessionFormBody({ name, onSetName, nameError, description, onSetDescription, exercises, catalogExercises, catalogLoading = false, onChangeExercise, onChangeRole, onRemove, onReorder, onExerciseDropped, error, exercisesError, visible, refreshControl }) {
   const dropTargetRef = useSessionDropTarget();
-  const { autoScrollRef, onListScroll } = useSessionAutoScrollTarget();
+  const { autoScrollRef, onListScroll, onContentSizeChange, onListLayout } = useSessionAutoScrollTarget();
 
   return (
     <ScrollView className="flex-1" nativeID="session-form-body-scroll" refreshControl={refreshControl} testID="session-form-body-scroll">
-      <InputField autoFocus={!isWeb && visible} dense error={nameError} hideErrorRow label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
-      <InputField dense hideErrorRow label="Descripción (opcional)" onChange={onSetDescription} value={description} />
+      <InputField autoFocus={!isWeb && visible} dense error={nameError} label="Nombre" onChange={onSetName} placeholder="Ej. Series de velocidad" value={name} />
+      <InputField dense hideErrorRow label="Descripción (opcional)" multiline numberOfLines={3} onChange={onSetDescription} value={description} />
 
       <SessionExercisePanel horizontal onExerciseAdded={onExerciseDropped} />
 
       <Text className={`${FIELD_LABEL} mb-1 mt-3`} nativeID="session-form-body-exercises-header-label" testID="session-form-body-exercises-header-label">Ejercicios</Text>
       <Text className="mb-2 text-xs text-slate-500 dark:text-slate-400" nativeID="session-form-body-drop-hint" testID="session-form-body-drop-hint">
-        Mantené presionado un ejercicio del catálogo para sumarlo, o una fila para reordenarla.
+        {isWeb ? 'Arrastrá un ejercicio del catálogo para sumarlo, o una fila para reordenarla.' : 'Mantené presionado un ejercicio del catálogo para sumarlo, o una fila para reordenarla.'}
       </Text>
 
-      <View className={`h-[320px] rounded-xl border border-dashed ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="session-form-body-exercises-list" ref={dropTargetRef} testID="session-form-body-exercises-list">
-        <ReorderProvider>
-          <GestureScrollView
-            contentContainerClassName="gap-2 p-2 pb-4"
-            nativeID="session-form-body-exercises-scroll"
-            onScroll={onListScroll}
-            ref={autoScrollRef}
-            scrollEventThrottle={16}
-            testID="session-form-body-exercises-scroll"
-          >
-            {exercises.length === 0 ? (
-              <Text className="p-2 text-xs text-slate-400 dark:text-slate-500" nativeID="session-form-body-exercises-empty" testID="session-form-body-exercises-empty">
-                Todavía no agregaste ejercicios.
-              </Text>
-            ) : exercises.map((entry, index) => (
-              <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
-                <SessionExerciseRow
-                  catalogExercises={catalogExercises}
-                  entry={entry}
-                  idPrefix={`session-form-body-exercise-row-${entry.localKey}`}
-                  index={index}
-                  onChangeExercise={onChangeExercise}
-                  onChangeRole={onChangeRole}
-                  onRemove={onRemove}
-                />
-              </ReorderableRow>
-            ))}
-          </GestureScrollView>
-          <SessionDropIndicator />
-          <ReorderDropIndicator />
-        </ReorderProvider>
-      </View>
+      <SessionRoleCoverage exercises={exercises} />
 
-      {error && (
-        <Text className="mb-3 mt-2 text-xs text-red-500 dark:text-red-400" nativeID="session-form-body-error" testID="session-form-body-error">{error}</Text>
-      )}
+      <View nativeID="session-form-body-exercises-drop-zone" ref={dropTargetRef} testID="session-form-body-exercises-drop-zone">
+        <View className={`h-[320px] rounded-xl border border-dashed bg-slate-200/60 dark:bg-slate-950/50 ${exercisesError ? 'border-red-400 dark:border-red-700' : 'border-slate-300 dark:border-slate-600'}`} nativeID="session-form-body-exercises-list" testID="session-form-body-exercises-list">
+          <ReorderProvider>
+            <GestureScrollView
+              contentContainerClassName="p-3 pb-5"
+              nativeID="session-form-body-exercises-scroll"
+              onContentSizeChange={onContentSizeChange}
+              onLayout={onListLayout}
+              onScroll={onListScroll}
+              ref={autoScrollRef}
+              scrollEventThrottle={16}
+              testID="session-form-body-exercises-scroll"
+            >
+              {exercises.length === 0 ? (
+                <Text className="p-2 text-xs text-slate-500 dark:text-slate-400" nativeID="session-form-body-exercises-empty" testID="session-form-body-exercises-empty">
+                  Todavía no agregaste ejercicios.
+                </Text>
+              ) : exercises.map((entry, index) => (
+                <ReorderableRow index={index} itemCount={exercises.length} key={entry.localKey} onReorder={onReorder}>
+                  <SessionExerciseRow
+                    catalogExercises={catalogExercises}
+                    catalogLoading={catalogLoading}
+                    entry={entry}
+                    idPrefix={`session-form-body-exercise-row-${entry.localKey}`}
+                    index={index}
+                    onChangeExercise={onChangeExercise}
+                    onChangeRole={onChangeRole}
+                    onRemove={onRemove}
+                  />
+                </ReorderableRow>
+              ))}
+              <ReorderTailGap />
+            </GestureScrollView>
+          </ReorderProvider>
+        </View>
+
+        {error && (
+          <Text className="mb-3 mt-2 text-xs text-red-600 dark:text-red-400" nativeID="session-form-body-error" testID="session-form-body-error">{error}</Text>
+        )}
+      </View>
     </ScrollView>
   );
 }

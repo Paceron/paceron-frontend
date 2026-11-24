@@ -35,6 +35,7 @@ import { VoiceAnnotationControls } from './voice-annotation-controls.jsx';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 const ROW_STATUS = {
   completed: { label: 'Completada', color: 'text-emerald-700 dark:text-emerald-400', icon: 'check-circle' },
@@ -128,7 +129,7 @@ function ExerciseBulkSave({ exercise, onClose, slot, ensureRunnerSession }) {
       </View>
 
       {error && (
-        <Text className="mb-2 text-xs text-red-500 dark:text-red-400" nativeID={`${boxId}-error`} testID={`${boxId}-error`}>{error}</Text>
+        <Text className="mb-2 text-xs text-red-600 dark:text-red-400" nativeID={`${boxId}-error`} testID={`${boxId}-error`}>{error}</Text>
       )}
 
       <View className="mt-2 flex-row gap-2" nativeID={`${boxId}-actions`} testID={`${boxId}-actions`}>
@@ -196,7 +197,7 @@ function ReviewListView({ slot, reviewModel, loading, completing, onOpenRow, ref
             onPress={() => router.push(`/training-comparison/session?sessionInstanceId=${slot.sessionInstanceId ?? slot.sessionInstance?.id}`)}
             testID="session-review-screen-comparison-button"
           >
-            <Text className="text-sm font-semibold text-primary" nativeID="session-review-screen-comparison-label" testID="session-review-screen-comparison-label">
+            <Text className="text-sm font-semibold text-[#3c6b12] dark:text-primary" nativeID="session-review-screen-comparison-label" testID="session-review-screen-comparison-label">
               Ver comparación
             </Text>
             <MaterialCommunityIcons color={colors.primary} name="chart-line" size={18} />
@@ -364,7 +365,7 @@ function DataField({ editable, editing, id, label, hint, children, onToggleEdit 
         {editing ? children : <Text className="text-sm text-slate-800 dark:text-slate-100" nativeID={`${id}-readonly-text`} testID={`${id}-readonly-text`}>{children}</Text>}
       </View>
       {hint ? (
-        <Text className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500" nativeID={`${id}-hint`} testID={`${id}-hint`}>
+        <Text className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400" nativeID={`${id}-hint`} testID={`${id}-hint`}>
           {hint}
         </Text>
       ) : null}
@@ -806,7 +807,7 @@ function SetDetailView({ slot, exerciseId, exerciseName, row, onBack, onSeriesSa
         {editable && (
           <View className="mt-4 gap-2" nativeID="session-review-detail-actions" testID="session-review-detail-actions">
             {error && (
-              <Text className="text-xs text-red-500 dark:text-red-400" nativeID="session-review-detail-error" testID="session-review-detail-error">{error}</Text>
+              <Text className="text-xs text-red-600 dark:text-red-400" nativeID="session-review-detail-error" testID="session-review-detail-error">{error}</Text>
             )}
 
             <Pressable
@@ -978,6 +979,7 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
 
   return (
     <View className="flex-1" nativeID="session-review-sync-list-root" testID="session-review-sync-list-root">
+      <PageReveal idPrefix="session-review-page-reveal">
       <ReviewListView
         completing={finishing}
         ensureRunnerSession={ensureRunnerSession}
@@ -991,6 +993,7 @@ function ReviewFlow({ slot, initialExerciseId, initialSetNumber }) {
         reviewModel={reviewModel}
         slot={navSlot}
       />
+      </PageReveal>
       <LoadingOverlay fullScreen id="session-review-sync" label="Sincronizando el registro…" visible={syncing} />
     </View>
   );

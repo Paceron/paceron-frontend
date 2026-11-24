@@ -15,6 +15,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { SessionDragProvider, DragGhost } from './session-drag-and-drop.jsx';
 import { SessionFormBody } from './session-form-body.jsx';
 
@@ -22,7 +23,7 @@ function CreateSessionScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { exercises: catalogExercises } = useExercises(userId);
+  const { exercises: catalogExercises, loading: catalogLoading } = useExercises(userId);
   const { createSession } = useSessionMutations();
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,6 +53,7 @@ function CreateSessionScreenContent() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SessionDragProvider>
+        <PageReveal idPrefix="create-session-screen-page-reveal">
         <View className="flex-1 bg-paper px-4 pt-8 dark:bg-ink" nativeID="create-session-screen-root" testID="create-session-screen-root">
           <ScreenCard nativeID="create-session-screen-container" style={{ flex: 1 }} testID="create-session-screen-container">
             <View className="mb-4 flex-row items-center gap-2" nativeID="create-session-screen-header" testID="create-session-screen-header">
@@ -70,6 +72,7 @@ function CreateSessionScreenContent() {
 
             <SessionFormBody
               catalogExercises={catalogExercises}
+              catalogLoading={catalogLoading}
               description={form.description}
               error={form.error}
               exercises={form.exercises}
@@ -106,6 +109,7 @@ function CreateSessionScreenContent() {
             </Pressable>
           </ScreenCard>
         </View>
+        </PageReveal>
         <DragGhost />
       </SessionDragProvider>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />

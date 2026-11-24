@@ -3,6 +3,17 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 jest.mock('../hooks/use-is-narrow-web.js', () => ({ useIsNarrowWeb: () => true }));
+jest.mock('react-native-reanimated', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: { View },
+    useAnimatedStyle: (styleFn) => styleFn(),
+    useReducedMotion: () => false,
+    useSharedValue: (value) => ({ value }),
+    withTiming: (value) => value,
+  };
+});
 jest.mock('../theme/colors.js', () => ({ useThemeColors: () => ({ primary: '#8cc63e', onSurfaceVariant: '#666' }) }));
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
 jest.mock('../components/shared/tab-bar.jsx', () => {

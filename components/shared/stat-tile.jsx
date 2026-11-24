@@ -44,13 +44,13 @@ export function StatTile({ icon, label, value, hint, actionHint, onPress, active
           </Text>
         </View>
         {hint ? (
-          <Text className={`${horizontal ? 'text-left' : 'text-center'} mt-1 text-[11px] leading-4 text-slate-400 dark:text-slate-500`} nativeID={`${id}-hint`} testID={`${id}-hint`}>
+          <Text className={`${horizontal ? 'text-left' : 'text-center'} mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400`} nativeID={`${id}-hint`} testID={`${id}-hint`}>
             {hint}
           </Text>
         ) : null}
         {actionHint ? (
           <View className={`mt-1.5 flex-row items-center ${horizontal ? '' : 'justify-center'}`} nativeID={`${id}-action`} testID={`${id}-action`}>
-            <Text className="text-center text-[11px] font-semibold leading-4 text-primary" nativeID={`${id}-action-text`} testID={`${id}-action-text`}>
+            <Text className="text-center text-[11px] font-semibold leading-4 text-[#3c6b12] dark:text-primary" nativeID={`${id}-action-text`} testID={`${id}-action-text`}>
               {actionHint}
             </Text>
             <MaterialCommunityIcons color={colors.primary} name="chevron-right" size={14} />

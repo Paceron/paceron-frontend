@@ -19,6 +19,8 @@ import { Row, Col, InputField, DateField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { LocationPicker } from '../shared/location-picker';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenError, FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { PasswordRequirementsList, StrengthBar } from '../forms/password-strength.jsx';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
@@ -54,7 +56,7 @@ function TabBar({ active, onChange }) {
           >
             <MaterialCommunityIcons name={tab.icon} size={16} color={isActive ? colors.primary : colors.onSurfaceVariant} />
             <Text
-              className={`text-sm ${isActive ? 'font-semibold text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
+              className={`text-sm ${isActive ? 'font-semibold text-[#3c6b12] dark:text-primary' : 'font-medium text-slate-700 dark:text-slate-200'}`}
               nativeID={`edit-profile-screen-tab-${tab.id}-label`}
               testID={`edit-profile-screen-tab-${tab.id}-label`}
             >
@@ -73,7 +75,7 @@ function TabBar({ active, onChange }) {
 export function EditProfileScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
+  const { user, loading: userLoading, fetching: userFetching, error: userError, refetch: refetchUser } = useUser(userId);
 
   // userId (sesión), no user (perfil, todavía cargando en el momento del
   // mount) — mismo criterio que components/guards/require-auth.jsx.
@@ -82,7 +84,21 @@ export function EditProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  if (!user) return null;
+  if (userLoading) return <FormScreenSkeleton idPrefix="edit-profile" onBack={() => router.back()} />;
+
+  if (!user) {
+    return (
+      <FormScreenError
+        idPrefix="edit-profile"
+        message={userError ? 'No pudimos cargar tu perfil.' : 'No encontramos tu perfil.'}
+        onBack={() => router.back()}
+        onRetry={userError ? refetchUser : undefined}
+        retrying={userFetching}
+        title="Editar perfil"
+      />
+    );
+  }
+
   return <EditProfileForm user={user} />;
 }
 
@@ -208,18 +224,19 @@ function EditProfileForm({ user }) {
 
   return (
     <>
+    <PageReveal idPrefix="edit-profile-screen-page-reveal">
     <KeyboardAwareScrollView
       nativeID="edit-profile-screen-scroll"
       testID="edit-profile-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       enableOnAndroid
       extraScrollHeight={24}
     >
       <ScreenCard nativeID="edit-profile-screen-container" testID="edit-profile-screen-container">
-        <View nativeID="edit-profile-screen-header" testID="edit-profile-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="edit-profile-screen-header" testID="edit-profile-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="edit-profile-screen-back-button"
             testID="edit-profile-screen-back-button"
@@ -375,7 +392,7 @@ function EditProfileForm({ user }) {
           ) : (
             <>
               <MaterialCommunityIcons color={canSubmit ? colors.onPrimary : colors.onSurfaceVariant} name="content-save" size={18} />
-              <Text nativeID="edit-profile-screen-submit-label" testID="edit-profile-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
+              <Text nativeID="edit-profile-screen-submit-label" testID="edit-profile-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'}`}>
                 Guardar cambios
               </Text>
             </>
@@ -387,6 +404,7 @@ function EditProfileForm({ user }) {
         {activeTab === 'password' && <ChangePasswordSection userId={user.userId} />}
       </ScreenCard>
     </KeyboardAwareScrollView>
+    </PageReveal>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );
@@ -498,7 +516,7 @@ function ChangePasswordSection({ userId }) {
         ) : (
           <>
             <MaterialCommunityIcons color={canSubmit ? colors.onPrimary : colors.onSurfaceVariant} name="lock-reset" size={18} />
-            <Text nativeID="edit-profile-screen-change-password-submit-label" testID="edit-profile-screen-change-password-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}>
+            <Text nativeID="edit-profile-screen-change-password-submit-label" testID="edit-profile-screen-change-password-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-500 dark:text-slate-400'}`}>
               Guardar contraseña
             </Text>
           </>

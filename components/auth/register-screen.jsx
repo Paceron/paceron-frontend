@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 import { PASSWORD_MAX_LENGTH, checkPasswordRequirements, isPasswordValid } from '../../utils/password-validators.js';
@@ -9,17 +10,20 @@ import { validateDNI } from '../../utils/dni-validators.js';
 import { toRegisterPayload } from '../../services/normalizers.js';
 import { toAddressFormFields } from '../../utils/location-to-address-fields.js';
 import { useAuthStore } from '../../store/auth-store.js';
+import { prefetchHomeCriticalQueries } from '../../utils/home-prefetch.js';
 import { isWeb } from '../../utils/platform.js';
 import { Row, Col, DateField, InputField } from '../forms/fields.jsx';
 import { SectionCard } from '../forms/section-card.jsx';
 import { LocationPicker } from '../shared/location-picker';
 import { AuthCardShell } from './auth-card-shell.jsx';
+import { AuthSubmitButton } from './auth-submit-button.jsx';
 import { StrengthBar, PasswordRequirementsList } from '../forms/password-strength.jsx';
 import { CheckboxField } from '../forms/checkbox-field.jsx';
 import { TermsModal } from '../legal/terms-modal.jsx';
 
 export function RegisterScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -90,7 +94,11 @@ export function RegisterScreen() {
     touch('confirm');
     touch('terms');
 
-    if (!formValid) return;
+    if (!formValid) {
+      if (!personalOk) setOpenSection('personal');
+      else if (!passwordValid || !passwordsMatch) setOpenSection('password');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -109,8 +117,13 @@ export function RegisterScreen() {
         }),
       );
       if (result.success) {
-        Toast.show({ type: 'success', text1: '¡Cuenta creada!', text2: 'Bienvenido a Paceron.' });
+        const { activeRole: nextRole, userId: nextUserId } = useAuthStore.getState();
+        setLoading(false);
         router.replace('/');
+        void prefetchHomeCriticalQueries(queryClient, { role: nextRole, userId: nextUserId });
+        setTimeout(() => {
+          Toast.show({ type: 'success', text1: '¡Cuenta creada!', text2: 'Bienvenido a Paceron.' });
+        }, 0);
       } else {
         Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Error al crear la cuenta.' });
       }
@@ -290,49 +303,57 @@ export function RegisterScreen() {
         idPrefix="register-screen-terms"
         onChange={setTermsAccepted}
       >
-        <Text
-          className="text-sm text-slate-600 dark:text-slate-300"
-          nativeID="register-screen-terms-text"
-          testID="register-screen-terms-text"
+        <View
+          className="flex-row flex-wrap items-center gap-1"
+          nativeID="register-screen-terms-row"
+          testID="register-screen-terms-row"
         >
-          Acepto los{' '}
           <Text
-            className="font-semibold text-primary"
-            nativeID="register-screen-terms-link"
-            testID="register-screen-terms-link"
-            onPress={() => setShowTerms(true)}
+            className="text-sm text-slate-600 dark:text-slate-300"
+            nativeID="register-screen-terms-text"
+            testID="register-screen-terms-text"
           >
-            Términos y Condiciones
+            Acepto los
           </Text>
-        </Text>
+          <Pressable
+            accessibilityLabel="Abrir Términos y Condiciones"
+            accessibilityRole="link"
+            className="py-1 active:opacity-70"
+            nativeID="register-screen-terms-link"
+            onKeyDown={
+              isWeb
+                ? (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    setShowTerms(true);
+                  }
+                : undefined
+            }
+            onPress={(event) => {
+              event?.stopPropagation?.();
+              setShowTerms(true);
+            }}
+            testID="register-screen-terms-link"
+          >
+            <Text
+              className="text-sm font-semibold text-[#3c6b12] dark:text-primary"
+              nativeID="register-screen-terms-link-label"
+              testID="register-screen-terms-link-label"
+            >
+              Términos y Condiciones
+            </Text>
+          </Pressable>
+        </View>
       </CheckboxField>
 
       <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
 
-      <Pressable
-        className={`mt-8 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${
-          formValid ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'
-        }`}
-        disabled={loading}
-        onPress={handleSubmit}
-        nativeID="register-screen-submit-button"
-        testID="register-screen-submit-button"
-      >
-        {loading ? (
-          <ActivityIndicator color="#111518" size="small" />
-        ) : (
-          <Text className={`text-sm font-semibold uppercase tracking-wide ${
-            formValid ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'
-          }`} nativeID="register-screen-submit-button-label" testID="register-screen-submit-button-label">
-            Crear cuenta
-          </Text>
-        )}
-      </Pressable>
+      <AuthSubmitButton className="mt-8" idPrefix="register-screen" label="Crear cuenta" loading={loading} onPress={handleSubmit} />
 
       <Pressable className="mt-6 items-center py-1 hover:opacity-70" onPress={() => router.push('/login')} nativeID="register-screen-login-link-button" testID="register-screen-login-link-button">
         <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="register-screen-login-link-label" testID="register-screen-login-link-label">
           ¿Ya tenés cuenta?{' '}
-          <Text className="font-semibold text-primary" nativeID="register-screen-login-link-emphasis" testID="register-screen-login-link-emphasis">Iniciá sesión</Text>
+          <Text className="font-semibold text-[#3c6b12] dark:text-primary" nativeID="register-screen-login-link-emphasis" testID="register-screen-login-link-emphasis">Iniciá sesión</Text>
         </Text>
       </Pressable>
     </AuthCardShell>

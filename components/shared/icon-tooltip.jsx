@@ -1,4 +1,4 @@
-import { cloneElement, useRef, useState } from 'react';
+import { cloneElement, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Text, View } from 'react-native';
 import { isWeb } from '../../utils/platform.js';
@@ -34,6 +34,16 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom', al
   const [hovered, setHovered] = useState(false);
   const [coords, setCoords] = useState(null);
   const wrapperRef = useRef(null);
+  const hide = () => setHovered(false);
+
+  useEffect(() => {
+    if (!hovered) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') hide();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [hovered]);
 
   if (!isWeb) return children;
 
@@ -51,16 +61,26 @@ export function IconTooltip({ label, children, idPrefix, position = 'bottom', al
   // cientos de px de su trigger real por este motivo exacto. Fix real:
   // `createPortal` a `document.body` -- ahí no hay transform/overflow de
   // ningún ancestro de por medio, nunca, sea cual sea el call site.
-  const handleHoverIn = () => {
+  const show = () => {
     wrapperRef.current?.measureInWindow?.((x, y, width, height) => {
       setCoords({ x, y, width, height });
     });
     setHovered(true);
   };
 
+  const childProps = children.props ?? {};
+
   const trigger = cloneElement(children, {
-    onHoverIn: handleHoverIn,
-    onHoverOut: () => setHovered(false),
+    onHoverIn: show,
+    onHoverOut: hide,
+    onFocus: (event) => {
+      show();
+      childProps.onFocus?.(event);
+    },
+    onBlur: (event) => {
+      hide();
+      childProps.onBlur?.(event);
+    },
   });
 
   const bubbleStyle = coords

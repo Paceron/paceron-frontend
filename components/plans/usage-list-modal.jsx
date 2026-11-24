@@ -10,11 +10,11 @@ export function UsageListModal({ visible, title, items, onClose }) {
 
   return (
     <Modal animationType="fade" nativeID="usage-list-modal" onRequestClose={onClose} testID="usage-list-modal" transparent visible={visible}>
-      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="usage-list-modal-backdrop" onPress={onClose} testID="usage-list-modal-backdrop">
-        <Pressable
+      <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="usage-list-modal-container" testID="usage-list-modal-container">
+        <Pressable className="absolute inset-0" nativeID="usage-list-modal-backdrop" onPress={onClose} testID="usage-list-modal-backdrop" />
+        <View
           className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-surface"
           nativeID="usage-list-modal-card"
-          onPress={() => {}}
           testID="usage-list-modal-card"
         >
           <Text className="mb-3 text-base font-bold text-slate-900 dark:text-white" nativeID="usage-list-modal-title" testID="usage-list-modal-title">
@@ -40,8 +40,8 @@ export function UsageListModal({ visible, title, items, onClose }) {
           >
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200" nativeID="usage-list-modal-close-label" testID="usage-list-modal-close-label">Cerrar</Text>
           </Pressable>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

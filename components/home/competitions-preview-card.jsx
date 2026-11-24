@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth-store.js';
@@ -9,6 +9,8 @@ import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
+import { HomeReveal } from './home-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 
 function statusLabel(competition) {
   if (competition.type === 'route') return 'Abierta';
@@ -55,7 +57,7 @@ function PreviewBox({ competition, onPress, wide }) {
           </View>
           <View className="flex-row items-center gap-1" nativeID={`${idPrefix}-status-row`} testID={`${idPrefix}-status-row`}>
             <MaterialCommunityIcons color={colors.primary} name="clock-outline" size={12} />
-            <Text className="text-xs font-semibold text-primary" nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
+            <Text className="text-xs font-semibold text-[#3c6b12] dark:text-primary" nativeID={`${idPrefix}-status`} testID={`${idPrefix}-status`}>
               {statusLabel(competition)}
             </Text>
           </View>
@@ -87,7 +89,6 @@ function ViewAllTile({ wide, onPress }) {
 
 export function CompetitionsPreviewCard() {
   const router = useRouter();
-  const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
   const isNarrow = useIsNarrowWeb();
   const setAchievementsTab = useAchievementsTabStore((s) => s.setActiveTab);
@@ -96,12 +97,15 @@ export function CompetitionsPreviewCard() {
   if (loading) {
     return (
       <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card-loading" testID="competitions-preview-card-loading">
-        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="competitions-preview-card-loading-kicker" testID="competitions-preview-card-loading-kicker">
+        <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="competitions-preview-card-loading-kicker" testID="competitions-preview-card-loading-kicker">
           Tus competencias
         </Text>
-        <View className="min-h-[72px] items-center justify-center" nativeID="competitions-preview-card-loading-body" testID="competitions-preview-card-loading-body">
-          <ActivityIndicator color={colors.primary} nativeID="competitions-preview-card-loading-indicator" testID="competitions-preview-card-loading-indicator" />
-        </View>
+        <SkeletonPulse idPrefix="competitions-preview-card-loading-skeleton" nativeID="competitions-preview-card-loading-skeleton" testID="competitions-preview-card-loading-skeleton">
+          <View className="gap-2" nativeID="competitions-preview-card-loading-body" testID="competitions-preview-card-loading-body">
+            <SkeletonBlock height={96} nativeID="competitions-preview-card-loading-box-1" rounded="rounded-2xl" testID="competitions-preview-card-loading-box-1" width="100%" />
+            <SkeletonBlock height={96} nativeID="competitions-preview-card-loading-box-2" rounded="rounded-2xl" testID="competitions-preview-card-loading-box-2" width="100%" />
+          </View>
+        </SkeletonPulse>
       </View>
     );
   }
@@ -117,8 +121,9 @@ export function CompetitionsPreviewCard() {
   };
 
   return (
-    <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card" testID="competitions-preview-card">
-      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="competitions-preview-card-kicker" testID="competitions-preview-card-kicker">
+    <HomeReveal delay={120} idPrefix="competitions-preview-card-reveal">
+      <View className="mb-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-surface" nativeID="competitions-preview-card" testID="competitions-preview-card">
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="competitions-preview-card-kicker" testID="competitions-preview-card-kicker">
         Tus competencias
       </Text>
       <View className={wide ? 'flex-row gap-3' : 'gap-3'} nativeID="competitions-preview-card-list" testID="competitions-preview-card-list">
@@ -132,6 +137,7 @@ export function CompetitionsPreviewCard() {
         ))}
         <ViewAllTile onPress={goToAllCompetitions} wide={wide} />
       </View>
-    </View>
+      </View>
+    </HomeReveal>
   );
 }

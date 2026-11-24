@@ -16,6 +16,7 @@ import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 function CreateTrainingPlanScreenContent() {
   const router = useRouter();
@@ -50,15 +51,16 @@ function CreateTrainingPlanScreenContent() {
 
   return (
     <>
+      <PageReveal idPrefix="create-training-plan-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="create-training-plan-screen-scroll"
         showsVerticalScrollIndicator={false}
         testID="create-training-plan-screen-scroll"
       >
         <ScreenCard nativeID="create-training-plan-screen-container" testID="create-training-plan-screen-container">
-          <View className="mb-8 flex-row items-center gap-2" nativeID="create-training-plan-screen-header" testID="create-training-plan-screen-header">
+          <View className="mb-6 flex-row items-center gap-2" nativeID="create-training-plan-screen-header" testID="create-training-plan-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
               nativeID="create-training-plan-screen-back-button"
@@ -94,6 +96,7 @@ function CreateTrainingPlanScreenContent() {
           </Pressable>
         </ScreenCard>
       </ScrollView>
+      </PageReveal>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );

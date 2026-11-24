@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -31,6 +31,8 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { DateField } from '../forms/fields.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 import { StatTile } from '../shared/stat-tile.jsx';
 import { ComplianceBadge } from './compliance-badge.jsx';
 import { ComplianceChart } from './compliance-chart.jsx';
@@ -128,9 +130,10 @@ function TrainingComparisonContent() {
   };
 
   return (
+    <PageReveal idPrefix="training-comparison-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="training-comparison-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
@@ -184,15 +187,35 @@ function TrainingComparisonContent() {
         </FilterPanel>
 
         {rangeError ? (
-          <Text className="mb-3 text-xs text-red-500 dark:text-red-400" nativeID="training-comparison-range-error" testID="training-comparison-range-error">
+          <Text className="mb-3 text-xs text-red-600 dark:text-red-400" nativeID="training-comparison-range-error" testID="training-comparison-range-error">
             {rangeError}
           </Text>
         ) : null}
 
-        {loading ? (
-          <View className="items-center py-10" nativeID="training-comparison-loading" testID="training-comparison-loading">
-            <ActivityIndicator color={colors.primary} />
-          </View>
+        {loading && !list ? (
+          <SkeletonPulse className="gap-4" nativeID="training-comparison-loading" testID="training-comparison-loading">
+            <View className="flex-row gap-3" nativeID="training-comparison-loading-tiles" testID="training-comparison-loading-tiles">
+              {[0, 1, 2].map((index) => (
+                <View className="flex-1 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" key={index} nativeID={`training-comparison-loading-tile-${index}`} testID={`training-comparison-loading-tile-${index}`}>
+                  <SkeletonBlock height={12} width="58%" />
+                  <SkeletonBlock className="mt-2" height={28} width="42%" />
+                  <SkeletonBlock className="mt-2" height={10} width="78%" />
+                </View>
+              ))}
+            </View>
+            <View className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" nativeID="training-comparison-loading-chart" testID="training-comparison-loading-chart">
+              <SkeletonBlock height={16} width={180} />
+              <SkeletonBlock className="mt-3" height={150} />
+            </View>
+            <View className="gap-3" nativeID="training-comparison-loading-rows" testID="training-comparison-loading-rows">
+              {[0, 1, 2].map((index) => (
+                <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-surface-2" key={index} nativeID={`training-comparison-loading-row-${index}`} testID={`training-comparison-loading-row-${index}`}>
+                  <SkeletonBlock height={14} width="52%" />
+                  <SkeletonBlock className="mt-2" height={11} width="76%" />
+                </View>
+              ))}
+            </View>
+          </SkeletonPulse>
         ) : error ? (
           <View className="items-center rounded-2xl border border-rose-200 bg-white p-6 dark:border-rose-900/50 dark:bg-surface" nativeID="training-comparison-error" testID="training-comparison-error">
             <MaterialCommunityIcons color="#f43f5e" name="alert-circle-outline" size={28} />
@@ -245,6 +268,7 @@ function TrainingComparisonContent() {
         ) : null}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

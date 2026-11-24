@@ -17,6 +17,7 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 function TeamRow({ team, onPress, hasPendingRequests }) {
   const colors = useThemeColors();
@@ -66,16 +67,17 @@ function TeamsListScreenContent() {
   ]));
 
   return (
+    <PageReveal idPrefix="teams-list-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="teams-list-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="teams-list-screen-scroll"
     >
       <ScreenCard nativeID="teams-list-screen-container" testID="teams-list-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="teams-list-screen-header" testID="teams-list-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="teams-list-screen-header" testID="teams-list-screen-header">
           <IconButton
             icon="arrow-left"
             iconSize={18}
@@ -141,6 +143,7 @@ function TeamsListScreenContent() {
         </SectionCard>
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

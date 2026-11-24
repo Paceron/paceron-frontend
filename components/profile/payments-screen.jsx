@@ -24,11 +24,13 @@ import { shareReceiptPdf } from '../../services/receipt';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { CheckoutFlow } from '../payments/checkout-flow';
 import { PaymentsDashboard } from './payments-dashboard.jsx';
 import { PaymentsFilters, PaymentsHistoryFilters } from './payments-filters.jsx';
 import { PaymentsList } from './payments-list.jsx';
 import { PaymentsUpcomingCard } from './payments-upcoming-card.jsx';
+import { PaymentsScreenSkeleton } from './payments-screen-skeleton.jsx';
 
 // Cuántos meses corre la ventana del gráfico cada flecha: los mismos que muestra.
 const WINDOW_MONTHS = 6;
@@ -50,7 +52,7 @@ function PaymentsScreenContent() {
   const userId = useAuthStore((s) => s.userId);
   const activeRole = useAuthStore((s) => s.activeRole);
   const { user } = useUser(userId);
-  const { roles } = usePermissions(userId);
+  const { roles, loading: permissionsLoading } = usePermissions(userId);
   // El entrenador activo suma sus cobros y el dashboard; cualquier otro usuario
   // ve solo su historial de pagos.
   const isTrainer = activeRole === 'trainer' && roles.some((r) => r.name === 'entrenador');
@@ -236,17 +238,26 @@ function PaymentsScreenContent() {
     }
   };
 
+  if (permissionsLoading) {
+    return (
+      <PaymentsScreenSkeleton
+        onBack={from === 'profile' ? () => router.back() : null}
+      />
+    );
+  }
+
   return (
+    <PageReveal idPrefix="payments-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="payments-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="payments-screen-scroll"
     >
       <ScreenCard maxWidthClassName="max-w-5xl" nativeID="payments-screen-container" testID="payments-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="payments-screen-header" testID="payments-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="payments-screen-header" testID="payments-screen-header">
           {from === 'profile' ? (
             <>
               <Pressable
@@ -357,6 +368,7 @@ function PaymentsScreenContent() {
         )}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

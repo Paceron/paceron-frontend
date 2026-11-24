@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';import { Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useThemeColors } from '../../../theme/colors.js';
@@ -17,9 +16,10 @@ import { InfoHint } from '../info-hint.jsx';
 export function ChartSurface({ id, height, label, children }) {
   const [width, setWidth] = useState(0);
   const reducedMotion = useReducedMotion();
-  const opacity = useSharedValue(1);
+  const opacity = useSharedValue(0);
 
   useEffect(() => {
+    opacity.value = 0;
     opacity.value = reducedMotion ? 1 : withTiming(1, { duration: 220 });
   }, [opacity, reducedMotion]);
 

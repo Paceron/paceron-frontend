@@ -66,13 +66,13 @@ function Segment({ id, wide, active, activeBg, activeIconColor, activeTextClass,
         <MaterialCommunityIcons color={active ? activeIconColor : MUTED_ICON} name={icon} size={16} />
         <Text className={`text-xs font-semibold ${active ? activeTextClass : MUTED_TEXT}`} nativeID={`${id}-label`} testID={`${id}-label`}>{label}</Text>
         {wide && tier != null && (
-          <Text className={`text-[10px] font-medium uppercase tracking-wide opacity-70 ${active ? activeTextClass : 'text-slate-400 dark:text-slate-500'}`} nativeID={`${id}-tier-inline`} testID={`${id}-tier-inline`}>
+          <Text className={`text-[10px] font-medium uppercase tracking-wide opacity-70 ${active ? activeTextClass : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-tier-inline`} testID={`${id}-tier-inline`}>
             · {tier}
           </Text>
         )}
       </View>
       {!wide && tier != null && (
-        <Text className={`text-[9px] font-medium uppercase tracking-wide ${active ? activeTextClass : 'text-slate-400 dark:text-slate-500'}`} nativeID={`${id}-tier-stacked`} testID={`${id}-tier-stacked`}>
+        <Text className={`text-[9px] font-medium uppercase tracking-wide ${active ? activeTextClass : 'text-slate-500 dark:text-slate-400'}`} nativeID={`${id}-tier-stacked`} testID={`${id}-tier-stacked`}>
           {tier}
         </Text>
       )}

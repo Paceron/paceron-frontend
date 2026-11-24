@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
@@ -14,6 +16,7 @@ import { buildCompetitionDatesLabel, buildCompetitionName, COMPETITION_TYPE_ICON
 import { resolveCompetitionCreatorName } from '../../utils/competition-creator.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { Collapsible } from '../shared/collapsible.jsx';
 import { DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { filterCompetitionsByFields } from '../../utils/competition-filters.js';
@@ -21,6 +24,7 @@ import { canCloseCompetition } from '../../utils/competition-close.js';
 import { resolveCompetitionWinner } from '../../utils/competition-winner.js';
 import { useScrollToHighlight } from '../../hooks/use-scroll-to-highlight.js';
 import { FilterableSubtabs } from '../shared/filterable-subtabs.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 import { CreateCompetitionModal } from './create-competition-modal.jsx';
 import { RejectCompetitionModal } from './reject-competition-modal.jsx';
 import { CompetitionRankingModal } from './competition-ranking-modal.jsx';
@@ -107,7 +111,7 @@ function RouteDetailSection({ idPrefix, competition, members, creatorName }) {
             style={{ flexShrink: 1 }}
             testID={`${idPrefix}-route-start-address`}
           >
-            <Text className="text-sm font-semibold text-primary underline" nativeID={`${idPrefix}-route-start-address-label`} testID={`${idPrefix}-route-start-address-label`}>
+            <Text className="text-sm font-semibold text-[#3c6b12] underline dark:text-primary" nativeID={`${idPrefix}-route-start-address-label`} testID={`${idPrefix}-route-start-address-label`}>
               {addressLabel}
             </Text>
           </Pressable>
@@ -153,9 +157,17 @@ function RouteDetailSection({ idPrefix, competition, members, creatorName }) {
   );
 }
 
-function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busy }) {
+function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busyAction }) {
   const colors = useThemeColors();
+  const { themeMode } = useThemeMode();
+  const reducedMotion = useReducedMotion();
+  const highlightProgress = useSharedValue(highlighted ? 1 : 0);
+  useEffect(() => {
+    highlightProgress.value = reducedMotion ? (highlighted ? 1 : 0) : withTiming(highlighted ? 1 : 0, { duration: 180 });
+  }, [highlightProgress, highlighted, reducedMotion]);
+  const highlightStyle = useAnimatedStyle(() => ({ opacity: highlightProgress.value }));
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
+  const busy = Boolean(busyAction);
   const idPrefix = `competitions-tab-row-${competition.id}`;
 
   const isOwnPendingProposal = competition.status === 'pending_approval' && competition.createdByRole === 'runner' && competition.createdByUserId === currentUserId;
@@ -235,7 +247,13 @@ function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerVie
   const hasActions = canViewParticipants || canApproveReject || isOwnPendingProposal || canClose || canViewRanking || (canRunBase && !isWeb);
 
   return (
-    <View className={`rounded-xl border p-3 transition-colors ${highlighted ? 'border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <Animated.View
+        nativeID={`${idPrefix}-highlight`}
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: themeMode === 'dark' ? '#422006' : '#fef3c7', borderColor: themeMode === 'dark' ? '#b45309' : '#fcd34d', borderRadius: 12, borderWidth: 1 }, highlightStyle]}
+        testID={`${idPrefix}-highlight`}
+      />
       <Pressable className="flex-row items-start gap-2" disabled={!canExpand} nativeID={`${idPrefix}-header`} onPress={canExpand ? onToggleExpand : undefined} testID={`${idPrefix}-header`}>
         {canExpand ? <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} /> : null}
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
@@ -319,12 +337,20 @@ function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerVie
               <>
                 <IconTooltip align="end" idPrefix={`${idPrefix}-approve-tooltip`} label="Aprobar" position="bottom">
                   <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-emerald-100 active:opacity-70 disabled:opacity-60 dark:bg-emerald-900/30" disabled={busy} nativeID={`${idPrefix}-approve-button`} onPress={() => onApprove(competition.id)} testID={`${idPrefix}-approve-button`}>
-                    <MaterialCommunityIcons color="#16a34a" name="check" size={18} />
+                    {busyAction === 'approve' ? (
+                      <ActivityIndicator color="#16a34a" size="small" />
+                    ) : (
+                      <MaterialCommunityIcons color="#16a34a" name="check" size={18} />
+                    )}
                   </Pressable>
                 </IconTooltip>
                 <IconTooltip align="end" idPrefix={`${idPrefix}-reject-tooltip`} label="Rechazar" position="bottom">
                   <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-red-100 active:opacity-70 disabled:opacity-60 dark:bg-red-900/30" disabled={busy} nativeID={`${idPrefix}-reject-button`} onPress={() => onReject(competition.id)} testID={`${idPrefix}-reject-button`}>
-                    <MaterialCommunityIcons color="#ef4444" name="close" size={18} />
+                    {busyAction === 'reject' ? (
+                      <ActivityIndicator color="#ef4444" size="small" />
+                    ) : (
+                      <MaterialCommunityIcons color="#ef4444" name="close" size={18} />
+                    )}
                   </Pressable>
                 </IconTooltip>
               </>
@@ -332,14 +358,22 @@ function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerVie
             {isOwnPendingProposal && (
               <IconTooltip align="end" idPrefix={`${idPrefix}-cancel-tooltip`} label="Cancelar propuesta" position="bottom">
                 <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-red-100 active:opacity-70 disabled:opacity-60 dark:bg-red-900/30" disabled={busy} nativeID={`${idPrefix}-cancel-button`} onPress={() => onCancel(competition.id)} testID={`${idPrefix}-cancel-button`}>
-                  <MaterialCommunityIcons color="#ef4444" name="close" size={18} />
+                  {busyAction === 'cancel' ? (
+                    <ActivityIndicator color="#ef4444" size="small" />
+                  ) : (
+                    <MaterialCommunityIcons color="#ef4444" name="close" size={18} />
+                  )}
                 </Pressable>
               </IconTooltip>
             )}
             {canClose && (
               <IconTooltip align="end" idPrefix={`${idPrefix}-close-tooltip`} label="Cerrar competencia" position="bottom">
                 <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-amber-100 active:opacity-70 disabled:opacity-60 dark:bg-amber-900/30" disabled={busy} nativeID={`${idPrefix}-close-button`} onPress={() => onClose(competition)} testID={`${idPrefix}-close-button`}>
-                  <MaterialCommunityIcons color="#d97706" name="flag-checkered" size={18} />
+                  {busyAction === 'close' ? (
+                    <ActivityIndicator color="#d97706" size="small" />
+                  ) : (
+                    <MaterialCommunityIcons color="#d97706" name="flag-checkered" size={18} />
+                  )}
                 </Pressable>
               </IconTooltip>
             )}
@@ -372,9 +406,11 @@ function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerVie
         </View>
       )}
 
-      {expanded && competition.type === 'route' && (
-        <RouteDetailSection competition={competition} creatorName={creatorName} idPrefix={idPrefix} members={members} />
-      )}
+      {competition.type === 'route' ? (
+        <Collapsible expanded={expanded} idPrefix={`${idPrefix}-route-detail`}>
+          <RouteDetailSection competition={competition} creatorName={creatorName} idPrefix={idPrefix} members={members} />
+        </Collapsible>
+      ) : null}
 
       {canRunBase && isWeb && (
         <View className="mt-3 items-center justify-center" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>
@@ -407,6 +443,8 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
   const [attemptsCompetition, setAttemptsCompetition] = useState(null);
   const [reopenAthleteId, setReopenAthleteId] = useState(null);
   const [closeTarget, setCloseTarget] = useState(null);
+  const [approveTargetId, setApproveTargetId] = useState(null);
+  const [cancelTargetId, setCancelTargetId] = useState(null);
   const [subTab, setSubTab] = useState('active');
   const [filterType, setFilterType] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
@@ -483,9 +521,14 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
   }, [focusCompetitionId, loading]);
 
   const handleApprove = async (id) => {
-    const result = await mutations.approveCompetition(id);
-    if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Competencia aprobada' }); }
-    else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos aprobar la competencia', text2: result.error }); }
+    setApproveTargetId(id);
+    try {
+      const result = await mutations.approveCompetition(id);
+      if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Competencia aprobada' }); }
+      else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos aprobar la competencia', text2: result.error }); }
+    } finally {
+      setApproveTargetId(null);
+    }
   };
 
   const handleRejectConfirm = async (reason) => {
@@ -496,9 +539,14 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
   };
 
   const handleCancel = async (id) => {
-    const result = await mutations.cancelCompetition(id);
-    if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Propuesta cancelada' }); }
-    else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos cancelar la propuesta', text2: result.error }); }
+    setCancelTargetId(id);
+    try {
+      const result = await mutations.cancelCompetition(id);
+      if (result.success) { notifySuccess(); Toast.show({ type: 'success', text1: 'Propuesta cancelada' }); }
+      else { notifyError(); Toast.show({ type: 'error', text1: 'No pudimos cancelar la propuesta', text2: result.error }); }
+    } finally {
+      setCancelTargetId(null);
+    }
   };
 
   const handleRequestClose = (competition) => {
@@ -564,7 +612,14 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
     router.push('/route-attempt-pre-start');
   };
 
-  const busy = mutations.isApproving || mutations.isRejecting || mutations.isCancelling || mutations.isClosing;
+  const busyActionFor = (competitionId) => {
+    const matches = (targetId) => targetId != null && String(targetId) === String(competitionId);
+    if (mutations.isApproving && matches(approveTargetId)) return 'approve';
+    if (mutations.isRejecting && matches(rejectTargetId)) return 'reject';
+    if (mutations.isCancelling && matches(cancelTargetId)) return 'cancel';
+    if (mutations.isClosing && matches(closeTarget?.id)) return 'close';
+    return null;
+  };
 
   const filteredCompetitions = filterCompetitionsByFields(competitions, { type: filterType, from: filterFrom, to: filterTo });
   const listByTab = {
@@ -629,19 +684,35 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
       />
 
       {loading && (
-        <View className="items-center py-6" nativeID="competitions-tab-loading" testID="competitions-tab-loading">
-          <ActivityIndicator color="#8cc63e" />
-        </View>
+        <SkeletonPulse className="gap-2" nativeID="competitions-tab-loading" testID="competitions-tab-loading">
+          {[0, 1, 2].map((index) => (
+            <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" key={index} nativeID={`competitions-tab-loading-row-${index}`} testID={`competitions-tab-loading-row-${index}`}>
+              <View className="flex-row items-center gap-2" nativeID={`competitions-tab-loading-row-${index}-header`} testID={`competitions-tab-loading-row-${index}-header`}>
+                <SkeletonBlock height={16} rounded="rounded-full" width={16} />
+                <SkeletonBlock height={16} width="52%" />
+                <View className="ml-auto" nativeID={`competitions-tab-loading-row-${index}-status`} testID={`competitions-tab-loading-row-${index}-status`}>
+                  <SkeletonBlock height={24} rounded="rounded-full" width={56} />
+                </View>
+              </View>
+              <SkeletonBlock className="mt-2" height={11} width="40%" />
+              <View className="mt-3 flex-row gap-2" nativeID={`competitions-tab-loading-row-${index}-actions`} testID={`competitions-tab-loading-row-${index}-actions`}>
+                <SkeletonBlock height={32} rounded="rounded-full" width={32} />
+                <SkeletonBlock height={32} rounded="rounded-full" width={32} />
+                <SkeletonBlock height={32} rounded="rounded-full" width={32} />
+              </View>
+            </View>
+          ))}
+        </SkeletonPulse>
       )}
 
       {!loading && error && (
-        <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="competitions-tab-error" testID="competitions-tab-error">
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="competitions-tab-error" testID="competitions-tab-error">
           No pudimos cargar las competencias.
         </Text>
       )}
 
       {!loading && !error && visibleList.length === 0 && (
-        <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="competitions-tab-empty" testID="competitions-tab-empty">
+        <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="competitions-tab-empty" testID="competitions-tab-empty">
           {EMPTY_MESSAGE[subTab]}
         </Text>
       )}
@@ -651,7 +722,7 @@ export function CompetitionsTab({ teamId, teamName, members, groups, ownerId, ow
           {visibleList.map((competition) => (
             <View key={competition.id} nativeID={`competitions-tab-row-${competition.id}-wrap`} ref={registerRow(competition.id)} testID={`competitions-tab-row-${competition.id}-wrap`}>
               <CompetitionRow
-                busy={busy}
+                busyAction={busyActionFor(competition.id)}
                 competition={competition}
                 currentUserId={currentUserId}
                 expanded={!collapsedIds.has(competition.id)}

@@ -15,6 +15,8 @@ import { InputField } from '../forms/fields.jsx';
 import { CalendarDayFields } from './calendar-day-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { RequireRole } from '../guards/require-role.jsx';
 import { notifySuccess, notifyError, notifyWarning } from '../../utils/haptics.js';
@@ -168,11 +170,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
     : isCalendarDayClosed(date, { isPresencial: false });
 
   if (loadingGroups || loadingDay) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="group-calendar-day-loading" testID="group-calendar-day-loading">
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="group-calendar-day" onBack={() => router.back()} />;
   }
 
   if (!group) {
@@ -197,15 +195,16 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
 
   return (
     <>
+      <PageReveal idPrefix="group-calendar-day-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="group-calendar-day-screen-scroll"
         showsVerticalScrollIndicator={false}
         testID="group-calendar-day-screen-scroll"
       >
         <ScreenCard nativeID="group-calendar-day-screen-container" testID="group-calendar-day-screen-container">
-          <View className="mb-8 flex-row items-center gap-2" nativeID="group-calendar-day-screen-header" testID="group-calendar-day-screen-header">
+          <View className="mb-6 flex-row items-center gap-2" nativeID="group-calendar-day-screen-header" testID="group-calendar-day-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
               nativeID="group-calendar-day-screen-back-button"
@@ -245,7 +244,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
             )}
 
             {error && (
-              <Text className="mb-4 text-xs text-red-500 dark:text-red-400" nativeID="group-calendar-day-error" testID="group-calendar-day-error">{error}</Text>
+              <Text className="mb-4 text-xs text-red-600 dark:text-red-400" nativeID="group-calendar-day-error" testID="group-calendar-day-error">{error}</Text>
             )}
 
             <CalendarDayFields
@@ -325,6 +324,7 @@ function GroupCalendarDayScreenContent({ teamId, groupId, date, action }) {
           </SectionCard>
         </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       <Modal
         animationType="fade"

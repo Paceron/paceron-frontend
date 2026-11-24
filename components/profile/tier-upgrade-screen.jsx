@@ -22,6 +22,7 @@ import { formatArs } from '../../utils/currency.js';
 import { formatTierName as formatTierDisplayName } from '../../utils/tier-name.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { CancelPendingPaymentModal } from '../shared/cancel-pending-payment-modal.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por
 // plataforma (.web.jsx antes que .jsx) cuando el specifier no trae
@@ -90,11 +91,11 @@ function TierCard({ tier, isCurrent, loading, onUpgrade, currentTierName }) {
           </Text>
         </View>
         <View className="mt-1 flex-row items-baseline justify-center gap-1" nativeID={`${idPrefix}-price-row`} testID={`${idPrefix}-price-row`}>
-          <Text className="text-lg font-bold text-primary" nativeID={`${idPrefix}-price`} testID={`${idPrefix}-price`}>
+          <Text className="text-lg font-bold text-[#3c6b12] dark:text-primary" nativeID={`${idPrefix}-price`} testID={`${idPrefix}-price`}>
             {formatTierPrice(tier.tierAmount, tier.paymentRequired)}
           </Text>
           {tier.paymentRequired && (
-            <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-price-period`} testID={`${idPrefix}-price-period`}>
+            <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-price-period`} testID={`${idPrefix}-price-period`}>
               /mes
             </Text>
           )}
@@ -450,16 +451,17 @@ export function TierUpgradeScreen() {
   }
 
   return (
+    <PageReveal idPrefix="tier-upgrade-screen-page-reveal">
     <ScrollView
       nativeID="tier-upgrade-screen-scroll"
       testID="tier-upgrade-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
     >
       <ScreenCard nativeID="tier-upgrade-screen-container" testID="tier-upgrade-screen-container">
-        <View nativeID="tier-upgrade-screen-header" testID="tier-upgrade-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="tier-upgrade-screen-header" testID="tier-upgrade-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="tier-upgrade-screen-back-button"
             testID="tier-upgrade-screen-back-button"
@@ -551,5 +553,6 @@ export function TierUpgradeScreen() {
         />
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }

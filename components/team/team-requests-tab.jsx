@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { useExitAction } from '../shared/use-exit-action.js';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,8 +15,10 @@ import { useTeamJoinRequests, useJoinRequestMutations } from '../../hooks/use-jo
 // confirmación (mismo patrón que received-invitations-screen.jsx/notifications-screen.jsx).
 function JoinRequestRow({ request, onAccept, onReject, responding, respondingAction }) {
   const colors = useThemeColors();
+  const { runExit, style: exitStyle } = useExitAction();
 
   return (
+    <Animated.View nativeID={`team-request-${request.id}-exit`} style={exitStyle} testID={`team-request-${request.id}-exit`}>
     <View
       className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900"
       nativeID={`team-request-${request.id}`}
@@ -31,7 +35,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding, respondingAct
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-primary hover:opacity-90 active:opacity-80 disabled:opacity-60"
           disabled={responding}
           nativeID={`team-request-${request.id}-accept-button`}
-          onPress={onAccept}
+          onPress={() => runExit(onAccept)}
           testID={`team-request-${request.id}-accept-button`}
         >
           {respondingAction === 'accept' ? <ActivityIndicator color={colors.onPrimary} size="small" /> : (
@@ -47,7 +51,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding, respondingAct
           className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border border-slate-200 hover:bg-slate-100 active:opacity-80 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
           disabled={responding}
           nativeID={`team-request-${request.id}-reject-button`}
-          onPress={onReject}
+          onPress={() => runExit(onReject)}
           testID={`team-request-${request.id}-reject-button`}
         >
           {respondingAction === 'reject' ? <ActivityIndicator color={colors.onSurfaceVariant} size="small" /> : (
@@ -61,6 +65,7 @@ function JoinRequestRow({ request, onAccept, onReject, responding, respondingAct
         </Pressable>
       </View>
     </View>
+    </Animated.View>
   );
 }
 

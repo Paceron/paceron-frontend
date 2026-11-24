@@ -124,7 +124,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
               {' '}
               <Text
                 accessibilityRole="text"
-                className="text-red-500 dark:text-red-400"
+                className="text-red-600 dark:text-red-400"
                 nativeID={`select-field-${slug}-required`}
                 testID={`select-field-${slug}-required`}
               >
@@ -141,7 +141,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
       >
         <View className={outline || plain ? 'relative' : 'flex-1 relative'} nativeID={`select-field-${slug}-input-wrapper`} testID={`select-field-${slug}-input-wrapper`}>
           <select
-            className={`${outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : (dense ? SELECT_CLASS_DENSE : SELECT_CLASS))} ${showChevron && !plain && !outline ? 'pr-9' : ''}`}
+            className={`${outline ? SELECT_CLASS_OUTLINE : (plain ? SELECT_CLASS_PLAIN : (dense ? SELECT_CLASS_DENSE : SELECT_CLASS))} ${showChevron && !plain && !outline ? 'pr-9' : ''} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
             style={outline && fixedWidth ? { width: fixedWidth } : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -179,7 +179,7 @@ export function SelectField({ label, options, value, onChange, placeholder, disa
       </View>
       {!hideErrorRow && (
         <View className="h-5" nativeID={`select-field-${slug}-error-row`} testID={`select-field-${slug}-error-row`}>
-          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`select-field-${slug}-error`} testID={`select-field-${slug}-error`}>{error}</Text>}
+          {error && <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`select-field-${slug}-error`} testID={`select-field-${slug}-error`}>{error}</Text>}
         </View>
       )}
     </View>
@@ -264,7 +264,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
         testID={`date-field-${slug}-trigger`}
       >
         <Text
-          className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
           nativeID={`date-field-${slug}-value`}
           testID={`date-field-${slug}-value`}
         >
@@ -274,7 +274,7 @@ export function DateField({ label, value, onChange, onBlur, error, touched, disa
       </Pressable>
       {!hideErrorRow && (
         <View className="h-5" nativeID={`date-field-${slug}-error-row`} testID={`date-field-${slug}-error-row`}>
-          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
+          {error && <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`date-field-${slug}-error`} testID={`date-field-${slug}-error`}>{error}</Text>}
         </View>
       )}
 
@@ -393,7 +393,7 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
         </View>
         {!hideErrorRow && (
           <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
-            {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+            {error && <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
           </View>
         )}
       </View>
@@ -424,7 +424,7 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
         testID={`time-field-${slug}-trigger`}
       >
         <Text
-          className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+          className={`flex-1 text-sm ${value ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
           nativeID={`time-field-${slug}-value`}
           testID={`time-field-${slug}-value`}
         >
@@ -434,7 +434,7 @@ export function TimeField({ label, value, onChange, onBlur, error, touched, disa
       </Pressable>
       {!hideErrorRow && (
         <View className="h-5" nativeID={`time-field-${slug}-error-row`} testID={`time-field-${slug}-error-row`}>
-          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
+          {error && <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`time-field-${slug}-error`} testID={`time-field-${slug}-error`}>{error}</Text>}
         </View>
       )}
 
@@ -542,7 +542,7 @@ export function DurationField({ label, value, onChange, error, touched, disabled
       </View>
       {!hideErrorRow && (
         <View className="h-5" nativeID={`duration-field-${slug}-error-row`} testID={`duration-field-${slug}-error-row`}>
-          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`duration-field-${slug}-error`} testID={`duration-field-${slug}-error`}>{error}</Text>}
+          {error && <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`duration-field-${slug}-error`} testID={`duration-field-${slug}-error`}>{error}</Text>}
         </View>
       )}
     </View>
@@ -580,7 +580,7 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
                 {' '}
                 <Text
                   accessibilityRole="text"
-                  className="text-red-500 dark:text-red-400"
+                  className="text-red-600 dark:text-red-400"
                   nativeID={`input-field-${slug}-required`}
                   testID={`input-field-${slug}-required`}
                 >
@@ -608,7 +608,7 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
         </View>
       )}
       <View
-        className={`${rowSizeClass} flex-row rounded-xl border ${borderColor}`}
+        className={`${rowSizeClass} flex-row rounded-xl border ${borderColor} ${disabled ? 'opacity-60' : ''}`}
         nativeID={`input-field-${slug}-row`}
         testID={`input-field-${slug}-row`}
       >
@@ -697,6 +697,9 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
         )}
         {onToggleSecure && (
           <Pressable
+            accessibilityLabel={showSecure ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            accessibilityRole="button"
+            accessibilityState={{ checked: showSecure }}
             className="rounded-lg px-3 hover:bg-slate-100 dark:hover:bg-slate-800"
             onPress={onToggleSecure}
             nativeID={`input-field-${slug}-toggle-secure-button`}
@@ -713,7 +716,7 @@ export function InputField({ label, value, onChange, onBlur, onSelectionChange, 
       {!hideErrorRow && (
         <View className="h-5 pt-1" nativeID={`input-field-${slug}-error-row`} testID={`input-field-${slug}-error-row`}>
           {error ? (
-            <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>
+            <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`input-field-${slug}-error`} testID={`input-field-${slug}-error`}>{error}</Text>
           ) : hint ? (
             <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`input-field-${slug}-hint`} testID={`input-field-${slug}-hint`}>{hint}</Text>
           ) : null}
@@ -755,7 +758,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
               {' '}
               <Text
                 accessibilityRole="text"
-                className="text-red-500 dark:text-red-400"
+                className="text-red-600 dark:text-red-400"
                 nativeID={`picker-field-${slug}-required`}
                 testID={`picker-field-${slug}-required`}
               >
@@ -775,7 +778,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         <Text
           className={plain || outline
             ? 'text-sm font-semibold text-slate-900 dark:text-white'
-            : `flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}
+            : `flex-1 text-sm ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
           nativeID={`picker-field-${slug}-value`}
           numberOfLines={outline ? 1 : undefined}
           testID={`picker-field-${slug}-value`}
@@ -797,7 +800,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
       </Pressable>
       {!hideErrorRow && (
         <View className="h-5" nativeID={`picker-field-${slug}-error-row`} testID={`picker-field-${slug}-error-row`}>
-          {error && <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`picker-field-${slug}-error`} testID={`picker-field-${slug}-error`}>{error}</Text>}
+          {error && <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`picker-field-${slug}-error`} testID={`picker-field-${slug}-error`}>{error}</Text>}
         </View>
       )}
 
@@ -809,15 +812,19 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
         nativeID={`picker-field-${slug}-modal`}
         testID={`picker-field-${slug}-modal`}
       >
-        <Pressable
+        <View
           className="flex-1 justify-center bg-black/50 px-6"
-          onPress={() => setVisible(false)}
-          nativeID={`picker-field-${slug}-modal-backdrop`}
-          testID={`picker-field-${slug}-modal-backdrop`}
+          nativeID={`picker-field-${slug}-modal-container`}
+          testID={`picker-field-${slug}-modal-container`}
         >
           <Pressable
+            className="absolute inset-0"
+            onPress={() => setVisible(false)}
+            nativeID={`picker-field-${slug}-modal-backdrop`}
+            testID={`picker-field-${slug}-modal-backdrop`}
+          />
+          <View
             className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
-            onPress={() => {}}
             nativeID={`picker-field-${slug}-modal-content`}
             testID={`picker-field-${slug}-modal-content`}
           >
@@ -828,7 +835,7 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
             >
               {items.length === 0 ? (
                 <View className="items-center py-8" nativeID={`picker-field-${slug}-modal-empty`} testID={`picker-field-${slug}-modal-empty`}>
-                  <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`picker-field-${slug}-modal-empty-label`} testID={`picker-field-${slug}-modal-empty-label`}>Sin opciones disponibles</Text>
+                  <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`picker-field-${slug}-modal-empty-label`} testID={`picker-field-${slug}-modal-empty-label`}>Sin opciones disponibles</Text>
                 </View>
               ) : (
                 items.map((item) => {
@@ -859,8 +866,8 @@ export function PickerField({ label, options, value, onChange, placeholder, disa
                 })
               )}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -933,7 +940,7 @@ export function InlinePicker({
         testID={`inline-picker-${scope}-trigger`}
       >
         <Text
-          className={`flex-1 ${textClassName} ${valueClassName ?? (selected ? resolvedValueClassName : 'text-slate-400 dark:text-slate-500')}`}
+          className={`flex-1 ${textClassName} ${valueClassName ?? (selected ? resolvedValueClassName : 'text-slate-500 dark:text-slate-400')}`}
           nativeID={`inline-picker-${scope}-trigger-label`}
           numberOfLines={1}
           testID={`inline-picker-${scope}-trigger-label`}
@@ -951,16 +958,20 @@ export function InlinePicker({
         transparent
         visible={visible}
       >
-        <Pressable
+        <View
           className="flex-1 justify-center bg-black/50 px-6"
-          nativeID={`inline-picker-${scope}-modal-backdrop`}
-          onPress={() => setVisible(false)}
-          testID={`inline-picker-${scope}-modal-backdrop`}
+          nativeID={`inline-picker-${scope}-modal-container`}
+          testID={`inline-picker-${scope}-modal-container`}
         >
           <Pressable
+            className="absolute inset-0"
+            nativeID={`inline-picker-${scope}-modal-backdrop`}
+            onPress={() => setVisible(false)}
+            testID={`inline-picker-${scope}-modal-backdrop`}
+          />
+          <View
             className="max-h-80 rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-surface-2"
             nativeID={`inline-picker-${scope}-modal-content`}
-            onPress={() => {}}
             testID={`inline-picker-${scope}-modal-content`}
           >
             <ScrollView
@@ -970,7 +981,7 @@ export function InlinePicker({
             >
               {items.length === 0 ? (
                 <View className="items-center py-8" nativeID={`inline-picker-${scope}-modal-empty`} testID={`inline-picker-${scope}-modal-empty`}>
-                  <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`inline-picker-${scope}-modal-empty-label`} testID={`inline-picker-${scope}-modal-empty-label`}>Sin opciones disponibles</Text>
+                  <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`inline-picker-${scope}-modal-empty-label`} testID={`inline-picker-${scope}-modal-empty-label`}>Sin opciones disponibles</Text>
                 </View>
               ) : (
                 items.map((item) => {
@@ -1001,8 +1012,8 @@ export function InlinePicker({
                 })
               )}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </>
   );

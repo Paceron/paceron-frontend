@@ -65,13 +65,13 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
               {achievement.progressPercent != null && (
                 <View className="mt-2" nativeID="achievement-detail-modal-progress" testID="achievement-detail-modal-progress">
                   <ProgressBar nativeID="achievement-detail-modal-progress-bar" percent={achievement.progressPercent} testID="achievement-detail-modal-progress-bar" />
-                  <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID="achievement-detail-modal-next-level" testID="achievement-detail-modal-next-level">
+                  <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID="achievement-detail-modal-next-level" testID="achievement-detail-modal-next-level">
                     Próximo: {achievement.nextLevelName}
                   </Text>
                 </View>
               )}
               {isMaxLevel && (
-                <Text className="mt-2 text-xs text-slate-400 dark:text-slate-500" nativeID="achievement-detail-modal-max-level" testID="achievement-detail-modal-max-level">
+                <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400" nativeID="achievement-detail-modal-max-level" testID="achievement-detail-modal-max-level">
                   Nivel máximo alcanzado.
                 </Text>
               )}
@@ -84,7 +84,7 @@ export function AchievementDetailModal({ achievement, visible, onClose }) {
                 {achievement.count ?? 0} veces
               </Text>
               {achievement.counterTrophyEvery != null && (
-                <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID="achievement-detail-modal-counter-every" testID="achievement-detail-modal-counter-every">
+                <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID="achievement-detail-modal-counter-every" testID="achievement-detail-modal-counter-every">
                   Ganás una estampa nueva cada {achievement.counterTrophyEvery} veces.
                 </Text>
               )}

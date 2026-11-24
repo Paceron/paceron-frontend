@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -19,6 +20,7 @@ import { SectionCard } from '../forms/section-card.jsx';
 import { InvitedEmailsList } from '../forms/fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { InviteMemberModal } from './invite-member-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
@@ -55,12 +57,13 @@ function InviteTeamMembersScreenContent({ teamId }) {
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const { team, loading: loadingTeam } = useTeam(teamId);
-  const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
+  const { groups } = useGroups(teamId, user?.userId);
   const { invitations, loading: loadingInvitations } = useTeamInvitations(teamId);
   const { sendInvite } = useInvitationMutations();
 
   const [draftInvites, setDraftInvites] = useState([]);
   const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState(null);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
 
   const isDirty = useFormDirty({ hasDrafts: draftInvites.length > 0 });
@@ -73,12 +76,8 @@ function InviteTeamMembersScreenContent({ teamId }) {
     queryClient.invalidateQueries({ queryKey: ['groups', teamId] }),
   ]));
 
-  if (loadingTeam || loadingInvitations || loadingGroups) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="invite-team-loading" testID="invite-team-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+  if (loadingTeam || loadingInvitations) {
+    return <FormScreenSkeleton idPrefix="invite-team" onBack={() => router.back()} />;
   }
 
   if (!team) {
@@ -105,11 +104,14 @@ function InviteTeamMembersScreenContent({ teamId }) {
     if (draftInvites.length === 0 || sending) return;
     setSending(true);
     let failed = 0;
-    for (const invite of draftInvites) {
+    for (let index = 0; index < draftInvites.length; index += 1) {
+      const invite = draftInvites[index];
+      setSendProgress({ current: index + 1, total: draftInvites.length });
       const result = await sendInvite({ teamId, email: invite.email, groupId: invite.groupId });
       if (!result.success) failed += 1;
     }
     setSending(false);
+    setSendProgress(null);
     setDraftInvites([]);
     if (failed > 0) {
       notifyError();
@@ -122,16 +124,17 @@ function InviteTeamMembersScreenContent({ teamId }) {
 
   return (
     <View className="flex-1" nativeID="invite-team-screen-root" testID="invite-team-screen-root">
+    <PageReveal idPrefix="invite-team-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="invite-team-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="invite-team-screen-scroll"
     >
       <ScreenCard nativeID="invite-team-screen-container" testID="invite-team-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="invite-team-screen-header" testID="invite-team-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="invite-team-screen-header" testID="invite-team-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="invite-team-screen-back-button"
@@ -187,7 +190,12 @@ function InviteTeamMembersScreenContent({ teamId }) {
             testID="invite-team-send-button"
           >
             {sending ? (
-              <ActivityIndicator color={colors.onPrimary} size="small" />
+              <>
+                <ActivityIndicator color={colors.onPrimary} size="small" />
+                <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID="invite-team-send-button-progress" testID="invite-team-send-button-progress">
+                  {sendProgress ? `Enviando ${sendProgress.current} de ${sendProgress.total}…` : 'Enviando…'}
+                </Text>
+              </>
             ) : (
               <>
                 <MaterialCommunityIcons color={colors.onPrimary} name="send-outline" size={18} />
@@ -200,6 +208,7 @@ function InviteTeamMembersScreenContent({ teamId }) {
         </SectionCard>
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
     <InviteMemberModal
       existingEmails={draftInvites.map((invite) => invite.email)}
       groups={groups}

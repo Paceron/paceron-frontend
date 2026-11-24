@@ -10,7 +10,7 @@ import { competitionsQueryOptions } from './use-competitions.js';
 // normalizado) -- NO "es miembro del equipo", un equipo puede tener
 // competencias en las que este corredor no fue anotado.
 export function useMyCompetitions(userId, { status } = {}) {
-  const { teams, loading: teamsLoading } = useMyMemberTeams(userId);
+  const { teams, loading: teamsLoading, error: teamsError } = useMyMemberTeams(userId);
   const teamIds = teams.map((t) => t.id);
 
   const queries = useQueries({
@@ -29,8 +29,12 @@ export function useMyCompetitions(userId, { status } = {}) {
     });
   });
 
+  const error = teamsError ?? queries.find((q) => q.error)?.error ?? null;
+
   return {
     competitions,
     loading: teamsLoading || queries.some((q) => q.isLoading),
+    error,
+    refetch: () => Promise.all([...queries.map((q) => q.refetch())]),
   };
 }

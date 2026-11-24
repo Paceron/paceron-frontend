@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getWorkoutFeedbackHistory,
   getAdministeredWorkoutFeedbackHistory,
@@ -32,6 +32,7 @@ export function useTrainingsHistory(role, userId, filters) {
     queryKey: historyQueryKey(role, userId, filtersKey, page),
     queryFn: () => fetcher(userId, { ...filters, page }).then(toWorkoutFeedbackHistoryResponseModel),
     enabled: Boolean(userId && (role !== 'trainer' || filters.teamId)),
+    placeholderData: keepPreviousData,
   });
 
   const pageKey = `${filtersKey}:${page}`;
@@ -50,6 +51,8 @@ export function useTrainingsHistory(role, userId, filters) {
     availableExercises: query.data?.availableExercises ?? [],
     loading: query.isLoading,
     isFetching: query.isFetching,
+    error: query.error ?? null,
+    refetch: query.refetch,
     loadMore: () => setPage((p) => p + 1),
   };
 }

@@ -19,6 +19,8 @@ import { useTeamConfiguration } from '../../hooks/use-team-configuration.js';
 import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
@@ -39,11 +41,7 @@ function EditTeamScreenContent({ teamId }) {
   const { team, loading } = useTeam(teamId);
 
   if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-team-loading" testID="edit-team-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="edit-team" onBack={() => router.back()} />;
   }
 
   if (!team) {
@@ -116,16 +114,17 @@ function EditTeamForm({ team, teamId }) {
 
   return (
     <>
+      <PageReveal idPrefix="edit-team-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="edit-team-screen-scroll"
         refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
         showsVerticalScrollIndicator={false}
         testID="edit-team-screen-scroll"
       >
         <ScreenCard nativeID="edit-team-screen-container" testID="edit-team-screen-container">
-          <View className="mb-8 flex-row items-center gap-2" nativeID="edit-team-screen-header" testID="edit-team-screen-header">
+          <View className="mb-6 flex-row items-center gap-2" nativeID="edit-team-screen-header" testID="edit-team-screen-header">
             <Pressable
               className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
               nativeID="edit-team-screen-back-button"
@@ -245,6 +244,7 @@ function EditTeamForm({ team, teamId }) {
           </SectionCard>
         </ScreenCard>
       </ScrollView>
+      </PageReveal>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );

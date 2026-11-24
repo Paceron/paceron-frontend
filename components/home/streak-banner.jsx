@@ -1,13 +1,15 @@
-import { ActivityIndicator, Pressable, View, Text } from 'react-native';
+import { Pressable, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, useReducedMotion } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { useStreaks } from '../../hooks/use-streaks.js';
 import { streakDayVisual } from '../../utils/streak-day-status.js';
 import { useAchievementsTabStore } from '../../store/achievements-tab-store.js';
 import { useThemeColors } from '../../theme/colors.js';
 import { isWeb } from '../../utils/platform.js';
+import { HomeReveal } from './home-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 
 // Ícono de racha con pulso sutil -- solo mobile (ver CLAUDE.md "Theming" y
 // la spec: en web no aporta y evita trabajo de animación donde no hace
@@ -15,11 +17,15 @@ import { isWeb } from '../../utils/platform.js';
 // components/shared/skeleton.jsx.
 function useFirePulse() {
   const scale = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (isWeb) return;
+    if (isWeb || reducedMotion) {
+      scale.value = 1;
+      return;
+    }
     scale.value = withRepeat(withTiming(1.12, { duration: 900, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [scale]);
+  }, [reducedMotion, scale]);
 
   return useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 }
@@ -48,24 +54,33 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
 
   if (loading) {
     return (
-      <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
-        <ActivityIndicator color={colors.primary} nativeID="streak-banner-loading-indicator" testID="streak-banner-loading-indicator" />
+      <View className={`min-h-[96px] mb-3 h-24 justify-center rounded-2xl bg-white px-4 shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-loading" testID="streak-banner-loading">
+        <SkeletonPulse idPrefix="streak-banner-loading-skeleton" nativeID="streak-banner-loading-skeleton" testID="streak-banner-loading-skeleton">
+          <View className="gap-2" nativeID="streak-banner-loading-body" testID="streak-banner-loading-body">
+            <SkeletonBlock height={10} nativeID="streak-banner-loading-kicker" testID="streak-banner-loading-kicker" width="40%" />
+            <SkeletonBlock height={28} nativeID="streak-banner-loading-value" testID="streak-banner-loading-value" width="60%" />
+            <SkeletonBlock height={14} nativeID="streak-banner-loading-days" testID="streak-banner-loading-days" width="80%" />
+          </View>
+        </SkeletonPulse>
       </View>
     );
   }
 
   if (error || !streaks) {
     return (
-      <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
-        <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
-      </View>
+      <HomeReveal delay={60} fill={paired} idPrefix="streak-banner-reveal">
+        <View className={`min-h-[96px] mb-3 h-24 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-surface ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-error" testID="streak-banner-error">
+          <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID="streak-banner-error-label" testID="streak-banner-error-label">No pudimos cargar tu racha.</Text>
+        </View>
+      </HomeReveal>
     );
   }
 
   const lastDays = streaks.days.slice(-daysCount);
 
   return (
-    <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
+    <HomeReveal delay={60} fill={paired} idPrefix="streak-banner-reveal">
+      <Pressable className={`mb-3 rounded-2xl bg-white p-4 shadow-sm transition-colors duration-150 hover:bg-slate-100 active:bg-slate-200 dark:bg-surface dark:hover:bg-surface-2 dark:active:bg-surface-3 ${paired ? 'flex-1' : ''}`} nativeID="streak-banner-root" onPress={goToStreaksTab} testID="streak-banner-root">
       {/* Kicker con el nombre de la racha -- antes la card solo mostraba
           "X días" sin aclarar cuál de las dos rachas es (estricta/flexible,
           ver streaks-tab.jsx), mismo patrón de kicker que el resto de las
@@ -78,7 +93,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
           ("Días entrenando"), no uno inventado nuevo. Los puntos del día
           abajo pasan a `flexibleStatus` para no mezclar: mostrar el número
           de una racha y los puntos de la otra confundía más que ayudaba. */}
-      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="streak-banner-kicker" testID="streak-banner-kicker">
+      <Text className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="streak-banner-kicker" testID="streak-banner-kicker">
         Estado de racha
       </Text>
       <View className="flex-row items-center gap-2" nativeID="streak-banner-current-row" testID="streak-banner-current-row">
@@ -109,6 +124,7 @@ export function StreakBanner({ daysCount = 7, paired = false }) {
           );
         })}
       </View>
-    </Pressable>
+      </Pressable>
+    </HomeReveal>
   );
 }

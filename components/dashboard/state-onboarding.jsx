@@ -51,7 +51,7 @@ export function StateOnboarding({ id = 'dashboard-state-onboarding', isTrainer =
       <View className="mt-3 flex-row gap-2" nativeID={`${id}-actions`} testID={`${id}-actions`}>
         <Text
           accessibilityRole="link"
-          className="text-xs font-semibold text-primary"
+          className="text-xs font-semibold text-[#3c6b12] dark:text-primary"
           nativeID={`${id}-action-group`}
           onPress={onPickGroup}
           testID={`${id}-action-group`}
@@ -60,7 +60,7 @@ export function StateOnboarding({ id = 'dashboard-state-onboarding', isTrainer =
         </Text>
         <Text
           accessibilityRole="link"
-          className="text-xs font-semibold text-primary"
+          className="text-xs font-semibold text-[#3c6b12] dark:text-primary"
           nativeID={`${id}-action-kind`}
           onPress={onPickKind}
           testID={`${id}-action-kind`}

@@ -18,20 +18,17 @@ import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { SessionDragProvider, DragGhost } from './session-drag-and-drop.jsx';
 import { SessionFormBody } from './session-form-body.jsx';
 
 function EditSessionScreenContent({ sessionId }) {
-  const colors = useThemeColors();
   const router = useRouter();
   const { session, loading } = useSession(sessionId);
 
   if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-session-loading" testID="edit-session-loading">
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="edit-session" onBack={() => router.back()} />;
   }
 
   if (!session) {
@@ -61,7 +58,7 @@ function EditSessionForm({ session }) {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { exercises: catalogExercises } = useExercises(userId);
+  const { exercises: catalogExercises, loading: catalogLoading } = useExercises(userId);
   const { updateSession } = useSessionMutations();
   const [submitting, setSubmitting] = useState(false);
 
@@ -97,6 +94,7 @@ function EditSessionForm({ session }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SessionDragProvider>
+        <PageReveal idPrefix="edit-session-screen-page-reveal">
         <View className="flex-1 bg-paper px-4 pt-8 dark:bg-ink" nativeID="edit-session-screen-root" testID="edit-session-screen-root">
           <ScreenCard nativeID="edit-session-screen-container" style={{ flex: 1 }} testID="edit-session-screen-container">
             <View className="mb-4 flex-row items-center gap-2" nativeID="edit-session-screen-header" testID="edit-session-screen-header">
@@ -115,6 +113,7 @@ function EditSessionForm({ session }) {
 
             <SessionFormBody
               catalogExercises={catalogExercises}
+              catalogLoading={catalogLoading}
               description={form.description}
               error={form.error}
               exercises={form.exercises}
@@ -152,6 +151,7 @@ function EditSessionForm({ session }) {
             </Pressable>
           </ScreenCard>
         </View>
+        </PageReveal>
         <DragGhost />
       </SessionDragProvider>
       <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />

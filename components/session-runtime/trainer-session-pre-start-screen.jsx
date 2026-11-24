@@ -24,6 +24,7 @@ import { AttendanceSessionModal } from './attendance-session-modal.jsx';
 import { TrainerCard } from './trainer-card.jsx';
 import { ParticipantAvatar } from './participant-avatar.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 const PARTICIPANTS_COLLAPSED_COUNT = 5;
 
@@ -140,25 +141,19 @@ function TrainerSessionPreStartScreenContent() {
     // del lado del backend (self, sin athleteUserId -- el owner autenticado).
     // Sin este POST, el backend nunca marca `opened_at` y CUALQUIER corredor
     // que intente crear su propio runner_session (su propio Play) recibe 409
-    // `session_not_opened` para siempre -- bug real, 2026-10-04: sin esto,
-    // ni un solo registro del corredor llegaba a sincronizarse (el loop de
-    // syncRun corta en el primer paso, createRunnerSession, y nunca llega a
-    // mandar ninguna serie). El entrenador no tiene SQLite propio para
-    // reintentar esto si falla, así que se loguea el resultado -- no bloquea
-    // la navegación (el entrenador sigue pudiendo supervisar aunque la
-    // apertura remota haya fallado, igual que el resto de esta pantalla).
-    try {
-      await createRunnerSession(sessionInstanceId);
-      logDebug(`[trainer-pre-start] sesión presencial ${sessionAlreadyOpen ? 'reanudada' : 'abierta'} (session_instance=${sessionInstanceId})`);
-    } catch (error) {
-      logDebug(`[trainer-pre-start] ERROR abriendo/reanudando sesión presencial: ${error?.message ?? error}`);
-    }
+    // `session_not_opened` para siempre. Se dispara en segundo plano: la
+    // navegación no espera la red (con Render frío podía tardar ~25 s), y un
+    // fallo queda logueado sin bloquear la supervisión.
+    createRunnerSession(sessionInstanceId)
+      .then(() => logDebug(`[trainer-pre-start] sesión presencial ${sessionAlreadyOpen ? 'reanudada' : 'abierta'} (session_instance=${sessionInstanceId})`))
+      .catch((error) => logDebug(`[trainer-pre-start] ERROR abriendo/reanudando sesión presencial: ${error?.message ?? error}`));
     router.push('/trainer-session-live');
   };
 
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="trainer-session-pre-start-screen-root" testID="trainer-session-pre-start-screen-root">
       <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="trainer-session-pre-start-screen-width-container" testID="trainer-session-pre-start-screen-width-container">
+      <PageReveal idPrefix="trainer-session-pre-start-page-reveal">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="trainer-session-pre-start-screen-scroll" testID="trainer-session-pre-start-screen-scroll">
       <ScreenCard nativeID="trainer-session-pre-start-screen-container" testID="trainer-session-pre-start-screen-container">
         <View className="flex-row items-center justify-between" nativeID="trainer-session-pre-start-screen-header-row" testID="trainer-session-pre-start-screen-header-row">
@@ -223,7 +218,7 @@ function TrainerSessionPreStartScreenContent() {
               testID="trainer-session-pre-start-screen-presencial-location"
             >
               <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} />
-              <Text className="text-sm font-semibold text-primary underline" nativeID="trainer-session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="trainer-session-pre-start-screen-presencial-location-label">
+              <Text className="text-sm font-semibold text-[#3c6b12] underline dark:text-primary" nativeID="trainer-session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="trainer-session-pre-start-screen-presencial-location-label">
                 {pendingSession.presencialLocation.label}
               </Text>
             </Pressable>
@@ -295,7 +290,7 @@ function TrainerSessionPreStartScreenContent() {
               onPress={() => setParticipantsExpanded(true)}
               testID="trainer-session-pre-start-screen-participants-expand-button"
             >
-              <Text className="text-sm font-semibold text-primary" nativeID="trainer-session-pre-start-screen-participants-expand-label" testID="trainer-session-pre-start-screen-participants-expand-label">
+              <Text className="text-sm font-semibold text-[#3c6b12] dark:text-primary" nativeID="trainer-session-pre-start-screen-participants-expand-label" testID="trainer-session-pre-start-screen-participants-expand-label">
                 Ver todos ({sortedMembers.length})
               </Text>
             </Pressable>
@@ -303,6 +298,7 @@ function TrainerSessionPreStartScreenContent() {
         </View>
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       {!isWeb && (
         <View className="border-t border-slate-100 bg-white px-4 pb-4 pt-3 dark:border-slate-800 dark:bg-surface" nativeID="trainer-session-pre-start-screen-footer" testID="trainer-session-pre-start-screen-footer">

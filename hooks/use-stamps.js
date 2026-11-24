@@ -24,5 +24,6 @@ export function useStamps() {
     competitions: stamps.filter((s) => s.type === 'competition'),
     loading: query.isLoading,
     error: query.error ?? null,
+    refetch: query.refetch,
   };
 }

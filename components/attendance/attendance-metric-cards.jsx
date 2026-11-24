@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeColors } from '../../theme/colors.js';
@@ -70,20 +70,10 @@ const showCount = (count) => (count === null ? '—' : String(count));
 // consulta resuelve). `isLoading` NO muestra ceros ni un anillo vacío: la
 // pantalla tiene que poder distinguished "está calculando" de "no asistió nadie"
 // (spec, escenario "Estado de carga").
-export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
+export function AttendanceMetricCards({ summary, idPrefix }) {
   const colors = useThemeColors();
   const { colorScheme } = useThemeMode();
   const gradient = RING_GRADIENT[colorScheme] ?? RING_GRADIENT.light;
-
-  if (isLoading) {
-    return (
-      <View className="flex-row gap-2" nativeID={`${idPrefix}-loading`} testID={`${idPrefix}-loading`}>
-        <View className={`${CARD_SHELL} min-h-[72px] justify-center`} nativeID={`${idPrefix}-loading-card`} testID={`${idPrefix}-loading-card`}>
-          <ActivityIndicator color={colors.primary} size="small" />
-        </View>
-      </View>
-    );
-  }
 
   const attended = toCount(summary?.attended);
   const notConfirmed = toCount(summary?.not_confirmed);
@@ -226,7 +216,7 @@ export function AttendanceMetricCards({ summary, isLoading, idPrefix }) {
            asistencias — se anotan, no se esconden. */}
         {rate === null ? (
           <Text
-            className="mt-0.5 text-center text-[10px] leading-3 text-slate-400 dark:text-slate-500"
+            className="mt-0.5 text-center text-[10px] leading-3 text-slate-500 dark:text-slate-400"
             nativeID={`${idPrefix}-rate-unknown`}
             testID={`${idPrefix}-rate-unknown`}
           >

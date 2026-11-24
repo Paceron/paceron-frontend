@@ -93,7 +93,6 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
   const { confirmVisible, guardedClose, confirmDiscard, cancelDiscard } = useUnsavedChangesGuard(isDirty);
 
   const handleClose = () => {
-    if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] handleClose (backdrop onPress o back nativo)', { t: Date.now() });
     if (submitting) return;
     guardedClose(onClose);
   };
@@ -185,16 +184,12 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
             className="absolute inset-0 bg-black/50"
             nativeID="create-competition-modal-backdrop"
             onPress={handleClose}
-            onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchEnd', { t: Date.now() }); }}
-            onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] backdrop onTouchStart', { t: Date.now() }); }}
             testID="create-competition-modal-backdrop"
           />
           <View className="absolute inset-0 items-center justify-center px-4" nativeID="create-competition-modal-card-wrap" pointerEvents="box-none" testID="create-competition-modal-card-wrap">
           <View
             className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-surface"
             nativeID="create-competition-modal-card"
-            onTouchEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] card onTouchEnd', { t: Date.now() }); }}
-            onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] card onTouchStart', { t: Date.now() }); }}
             style={{ height: modalHeight, maxHeight: modalHeight }}
             testID="create-competition-modal-card"
           >
@@ -221,11 +216,6 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
             <ScrollView
               className="flex-1"
               nativeID="create-competition-modal-scroll"
-              onMomentumScrollBegin={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onMomentumScrollBegin', { t: Date.now() }); }}
-              onMomentumScrollEnd={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onMomentumScrollEnd', { t: Date.now() }); }}
-              onScrollBeginDrag={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onScrollBeginDrag (ganó el responder de scroll)', { t: Date.now() }); }}
-              onScrollEndDrag={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onScrollEndDrag', { t: Date.now() }); }}
-              onTouchStart={() => { if (__DEV__) console.log('[GESTURE-DEBUG create-competition-modal] scroll onTouchStart', { t: Date.now() }); }}
               scrollEnabled={!mapInteracting}
               testID="create-competition-modal-scroll"
             >
@@ -269,7 +259,7 @@ export function CreateCompetitionModal({ visible, onClose, onSubmit, members, gr
                   />
                 )}
 
-                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID="create-competition-modal-participants-label" testID="create-competition-modal-participants-label">
+                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID="create-competition-modal-participants-label" testID="create-competition-modal-participants-label">
                   Participantes ({selectedIds.length})
                 </Text>
                 <View className="gap-1" nativeID="create-competition-modal-participants-list" testID="create-competition-modal-participants-list">

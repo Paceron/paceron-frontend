@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -27,6 +27,7 @@ import { formatDisplayDate, formatWeekdayLabel } from '../../utils/format-date-d
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { requestSessionGpsPermission } from '../../utils/session-gps-permission.js';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 function ExerciseRow({ exercise, idPrefix }) {
   const colors = useThemeColors();
@@ -116,12 +117,13 @@ function SessionPreStartScreenContent() {
   // los renders de esta pantalla).
   const playReady = !starting && !runnerSessionLoading;
   const pulse = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
-    pulse.value = playReady
+    pulse.value = playReady && !reducedMotion
       ? withRepeat(withTiming(1.06, { duration: 650 }), -1, true)
       : withTiming(1, { duration: 200 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playReady]);
+  }, [playReady, reducedMotion]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   // Spec 4b (Gap 33 punto 29) -- si el Play cae dentro de la ventana de una
@@ -375,6 +377,7 @@ function SessionPreStartScreenContent() {
   return (
     <View className="flex-1 bg-paper dark:bg-ink" nativeID="session-pre-start-screen-root" testID="session-pre-start-screen-root">
       <View className={`flex-1 w-full self-center ${isWeb ? 'max-w-3xl' : ''}`} nativeID="session-pre-start-screen-width-container" testID="session-pre-start-screen-width-container">
+      <PageReveal idPrefix="session-pre-start-page-reveal">
       <ScrollView contentContainerClassName="px-4 py-6" nativeID="session-pre-start-screen-scroll" testID="session-pre-start-screen-scroll">
       <ScreenCard nativeID="session-pre-start-screen-container" testID="session-pre-start-screen-container">
         <View className="flex-row items-center justify-between" nativeID="session-pre-start-screen-header-row" testID="session-pre-start-screen-header-row">
@@ -451,7 +454,7 @@ function SessionPreStartScreenContent() {
               testID="session-pre-start-screen-presencial-location"
             >
               <MaterialCommunityIcons color={colors.primary} name="map-marker-outline" size={16} />
-              <Text className="text-sm font-semibold text-primary underline" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
+              <Text className="text-sm font-semibold text-[#3c6b12] underline dark:text-primary" nativeID="session-pre-start-screen-presencial-location-label" numberOfLines={1} testID="session-pre-start-screen-presencial-location-label">
                 {pendingSession.presencialLocation.label}
               </Text>
             </Pressable>
@@ -488,6 +491,7 @@ function SessionPreStartScreenContent() {
         </View>
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       {/* Botonera fija fuera del ScrollView: la lista scrollea sin arrastrarlo.
           En web, sin ninguna de las ramas de abajo, no queda nada que

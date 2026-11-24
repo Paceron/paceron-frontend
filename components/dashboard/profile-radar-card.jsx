@@ -33,7 +33,7 @@ export function ProfileRadarCard({ id, summary, kind, title = 'Perfil del equipo
 
   if (palette.case === PALETTE_CASES.withoutTarget) {
     return (
-      <Text className="text-[11px] text-slate-400 dark:text-slate-500" nativeID={`${id}-no-radar`} testID={`${id}-no-radar`}>
+      <Text className="text-[11px] text-slate-500 dark:text-slate-400" nativeID={`${id}-no-radar`} testID={`${id}-no-radar`}>
         Sin objetivo cargado no hay radar: la mayoría de los ejes no se pueden normalizar contra nada.
       </Text>
     );

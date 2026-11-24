@@ -166,7 +166,7 @@ export function HomeLandingScreen() {
               >
                 <MaterialCommunityIcons color={colors.primary} name="creation" size={16} />
                 <Text
-                  className="text-xs font-semibold uppercase tracking-wider text-primary"
+                  className="text-xs font-semibold uppercase tracking-wider text-[#3c6b12] dark:text-primary"
                   nativeID="home-landing-screen-ai-panel-badge-label"
                   testID="home-landing-screen-ai-panel-badge-label"
                 >

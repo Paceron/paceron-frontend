@@ -11,6 +11,8 @@ import { useTrainingPlans } from '../../hooks/use-training-plans.js';
 import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { SkeletonBlock } from '../shared/skeleton.jsx';
+import { Reveal, RevealProvider } from '../shared/reveal.jsx';
+import { usePageReveal } from '../../hooks/use-page-reveal.js';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
@@ -109,6 +111,7 @@ function TrainingPlansScreenContent() {
   const [activeTab, setActiveTab] = useState(() => (TABS.some((t) => t.id === params.tab) ? params.tab : 'planes'));
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
+  const pageReveal = usePageReveal({ loading: false });
   const queryClient = useQueryClient();
   const { refreshing, onRefresh } = usePullToRefresh(() => {
     if (!user?.userId) return Promise.resolve();
@@ -120,16 +123,18 @@ function TrainingPlansScreenContent() {
   });
 
   return (
+    <RevealProvider phase={pageReveal.phase} revealKey={pageReveal.revealKey}>
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="training-plans-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="training-plans-screen-scroll"
     >
       <ScreenCard nativeID="training-plans-screen-container" testID="training-plans-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="training-plans-screen-header" testID="training-plans-screen-header">
+        <Reveal idPrefix="training-plans-header-reveal">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="training-plans-screen-header" testID="training-plans-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="training-plans-screen-back-button"
@@ -142,14 +147,20 @@ function TrainingPlansScreenContent() {
             Catálogo
           </Text>
         </View>
+        </Reveal>
 
-        <TabBar active={activeTab} onChange={setActiveTab} scope="training-plans-tab-bar" tabs={TABS} />
+        <Reveal delay={40} idPrefix="training-plans-tabs-reveal">
+          <TabBar active={activeTab} onChange={setActiveTab} scope="training-plans-tab-bar" tabs={TABS} />
+        </Reveal>
 
-        {activeTab === 'planes' && <PlansTab />}
-        {activeTab === 'sesiones' && <SessionsCatalogTab />}
-        {activeTab === 'ejercicios' && <ExercisesCatalogTab />}
+        <Reveal delay={80} idPrefix="training-plans-content-reveal">
+          {activeTab === 'planes' && <PlansTab />}
+          {activeTab === 'sesiones' && <SessionsCatalogTab />}
+          {activeTab === 'ejercicios' && <ExercisesCatalogTab />}
+        </Reveal>
       </ScreenCard>
     </ScrollView>
+    </RevealProvider>
   );
 }
 

@@ -122,7 +122,7 @@ function RouteMarker({ point, meta, idPrefix, active, onToggle, labelBelow, addr
                 onPress={() => openLocationInMaps({ lat: point[1], lng: point[0] })}
                 testID={`${idPrefix}-address`}
               >
-                <Text className="text-[10px] font-medium text-primary underline" nativeID={`${idPrefix}-address-label`} numberOfLines={1} testID={`${idPrefix}-address-label`}>
+                <Text className="text-[10px] font-medium text-[#3c6b12] underline dark:text-primary" nativeID={`${idPrefix}-address-label`} numberOfLines={1} testID={`${idPrefix}-address-label`}>
                   {addressLabel}
                 </Text>
               </Pressable>

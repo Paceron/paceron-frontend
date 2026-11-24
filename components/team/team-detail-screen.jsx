@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
@@ -26,6 +26,9 @@ import { AnimatedDropdown } from '../shared/animated-dropdown.jsx';
 import { AvatarPicker } from '../shared/avatar-picker.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
 import { SkeletonBlock, SkeletonCircle } from '../shared/skeleton.jsx';
+import { Reveal, RevealProvider } from '../shared/reveal.jsx';
+import { usePageReveal } from '../../hooks/use-page-reveal.js';
+import { TeamDetailSkeleton, TeamGroupsSkeleton } from './team-detail-skeleton.jsx';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
@@ -59,9 +62,8 @@ const RUNNER_MENU_WIDTH = 208;
 // FUNCTIONAL_PROPOSE.md, colores igual que STATUS_META en profile-screen.jsx
 // para no inventar una paleta nueva. Conectado a datos reales desde el Gap 41
 // (GET /teams/{id}/subscriptions) vía SUBSCRIPTION_STATUS_FROM_BACKEND más
-// abajo — sin esos datos (loading, 403, equipo que todavía no se consultó),
-// el fallback de member.subscriptionStatus a `activo` en el uso de este mapa
-// sigue siendo el default histórico, no una lectura real.
+// abajo — sin dato real (loading, 403, equipo sin consultar) el badge no se
+// muestra, en vez de afirmar "Activo" sin respaldo.
 const SUBSCRIPTION_META = {
   activo: {
     label: 'Activo', bg: 'bg-primary-tint dark:bg-primary/15', text: 'text-on-primary-tint dark:text-primary',
@@ -240,7 +242,7 @@ function RunnerActionsMenu({ member, onExpel, onMove, onDetail }) {
 }
 
 function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpenMenu, onOpenDetail, containerRef }) {
-  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
+  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? null;
   // `isWeb` solo distingue nativo de web -- no alcanza acá (2026-11-11,
   // bug real reportado): en web angosta esto seguía cayendo en el layout
   // de fila ancha (identidad + tags + menú todo en una sola `flex-row`),
@@ -313,7 +315,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
       text="text-slate-700 dark:text-slate-200"
     />
   );
-  const subscriptionTag = (
+  const subscriptionTag = subMeta ? (
     <Tag
       bg={subMeta.bg}
       icon={subMeta.icon}
@@ -323,7 +325,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
       testID={`team-detail-runner-${member.id}-subscription-tag`}
       text={subMeta.text}
     />
-  );
+  ) : null;
   const identity = (
     <View className="flex-1" nativeID={`team-detail-runner-${member.id}-identity`} testID={`team-detail-runner-${member.id}-identity`}>
       <Text
@@ -407,7 +409,7 @@ function RunnerRow({ member, groupName, colors, restricted, showGroupTag, onOpen
 }
 
 function GroupMemberRow({ member, colors }) {
-  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? SUBSCRIPTION_META.activo;
+  const subMeta = SUBSCRIPTION_META[member.subscriptionStatus] ?? null;
   return (
     <View
       className="flex-row items-center justify-between gap-2 py-1.5"
@@ -425,7 +427,7 @@ function GroupMemberRow({ member, colors }) {
           {member.name}
         </Text>
       </View>
-      <Tag bg={subMeta.bg} icon={subMeta.icon} iconColor={subMeta.iconColor} label={subMeta.label} nativeID={`team-detail-group-member-${member.id}-subscription-tag`} testID={`team-detail-group-member-${member.id}-subscription-tag`} text={subMeta.text} />
+      {subMeta ? <Tag bg={subMeta.bg} icon={subMeta.icon} iconColor={subMeta.iconColor} label={subMeta.label} nativeID={`team-detail-group-member-${member.id}-subscription-tag`} testID={`team-detail-group-member-${member.id}-subscription-tag`} text={subMeta.text} /> : null}
     </View>
   );
 }
@@ -573,6 +575,7 @@ function TeamDetailScreenContent({ teamId }) {
   const userId = useAuthStore((s) => s.userId);
   const { user } = useUser(userId);
   const { team, loading: loadingTeam } = useTeam(teamId);
+  const pageReveal = usePageReveal({ loading: loadingTeam });
   const { groups, loading: loadingGroups } = useGroups(teamId, user?.userId);
   const { deleteTeam, uploadTeamIcon, deleteTeamIcon } = useTeamMutations();
   const { createGroup: createGroupInTeam, deleteGroup: deleteGroupReal } = useGroupMutations(teamId);
@@ -720,15 +723,33 @@ function TeamDetailScreenContent({ teamId }) {
   // `?tab=` sigue pudiendo forzar una pestaña puntual al entrar, pero
   // solo una vez por montaje (si no, pisaría la pestaña recordada en
   // cualquier re-render futuro de este mismo montaje).
-  const activeTab = useTeamDetailTabStore((s) => s.activeTab);
+  const storedTab = useTeamDetailTabStore((s) => s.activeTab);
+  const storedTeamId = useTeamDetailTabStore((s) => s.activeTeamId);
+  const ensureTeamTab = useTeamDetailTabStore((s) => s.ensureTeam);
   const setActiveTab = useTeamDetailTabStore((s) => s.setActiveTab);
+  const teamIdForTab = team?.id ?? null;
+  const activeTab = teamIdForTab != null && String(storedTeamId) === String(teamIdForTab) ? storedTab : 'corredores';
+  useEffect(() => {
+    if (teamIdForTab == null) return;
+    ensureTeamTab(teamIdForTab);
+  }, [ensureTeamTab, teamIdForTab]);
+  // Cada pestaña se monta la primera vez que se abre y queda montada: al
+  // volver, filtros, scroll y queries conservan su estado en vez de
+  // reiniciarse. Las que nunca se visitaron no se montan.
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set([activeTab]));
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
+  }, [activeTab]);
   const appliedTabParamRef = useRef(false);
   useEffect(() => {
     if (appliedTabParamRef.current) return;
     appliedTabParamRef.current = true;
     const tab = TAB_ALIASES[params.tab] ?? params.tab;
-    if (TABS.some((t) => t.id === tab)) setActiveTab(tab);
-  }, [params.tab, setActiveTab]);
+    const visibleTabIds = TABS
+      .filter((item) => item.id !== 'grupos' || isTrainerView)
+      .map((item) => item.id);
+    if (visibleTabIds.includes(tab)) setActiveTab(tab);
+  }, [isTrainerView, params.tab, setActiveTab]);
   const scrollViewRef = useRef(null);
   const focusCompetitionId = params.focus ?? null;
   const [search, setSearch] = useState('');
@@ -889,12 +910,8 @@ function TeamDetailScreenContent({ teamId }) {
     });
   }, [team, members, search, groupFilter, isTrainerView]);
 
-  if (loadingTeam || loadingGroups) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="team-detail-loading" testID="team-detail-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+  if (loadingTeam) {
+    return <TeamDetailSkeleton onBack={() => router.back()} />;
   }
 
   if (!team) {
@@ -1054,6 +1071,7 @@ function TeamDetailScreenContent({ teamId }) {
       title="Grupos"
     >
       <View className="gap-2" nativeID="team-detail-groups-list" testID="team-detail-groups-list">
+        {loadingGroups && groups.length === 0 ? <TeamGroupsSkeleton /> : null}
         {[...groups].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0)).map((group) => (
           <GroupRow
             canEdit={canManageTeam && !group.isDefault}
@@ -1079,10 +1097,11 @@ function TeamDetailScreenContent({ teamId }) {
   );
 
   return (
+    <RevealProvider phase={pageReveal.phase} revealKey={pageReveal.revealKey}>
     <View className="relative flex-1" nativeID="team-detail-screen-root" ref={runnerMenuContainerRef} testID="team-detail-screen-root">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="team-detail-screen-scroll"
       ref={scrollViewRef}
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
@@ -1090,6 +1109,7 @@ function TeamDetailScreenContent({ teamId }) {
       testID="team-detail-screen-scroll"
     >
       <ScreenCard nativeID="team-detail-screen-container" testID="team-detail-screen-container">
+        <Reveal idPrefix="team-detail-back-reveal">
         <Pressable
           className="mb-6 flex-row items-center gap-1.5 self-start py-1 pr-1 hover:opacity-70 active:opacity-70"
           nativeID="team-detail-back-button"
@@ -1101,7 +1121,9 @@ function TeamDetailScreenContent({ teamId }) {
             Equipos
           </Text>
         </Pressable>
+        </Reveal>
 
+        <Reveal delay={40} idPrefix="team-detail-header-reveal">
         <View className="mb-5 flex-row items-start gap-4" nativeID="team-detail-header" testID="team-detail-header">
           <AvatarPicker
             accessibilityLabel={`Ícono de ${team.name}`}
@@ -1178,8 +1200,10 @@ function TeamDetailScreenContent({ teamId }) {
             </IconTooltip>
           )}
         </View>
+        </Reveal>
 
         {showSubscriptionBanner && (
+          <Reveal delay={60} idPrefix="team-detail-subscription-reveal">
           <TeamSubscriptionPendingBanner
             hasDebt={hasDebt}
             isPendingFirstPayment={isPendingFirstPayment}
@@ -1191,14 +1215,47 @@ function TeamDetailScreenContent({ teamId }) {
               ? { pathname: '/teams/[teamId]/subscription', params: { teamId: String(team.id), pay: '1' } }
               : `/teams/${team.id}/subscription`)}
           />
+          </Reveal>
         )}
 
+        <Reveal delay={80} idPrefix="team-detail-tabs-reveal">
         <TabBar active={activeTab} badges={{ competencias: competitionsHasUnseen, corredores: hasPendingRequests }} onChange={setActiveTab} scope="team-detail-tab-bar" tabs={visibleTabs} />
-        {activeTab === 'corredores' && corredoresContent}
-        {activeTab === 'grupos' && gruposContent}
-        {activeTab === 'leaderboard' && leaderboardContent}
-        {activeTab === 'competencias' && competitionsContent}
-        {activeTab === 'rendimiento' && <DashboardScreen teamId={team.id} />}
+        </Reveal>
+        {visitedTabs.has('corredores') ? (
+          <View nativeID="team-detail-tab-corredores" style={{ display: activeTab === 'corredores' ? 'flex' : 'none' }} testID="team-detail-tab-corredores">
+            <Reveal delay={120} idPrefix="team-detail-runners-reveal">
+              {corredoresContent}
+            </Reveal>
+          </View>
+        ) : null}
+        {visitedTabs.has('grupos') ? (
+          <View nativeID="team-detail-tab-grupos" style={{ display: activeTab === 'grupos' ? 'flex' : 'none' }} testID="team-detail-tab-grupos">
+            <Reveal delay={120} idPrefix="team-detail-groups-reveal">
+              {gruposContent}
+            </Reveal>
+          </View>
+        ) : null}
+        {visitedTabs.has('leaderboard') ? (
+          <View nativeID="team-detail-tab-leaderboard" style={{ display: activeTab === 'leaderboard' ? 'flex' : 'none' }} testID="team-detail-tab-leaderboard">
+            <Reveal delay={120} idPrefix="team-detail-leaderboard-reveal">
+              {leaderboardContent}
+            </Reveal>
+          </View>
+        ) : null}
+        {visitedTabs.has('competencias') ? (
+          <View nativeID="team-detail-tab-competencias" style={{ display: activeTab === 'competencias' ? 'flex' : 'none' }} testID="team-detail-tab-competencias">
+            <Reveal delay={120} idPrefix="team-detail-competitions-reveal">
+              {competitionsContent}
+            </Reveal>
+          </View>
+        ) : null}
+        {visitedTabs.has('rendimiento') ? (
+          <View nativeID="team-detail-tab-rendimiento" style={{ display: activeTab === 'rendimiento' ? 'flex' : 'none' }} testID="team-detail-tab-rendimiento">
+            <Reveal delay={120} idPrefix="team-detail-dashboard-reveal">
+              <DashboardScreen teamId={team.id} />
+            </Reveal>
+          </View>
+        ) : null}
       </ScreenCard>
 
       <TeamInfoModal
@@ -1213,7 +1270,7 @@ function TeamDetailScreenContent({ teamId }) {
         groupName={groups.find((g) => g.id === runnerDetailMember?.groupId)?.name ?? '—'}
         joinedAt={runnerDetailMember?.joinedAt}
         onClose={() => setRunnerDetailMember(null)}
-        subscriptionLabel={(SUBSCRIPTION_META[runnerDetailMember?.subscriptionStatus] ?? SUBSCRIPTION_META.activo).label}
+        subscriptionLabel={SUBSCRIPTION_META[runnerDetailMember?.subscriptionStatus]?.label ?? 'Sin datos'}
         userId={runnerDetailMember?.userId}
         visible={Boolean(runnerDetailMember)}
       />
@@ -1302,6 +1359,7 @@ function TeamDetailScreenContent({ teamId }) {
       <RunnerActionsMenu member={runnerMenuMember} onDetail={handleOpenRunnerDetail} onExpel={handleRequestExpel} onMove={handleRequestMove} />
     </AnimatedDropdown>
     </View>
+    </RevealProvider>
   );
 }
 

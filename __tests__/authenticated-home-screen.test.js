@@ -1,5 +1,19 @@
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
+import { act, render, waitFor } from '@testing-library/react-native';
+
+jest.mock('react-native-reanimated', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: { View },
+    Easing: { cubic: 0, out: (value) => value },
+    useAnimatedStyle: (styleFn) => styleFn(),
+    useReducedMotion: () => false,
+    useSharedValue: (value) => ({ value }),
+    withDelay: (_delay, animation) => animation,
+    withTiming: (value) => value,
+  };
+});
 
 const mockAuthState = { userId: 33, activeRole: 'trainer' };
 const mockQueryClient = { invalidateQueries: jest.fn(async () => undefined) };
@@ -13,8 +27,21 @@ jest.mock('@react-navigation/native', () => ({
   },
 }));
 jest.mock('../store/auth-store.js', () => ({ useAuthStore: (selector) => selector(mockAuthState) }));
-jest.mock('../hooks/use-user.js', () => ({ useUser: () => ({ user: { name: 'Alex' } }) }));
+jest.mock('../hooks/use-user.js', () => ({ useUser: () => ({ user: { name: 'Alex' }, loading: false }) }));
 jest.mock('../hooks/use-achievements.js', () => ({ useAchievements: () => ({ achievements: [], loading: false, error: null }) }));
+jest.mock('../hooks/use-next-training-banner.js', () => ({
+  useNextTrainingBanner: () => ({
+    nextTraining: null,
+    nextTrainings: [],
+    cancelledSessions: [],
+    loading: false,
+    isFetching: false,
+  }),
+}));
+jest.mock('../hooks/use-runner-kpis.js', () => ({ useRunnerKpis: () => ({ data: null, loading: false }) }));
+jest.mock('../hooks/use-trainer-home-kpis.js', () => ({
+  useTrainerHomeKpis: () => ({ data: null, loading: false }),
+}));
 jest.mock('../theme/colors.js', () => ({ useThemeColors: () => ({ primary: '#8cc63e' }) }));
 jest.mock('../hooks/use-pull-to-refresh.js', () => ({
   usePullToRefresh: (refreshFn) => {
@@ -26,7 +53,23 @@ jest.mock('../hooks/use-pull-to-refresh.js', () => ({
 jest.mock('../components/home/next-training-banner.jsx', () => {
   const ReactModule = require('react');
   const { View: NativeView } = require('react-native');
-  return { NextTrainingBanner: () => ReactModule.createElement(NativeView, { testID: 'home-next-training' }) };
+  return {
+    NextTrainingBannerView: () =>
+      ReactModule.createElement(NativeView, { testID: 'home-next-training' }),
+  };
+});
+jest.mock('../components/home/home-reveal.jsx', () => ({
+  HomeReveal: ({ children }) => children,
+  HomeRevealProvider: ({ children }) => children,
+}));
+jest.mock('../components/home/home-loading-overlay.jsx', () => {
+  const ReactModule = require('react');
+  const { View: NativeView } = require('react-native');
+  return {
+    HomeLoadingOverlay: ({ visible }) => (
+      visible ? ReactModule.createElement(NativeView, { testID: 'home-loading-overlay' }) : null
+    ),
+  };
 });
 jest.mock('../components/home/streak-banner.jsx', () => ({ StreakBanner: () => null }));
 jest.mock('../components/home/achievement-highlight-card.jsx', () => ({ AchievementHighlightCard: () => null }));
@@ -51,7 +94,7 @@ beforeEach(() => {
 
 test('muestra los KPIs del entrenador y los invalida al refrescar solo con ese rol', async () => {
   const { getByTestId, toJSON } = render(<AuthenticatedHomeScreen />);
-  expect(getByTestId('trainer-home-kpis-mounted')).toBeTruthy();
+  await waitFor(() => expect(getByTestId('trainer-home-kpis-mounted')).toBeTruthy());
 
   const testIDs = [];
   const visit = (node) => {
@@ -88,4 +131,22 @@ test('refresca rachas y logros al volver a enfocar el Home del corredor', async 
   expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['streaks', 33] });
   expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['achievements', 33] });
   expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['achievements-catalog'] });
+});
+
+test('muestra el spinner general desde el primer render y lo oculta al asentar la carga', () => {
+  jest.useFakeTimers();
+  mockAuthState.activeRole = 'runner';
+  try {
+    const { getByTestId, queryByTestId } = render(<AuthenticatedHomeScreen />);
+
+    expect(getByTestId('home-loading-overlay')).toBeTruthy();
+
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(queryByTestId('home-loading-overlay')).toBeNull();
+  } finally {
+    jest.useRealTimers();
+  }
 });

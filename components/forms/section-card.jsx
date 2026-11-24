@@ -3,6 +3,7 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withTiming } f
 import { useEffect } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { Collapsible } from '../shared/collapsible.jsx';
 
 const VARIANT = {
   default: {
@@ -85,7 +86,11 @@ export function SectionCard({ title, icon, children, collapsible = false, collap
           {headerRight}
         </Header>
       </View>
-      {(!collapsible || !collapsed) && children}
+      {collapsible ? (
+        <Collapsible expanded={!collapsed} idPrefix={`${scope}-content`}>
+          {children}
+        </Collapsible>
+      ) : children}
     </View>
   );
 }

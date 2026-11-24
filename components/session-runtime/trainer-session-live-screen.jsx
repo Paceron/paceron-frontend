@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
@@ -80,13 +80,14 @@ const CONNECTION_META = {
 function ConnectionBanner({ status }) {
   const meta = CONNECTION_META[status] ?? CONNECTION_META.closed;
   const pulse = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    pulse.value = status === 'open'
+    pulse.value = status === 'open' && !reducedMotion
       ? withRepeat(withTiming(1.4, { duration: 700 }), -1, true)
       : withTiming(1, { duration: 300 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [reducedMotion, status]);
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
@@ -112,17 +113,18 @@ function ConnectionBanner({ status }) {
 // componente padre.
 function ParticipantMarker({ participant, onSelect }) {
   const pulse = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
   const isRecent = Date.now() - (participant.position.ts ?? 0) < 20000;
   const idPrefix = `trainer-session-live-marker-${participant.userId}`;
 
   useEffect(() => {
-    if (isRecent) {
+    if (isRecent && !reducedMotion) {
       pulse.value = withRepeat(withTiming(1.15, { duration: 700 }), -1, true);
     } else {
       pulse.value = withTiming(1, { duration: 300 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRecent]);
+  }, [isRecent, reducedMotion]);
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
@@ -157,11 +159,16 @@ function SelfMarker({ position, name, photoUrl }) {
   // entrenador de un corredor sin el pulso de "recencia" de ParticipantMarker
   // (que no aplica acá: no hace falta señalar antigüedad de la propia posición).
   const rotation = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      rotation.value = 0;
+      return;
+    }
     rotation.value = withRepeat(withTiming(360, { duration: 3000, easing: Easing.linear }), -1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reducedMotion]);
 
   const ringStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));
 

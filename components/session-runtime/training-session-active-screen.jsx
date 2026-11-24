@@ -58,7 +58,7 @@ const STATUS_META = {
 const PHASE_META = {
   ready: { label: 'Listo para iniciar', color: 'text-slate-500 dark:text-slate-400' },
   countdown: { label: 'Preparando…', color: 'text-amber-600 dark:text-amber-400' },
-  running: { label: 'En curso', color: 'text-primary' },
+  running: { label: 'En curso', color: 'text-[#3c6b12] dark:text-primary' },
   paused: { label: 'En pausa', color: 'text-amber-600 dark:text-amber-400' },
   finishing: { label: 'Finalizando', color: 'text-slate-500 dark:text-slate-400' },
 };
@@ -701,7 +701,7 @@ function OverviewView({ sets, run, onOpenSet, onCancel }) {
                   ))}
                 </View>
                 {!isNext && (
-                  <Text className="mt-2 text-xs text-slate-400 dark:text-slate-500" nativeID={`${hiddenPrefix}-locked-note`} testID={`${hiddenPrefix}-locked-note`}>
+                  <Text className="mt-2 text-xs text-slate-500 dark:text-slate-400" nativeID={`${hiddenPrefix}-locked-note`} testID={`${hiddenPrefix}-locked-note`}>
                     Se habilita cuando completes las anteriores
                   </Text>
                 )}
@@ -1001,7 +1001,7 @@ function SeriesView({ set, runId, gpsEnabled, distance, getCurrentDistance, tota
           <Text className="text-4xl text-slate-900 dark:text-white" style={{ fontFamily: 'Orbitron_700Bold' }} nativeID={`${idPrefix}-timer`} testID={`${idPrefix}-timer`}>
             {showTimer ? formatStopwatch(stopwatch.wallMs) : '00:00:00'}
           </Text>
-          <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-timer-hint`} testID={`${idPrefix}-timer-hint`}>
+          <Text className="mt-1 text-xs text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-timer-hint`} testID={`${idPrefix}-timer-hint`}>
             {phase === 'ready' ? 'Toque Play para arrancar — se arma en 3 segundos' : ''}
           </Text>
         </View>

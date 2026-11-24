@@ -3,10 +3,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useStamps } from '../../hooks/use-stamps.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { isWeb } from '../../utils/platform.js';
+import { ErrorState } from '../shared/error-state.jsx';
+import { TrophyCaseTabSkeleton } from './gamification-skeletons.jsx';
 
 function StampGrid({ items, idPrefix, columnClass, large = false }) {
   if (!items.length) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>Todavía no hay nada acá.</Text>;
+    return <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-empty`} testID={`${idPrefix}-empty`}>Todavía no hay nada acá.</Text>;
   }
 
   return (
@@ -43,16 +45,16 @@ function StampGrid({ items, idPrefix, columnClass, large = false }) {
 }
 
 export function TrophyCaseTab() {
-  const { counters, competitions, loading, error } = useStamps();
+  const { counters, competitions, loading, error, refetch } = useStamps();
   const isNarrowWeb = useIsNarrowWeb();
   const columnClass = !isWeb || isNarrowWeb ? 'w-[30%]' : 'w-[22%]';
 
   if (loading) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="trophy-case-tab-loading" testID="trophy-case-tab-loading">Cargando…</Text>;
+    return <TrophyCaseTabSkeleton columnClass={columnClass} />;
   }
 
   if (error) {
-    return <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID="trophy-case-tab-error" testID="trophy-case-tab-error">No pudimos cargar tu vitrina.</Text>;
+    return <ErrorState idPrefix="trophy-case-tab-error" message="No pudimos cargar tu vitrina." onRetry={refetch} />;
   }
 
   return (

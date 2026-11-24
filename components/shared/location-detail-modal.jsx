@@ -34,7 +34,7 @@ export function LocationDetailModal({ visible, onClose, value }) {
             </Text>
             {rows.map((row) => (
               <View className="flex-row justify-between py-1" key={row.label} nativeID={`location-picker-detail-modal-row-${row.label}`} testID={`location-picker-detail-modal-row-${row.label}`}>
-                <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID={`location-picker-detail-modal-row-${row.label}-key`} testID={`location-picker-detail-modal-row-${row.label}-key`}>{row.label}</Text>
+                <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID={`location-picker-detail-modal-row-${row.label}-key`} testID={`location-picker-detail-modal-row-${row.label}-key`}>{row.label}</Text>
                 <Text className="text-xs text-slate-700 dark:text-slate-200" nativeID={`location-picker-detail-modal-row-${row.label}-value`} testID={`location-picker-detail-modal-row-${row.label}-value`}>{row.value}</Text>
               </View>
             ))}

@@ -1,4 +1,5 @@
 import { Image, Text, View } from 'react-native';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // El fondo es `#979597`, el MISMO gris que trae el asset de animación — medido
@@ -21,14 +22,15 @@ const OVERLAY_BG = '#979597';
 
 export function CheckinWaitingOverlay({ visible }) {
   const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
   if (!visible) return null;
 
   return (
-    <View
+    <Animated.View
       accessibilityViewIsModal
-      className="absolute inset-0 items-center justify-center px-6"
+      entering={reducedMotion ? undefined : FadeIn.duration(180)}
       nativeID="checkin-waiting-overlay"
-      style={{ backgroundColor: OVERLAY_BG, paddingTop: insets.top, paddingBottom: insets.bottom, pointerEvents: 'auto' }}
+      style={{ alignItems: 'center', backgroundColor: OVERLAY_BG, bottom: 0, justifyContent: 'center', left: 0, paddingBottom: insets.bottom, paddingHorizontal: 24, paddingTop: insets.top, pointerEvents: 'auto', position: 'absolute', right: 0, top: 0 }}
       testID="checkin-waiting-overlay"
     >
       <View className="items-center" nativeID="checkin-waiting-overlay-content" testID="checkin-waiting-overlay-content">
@@ -56,6 +58,6 @@ export function CheckinWaitingOverlay({ visible }) {
           Registrando asistencia
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }

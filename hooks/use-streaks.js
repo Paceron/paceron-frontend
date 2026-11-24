@@ -39,5 +39,10 @@ export function useStreaks() {
     previousCurrent.current = streaks.strict.current;
   }, [streaks]);
 
-  return { streaks, loading: query.isLoading, error: visibleQueryError(query.data, query.error) };
+  return {
+    streaks,
+    loading: query.isLoading,
+    error: visibleQueryError(query.data, query.error),
+    refetch: query.refetch,
+  };
 }

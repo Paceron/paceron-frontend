@@ -111,7 +111,7 @@ export function InviteMemberModal({ visible, onClose, onSubmit, groups = [], exi
                 />
               </View>
               {error && (
-                <Text className="mt-1 text-xs text-red-500 dark:text-red-400" nativeID="invite-member-modal-email-error" testID="invite-member-modal-email-error">
+                <Text className="mt-1 text-xs text-red-600 dark:text-red-400" nativeID="invite-member-modal-email-error" testID="invite-member-modal-email-error">
                   {error}
                 </Text>
               )}

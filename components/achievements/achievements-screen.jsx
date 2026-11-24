@@ -3,6 +3,8 @@ import { RefreshControl, ScrollView, Text } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { TabBar } from '../shared/tab-bar.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { Reveal, RevealProvider } from '../shared/reveal.jsx';
+import { usePageReveal } from '../../hooks/use-page-reveal.js';
 import { StreaksTab } from './streaks-tab.jsx';
 import { AchievementsTab } from './achievements-tab.jsx';
 import { TrophyCaseTab } from './trophy-case-tab.jsx';
@@ -32,6 +34,7 @@ export function AchievementsScreen() {
   const setActiveTab = useAchievementsTabStore((s) => s.setActiveTab);
   const { ackSection } = useGamificationBadge();
   const ackedSections = useRef(new Set());
+  const pageReveal = usePageReveal({ loading: false });
 
   // Mismas 3 queries que alimentan las 3 pestañas, sin importar cuál está
   // activa -- barato, mismo criterio que el pull-to-refresh del Home.
@@ -54,23 +57,31 @@ export function AchievementsScreen() {
   }, [activeTab]);
 
   return (
+    <RevealProvider phase={pageReveal.phase} revealKey={pageReveal.revealKey}>
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="achievements-screen-root"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       testID="achievements-screen-root"
     >
       <ScreenCard nativeID="achievements-screen-container" testID="achievements-screen-container">
-        <Text className="mb-6 text-2xl text-slate-900 dark:text-white" nativeID="achievements-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="achievements-screen-title">
-          Logros
-        </Text>
-        <TabBar active={activeTab} onChange={setActiveTab} scope="achievements-tab-bar" tabs={TABS} />
-        {activeTab === 'streaks' && <StreaksTab />}
-        {activeTab === 'achievements' && <AchievementsTab />}
-        {activeTab === 'competitions' && <MyCompetitionsTab />}
-        {activeTab === 'trophies' && <TrophyCaseTab />}
+        <Reveal idPrefix="achievements-header-reveal">
+          <Text className="mb-6 text-2xl text-slate-900 dark:text-white" nativeID="achievements-screen-title" style={{ fontFamily: 'Orbitron_700Bold' }} testID="achievements-screen-title">
+            Logros
+          </Text>
+        </Reveal>
+        <Reveal delay={40} idPrefix="achievements-tabs-reveal">
+          <TabBar active={activeTab} onChange={setActiveTab} scope="achievements-tab-bar" tabs={TABS} />
+        </Reveal>
+        <Reveal delay={80} idPrefix="achievements-content-reveal">
+          {activeTab === 'streaks' && <StreaksTab />}
+          {activeTab === 'achievements' && <AchievementsTab />}
+          {activeTab === 'competitions' && <MyCompetitionsTab />}
+          {activeTab === 'trophies' && <TrophyCaseTab />}
+        </Reveal>
       </ScreenCard>
     </ScrollView>
+    </RevealProvider>
   );
 }

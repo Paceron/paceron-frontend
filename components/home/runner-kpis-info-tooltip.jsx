@@ -27,7 +27,7 @@ export function RunnerKpisInfoTooltip({ onOpenChange }) {
             onPress={() => router.push('/teams')}
             testID="runner-kpis-info-link"
           >
-            <Text className="text-[11px] font-semibold leading-4 text-primary underline" nativeID="runner-kpis-info-link-text" testID="runner-kpis-info-link-text">
+            <Text className="text-[11px] font-semibold leading-4 text-[#3c6b12] underline dark:text-primary" nativeID="runner-kpis-info-link-text" testID="runner-kpis-info-link-text">
               pestaña de rendimiento de tus equipos
             </Text>
           </Pressable>
@@ -43,7 +43,7 @@ export function RunnerKpisInfoTooltip({ onOpenChange }) {
     >
       <View className="flex-row items-center gap-1" nativeID="runner-kpis-info-trigger-content" testID="runner-kpis-info-trigger-content">
         <Text
-          className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500"
+          className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
           nativeID="runner-kpis-kicker"
           testID="runner-kpis-kicker"
         >

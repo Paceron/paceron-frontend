@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { InputField } from '../forms/fields.jsx';
 import { AuthCardShell } from './auth-card-shell.jsx';
+import { AuthSubmitButton } from './auth-submit-button.jsx';
 import { forgotPassword } from '../../services/password.js';
 import { validateEmailFormat, isDisposableEmail } from '../../utils/email-validators.js';
 
@@ -57,7 +58,7 @@ export function ForgotPasswordScreen() {
         nativeID="forgot-password-screen-subtitle"
         testID="forgot-password-screen-subtitle"
       >
-        Ingresá tu email y te enviamos un código de 6 dígitos para restablecer tu contraseña.
+        Ingresá tu email. Si está registrado, te enviamos un código de 6 dígitos para restablecer tu contraseña.
       </Text>
 
       <InputField
@@ -75,25 +76,7 @@ export function ForgotPasswordScreen() {
         value={email}
       />
 
-      <Pressable
-        className={`mt-2 h-12 items-center justify-center rounded-full hover:opacity-90 active:opacity-80 ${canSubmit ? 'bg-primary' : 'bg-slate-100 dark:bg-slate-800'}`}
-        disabled={loading}
-        onPress={handleSubmit}
-        nativeID="forgot-password-screen-submit-button"
-        testID="forgot-password-screen-submit-button"
-      >
-        {loading ? (
-          <ActivityIndicator color="#111518" size="small" />
-        ) : (
-          <Text
-            className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-[#111518]' : 'text-slate-400 dark:text-slate-500'}`}
-            nativeID="forgot-password-screen-submit-button-label"
-            testID="forgot-password-screen-submit-button-label"
-          >
-            Enviar código
-          </Text>
-        )}
-      </Pressable>
+      <AuthSubmitButton className="mt-2" idPrefix="forgot-password-screen" label="Enviar código" loading={loading} onPress={handleSubmit} />
     </AuthCardShell>
   );
 }

@@ -28,6 +28,7 @@ import { formatMonthlyFee } from '../../utils/currency.js';
 import { JoinTeamConfirmModal } from './join-team-confirm-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 function buttonState(team, myPendingTeamIds) {
   if (myPendingTeamIds.has(team.id)) return { disabled: true, label: 'Solicitud enviada' };
@@ -75,7 +76,7 @@ function TeamSearchResultCard({ team, membershipFee, onRequest, requesting }) {
                 {formatMonthlyFee(membershipFee)}
               </Text>
               {membershipFee > 0 && (
-                <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-fee-period`} testID={`${idPrefix}-fee-period`}>
+                <Text className="text-[10px] font-medium text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-fee-period`} testID={`${idPrefix}-fee-period`}>
                   /mes
                 </Text>
               )}
@@ -219,9 +220,10 @@ function TeamSearchScreenContent() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-8" nativeID="team-search-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
+    <PageReveal idPrefix="team-search-screen-page-reveal">
+    <ScrollView className="flex-1 bg-paper dark:bg-ink" contentContainerClassName="px-4 py-6" nativeID="team-search-screen-scroll" refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined} showsVerticalScrollIndicator={false} testID="team-search-screen-scroll">
       <ScreenCard nativeID="team-search-screen-container" testID="team-search-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="team-search-screen-header" testID="team-search-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="team-search-screen-header" testID="team-search-screen-header">
           <Pressable className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70" nativeID="team-search-screen-back-button" onPress={() => router.back()} testID="team-search-screen-back-button">
             <MaterialCommunityIcons color={colors.onSurfaceVariant} name="arrow-left" size={18} />
           </Pressable>
@@ -348,6 +350,7 @@ function TeamSearchScreenContent() {
         />
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

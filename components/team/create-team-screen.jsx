@@ -23,6 +23,7 @@ import { TeamGeneralInfoFields } from './team-general-info-fields.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 const STEP_TITLES = { 1: 'Datos del equipo', 2: 'Grupos', 3: 'Invitar corredores' };
 const TOTAL_STEPS = 3;
@@ -183,15 +184,16 @@ function CreateTeamScreenContent() {
 
   return (
     <View className="flex-1" nativeID="create-team-screen-root" testID="create-team-screen-root">
+    <PageReveal idPrefix="create-team-screen-page-reveal">
     <ScrollView
       nativeID="create-team-screen-scroll"
       testID="create-team-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       showsVerticalScrollIndicator={false}
     >
       <ScreenCard nativeID="create-team-screen-container" testID="create-team-screen-container">
-        <View nativeID="create-team-screen-header" testID="create-team-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="create-team-screen-header" testID="create-team-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="create-team-screen-back-button"
             testID="create-team-screen-back-button"
@@ -274,6 +276,7 @@ function CreateTeamScreenContent() {
         )}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </View>
   );

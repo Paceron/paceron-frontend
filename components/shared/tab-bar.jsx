@@ -55,7 +55,7 @@ const VARIANT = {
     iconSize: 13,
     activeClassName: 'border-primary',
     inactiveClassName: 'border-transparent',
-    labelActiveClassName: 'font-semibold text-primary',
+    labelActiveClassName: 'font-semibold text-on-primary-tint dark:text-primary',
     labelInactiveClassName: 'font-medium text-slate-500 dark:text-slate-400',
     labelClassName: 'text-xs',
   },
@@ -121,7 +121,7 @@ export function TabBar({ active, onChange, tabs, scope = 'tab-bar', badges = {},
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
         aria-selected={isActive}
-        className={`flex-row items-center ${style.tabClassName} ${isWeb ? 'shrink' : ''} ${isActive ? style.activeClassName : style.inactiveClassName}`}
+        className={`flex-row items-center ${style.tabClassName} ${isWeb ? 'shrink' : ''} active:opacity-70 ${isActive ? style.activeClassName : style.inactiveClassName}`}
         focusable={isWeb}
         key={tab.id}
         nativeID={`${scope}-${tab.id}`}

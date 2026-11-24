@@ -43,7 +43,7 @@ export function useExercises(ownerId) {
     queryFn: () => listExercisesService({ ownerId }).then((dtos) => dtos.map(toExerciseModel)),
     enabled: Boolean(ownerId),
   });
-  return { exercises: query.data ?? [], loading: query.isLoading, error: query.error };
+  return { exercises: query.data ?? [], loading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useExerciseMutations() {

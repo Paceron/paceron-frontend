@@ -39,11 +39,11 @@ export function AthletePickerModal({ visible, onClose, teamId, excludeUserId, ti
 
   return (
     <Modal animationType="fade" nativeID="athlete-picker-modal" onRequestClose={handleCancelAndReset} testID="athlete-picker-modal" transparent visible={visible}>
-      <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="athlete-picker-modal-backdrop" onPress={handleCancelAndReset} testID="athlete-picker-modal-backdrop">
-        <Pressable
+      <View className="flex-1 items-center justify-center bg-black/50 px-4" nativeID="athlete-picker-modal-container" testID="athlete-picker-modal-container">
+        <Pressable className="absolute inset-0" nativeID="athlete-picker-modal-backdrop" onPress={handleCancelAndReset} testID="athlete-picker-modal-backdrop" />
+        <View
           className="max-h-[85%] w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-surface"
           nativeID="athlete-picker-modal-card"
-          onPress={() => {}}
           testID="athlete-picker-modal-card"
         >
           <Text className="mb-1 text-lg font-bold text-slate-900 dark:text-white" nativeID="athlete-picker-modal-title" testID="athlete-picker-modal-title">
@@ -135,8 +135,8 @@ export function AthletePickerModal({ visible, onClose, teamId, excludeUserId, ti
               </Text>
             </Pressable>
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

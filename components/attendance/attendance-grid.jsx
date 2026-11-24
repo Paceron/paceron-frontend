@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-nativ
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { filterAndSortRows } from '../../utils/attendance-rows.js';
+import { AttendanceGridSkeleton } from './attendance-grid-skeleton.jsx';
 import { AttendanceMetricCards } from './attendance-metric-cards.jsx';
 import { AttendanceRow } from './attendance-row.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
@@ -37,13 +38,10 @@ export function AttendanceGrid({
   const visibleRows = useMemo(() => filterAndSortRows(rows, query, sortOrder), [rows, query, sortOrder]);
   const isFiltering = query.trim() !== '';
 
-  // `isLoading` es el primer fetch de la grilla: NO hay nada que mostrar, así que
-  // spinner. Distinto de un grupo sin corredores, que sí es un estado vacío con
-  // explicación (tarea 5.7: "isLoading → spinner, no empty state").
   if (isLoading) {
     return (
-      <View className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-loading`} testID={`${idPrefix}-loading`}>
-        <ActivityIndicator color={colors.primary} />
+      <View className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-surface-2" nativeID={`${idPrefix}-loading`} testID={`${idPrefix}-loading`}>
+        <AttendanceGridSkeleton idPrefix={`${idPrefix}-loading-skeleton`} />
       </View>
     );
   }
@@ -92,7 +90,7 @@ export function AttendanceGrid({
 
   return (
     <View nativeID={`${idPrefix}-root`} testID={`${idPrefix}-root`}>
-      <AttendanceMetricCards idPrefix={`${idPrefix}-metrics`} isLoading={false} summary={summary} />
+      <AttendanceMetricCards idPrefix={`${idPrefix}-metrics`} summary={summary} />
 
       {/* La barra de guardado solo existe con algo marcado. Con `selectedIds`
           vacío el `headerRight` del patrón de exercises-catalog-tab se sustituye
@@ -114,9 +112,9 @@ export function AttendanceGrid({
             testID={`${idPrefix}-save-button`}
           >
             {isSaving ? (
-              <ActivityIndicator color="#ffffff" size="small" />
+              <ActivityIndicator color={colors.onPrimary} size="small" />
             ) : (
-              <Text className="text-sm font-semibold uppercase tracking-wide text-white" nativeID={`${idPrefix}-save-button-label`} testID={`${idPrefix}-save-button-label`}>
+              <Text className="text-sm font-semibold uppercase tracking-wide text-[#111518]" nativeID={`${idPrefix}-save-button-label`} testID={`${idPrefix}-save-button-label`}>
                 Guardar
               </Text>
             )}

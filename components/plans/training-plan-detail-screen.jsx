@@ -14,6 +14,8 @@ import { usePullToRefresh } from '../../hooks/use-pull-to-refresh.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { DeleteTrainingPlanModal } from './delete-training-plan-modal.jsx';
 import { EXERCISE_KIND_META, DAY_KIND_META, SESSION_ROLE_ORDER, SESSION_ROLE_META, buildExerciseStatLine } from './exercise-kind-meta.js';
 
@@ -32,7 +34,7 @@ function ExerciseRow({ idPrefix, roleLabel, exercise, repeatCount = 1, restMinut
         <MaterialCommunityIcons color={meta.iconColor} name={meta.icon} size={18} />
       </View>
       <View className="flex-1" nativeID={`${idPrefix}-info`} testID={`${idPrefix}-info`}>
-        <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" nativeID={`${idPrefix}-role`} testID={`${idPrefix}-role`}>
+        <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400" nativeID={`${idPrefix}-role`} testID={`${idPrefix}-role`}>
           {roleLabel}
         </Text>
         <Text className="text-sm font-semibold text-slate-900 dark:text-white" nativeID={`${idPrefix}-name`} testID={`${idPrefix}-name`}>
@@ -154,11 +156,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
   ]));
 
   if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="training-plan-detail-loading" testID="training-plan-detail-loading">
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="training-plan-detail" onBack={() => router.back()} />;
   }
 
   if (!plan) {
@@ -212,9 +210,10 @@ function TrainingPlanDetailScreenContent({ planId }) {
   };
 
   return (
+    <PageReveal idPrefix="training-plan-detail-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="training-plan-detail-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
@@ -306,6 +305,7 @@ function TrainingPlanDetailScreenContent({ planId }) {
         visible={deleteModalVisible}
       />
     </ScrollView>
+    </PageReveal>
   );
 }
 

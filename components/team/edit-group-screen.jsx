@@ -18,6 +18,8 @@ import { InputField } from '../forms/fields.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { DiscardChangesModal } from '../shared/discard-changes-modal.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { notifySuccess, notifyError } from '../../utils/haptics.js';
 
 // Formulario chico: nombre + descripción — mismos campos que ya usa
@@ -62,11 +64,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
   }, [group]);
 
   if (loadingTeam || loadingGroups) {
-    return (
-      <View className="flex-1 items-center justify-center bg-paper dark:bg-ink" nativeID="edit-group-loading" testID="edit-group-loading">
-        <ActivityIndicator color="#8cc63e" />
-      </View>
-    );
+    return <FormScreenSkeleton idPrefix="edit-group" onBack={() => router.back()} />;
   }
 
   if (!team || !group) {
@@ -116,16 +114,17 @@ function EditGroupScreenContent({ teamId, groupId }) {
 
   return (
     <>
+    <PageReveal idPrefix="edit-group-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="edit-group-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
       testID="edit-group-screen-scroll"
     >
       <ScreenCard nativeID="edit-group-screen-container" testID="edit-group-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="edit-group-screen-header" testID="edit-group-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="edit-group-screen-header" testID="edit-group-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="edit-group-screen-back-button"
@@ -164,6 +163,7 @@ function EditGroupScreenContent({ teamId, groupId }) {
         </SectionCard>
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
     <DiscardChangesModal onCancel={cancelDiscard} onConfirm={confirmDiscard} visible={confirmVisible} />
     </>
   );

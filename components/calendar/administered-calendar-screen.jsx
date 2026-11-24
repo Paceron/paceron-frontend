@@ -17,6 +17,7 @@ import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { SectionTabBar } from '../shared/section-tab-bar.jsx';
 import { FilterPanel } from '../shared/filter-panel.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { AggregatedMonthView } from './aggregated-month-view.jsx';
 import { DayDetailModal } from './day-detail-modal.jsx';
 import { TeamGroupPickerModal } from './team-group-picker-modal.jsx';
@@ -144,9 +145,10 @@ function AdministeredCalendarScreenContent() {
 
   return (
     <View className="flex-1" nativeID="administered-calendar-screen-root" testID="administered-calendar-screen-root">
+      <PageReveal idPrefix="administered-calendar-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="administered-calendar-screen-scroll"
         refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
         showsVerticalScrollIndicator={false}
@@ -232,6 +234,7 @@ function AdministeredCalendarScreenContent() {
         {activeTab === 'historial' && <TrainingsHistoryTab role="trainer" />}
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       <DayDetailModal assignments={openAssignments} date={openDate ?? ''} loading={loading} onClose={() => setDayModalVisible(false)} variant="administered" visible={dayModalVisible} />
 

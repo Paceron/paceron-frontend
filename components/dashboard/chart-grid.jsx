@@ -88,7 +88,7 @@ export function ChartGrid({ id, ids = [], initialExpandedId = null, forceExpande
               >
                 <MaterialCommunityIcons color={colors.primary} name="arrow-expand-all" size={14} />
                 {narrow ? null : (
-                  <Text className="text-[11px] font-semibold text-primary" nativeID={`${id}-expand-all-label`} testID={`${id}-expand-all-label`}>
+                  <Text className="text-[11px] font-semibold text-[#3c6b12] dark:text-primary" nativeID={`${id}-expand-all-label`} testID={`${id}-expand-all-label`}>
                     Maximizar todos
                   </Text>
                 )}

@@ -260,7 +260,7 @@ export function LocationPicker({ value, onChange, variant = 'compact' }) {
             </View>
 
             {picker.error && (
-              <Text className="text-xs text-red-500 dark:text-red-400" nativeID="location-picker-error" testID="location-picker-error">
+              <Text className="text-xs text-red-600 dark:text-red-400" nativeID="location-picker-error" testID="location-picker-error">
                 {picker.error}
               </Text>
             )}

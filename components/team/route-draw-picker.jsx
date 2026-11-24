@@ -221,7 +221,7 @@ export function RouteDrawPicker({ value, onChange, acceptanceRadiusMeters, onMap
         </View>
 
         {picker.locateError && (
-          <Text className="text-xs text-red-500 dark:text-red-400" nativeID="route-draw-picker-locate-error" testID="route-draw-picker-locate-error">
+          <Text className="text-xs text-red-600 dark:text-red-400" nativeID="route-draw-picker-locate-error" testID="route-draw-picker-locate-error">
             {picker.locateError}
           </Text>
         )}

@@ -10,6 +10,8 @@ import { useUser, useUserMutations } from '../../hooks/use-user.js';
 import { toUpdatePayload } from '../../services/normalizers.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { FormScreenError, FormScreenSkeleton } from '../shared/form-screen-skeleton.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { TermsModal } from '../legal/terms-modal.jsx';
@@ -47,7 +49,7 @@ function SettingsScreenContent() {
   const router = useRouter();
   const colors = useThemeColors();
   const userId = useAuthStore((s) => s.userId);
-  const { user } = useUser(userId);
+  const { user, loading: userLoading, fetching: userFetching, error: userError, refetch: refetchUser } = useUser(userId);
   const { updateUser } = useUserMutations();
   const { setThemeMode } = useThemeMode();
 
@@ -57,7 +59,20 @@ function SettingsScreenContent() {
 
   // user (perfil) puede tardar en cargar — mismo guard que
   // edit-profile-screen.jsx, evita leer user.defaultTheme/etc contra null.
-  if (!user) return null;
+  if (userLoading) return <FormScreenSkeleton idPrefix="settings-screen" onBack={() => router.back()} />;
+
+  if (!user) {
+    return (
+      <FormScreenError
+        idPrefix="settings-screen"
+        message={userError ? 'No pudimos cargar tu perfil.' : 'No encontramos tu perfil.'}
+        onBack={() => router.back()}
+        onRetry={userError ? refetchUser : undefined}
+        retrying={userFetching}
+        title="Ajustes"
+      />
+    );
+  }
 
   const handleThemeChange = async (mode) => {
     setSavingTheme(true);
@@ -81,15 +96,16 @@ function SettingsScreenContent() {
   };
 
   return (
+    <PageReveal idPrefix="settings-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="settings-screen-scroll"
       showsVerticalScrollIndicator={false}
       testID="settings-screen-scroll"
     >
       <ScreenCard nativeID="settings-screen-container" testID="settings-screen-container">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="settings-screen-header" testID="settings-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="settings-screen-header" testID="settings-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="settings-screen-back-button"
@@ -172,6 +188,7 @@ function SettingsScreenContent() {
 
       <TermsModal onClose={() => setShowTerms(false)} visible={showTerms} />
     </ScrollView>
+    </PageReveal>
   );
 }
 

@@ -43,7 +43,7 @@ export function TrajectorySketch({ feedbackId, pointsCount }) {
   if (!pointsCount) {
     return (
       <View className="mt-3" nativeID="session-review-trajectory" testID="session-review-trajectory">
-        <Text className="text-xs text-slate-400 dark:text-slate-500" nativeID="session-review-trajectory-empty" testID="session-review-trajectory-empty">
+        <Text className="text-xs text-slate-500 dark:text-slate-400" nativeID="session-review-trajectory-empty" testID="session-review-trajectory-empty">
           Esta serie se registró sin GPS, no hay trayectoria para dibujar.
         </Text>
       </View>
@@ -87,7 +87,7 @@ export function TrajectorySketch({ feedbackId, pointsCount }) {
         <Text className="text-[10px] text-slate-500 dark:text-slate-400" nativeID="session-review-trajectory-legend-start" testID="session-review-trajectory-legend-start">
           ● Inicio — ● Fin
         </Text>
-        <Text className="text-[10px] text-slate-400 dark:text-slate-500" nativeID="session-review-trajectory-legend-dims" testID="session-review-trajectory-legend-dims">
+        <Text className="text-[10px] text-slate-500 dark:text-slate-400" nativeID="session-review-trajectory-legend-dims" testID="session-review-trajectory-legend-dims">
           {formatMeters(metersWide)} × {formatMeters(metersTall)} · {pointCount} punto(s)
         </Text>
       </View>

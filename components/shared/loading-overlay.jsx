@@ -8,7 +8,7 @@ export function LoadingOverlay({ visible, id = 'loading-overlay', label, fullScr
       accessibilityViewIsModal
       className={`absolute inset-0 items-center justify-center px-6 ${fullScreen ? '' : 'rounded-2xl'}`}
       nativeID={`${id}-overlay`}
-      style={{ backgroundColor: 'rgba(15, 23, 42, 0.35)', pointerEvents: 'auto', zIndex: 50 }}
+      style={{ backgroundColor: 'rgba(2, 6, 23, 0.6)', pointerEvents: 'auto', zIndex: 50 }}
       testID={`${id}-overlay`}
     >
       <ActivityIndicator color="#8cc63e" size="large" />

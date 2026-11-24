@@ -93,5 +93,6 @@ export function useAchievements() {
     hasUnseen: achievements.some((a) => a.hasUnseen),
     loading: catalogQuery.isLoading || progressQuery.isLoading,
     error: visibleQueryError(catalogQuery.data, catalogQuery.error) ?? visibleQueryError(progressQuery.data, progressQuery.error),
+    refetch: () => Promise.all([catalogQuery.refetch(), progressQuery.refetch()]),
   };
 }

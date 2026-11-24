@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
@@ -24,6 +24,8 @@ import { buildSessionComparisonCsv, sessionComparisonFileName } from '../../util
 import { buildSessionComparisonHtml } from '../../utils/comparison-pdf-html.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 import { ComplianceBadge } from './compliance-badge.jsx';
 import { ComparisonExportButtons } from './comparison-export-buttons.jsx';
 
@@ -118,9 +120,10 @@ function SessionComparisonContent() {
   const notFound = error?.status === 404;
 
   return (
+    <PageReveal idPrefix="session-comparison-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="session-comparison-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
@@ -139,9 +142,22 @@ function SessionComparisonContent() {
         </View>
 
         {loading ? (
-          <View className="items-center py-10" nativeID="session-comparison-loading" testID="session-comparison-loading">
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <SkeletonPulse className="gap-4" nativeID="session-comparison-loading" testID="session-comparison-loading">
+            <View className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-transparent dark:bg-surface-2" nativeID="session-comparison-loading-summary" testID="session-comparison-loading-summary">
+              <SkeletonBlock height={11} width="48%" />
+              <SkeletonBlock className="mt-2" height={20} width="64%" />
+              <SkeletonBlock className="mt-3" height={12} width="82%" />
+              <SkeletonBlock className="mt-2" height={12} width="70%" />
+            </View>
+            {[0, 1].map((index) => (
+              <View className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-surface" key={index} nativeID={`session-comparison-loading-exercise-${index}`} testID={`session-comparison-loading-exercise-${index}`}>
+                <SkeletonBlock height={16} width="58%" />
+                <SkeletonBlock className="mt-2" height={11} width="38%" />
+                <SkeletonBlock className="mt-3" height={36} />
+                <SkeletonBlock className="mt-2" height={36} />
+              </View>
+            ))}
+          </SkeletonPulse>
         ) : error ? (
           <View className="items-center rounded-2xl border border-rose-200 bg-white p-6 dark:border-rose-900/50 dark:bg-surface" nativeID="session-comparison-error" testID="session-comparison-error">
             <MaterialCommunityIcons color="#f43f5e" name="alert-circle-outline" size={28} />
@@ -203,6 +219,7 @@ function SessionComparisonContent() {
         ) : null}
       </ScreenCard>
     </ScrollView>
+    </PageReveal>
   );
 }
 

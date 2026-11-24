@@ -37,6 +37,7 @@ import { notifySuccess, notifyError } from '../../utils/haptics.js';
 import { RequireAuth } from '../guards/require-auth.jsx';
 import { IconTooltip } from '../shared/icon-tooltip.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 // Mismos ids/iconos que TABS en training-plans-screen.jsx -- ahí es donde
 // `?tab=` termina resolviendo.
@@ -149,7 +150,7 @@ function CalendarDayCell({ date, state, isToday, isPast, marking, containerRef, 
       testID={`group-calendar-day-${date.dateString}`}
     >
       <Text
-        className={`text-base font-bold ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-primary' : 'text-slate-700 dark:text-slate-200'}`}
+        className={`text-base font-bold ${isOtherMonth ? 'text-slate-300 dark:text-slate-600' : isToday ? 'font-bold text-green-900 dark:text-primary' : 'text-slate-700 dark:text-slate-200'}`}
         nativeID={`group-calendar-day-${date.dateString}-label`}
         testID={`group-calendar-day-${date.dateString}-label`}
       >
@@ -394,9 +395,10 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
 
   return (
     <View className="relative flex-1" nativeID="group-calendar-screen-root" ref={screenRootRef} testID="group-calendar-screen-root">
+      <PageReveal idPrefix="group-calendar-screen-page-reveal">
       <ScrollView
         className="flex-1 bg-paper dark:bg-ink"
-        contentContainerClassName="px-4 py-8"
+        contentContainerClassName="px-4 py-6"
         nativeID="group-calendar-screen-scroll"
         refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
         showsVerticalScrollIndicator={false}
@@ -540,6 +542,7 @@ function GroupCalendarScreenContent({ teamId, groupId }) {
         </View>
       </ScreenCard>
       </ScrollView>
+      </PageReveal>
 
       <AnimatedDropdown
         anchorStyle={openDayMenu ? { left: openDayMenu.anchor.x, top: openDayMenu.anchor.y + openDayMenu.anchor.height + 4 } : {}}

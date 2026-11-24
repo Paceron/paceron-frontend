@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,6 +24,7 @@ import { notifyError } from '../../utils/haptics.js';
 import { RouteMapPreview } from '../team/route-map-preview';
 import { CompetitionRankingModal } from '../team/competition-ranking-modal.jsx';
 import { logDebug } from '../../utils/debug-log.js';
+import { PageReveal } from '../shared/page-reveal.jsx';
 
 // Pre-start dedicado de un intento de competencia por trayectoria (Spec
 // 4c probó en dispositivo que el pre-start genérico, session-pre-start-
@@ -156,12 +157,13 @@ function RouteAttemptPreStartScreenContent() {
   // en cualquier otro estado. Solo transform:scale -- no toca layout ni
   // puede romper el hit-test del Pressable de adentro.
   const pulse = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
-    pulse.value = playReady
+    pulse.value = playReady && !reducedMotion
       ? withRepeat(withTiming(1.06, { duration: 650 }), -1, true)
       : withTiming(1, { duration: 200 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playReady]);
+  }, [playReady, reducedMotion]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   // Diagnóstico sin comportamiento (2026-10-31), mismo motivo que el de
@@ -230,6 +232,7 @@ function RouteAttemptPreStartScreenContent() {
 
   return (
     <SafeAreaView className="flex-1 bg-paper dark:bg-ink" edges={['top', 'bottom']} nativeID="route-attempt-pre-start-screen-root" testID="route-attempt-pre-start-screen-root">
+      <PageReveal idPrefix="route-attempt-pre-start-page-reveal">
       <View className="flex-row items-center justify-between px-4 pt-2" nativeID="route-attempt-pre-start-screen-header-row" testID="route-attempt-pre-start-screen-header-row">
         <Pressable
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
@@ -308,6 +311,7 @@ function RouteAttemptPreStartScreenContent() {
           </Pressable>
         </Animated.View>
       </View>
+      </PageReveal>
 
       <CompetitionRankingModal competition={rankingCompetitionStub} members={members} onClose={() => setRankingVisible(false)} visible={rankingVisible} />
     </SafeAreaView>

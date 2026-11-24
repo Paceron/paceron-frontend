@@ -3,6 +3,7 @@ import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, Text, TextIn
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
 import { useCompetitionDetail } from '../../hooks/use-competitions.js';
+import { visibleQueryError } from '../../utils/query-state.js';
 import { formatMetricValue } from '../../utils/leaderboard-metric-format.js';
 import { colorForUserId } from '../../utils/participant-color.js';
 import { isWeb } from '../../utils/platform.js';
@@ -13,6 +14,7 @@ import {
 } from '../../utils/competition-participants.js';
 import { ParticipantAvatar } from '../session-runtime/participant-avatar.jsx';
 import { IconButton } from '../shared/icon-button.jsx';
+import { ErrorState } from '../shared/error-state.jsx';
 
 const ID_PREFIX = 'competition-participants-modal';
 
@@ -30,9 +32,10 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
   const colors = useThemeColors();
   const [query, setQuery] = useState('');
   const competitionId = competition?.id ?? null;
-  const { detail, loading } = useCompetitionDetail(competition?.id, {
+  const { detail, loading, fetching, error, refetch } = useCompetitionDetail(competition?.id, {
     enabled: visible && Boolean(competition),
   });
+  const visibleError = visibleQueryError(detail, error);
 
   useEffect(() => {
     if (visible) setQuery('');
@@ -135,10 +138,17 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
             {counterText}
           </Text>
 
-          {loading ? (
+          {loading && !detail ? (
             <View className="items-center py-6" nativeID={`${ID_PREFIX}-loading`} testID={`${ID_PREFIX}-loading`}>
               <ActivityIndicator color={colors.primary} />
             </View>
+          ) : visibleError ? (
+            <ErrorState
+              idPrefix={`${ID_PREFIX}-error`}
+              message="No pudimos cargar los participantes."
+              onRetry={refetch}
+              retrying={fetching}
+            />
           ) : (
             <ScrollView
               className="max-h-80 flex-shrink"
@@ -167,7 +177,7 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
                       <Text className="flex-1 text-sm font-medium text-slate-900 dark:text-white" nativeID={`${rowId}-name`} numberOfLines={1} testID={`${rowId}-name`}>
                         {row.name}
                       </Text>
-                      <Text className="text-sm font-semibold text-primary" nativeID={`${rowId}-progress`} testID={`${rowId}-progress`}>
+                      <Text className="text-sm font-semibold text-[#3c6b12] dark:text-primary" nativeID={`${rowId}-progress`} testID={`${rowId}-progress`}>
                         {progressLabel(competition, row.progress)}
                       </Text>
                       {canViewAttempts ? (
@@ -189,11 +199,11 @@ export function CompetitionParticipantsModal({ visible, onClose, competition, me
                   );
                 })}
                 {rows.length === 0 ? (
-                  <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`${ID_PREFIX}-empty`} testID={`${ID_PREFIX}-empty`}>
+                  <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-empty`} testID={`${ID_PREFIX}-empty`}>
                     Todavía no hay participantes.
                   </Text>
                 ) : filteredRows.length === 0 ? (
-                  <Text className="text-sm text-slate-400 dark:text-slate-500" nativeID={`${ID_PREFIX}-no-matches`} testID={`${ID_PREFIX}-no-matches`}>
+                  <Text className="text-sm text-slate-500 dark:text-slate-400" nativeID={`${ID_PREFIX}-no-matches`} testID={`${ID_PREFIX}-no-matches`}>
                     Sin coincidencias.
                   </Text>
                 ) : null}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { SkeletonBlock, SkeletonPulse } from '../shared/skeleton.jsx';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,6 +19,7 @@ import { formatDisplayDate } from '../../utils/format-date-display.js';
 import { notifySuccess } from '../../utils/haptics.js';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { RequireAuth } from '../guards/require-auth.jsx';
 // Sin extensión a propósito: Metro solo aplica resolución por plataforma
 // (.web.jsx antes que .jsx) cuando el specifier no trae extensión — ver quirk
@@ -176,9 +178,10 @@ function TeamSubscriptionScreenContent({ teamId }) {
   const isFree = !membershipFee;
 
   return (
+    <PageReveal idPrefix="team-subscription-screen-page-reveal">
     <ScrollView
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       nativeID="team-subscription-screen-scroll"
       refreshControl={isMobile ? <RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
@@ -186,7 +189,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
     >
       <View className={`w-full self-center ${isWeb ? 'max-w-2xl' : ''}`} nativeID="team-subscription-screen-container" testID="team-subscription-screen-container">
       <ScreenCard nativeID="team-subscription-screen-card" testID="team-subscription-screen-card">
-        <View className="mb-8 flex-row items-center gap-2" nativeID="team-subscription-screen-header" testID="team-subscription-screen-header">
+        <View className="mb-6 flex-row items-center gap-2" nativeID="team-subscription-screen-header" testID="team-subscription-screen-header">
           <Pressable
             className="flex-row items-center gap-1.5 py-1 pr-1 hover:opacity-70 active:opacity-70"
             nativeID="team-subscription-screen-back-button"
@@ -215,9 +218,19 @@ function TeamSubscriptionScreenContent({ teamId }) {
 
         <SectionCard icon="cash-multiple" title="Membresía" variant="nested">
           {loading ? (
-            <View className="items-center py-6" nativeID="team-subscription-screen-loading" testID="team-subscription-screen-loading">
-              <ActivityIndicator color="#8cc63e" />
-            </View>
+            <SkeletonPulse nativeID="team-subscription-screen-loading-pulse" testID="team-subscription-screen-loading-pulse">
+              <View className="py-2" nativeID="team-subscription-screen-loading" testID="team-subscription-screen-loading">
+                <SkeletonBlock height={24} nativeID="team-subscription-screen-loading-badge" testID="team-subscription-screen-loading-badge" width={96} />
+                <View className="mt-4" nativeID="team-subscription-screen-loading-price" testID="team-subscription-screen-loading-price">
+                  <SkeletonBlock height={30} width={150} />
+                </View>
+                <View className="mt-4 gap-2" nativeID="team-subscription-screen-loading-rows" testID="team-subscription-screen-loading-rows">
+                  {[0, 1, 2].map((i) => (
+                    <SkeletonBlock height={18} key={i} nativeID={`team-subscription-screen-loading-row-${i}`} testID={`team-subscription-screen-loading-row-${i}`} width="100%" />
+                  ))}
+                </View>
+              </View>
+            </SkeletonPulse>
           ) : isFree ? (
             <Text className="py-2 text-sm text-slate-500 dark:text-slate-400" nativeID="team-subscription-screen-free" testID="team-subscription-screen-free">
               Este equipo no tiene cuota mensual — tu membresía no requiere ningún pago.
@@ -227,10 +240,10 @@ function TeamSubscriptionScreenContent({ teamId }) {
               <StatusBadge hasDebt={hasDebt} status={status} />
 
               <View className="mt-4 flex-row items-baseline gap-1" nativeID="team-subscription-screen-price-row" testID="team-subscription-screen-price-row">
-                <Text className="text-2xl font-bold text-primary" nativeID="team-subscription-screen-price" testID="team-subscription-screen-price">
+                <Text className="text-2xl font-bold text-[#3c6b12] dark:text-primary" nativeID="team-subscription-screen-price" testID="team-subscription-screen-price">
                   {formatMonthlyFee(membershipFee)}
                 </Text>
-                <Text className="text-xs font-medium text-slate-400 dark:text-slate-500" nativeID="team-subscription-screen-price-period" testID="team-subscription-screen-price-period">
+                <Text className="text-xs font-medium text-slate-500 dark:text-slate-400" nativeID="team-subscription-screen-price-period" testID="team-subscription-screen-price-period">
                   /mes
                 </Text>
               </View>
@@ -271,7 +284,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
                 </Text>
               ) : null}
 
-              <Text className="mt-4 text-xs leading-5 text-slate-400 dark:text-slate-500" nativeID="team-subscription-screen-recipient-hint" testID="team-subscription-screen-recipient-hint">
+              <Text className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400" nativeID="team-subscription-screen-recipient-hint" testID="team-subscription-screen-recipient-hint">
                 Tu pago va a la cuenta de Mercado Pago del entrenador del equipo.
               </Text>
             </View>
@@ -295,6 +308,7 @@ function TeamSubscriptionScreenContent({ teamId }) {
       </ScreenCard>
       </View>
     </ScrollView>
+    </PageReveal>
   );
 }
 

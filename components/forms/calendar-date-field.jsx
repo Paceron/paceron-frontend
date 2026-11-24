@@ -154,7 +154,7 @@ export function CalendarDateField({
         </View>
         {!hideErrorRow ? (
           <View className="h-5" nativeID={`${idPrefix}-error-row`} testID={`${idPrefix}-error-row`}>
-            {error ? <Text className="text-xs text-red-500 dark:text-red-400" nativeID={`${idPrefix}-error`} testID={`${idPrefix}-error`}>{error}</Text> : null}
+            {error ? <Text className="text-xs text-red-600 dark:text-red-400" nativeID={`${idPrefix}-error`} testID={`${idPrefix}-error`}>{error}</Text> : null}
           </View>
         ) : null}
       </View>

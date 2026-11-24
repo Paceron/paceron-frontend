@@ -13,6 +13,7 @@ import { resolveMpConnectErrorText } from '../../utils/mp-connect-messages.js';
 import { MpConnectButton } from '../payments/mp-connect-button';
 import { SectionCard } from '../forms/section-card.jsx';
 import { ScreenCard } from '../shared/screen-card.jsx';
+import { PageReveal } from '../shared/page-reveal.jsx';
 import { ActivateTrainerPasswordModal } from './activate-trainer-password-modal.jsx';
 
 export function ActivateTrainerScreen() {
@@ -66,18 +67,19 @@ export function ActivateTrainerScreen() {
   };
 
   return (
+    <PageReveal idPrefix="activate-trainer-screen-page-reveal">
     <KeyboardAwareScrollView
       nativeID="activate-trainer-screen-scroll"
       testID="activate-trainer-screen-scroll"
       className="flex-1 bg-paper dark:bg-ink"
-      contentContainerClassName="px-4 py-8"
+      contentContainerClassName="px-4 py-6"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       enableOnAndroid
       extraScrollHeight={24}
     >
       <ScreenCard nativeID="activate-trainer-screen-container" testID="activate-trainer-screen-container">
-        <View nativeID="activate-trainer-screen-header" testID="activate-trainer-screen-header" className="mb-8 flex-row items-center gap-2">
+        <View nativeID="activate-trainer-screen-header" testID="activate-trainer-screen-header" className="mb-6 flex-row items-center gap-2">
           <Pressable
             nativeID="activate-trainer-screen-back-button"
             testID="activate-trainer-screen-back-button"
@@ -136,7 +138,7 @@ export function ActivateTrainerScreen() {
           onPress={handleSubmit}
         >
           <MaterialCommunityIcons color={canSubmit ? '#ffffff' : colors.onSurfaceVariant} name="whistle" size={18} />
-          <Text nativeID="activate-trainer-screen-submit-label" testID="activate-trainer-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+          <Text nativeID="activate-trainer-screen-submit-label" testID="activate-trainer-screen-submit-label" className={`text-sm font-semibold uppercase tracking-wide ${canSubmit ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
             Activar
           </Text>
         </Pressable>
@@ -154,5 +156,6 @@ export function ActivateTrainerScreen() {
         visible={passwordModalVisible}
       />
     </KeyboardAwareScrollView>
+    </PageReveal>
   );
 }

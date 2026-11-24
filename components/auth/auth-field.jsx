@@ -56,7 +56,7 @@ export function AuthField({
         </View>
         {error && (
           <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(120)} nativeID={`${idPrefix}-error-row`} testID={`${idPrefix}-error-row`}>
-            <Text className="pt-1.5 text-xs text-red-500 dark:text-red-400" nativeID={`${idPrefix}-error`} testID={`${idPrefix}-error`}>
+            <Text className="pt-1.5 text-xs text-red-600 dark:text-red-400" nativeID={`${idPrefix}-error`} testID={`${idPrefix}-error`}>
               {error}
             </Text>
           </Animated.View>

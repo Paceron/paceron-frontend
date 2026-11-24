@@ -32,6 +32,8 @@ jest.mock('../components/plans/delete-catalog-item-modal.jsx', () => ({ DeleteCa
 jest.mock('../components/plans/bulk-delete-exercises-modal.jsx', () => ({ BulkDeleteExercisesModal: 'BulkDeleteExercisesModal' }));
 jest.mock('../components/plans/attach-to-session-picker.jsx', () => ({ AttachToSessionPicker: 'AttachToSessionPicker' }));
 jest.mock('../components/plans/usage-list-modal.jsx', () => ({ UsageListModal: 'UsageListModal' }));
+jest.mock('../components/shared/skeleton.jsx', () => ({ SkeletonBlock: 'SkeletonBlock', SkeletonPulse: 'SkeletonPulse' }));
+jest.mock('../components/shared/error-state.jsx', () => ({ ErrorState: 'ErrorState' }));
 
 import { sessionsUsingExercise, exercisesWithUsage } from '../components/plans/exercises-catalog-tab.jsx';
 
