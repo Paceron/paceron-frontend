@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useThemeColors } from '../../theme/colors.js';
+import { Collapsible } from './collapsible.jsx';
 
 // Panel colapsable genérico. Nació como `FilterPanel` de filtros y hoy lo usan
 // dos pantallas de calendario; el dashboard lo usa dos veces: para "Filtros" y
@@ -34,6 +36,15 @@ export function FilterPanel({
   // Abierto por default — da indicio de qué y cómo se puede filtrar en vez de
   // esconderlo detrás de un toggle; se puede cerrar igual a voluntad.
   const [open, setOpen] = useState(initiallyOpen);
+  const rotate = useSharedValue(open ? 1 : 0);
+
+  useEffect(() => {
+    rotate.value = withTiming(open ? 1 : 0, { duration: 200 });
+  }, [open, rotate]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotate.value * 180}deg` }],
+  }));
 
   // El tono cambia la identidad de la card, no su mecánica: el aviso de calidad
   // se tiene que seguir leyendo como aviso (ámbar + el `border-l-4` grueso que
@@ -120,17 +131,19 @@ export function FilterPanel({
             {loading ? (
               <ActivityIndicator color={colors.onSurfaceVariant} nativeID={`${idPrefix}-toggle-loading`} size="small" testID={`${idPrefix}-toggle-loading`} />
             ) : (
-              <MaterialCommunityIcons color={colors.onSurfaceVariant} name={open ? 'chevron-up' : 'chevron-down'} size={20} />
+              <Animated.View nativeID={`${idPrefix}-toggle-chevron`} style={chevronStyle} testID={`${idPrefix}-toggle-chevron`}>
+                <MaterialCommunityIcons color={colors.onSurfaceVariant} name="chevron-down" size={20} />
+              </Animated.View>
             )}
           </Pressable>
         </View>
       </View>
 
-      {open && (
+      <Collapsible expanded={open} idPrefix={`${idPrefix}-collapse`}>
         <View className={contentClassName} nativeID={`${idPrefix}-content`} testID={`${idPrefix}-content`}>
           {children}
         </View>
-      )}
+      </Collapsible>
     </View>
   );
 }

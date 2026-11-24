@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import Animated, { FadeOut, LinearTransition, useReducedMotion } from 'react-native-reanimated';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,6 +12,20 @@ import { useTeamJoinRequests, useJoinRequestMutations } from '../../hooks/use-jo
 // Solicitudes de ingreso, arriba de la lista de la pestaña Corredores y solo
 // para el entrenador dueño — aceptar/rechazar, tap directo sin modal de
 // confirmación (mismo patrón que received-invitations-screen.jsx/notifications-screen.jsx).
+function AnimatedListRow({ children, idPrefix }) {
+  const reducedMotion = useReducedMotion();
+  return (
+    <Animated.View
+      exiting={reducedMotion ? undefined : FadeOut.duration(140)}
+      layout={reducedMotion ? undefined : LinearTransition.duration(160)}
+      nativeID={`${idPrefix}-animated-row`}
+      testID={`${idPrefix}-animated-row`}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 function JoinRequestRow({ request, onAccept, onReject, responding, respondingAction }) {
   const colors = useThemeColors();
 
@@ -115,14 +130,15 @@ export function TeamJoinRequestsSection({ teamId }) {
     <SectionCard icon="account-question-outline" scope="team-requests-section" title={`Solicitudes de ingreso · ${requests.length}`} variant="nested">
       <View className="gap-2" nativeID="team-requests-tab-list" testID="team-requests-tab-list">
         {requests.map((request) => (
+          <AnimatedListRow idPrefix={`team-request-${request.id}`} key={request.id}>
           <JoinRequestRow
-            key={request.id}
             onAccept={() => handleAccept(request.id)}
             onReject={() => handleReject(request.id)}
             request={request}
             responding={(isAccepting || isRejecting) && respondingId === request.id}
             respondingAction={respondingId === request.id ? respondingAction : null}
           />
+          </AnimatedListRow>
         ))}
       </View>
     </SectionCard>

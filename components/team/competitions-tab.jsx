@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/colors.js';
+import { useThemeMode } from '../../providers/theme-provider.jsx';
 import { isWeb } from '../../utils/platform.js';
 import { useIsNarrowWeb } from '../../hooks/use-is-narrow-web.js';
 import { useSessionRuntimeStore } from '../../store/session-runtime-store.js';
@@ -14,6 +16,7 @@ import { buildCompetitionDatesLabel, buildCompetitionName, COMPETITION_TYPE_ICON
 import { resolveCompetitionCreatorName } from '../../utils/competition-creator.js';
 import { openLocationInMaps } from '../../utils/maps-link.js';
 import { SectionCard } from '../forms/section-card.jsx';
+import { Collapsible } from '../shared/collapsible.jsx';
 import { DateField } from '../forms/fields.jsx';
 import { ResponsiveSelectField } from '../forms/responsive-select-field.jsx';
 import { filterCompetitionsByFields } from '../../utils/competition-filters.js';
@@ -156,6 +159,13 @@ function RouteDetailSection({ idPrefix, competition, members, creatorName }) {
 
 function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerView, currentUserId, expanded, highlighted, onToggleExpand, onApprove, onReject, onCancel, onClose, onRun, onOpenRanking, onOpenAttempts, onOpenParticipants, busyAction }) {
   const colors = useThemeColors();
+  const { themeMode } = useThemeMode();
+  const reducedMotion = useReducedMotion();
+  const highlightProgress = useSharedValue(highlighted ? 1 : 0);
+  useEffect(() => {
+    highlightProgress.value = reducedMotion ? (highlighted ? 1 : 0) : withTiming(highlighted ? 1 : 0, { duration: 180 });
+  }, [highlightProgress, highlighted, reducedMotion]);
+  const highlightStyle = useAnimatedStyle(() => ({ opacity: highlightProgress.value }));
   const statusMeta = STATUS_META[competition.status] ?? STATUS_META.rejected;
   const busy = Boolean(busyAction);
   const idPrefix = `competitions-tab-row-${competition.id}`;
@@ -237,7 +247,13 @@ function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerVie
   const hasActions = canViewParticipants || canApproveReject || isOwnPendingProposal || canClose || canViewRanking || (canRunBase && !isWeb);
 
   return (
-    <View className={`rounded-xl border p-3 transition-colors ${highlighted ? 'border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'}`} nativeID={idPrefix} testID={idPrefix}>
+    <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900" nativeID={idPrefix} testID={idPrefix}>
+      <Animated.View
+        nativeID={`${idPrefix}-highlight`}
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: themeMode === 'dark' ? '#422006' : '#fef3c7', borderColor: themeMode === 'dark' ? '#b45309' : '#fcd34d', borderRadius: 12, borderWidth: 1 }, highlightStyle]}
+        testID={`${idPrefix}-highlight`}
+      />
       <Pressable className="flex-row items-start gap-2" disabled={!canExpand} nativeID={`${idPrefix}-header`} onPress={canExpand ? onToggleExpand : undefined} testID={`${idPrefix}-header`}>
         {canExpand ? <MaterialCommunityIcons color={colors.onSurfaceVariant} name={expanded ? 'chevron-down' : 'chevron-right'} size={18} style={{ marginTop: 2 }} /> : null}
         <View className="flex-1" nativeID={`${idPrefix}-header-text`} testID={`${idPrefix}-header-text`}>
@@ -390,9 +406,11 @@ function CompetitionRow({ competition, members, ownerId, ownerName, isTrainerVie
         </View>
       )}
 
-      {expanded && competition.type === 'route' && (
-        <RouteDetailSection competition={competition} creatorName={creatorName} idPrefix={idPrefix} members={members} />
-      )}
+      {competition.type === 'route' ? (
+        <Collapsible expanded={expanded} idPrefix={`${idPrefix}-route-detail`}>
+          <RouteDetailSection competition={competition} creatorName={creatorName} idPrefix={idPrefix} members={members} />
+        </Collapsible>
+      ) : null}
 
       {canRunBase && isWeb && (
         <View className="mt-3 items-center justify-center" nativeID={`${idPrefix}-run-row`} testID={`${idPrefix}-run-row`}>

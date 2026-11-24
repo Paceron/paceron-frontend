@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeOut, LinearTransition, useReducedMotion } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -51,6 +52,20 @@ function SectionErrorState({ idPrefix, message, onRetry }) {
 // no trae la cuota) y puede estar undefined mientras carga: en ese caso no se
 // muestra precio, porque mostrar "Gratis" sin saberlo sería mostrar un precio
 // equivocado justo donde el corredor decide aceptar.
+function AnimatedListRow({ children, idPrefix }) {
+  const reducedMotion = useReducedMotion();
+  return (
+    <Animated.View
+      exiting={reducedMotion ? undefined : FadeOut.duration(140)}
+      layout={reducedMotion ? undefined : LinearTransition.duration(160)}
+      nativeID={`${idPrefix}-animated-row`}
+      testID={`${idPrefix}-animated-row`}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 function ReceivedInvitationRow({ invite, membershipFee, onAccept, onReject, responding, respondingAction }) {
   const colors = useThemeColors();
   const slug = invite.id;
@@ -193,12 +208,13 @@ function MyJoinRequestsSection() {
       ) : (
         <View className="gap-2" nativeID="my-join-requests-list" testID="my-join-requests-list">
           {requests.map((request) => (
+            <AnimatedListRow idPrefix={`sent-join-request-${request.id}`} key={request.id}>
             <SentJoinRequestRow
               cancelling={isCancelling && cancellingId === request.id}
-              key={request.id}
               onCancel={() => handleCancel(request.id)}
               request={request}
             />
+            </AnimatedListRow>
           ))}
         </View>
       )}
@@ -368,15 +384,16 @@ function NotificationsScreenContent() {
           ) : (
             <View className="gap-2" nativeID="received-invitations-list" testID="received-invitations-list">
               {myInvitations.map((invite) => (
+                <AnimatedListRow idPrefix={`received-invitation-${invite.id}`} key={invite.id}>
                 <ReceivedInvitationRow
                   invite={invite}
-                  key={invite.id}
                   membershipFee={getFee(invite.teamId)}
                   onAccept={() => handleAccept(invite.id)}
                   onReject={() => handleReject(invite.id)}
                   responding={respondingId === invite.id}
                   respondingAction={respondingId === invite.id ? respondingAction : null}
                 />
+                </AnimatedListRow>
               ))}
             </View>
           )}
